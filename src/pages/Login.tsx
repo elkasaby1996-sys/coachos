@@ -1,46 +1,23 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
-import { useAuth } from "../providers/AuthProvider";
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const redirectMessage = searchParams.get("message");
-  const { user, role, isLoading, roleError } = useAuth();
 
   useEffect(() => {
     if (redirectMessage) {
       setErrorMessage(redirectMessage);
     }
   }, [redirectMessage]);
-
-  useEffect(() => {
-    if (isLoading || !user) {
-      return;
-    }
-
-    if (role === "pt") {
-      navigate("/pt/dashboard", { replace: true });
-      return;
-    }
-
-    if (role === "client") {
-      navigate("/app/home", { replace: true });
-      return;
-    }
-
-    if (role === "none") {
-      navigate("/no-workspace", { replace: true });
-    }
-  }, [isLoading, user, role, navigate]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -99,11 +76,6 @@ export function LoginPage() {
             {errorMessage ? (
               <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
                 {errorMessage}
-              </div>
-            ) : null}
-            {roleError ? (
-              <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-                {roleError}
               </div>
             ) : null}
             <Button className="w-full" type="submit" disabled={loading}>
