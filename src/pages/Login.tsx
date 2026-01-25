@@ -1,18 +1,16 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [debugMessage, setDebugMessage] = useState<string | null>(null);
   const redirectMessage = searchParams.get("message");
 
   useEffect(() => {
@@ -21,112 +19,23 @@ export function LoginPage() {
     }
   }, [redirectMessage]);
 
-  const resolveRoleAndNavigate = useCallback(
-    async (userId: string) => {
-      console.log("resolveRoleAndNavigate", userId);
-      const { data: member, error: memberError } = await supabase
-        .from("workspace_members")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      console.log("workspace_members lookup", { member, memberError });
-
-      if (memberError) {
-        setErrorMessage(memberError.message);
-      }
-
-      if (member) {
-        navigate("/pt/dashboard", { replace: true });
-        return;
-      }
-
-      const { data: client, error: clientError } = await supabase
-        .from("clients")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      console.log("clients lookup", { client, clientError });
-
-      if (clientError) {
-        setErrorMessage(clientError.message);
-      }
-
-      if (client) {
-        navigate("/app/home", { replace: true });
-        return;
-      }
-
-      navigate("/no-workspace", { replace: true });
-    },
-    [navigate]
-  );
-
-  useEffect(() => {
-    const checkExistingSession = async () => {
-      console.log("CHECK EXISTING SESSION");
-      const { data, error } = await supabase.auth.getSession();
-      console.log("EXISTING SESSION RESULT", { data, error });
-
-      if (error) {
-        setErrorMessage(error.message);
-        return;
-      }
-
-      if (data.session?.user) {
-        setDebugMessage("Already signed in, redirecting...");
-        await resolveRoleAndNavigate(data.session.user.id);
-      }
-    };
-
-    checkExistingSession();
-  }, [resolveRoleAndNavigate]);
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setErrorMessage(null);
-    setDebugMessage(null);
-    console.log("SUBMIT FIRED");
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      console.log("signInWithPassword", { data, error });
+    console.log("signInWithPassword", { data, error });
 
-      if (error) {
-        setErrorMessage(error.message);
-        return;
-      }
-
-      const userId = data.session?.user?.id;
-      setDebugMessage(
-        `Login success. Session user id: ${userId ?? "unknown"}`
-      );
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      console.log("SESSION AFTER LOGIN", sessionData, sessionError);
-
-      if (sessionError) {
-        setErrorMessage(sessionError.message);
-        return;
-      }
-
-      if (sessionData.session?.user?.id) {
-        setDebugMessage(
-          `Login success. Session user id: ${sessionData.session.user.id}`
-        );
-        await resolveRoleAndNavigate(sessionData.session.user.id);
-      } else {
-        setDebugMessage("Login success. Session not available yet.");
-      }
-    } finally {
-      setLoading(false);
+    if (error) {
+      setErrorMessage(error.message);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -169,17 +78,7 @@ export function LoginPage() {
                 {errorMessage}
               </div>
             ) : null}
-            {debugMessage ? (
-              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                {debugMessage}
-              </div>
-            ) : null}
-            <Button
-              className="w-full"
-              type="submit"
-              disabled={loading}
-              onClick={() => console.log("BUTTON CLICKED")}
-            >
+            <Button className="w-full" type="submit" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
