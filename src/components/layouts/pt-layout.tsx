@@ -1,60 +1,153 @@
 import { NavLink, Outlet } from "react-router-dom";
+import {
+  Bell,
+  ClipboardList,
+  Dumbbell,
+  LayoutDashboard,
+  Plus,
+  Search,
+  Settings,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 const navItems = [
-  { label: "Dashboard", to: "/pt/dashboard" },
-  { label: "Clients", to: "/pt/clients" },
-  { label: "Workouts", to: "/pt/templates/workouts" },
-  { label: "Check-ins", to: "/pt/checkins/templates" },
-  { label: "Settings", to: "/pt/settings" },
+  { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
+  { label: "Clients", to: "/pt/clients", icon: Users },
+  { label: "Workouts", to: "/pt/templates/workouts", icon: Dumbbell },
+  { label: "Check-ins", to: "/pt/checkins/templates", icon: ClipboardList },
+  { label: "Settings", to: "/pt/settings", icon: Settings },
 ];
 
 export function PtLayout() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-64 flex-col border-r border-border bg-card px-4 py-6 md:flex">
-          <div className="mb-8 flex items-center justify-between">
-            <span className="text-lg font-semibold tracking-tight">CoachOS</span>
-            <Button variant="secondary" size="sm">
-              Collapse
-            </Button>
+    <TooltipProvider>
+      <div className="min-h-screen bg-background">
+        <div className="flex min-h-screen">
+          <aside className="hidden w-72 flex-col border-r border-border bg-card px-4 py-6 md:flex">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <span className="text-lg font-semibold tracking-tight">CoachOS</span>
+                <p className="text-xs text-muted-foreground">Performance console</p>
+              </div>
+              <Sparkles className="h-5 w-5 text-accent" />
+            </div>
+            <div className="mb-8 rounded-xl border border-border bg-background p-3">
+              <p className="text-xs text-muted-foreground">Workspace</p>
+              <div className="mt-2 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold">Velocity PT Lab</p>
+                  <p className="text-xs text-muted-foreground">Coach · Pro plan</p>
+                </div>
+                <Button size="icon" variant="secondary">
+                  <svg
+                    className="h-4 w-4 text-muted-foreground"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+            <nav className="flex flex-1 flex-col gap-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      cn(
+                        "group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-muted",
+                        isActive &&
+                          "border-accent/40 bg-accent/10 text-foreground shadow-sm shadow-accent/10"
+                      )
+                    }
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-foreground group-hover:bg-background">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    {item.label}
+                  </NavLink>
+                );
+              })}
+            </nav>
+            <div className="mt-6 rounded-xl border border-border bg-muted/60 p-4 text-xs text-muted-foreground">
+              <p className="text-sm font-medium text-foreground">Need a push?</p>
+              <p className="mt-1">Enable performance alerts for clients with low adherence.</p>
+              <Button className="mt-3 w-full" size="sm">
+                Activate alerts
+              </Button>
+            </div>
+          </aside>
+          <div className="flex flex-1 flex-col">
+            <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-card px-4 py-4 md:px-8">
+              <div>
+                <p className="text-sm text-muted-foreground">Welcome back</p>
+                <h1 className="text-lg font-semibold tracking-tight">PT Workspace</h1>
+              </div>
+              <div className="flex flex-1 items-center gap-3 md:max-w-xl">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search clients, programs, tags..."
+                    className="pl-9"
+                    aria-label="Search clients"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Quick actions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>Invite client</DropdownMenuItem>
+                    <DropdownMenuItem>Create template</DropdownMenuItem>
+                    <DropdownMenuItem>Assign workout</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative">
+                      <Bell className="h-4 w-4" />
+                      <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>3 new alerts</TooltipContent>
+                </Tooltip>
+                <ThemeToggle />
+              </div>
+            </header>
+            <main className="flex-1 bg-background px-4 py-6 md:px-8">
+              <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+                <Outlet />
+              </div>
+            </main>
           </div>
-          <nav className="flex flex-1 flex-col gap-2">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted",
-                    isActive && "bg-muted text-foreground"
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-        <div className="flex flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-border bg-card px-4 py-4 md:px-8">
-            <div>
-              <p className="text-sm text-muted-foreground">Welcome back</p>
-              <h1 className="text-lg font-semibold tracking-tight">PT Workspace</h1>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="secondary">Invite client</Button>
-              <ThemeToggle />
-            </div>
-          </header>
-          <main className="flex-1 bg-background px-4 py-6 md:px-8">
-            <Outlet />
-          </main>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
