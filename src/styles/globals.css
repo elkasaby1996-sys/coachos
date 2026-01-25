@@ -1,0 +1,81 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 120 12% 97%;
+    --foreground: 160 29% 6%;
+    --card: 0 0% 100%;
+    --card-foreground: 160 29% 6%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 29% 6%;
+    --primary: 162 50% 12%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 144 20% 95%;
+    --secondary-foreground: 160 29% 6%;
+    --accent: 210 100% 65%;
+    --accent-foreground: 160 29% 6%;
+    --muted: 144 20% 95%;
+    --muted-foreground: 160 9% 32%;
+    --border: 146 15% 91%;
+    --input: 146 15% 91%;
+    --ring: 210 100% 65%;
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --danger: 0 84% 60%;
+    --chart-1: 210 100% 65%;
+    --chart-2: 165 45% 25%;
+    --chart-3: 150 30% 55%;
+    --chart-4: 30 90% 60%;
+    --chart-5: 0 70% 62%;
+    --radius: 12px;
+  }
+
+  .dark {
+    --background: 156 29% 3%;
+    --foreground: 150 31% 94%;
+    --card: 156 28% 7%;
+    --card-foreground: 150 31% 94%;
+    --popover: 156 28% 7%;
+    --popover-foreground: 150 31% 94%;
+    --primary: 210 100% 65%;
+    --primary-foreground: 156 29% 3%;
+    --secondary: 158 35% 9%;
+    --secondary-foreground: 150 31% 94%;
+    --accent: 210 100% 65%;
+    --accent-foreground: 156 29% 3%;
+    --muted: 158 35% 9%;
+    --muted-foreground: 152 11% 69%;
+    --border: 161 35% 14%;
+    --input: 161 35% 14%;
+    --ring: 208 100% 70%;
+    --success: 142 71% 45%;
+    --warning: 43 96% 56%;
+    --danger: 0 91% 71%;
+    --chart-1: 210 100% 65%;
+    --chart-2: 165 45% 35%;
+    --chart-3: 150 30% 65%;
+    --chart-4: 30 90% 70%;
+    --chart-5: 0 70% 72%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
