@@ -87,6 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Allow invite join flow to complete before enforcing workspace membership.
+    if (location.pathname.startsWith("/join/")) {
+      return;
+    }
+
     if (location.pathname !== "/no-workspace") {
       navigate("/no-workspace", { replace: true });
     }
