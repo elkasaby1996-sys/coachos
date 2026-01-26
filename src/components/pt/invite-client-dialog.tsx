@@ -14,12 +14,14 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 type InviteRecord = {
+  id: string;
   code: string;
-  invite_link?: string | null;
+  workspace_id: string;
   expires_at: string | null;
+  max_uses: number | null;
+  uses: number | null;
 };
 
 const expiryOptions = [
@@ -69,17 +71,11 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const inviteLink = useMemo(() => {
     if (!invite?.code) return "";
-    return invite.invite_link ?? `${window.location.origin}/join/${invite.code}`;
+    return `${window.location.origin}/join/${invite.code}`;
   }, [invite]);
-
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    window.setTimeout(() => setToastMessage(null), 4000);
-  };
 
   const handleGenerate = async () => {
     if (!user?.id) {
@@ -97,38 +93,30 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
         throw new Error("Workspace not found for this PT.");
       }
 
-      const expiresAt = getExpiryTimestamp(expirySelection);
       const code = buildInviteCode();
+      const expiresAt = getExpiryTimestamp(expirySelection);
 
       const { data, error: insertError } = await supabase
         .from("invites")
         .insert({
-          workspace_id: workspaceId,
           code,
+          workspace_id: workspaceId,
+          created_by: user.id,
+          expires_at: expiresAt,
           max_uses: 1,
           uses: 0,
-          expires_at: expiresAt,
-          created_by_user_id: user.id,
         })
-        .select("code, expires_at")
+        .select("*")
         .single();
 
       if (insertError) {
-        console.error("create invite error", insertError);
-        showToast(insertError.message);
-        setError(insertError.message);
-        return;
+        throw insertError;
       }
 
-      setInvite((data as InviteRecord) ?? null);
-      if (!data) {
-        showToast("Invite generated, but no data was returned.");
-      }
+      setInvite(data as InviteRecord);
     } catch (err) {
       console.error("Failed to create invite", err);
-      const message = err instanceof Error ? err.message : "Failed to create invite.";
-      setError(message);
-      showToast(message);
+      setError(err instanceof Error ? err.message : "Failed to create invite.");
     } finally {
       setIsSaving(false);
     }
@@ -149,7 +137,6 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
     setInvite(null);
     setError(null);
     setCopied(false);
-    setToastMessage(null);
   };
 
   return (
@@ -166,13 +153,6 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
           <DialogTitle>Invite a new client</DialogTitle>
           <DialogDescription>Generate a single-use link to onboard a new athlete.</DialogDescription>
         </DialogHeader>
-
-        {toastMessage ? (
-          <Alert className="border-danger/30 bg-danger/10 text-danger">
-            <AlertTitle>Invite error</AlertTitle>
-            <AlertDescription className="text-danger">{toastMessage}</AlertDescription>
-          </Alert>
-        ) : null}
 
         <div className="space-y-4 text-sm">
           <div className="space-y-2">
@@ -213,10 +193,9 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
           )}
 
           {error ? (
-            <Alert className="border-danger/30 bg-danger/10 text-danger">
-              <AlertTitle>Unable to generate invite</AlertTitle>
-              <AlertDescription className="text-danger">{error}</AlertDescription>
-            </Alert>
+            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
+              {error}
+            </div>
           ) : null}
         </div>
 

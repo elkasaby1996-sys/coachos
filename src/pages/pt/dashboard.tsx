@@ -52,8 +52,8 @@ type ClientRecord = {
   user_id: string;
   status: string | null;
   joined_at: string | null;
-  display_name?: string | null;
-  workspace_id?: string | null;
+  name?: string | null;
+  email?: string | null;
 };
 
 const weekOverview = [
@@ -91,7 +91,7 @@ export function PtDashboardPage() {
 
         const { data, error } = await supabase
           .from("clients")
-          .select("id, user_id, status, joined_at, display_name, workspace_id")
+          .select("id, user_id, status, joined_at, name, email")
           .eq("workspace_id", workspaceId)
           .order("joined_at", { ascending: false })
           .limit(12);
@@ -126,8 +126,7 @@ export function PtDashboardPage() {
       } catch (err) {
         console.error("Failed to load dashboard queue", err);
         if (isMounted) {
-          const message = err instanceof Error ? err.message : "Failed to load queue.";
-          setQueueError(message);
+          setQueueError(err instanceof Error ? err.message : "Failed to load queue.");
         }
       } finally {
         if (isMounted) setIsQueueLoading(false);
@@ -144,7 +143,7 @@ export function PtDashboardPage() {
 
   const queueSections = useMemo(() => {
     const formatted = clients.map((client) => {
-      const name = client.display_name ?? `Client ${client.user_id.slice(0, 6)}`;
+      const name = client.name ?? client.email ?? `Client ${client.user_id.slice(0, 6)}`;
       const joined = client.joined_at ? new Date(client.joined_at) : null;
       return {
         name,
