@@ -13,7 +13,7 @@ export function JoinPage() {
   const { code } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { session, loading, refreshRole, role } = useAuth();
+  const { session, loading, refreshRole } = useAuth();
   const [status, setStatus] = useState<
     "idle" | "loading" | "ready" | "joining" | "success" | "invalid" | "error"
   >("idle");
@@ -49,7 +49,7 @@ export function JoinPage() {
   }, [inviteCode]);
 
   useEffect(() => {
-    if (!session?.user || !inviteCode || role === "pt") return;
+    if (!session?.user || !inviteCode) return;
 
     const loadInvite = async () => {
       setStatus("loading");
@@ -112,7 +112,7 @@ export function JoinPage() {
     };
 
     loadInvite();
-  }, [inviteCode, refreshRole, role, session]);
+  }, [inviteCode, refreshRole, session]);
 
   useEffect(() => {
     if (status === "success") {
@@ -229,19 +229,13 @@ export function JoinPage() {
               </p>
               <Button
                 className="w-full"
-                onClick={() => navigate("/login", { state: { from: location.pathname } })}
+                onClick={() =>
+                  navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`)
+                }
               >
                 Sign in to join
               </Button>
             </div>
-          ) : role === "pt" ? (
-            <Alert className="border-border bg-muted text-foreground">
-              <AlertTitle>Coach account detected</AlertTitle>
-              <AlertDescription className="text-current">
-                You&apos;re signed in as a coach. Open this invite link in an incognito window or sign
-                in with the client account.
-              </AlertDescription>
-            </Alert>
           ) : status === "invalid" ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
