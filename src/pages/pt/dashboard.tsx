@@ -11,13 +11,12 @@ import { getWorkspaceIdForUser } from "../../lib/workspace";
 
 type ClientRecord = {
   id: string;
+  workspace_id: string;
   user_id: string;
   status: string | null;
-  joined_at: string | null;
-  // NOTE: these may not exist in your schema; keep optional so UI won't crash
-  name?: string | null;
-  email?: string | null;
-  display_name?: string | null;
+  display_name: string | null;
+  created_at: string;
+  tags: string[] | null;
 };
 
 const weekOverview = [
@@ -69,16 +68,14 @@ export function PtDashboardPage() {
 
       try {
         const workspaceId = await getWorkspaceIdForUser(user.id);
-        if (!workspaceId) {
-          throw new Error("Workspace not found for this PT.");
-        }
+        if (!workspaceId) throw new Error("Workspace not found for this PT.");
 
-        // ✅ FIX: remove name/email from select so PostgREST doesn't 400
+        // ✅ MATCHES YOUR SCHEMA (no joined_at/name/email)
         const { data, error } = await supabase
           .from("clients")
-          .select("id, user_id, status, joined_at")
+          .select("id, workspace_id, user_id, status, display_name, created_at, tags")
           .eq("workspace_id", workspaceId)
-          .order("joined_at", { ascending: false })
+          .order("created_at", { ascending: false })
           .limit(12);
 
         if (error) throw error;
@@ -97,15 +94,19 @@ export function PtDashboardPage() {
 
   const queueSections = useMemo(() => {
     const formatted = clients.map((client) => {
-      // ✅ FIX: don't use client.name/email (they don't exist in your schema)
-      const name = `Client ${client.user_id.slice(0, 6)}`;
-      const joined = client.joined_at ? new Date(client.joined_at) : null;
+      const name = client.display_name?.trim()
+        ? client.display_name
+        : `Client ${client.user_id.slice(0, 6)}`;
+
+      const created = client.created_at ? new Date(client.created_at) : null;
+
+      const tag = Array.isArray(client.tags) && client.tags.length > 0 ? client.tags[0] : null;
 
       return {
         name,
-        status: "Awaiting first workout",
-        lastActivity: joined ? `Joined ${joined.toLocaleDateString()}` : "Recently joined",
-        badge: "warning" as const,
+        tag,
+        statusText: client.status ?? "active",
+        lastActivity: created ? `Added ${created.toLocaleDateString()}` : "Recently added",
       };
     });
 
@@ -187,13 +188,35 @@ export function PtDashboardPage() {
                         className="flex items-center justify-between rounded-xl border bg-card p-3 transition-colors hover:bg-muted/30"
                       >
                         <div className="space-y-0.5">
-                          <div className="font-medium">{item.name}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium">{item.name}</div>
+                            {item.tag ? (
+                              <Badge variant="secondary" className="text-xs">
+                                {item.tag}
+                              </Badge>
+                            ) : null}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            {item.status} • {item.lastActivity}
+                            {item.statusText} • {item.lastActivity}
                           </div>
                         </div>
+
                         <div className="flex items-center gap-2">
-                          <Badge variant={item.badge}>{item.badge === "warning" ? "Due" : item.badge === "destructive" ? "At risk" : "Review"}</Badge>
+                          <Badge
+                            variant={
+                              (item as any).badge === "warning"
+                                ? "secondary"
+                                : (item as any).badge === "destructive"
+                                ? "destructive"
+                                : "default"
+                            }
+                          >
+                            {(item as any).badge === "warning"
+                              ? "Due"
+                              : (item as any).badge === "destructive"
+                              ? "At risk"
+                              : "Review"}
+                          </Badge>
                           <Button variant="secondary" size="sm">
                             Open
                           </Button>
@@ -222,7 +245,13 @@ export function PtDashboardPage() {
                   <XAxis dataKey="label" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} />
                   <Tooltip />
-                  <Line type="monotone" dataKey="value" stroke="hsl(var(--accent))" strokeWidth={2} dot={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={2}
+                    dot={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
