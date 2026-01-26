@@ -1,10 +1,21 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { FormEvent, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
 import { supabase } from "../../lib/supabase";
 
 export function NoWorkspacePage() {
+  const navigate = useNavigate();
   const [debugInfo, setDebugInfo] = useState<{
     userId: string | null;
     wmData: unknown;
@@ -18,6 +29,9 @@ export function NoWorkspacePage() {
     clientData: null,
     clientError: null,
   });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -62,6 +76,19 @@ export function NoWorkspacePage() {
     };
   }, []);
 
+  const handleInviteSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedCode = inviteCode.trim();
+    if (!trimmedCode) {
+      setInviteError("Please enter an invite code.");
+      return;
+    }
+    setInviteError(null);
+    setIsDialogOpen(false);
+    setInviteCode("");
+    navigate(`/join/${trimmedCode}`);
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <Card className="w-full max-w-md">
@@ -75,9 +102,46 @@ export function NoWorkspacePage() {
           <Button asChild variant="secondary">
             <Link to="/login">Back to login</Link>
           </Button>
-          <Button asChild>
-            <Link to="/join/sample">Use an invite code</Link>
-          </Button>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (open) {
+                setInviteError(null);
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button>Use an invite code</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Enter invite code</DialogTitle>
+                <DialogDescription>
+                  Paste the invite code your coach provided to continue.
+                </DialogDescription>
+              </DialogHeader>
+              <form className="space-y-4" onSubmit={handleInviteSubmit}>
+                <Input
+                  autoFocus
+                  placeholder="Invite code"
+                  value={inviteCode}
+                  onChange={(event) => setInviteCode(event.target.value)}
+                />
+                {inviteError ? (
+                  <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+                    {inviteError}
+                  </div>
+                ) : null}
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Continue</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 p-3 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground">Debug panel</p>
             <pre className="mt-2 whitespace-pre-wrap break-words">

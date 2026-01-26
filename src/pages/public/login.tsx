@@ -21,9 +21,6 @@ export function LoginPage() {
     setErrorMsg(null);
     setDebugMsg(null);
 
-    const stateFrom = (location.state as { from?: string } | null)?.from;
-    const joinTarget = stateFrom && stateFrom.startsWith("/join/") ? stateFrom : null;
-
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     console.log("SIGN IN RESULT", { data, error });
 
@@ -43,8 +40,9 @@ export function LoginPage() {
         `Login success: ${data.user?.id ?? "unknown user"} (session: yes)`
       );
 
-      if (joinTarget) {
-        navigate(joinTarget, { replace: true });
+      const from = (location.state as { from?: unknown } | null)?.from;
+      if (typeof from === "string" && from.startsWith("/join/")) {
+        navigate(from, { replace: true });
         setLoading(false);
         return;
       }
