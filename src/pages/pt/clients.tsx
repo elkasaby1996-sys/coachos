@@ -15,8 +15,8 @@ type ClientRecord = {
   user_id: string;
   status: string | null;
   joined_at: string | null;
-  display_name?: string | null;
-  workspace_id?: string | null;
+  name?: string | null;
+  email?: string | null;
 };
 
 const stages = ["All", "Onboarding", "Active", "At Risk", "Paused"];
@@ -53,7 +53,7 @@ export function PtClientsPage() {
 
         const { data, error: clientsError } = await supabase
           .from("clients")
-          .select("id, user_id, status, joined_at, display_name, workspace_id")
+          .select("id, user_id, status, joined_at, name, email")
           .eq("workspace_id", workspaceId)
           .order("joined_at", { ascending: false });
 
@@ -105,7 +105,7 @@ export function PtClientsPage() {
 
   const formattedClients = useMemo(() => {
     return clients.map((client) => {
-      const name = client.display_name ?? `Client ${client.user_id.slice(0, 6)}`;
+      const name = client.name ?? client.email ?? `Client ${client.user_id.slice(0, 6)}`;
       const statusLabel = client.status
         ? client.status
             .replace(/_/g, " ")
