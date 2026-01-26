@@ -1,26 +1,46 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 
 export function JoinPage() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { session, refreshRole } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const location = useLocation();
+  const { session, loading, refreshRole, role } = useAuth();
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "ready" | "joining" | "success" | "invalid" | "error"
+  >("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [shouldJoin, setShouldJoin] = useState(false);
+  const [invite, setInvite] = useState<{
+    id: string;
+    workspace_id: string;
+    role: string | null;
+    code: string;
+    expires_at: string | null;
+    max_uses: number | null;
+    uses: number | null;
+  } | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [goal, setGoal] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
 
   const inviteCode = useMemo(() => code ?? "", [code]);
   const isMissingCode = inviteCode.length === 0;
+  const tagOptions = ["Bodybuilding", "CrossFit", "Strength", "Fat loss"];
+  const contactHref = useMemo(
+    () =>
+      `mailto:?subject=${encodeURIComponent(
+        "Invite issue"
+      )}&body=${encodeURIComponent(`Invite code: ${inviteCode}`)}`,
+    [inviteCode]
+  );
 
   useEffect(() => {
     if (inviteCode) {
@@ -29,113 +49,134 @@ export function JoinPage() {
   }, [inviteCode]);
 
   useEffect(() => {
-    if (!session?.user || !inviteCode || !shouldJoin) return;
+    if (!session?.user || !inviteCode || role === "pt") return;
 
-    const acceptInvite = async () => {
+    const loadInvite = async () => {
       setStatus("loading");
       setMessage(null);
+      setInvite(null);
 
       try {
-        const { data: invite, error: inviteError } = await supabase
+        const { data: inviteData, error: inviteError } = await supabase
           .from("invites")
-          .select("id, code, workspace_id, expires_at, max_uses, uses")
+          .select("id, workspace_id, role, code, expires_at, max_uses, uses")
           .eq("code", inviteCode)
-          .maybeSingle();
+          .single();
 
-        if (inviteError) throw inviteError;
-        if (!invite) {
-          setStatus("error");
-          setMessage("This invite is invalid. Please request a new link.");
+        if (inviteError) {
+          if (inviteError.code === "PGRST116") {
+            setStatus("invalid");
+            setMessage(`Invite ${inviteCode} is invalid. Please contact your coach.`);
+            return;
+          }
+          throw inviteError;
+        }
+
+        if (inviteData.expires_at && new Date(inviteData.expires_at) <= new Date()) {
+          setStatus("invalid");
+          setMessage(`Invite ${inviteCode} has expired. Please contact your coach.`);
           return;
         }
 
-        if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-          setStatus("error");
-          setMessage("This invite has expired. Please request a new link.");
+        const maxUses = inviteData.max_uses ?? null;
+        const currentUses = inviteData.uses ?? 0;
+        if (maxUses !== null && currentUses >= maxUses) {
+          setStatus("invalid");
+          setMessage(`Invite ${inviteCode} has already been used. Please contact your coach.`);
           return;
         }
 
-        const maxUses = invite.max_uses ?? 1;
-        const currentUses = invite.uses ?? 0;
-        if (currentUses >= maxUses) {
-          setStatus("error");
-          setMessage("This invite has already been used.");
-          return;
-        }
-
-        const { data: existingClient } = await supabase
+        const { data: existingClient, error: existingError } = await supabase
           .from("clients")
-          .select("id, workspace_id")
+          .select("id")
+          .eq("workspace_id", inviteData.workspace_id)
           .eq("user_id", session.user.id)
           .maybeSingle();
 
-        if (!existingClient) {
-          const { error: insertError } = await supabase.from("clients").insert({
-            workspace_id: invite.workspace_id,
-            user_id: session.user.id,
-            status: "active",
-            joined_at: new Date().toISOString(),
-            name: session.user.user_metadata?.full_name ?? fullName ?? null,
-            email: session.user.email,
-          });
+        if (existingError) throw existingError;
 
-          if (insertError) throw insertError;
+        if (existingClient) {
+          await refreshRole();
+          setStatus("success");
+          setMessage("You’re in. Your coach will assign your first workout.");
+          return;
         }
 
-        await supabase
-          .from("invites")
-          .update({ uses: currentUses + 1, used_at: new Date().toISOString() })
-          .eq("id", invite.id);
-
-        await refreshRole();
-        setStatus("success");
-        setMessage("You’re in. Your coach will assign your first workout.");
-        setTimeout(() => navigate("/app/home", { replace: true }), 1500);
+        setInvite(inviteData);
+        setStatus("ready");
       } catch (err) {
-        console.error("Invite join failed", err);
+        console.error("Invite lookup failed", err);
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "Failed to join workspace.");
+        setMessage(err instanceof Error ? err.message : "Failed to load invite.");
       }
     };
 
-    acceptInvite();
-  }, [inviteCode, navigate, refreshRole, session, shouldJoin, fullName]);
+    loadInvite();
+  }, [inviteCode, refreshRole, role, session]);
 
-  const handleAuth = async (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (status === "success") {
+      const timeout = setTimeout(() => navigate("/app/home", { replace: true }), 1200);
+      return () => clearTimeout(timeout);
+    }
+    return;
+  }, [navigate, status]);
+
+  const handleJoin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setStatus("loading");
     setMessage(null);
 
+    if (!session?.user || !invite) return;
+    if (!displayName.trim()) {
+      setStatus("error");
+      setMessage("Display name is required.");
+      return;
+    }
+
+    setStatus("joining");
+
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-            },
-          },
-        });
+      const { data: existingClient, error: existingError } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("workspace_id", invite.workspace_id)
+        .eq("user_id", session.user.id)
+        .maybeSingle();
 
-        if (error) throw error;
+      if (existingError) throw existingError;
 
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
-          setStatus("success");
-          setMessage("Check your email to confirm your account, then return to this invite.");
-          return;
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+      if (!existingClient) {
+        const { error: insertError } = await supabase
+          .from("clients")
+          .insert({
+            workspace_id: invite.workspace_id,
+            user_id: session.user.id,
+            status: "active",
+            display_name: displayName.trim(),
+            goal: goal.trim() || null,
+            tags,
+          })
+          .select("id")
+          .single();
+
+        if (insertError) throw insertError;
+
+        const nextUses = (invite.uses ?? 0) + 1;
+        const { error: updateError } = await supabase
+          .from("invites")
+          .update({ uses: nextUses })
+          .eq("id", invite.id);
+
+        if (updateError) throw updateError;
       }
 
-      setShouldJoin(true);
+      await refreshRole();
+      setStatus("success");
+      setMessage("You’re in. Your coach will assign your first workout.");
     } catch (err) {
-      console.error("Auth failed", err);
+      console.error("Invite join failed", err);
       setStatus("error");
-      setMessage(err instanceof Error ? err.message : "Unable to continue.");
+      setMessage(err instanceof Error ? err.message : "Failed to join workspace.");
     }
   };
 
@@ -154,94 +195,132 @@ export function JoinPage() {
             <Badge variant={isMissingCode ? "danger" : "success"}>{inviteCode || "Missing"}</Badge>
           </div>
           {message ? (
-            <div
-              className={`rounded-lg border p-3 text-sm ${
-                status === "error"
+            <Alert
+              className={
+                status === "error" || status === "invalid"
                   ? "border-danger/30 bg-danger/10 text-danger"
                   : "border-success/30 bg-success/10 text-success"
-              }`}
+              }
             >
-              {message}
-            </div>
+              <AlertTitle>
+                {status === "success" ? "Success" : status === "error" ? "Error" : "Notice"}
+              </AlertTitle>
+              <AlertDescription className="text-current">{message}</AlertDescription>
+            </Alert>
           ) : null}
 
           {isMissingCode ? (
-            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
-              This invite link is missing a code. Please request a new link from your coach.
+            <Alert className="border-danger/30 bg-danger/10 text-danger">
+              <AlertTitle>Missing invite code</AlertTitle>
+              <AlertDescription className="text-current">
+                This invite link is missing a code. Please request a new link from your coach.
+              </AlertDescription>
+            </Alert>
+          ) : loading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
-          ) : session?.user ? (
+          ) : !session?.user ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Signed in as <span className="font-semibold text-foreground">{session.user.email}</span>
+                Sign in to accept this invite and join your coach&apos;s workspace.
               </p>
               <Button
                 className="w-full"
-                onClick={() => setShouldJoin(true)}
-                disabled={status === "loading"}
+                onClick={() => navigate("/login", { state: { from: location.pathname } })}
               >
-                {status === "loading" ? "Joining..." : "Accept invite"}
+                Sign in to join
               </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={mode === "signup" ? "default" : "secondary"}
-                  onClick={() => setMode("signup")}
-                  className="flex-1"
-                >
-                  Sign up
-                </Button>
-                <Button
-                  type="button"
-                  variant={mode === "signin" ? "default" : "secondary"}
-                  onClick={() => setMode("signin")}
-                  className="flex-1"
-                >
-                  Log in
-                </Button>
-              </div>
-              <form className="space-y-3" onSubmit={handleAuth}>
-                {mode === "signup" ? (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Full name</label>
-                    <Input
-                      placeholder="Alex Athlete"
-                      value={fullName}
-                      onChange={(event) => setFullName(event.target.value)}
-                    />
-                  </div>
-                ) : null}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
-                  <Input
-                    placeholder="athlete@email.com"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Password</label>
-                  <Input
-                    placeholder="••••••••"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                  />
-                </div>
-                <Button className="w-full" type="submit" disabled={status === "loading"}>
-                  {status === "loading"
-                    ? "Continuing..."
-                    : mode === "signup"
-                      ? "Create account & join"
-                      : "Log in & join"}
-                </Button>
-              </form>
+          ) : role === "pt" ? (
+            <Alert className="border-border bg-muted text-foreground">
+              <AlertTitle>Coach account detected</AlertTitle>
+              <AlertDescription className="text-current">
+                You&apos;re signed in as a coach. Open this invite link in an incognito window or sign
+                in with the client account.
+              </AlertDescription>
+            </Alert>
+          ) : status === "invalid" ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                This invite can&apos;t be used. Please ask your coach for a new link.
+              </p>
+              <Button className="w-full" variant="secondary" asChild>
+                <a href={contactHref}>Contact coach</a>
+              </Button>
             </div>
+          ) : status === "loading" || status === "idle" ? (
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : status === "success" ? (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              You&apos;re in. Your coach will assign your first workout.
+            </div>
+          ) : status === "error" && !invite ? (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              We couldn&apos;t load this invite. Please contact your coach for a new link.
+            </div>
+          ) : (
+            <form className="space-y-4" onSubmit={handleJoin}>
+              <p className="text-sm text-muted-foreground">
+                Signed in as <span className="font-semibold text-foreground">{session.user.email}</span>
+              </p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="display-name">
+                  Display name
+                </label>
+                <Input
+                  id="display-name"
+                  placeholder="Alex Athlete"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="goal">
+                  Goal (optional)
+                </label>
+                <textarea
+                  id="goal"
+                  className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="What do you want to focus on?"
+                  value={goal}
+                  onChange={(event) => setGoal(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Tags (optional)</div>
+                <div className="flex flex-wrap gap-2">
+                  {tagOptions.map((tag) => {
+                    const selected = tags.includes(tag);
+                    return (
+                      <Button
+                        key={tag}
+                        type="button"
+                        size="sm"
+                        variant={selected ? "default" : "secondary"}
+                        onClick={() =>
+                          setTags((prev) =>
+                            prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]
+                          )
+                        }
+                      >
+                        {tag}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+              <Button className="w-full" type="submit" disabled={status === "joining"}>
+                {status === "joining" ? "Joining..." : "Join workspace"}
+              </Button>
+            </form>
           )}
         </CardContent>
       </Card>
