@@ -105,6 +105,7 @@ function LoginGate() {
     if (redirectTarget) return <Navigate to={redirectTarget} replace />;
     if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
     if (role === "client") return <Navigate to="/app/home" replace />;
+    // Allow invite join flow to complete before enforcing workspace membership.
     return <Navigate to="/no-workspace" replace />;
   }
 
