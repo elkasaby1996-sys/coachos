@@ -95,10 +95,8 @@ function LoginGate() {
   const { session, role, loading } = useAuth();
   const location = useLocation();
   const redirectParam = new URLSearchParams(location.search).get("redirect");
-  const stateFrom = (location.state as { from?: string } | null)?.from;
-  const joinFromState = stateFrom && stateFrom.startsWith("/join/") ? stateFrom : null;
   const redirectTarget =
-    joinFromState ?? (redirectParam && redirectParam.startsWith("/join/") ? redirectParam : null);
+    redirectParam && redirectParam.startsWith("/join/") ? redirectParam : null;
 
   if (loading) return <FullPageLoader />;
 
