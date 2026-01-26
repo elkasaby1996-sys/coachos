@@ -230,7 +230,7 @@ export function JoinPage() {
               <Button
                 className="w-full"
                 onClick={() =>
-                  navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`)
+                  navigate("/login", { state: { from: location.pathname } })
                 }
               >
                 Sign in to join
