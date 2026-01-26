@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { InviteClientDialog } from "../pt/invite-client-dialog";
 
 const navItems = [
   { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
@@ -113,6 +114,14 @@ export function PtLayout() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <InviteClientDialog
+                  trigger={
+                    <Button className="gap-2" variant="default">
+                      <Plus className="h-4 w-4" />
+                      Invite client
+                    </Button>
+                  }
+                />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="secondary" className="gap-2">
@@ -123,7 +132,7 @@ export function PtLayout() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>Invite client</DropdownMenuItem>
+                    <InviteClientDialog trigger={<DropdownMenuItem>Invite client</DropdownMenuItem>} />
                     <DropdownMenuItem>Create template</DropdownMenuItem>
                     <DropdownMenuItem>Assign workout</DropdownMenuItem>
                   </DropdownMenuContent>
