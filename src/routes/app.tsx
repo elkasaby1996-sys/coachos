@@ -93,11 +93,16 @@ function IndexRedirect() {
 
 function LoginGate() {
   const { session, role, loading } = useAuth();
+  const location = useLocation();
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const redirectTarget =
+    redirectParam && redirectParam.startsWith("/join/") ? redirectParam : null;
 
   if (loading) return <FullPageLoader />;
 
   // If already logged in, don't allow staying on /login
   if (session) {
+    if (redirectTarget) return <Navigate to={redirectTarget} replace />;
     if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
     if (role === "client") return <Navigate to="/app/home" replace />;
     return <Navigate to="/no-workspace" replace />;
