@@ -1,57 +1,23 @@
 import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth";
+import { getWorkspaceIdForUser } from "../../lib/workspace";
+import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 
-const clients = [
-  {
-    id: "1",
-    name: "Avery Johnson",
-    status: "Active",
-    tags: ["Strength", "Power"],
-    lastWorkout: "Yesterday",
-    lastCheckIn: "6 days ago",
-    adherence: "92%",
-  },
-  {
-    id: "2",
-    name: "Morgan Lee",
-    status: "Onboarding",
-    tags: ["CrossFit"],
-    lastWorkout: "2 days ago",
-    lastCheckIn: "Today",
-    adherence: "76%",
-  },
-  {
-    id: "3",
-    name: "Jordan Patel",
-    status: "At Risk",
-    tags: ["Bodybuilding", "Hypertrophy"],
-    lastWorkout: "4 days ago",
-    lastCheckIn: "8 days ago",
-    adherence: "62%",
-  },
-  {
-    id: "4",
-    name: "Samira Khan",
-    status: "Active",
-    tags: ["Endurance"],
-    lastWorkout: "Today",
-    lastCheckIn: "5 days ago",
-    adherence: "88%",
-  },
-];
+type ClientRecord = {
+  id: string;
+  user_id: string;
+  status: string | null;
+  joined_at: string | null;
+  display_name?: string | null;
+  workspace_id?: string | null;
+};
 
 const stages = ["All", "Onboarding", "Active", "At Risk", "Paused"];
 
@@ -63,8 +29,100 @@ const statusDot: Record<string, string> = {
 };
 
 export function PtClientsPage() {
-  const isLoading = false;
-  const inviteLink = "https://coachos.app/invite/velocity-pt-lab";
+  const { user } = useAuth();
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const loadClients = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const workspaceId = await getWorkspaceIdForUser(user.id);
+        if (!workspaceId) {
+          throw new Error("Workspace not found.");
+        }
+
+        const { data, error: clientsError } = await supabase
+          .from("clients")
+          .select("id, user_id, status, joined_at, display_name, workspace_id")
+          .eq("workspace_id", workspaceId)
+          .order("joined_at", { ascending: false });
+
+        if (clientsError) throw clientsError;
+        if (!isMounted) return;
+
+        setClients((data as ClientRecord[]) ?? []);
+        setError(null);
+
+        channel = supabase
+          .channel(`clients-updates-${workspaceId}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "clients", filter: `workspace_id=eq.${workspaceId}` },
+            (payload) => {
+              setClients((prev) => {
+                const record = payload.new as ClientRecord;
+                if (payload.eventType === "INSERT") {
+                  return [record, ...prev];
+                }
+                if (payload.eventType === "UPDATE") {
+                  return prev.map((client) => (client.id === record.id ? record : client));
+                }
+                if (payload.eventType === "DELETE") {
+                  return prev.filter((client) => client.id !== (payload.old as ClientRecord).id);
+                }
+                return prev;
+              });
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.error("Failed to load clients", err);
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : "Failed to load clients.");
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadClients();
+
+    return () => {
+      isMounted = false;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  const formattedClients = useMemo(() => {
+    return clients.map((client) => {
+      const name = client.display_name ?? `Client ${client.user_id.slice(0, 6)}`;
+      const statusLabel = client.status
+        ? client.status
+            .replace(/_/g, " ")
+            .replace(/(^|\\s)([a-z])/g, (_match, prefix, char) => `${prefix}${char.toUpperCase()}`)
+        : "Active";
+      return {
+        ...client,
+        name,
+        status: statusLabel,
+        tags: ["New"],
+        lastWorkout: "Not yet scheduled",
+        lastCheckIn: "Not yet submitted",
+        adherence: "—",
+      };
+    });
+  }, [clients]);
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -74,22 +132,7 @@ export function PtClientsPage() {
             Track onboarding, adherence, and at-risk athletes.
           </p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>Create invite code</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Invite a new client</DialogTitle>
-              <DialogDescription>Share this link to onboard a new athlete.</DialogDescription>
-            </DialogHeader>
-            <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">{inviteLink}</div>
-            <DialogFooter>
-              <Button variant="secondary">Copy link</Button>
-              <Button>Done</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <InviteClientDialog trigger={<Button>Create invite code</Button>} />
       </div>
 
       <Tabs defaultValue="All">
@@ -102,7 +145,8 @@ export function PtClientsPage() {
         </TabsList>
 
         {stages.map((stage) => {
-          const filtered = stage === "All" ? clients : clients.filter((client) => client.status === stage);
+          const filtered =
+            stage === "All" ? formattedClients : formattedClients.filter((client) => client.status === stage);
           return (
             <TabsContent key={stage} value={stage}>
               <Card>
@@ -125,6 +169,10 @@ export function PtClientsPage() {
                       {Array.from({ length: 4 }).map((_, index) => (
                         <Skeleton key={index} className="h-20 w-full" />
                       ))}
+                    </div>
+                  ) : error ? (
+                    <div className="rounded-xl border border-danger/30 bg-danger/10 p-6 text-sm text-danger">
+                      {error}
                     </div>
                   ) : filtered.length > 0 ? (
                     filtered.map((client) => (
@@ -170,9 +218,13 @@ export function PtClientsPage() {
                       <p className="mt-2 text-xs text-muted-foreground">
                         Invite a new client or adjust their status.
                       </p>
-                      <Button className="mt-4" size="sm">
-                        Invite client
-                      </Button>
+                      <InviteClientDialog
+                        trigger={
+                          <Button className="mt-4" size="sm">
+                            Invite client
+                          </Button>
+                        }
+                      />
                     </div>
                   )}
                 </CardContent>
