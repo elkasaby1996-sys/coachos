@@ -17,60 +17,43 @@ import { getWorkspaceIdForUser } from "../../lib/workspace";
 
 type InviteRecord = {
   id: string;
-  code: string;
   workspace_id: string;
+  role?: string | null;
+  code: string;
   expires_at: string | null;
-  max_uses: number | null;
-  uses: number | null;
+  max_uses: number;
+  uses: number;
+  created_by_user_id: string;
+  created_at: string;
 };
 
-const expiryOptions = [
-  { label: "No expiry", value: "none" },
-  { label: "24 hours", value: "24h" },
-  { label: "7 days", value: "7d" },
-  { label: "30 days", value: "30d" },
-];
+type ExpirySelection = "1h" | "24h" | "7d" | "never";
 
-function buildInviteCode() {
-  return `INV-${crypto.randomUUID().split("-")[0].toUpperCase()}`;
+function buildInviteCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
 }
 
-function getExpiryTimestamp(selection: string) {
-  if (selection === "none") return null;
+function getExpiryTimestamp(selection: ExpirySelection): string | null {
   const now = new Date();
-  switch (selection) {
-    case "24h":
-      now.setHours(now.getHours() + 24);
-      break;
-    case "7d":
-      now.setDate(now.getDate() + 7);
-      break;
-    case "30d":
-      now.setDate(now.getDate() + 30);
-      break;
-    default:
-      return null;
-  }
+  if (selection === "never") return null;
+  if (selection === "1h") now.setHours(now.getHours() + 1);
+  if (selection === "24h") now.setDate(now.getDate() + 1);
+  if (selection === "7d") now.setDate(now.getDate() + 7);
   return now.toISOString();
-}
-
-function formatExpiry(expiresAt: string | null) {
-  if (!expiresAt) return "Never expires";
-  const date = new Date(expiresAt);
-  return `Expires ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
 }
 
 export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
   const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const [expirySelection, setExpirySelection] = useState("7d");
-  const [invite, setInvite] = useState<InviteRecord | null>(null);
+  const [open, setOpen] = useState(false);
+  const [expirySelection, setExpirySelection] = useState<ExpirySelection>("24h");
+
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [invite, setInvite] = useState<InviteRecord | null>(null);
 
   const inviteLink = useMemo(() => {
     if (!invite?.code) return "";
@@ -96,12 +79,13 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
       const code = buildInviteCode();
       const expiresAt = getExpiryTimestamp(expirySelection);
 
+      // ✅ FIX: use created_by_user_id (not created_by)
       const { data, error: insertError } = await supabase
         .from("invites")
         .insert({
           code,
           workspace_id: workspaceId,
-          created_by: user.id,
+          created_by_user_id: user.id,
           expires_at: expiresAt,
           max_uses: 1,
           uses: 0,
@@ -114,9 +98,9 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
       }
 
       setInvite(data as InviteRecord);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create invite", err);
-      setError(err instanceof Error ? err.message : "Failed to create invite.");
+      setError(err?.message ?? "Failed to create invite.");
     } finally {
       setIsSaving(false);
     }
@@ -128,95 +112,111 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
       await navigator.clipboard.writeText(inviteLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy", err);
+    } catch {
+      setError("Failed to copy link.");
     }
   };
 
-  const handleClose = () => {
-    setInvite(null);
-    setError(null);
-    setCopied(false);
+  const handleOpen = () => {
+    if (!inviteLink) return;
+    window.open(inviteLink, "_blank", "noopener,noreferrer");
   };
 
   return (
     <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) handleClose();
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) {
+          setError(null);
+          setCopied(false);
+          // keep invite around so user can re-copy if they reopen quickly
+        }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Invite a new client</DialogTitle>
-          <DialogDescription>Generate a single-use link to onboard a new athlete.</DialogDescription>
+          <DialogTitle>Invite a client</DialogTitle>
+          <DialogDescription>
+            Generate a single-use invite link for a client to join your workspace.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 text-sm">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Expiry (optional)
-            </label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {expiryOptions.map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  variant={expirySelection === option.value ? "default" : "secondary"}
-                  size="sm"
-                  onClick={() => setExpirySelection(option.value)}
-                >
-                  {option.label}
-                </Button>
-              ))}
+        <div className="space-y-3">
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {error}
             </div>
+          )}
+
+          <div className="rounded-xl border bg-card p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-medium">Expiry</div>
+              <div className="flex gap-2">
+                {(["1h", "24h", "7d", "never"] as ExpirySelection[]).map((opt) => (
+                  <Button
+                    key={opt}
+                    type="button"
+                    variant={expirySelection === opt ? "default" : "secondary"}
+                    size="sm"
+                    onClick={() => setExpirySelection(opt)}
+                  >
+                    {opt === "never" ? "Never" : opt}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Single-use invite (max uses = 1). You can generate another any time.
+            </p>
           </div>
 
           {invite ? (
-            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-muted-foreground">Invite link</div>
-                <Badge variant="success">Single-use</Badge>
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-muted-foreground">Invite code</div>
+                  <div className="text-xl font-semibold tracking-tight">{invite.code}</div>
+                </div>
+                <Badge variant="secondary">Single-use</Badge>
               </div>
-              <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs">
-                <Link2 className="h-4 w-4 text-muted-foreground" />
-                <span className="break-all">{inviteLink}</span>
+
+              <div className="text-sm break-all rounded-lg border bg-muted/20 p-3">
+                {inviteLink}
               </div>
-              <div className="text-xs text-muted-foreground">{formatExpiry(invite.expires_at)}</div>
+
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={handleCopy} className="gap-2">
+                  <Copy className="h-4 w-4" />
+                  {copied ? "Copied" : "Copy link"}
+                </Button>
+                <Button type="button" variant="secondary" onClick={handleOpen} className="gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Open
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-xs text-muted-foreground">
-              Generate a link to share with your new client.
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">
+                Click Generate to create an invite link.
+              </p>
             </div>
           )}
-
-          {error ? (
-            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
-              {error}
-            </div>
-          ) : null}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-3">
-          {invite ? (
-            <>
-              <Button type="button" variant="secondary" onClick={handleCopy}>
-                <Copy className="mr-2 h-4 w-4" />
-                {copied ? "Copied" : "Copy link"}
-              </Button>
-              <Button type="button" onClick={() => setIsOpen(false)}>
-                Done
-              </Button>
-            </>
-          ) : (
-            <Button type="button" onClick={handleGenerate} disabled={isSaving}>
-              {isSaving ? "Generating..." : "Generate invite"}
-            </Button>
-          )}
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Close
+          </Button>
+          <Button type="button" onClick={handleGenerate} disabled={isSaving}>
+            {isSaving ? "Generating..." : "Generate invite"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
