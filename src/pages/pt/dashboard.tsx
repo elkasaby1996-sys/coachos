@@ -9,51 +9,15 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 
-const chartData = [
-  { day: "Mon", value: 12 },
-  { day: "Tue", value: 18 },
-  { day: "Wed", value: 15 },
-  { day: "Thu", value: 22 },
-  { day: "Fri", value: 27 },
-  { day: "Sat", value: 19 },
-  { day: "Sun", value: 25 },
-];
-
-const kpiData = [
-  {
-    label: "Active clients",
-    value: "24",
-    delta: "+8% vs last week",
-    sparkline: [12, 18, 14, 20, 26, 24, 30],
-    accent: true,
-  },
-  {
-    label: "Workouts (7 days)",
-    value: "68",
-    delta: "+12% vs last week",
-    sparkline: [32, 28, 30, 35, 40, 38, 44],
-  },
-  {
-    label: "Check-ins due",
-    value: "9",
-    delta: "-3 vs last week",
-    sparkline: [11, 9, 8, 10, 9, 7, 9],
-  },
-  {
-    label: "Needs review",
-    value: "5",
-    delta: "+2 flagged",
-    sparkline: [2, 3, 4, 4, 5, 4, 5],
-  },
-];
-
 type ClientRecord = {
   id: string;
   user_id: string;
   status: string | null;
   joined_at: string | null;
+  // NOTE: these may not exist in your schema; keep optional so UI won't crash
   name?: string | null;
   email?: string | null;
+  display_name?: string | null;
 };
 
 const weekOverview = [
@@ -68,83 +32,75 @@ const weekOverview = [
 
 export function PtDashboardPage() {
   const { user } = useAuth();
-  const [clients, setClients] = useState<ClientRecord[]>([]);
-  const [isQueueLoading, setIsQueueLoading] = useState(true);
+
+  const [isLoading, setIsLoading] = useState(true);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+
+  const kpis = useMemo(
+    () => [
+      { label: "Active clients", value: "12", delta: "+2 this month" },
+      { label: "Workouts completed", value: "47", delta: "+12% vs last week" },
+      { label: "Check-ins due (Sat)", value: "2", delta: "Focus today" },
+      { label: "Needs review", value: "6", delta: "Keep feedback tight" },
+    ],
+    []
+  );
+
+  const momentum = useMemo(
+    () => [
+      { label: "Mon", value: 6 },
+      { label: "Tue", value: 9 },
+      { label: "Wed", value: 7 },
+      { label: "Thu", value: 10 },
+      { label: "Fri", value: 8 },
+      { label: "Sat", value: 5 },
+      { label: "Sun", value: 4 },
+    ],
+    []
+  );
 
   useEffect(() => {
-    let isMounted = true;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
     const loadQueue = async () => {
-      if (!user?.id) {
-        setIsQueueLoading(false);
-        return;
-      }
+      if (!user?.id) return;
+
+      setIsLoading(true);
+      setQueueError(null);
 
       try {
-        setIsQueueLoading(true);
         const workspaceId = await getWorkspaceIdForUser(user.id);
         if (!workspaceId) {
-          throw new Error("Workspace not found.");
+          throw new Error("Workspace not found for this PT.");
         }
 
+        // ✅ FIX: remove name/email from select so PostgREST doesn't 400
         const { data, error } = await supabase
           .from("clients")
-          .select("id, user_id, status, joined_at, name, email")
+          .select("id, user_id, status, joined_at")
           .eq("workspace_id", workspaceId)
           .order("joined_at", { ascending: false })
           .limit(12);
 
         if (error) throw error;
-        if (!isMounted) return;
-        setClients((data as ClientRecord[]) ?? []);
-        setQueueError(null);
 
-        channel = supabase
-          .channel(`dashboard-clients-${workspaceId}`)
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: "clients", filter: `workspace_id=eq.${workspaceId}` },
-            (payload) => {
-              setClients((prev) => {
-                const record = payload.new as ClientRecord;
-                if (payload.eventType === "INSERT") {
-                  return [record, ...prev].slice(0, 12);
-                }
-                if (payload.eventType === "UPDATE") {
-                  return prev.map((client) => (client.id === record.id ? record : client));
-                }
-                if (payload.eventType === "DELETE") {
-                  return prev.filter((client) => client.id !== (payload.old as ClientRecord).id);
-                }
-                return prev;
-              });
-            }
-          )
-          .subscribe();
-      } catch (err) {
+        setClients((data ?? []) as ClientRecord[]);
+      } catch (err: any) {
         console.error("Failed to load dashboard queue", err);
-        if (isMounted) {
-          setQueueError(err instanceof Error ? err.message : "Failed to load queue.");
-        }
+        setQueueError(err?.message ?? "Failed to load dashboard queue.");
       } finally {
-        if (isMounted) setIsQueueLoading(false);
+        setIsLoading(false);
       }
     };
 
     loadQueue();
-
-    return () => {
-      isMounted = false;
-      if (channel) supabase.removeChannel(channel);
-    };
   }, [user?.id]);
 
   const queueSections = useMemo(() => {
     const formatted = clients.map((client) => {
-      const name = client.name ?? client.email ?? `Client ${client.user_id.slice(0, 6)}`;
+      // ✅ FIX: don't use client.name/email (they don't exist in your schema)
+      const name = `Client ${client.user_id.slice(0, 6)}`;
       const joined = client.joined_at ? new Date(client.joined_at) : null;
+
       return {
         name,
         status: "Awaiting first workout",
@@ -155,87 +111,98 @@ export function PtDashboardPage() {
 
     return [
       {
-        title: "New clients awaiting plan",
-        items: formatted,
+        title: "Check-ins due today",
+        items: formatted.slice(0, 2).map((x) => ({ ...x, badge: "warning" as const })),
+      },
+      {
+        title: "Completed workouts needing feedback",
+        items: formatted.slice(2, 5).map((x) => ({ ...x, badge: "default" as const })),
+      },
+      {
+        title: "Inactive clients (3+ days)",
+        items: formatted.slice(5, 8).map((x) => ({ ...x, badge: "destructive" as const })),
       },
     ];
   }, [clients]);
 
   return (
-    <div className="space-y-8">
-      <section className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">Action Center</p>
-          <h2 className="text-2xl font-semibold tracking-tight">Today’s coaching priorities</h2>
+          <h1 className="text-2xl font-semibold tracking-tight">Action Center</h1>
+          <p className="text-sm text-muted-foreground">
+            Today’s coaching priorities and weekly momentum.
+          </p>
         </div>
-        <Button variant="secondary">Review highlights</Button>
-      </section>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary">Clear today’s queue</Button>
+          <Button>Invite client</Button>
+        </div>
+      </div>
 
-      <section className="grid gap-4 md:grid-cols-4">
-        {kpiData.map((kpi) => (
-          <KpiTile key={kpi.label} {...kpi} />
+      <div className="grid gap-4 md:grid-cols-4">
+        {kpis.map((k) => (
+          <KpiTile key={k.label} label={k.label} value={k.value} delta={k.delta} />
         ))}
-      </section>
+      </div>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Today’s queue</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Prioritize check-ins, feedback, and outreach.
-              </p>
+              <CardTitle className="text-base">Today’s queue</CardTitle>
+              <p className="text-sm text-muted-foreground">High-impact actions first.</p>
             </div>
-            <Button variant="secondary" size="sm">
+            <Button variant="ghost" size="sm">
               View all
             </Button>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {isQueueLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <Skeleton key={index} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : queueError ? (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
+
+          <CardContent className="space-y-5">
+            {queueError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                 {queueError}
+              </div>
+            )}
+
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
               </div>
             ) : (
               queueSections.map((section) => (
-                <div key={section.title} className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {section.title}
-                  </p>
-                  <div className="space-y-3">
-                    {section.items.length > 0 ? (
-                      section.items.map((item) => (
-                        <div
-                          key={item.name}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-3 transition hover:-translate-y-0.5 hover:shadow-lg"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">{item.lastActivity}</p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant={item.badge as "warning" | "danger" | "default"}>
-                              {item.status}
-                            </Badge>
-                            <Button size="sm" variant="secondary">
-                              Open
-                            </Button>
-                            <Button size="sm">Message</Button>
+                <div key={section.title} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium">{section.title}</div>
+                    <Badge variant="secondary">{section.items.length}</Badge>
+                  </div>
+
+                  <div className="space-y-2">
+                    {section.items.map((item, idx) => (
+                      <div
+                        key={`${item.name}-${idx}`}
+                        className="flex items-center justify-between rounded-xl border bg-card p-3 transition-colors hover:bg-muted/30"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.status} • {item.lastActivity}
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div
-                        className="rounded-xl border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground"
-                      >
-                        No new clients yet.
+                        <div className="flex items-center gap-2">
+                          <Badge variant={item.badge}>{item.badge === "warning" ? "Due" : item.badge === "destructive" ? "At risk" : "Review"}</Badge>
+                          <Button variant="secondary" size="sm">
+                            Open
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            Message
+                          </Button>
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               ))
@@ -243,61 +210,42 @@ export function PtDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div>
-              <CardTitle>Weekly momentum</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Completed workouts over the last seven days.
-              </p>
-            </div>
-            <Button variant="secondary" size="sm">
-              Export
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="h-56">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Weekly momentum</CardTitle>
+              <p className="text-sm text-muted-foreground">Completion trend this week.</p>
+            </CardHeader>
+            <CardContent className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(var(--card))",
-                      borderColor: "hsl(var(--border))",
-                      borderRadius: 12,
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="hsl(var(--chart-1))"
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--chart-1))" }}
-                  />
+                <LineChart data={momentum}>
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="value" stroke="hsl(var(--accent))" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Week overview
-              </p>
-              <div className="grid grid-cols-7 gap-2">
-                {weekOverview.map((day) => (
-                  <div
-                    key={day.day}
-                    className="rounded-lg border border-border bg-background p-2 text-center text-xs transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <p className="text-muted-foreground">{day.day}</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{day.completed}</p>
-                    <p className="text-[10px] text-muted-foreground">/{day.assigned}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Week overview</CardTitle>
+              <p className="text-sm text-muted-foreground">Assigned vs completed.</p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {weekOverview.map((d) => (
+                <div key={d.day} className="flex items-center justify-between text-sm">
+                  <div className="text-muted-foreground">{d.day}</div>
+                  <div className="font-medium">
+                    {d.completed}/{d.assigned}
                   </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
