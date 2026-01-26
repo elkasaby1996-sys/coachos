@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,6 +20,9 @@ export function LoginPage() {
     setLoading(true);
     setErrorMsg(null);
     setDebugMsg(null);
+
+    const stateFrom = (location.state as { from?: string } | null)?.from;
+    const joinTarget = stateFrom && stateFrom.startsWith("/join/") ? stateFrom : null;
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     console.log("SIGN IN RESULT", { data, error });
@@ -38,6 +42,12 @@ export function LoginPage() {
       setDebugMsg(
         `Login success: ${data.user?.id ?? "unknown user"} (session: yes)`
       );
+
+      if (joinTarget) {
+        navigate(joinTarget, { replace: true });
+        setLoading(false);
+        return;
+      }
 
       const workspaceMember = await supabase
         .from("workspace_members")
