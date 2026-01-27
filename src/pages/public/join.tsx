@@ -61,15 +61,21 @@ export function JoinPage() {
           .from("invites")
           .select("id, workspace_id, role, code, expires_at, max_uses, uses")
           .eq("code", inviteCode)
-          .single();
+          .maybeSingle();
 
         if (inviteError) {
-          if (inviteError.code === "PGRST116") {
-            setStatus("invalid");
-            setMessage(`Invite ${inviteCode} is invalid. Please contact your coach.`);
-            return;
-          }
-          throw inviteError;
+          console.error("Invite lookup failed", inviteError);
+          setStatus("error");
+          setMessage(
+            `Invite lookup failed: ${inviteError.message} (code: ${inviteError.code ?? "unknown"})`
+          );
+          return;
+        }
+
+        if (!inviteData) {
+          setStatus("invalid");
+          setMessage(`Invite ${inviteCode} is invalid. Please contact your coach.`);
+          return;
         }
 
         if (inviteData.expires_at && new Date(inviteData.expires_at) <= new Date()) {
@@ -126,7 +132,7 @@ export function JoinPage() {
     event.preventDefault();
     setMessage(null);
 
-    if (!session?.user || !invite) return;
+    if (!session?.user || !inviteCode) return;
     if (!displayName.trim()) {
       setStatus("error");
       setMessage("Display name is required.");
@@ -136,10 +142,45 @@ export function JoinPage() {
     setStatus("joining");
 
     try {
+      const { data: inviteData, error: inviteError } = await supabase
+        .from("invites")
+        .select("id, workspace_id, role, code, expires_at, max_uses, uses")
+        .eq("code", inviteCode)
+        .maybeSingle();
+
+      if (inviteError) {
+        console.error("Invite lookup failed", inviteError);
+        setStatus("error");
+        setMessage(
+          `Invite lookup failed: ${inviteError.message} (code: ${inviteError.code ?? "unknown"})`
+        );
+        return;
+      }
+
+      if (!inviteData) {
+        setStatus("invalid");
+        setMessage(`Invite ${inviteCode} is invalid. Please contact your coach.`);
+        return;
+      }
+
+      if (inviteData.expires_at && new Date(inviteData.expires_at) <= new Date()) {
+        setStatus("invalid");
+        setMessage(`Invite ${inviteCode} has expired. Please contact your coach.`);
+        return;
+      }
+
+      const maxUses = inviteData.max_uses ?? null;
+      const currentUses = inviteData.uses ?? 0;
+      if (maxUses !== null && currentUses >= maxUses) {
+        setStatus("invalid");
+        setMessage(`Invite ${inviteCode} has already been used. Please contact your coach.`);
+        return;
+      }
+
       const { data: existingClient, error: existingError } = await supabase
         .from("clients")
         .select("id")
-        .eq("workspace_id", invite.workspace_id)
+        .eq("workspace_id", inviteData.workspace_id)
         .eq("user_id", session.user.id)
         .maybeSingle();
 
@@ -149,7 +190,7 @@ export function JoinPage() {
         const { error: insertError } = await supabase
           .from("clients")
           .insert({
-            workspace_id: invite.workspace_id,
+            workspace_id: inviteData.workspace_id,
             user_id: session.user.id,
             status: "active",
             display_name: displayName.trim(),
@@ -161,11 +202,11 @@ export function JoinPage() {
 
         if (insertError) throw insertError;
 
-        const nextUses = (invite.uses ?? 0) + 1;
+        const nextUses = (inviteData.uses ?? 0) + 1;
         const { error: updateError } = await supabase
           .from("invites")
           .update({ uses: nextUses })
-          .eq("id", invite.id);
+          .eq("id", inviteData.id);
 
         if (updateError) throw updateError;
       }
