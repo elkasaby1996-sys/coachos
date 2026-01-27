@@ -1,52 +1,508 @@
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Skeleton } from "../../components/ui/skeleton";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth";
 
-const workouts = [
-  { id: "w1", name: "Upper Power", type: "Bodybuilding", status: "Assigned" },
-  { id: "w2", name: "AMRAP 16", type: "CrossFit", status: "Completed" },
-];
+type ChecklistKey = "workout" | "steps" | "water" | "sleep";
+type ChecklistState = Record<ChecklistKey, boolean>;
+
+const checklistKeys: ChecklistKey[] = ["workout", "steps", "water", "sleep"];
+const emptyChecklist: ChecklistState = {
+  workout: false,
+  steps: false,
+  water: false,
+  sleep: false,
+};
+
+const formatDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Something went wrong.";
+
+const readChecklist = (dateKey: string): ChecklistState => {
+  if (typeof window === "undefined") return emptyChecklist;
+  try {
+    const raw = window.localStorage.getItem(`coachos:checklist:${dateKey}`);
+    if (!raw) return emptyChecklist;
+    const parsed = JSON.parse(raw) as Partial<ChecklistState>;
+    return { ...emptyChecklist, ...parsed };
+  } catch (error) {
+    console.error("Failed to read checklist", error);
+    return emptyChecklist;
+  }
+};
+
+const writeChecklist = (dateKey: string, state: ChecklistState) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(`coachos:checklist:${dateKey}`, JSON.stringify(state));
+};
+
+const getRecentChecklistStats = (today: Date, days = 7) => {
+  let completed = 0;
+  let total = 0;
+
+  for (let i = 0; i < days; i += 1) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const key = formatDateKey(date);
+    const state = readChecklist(key);
+    completed += Object.values(state).filter(Boolean).length;
+    total += checklistKeys.length;
+  }
+
+  return total === 0 ? 0 : Math.round((completed / total) * 100);
+};
 
 export function ClientHomePage() {
+  const navigate = useNavigate();
+  const { session } = useAuth();
+  const today = useMemo(() => new Date(), []);
+  const todayKey = useMemo(() => today.toISOString().slice(0, 10), [today]);
+  const weekStart = useMemo(() => {
+    const date = new Date(today);
+    date.setDate(date.getDate() - 6);
+    return formatDateKey(date);
+  }, [today]);
+
+  const [checklist, setChecklist] = useState<ChecklistState>(() => readChecklist(todayKey));
+
+  useEffect(() => {
+    setChecklist(readChecklist(todayKey));
+  }, [todayKey]);
+
+  useEffect(() => {
+    writeChecklist(todayKey, checklist);
+  }, [todayKey, checklist]);
+
+  const clientQuery = useQuery({
+    queryKey: ["client", session?.user?.id],
+    enabled: !!session?.user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, workspace_id, display_name, goal, tags, created_at")
+        .eq("user_id", session?.user?.id ?? "")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const clientId = clientQuery.data?.id ?? null;
+
+  const todayWorkoutQuery = useQuery({
+    queryKey: ["assigned-workout-today", clientId, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workouts")
+        .select(
+          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates(id, name, workout_type, description)"
+        )
+        .eq("client_id", clientId)
+        .eq("scheduled_date", todayKey)
+        .order("created_at", { ascending: false })
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const workoutsWeekQuery = useQuery({
+    queryKey: ["assigned-workouts-week", clientId, weekStart, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workouts")
+        .select("id, status, scheduled_date, created_at")
+        .eq("client_id", clientId)
+        .gte("scheduled_date", weekStart)
+        .lte("scheduled_date", todayKey);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const targetsQuery = useQuery({
+    queryKey: ["client-targets", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_targets")
+        .select("id, calories, protein_g, steps, coach_notes, updated_at")
+        .eq("client_id", clientId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const todayWorkout = todayWorkoutQuery.data ?? null;
+  const todayWorkoutStatus =
+    todayWorkout?.status === "pending" ? "planned" : todayWorkout?.status ?? null;
+  const targets = targetsQuery.data ?? null;
+  const workoutsWeek = workoutsWeekQuery.data ?? [];
+
+  const checklistProgress = Math.round(
+    (Object.values(checklist).filter(Boolean).length / checklistKeys.length) * 100
+  );
+
+  const adherencePercent = useMemo(() => getRecentChecklistStats(today, 7), [today, checklist]);
+
+  const workoutsCompletedThisWeek = workoutsWeek.filter(
+    (workout) => workout.status === "completed"
+  ).length;
+
+  const defaultPlan = useMemo(() => {
+    const tags = (clientQuery.data?.tags ?? []) as string[];
+    const tagSet = tags.map((tag) => tag.toLowerCase());
+    if (tagSet.some((tag) => tag.includes("crossfit"))) {
+      return ["20 min conditioning (intervals or AMRAP)", "10 min mobility work"];
+    }
+    if (tagSet.some((tag) => tag.includes("strength") || tag.includes("bodybuilding"))) {
+      return ["30-45 min strength work", "10 min mobility work"];
+    }
+    return ["30-45 min strength OR 20 min conditioning", "10 min mobility"];
+  }, [clientQuery.data?.tags]);
+
+  const subtitleDate = useMemo(
+    () =>
+      today.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }),
+    [today]
+  );
+
+  const coachSyncAt = useMemo(() => {
+    const dates: Date[] = [];
+    if (targets?.updated_at) dates.push(new Date(targets.updated_at));
+    if (todayWorkout?.created_at) dates.push(new Date(todayWorkout.created_at));
+    const latestWorkout = workoutsWeek
+      .map((workout) => workout.created_at)
+      .filter(Boolean)
+      .map((value) => new Date(value as string))
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+    if (latestWorkout) dates.push(latestWorkout);
+    if (!dates.length) return null;
+    return dates.sort((a, b) => b.getTime() - a.getTime())[0];
+  }, [targets, todayWorkout, workoutsWeek]);
+
+  const coachUpdatedText = useMemo(() => {
+    if (!targets?.updated_at) return "Coach will update your plan soon.";
+    const updatedAt = new Date(targets.updated_at);
+    const diffDays = Math.max(
+      0,
+      Math.floor((today.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24))
+    );
+    if (diffDays === 0) return "Coach updated nutrition today.";
+    if (diffDays === 1) return "Coach updated nutrition 1 day ago.";
+    return `Coach updated nutrition ${diffDays} days ago.`;
+  }, [targets, today]);
+
+  const joinDays = useMemo(() => {
+    if (!clientQuery.data?.created_at) return null;
+    const createdAt = new Date(clientQuery.data.created_at);
+    return Math.max(
+      0,
+      Math.floor((today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
+    );
+  }, [clientQuery.data?.created_at, today]);
+
+  const errors = [
+    clientQuery.error,
+    todayWorkoutQuery.error,
+    targetsQuery.error,
+    workoutsWeekQuery.error,
+  ].filter(Boolean);
+
   return (
     <div className="space-y-6 pb-16 md:pb-0">
-      <section className="rounded-xl border border-border bg-card p-4 shadow-card">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Weekly focus</p>
-            <h2 className="text-lg font-semibold tracking-tight">Strength + Conditioning</h2>
-          </div>
-          <Badge variant="success">Streak 3</Badge>
+      <section className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Today&apos;s Mission</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Today&apos;s Mission</h1>
+          <p className="text-sm text-muted-foreground">
+            {subtitleDate} &bull; Let&apos;s move the needle.
+          </p>
         </div>
+        <Badge variant={coachSyncAt ? "success" : "muted"}>
+          {coachSyncAt ? "Coach synced" : "Waiting on coach"}
+        </Badge>
       </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Assigned workouts</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {workouts.map((workout) => (
-            <div
-              key={workout.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3"
-            >
-              <div>
-                <p className="text-sm font-medium">{workout.name}</p>
-                <p className="text-xs text-muted-foreground">{workout.type}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={workout.status === "Completed" ? "success" : "muted"}>
-                  {workout.status}
-                </Badge>
-                <Button asChild size="sm" variant="secondary">
-                  <Link to={`/app/workouts/${workout.id}`}>Open</Link>
-                </Button>
-              </div>
-            </div>
+      {errors.length > 0 ? (
+        <div className="space-y-2">
+          {errors.map((error, index) => (
+            <Alert key={`${index}-${getErrorMessage(error)}`} className="border-danger/30">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+            </Alert>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Today&apos;s Training</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {todayWorkoutQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-8 w-1/3" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : todayWorkout ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Assigned workout</p>
+                      <p className="text-lg font-semibold">
+                        {todayWorkout.workout_template?.name ?? "Workout assigned"}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        todayWorkoutStatus === "completed"
+                          ? "success"
+                          : todayWorkoutStatus === "skipped"
+                            ? "danger"
+                            : "muted"
+                      }
+                    >
+                      {todayWorkoutStatus ?? "planned"}
+                    </Badge>
+                  </div>
+                  {todayWorkout.workout_template?.workout_type ? (
+                    <Badge variant="muted">{todayWorkout.workout_template.workout_type}</Badge>
+                  ) : null}
+                  <Button
+                    className="w-full"
+                    onClick={() => navigate("/app/workouts/today")}
+                  >
+                    {todayWorkoutStatus === "completed"
+                      ? "View summary"
+                      : todayWorkoutStatus === "skipped"
+                        ? "Plan a makeup session"
+                        : "Start workout"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => navigate("/app/messages")}
+                  >
+                    Message coach
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+                  <div>
+                    <p className="text-sm font-semibold">No workout assigned yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your coach hasn&apos;t scheduled today&apos;s session. You can still do
+                      your default plan:
+                    </p>
+                  </div>
+                  <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                    {defaultPlan.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => navigate("/app/messages")}
+                  >
+                    Message coach
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Nutrition Targets</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {targetsQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : targets &&
+                (targets.calories || targets.protein_g || targets.steps || targets.coach_notes) ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Calories</p>
+                      <p className="text-sm font-semibold">
+                        {targets.calories ? targets.calories.toLocaleString() : "Not set"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Protein</p>
+                      <p className="text-sm font-semibold">
+                        {targets.protein_g ? `${targets.protein_g} g` : "Not set"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Steps</p>
+                      <p className="text-sm font-semibold">
+                        {targets.steps ? targets.steps.toLocaleString() : "8,000 (default)"}
+                      </p>
+                    </div>
+                  </div>
+                  {targets.coach_notes ? (
+                    <div className="rounded-lg border border-border bg-background p-3 text-sm">
+                      <p className="text-xs text-muted-foreground">Coach notes</p>
+                      <p>{targets.coach_notes}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-border bg-background p-3">
+                      <p className="text-xs text-muted-foreground">Calories</p>
+                      <p className="text-sm font-semibold">Not set</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-background p-3">
+                      <p className="text-xs text-muted-foreground">Protein</p>
+                      <p className="text-sm font-semibold">Not set</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-background p-3">
+                      <p className="text-xs text-muted-foreground">Steps</p>
+                      <p className="text-sm font-semibold">8,000 (default)</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your coach will set targets. For today: prioritize protein and whole
+                    foods.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() =>
+                      navigate(
+                        `/app/messages?draft=${encodeURIComponent(
+                          "Can you set my nutrition targets for this week?"
+                        )}`
+                      )
+                    }
+                  >
+                    Request targets
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Progress Snapshot</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {clientQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : clientQuery.data ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Joined</p>
+                      <p className="text-sm font-semibold">
+                        {joinDays === null ? "Just now" : `${joinDays} days ago`}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">This week adherence</p>
+                      <p className="text-sm font-semibold">{adherencePercent}%</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Workouts completed</p>
+                      <p className="text-sm font-semibold">{workoutsCompletedThisWeek}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  Your progress starts today. Complete your checklist to build momentum.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Today&apos;s Checklist</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Progress</span>
+                  <span>{checklistProgress}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-primary transition-all"
+                    style={{ width: `${checklistProgress}%` }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                {checklistKeys.map((key) => (
+                  <label
+                    key={key}
+                    className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <span className="capitalize">{key}</span>
+                    <input
+                      type="checkbox"
+                      checked={checklist[key]}
+                      onChange={() =>
+                        setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+              <Button variant="secondary" className="w-full" onClick={() => setChecklist(emptyChecklist)}>
+                Reset today
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Coach Awareness</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {coachUpdatedText}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

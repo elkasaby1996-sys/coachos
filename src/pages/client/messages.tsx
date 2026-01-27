@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
@@ -8,6 +10,19 @@ const messages = [
 ];
 
 export function ClientMessagesPage() {
+  const location = useLocation();
+  const draft = useMemo(
+    () => new URLSearchParams(location.search).get("draft") ?? "",
+    [location.search]
+  );
+  const [messageInput, setMessageInput] = useState("");
+
+  useEffect(() => {
+    if (draft) {
+      setMessageInput(draft);
+    }
+  }, [draft]);
+
   return (
     <div className="space-y-6 pb-16 md:pb-0">
       <Card>
@@ -32,7 +47,11 @@ export function ClientMessagesPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <Input placeholder="Type a message" />
+            <Input
+              placeholder="Type a message"
+              value={messageInput}
+              onChange={(event) => setMessageInput(event.target.value)}
+            />
             <Button>Send</Button>
           </div>
         </CardContent>
