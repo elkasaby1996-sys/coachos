@@ -17,6 +17,8 @@ import { PtSettingsPage } from "../pages/pt/settings";
 import { ClientHomePage } from "../pages/client/home";
 import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
 import { ClientWorkoutTodayPage } from "../pages/client/workout-today";
+import { ClientWorkoutRunPage } from "../pages/client/workout-run";
+import { ClientWorkoutSummaryPage } from "../pages/client/workout-summary";
 import { ClientProgressPage } from "../pages/client/progress";
 import { ClientCheckinPage } from "../pages/client/checkin";
 import { ClientMessagesPage } from "../pages/client/messages";
@@ -176,6 +178,8 @@ export function App() {
         <Route path="home" element={<ClientHomePage />} />
         <Route path="workouts/today" element={<ClientWorkoutTodayPage />} />
         <Route path="workouts/:assignedWorkoutId" element={<ClientWorkoutDetailPage />} />
+        <Route path="workout-run/:assignedWorkoutId" element={<ClientWorkoutRunPage />} />
+        <Route path="workout-summary/:assignedWorkoutId" element={<ClientWorkoutSummaryPage />} />
         <Route path="progress" element={<ClientProgressPage />} />
         <Route path="checkin" element={<ClientCheckinPage />} />
         <Route path="messages" element={<ClientMessagesPage />} />

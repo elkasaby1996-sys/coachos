@@ -1,19 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
@@ -90,7 +81,6 @@ const getConsistencyStreak = (today: Date, maxDays = 30) => {
 export function ClientHomePage() {
   const navigate = useNavigate();
   const { session } = useAuth();
-  const queryClient = useQueryClient();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const weekStart = useMemo(() => {
@@ -100,11 +90,7 @@ export function ClientHomePage() {
   }, [today]);
 
   const [checklist, setChecklist] = useState<ChecklistState>(() => readChecklist(todayKey));
-  const [startWorkoutOpen, setStartWorkoutOpen] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(false);
-  const [workoutAction, setWorkoutAction] = useState<null | "completed" | "skipped">(
-    null
-  );
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     setChecklist(readChecklist(todayKey));
@@ -198,17 +184,10 @@ export function ClientHomePage() {
 
   const workoutsCompletedThisWeek = workoutsWeek.length;
 
-  const defaultPlan = useMemo(() => {
-    const tags = (clientQuery.data?.tags ?? []) as string[];
-    const tagSet = tags.map((tag) => tag.toLowerCase());
-    if (tagSet.some((tag) => tag.includes("crossfit"))) {
-      return ["20 min conditioning (intervals or AMRAP)", "10 min mobility work"];
-    }
-    if (tagSet.some((tag) => tag.includes("strength") || tag.includes("bodybuilding"))) {
-      return ["30-45 min strength work", "10 min mobility work"];
-    }
-    return ["30-45 min strength OR 20 min conditioning", "10 min mobility"];
-  }, [clientQuery.data?.tags]);
+  const defaultPlan = useMemo(
+    () => ["30-45 min strength OR 20 min conditioning", "10 min mobility"],
+    []
+  );
 
   const subtitleDate = useMemo(
     () =>
@@ -246,6 +225,7 @@ export function ClientHomePage() {
     todayWorkoutQuery.error,
     targetsQuery.error,
     workoutsWeekQuery.error,
+    actionError ? new Error(actionError) : null,
   ].filter(Boolean);
 
   useEffect(() => {
@@ -257,62 +237,42 @@ export function ClientHomePage() {
   const missionCopy = useMemo(() => {
     if (!todayWorkout) return "Recovery day. Steps + nutrition still count.";
     if (todayWorkoutStatus === "completed") {
-      return "Workout done. Recovery and nutrition matter now.";
+      return "Workout done. Recovery + nutrition matter now.";
+    }
+    if (todayWorkoutStatus === "planned") {
+      return todayWorkout.workout_template?.description ?? "Control tempo, clean reps.";
     }
     if (todayWorkoutStatus === "skipped") {
       return "Session skipped. Stay on track with steps + nutrition.";
     }
-    const workoutType = (todayWorkout.workout_template?.workout_type ?? "").toLowerCase();
-    const workoutName = (todayWorkout.workout_template?.name ?? "").toLowerCase();
-    let focus = "session focus";
-    if (workoutType.includes("bodybuilding") || workoutType.includes("strength")) {
-      focus = "strength focus";
-    } else if (workoutType.includes("crossfit")) {
-      focus = "conditioning focus";
-    }
-    let areaPrefix = "";
-    if (workoutName.includes("upper")) areaPrefix = "Upper ";
-    if (workoutName.includes("lower")) areaPrefix = "Lower ";
-    if (workoutName.includes("full")) areaPrefix = "Full-body ";
-    const focusLine = `${areaPrefix}${focus}`.trim();
-    const formattedFocus = focusLine
-      ? `${focusLine.charAt(0).toUpperCase()}${focusLine.slice(1)}`
-      : "Strength focus";
-    return `${formattedFocus} today. Control tempo, clean reps.`;
+    return "Control tempo, clean reps.";
   }, [todayWorkout, todayWorkoutStatus]);
 
-  const handleWorkoutStatusUpdate = async (status: "completed" | "skipped") => {
-    if (!todayWorkout?.id) return;
-    setWorkoutAction(status);
-    const payload =
-      status === "completed"
-        ? { status, completed_at: new Date().toISOString() }
-        : { status };
-    const { error } = await supabase
-      .from("assigned_workouts")
-      .update(payload)
-      .eq("id", todayWorkout.id);
-    setWorkoutAction(null);
-    if (error) {
-      console.error("Failed to update workout status", error);
+  const handleStartDefaultSession = async () => {
+    if (!clientId) return;
+    setActionError(null);
+    const { data, error } = await supabase
+      .from("workout_logs")
+      .insert({
+        client_id: clientId,
+        title: "Default Session",
+        status: "in_progress",
+      })
+      .select("id")
+      .maybeSingle();
+    if (error || !data?.id) {
+      setActionError(error?.message ?? "Failed to start default session.");
       return;
     }
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ["assigned-workout-today", clientId, todayKey],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["assigned-workouts-week", clientId, weekStart, todayKey],
-      }),
-    ]);
-    setStartWorkoutOpen(false);
+    navigate(`/app/workout-run/${data.id}`);
   };
 
   const handleRequestAdjustment = () => {
-    if (typeof window !== "undefined") {
-      window.alert("Messaging coming soon.");
-    }
-    navigate("/app/messages");
+    navigate(
+      `/app/messages?draft=${encodeURIComponent(
+        "I skipped today's workout — can we adjust?"
+      )}`
+    );
   };
 
   return (
@@ -385,81 +345,23 @@ export function ClientHomePage() {
                     <Badge variant="muted">{todayWorkout.workout_template.workout_type}</Badge>
                   ) : null}
                   {todayWorkoutStatus === "completed" ? (
-                    <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full">View summary</Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[480px]">
-                        <DialogHeader>
-                          <DialogTitle>Workout summary</DialogTitle>
-                          <DialogDescription>Summary v1</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-3 text-sm">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Workout</p>
-                            <p className="font-semibold">
-                              {todayWorkout.workout_template?.name ?? "Workout"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Description</p>
-                            <p>
-                              {todayWorkout.workout_template?.description ??
-                                "Template details coming soon."}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Completed</p>
-                            <p>
-                              {todayWorkout.completed_at
-                                ? new Date(todayWorkout.completed_at).toLocaleString("en-US")
-                                : "Completion time not recorded."}
-                            </p>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <Button
+                      className="w-full"
+                      onClick={() => navigate(`/app/workout-summary/${todayWorkout.id}`)}
+                    >
+                      View summary
+                    </Button>
                   ) : todayWorkoutStatus === "skipped" ? (
                     <Button className="w-full" onClick={handleRequestAdjustment}>
                       Request adjustment
                     </Button>
                   ) : (
-                    <Dialog open={startWorkoutOpen} onOpenChange={setStartWorkoutOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full">Start workout</Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[420px]">
-                        <DialogHeader>
-                          <DialogTitle>Log today&apos;s workout</DialogTitle>
-                          <DialogDescription>
-                            Quick log for your coach. Update the status below.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                          <Button
-                            variant="secondary"
-                            onClick={() => setStartWorkoutOpen(false)}
-                          >
-                            Close
-                          </Button>
-                          <Button
-                            variant="outline"
-                            disabled={workoutAction !== null}
-                            onClick={() => handleWorkoutStatusUpdate("skipped")}
-                          >
-                            {workoutAction === "skipped" ? "Skipping..." : "Skip"}
-                          </Button>
-                          <Button
-                            disabled={workoutAction !== null}
-                            onClick={() => handleWorkoutStatusUpdate("completed")}
-                          >
-                            {workoutAction === "completed"
-                              ? "Saving..."
-                              : "Complete workout"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                    <Button
+                      className="w-full"
+                      onClick={() => navigate(`/app/workout-run/${todayWorkout.id}`)}
+                    >
+                      Start workout
+                    </Button>
                   )}
                   <Button
                     variant="secondary"
@@ -483,6 +385,9 @@ export function ClientHomePage() {
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
+                  <Button className="w-full" onClick={handleStartDefaultSession}>
+                    Start default session
+                  </Button>
                   <Button
                     variant="secondary"
                     className="w-full"
