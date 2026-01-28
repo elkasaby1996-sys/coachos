@@ -6,6 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
@@ -32,6 +40,12 @@ export function PtClientDetailPage() {
   const [scheduledDate, setScheduledDate] = useState(() => formatDateKey(new Date()));
   const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">("idle");
   const [assignMessage, setAssignMessage] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editWorkoutId, setEditWorkoutId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState(() => formatDateKey(new Date()));
+  const [editTemplateId, setEditTemplateId] = useState("");
+  const [editStatus, setEditStatus] = useState<"planned" | "completed" | "skipped">("planned");
 
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -86,7 +100,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates(id, name, workout_type)"
+          "id, status, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type)"
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
@@ -160,6 +174,73 @@ export function PtClientDetailPage() {
     }
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-today", clientId, todayKey],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+  };
+
+  const openEditDialog = (workout: {
+    id: string;
+    scheduled_date: string | null;
+    workout_template_id: string | null;
+    status: string | null;
+  }) => {
+    setEditWorkoutId(workout.id);
+    setEditDate(workout.scheduled_date ?? todayKey);
+    setEditTemplateId(workout.workout_template_id ?? "");
+    setEditStatus((workout.status as "planned" | "completed" | "skipped") ?? "planned");
+    setEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editWorkoutId) return;
+    setAssignStatus("saving");
+    setAssignMessage(null);
+    const { error } = await supabase
+      .from("assigned_workouts")
+      .update({
+        scheduled_date: editDate,
+        workout_template_id: editTemplateId,
+        status: editStatus,
+      })
+      .eq("id", editWorkoutId);
+    if (error) {
+      setAssignStatus("error");
+      setAssignMessage(getErrorMessage(error));
+      return;
+    }
+    setAssignStatus("idle");
+    setAssignMessage("Workout updated");
+    setEditOpen(false);
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-today", clientId, todayKey],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+  };
+
+  const handleDeleteWorkout = async () => {
+    if (!editWorkoutId) return;
+    setAssignStatus("saving");
+    setAssignMessage(null);
+    const { error } = await supabase.from("assigned_workouts").delete().eq("id", editWorkoutId);
+    if (error) {
+      setAssignStatus("error");
+      setAssignMessage(getErrorMessage(error));
+      return;
+    }
+    setAssignStatus("idle");
+    setAssignMessage("Workout deleted");
+    setDeleteOpen(false);
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-today", clientId, todayKey],
     });
   };
 
@@ -368,6 +449,30 @@ export function PtClientDetailPage() {
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          openEditDialog({
+                            id: workout.id,
+                            scheduled_date: workout.scheduled_date,
+                            workout_template_id: workout.workout_template_id,
+                            status: workout.status,
+                          })
+                        }
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditWorkoutId(workout.id);
+                          setDeleteOpen(true);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="secondary"
                         onClick={() => handleStatusUpdate(workout.id, "completed")}
                       >
@@ -392,6 +497,91 @@ export function PtClientDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Edit workout</DialogTitle>
+            <DialogDescription>Update schedule, template, or status.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Date</label>
+              <input
+                type="date"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={editDate}
+                onChange={(event) => setEditDate(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Workout template
+              </label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={editTemplateId}
+                onChange={(event) => setEditTemplateId(event.target.value)}
+              >
+                <option value="">Select a template</option>
+                {templatesQuery.data?.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} {template.workout_type ? ` - ${template.workout_type}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Status</label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={editStatus}
+                onChange={(event) =>
+                  setEditStatus(event.target.value as "planned" | "completed" | "skipped")
+                }
+              >
+                <option value="planned">Planned</option>
+                <option value="completed">Completed</option>
+                <option value="skipped">Skipped</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={assignStatus === "saving" || !editTemplateId || !editDate}
+            >
+              {assignStatus === "saving" ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete workout</DialogTitle>
+            <DialogDescription>
+              This will remove the scheduled workout. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteWorkout}
+              disabled={assignStatus === "saving"}
+            >
+              {assignStatus === "saving" ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
