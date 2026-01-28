@@ -13,68 +13,73 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth";
 
 export function NoWorkspacePage() {
   const navigate = useNavigate();
-  const [debugInfo, setDebugInfo] = useState<{
-    userId: string | null;
-    wmData: unknown;
-    wmError: unknown;
-    clientData: unknown;
-    clientError: unknown;
-  }>({
-    userId: null,
-    wmData: null,
-    wmError: null,
-    clientData: null,
-    clientError: null,
-  });
+  const { loading, session } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadDebugInfo = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id ?? null;
-
-      let wmData: unknown = null;
-      let wmError: unknown = null;
-      let clientData: unknown = null;
-      let clientError: unknown = null;
+    const loadRoutingInfo = async () => {
+      const userId = session?.user?.id ?? null;
 
       if (userId) {
         const wmResult = await supabase
           .from("workspace_members")
           .select("workspace_id, role")
-          .eq("user_id", userId);
-        wmData = wmResult.data;
-        wmError = wmResult.error;
+          .eq("user_id", userId)
+          .maybeSingle();
 
-        const clientResult = await supabase.from("clients").select("id").eq("user_id", userId);
-        clientData = clientResult.data;
-        clientError = clientResult.error;
-      }
+        if (wmResult.data?.role && wmResult.data.role.startsWith("pt")) {
+          navigate("/pt/dashboard", { replace: true });
+          return;
+        }
 
-      if (isMounted) {
-        setDebugInfo({
-          userId,
-          wmData,
-          wmError,
-          clientData,
-          clientError,
-        });
+        const clientResult = await supabase
+          .from("clients")
+          .select("id, workspace_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (clientResult.data) {
+          navigate("/app/home", { replace: true });
+          return;
+        }
       }
     };
 
-    loadDebugInfo();
+    if (!loading && session?.user?.id) {
+      loadRoutingInfo();
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [navigate, loading, session?.user?.id]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session) {
+      navigate("/login", { replace: true });
+    }
+  }, [loading, navigate, session]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Loading</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Checking workspace membership...
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!session) return null;
 
   const handleInviteSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -142,12 +147,6 @@ export function NoWorkspacePage() {
               </form>
             </DialogContent>
           </Dialog>
-          <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 p-3 text-xs text-muted-foreground">
-            <p className="font-semibold text-foreground">Debug panel</p>
-            <pre className="mt-2 whitespace-pre-wrap break-words">
-              {JSON.stringify(debugInfo)}
-            </pre>
-          </div>
         </CardContent>
       </Card>
     </div>

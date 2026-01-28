@@ -2,6 +2,12 @@ import { NavLink, Outlet } from "react-router-dom";
 import { Home, MessageCircle, TrendingUp, UserCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { useWorkspace } from "../../lib/use-workspace";
+import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
+import { LoadingScreen } from "../common/bootstrap-gate";
 
 const navItems = [
   { label: "Home", to: "/app/home", icon: Home },
@@ -11,6 +17,45 @@ const navItems = [
 ];
 
 export function ClientLayout() {
+  const { workspaceId, loading, error } = useWorkspace();
+  const { authError } = useAuth();
+  const errorMessage =
+    error?.message ?? authError?.message ?? (workspaceId ? null : "Workspace not found.");
+
+  if (loading) {
+    return <LoadingScreen message="Loading..." />;
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Workspace error</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>{errorMessage}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.reload();
+                }}
+              >
+                Sign out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-6xl">

@@ -12,17 +12,14 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [debugMsg, setDebugMsg] = useState<string | null>(null);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log("SUBMIT FIRED");
     setLoading(true);
     setErrorMsg(null);
-    setDebugMsg(null);
+    
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    console.log("SIGN IN RESULT", { data, error });
 
     if (error) {
       setErrorMsg(error.message);
@@ -30,15 +27,12 @@ export function LoginPage() {
       return;
     }
 
-    setDebugMsg(`Login success: ${data.user?.id ?? "unknown user"}`);
+    
 
     const { data: s } = await supabase.auth.getSession();
-    console.log("SESSION AFTER LOGIN", s.session);
 
     if (s.session) {
-      setDebugMsg(
-        `Login success: ${data.user?.id ?? "unknown user"} (session: yes)`
-      );
+      
 
       const from = (location.state as { from?: unknown } | null)?.from;
       if (typeof from === "string" && from.startsWith("/join/")) {
@@ -47,38 +41,58 @@ export function LoginPage() {
         return;
       }
 
-      const workspaceMember = await supabase
-        .from("workspace_members")
-        .select("workspace_id")
-        .eq("user_id", s.session.user.id)
-        .maybeSingle();
+      try {
+        const workspaceMember = await supabase
+          .from("workspace_members")
+          .select("workspace_id, role")
+          .eq("user_id", s.session.user.id)
+          .maybeSingle();
 
-      if (workspaceMember.data) {
-        navigate("/pt/dashboard", { replace: true });
+        if (workspaceMember.error) {
+          setErrorMsg(workspaceMember.error.message);
+          setLoading(false);
+          return;
+        }
+
+        const isPt =
+          workspaceMember.data?.role && workspaceMember.data.role.startsWith("pt");
+
+        if (workspaceMember.data && isPt) {
+          navigate("/pt/dashboard", { replace: true });
+          setLoading(false);
+          return;
+        }
+
+        const clientMember = await supabase
+          .from("clients")
+          .select("id, workspace_id, status")
+          .eq("user_id", s.session.user.id)
+          .maybeSingle();
+
+        if (clientMember.error) {
+          setErrorMsg(clientMember.error.message);
+          setLoading(false);
+          return;
+        }
+
+        if (clientMember.data) {
+          navigate("/app/home", { replace: true });
+          setLoading(false);
+          return;
+        }
+
+        navigate("/no-workspace", { replace: true });
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.error("ROLE ROUTE ERROR", err);
+        setErrorMsg(err instanceof Error ? err.message : "Failed to route after login.");
         setLoading(false);
         return;
       }
-
-      const clientMember = await supabase
-        .from("clients")
-        .select("id")
-        .eq("user_id", s.session.user.id)
-        .maybeSingle();
-
-      if (clientMember.data) {
-        navigate("/app/home", { replace: true });
-        setLoading(false);
-        return;
-      }
-
-      navigate("/no-workspace", { replace: true });
-      setLoading(false);
-      return;
     }
 
-    setDebugMsg(
-      `Login success: ${data.user?.id ?? "unknown user"} (session: no)`
-    );
+    
     setLoading(false);
   };
 
@@ -127,26 +141,13 @@ export function LoginPage() {
                 {errorMsg}
               </div>
             ) : null}
-            {debugMsg ? (
-              <div className="text-xs text-muted-foreground">{debugMsg}</div>
-            ) : null}
             <Button
               className="w-full"
               type="submit"
               disabled={loading}
-              onClick={() =>
-                console.log("BUTTON CLICKED", {
-                  email,
-                  passwordLen: password.length,
-                  loading,
-                })
-              }
             >
               {loading ? "Signing in..." : "Sign in"}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              If nothing happens, check console logs.
-            </p>
             <div className="text-center text-sm text-muted-foreground">
               Joining a workspace?{" "}
               <Link className="text-foreground underline" to="/join/sample">

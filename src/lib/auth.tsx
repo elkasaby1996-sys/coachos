@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "./supabase";
+import { supabase, supabaseConfigured } from "./supabase";
 
 type AppRole = "pt" | "client" | "none";
 
@@ -8,104 +8,138 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  authError: Error | null;
   role: AppRole;
-  refreshRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
 async function resolveRole(userId: string): Promise<AppRole> {
-  // 1) PT?
-  const pt = await supabase
-    .from("workspace_members")
-    .select("workspace_id, role")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const workspaceMember = await withTimeout(
+    supabase
+      .from("workspace_members")
+      .select("workspace_id, role")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    5000,
+    "Workspace membership lookup timed out (5s)."
+  );
 
-  if (pt.data) return "pt";
+  if (workspaceMember.error) throw workspaceMember.error;
+  if (workspaceMember.data?.role && workspaceMember.data.role.startsWith("pt")) {
+    console.log("ROLE ROUTE", { wmData: workspaceMember.data, clientData: null });
+    return "pt";
+  }
 
-  // 2) Client?
-  const client = await supabase
-    .from("clients")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const clientMember = await withTimeout(
+    supabase
+      .from("clients")
+      .select("id, workspace_id")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    5000,
+    "Client lookup timed out (5s)."
+  );
 
-  if (client.data) return "client";
+  if (clientMember.error) throw clientMember.error;
+  console.log("ROLE ROUTE", { wmData: workspaceMember.data, clientData: clientMember.data });
+  if (clientMember.data) return "client";
 
   return "none";
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<AppRole>("none");
   const [loading, setLoading] = useState(true);
-
-  const refreshRole = async () => {
-    const s = session;
-    if (!s?.user?.id) {
-      setRole("none");
-      return;
-    }
-    try {
-      const r = await resolveRole(s.user.id);
-      setRole(r);
-    } catch (e) {
-      console.error("Failed to resolve role", e);
-      setRole("none");
-    }
-  };
+  const [authError, setAuthError] = useState<Error | null>(null);
+  const [role, setRole] = useState<AppRole>("none");
 
   useEffect(() => {
-    let mounted = true;
+    let alive = true;
 
-    const boot = async () => {
+    const init = async () => {
       setLoading(true);
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
+      try {
+        setAuthError(null);
 
-      const nextSession = data.session ?? null;
-      setSession(nextSession);
-
-      if (nextSession?.user?.id) {
-        try {
-          const r = await resolveRole(nextSession.user.id);
-          if (mounted) setRole(r);
-        } catch (e) {
-          console.error("Failed to resolve role on boot", e);
-          if (mounted) setRole("none");
+        if (!supabaseConfigured) {
+          throw new Error("Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
         }
-      } else {
-        setRole("none");
-      }
 
-      setLoading(false);
+        const { data, error } = await withTimeout(
+          supabase.auth.getSession(),
+          15000,
+          "Session load timed out (15s)."
+        );
+
+        if (!alive) return;
+
+        if (error) {
+          setAuthError(new Error(error.message));
+          setSession(null);
+          setRole("none");
+          return;
+        }
+
+        setSession(data.session ?? null);
+        if (data.session?.user?.id) {
+          const nextRole = await resolveRole(data.session.user.id);
+          if (alive) setRole(nextRole);
+        } else {
+          setRole("none");
+        }
+      } catch (error) {
+        if (!alive) return;
+        setAuthError(error instanceof Error ? error : new Error(String(error)));
+        setSession(null);
+        setRole("none");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
     };
 
-    boot();
+    init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      setSession(nextSession);
-      setLoading(true);
-
-      if (nextSession?.user?.id) {
+    const { data: sub } = supabase.auth.onAuthStateChange(
+      async (_event, newSession) => {
+        if (!alive) return;
+        setLoading(true);
+        setSession(newSession);
         try {
-          const r = await resolveRole(nextSession.user.id);
-          if (mounted) setRole(r);
-        } catch (e) {
-          console.error("Failed to resolve role on auth change", e);
-          if (mounted) setRole("none");
+          if (newSession?.user?.id) {
+            const nextRole = await resolveRole(newSession.user.id);
+            if (alive) setRole(nextRole);
+          } else {
+            setRole("none");
+          }
+        } catch (error) {
+          console.error("Failed to resolve role", error);
+          if (alive) setRole("none");
+        } finally {
+          if (alive) setLoading(false);
         }
-      } else {
-        setRole("none");
       }
-
-      setLoading(false);
-    });
+    );
 
     return () => {
-      mounted = false;
-      authListener.subscription.unsubscribe();
+      alive = false;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
@@ -114,17 +148,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       session,
       loading,
+      authError,
       role,
-      refreshRole,
     }),
-    [session, loading, role]
+    [session, loading, authError, role]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

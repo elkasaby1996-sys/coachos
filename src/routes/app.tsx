@@ -24,6 +24,7 @@ import { ClientProfilePage } from "../pages/client/profile";
 
 // ✅ assumes your AuthProvider exports this hook
 import { useAuth } from "../lib/auth";
+import { BootstrapGate } from "../components/common/bootstrap-gate";
 
 function FullPageLoader() {
   return (
@@ -37,13 +38,17 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <FullPageLoader />;
-
-  if (!session) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  }
-
-  return <>{children}</>;
+  return (
+    <BootstrapGate>
+      {loading ? (
+        <FullPageLoader />
+      ) : !session ? (
+        <Navigate to="/login" replace state={{ from: location.pathname }} />
+      ) : (
+        <>{children}</>
+      )}
+    </BootstrapGate>
+  );
 }
 
 /**
@@ -63,20 +68,25 @@ function RequireRole({
 }) {
   const { role, loading } = useAuth();
 
-  if (loading) return <FullPageLoader />;
-
-  if (!role || role === "none") {
-    return <Navigate to="/no-workspace" replace />;
-  }
-
-  if (!allow.includes(role as any)) {
-    // if wrong role, send them to their home
-    if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
-    if (role === "client") return <Navigate to="/app/home" replace />;
-    return <Navigate to="/no-workspace" replace />;
-  }
-
-  return <>{children}</>;
+  return (
+    <BootstrapGate>
+      {loading ? (
+        <FullPageLoader />
+      ) : !role || role === "none" ? (
+        <Navigate to="/no-workspace" replace />
+      ) : !allow.includes(role as any) ? (
+        role === "pt" ? (
+          <Navigate to="/pt/dashboard" replace />
+        ) : role === "client" ? (
+          <Navigate to="/app/home" replace />
+        ) : (
+          <Navigate to="/no-workspace" replace />
+        )
+      ) : (
+        <>{children}</>
+      )}
+    </BootstrapGate>
+  );
 }
 
 function IndexRedirect() {

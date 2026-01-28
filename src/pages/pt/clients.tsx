@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
@@ -14,9 +15,9 @@ type ClientRecord = {
   id: string;
   user_id: string;
   status: string | null;
-  joined_at: string | null;
-  name?: string | null;
-  email?: string | null;
+  display_name: string | null;
+  tags: string[] | null;
+  created_at: string | null;
 };
 
 const stages = ["All", "Onboarding", "Active", "At Risk", "Paused"];
@@ -53,9 +54,12 @@ export function PtClientsPage() {
 
         const { data, error: clientsError } = await supabase
           .from("clients")
-          .select("id, user_id, status, joined_at, name, email")
+          .select("id, user_id, status, display_name, tags, created_at")
           .eq("workspace_id", workspaceId)
-          .order("joined_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        console.log("clients fetch", { workspaceId, data, error: clientsError });
 
         if (clientsError) throw clientsError;
         if (!isMounted) return;
@@ -105,26 +109,37 @@ export function PtClientsPage() {
 
   const formattedClients = useMemo(() => {
     return clients.map((client) => {
-      const name = client.name ?? client.email ?? `Client ${client.user_id.slice(0, 6)}`;
+      const name = client.display_name?.trim() ? client.display_name : "Client";
       const statusLabel = client.status
         ? client.status
             .replace(/_/g, " ")
-            .replace(/(^|\\s)([a-z])/g, (_match, prefix, char) => `${prefix}${char.toUpperCase()}`)
+            .replace(
+              /(^|\\s)([a-z])/g,
+              (_match, prefix, char) => `${prefix}${char.toUpperCase()}`
+            )
         : "Active";
       return {
         ...client,
         name,
         status: statusLabel,
-        tags: ["New"],
+        tags: client.tags ?? [],
         lastWorkout: "Not yet scheduled",
         lastCheckIn: "Not yet submitted",
-        adherence: "—",
+        adherence: "\u2014",
       };
     });
   }, [clients]);
-
   return (
     <div className="space-y-8">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        PT CLIENTS PAGE ACTIVE (v1)
+      </div>
+      {error ? (
+        <Alert className="border-destructive/30">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Clients pipeline</h2>
@@ -169,10 +184,6 @@ export function PtClientsPage() {
                       {Array.from({ length: 4 }).map((_, index) => (
                         <Skeleton key={index} className="h-20 w-full" />
                       ))}
-                    </div>
-                  ) : error ? (
-                    <div className="rounded-xl border border-danger/30 bg-danger/10 p-6 text-sm text-danger">
-                      {error}
                     </div>
                   ) : filtered.length > 0 ? (
                     filtered.map((client) => (

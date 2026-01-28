@@ -1,23 +1,186 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Skeleton } from "../../components/ui/skeleton";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth";
+import { getWorkspaceIdForUser } from "../../lib/workspace";
 import { cn } from "../../lib/utils";
 
 const tabs = ["overview", "plan", "logs", "progress", "checkins", "messages", "notes"] as const;
 
+const formatDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Something went wrong.";
+
 export function PtClientDetailPage() {
+  const { user } = useAuth();
+  const { clientId } = useParams();
+  const queryClient = useQueryClient();
   const [active, setActive] = useState<(typeof tabs)[number]>("overview");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [scheduledDate, setScheduledDate] = useState(() => formatDateKey(new Date()));
+  const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [assignMessage, setAssignMessage] = useState<string | null>(null);
+
+  const today = useMemo(() => new Date(), []);
+  const todayKey = useMemo(() => formatDateKey(today), [today]);
+  const endKey = useMemo(() => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + 7);
+    return formatDateKey(date);
+  }, [today]);
+
+  const workspaceQuery = useQuery({
+    queryKey: ["pt-workspace", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const workspaceId = await getWorkspaceIdForUser(user?.id ?? "");
+      if (!workspaceId) throw new Error("Workspace not found for this PT.");
+      return workspaceId;
+    },
+  });
+
+  const clientQuery = useQuery({
+    queryKey: ["pt-client", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, display_name, goal, status")
+        .eq("id", clientId ?? "")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ["workout-templates", workspaceQuery.data],
+    enabled: !!workspaceQuery.data,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_templates")
+        .select("id, name, workout_type")
+        .eq("workspace_id", workspaceQuery.data ?? "")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const upcomingQuery = useQuery({
+    queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workouts")
+        .select(
+          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates(id, name, workout_type)"
+        )
+        .eq("client_id", clientId ?? "")
+        .gte("scheduled_date", todayKey)
+        .lte("scheduled_date", endKey)
+        .order("scheduled_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const handleAssignWorkout = async () => {
+    if (!clientId || !selectedTemplateId || !scheduledDate) return;
+    setAssignStatus("saving");
+    setAssignMessage(null);
+
+    const { data: existing, error: checkError } = await supabase
+      .from("assigned_workouts")
+      .select("id")
+      .eq("client_id", clientId)
+      .eq("scheduled_date", scheduledDate)
+      .eq("workout_template_id", selectedTemplateId)
+      .maybeSingle();
+
+    if (checkError) {
+      setAssignStatus("error");
+      setAssignMessage(getErrorMessage(checkError));
+      return;
+    }
+
+    if (existing) {
+      setAssignStatus("idle");
+      setAssignMessage("Already scheduled for that date");
+      return;
+    }
+
+    const { error } = await supabase.from("assigned_workouts").insert({
+      client_id: clientId,
+      workout_template_id: selectedTemplateId,
+      scheduled_date: scheduledDate,
+      status: "planned",
+    });
+
+    if (error) {
+      if ("code" in error && (error as { code?: string }).code === "23505") {
+        setAssignStatus("idle");
+        setAssignMessage("Already scheduled for that date");
+        return;
+      }
+      setAssignStatus("error");
+      setAssignMessage(getErrorMessage(error));
+      return;
+    }
+
+    setAssignStatus("idle");
+    setAssignMessage("Workout assigned");
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+    });
+  };
+
+  const handleStatusUpdate = async (id: string, status: "completed" | "skipped") => {
+    const payload =
+      status === "completed"
+        ? { status, completed_at: new Date().toISOString() }
+        : { status };
+    const { error } = await supabase.from("assigned_workouts").update(payload).eq("id", id);
+    if (error) {
+      setAssignStatus("error");
+      setAssignMessage(getErrorMessage(error));
+      return;
+    }
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+    });
+  };
 
   return (
     <div className="space-y-6">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        PT CLIENT DETAIL ACTIVE (v1)
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Avery Johnson</h2>
-          <p className="text-sm text-muted-foreground">Strength + Hypertrophy block</p>
+          <h2 className="text-xl font-semibold tracking-tight">
+            {clientQuery.data?.display_name ?? "Client profile"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {clientQuery.data?.goal ?? "Training plan overview"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="success">Active</Badge>
+          <Badge variant={clientQuery.data?.status === "inactive" ? "muted" : "success"}>
+            {clientQuery.data?.status ?? "Active"}
+          </Badge>
           <Button variant="secondary">Message</Button>
         </div>
       </div>
@@ -72,6 +235,163 @@ export function PtClientDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {(workspaceQuery.error ||
+        templatesQuery.error ||
+        upcomingQuery.error ||
+        clientQuery.error ||
+        assignStatus === "error") && (
+        <Alert className="border-destructive/30">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {assignStatus === "error" && assignMessage
+              ? assignMessage
+              : getErrorMessage(
+                  workspaceQuery.error ||
+                    templatesQuery.error ||
+                    upcomingQuery.error ||
+                    clientQuery.error
+                )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {assignStatus !== "error" && assignMessage ? (
+        <Alert className="border-border">
+          <AlertTitle>Update</AlertTitle>
+          <AlertDescription>{assignMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Schedule workout</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Assign a template to this client with a planned date.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {templatesQuery.isLoading || workspaceQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Workout template
+                  </label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={selectedTemplateId}
+                    onChange={(event) => setSelectedTemplateId(event.target.value)}
+                  >
+                    <option value="">Select a template</option>
+                    {templatesQuery.data?.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name} {template.workout_type ? ` - ${template.workout_type}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                  <input
+                    type="date"
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={scheduledDate}
+                    onChange={(event) => setScheduledDate(event.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={
+                    assignStatus === "saving" || !selectedTemplateId || !scheduledDate
+                  }
+                  onClick={handleAssignWorkout}
+                >
+                  {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Scheduled sessions for the next 7 days.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {upcomingQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : upcomingQuery.data && upcomingQuery.data.length > 0 ? (
+              upcomingQuery.data.map((workout) => (
+                <div
+                  key={workout.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
+                >
+                  <div>
+                    <div className="text-sm font-semibold">
+                      {workout.workout_template?.name ?? "Workout"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {workout.scheduled_date
+                        ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "Scheduled"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={
+                        workout.status === "completed"
+                          ? "success"
+                          : workout.status === "skipped"
+                          ? "danger"
+                          : "muted"
+                      }
+                    >
+                      {workout.status ?? "planned"}
+                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleStatusUpdate(workout.id, "completed")}
+                      >
+                        Mark completed
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusUpdate(workout.id, "skipped")}
+                      >
+                        Skip
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                No workouts scheduled for the next 7 days.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

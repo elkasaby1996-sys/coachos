@@ -14,6 +14,7 @@ import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,10 @@ import {
 } from "../ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
+import { useWorkspace } from "../../lib/use-workspace";
+import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
+import { LoadingScreen } from "../common/bootstrap-gate";
 
 const navItems = [
   { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
@@ -34,6 +39,45 @@ const navItems = [
 ];
 
 export function PtLayout() {
+  const { workspaceId, loading, error } = useWorkspace();
+  const { authError } = useAuth();
+  const errorMessage =
+    error?.message ?? authError?.message ?? (workspaceId ? null : "Workspace not found.");
+
+  if (loading) {
+    return <LoadingScreen message="Loading..." />;
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Workspace error</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>{errorMessage}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.reload();
+                }}
+              >
+                Sign out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background">
@@ -51,7 +95,7 @@ export function PtLayout() {
               <div className="mt-2 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold">Velocity PT Lab</p>
-                  <p className="text-xs text-muted-foreground">Coach · Pro plan</p>
+                  <p className="text-xs text-muted-foreground">Coach - Pro plan</p>
                 </div>
                 <Button size="icon" variant="secondary">
                   <svg
