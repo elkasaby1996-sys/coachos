@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
@@ -33,7 +42,7 @@ const getErrorMessage = (error: unknown) =>
 const readChecklist = (dateKey: string): ChecklistState => {
   if (typeof window === "undefined") return emptyChecklist;
   try {
-    const raw = window.localStorage.getItem(`coachos:checklist:${dateKey}`);
+    const raw = window.localStorage.getItem(`coachos_checklist_${dateKey}`);
     if (!raw) return emptyChecklist;
     const parsed = JSON.parse(raw) as Partial<ChecklistState>;
     return { ...emptyChecklist, ...parsed };
@@ -45,10 +54,10 @@ const readChecklist = (dateKey: string): ChecklistState => {
 
 const writeChecklist = (dateKey: string, state: ChecklistState) => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(`coachos:checklist:${dateKey}`, JSON.stringify(state));
+  window.localStorage.setItem(`coachos_checklist_${dateKey}`, JSON.stringify(state));
 };
 
-const getRecentChecklistStats = (today: Date, days = 7) => {
+const getStepsAdherencePercent = (today: Date, days = 7) => {
   let completed = 0;
   let total = 0;
 
@@ -57,18 +66,33 @@ const getRecentChecklistStats = (today: Date, days = 7) => {
     date.setDate(date.getDate() - i);
     const key = formatDateKey(date);
     const state = readChecklist(key);
-    completed += Object.values(state).filter(Boolean).length;
-    total += checklistKeys.length;
+    if (state.steps) completed += 1;
+    total += 1;
   }
 
   return total === 0 ? 0 : Math.round((completed / total) * 100);
 };
 
+const getConsistencyStreak = (today: Date, maxDays = 30) => {
+  let streak = 0;
+  for (let i = 0; i < maxDays; i += 1) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const key = formatDateKey(date);
+    const state = readChecklist(key);
+    const isPerfectDay = checklistKeys.every((keyName) => state[keyName]);
+    if (!isPerfectDay) break;
+    streak += 1;
+  }
+  return streak;
+};
+
 export function ClientHomePage() {
   const navigate = useNavigate();
   const { session } = useAuth();
+  const queryClient = useQueryClient();
   const today = useMemo(() => new Date(), []);
-  const todayKey = useMemo(() => today.toISOString().slice(0, 10), [today]);
+  const todayKey = useMemo(() => formatDateKey(today), [today]);
   const weekStart = useMemo(() => {
     const date = new Date(today);
     date.setDate(date.getDate() - 6);
@@ -76,6 +100,11 @@ export function ClientHomePage() {
   }, [today]);
 
   const [checklist, setChecklist] = useState<ChecklistState>(() => readChecklist(todayKey));
+  const [startWorkoutOpen, setStartWorkoutOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [workoutAction, setWorkoutAction] = useState<null | "completed" | "skipped">(
+    null
+  );
 
   useEffect(() => {
     setChecklist(readChecklist(todayKey));
@@ -125,8 +154,9 @@ export function ClientHomePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
-        .select("id, status, scheduled_date, created_at")
+        .select("id")
         .eq("client_id", clientId)
+        .eq("status", "completed")
         .gte("scheduled_date", weekStart)
         .lte("scheduled_date", todayKey);
       if (error) throw error;
@@ -149,20 +179,24 @@ export function ClientHomePage() {
   });
 
   const todayWorkout = todayWorkoutQuery.data ?? null;
-  const todayWorkoutStatus =
-    todayWorkout?.status === "pending" ? "planned" : todayWorkout?.status ?? null;
+  const todayWorkoutStatus = todayWorkout?.status === "pending"
+    ? "planned"
+    : todayWorkout?.status ?? null;
   const targets = targetsQuery.data ?? null;
   const workoutsWeek = workoutsWeekQuery.data ?? [];
+  const hasTargets = Boolean(targets);
 
   const checklistProgress = Math.round(
     (Object.values(checklist).filter(Boolean).length / checklistKeys.length) * 100
   );
 
-  const adherencePercent = useMemo(() => getRecentChecklistStats(today, 7), [today, checklist]);
+  const stepsAdherencePercent = useMemo(
+    () => getStepsAdherencePercent(today, 7),
+    [today, checklist]
+  );
+  const consistencyStreak = useMemo(() => getConsistencyStreak(today, 30), [today, checklist]);
 
-  const workoutsCompletedThisWeek = workoutsWeek.filter(
-    (workout) => workout.status === "completed"
-  ).length;
+  const workoutsCompletedThisWeek = workoutsWeek.length;
 
   const defaultPlan = useMemo(() => {
     const tags = (clientQuery.data?.tags ?? []) as string[];
@@ -190,36 +224,22 @@ export function ClientHomePage() {
     const dates: Date[] = [];
     if (targets?.updated_at) dates.push(new Date(targets.updated_at));
     if (todayWorkout?.created_at) dates.push(new Date(todayWorkout.created_at));
-    const latestWorkout = workoutsWeek
-      .map((workout) => workout.created_at)
-      .filter(Boolean)
-      .map((value) => new Date(value as string))
-      .sort((a, b) => b.getTime() - a.getTime())[0];
-    if (latestWorkout) dates.push(latestWorkout);
     if (!dates.length) return null;
     return dates.sort((a, b) => b.getTime() - a.getTime())[0];
-  }, [targets, todayWorkout, workoutsWeek]);
+  }, [targets, todayWorkout]);
 
   const coachUpdatedText = useMemo(() => {
-    if (!targets?.updated_at) return "Coach will update your plan soon.";
-    const updatedAt = new Date(targets.updated_at);
+    if (!coachSyncAt) return "Coach is tracking your progress.";
+    const todayKeyValue = formatDateKey(today);
+    const coachKeyValue = formatDateKey(coachSyncAt);
+    if (todayKeyValue === coachKeyValue) return "Coach reviewed your plan today.";
     const diffDays = Math.max(
       0,
-      Math.floor((today.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24))
+      Math.floor((today.getTime() - coachSyncAt.getTime()) / (1000 * 60 * 60 * 24))
     );
-    if (diffDays === 0) return "Coach updated nutrition today.";
-    if (diffDays === 1) return "Coach updated nutrition 1 day ago.";
-    return `Coach updated nutrition ${diffDays} days ago.`;
-  }, [targets, today]);
-
-  const joinDays = useMemo(() => {
-    if (!clientQuery.data?.created_at) return null;
-    const createdAt = new Date(clientQuery.data.created_at);
-    return Math.max(
-      0,
-      Math.floor((today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
-    );
-  }, [clientQuery.data?.created_at, today]);
+    if (diffDays <= 1) return "Coach checked in yesterday.";
+    return "Coach will review your progress tomorrow.";
+  }, [coachSyncAt, today]);
 
   const errors = [
     clientQuery.error,
@@ -228,6 +248,73 @@ export function ClientHomePage() {
     workoutsWeekQuery.error,
   ].filter(Boolean);
 
+  useEffect(() => {
+    if (todayWorkoutStatus === "completed" && !checklist.workout) {
+      setChecklist((prev) => (prev.workout ? prev : { ...prev, workout: true }));
+    }
+  }, [todayWorkoutStatus, checklist.workout]);
+
+  const missionCopy = useMemo(() => {
+    if (!todayWorkout) return "Recovery day. Steps + nutrition still count.";
+    if (todayWorkoutStatus === "completed") {
+      return "Workout done. Recovery and nutrition matter now.";
+    }
+    if (todayWorkoutStatus === "skipped") {
+      return "Session skipped. Stay on track with steps + nutrition.";
+    }
+    const workoutType = (todayWorkout.workout_template?.workout_type ?? "").toLowerCase();
+    const workoutName = (todayWorkout.workout_template?.name ?? "").toLowerCase();
+    let focus = "session focus";
+    if (workoutType.includes("bodybuilding") || workoutType.includes("strength")) {
+      focus = "strength focus";
+    } else if (workoutType.includes("crossfit")) {
+      focus = "conditioning focus";
+    }
+    let areaPrefix = "";
+    if (workoutName.includes("upper")) areaPrefix = "Upper ";
+    if (workoutName.includes("lower")) areaPrefix = "Lower ";
+    if (workoutName.includes("full")) areaPrefix = "Full-body ";
+    const focusLine = `${areaPrefix}${focus}`.trim();
+    const formattedFocus = focusLine
+      ? `${focusLine.charAt(0).toUpperCase()}${focusLine.slice(1)}`
+      : "Strength focus";
+    return `${formattedFocus} today. Control tempo, clean reps.`;
+  }, [todayWorkout, todayWorkoutStatus]);
+
+  const handleWorkoutStatusUpdate = async (status: "completed" | "skipped") => {
+    if (!todayWorkout?.id) return;
+    setWorkoutAction(status);
+    const payload =
+      status === "completed"
+        ? { status, completed_at: new Date().toISOString() }
+        : { status };
+    const { error } = await supabase
+      .from("assigned_workouts")
+      .update(payload)
+      .eq("id", todayWorkout.id);
+    setWorkoutAction(null);
+    if (error) {
+      console.error("Failed to update workout status", error);
+      return;
+    }
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["assigned-workout-today", clientId, todayKey],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["assigned-workouts-week", clientId, weekStart, todayKey],
+      }),
+    ]);
+    setStartWorkoutOpen(false);
+  };
+
+  const handleRequestAdjustment = () => {
+    if (typeof window !== "undefined") {
+      window.alert("Messaging coming soon.");
+    }
+    navigate("/app/messages");
+  };
+
   return (
     <div className="space-y-6 pb-16 md:pb-0">
       <section className="flex flex-wrap items-center justify-between gap-4">
@@ -235,7 +322,7 @@ export function ClientHomePage() {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Today&apos;s Mission</p>
           <h1 className="text-2xl font-semibold tracking-tight">Today&apos;s Mission</h1>
           <p className="text-sm text-muted-foreground">
-            {subtitleDate} &bull; Let&apos;s move the needle.
+            {subtitleDate} &bull; {missionCopy}
           </p>
         </div>
         <Badge variant={coachSyncAt ? "success" : "muted"}>
@@ -271,9 +358,15 @@ export function ClientHomePage() {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-xs text-muted-foreground">Assigned workout</p>
+                      <p className="text-xs text-muted-foreground">
+                        {todayWorkoutStatus === "completed"
+                          ? "Workout completed"
+                          : todayWorkoutStatus === "skipped"
+                            ? "Workout skipped (coach notified)"
+                            : "Workout planned"}
+                      </p>
                       <p className="text-lg font-semibold">
-                        {todayWorkout.workout_template?.name ?? "Workout assigned"}
+                        {todayWorkout.workout_template?.name ?? "Workout planned"}
                       </p>
                     </div>
                     <Badge
@@ -291,16 +384,83 @@ export function ClientHomePage() {
                   {todayWorkout.workout_template?.workout_type ? (
                     <Badge variant="muted">{todayWorkout.workout_template.workout_type}</Badge>
                   ) : null}
-                  <Button
-                    className="w-full"
-                    onClick={() => navigate("/app/workouts/today")}
-                  >
-                    {todayWorkoutStatus === "completed"
-                      ? "View summary"
-                      : todayWorkoutStatus === "skipped"
-                        ? "Plan a makeup session"
-                        : "Start workout"}
-                  </Button>
+                  {todayWorkoutStatus === "completed" ? (
+                    <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full">View summary</Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[480px]">
+                        <DialogHeader>
+                          <DialogTitle>Workout summary</DialogTitle>
+                          <DialogDescription>Summary v1</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Workout</p>
+                            <p className="font-semibold">
+                              {todayWorkout.workout_template?.name ?? "Workout"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Description</p>
+                            <p>
+                              {todayWorkout.workout_template?.description ??
+                                "Template details coming soon."}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Completed</p>
+                            <p>
+                              {todayWorkout.completed_at
+                                ? new Date(todayWorkout.completed_at).toLocaleString("en-US")
+                                : "Completion time not recorded."}
+                            </p>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ) : todayWorkoutStatus === "skipped" ? (
+                    <Button className="w-full" onClick={handleRequestAdjustment}>
+                      Request adjustment
+                    </Button>
+                  ) : (
+                    <Dialog open={startWorkoutOpen} onOpenChange={setStartWorkoutOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full">Start workout</Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[420px]">
+                        <DialogHeader>
+                          <DialogTitle>Log today&apos;s workout</DialogTitle>
+                          <DialogDescription>
+                            Quick log for your coach. Update the status below.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                          <Button
+                            variant="secondary"
+                            onClick={() => setStartWorkoutOpen(false)}
+                          >
+                            Close
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={workoutAction !== null}
+                            onClick={() => handleWorkoutStatusUpdate("skipped")}
+                          >
+                            {workoutAction === "skipped" ? "Skipping..." : "Skip"}
+                          </Button>
+                          <Button
+                            disabled={workoutAction !== null}
+                            onClick={() => handleWorkoutStatusUpdate("completed")}
+                          >
+                            {workoutAction === "completed"
+                              ? "Saving..."
+                              : "Complete workout"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
                   <Button
                     variant="secondary"
                     className="w-full"
@@ -346,69 +506,59 @@ export function ClientHomePage() {
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                 </div>
-              ) : targets &&
-                (targets.calories || targets.protein_g || targets.steps || targets.coach_notes) ? (
-                <div className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Calories</p>
-                      <p className="text-sm font-semibold">
-                        {targets.calories ? targets.calories.toLocaleString() : "Not set"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Protein</p>
-                      <p className="text-sm font-semibold">
-                        {targets.protein_g ? `${targets.protein_g} g` : "Not set"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Steps</p>
-                      <p className="text-sm font-semibold">
-                        {targets.steps ? targets.steps.toLocaleString() : "8,000 (default)"}
-                      </p>
-                    </div>
-                  </div>
-                  {targets.coach_notes ? (
-                    <div className="rounded-lg border border-border bg-background p-3 text-sm">
-                      <p className="text-xs text-muted-foreground">Coach notes</p>
-                      <p>{targets.coach_notes}</p>
-                    </div>
-                  ) : null}
-                </div>
               ) : (
-                <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+                <div
+                  className={
+                    hasTargets
+                      ? "space-y-3"
+                      : "space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4"
+                  }
+                >
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg border border-border bg-background p-3">
                       <p className="text-xs text-muted-foreground">Calories</p>
-                      <p className="text-sm font-semibold">Not set</p>
+                      <p className="text-sm font-semibold">
+                        {typeof targets?.calories === "number"
+                          ? targets.calories.toLocaleString()
+                          : "Coach setting in progress"}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border bg-background p-3">
                       <p className="text-xs text-muted-foreground">Protein</p>
-                      <p className="text-sm font-semibold">Not set</p>
+                      <p className="text-sm font-semibold">
+                        {typeof targets?.protein_g === "number"
+                          ? `${targets.protein_g} g`
+                          : "Prioritize protein today"}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border bg-background p-3">
                       <p className="text-xs text-muted-foreground">Steps</p>
-                      <p className="text-sm font-semibold">8,000 (default)</p>
+                      <p className="text-sm font-semibold">
+                        {typeof targets?.steps === "number"
+                          ? targets.steps.toLocaleString()
+                          : "8,000 (today's focus)"}
+                      </p>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Your coach will set targets. For today: prioritize protein and whole
-                    foods.
-                  </p>
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() =>
-                      navigate(
-                        `/app/messages?draft=${encodeURIComponent(
-                          "Can you set my nutrition targets for this week?"
-                        )}`
-                      )
-                    }
-                  >
-                    Request targets
-                  </Button>
+                  <div className="rounded-lg border border-border bg-background p-3 text-sm">
+                    <p className="text-xs text-muted-foreground">Coach notes</p>
+                    <p>{targets?.coach_notes ?? "Today: protein first, hydrate, don't skip steps."}</p>
+                  </div>
+                  {!hasTargets ? (
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() =>
+                        navigate(
+                          `/app/messages?draft=${encodeURIComponent(
+                            "Can you set my nutrition targets for this week?"
+                          )}`
+                        )
+                      }
+                    >
+                      Request targets
+                    </Button>
+                  ) : null}
                 </div>
               )}
             </CardContent>
@@ -419,7 +569,7 @@ export function ClientHomePage() {
               <CardTitle>Progress Snapshot</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {clientQuery.isLoading ? (
+              {clientQuery.isLoading || workoutsWeekQuery.isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-5 w-1/2" />
                   <Skeleton className="h-10 w-full" />
@@ -428,18 +578,24 @@ export function ClientHomePage() {
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Joined</p>
+                      <p className="text-xs text-muted-foreground">
+                        Workouts completed this week
+                      </p>
                       <p className="text-sm font-semibold">
-                        {joinDays === null ? "Just now" : `${joinDays} days ago`}
+                        {workoutsCompletedThisWeek}
                       </p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">This week adherence</p>
-                      <p className="text-sm font-semibold">{adherencePercent}%</p>
+                      <p className="text-xs text-muted-foreground">Consistency streak</p>
+                      <p className="text-sm font-semibold">
+                        {consistencyStreak > 0
+                          ? `${consistencyStreak} day${consistencyStreak === 1 ? "" : "s"}`
+                          : "Start your streak today."}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Workouts completed</p>
-                      <p className="text-sm font-semibold">{workoutsCompletedThisWeek}</p>
+                      <p className="text-xs text-muted-foreground">Steps adherence (7d)</p>
+                      <p className="text-sm font-semibold">{stepsAdherencePercent}%</p>
                     </div>
                   </div>
                 </div>
@@ -458,6 +614,11 @@ export function ClientHomePage() {
               <CardTitle>Today&apos;s Checklist</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {checklistProgress === 100 ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                  {"\u2705"} Perfect day logged
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Progress</span>
@@ -476,7 +637,11 @@ export function ClientHomePage() {
                     key={key}
                     className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   >
-                    <span className="capitalize">{key}</span>
+                    <span className="capitalize">
+                      {key === "steps" && typeof targets?.steps === "number"
+                        ? `Steps (${targets.steps.toLocaleString()})`
+                        : key}
+                    </span>
                     <input
                       type="checkbox"
                       checked={checklist[key]}
