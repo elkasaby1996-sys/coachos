@@ -58,7 +58,9 @@ export function LoginPage() {
           workspaceMember.data?.role && workspaceMember.data.role.startsWith("pt");
 
         if (workspaceMember.data && isPt) {
-          navigate("/pt/dashboard", { replace: true });
+          if (location.pathname !== "/pt/dashboard") {
+            navigate("/pt/dashboard", { replace: true });
+          }
           setLoading(false);
           return;
         }
@@ -76,12 +78,16 @@ export function LoginPage() {
         }
 
         if (clientMember.data) {
-          navigate("/app/home", { replace: true });
+          if (location.pathname !== "/app/home") {
+            navigate("/app/home", { replace: true });
+          }
           setLoading(false);
           return;
         }
 
-        navigate("/no-workspace", { replace: true });
+        if (location.pathname !== "/no-workspace") {
+          navigate("/no-workspace", { replace: true });
+        }
         setLoading(false);
         return;
       } catch (err) {

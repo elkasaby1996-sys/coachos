@@ -1,5 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import {
@@ -17,13 +17,16 @@ import { useAuth } from "../../lib/auth";
 
 export function NoWorkspacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loading, session } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const didRouteRef = useRef(false);
 
   useEffect(() => {
     const loadRoutingInfo = async () => {
+      if (didRouteRef.current) return;
       const userId = session?.user?.id ?? null;
 
       if (userId) {
@@ -34,7 +37,10 @@ export function NoWorkspacePage() {
           .maybeSingle();
 
         if (wmResult.data?.role && wmResult.data.role.startsWith("pt")) {
-          navigate("/pt/dashboard", { replace: true });
+          if (location.pathname !== "/pt/dashboard") {
+            navigate("/pt/dashboard", { replace: true });
+          }
+          didRouteRef.current = true;
           return;
         }
 
@@ -45,7 +51,10 @@ export function NoWorkspacePage() {
           .maybeSingle();
 
         if (clientResult.data) {
-          navigate("/app/home", { replace: true });
+          if (location.pathname !== "/app/home") {
+            navigate("/app/home", { replace: true });
+          }
+          didRouteRef.current = true;
           return;
         }
       }
@@ -55,14 +64,17 @@ export function NoWorkspacePage() {
       loadRoutingInfo();
     }
 
-  }, [navigate, loading, session?.user?.id]);
+  }, [location.pathname, navigate, loading, session?.user?.id]);
 
   useEffect(() => {
     if (loading) return;
     if (!session) {
-      navigate("/login", { replace: true });
+      if (location.pathname !== "/login") {
+        navigate("/login", { replace: true });
+      }
+      didRouteRef.current = true;
     }
-  }, [loading, navigate, session]);
+  }, [loading, location.pathname, navigate, session]);
 
   if (loading) {
     return (

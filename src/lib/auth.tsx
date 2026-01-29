@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "./supabase";
 
@@ -30,18 +30,29 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 async function resolveRole(userId: string): Promise<AppRole> {
-  const workspaceMember = await withTimeout(
-    supabase
-      .from("workspace_members")
-      .select("workspace_id, role")
-      .eq("user_id", userId)
-      .maybeSingle(),
-    5000,
-    "Workspace membership lookup timed out (5s)."
-  );
+  let workspaceMember: { data: unknown; error: unknown } | null = null;
 
-  if (workspaceMember.error) throw workspaceMember.error;
-  if (workspaceMember.data?.role && workspaceMember.data.role.startsWith("pt")) {
+  try {
+    workspaceMember = await withTimeout(
+      supabase
+        .from("workspace_members")
+        .select("workspace_id, role")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      5000,
+      "Workspace membership lookup timed out (5s)."
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("timed out")) {
+      workspaceMember = { data: null, error: null };
+    } else {
+      throw error;
+    }
+  }
+
+  if (workspaceMember?.error) throw workspaceMember.error;
+  const workspaceRole = (workspaceMember?.data as { role?: string } | null)?.role ?? null;
+  if (workspaceRole && workspaceRole.startsWith("pt")) {
     console.log("ROLE ROUTE", { wmData: workspaceMember.data, clientData: null });
     return "pt";
   }
@@ -68,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<Error | null>(null);
   const [role, setRole] = useState<AppRole>("none");
+  const didRouteRef = useRef(false);
+  const lastRoutedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -97,11 +110,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setSession(data.session ?? null);
-        if (data.session?.user?.id) {
-          const nextRole = await resolveRole(data.session.user.id);
-          if (alive) setRole(nextRole);
+        const userId = data.session?.user?.id ?? null;
+        if (userId && lastRoutedUserIdRef.current !== userId) {
+          lastRoutedUserIdRef.current = userId;
+          didRouteRef.current = false;
+        }
+        if (didRouteRef.current) return;
+        if (userId) {
+          const nextRole = await resolveRole(userId);
+          if (alive) {
+            setRole(nextRole);
+            didRouteRef.current = true;
+          }
         } else {
           setRole("none");
+          didRouteRef.current = false;
+          lastRoutedUserIdRef.current = null;
         }
       } catch (error) {
         if (!alive) return;
@@ -122,11 +146,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
         setSession(newSession);
         try {
-          if (newSession?.user?.id) {
-            const nextRole = await resolveRole(newSession.user.id);
-            if (alive) setRole(nextRole);
+          const userId = newSession?.user?.id ?? null;
+          if (userId && lastRoutedUserIdRef.current !== userId) {
+            lastRoutedUserIdRef.current = userId;
+            didRouteRef.current = false;
+          }
+          if (didRouteRef.current) return;
+          if (userId) {
+            const nextRole = await resolveRole(userId);
+            if (alive) {
+              setRole(nextRole);
+              didRouteRef.current = true;
+            }
           } else {
             setRole("none");
+            didRouteRef.current = false;
+            lastRoutedUserIdRef.current = null;
           }
         } catch (error) {
           console.error("Failed to resolve role", error);

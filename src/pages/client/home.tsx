@@ -48,8 +48,8 @@ const writeChecklist = (dateKey: string, state: ChecklistState) => {
   window.localStorage.setItem(`coachos_checklist_${dateKey}`, JSON.stringify(state));
 };
 
-const getStepsAdherencePercent = (today: Date, days = 7) => {
-  let completed = 0;
+const getStepsAdherenceStats = (today: Date, days = 7) => {
+  let checked = 0;
   let total = 0;
 
   for (let i = 0; i < days; i += 1) {
@@ -57,11 +57,12 @@ const getStepsAdherencePercent = (today: Date, days = 7) => {
     date.setDate(date.getDate() - i);
     const key = formatDateKey(date);
     const state = readChecklist(key);
-    if (state.steps) completed += 1;
+    if (state.steps) checked += 1;
     total += 1;
   }
 
-  return total === 0 ? 0 : Math.round((completed / total) * 100);
+  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+  return { checked, total, percent };
 };
 
 const getConsistencyStreak = (today: Date, maxDays = 30) => {
@@ -86,6 +87,11 @@ export function ClientHomePage() {
   const weekStart = useMemo(() => {
     const date = new Date(today);
     date.setDate(date.getDate() - 6);
+    return formatDateKey(date);
+  }, [today]);
+  const weekEnd = useMemo(() => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + 6);
     return formatDateKey(date);
   }, [today]);
 
@@ -123,7 +129,7 @@ export function ClientHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates(id, name, workout_type, description)"
+          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type, description)"
         )
         .eq("client_id", clientId)
         .eq("scheduled_date", todayKey)
@@ -150,6 +156,26 @@ export function ClientHomePage() {
     },
   });
 
+  const weeklyPlanQuery = useQuery({
+    queryKey: ["assigned-workouts-week-plan", clientId, todayKey, weekEnd],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workouts")
+        .select(
+          "id, scheduled_date, status, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type, description)"
+        )
+        .eq("client_id", clientId)
+        .gte("scheduled_date", todayKey)
+        .lte("scheduled_date", weekEnd)
+        .order("scheduled_date", { ascending: true });
+      if (error) throw error;
+      const weeklyAssignments = data ?? [];
+      console.log("[WEEKLY_ASSIGNMENTS_ROW0]", weeklyAssignments?.[0]);
+      return weeklyAssignments;
+    },
+  });
+
   const targetsQuery = useQuery({
     queryKey: ["client-targets", clientId],
     enabled: !!clientId,
@@ -170,16 +196,40 @@ export function ClientHomePage() {
     : todayWorkout?.status ?? null;
   const targets = targetsQuery.data ?? null;
   const workoutsWeek = workoutsWeekQuery.data ?? [];
+  const weeklyPlan = weeklyPlanQuery.data ?? [];
   const hasTargets = Boolean(targets);
+  const isDev = Boolean(import.meta.env?.DEV);
+
+  const getTemplateInfo = (row: unknown) => {
+    const tpl =
+      (row as { workout_template?: unknown })?.workout_template ??
+      null;
+
+    const workoutName =
+      tpl && typeof tpl === "object" && "name" in tpl
+        ? (tpl as { name?: string }).name ?? null
+        : null;
+
+    const workoutType =
+      tpl && typeof tpl === "object" && "workout_type" in tpl
+        ? (tpl as { workout_type?: string }).workout_type ?? null
+        : null;
+
+    const description =
+      tpl && typeof tpl === "object" && "description" in tpl
+        ? (tpl as { description?: string }).description ?? null
+        : null;
+
+    return { tpl, workoutName, workoutType, description };
+  };
+
+  const todayTemplateInfo = getTemplateInfo(todayWorkout);
 
   const checklistProgress = Math.round(
     (Object.values(checklist).filter(Boolean).length / checklistKeys.length) * 100
   );
 
-  const stepsAdherencePercent = useMemo(
-    () => getStepsAdherencePercent(today, 7),
-    [today, checklist]
-  );
+  const stepsAdherence = useMemo(() => getStepsAdherenceStats(today, 7), [today, checklist]);
   const consistencyStreak = useMemo(() => getConsistencyStreak(today, 30), [today, checklist]);
 
   const workoutsCompletedThisWeek = workoutsWeek.length;
@@ -225,8 +275,20 @@ export function ClientHomePage() {
     todayWorkoutQuery.error,
     targetsQuery.error,
     workoutsWeekQuery.error,
+    weeklyPlanQuery.error,
     actionError ? new Error(actionError) : null,
   ].filter(Boolean);
+
+  const weekRows = useMemo(() => {
+    const rows = Array.from({ length: 7 }).map((_, idx) => {
+      const date = new Date(today);
+      date.setDate(date.getDate() + idx);
+      const key = formatDateKey(date);
+      const match = weeklyPlan.find((item) => item.scheduled_date === key);
+      return { date, key, workout: match ?? null };
+    });
+    return rows;
+  }, [today, weeklyPlan]);
 
   useEffect(() => {
     if (todayWorkoutStatus === "completed" && !checklist.workout) {
@@ -237,15 +299,15 @@ export function ClientHomePage() {
   const missionCopy = useMemo(() => {
     if (!todayWorkout) return "Recovery day. Steps + nutrition still count.";
     if (todayWorkoutStatus === "completed") {
-      return "Workout done. Recovery + nutrition matter now.";
+      return "Workout done. Recovery and nutrition matter now.";
     }
     if (todayWorkoutStatus === "planned") {
-      return todayWorkout.workout_template?.description ?? "Control tempo, clean reps.";
+      return todayTemplateInfo.description ?? "Workout planned. Focus on quality reps.";
     }
     if (todayWorkoutStatus === "skipped") {
       return "Session skipped. Stay on track with steps + nutrition.";
     }
-    return "Control tempo, clean reps.";
+    return "Recovery day. Steps + nutrition still count.";
   }, [todayWorkout, todayWorkoutStatus]);
 
   const handleStartDefaultSession = async () => {
@@ -326,7 +388,9 @@ export function ClientHomePage() {
                             : "Workout planned"}
                       </p>
                       <p className="text-lg font-semibold">
-                        {todayWorkout.workout_template?.name ?? "Workout planned"}
+                        {todayWorkout?.workout_template?.name ??
+                          todayWorkout?.workout_template_name ??
+                          "Planned session"}
                       </p>
                     </div>
                     <Badge
@@ -341,8 +405,8 @@ export function ClientHomePage() {
                       {todayWorkoutStatus ?? "planned"}
                     </Badge>
                   </div>
-                  {todayWorkout.workout_template?.workout_type ? (
-                    <Badge variant="muted">{todayWorkout.workout_template.workout_type}</Badge>
+                  {todayTemplateInfo.workoutType ? (
+                    <Badge variant="muted">{todayTemplateInfo.workoutType}</Badge>
                   ) : null}
                   {todayWorkoutStatus === "completed" ? (
                     <Button
@@ -500,9 +564,16 @@ export function ClientHomePage() {
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">Steps adherence (7d)</p>
-                      <p className="text-sm font-semibold">{stepsAdherencePercent}%</p>
+                      <p className="text-sm font-semibold">
+                        {stepsAdherence.checked === 0 && stepsAdherence.total === 0
+                          ? "No history yet"
+                          : `${stepsAdherence.percent}%`}
+                      </p>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Momentum is built by small wins.
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
@@ -514,6 +585,84 @@ export function ClientHomePage() {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>This Week</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Next 7 days of training and recovery.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {weeklyPlanQuery.isLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 7 }).map((_, index) => (
+                    <Skeleton key={index} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {weekRows.map((row) => {
+                    const isToday = row.key === todayKey;
+                    const workout = row.workout;
+                    const workoutTemplateInfo = getTemplateInfo(workout);
+                    const label = workout?.id
+                      ? workout?.workout_template?.name ??
+                        (workout as { workout_template_name?: string })?.workout_template_name ??
+                        "Planned session"
+                      : "Recovery / Mobility";
+                    return (
+                      <button
+                        key={row.key}
+                        type="button"
+                        className={
+                          isToday
+                            ? "flex w-full items-center justify-between rounded-lg border border-border bg-muted/40 px-3 py-2 text-left"
+                            : "flex w-full items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-left"
+                        }
+                        onClick={() => {
+                          if (workout?.id) navigate(`/app/workouts/${workout.id}`);
+                        }}
+                        disabled={!workout?.id}
+                      >
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            {row.date.toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </p>
+                          <p className="text-sm font-semibold">{label}</p>
+                        </div>
+                        {workout?.id ? (
+                          <Badge
+                            variant={
+                              workout.status === "completed"
+                                ? "success"
+                                : workout.status === "skipped"
+                                ? "danger"
+                                : "muted"
+                            }
+                          >
+                            {workout.status ?? "planned"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Recovery</Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {weeklyPlan.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                      No sessions scheduled yet - focus on steps, hydration, and sleep. Your
+                      coach will program your week.
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Today&apos;s Checklist</CardTitle>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
@@ -22,6 +22,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [roleError, setRoleError] = useState<string | null>(null);
+  const didRouteRef = useRef(false);
+  const lastRoutedUserIdRef = useRef<string | null>(null);
 
   const resolveRole = async (userId: string) => {
     setRoleError(null);
@@ -63,11 +65,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resolveAndRedirect = async (nextSession: Session | null) => {
+    const userId = nextSession?.user?.id ?? null;
+    if (userId !== lastRoutedUserIdRef.current) {
+      lastRoutedUserIdRef.current = userId;
+      didRouteRef.current = false;
+    }
+    if (didRouteRef.current) return;
+
     if (!nextSession?.user) {
       setRole(null);
       if (location.pathname !== "/login" && !location.pathname.startsWith("/join")) {
         navigate("/login", { replace: true });
       }
+      didRouteRef.current = true;
       return;
     }
 
@@ -77,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!location.pathname.startsWith("/pt")) {
         navigate("/pt/dashboard", { replace: true });
       }
+      didRouteRef.current = true;
       return;
     }
 
@@ -84,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!location.pathname.startsWith("/app")) {
         navigate("/app/home", { replace: true });
       }
+      didRouteRef.current = true;
       return;
     }
 
@@ -95,12 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (location.pathname !== "/no-workspace") {
       navigate("/no-workspace", { replace: true });
     }
+    didRouteRef.current = true;
   };
 
   useEffect(() => {
     let mounted = true;
 
     const bootstrap = async () => {
+      if (didRouteRef.current) return;
       setIsLoading(true);
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
