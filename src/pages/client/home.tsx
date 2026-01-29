@@ -48,6 +48,29 @@ const writeChecklist = (dateKey: string, state: ChecklistState) => {
   window.localStorage.setItem(`coachos_checklist_${dateKey}`, JSON.stringify(state));
 };
 
+type DayStatus = { completed: boolean; timestamp: string };
+
+const readDayStatus = (dateKey: string): DayStatus | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`coachos_day_status_${dateKey}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<DayStatus>;
+    if (typeof parsed.completed !== "boolean" || typeof parsed.timestamp !== "string") {
+      return null;
+    }
+    return { completed: parsed.completed, timestamp: parsed.timestamp };
+  } catch (error) {
+    console.error("Failed to read day status", error);
+    return null;
+  }
+};
+
+const writeDayStatus = (dateKey: string, status: DayStatus) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(`coachos_day_status_${dateKey}`, JSON.stringify(status));
+};
+
 const getStepsAdherenceStats = (today: Date, days = 7) => {
   let checked = 0;
   let total = 0;
@@ -71,8 +94,8 @@ const getConsistencyStreak = (today: Date, maxDays = 30) => {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const key = formatDateKey(date);
-    const state = readChecklist(key);
-    const isPerfectDay = checklistKeys.every((keyName) => state[keyName]);
+    const status = readDayStatus(key);
+    const isPerfectDay = status?.completed === true;
     if (!isPerfectDay) break;
     streak += 1;
   }
@@ -96,10 +119,12 @@ export function ClientHomePage() {
   }, [today]);
 
   const [checklist, setChecklist] = useState<ChecklistState>(() => readChecklist(todayKey));
+  const [dayStatus, setDayStatus] = useState<DayStatus | null>(() => readDayStatus(todayKey));
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     setChecklist(readChecklist(todayKey));
+    setDayStatus(readDayStatus(todayKey));
   }, [todayKey]);
 
   useEffect(() => {
@@ -198,7 +223,6 @@ export function ClientHomePage() {
   const workoutsWeek = workoutsWeekQuery.data ?? [];
   const weeklyPlan = weeklyPlanQuery.data ?? [];
   const hasTargets = Boolean(targets);
-  const isDev = Boolean(import.meta.env?.DEV);
 
   const getTemplateInfo = (row: unknown) => {
     const tpl =
@@ -228,9 +252,20 @@ export function ClientHomePage() {
   const checklistProgress = Math.round(
     (Object.values(checklist).filter(Boolean).length / checklistKeys.length) * 100
   );
+  const isPerfectDay = checklistProgress === 100;
+
+  useEffect(() => {
+    if (!isPerfectDay || dayStatus?.completed) return;
+    const nextStatus = { completed: true, timestamp: new Date().toISOString() };
+    writeDayStatus(todayKey, nextStatus);
+    setDayStatus(nextStatus);
+  }, [dayStatus?.completed, isPerfectDay, todayKey]);
 
   const stepsAdherence = useMemo(() => getStepsAdherenceStats(today, 7), [today, checklist]);
-  const consistencyStreak = useMemo(() => getConsistencyStreak(today, 30), [today, checklist]);
+  const consistencyStreak = useMemo(
+    () => getConsistencyStreak(today, 30),
+    [today, dayStatus, checklist]
+  );
 
   const workoutsCompletedThisWeek = workoutsWeek.length;
 
@@ -308,7 +343,7 @@ export function ClientHomePage() {
       return "Session skipped. Stay on track with steps + nutrition.";
     }
     return "Recovery day. Steps + nutrition still count.";
-  }, [todayWorkout, todayWorkoutStatus]);
+  }, [todayWorkout, todayWorkoutStatus, todayTemplateInfo.description]);
 
   const handleStartDefaultSession = async () => {
     if (!clientId) return;
@@ -548,18 +583,20 @@ export function ClientHomePage() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">
+                        Day streak
+                      </p>
+                      {consistencyStreak > 0 ? (
+                        <p className="text-2xl font-semibold">{consistencyStreak}</p>
+                      ) : (
+                        <p className="text-sm font-semibold">Start your streak today.</p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">
                         Workouts completed this week
                       </p>
                       <p className="text-sm font-semibold">
                         {workoutsCompletedThisWeek}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Consistency streak</p>
-                      <p className="text-sm font-semibold">
-                        {consistencyStreak > 0
-                          ? `${consistencyStreak} day${consistencyStreak === 1 ? "" : "s"}`
-                          : "Start your streak today."}
                       </p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
@@ -604,7 +641,6 @@ export function ClientHomePage() {
                   {weekRows.map((row) => {
                     const isToday = row.key === todayKey;
                     const workout = row.workout;
-                    const workoutTemplateInfo = getTemplateInfo(workout);
                     const label = workout?.id
                       ? workout?.workout_template?.name ??
                         (workout as { workout_template_name?: string })?.workout_template_name ??
@@ -668,11 +704,6 @@ export function ClientHomePage() {
               <CardTitle>Today&apos;s Checklist</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {checklistProgress === 100 ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-                  {"\u2705"} Perfect day logged
-                </div>
-              ) : null}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Progress</span>
@@ -706,6 +737,11 @@ export function ClientHomePage() {
                   </label>
                 ))}
               </div>
+              {dayStatus?.completed ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                  {"\u2705"} Perfect day logged
+                </div>
+              ) : null}
               <Button variant="secondary" className="w-full" onClick={() => setChecklist(emptyChecklist)}>
                 Reset today
               </Button>
