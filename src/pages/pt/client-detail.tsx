@@ -37,6 +37,37 @@ const formatListValue = (value: string[] | string | null | undefined, fallback: 
   return value;
 };
 
+const trainingTypeOptions = [
+  { value: "online", label: "Online" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "in_person", label: "In person" },
+];
+
+type PtClientProfile = {
+  id: string;
+  workspace_id: string | null;
+  display_name: string | null;
+  goal: string | null;
+  status: string | null;
+  injuries: string | null;
+  limitations: string | null;
+  height_cm: number | null;
+  current_weight: number | null;
+  days_per_week: number | null;
+  dob: string | null;
+  training_type: string | null;
+  timezone: string | null;
+  phone: string | null;
+  email: string | null;
+  location: string | null;
+  unit_preference: string | null;
+  gender: string | null;
+  gym_name: string | null;
+  tags: string[] | string | null;
+  photo_url: string | null;
+  updated_at: string | null;
+};
+
 export function PtClientDetailPage() {
   const { user } = useAuth();
   const { clientId } = useParams();
@@ -66,6 +97,10 @@ export function PtClientDetailPage() {
   const [editDate, setEditDate] = useState(() => formatDateKey(new Date()));
   const [editTemplateId, setEditTemplateId] = useState("");
   const [editStatus, setEditStatus] = useState<"planned" | "completed" | "skipped">("planned");
+  const [clientProfile, setClientProfile] = useState<PtClientProfile | null>(null);
+  const [adminTrainingType, setAdminTrainingType] = useState("");
+  const [adminTags, setAdminTags] = useState("");
+  const [adminStatus, setAdminStatus] = useState<"idle" | "saving">("idle");
 
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -92,7 +127,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, display_name, goal, status, injuries, equipment, height_cm, dob, training_type, timezone, limitations, phone, email, location, unit_preference, gender, gym_name, tags, photo_url, updated_at"
+          "id, workspace_id, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at"
         )
         .eq("id", clientId ?? "")
         .eq("workspace_id", workspaceQuery.data ?? "")
@@ -102,6 +137,14 @@ export function PtClientDetailPage() {
       return data;
     },
   });
+
+  useEffect(() => {
+    if (!clientQuery.data) return;
+    const data = clientQuery.data as PtClientProfile;
+    setClientProfile(data);
+    setAdminTrainingType(data.training_type ?? "");
+    setAdminTags(formatListValue(data.tags ?? null, ""));
+  }, [clientQuery.data]);
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
@@ -268,19 +311,24 @@ export function PtClientDetailPage() {
     });
   };
 
-  const clientSnapshot = clientQuery.data;
+  const clientSnapshot = clientProfile ?? (clientQuery.data as PtClientProfile | null);
   const missingFields = useMemo(() => {
     if (!clientSnapshot) return [];
     const missing: string[] = [];
-    if (!clientSnapshot.height_cm) missing.push("Height");
+    const hasPhotoOrName = Boolean(clientSnapshot.photo_url || clientSnapshot.display_name);
+    if (!hasPhotoOrName) missing.push("Photo/name");
+    if (!clientSnapshot.phone) missing.push("Phone");
+    if (!clientSnapshot.location) missing.push("Country");
+    if (!clientSnapshot.unit_preference) missing.push("Units");
     if (!clientSnapshot.dob) missing.push("Birthdate");
+    if (!clientSnapshot.gender) missing.push("Gender");
+    if (!clientSnapshot.gym_name) missing.push("Gym");
+    if (!clientSnapshot.days_per_week) missing.push("Days/week");
     if (!clientSnapshot.goal) missing.push("Goal");
     if (!clientSnapshot.injuries) missing.push("Injuries");
-    const hasEquipment = Array.isArray(clientSnapshot.equipment)
-      ? clientSnapshot.equipment.length > 0
-      : Boolean(clientSnapshot.equipment);
-    if (!hasEquipment) missing.push("Equipment");
-    if (!clientSnapshot.training_type) missing.push("Training type");
+    if (!clientSnapshot.limitations) missing.push("Limitations");
+    if (!clientSnapshot.height_cm) missing.push("Height");
+    if (!clientSnapshot.current_weight) missing.push("Weight");
     if (!clientSnapshot.timezone) missing.push("Timezone");
     return missing;
   }, [clientSnapshot]);
@@ -291,6 +339,39 @@ export function PtClientDetailPage() {
     navigate(`/pt/clients/${clientId}?${params.toString()}`);
   };
 
+  const parseTags = (value: string) =>
+    value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+  const updateAdminFields = async (nextTrainingType: string, nextTags: string) => {
+    if (!clientSnapshot) return;
+    setAdminStatus("saving");
+    const parsedTags = parseTags(nextTags);
+    const payload = {
+      p_client_id: clientSnapshot.id,
+      p_training_type: nextTrainingType || null,
+      p_tags: parsedTags.length > 0 ? parsedTags : null,
+    };
+    const { data, error } = await supabase.rpc("pt_update_client_admin_fields", payload);
+    if (error) {
+      setAssignStatus("error");
+      setAssignMessage(getErrorMessage(error));
+      setAdminStatus("idle");
+      return;
+    }
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (updated) {
+      setClientProfile(updated as PtClientProfile);
+      queryClient.setQueryData(
+        ["pt-client", clientId, workspaceQuery.data],
+        updated
+      );
+    }
+    setAdminStatus("idle");
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -299,15 +380,15 @@ export function PtClientDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">
-            {clientQuery.data?.display_name ?? "Client profile"}
+            {clientSnapshot?.display_name ?? "Client profile"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {clientQuery.data?.goal ?? "Training plan overview"}
+            {clientSnapshot?.goal ?? "Training plan overview"}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={clientQuery.data?.status === "inactive" ? "muted" : "success"}>
-            {clientQuery.data?.status ?? "Active"}
+          <Badge variant={clientSnapshot?.status === "inactive" ? "muted" : "success"}>
+            {clientSnapshot?.status ?? "Active"}
           </Badge>
           <Button variant="secondary">Message</Button>
         </div>
@@ -371,10 +452,13 @@ export function PtClientDetailPage() {
                     Identity & Preferences
                   </p>
                   <div className="text-sm">
-                    <div>{clientSnapshot.email ?? "Email needed"}</div>
+                    <div>{clientSnapshot.display_name ?? "Name needed"}</div>
                     <div>{clientSnapshot.phone ?? "Phone needed"}</div>
-                    <div>{clientSnapshot.location ?? "Location needed"}</div>
+                    <div>{clientSnapshot.location ?? "Country needed"}</div>
                     <div>{clientSnapshot.timezone ?? "Timezone needed"}</div>
+                    <div>{clientSnapshot.unit_preference ?? "Units needed"}</div>
+                    <div>{clientSnapshot.dob ?? "Birthdate needed"}</div>
+                    <div>{clientSnapshot.gender ?? "Gender needed"}</div>
                   </div>
                 </div>
                 <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
@@ -384,7 +468,12 @@ export function PtClientDetailPage() {
                   <div className="text-sm">
                     <div>{clientSnapshot.training_type ?? "Training type needed"}</div>
                     <div>{clientSnapshot.gym_name ?? "Gym name needed"}</div>
-                    <div>{formatListValue(clientSnapshot.equipment ?? null, "Equipment needed")}</div>
+                    <div>
+                      {typeof clientSnapshot.days_per_week === "number"
+                        ? `${clientSnapshot.days_per_week} days/week`
+                        : "Days per week needed"}
+                    </div>
+                    <div>{formatListValue(clientSnapshot.tags ?? null, "Tags optional")}</div>
                   </div>
                 </div>
                 <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
@@ -395,7 +484,58 @@ export function PtClientDetailPage() {
                     <div>{clientSnapshot.goal ?? "Goal needed"}</div>
                     <div>{clientSnapshot.injuries ?? "Injuries needed"}</div>
                     <div>{clientSnapshot.limitations ?? "Limitations needed"}</div>
+                    <div>
+                      {typeof clientSnapshot.height_cm === "number"
+                        ? `${clientSnapshot.height_cm} cm`
+                        : "Height needed"}
+                    </div>
+                    <div>
+                      {typeof clientSnapshot.current_weight === "number"
+                        ? `${clientSnapshot.current_weight}`
+                        : "Weight needed"}
+                    </div>
                   </div>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase text-muted-foreground">
+                    Training type (PT-only)
+                  </label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={adminTrainingType}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setAdminTrainingType(value);
+                      updateAdminFields(value, adminTags);
+                    }}
+                  >
+                    <option value="">Select training type</option>
+                    {trainingTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase text-muted-foreground">
+                    Tags (optional)
+                  </label>
+                  <Input
+                    value={adminTags}
+                    onChange={(event) => setAdminTags(event.target.value)}
+                    placeholder="Strength, Mobility"
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={adminStatus === "saving"}
+                    onClick={() => updateAdminFields(adminTrainingType, adminTags)}
+                  >
+                    {adminStatus === "saving" ? "Saving..." : "Save tags"}
+                  </Button>
                 </div>
               </div>
             </>

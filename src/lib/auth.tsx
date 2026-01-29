@@ -57,19 +57,37 @@ async function resolveRole(userId: string): Promise<AppRole> {
     return "pt";
   }
 
-  const clientMember = await withTimeout(
-    supabase
-      .from("clients")
-      .select("id, workspace_id")
-      .eq("user_id", userId)
-      .maybeSingle(),
-    5000,
-    "Client lookup timed out (5s)."
-  );
+  let clientMember: { data: unknown; error: unknown } | null = null;
+  const clientQuery = `clients.select("id, workspace_id").eq("user_id", "${userId}")`;
 
-  if (clientMember.error) throw clientMember.error;
+  try {
+    clientMember = await withTimeout(
+      supabase
+        .from("clients")
+        .select("id, workspace_id")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      5000,
+      "Client lookup timed out (5s)."
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("timed out")) {
+      console.warn("Client lookup timed out", { userId, query: clientQuery });
+      clientMember = { data: null, error: null };
+    } else {
+      console.warn("Client lookup failed", { userId, query: clientQuery, error });
+      clientMember = { data: null, error: null };
+    }
+  }
+
+  if (clientMember?.error) {
+    console.warn("Client lookup error", { userId, query: clientQuery, error: clientMember.error });
+    return "none";
+  }
   console.log("ROLE ROUTE", { wmData: workspaceMember.data, clientData: clientMember.data });
-  if (clientMember.data) return "client";
+  if (clientMember?.data) return "client";
+
+  console.warn("Client record not found or not accessible", { userId, query: clientQuery });
 
   return "none";
 }

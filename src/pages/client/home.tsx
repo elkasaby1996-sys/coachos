@@ -137,9 +137,11 @@ export function ClientHomePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, workspace_id, display_name, goal, tags, created_at")
+        .select(
+          "id, workspace_id, display_name, goal, tags, created_at, phone, location, timezone, unit_preference, dob, gender, gym_name, days_per_week, injuries, limitations, height_cm, current_weight, photo_url"
+        )
         .eq("user_id", session?.user?.id ?? "")
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -305,6 +307,50 @@ export function ClientHomePage() {
     return "Coach will review your progress tomorrow.";
   }, [coachSyncAt, today]);
 
+  const profileCompletion = useMemo(() => {
+    if (!clientQuery.data) return null;
+    const client = clientQuery.data as {
+      display_name?: string | null;
+      photo_url?: string | null;
+      phone?: string | null;
+      location?: string | null;
+      unit_preference?: string | null;
+      dob?: string | null;
+      gender?: string | null;
+      gym_name?: string | null;
+      days_per_week?: number | null;
+      goal?: string | null;
+      injuries?: string | null;
+      limitations?: string | null;
+      height_cm?: number | null;
+      current_weight?: number | null;
+      timezone?: string | null;
+    };
+    const hasValue = (value: unknown) => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === "number") return !Number.isNaN(value);
+      return String(value).trim().length > 0;
+    };
+    const items = [
+      { label: "photo_or_name", ok: hasValue(client.photo_url) || hasValue(client.display_name) },
+      { label: "phone", ok: hasValue(client.phone) },
+      { label: "location", ok: hasValue(client.location) },
+      { label: "unit_preference", ok: hasValue(client.unit_preference) },
+      { label: "dob", ok: hasValue(client.dob) },
+      { label: "gender", ok: hasValue(client.gender) },
+      { label: "gym_name", ok: hasValue(client.gym_name) },
+      { label: "days_per_week", ok: hasValue(client.days_per_week) },
+      { label: "goal", ok: hasValue(client.goal) },
+      { label: "injuries", ok: hasValue(client.injuries) },
+      { label: "limitations", ok: hasValue(client.limitations) },
+      { label: "height_cm", ok: hasValue(client.height_cm) },
+      { label: "current_weight", ok: hasValue(client.current_weight) },
+      { label: "timezone", ok: hasValue(client.timezone) },
+    ];
+    const completed = items.filter((item) => item.ok).length;
+    return { completed, total: items.length };
+  }, [clientQuery.data]);
+
   const errors = [
     clientQuery.error,
     todayWorkoutQuery.error,
@@ -396,6 +442,23 @@ export function ClientHomePage() {
             </Alert>
           ))}
         </div>
+      ) : null}
+
+      {profileCompletion && profileCompletion.completed < profileCompletion.total ? (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Complete your profile</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              This helps your coach tailor your plan.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-muted-foreground">
+              {profileCompletion.completed}/{profileCompletion.total} fields complete
+            </div>
+            <Button onClick={() => navigate("/app/profile")}>Complete profile</Button>
+          </CardContent>
+        </Card>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
