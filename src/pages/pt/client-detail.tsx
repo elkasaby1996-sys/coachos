@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Input } from "../../components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,16 @@ import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 import { cn } from "../../lib/utils";
 
-const tabs = ["overview", "plan", "logs", "progress", "checkins", "messages", "notes"] as const;
+const tabs = [
+  "overview",
+  "plan",
+  "logs",
+  "progress",
+  "checkins",
+  "messages",
+  "notes",
+  "baseline",
+] as const;
 
 const formatDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -68,6 +78,37 @@ type PtClientProfile = {
   updated_at: string | null;
 };
 
+type BaselineEntry = {
+  id: string;
+  submitted_at: string | null;
+  coach_notes: string | null;
+};
+
+type BaselineMetrics = {
+  weight_kg: number | null;
+  height_cm: number | null;
+  body_fat_pct: number | null;
+  waist_cm: number | null;
+  chest_cm: number | null;
+  hips_cm: number | null;
+  thigh_cm: number | null;
+  arm_cm: number | null;
+  resting_hr: number | null;
+  vo2max: number | null;
+};
+
+type BaselineMarkerRow = {
+  value: string | number | null;
+  template: { name: string | null; unit: string | null } | null;
+};
+
+type BaselinePhotoRow = {
+  photo_type: string | null;
+  photo_url: string | null;
+};
+
+const baselinePhotoTypes = ["front", "side", "back"] as const;
+
 export function PtClientDetailPage() {
   const { user } = useAuth();
   const { clientId } = useParams();
@@ -101,6 +142,11 @@ export function PtClientDetailPage() {
   const [adminTrainingType, setAdminTrainingType] = useState("");
   const [adminTags, setAdminTags] = useState("");
   const [adminStatus, setAdminStatus] = useState<"idle" | "saving">("idle");
+  const [baselineNotes, setBaselineNotes] = useState("");
+  const [baselineNotesStatus, setBaselineNotesStatus] = useState<"idle" | "saving" | "error">(
+    "idle"
+  );
+  const [baselineNotesMessage, setBaselineNotesMessage] = useState<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -175,6 +221,87 @@ export function PtClientDetailPage() {
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const baselineEntryQuery = useQuery({
+    queryKey: ["pt-client-baseline-entry", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_entries")
+        .select("id, submitted_at, coach_notes")
+        .eq("client_id", clientId ?? "")
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as BaselineEntry | null;
+    },
+  });
+
+  const baselineId = baselineEntryQuery.data?.id ?? null;
+
+  useEffect(() => {
+    if (!baselineEntryQuery.data) {
+      setBaselineNotes("");
+      return;
+    }
+    setBaselineNotes(baselineEntryQuery.data.coach_notes ?? "");
+  }, [baselineEntryQuery.data]);
+
+  const baselineMetricsQuery = useQuery({
+    queryKey: ["pt-client-baseline-metrics", baselineId],
+    enabled: !!baselineId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_metrics")
+        .select(
+          "weight_kg, height_cm, body_fat_pct, waist_cm, chest_cm, hips_cm, thigh_cm, arm_cm, resting_hr, vo2max"
+        )
+        .eq("baseline_id", baselineId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as BaselineMetrics | null;
+    },
+  });
+
+  const baselineMarkersQuery = useQuery({
+    queryKey: ["pt-client-baseline-markers", baselineId],
+    enabled: !!baselineId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_marker_values")
+        .select("value, template:baseline_marker_templates(name, unit)")
+        .eq("baseline_id", baselineId ?? "");
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        value: string | number | null;
+        template:
+          | { name: string | null; unit: string | null }
+          | { name: string | null; unit: string | null }[]
+          | null;
+      }>;
+      return rows.map((row) => ({
+        value: row.value ?? null,
+        template: Array.isArray(row.template)
+          ? row.template[0] ?? null
+          : row.template ?? null,
+      })) as BaselineMarkerRow[];
+    },
+  });
+
+  const baselinePhotosQuery = useQuery({
+    queryKey: ["pt-client-baseline-photos", baselineId],
+    enabled: !!baselineId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_photos")
+        .select("photo_type, photo_url")
+        .eq("baseline_id", baselineId ?? "");
+      if (error) throw error;
+      return (data ?? []) as BaselinePhotoRow[];
     },
   });
 
@@ -333,6 +460,20 @@ export function PtClientDetailPage() {
     return missing;
   }, [clientSnapshot]);
 
+  const baselinePhotoMap = useMemo(() => {
+    const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
+      front: null,
+      side: null,
+      back: null,
+    };
+    baselinePhotosQuery.data?.forEach((row) => {
+      const type = row.photo_type as (typeof baselinePhotoTypes)[number] | null;
+      if (!type || !baselinePhotoTypes.includes(type)) return;
+      map[type] = row.photo_url ?? null;
+    });
+    return map;
+  }, [baselinePhotosQuery.data]);
+
   const handleQuickAction = (message: string) => {
     if (!clientId) return;
     const params = new URLSearchParams({ tab: "messages", draft: message });
@@ -370,6 +511,24 @@ export function PtClientDetailPage() {
       );
     }
     setAdminStatus("idle");
+  };
+
+  const handleBaselineNotesSave = async () => {
+    if (!baselineId) return;
+    setBaselineNotesStatus("saving");
+    setBaselineNotesMessage(null);
+    const { error } = await supabase
+      .from("baseline_entries")
+      .update({ coach_notes: baselineNotes.trim() || null })
+      .eq("id", baselineId);
+    if (error) {
+      setBaselineNotesStatus("error");
+      setBaselineNotesMessage(getErrorMessage(error));
+      return;
+    }
+    setBaselineNotesStatus("idle");
+    setBaselineNotesMessage("Baseline notes saved.");
+    await queryClient.invalidateQueries({ queryKey: ["pt-client-baseline-entry", clientId] });
   };
 
   return (
@@ -571,6 +730,8 @@ export function PtClientDetailPage() {
           <p className="text-sm text-muted-foreground">
             {active === "overview"
               ? "Latest entries, streaks, and momentum."
+              : active === "baseline"
+              ? "Latest submitted baseline details."
               : "Section details coming soon."}
           </p>
         </CardHeader>
@@ -592,6 +753,147 @@ export function PtClientDetailPage() {
                 <Badge variant="success">Completed</Badge>
               </div>
             </>
+          ) : active === "baseline" ? (
+            baselineEntryQuery.isLoading ||
+            baselineMetricsQuery.isLoading ||
+            baselineMarkersQuery.isLoading ||
+            baselinePhotosQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : baselineEntryQuery.data ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Submitted at</p>
+                    <p className="text-sm font-semibold">
+                      {baselineEntryQuery.data.submitted_at
+                        ? new Date(baselineEntryQuery.data.submitted_at).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })
+                        : "Submitted"}
+                    </p>
+                  </div>
+                  <Badge variant="success">Submitted</Badge>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    { label: "Weight", value: baselineMetricsQuery.data?.weight_kg, unit: "kg" },
+                    { label: "Height", value: baselineMetricsQuery.data?.height_cm, unit: "cm" },
+                    { label: "Body fat", value: baselineMetricsQuery.data?.body_fat_pct, unit: "%" },
+                    { label: "Waist", value: baselineMetricsQuery.data?.waist_cm, unit: "cm" },
+                    { label: "Chest", value: baselineMetricsQuery.data?.chest_cm, unit: "cm" },
+                    { label: "Hips", value: baselineMetricsQuery.data?.hips_cm, unit: "cm" },
+                    { label: "Thigh", value: baselineMetricsQuery.data?.thigh_cm, unit: "cm" },
+                    { label: "Arm", value: baselineMetricsQuery.data?.arm_cm, unit: "cm" },
+                    {
+                      label: "Resting HR",
+                      value: baselineMetricsQuery.data?.resting_hr,
+                      unit: "bpm",
+                    },
+                    {
+                      label: "VO2 max",
+                      value: baselineMetricsQuery.data?.vo2max,
+                      unit: "ml/kg/min",
+                    },
+                  ].map((metric) => (
+                    <div key={metric.label} className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                      <p className="text-sm font-semibold">
+                        {typeof metric.value === "number"
+                          ? `${metric.value} ${metric.unit}`
+                          : "Not provided"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Performance markers
+                  </p>
+                  {baselineMarkersQuery.data && baselineMarkersQuery.data.length > 0 ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {baselineMarkersQuery.data.map((marker, index) => (
+                        <div
+                          key={`${marker.template?.name ?? "marker"}-${index}`}
+                          className="rounded-lg border border-border p-3 text-sm"
+                        >
+                          <p className="text-xs text-muted-foreground">
+                            {marker.template?.name ?? "Marker"}
+                          </p>
+                          <p className="font-semibold">
+                            {marker.value ?? "Not provided"}
+                            {marker.template?.unit ? ` ${marker.template.unit}` : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No markers submitted.</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Photos</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {baselinePhotoTypes.map((type) => (
+                      <div key={type} className="space-y-2">
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">
+                          {type}
+                        </p>
+                        <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
+                          {baselinePhotoMap[type] ? (
+                            <img
+                              src={baselinePhotoMap[type] ?? ""}
+                              alt={`${type} baseline`}
+                              className="h-full w-full rounded-md object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Missing</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase text-muted-foreground">
+                    Coach notes
+                  </label>
+                  <textarea
+                    className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={baselineNotes}
+                    onChange={(event) => setBaselineNotes(event.target.value)}
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={baselineNotesStatus === "saving"}
+                      onClick={handleBaselineNotesSave}
+                    >
+                      {baselineNotesStatus === "saving" ? "Saving..." : "Save notes"}
+                    </Button>
+                    {baselineNotesMessage ? (
+                      <span className="text-xs text-muted-foreground">
+                        {baselineNotesMessage}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No submitted baseline yet.</p>
+            )
           ) : (
             <p className="text-sm text-muted-foreground">No data yet for this tab.</p>
           )}
@@ -601,6 +903,10 @@ export function PtClientDetailPage() {
       {(workspaceQuery.error ||
         templatesQuery.error ||
         upcomingQuery.error ||
+        baselineEntryQuery.error ||
+        baselineMetricsQuery.error ||
+        baselineMarkersQuery.error ||
+        baselinePhotosQuery.error ||
         clientQuery.error ||
         assignStatus === "error") && (
         <Alert className="border-destructive/30">
@@ -612,7 +918,11 @@ export function PtClientDetailPage() {
                   workspaceQuery.error ||
                     templatesQuery.error ||
                     upcomingQuery.error ||
-                    clientQuery.error
+                    clientQuery.error ||
+                    baselineEntryQuery.error ||
+                    baselineMetricsQuery.error ||
+                    baselineMarkersQuery.error ||
+                    baselinePhotosQuery.error
                 )}
           </AlertDescription>
         </Alert>

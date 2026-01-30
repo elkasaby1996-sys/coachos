@@ -149,6 +149,23 @@ export function ClientHomePage() {
 
   const clientId = clientQuery.data?.id ?? null;
 
+  const baselineSubmittedQuery = useQuery({
+    queryKey: ["client-baseline-submitted-latest", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_entries")
+        .select("id, submitted_at")
+        .eq("client_id", clientId ?? "")
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+
   const todayWorkoutQuery = useQuery({
     queryKey: ["assigned-workout-today", clientId, todayKey],
     enabled: !!clientId,
@@ -357,6 +374,7 @@ export function ClientHomePage() {
     targetsQuery.error,
     workoutsWeekQuery.error,
     weeklyPlanQuery.error,
+    baselineSubmittedQuery.error,
     actionError ? new Error(actionError) : null,
   ].filter(Boolean);
 
@@ -432,6 +450,23 @@ export function ClientHomePage() {
           {coachSyncAt ? "Coach synced" : "Waiting on coach"}
         </Badge>
       </section>
+
+      {!baselineSubmittedQuery.isLoading && !baselineSubmittedQuery.data ? (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Complete your baseline</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              This helps your coach personalize your plan.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Three quick steps: metrics, performance markers, and photos.
+            </p>
+            <Button onClick={() => navigate("/app/baseline")}>Start baseline</Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {errors.length > 0 ? (
         <div className="space-y-2">
