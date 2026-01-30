@@ -53,12 +53,13 @@ type MarkerTemplate = {
 
 type MarkerValueRow = {
   template_id: string | null;
-  value: string | number | null;
+  value_number: number | null;
+  value_text: string | null;
 };
 
 type BaselinePhotoRow = {
   photo_type: string | null;
-  photo_url: string | null;
+  url: string | null;
 };
 
 const photoTypes = ["front", "side", "back"] as const;
@@ -119,6 +120,12 @@ export function ClientBaselinePage() {
   const [metricsStatus, setMetricsStatus] = useState<"idle" | "saving" | "error">(
     "idle"
   );
+  const [metricsError, setMetricsError] = useState<{
+    code?: string | null;
+    message?: string | null;
+    details?: string | null;
+    hint?: string | null;
+  } | null>(null);
   const [markerStatus, setMarkerStatus] = useState<"idle" | "saving" | "error">(
     "idle"
   );
@@ -129,6 +136,10 @@ export function ClientBaselinePage() {
     "idle"
   );
   const [actionError, setActionError] = useState<string | null>(null);
+  const [lastSupabaseError, setLastSupabaseError] = useState<{
+    code?: string | null;
+    message?: string | null;
+  } | null>(null);
   const [lastUploadPath, setLastUploadPath] = useState<string | null>(null);
   const [markerValues, setMarkerValues] = useState<Record<string, string>>({});
   const [photoMap, setPhotoMap] = useState<Record<PhotoType, { url: string | null; error: string | null; uploading: boolean }>>({
@@ -258,7 +269,7 @@ export function ClientBaselinePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_values")
-        .select("template_id, value")
+        .select("template_id, value_number, value_text")
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as MarkerValueRow[];
@@ -271,7 +282,7 @@ export function ClientBaselinePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_photos")
-        .select("photo_type, photo_url")
+        .select("photo_type, url")
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as BaselinePhotoRow[];
@@ -310,8 +321,14 @@ export function ClientBaselinePage() {
     const initial: Record<string, string> = {};
     templates.forEach((template) => {
       const row = values.find((item) => item.template_id === template.id);
-      initial[template.id] =
-        row?.value !== null && row?.value !== undefined ? String(row.value) : "";
+      if (template.value_type === "number") {
+        initial[template.id] =
+          row?.value_number !== null && row?.value_number !== undefined
+            ? String(row.value_number)
+            : "";
+      } else {
+        initial[template.id] = row?.value_text ?? "";
+      }
     });
     setMarkerValues(initial);
     markerInitRef.current = true;
@@ -328,7 +345,7 @@ export function ClientBaselinePage() {
     photosQuery.data?.forEach((row) => {
       const type = row.photo_type as PhotoType | null;
       if (!type || !photoTypes.includes(type)) return;
-      next[type] = { url: row.photo_url ?? null, error: null, uploading: false };
+      next[type] = { url: row.url ?? null, error: null, uploading: false };
     });
     setPhotoMap(next);
     photoInitRef.current = true;
@@ -353,6 +370,8 @@ export function ClientBaselinePage() {
     if (!baselineId) return;
     setMetricsStatus("saving");
     setActionError(null);
+    setMetricsError(null);
+    setLastSupabaseError(null);
 
     const weightInput = toNumberOrNull(metricsState.weight);
     if (weightInput === null) {
@@ -377,13 +396,21 @@ export function ClientBaselinePage() {
       vo2max: toNumberOrNull(metricsState.vo2max),
     };
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("baseline_metrics")
       .upsert(payload, { onConflict: "baseline_id" });
 
     if (error) {
       setMetricsStatus("error");
       setActionError(formatSupabaseError(error));
+      setMetricsError({
+        code: error.code ?? null,
+        message: error.message ?? null,
+        details: (error as { details?: string | null }).details ?? null,
+        hint: (error as { hint?: string | null }).hint ?? null,
+      });
+      setLastSupabaseError({ code: error.code ?? null, message: error.message ?? null });
+      console.error("BASELINE_STEP1_ERROR", error);
       return;
     }
 
@@ -400,14 +427,17 @@ export function ClientBaselinePage() {
 
     setMarkerStatus("saving");
     setActionError(null);
+    setLastSupabaseError(null);
 
     const payload = templates.map((template) => {
       const rawValue = markerValues[template.id];
       return {
         baseline_id: baselineId,
         template_id: template.id,
-        value:
-          template.value_type === "number" ? Number(rawValue) : rawValue?.trim() ?? "",
+        value_number:
+          template.value_type === "number" ? Number(rawValue) : null,
+        value_text:
+          template.value_type === "number" ? null : rawValue?.trim() ?? "",
       };
     });
 
@@ -418,6 +448,7 @@ export function ClientBaselinePage() {
     if (error) {
       setMarkerStatus("error");
       setActionError(formatSupabaseError(error));
+      setLastSupabaseError({ code: error.code ?? null, message: error.message ?? null });
       return;
     }
 
@@ -433,8 +464,9 @@ export function ClientBaselinePage() {
   ) => {
     const payload = {
       baseline_id: baselineIdValue,
+      client_id: clientId,
       photo_type: photoType,
-      photo_url: url,
+      url,
       storage_path: storagePath,
     };
     const { error } = await supabase
@@ -459,6 +491,7 @@ export function ClientBaselinePage() {
     if (!file || !baselineId || !clientId) return;
     setPhotoStatus("saving");
     setActionError(null);
+    setLastSupabaseError(null);
     setPhotoMap((prev) => ({
       ...prev,
       [photoType]: { ...prev[photoType], uploading: true, error: null },
@@ -478,6 +511,10 @@ export function ClientBaselinePage() {
       }));
       setPhotoStatus("error");
       setActionError(formatSupabaseError(uploadError));
+      setLastSupabaseError({
+        code: uploadError.code ?? null,
+        message: uploadError.message ?? null,
+      });
       return;
     }
 
@@ -502,6 +539,7 @@ export function ClientBaselinePage() {
       }));
       setPhotoStatus("error");
       setActionError("Failed to load photo URL.");
+      setLastSupabaseError({ code: null, message: "Failed to load photo URL." });
       return;
     }
 
@@ -513,6 +551,10 @@ export function ClientBaselinePage() {
       }));
       setPhotoStatus("error");
       setActionError(formatSupabaseError(saveError));
+      setLastSupabaseError({
+        code: (saveError as { code?: string | null }).code ?? null,
+        message: (saveError as { message?: string | null }).message ?? null,
+      });
       return;
     }
 
@@ -527,6 +569,7 @@ export function ClientBaselinePage() {
     if (!baselineId) return;
     setSubmitStatus("saving");
     setActionError(null);
+    setLastSupabaseError(null);
 
     const { error } = await supabase
       .from("baseline_entries")
@@ -539,6 +582,7 @@ export function ClientBaselinePage() {
     if (error) {
       setSubmitStatus("error");
       setActionError(formatSupabaseError(error));
+      setLastSupabaseError({ code: error.code ?? null, message: error.message ?? null });
       return;
     }
 
@@ -628,6 +672,18 @@ export function ClientBaselinePage() {
         </div>
       ) : null}
 
+      {lastSupabaseError ? (
+        <Alert className="border-danger/30">
+          <AlertTitle>Supabase error</AlertTitle>
+          <AlertDescription>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <div>code: {lastSupabaseError.code ?? "n/a"}</div>
+              <div>message: {lastSupabaseError.message ?? "n/a"}</div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         {["Body metrics", "Performance markers", "Photos"].map((label, index) => (
           <Badge key={label} variant={activeStep === index ? "success" : "muted"}>
@@ -660,6 +716,19 @@ export function ClientBaselinePage() {
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            {metricsStatus === "error" && metricsError ? (
+              <Alert className="border-danger/30 sm:col-span-2">
+                <AlertTitle>Baseline metrics save failed</AlertTitle>
+                <AlertDescription>
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <div>code: {metricsError.code ?? "n/a"}</div>
+                    <div>message: {metricsError.message ?? "n/a"}</div>
+                    <div>details: {metricsError.details ?? "n/a"}</div>
+                    <div>hint: {metricsError.hint ?? "n/a"}</div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : null}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Weight {showImperial ? "(lb)" : "(kg)"} *

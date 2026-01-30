@@ -98,13 +98,14 @@ type BaselineMetrics = {
 };
 
 type BaselineMarkerRow = {
-  value: string | number | null;
+  value_number: number | null;
+  value_text: string | null;
   template: { name: string | null; unit: string | null } | null;
 };
 
 type BaselinePhotoRow = {
   photo_type: string | null;
-  photo_url: string | null;
+  url: string | null;
 };
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
@@ -273,18 +274,20 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_values")
-        .select("value, template:baseline_marker_templates(name, unit)")
+        .select("value_number, value_text, template:baseline_marker_templates(name, unit)")
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       const rows = (data ?? []) as Array<{
-        value: string | number | null;
+        value_number: number | null;
+        value_text: string | null;
         template:
           | { name: string | null; unit: string | null }
           | { name: string | null; unit: string | null }[]
           | null;
       }>;
       return rows.map((row) => ({
-        value: row.value ?? null,
+        value_number: row.value_number ?? null,
+        value_text: row.value_text ?? null,
         template: Array.isArray(row.template)
           ? row.template[0] ?? null
           : row.template ?? null,
@@ -298,7 +301,7 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_photos")
-        .select("photo_type, photo_url")
+        .select("photo_type, url")
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as BaselinePhotoRow[];
@@ -469,7 +472,7 @@ export function PtClientDetailPage() {
     baselinePhotosQuery.data?.forEach((row) => {
       const type = row.photo_type as (typeof baselinePhotoTypes)[number] | null;
       if (!type || !baselinePhotoTypes.includes(type)) return;
-      map[type] = row.photo_url ?? null;
+      map[type] = row.url ?? null;
     });
     return map;
   }, [baselinePhotosQuery.data]);
@@ -830,7 +833,9 @@ export function PtClientDetailPage() {
                             {marker.template?.name ?? "Marker"}
                           </p>
                           <p className="font-semibold">
-                            {marker.value ?? "Not provided"}
+                            {marker.value_number !== null && marker.value_number !== undefined
+                              ? marker.value_number
+                              : marker.value_text ?? "Not provided"}
                             {marker.template?.unit ? ` ${marker.template.unit}` : ""}
                           </p>
                         </div>
