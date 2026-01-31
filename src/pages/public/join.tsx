@@ -29,11 +29,13 @@ export function JoinPage() {
   } | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [goal, setGoal] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-
   const inviteCode = useMemo(() => code ?? "", [code]);
   const isMissingCode = inviteCode.length === 0;
-  const tagOptions = ["Bodybuilding", "CrossFit", "Strength", "Fat loss"];
+  const safeRefreshRole = async () => {
+    if (typeof refreshRole === "function") {
+      await refreshRole();
+    }
+  };
   const contactHref = useMemo(
     () =>
       `mailto:?subject=${encodeURIComponent(
@@ -102,9 +104,9 @@ export function JoinPage() {
         if (existingError) throw existingError;
 
         if (existingClient) {
-          await refreshRole();
+          await safeRefreshRole();
           setStatus("success");
-          setMessage("You’re in. Your coach will assign your first workout.");
+          setMessage("You're in. Your coach will assign your first workout.");
           return;
         }
 
@@ -195,7 +197,6 @@ export function JoinPage() {
             status: "active",
             display_name: displayName.trim(),
             goal: goal.trim() || null,
-            tags,
           })
           .select("id")
           .single();
@@ -211,9 +212,9 @@ export function JoinPage() {
         if (updateError) throw updateError;
       }
 
-      await refreshRole();
+      await safeRefreshRole();
       setStatus("success");
-      setMessage("You’re in. Your coach will assign your first workout.");
+      setMessage("You're in. Your coach will assign your first workout.");
     } catch (err) {
       console.error("Invite join failed", err);
       setStatus("error");
@@ -328,29 +329,6 @@ export function JoinPage() {
                   value={goal}
                   onChange={(event) => setGoal(event.target.value)}
                 />
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Tags (optional)</div>
-                <div className="flex flex-wrap gap-2">
-                  {tagOptions.map((tag) => {
-                    const selected = tags.includes(tag);
-                    return (
-                      <Button
-                        key={tag}
-                        type="button"
-                        size="sm"
-                        variant={selected ? "default" : "secondary"}
-                        onClick={() =>
-                          setTags((prev) =>
-                            prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]
-                          )
-                        }
-                      >
-                        {tag}
-                      </Button>
-                    );
-                  })}
-                </div>
               </div>
               <Button className="w-full" type="submit" disabled={status === "joining"}>
                 {status === "joining" ? "Joining..." : "Join workspace"}

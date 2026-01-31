@@ -13,6 +13,7 @@ import { PtWorkoutTemplatesPage } from "../pages/pt/workout-templates";
 import { PtWorkoutTemplateBuilderPage } from "../pages/pt/workout-template-builder";
 import { PtCheckinTemplatesPage } from "../pages/pt/checkin-templates";
 import { PtSettingsPage } from "../pages/pt/settings";
+import { PtBaselineTemplatesPage } from "../pages/pt/settings-baseline";
 
 import { ClientHomePage } from "../pages/client/home";
 import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
@@ -163,6 +164,7 @@ export function App() {
         <Route path="templates/workouts/:id" element={<PtWorkoutTemplateBuilderPage />} />
         <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />
         <Route path="settings" element={<PtSettingsPage />} />
+        <Route path="settings/baseline" element={<PtBaselineTemplatesPage />} />
       </Route>
 
       {/* Client Side */}

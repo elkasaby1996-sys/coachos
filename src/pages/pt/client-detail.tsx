@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
@@ -19,6 +19,9 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 import { cn } from "../../lib/utils";
+import { getProfileCompletion } from "../../lib/profile-completion";
+import { getCoachActionLabel, logCoachActivity } from "../../lib/coach-activity";
+import { formatRelativeTime } from "../../lib/relative-time";
 
 const tabs = [
   "overview",
@@ -100,12 +103,19 @@ type BaselineMetrics = {
 type BaselineMarkerRow = {
   value_number: number | null;
   value_text: string | null;
-  template: { name: string | null; unit: string | null } | null;
+  template: { name: string | null; unit_label: string | null } | null;
 };
 
 type BaselinePhotoRow = {
   photo_type: string | null;
   url: string | null;
+};
+
+type CoachActivityRow = {
+  id: string;
+  action: string | null;
+  created_at: string | null;
+  metadata: Record<string, unknown> | null;
 };
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
@@ -148,6 +158,7 @@ export function PtClientDetailPage() {
     "idle"
   );
   const [baselineNotesMessage, setBaselineNotesMessage] = useState<string | null>(null);
+  const baselineReviewLoggedRef = useRef<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -274,15 +285,15 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_values")
-        .select("value_number, value_text, template:baseline_marker_templates(name, unit)")
+        .select("value_number, value_text, template:baseline_marker_templates(name, unit_label)")
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       const rows = (data ?? []) as Array<{
         value_number: number | null;
         value_text: string | null;
         template:
-          | { name: string | null; unit: string | null }
-          | { name: string | null; unit: string | null }[]
+          | { name: string | null; unit_label: string | null }
+          | { name: string | null; unit_label: string | null }[]
           | null;
       }>;
       return rows.map((row) => ({
@@ -305,6 +316,22 @@ export function PtClientDetailPage() {
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as BaselinePhotoRow[];
+    },
+  });
+
+  const coachActivityQuery = useQuery({
+    queryKey: ["coach-activity-log", clientId, workspaceQuery.data],
+    enabled: !!clientId && !!workspaceQuery.data,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coach_activity_log")
+        .select("id, action, created_at, metadata")
+        .eq("client_id", clientId ?? "")
+        .eq("workspace_id", workspaceQuery.data ?? "")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return (data ?? []) as CoachActivityRow[];
     },
   });
 
@@ -350,6 +377,16 @@ export function PtClientDetailPage() {
       setAssignMessage(getErrorMessage(error));
       return;
     }
+
+    await logCoachActivity({
+      clientId,
+      workspaceId: workspaceQuery.data ?? null,
+      action: "workout_assigned",
+      metadata: {
+        scheduled_date: scheduledDate,
+        workout_template_id: selectedTemplateId,
+      },
+    });
 
     setAssignStatus("idle");
     setAssignMessage("Workout assigned");
@@ -408,6 +445,18 @@ export function PtClientDetailPage() {
       setAssignMessage(getErrorMessage(error));
       return;
     }
+
+    await logCoachActivity({
+      clientId,
+      workspaceId: workspaceQuery.data ?? null,
+      action: "plan_updated",
+      metadata: {
+        scheduled_date: editDate,
+        workout_template_id: editTemplateId,
+        status: editStatus,
+      },
+    });
+
     setAssignStatus("idle");
     setAssignMessage("Workout updated");
     setEditOpen(false);
@@ -442,6 +491,7 @@ export function PtClientDetailPage() {
   };
 
   const clientSnapshot = clientProfile ?? (clientQuery.data as PtClientProfile | null);
+  const completion = useMemo(() => getProfileCompletion(clientSnapshot), [clientSnapshot]);
   const missingFields = useMemo(() => {
     if (!clientSnapshot) return [];
     const missing: string[] = [];
@@ -533,6 +583,19 @@ export function PtClientDetailPage() {
     setBaselineNotesMessage("Baseline notes saved.");
     await queryClient.invalidateQueries({ queryKey: ["pt-client-baseline-entry", clientId] });
   };
+
+  useEffect(() => {
+    if (active !== "baseline") return;
+    if (!clientId || !workspaceQuery.data || !baselineEntryQuery.data?.id) return;
+    if (baselineReviewLoggedRef.current === baselineEntryQuery.data.id) return;
+    baselineReviewLoggedRef.current = baselineEntryQuery.data.id;
+    void logCoachActivity({
+      clientId,
+      workspaceId: workspaceQuery.data ?? null,
+      action: "baseline_reviewed",
+      metadata: { baseline_id: baselineEntryQuery.data.id },
+    });
+  }, [active, clientId, workspaceQuery.data, baselineEntryQuery.data]);
 
   return (
     <div className="space-y-6">
@@ -709,9 +772,90 @@ export function PtClientDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2 border-b border-border pb-2">
-        {tabs.map((tab) => (
-          <button
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile completeness</CardTitle>
+          {clientQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading profile details…</p>
+          ) : clientSnapshot ? (
+            <p className="text-sm text-muted-foreground">
+              {completion.completed}/{completion.total} fields complete ({completion.percent}%)
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Client profile not available.</p>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {clientQuery.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : clientSnapshot ? (
+            completion.missing.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs text-muted-foreground">Missing:</span>
+                {completion.missing.map((field) => (
+                  <Badge key={field} variant="warning">
+                    {field}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <Badge variant="success">Profile complete</Badge>
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">Client profile not available.</p>
+          )}
+        </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent coach actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {coachActivityQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : coachActivityQuery.data && coachActivityQuery.data.length > 0 ? (
+              <div className="space-y-2 text-sm">
+                {coachActivityQuery.data.map((entry) => {
+                  const createdLabel = entry.created_at
+                    ? new Date(entry.created_at).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : "today";
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                    >
+                      <span className="font-medium">
+                        {getCoachActionLabel(entry.action)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} ·{" "}
+                        {createdLabel}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No coach actions logged yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-wrap gap-2 border-b border-border pb-2">
+          {tabs.map((tab) => (
+            <button
             key={tab}
             type="button"
             onClick={() => setActive(tab)}
@@ -836,7 +980,7 @@ export function PtClientDetailPage() {
                             {marker.value_number !== null && marker.value_number !== undefined
                               ? marker.value_number
                               : marker.value_text ?? "Not provided"}
-                            {marker.template?.unit ? ` ${marker.template.unit}` : ""}
+                            {marker.template?.unit_label ? ` ${marker.template.unit_label}` : ""}
                           </p>
                         </div>
                       ))}
@@ -908,6 +1052,7 @@ export function PtClientDetailPage() {
       {(workspaceQuery.error ||
         templatesQuery.error ||
         upcomingQuery.error ||
+        coachActivityQuery.error ||
         baselineEntryQuery.error ||
         baselineMetricsQuery.error ||
         baselineMarkersQuery.error ||
@@ -919,13 +1064,14 @@ export function PtClientDetailPage() {
           <AlertDescription>
             {assignStatus === "error" && assignMessage
               ? assignMessage
-              : getErrorMessage(
-                  workspaceQuery.error ||
-                    templatesQuery.error ||
-                    upcomingQuery.error ||
-                    clientQuery.error ||
-                    baselineEntryQuery.error ||
-                    baselineMetricsQuery.error ||
+                : getErrorMessage(
+                    workspaceQuery.error ||
+                      templatesQuery.error ||
+                      upcomingQuery.error ||
+                      coachActivityQuery.error ||
+                      clientQuery.error ||
+                      baselineEntryQuery.error ||
+                      baselineMetricsQuery.error ||
                     baselineMarkersQuery.error ||
                     baselinePhotosQuery.error
                 )}

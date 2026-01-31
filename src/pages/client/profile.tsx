@@ -17,6 +17,7 @@ import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
+import { getProfileCompletion } from "../../lib/profile-completion";
 
 const goalOptions = [
   "Lose fat",
@@ -301,7 +302,7 @@ export function ClientProfilePage() {
       .update(payload)
       .eq("id", profile.id)
       .select("*")
-      .maybeSingle();
+      .single();
 
     if (error) {
       setToastVariant("error");
@@ -312,30 +313,9 @@ export function ClientProfilePage() {
     }
 
     let nextProfile = data as ClientProfile | null;
-    if (!nextProfile) {
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
-      if (fallbackError) {
-        setToastVariant("error");
-        setToastMessage("Failed to refresh profile.");
-        setInlineError(
-          fallbackError.message ?? "Client record not accessible (RLS) or not found."
-        );
-        setSaveStatus("idle");
-        return;
-      }
-      nextProfile = fallbackData as ClientProfile | null;
-    }
-
-    if (!nextProfile) {
-      setToastVariant("error");
-      setToastMessage("Profile updated, but refresh failed.");
-      setInlineError("Client record not accessible (RLS) or not found.");
-      setSaveStatus("idle");
-      return;
+    const refreshed = await clientQuery.refetch();
+    if (refreshed.data) {
+      nextProfile = refreshed.data as ClientProfile;
     }
 
     setProfile(nextProfile);
@@ -432,6 +412,8 @@ export function ClientProfilePage() {
     [profile]
   );
 
+  const completion = useMemo(() => getProfileCompletion(profile), [profile]);
+
   return (
     <div className="space-y-6 pb-16 md:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -484,6 +466,31 @@ export function ClientProfilePage() {
         </Card>
       ) : (
         <div className="space-y-6">
+          {completion.completed < completion.total ? (
+            <Card className="border-dashed">
+              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle>
+                    Complete your profile ({completion.completed}/{completion.total})
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Finish your missing fields so your coach can tailor your plan.
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => setEditOpen(true)}>
+                  Finish now
+                </Button>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Missing:</span>
+                {completion.missing.map((field) => (
+                  <Badge key={field} variant="warning">
+                    {field}
+                  </Badge>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>

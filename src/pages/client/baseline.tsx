@@ -47,7 +47,7 @@ type MetricsFormState = {
 type MarkerTemplate = {
   id: string;
   name: string | null;
-  unit: string | null;
+  unit_label: string | null;
   value_type: "number" | "text" | null;
 };
 
@@ -253,7 +253,7 @@ export function ClientBaselinePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_templates")
-        .select("id, name, unit, value_type")
+        .select("id, name, unit_label, value_type")
         .eq("workspace_id", clientWorkspaceId ?? "")
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
@@ -262,6 +262,31 @@ export function ClientBaselinePage() {
       return (data ?? []) as MarkerTemplate[];
     },
   });
+
+  useEffect(() => {
+    if (!clientWorkspaceId) return;
+    const channel = supabase
+      .channel(`baseline-marker-templates-${clientWorkspaceId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "baseline_marker_templates",
+          filter: `workspace_id=eq.${clientWorkspaceId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["baseline-marker-templates", clientWorkspaceId],
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientWorkspaceId, queryClient]);
 
   const markerValuesQuery = useQuery({
     queryKey: ["baseline-marker-values", baselineId],
@@ -907,7 +932,8 @@ export function ClientBaselinePage() {
                 {templates.map((template) => (
                   <div key={template.id} className="space-y-2">
                     <label className="text-xs font-semibold text-muted-foreground">
-                      {template.name ?? "Marker"} {template.unit ? `(${template.unit})` : ""}
+                      {template.name ?? "Marker"}
+                      {template.unit_label ? ` (${template.unit_label})` : ""}
                     </label>
                     <Input
                       type={template.value_type === "number" ? "number" : "text"}

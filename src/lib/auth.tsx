@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "./supabase";
 
@@ -10,6 +18,7 @@ interface AuthContextValue {
   loading: boolean;
   authError: Error | null;
   role: AppRole;
+  refreshRole?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -29,7 +38,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-async function resolveRole(userId: string): Promise<AppRole> {
+async function resolveRole(userId: string): Promise<{
+  role: AppRole;
+  workspaceMember: unknown;
+  clientMember: unknown;
+}> {
   let workspaceMember: { data: unknown; error: unknown } | null = null;
 
   try {
@@ -53,8 +66,11 @@ async function resolveRole(userId: string): Promise<AppRole> {
   if (workspaceMember?.error) throw workspaceMember.error;
   const workspaceRole = (workspaceMember?.data as { role?: string } | null)?.role ?? null;
   if (workspaceRole && workspaceRole.startsWith("pt")) {
-    console.log("ROLE ROUTE", { wmData: workspaceMember.data, clientData: null });
-    return "pt";
+    return {
+      role: "pt",
+      workspaceMember: workspaceMember.data,
+      clientMember: null,
+    };
   }
 
   let clientMember: { data: unknown; error: unknown } | null = null;
@@ -82,14 +98,27 @@ async function resolveRole(userId: string): Promise<AppRole> {
 
   if (clientMember?.error) {
     console.warn("Client lookup error", { userId, query: clientQuery, error: clientMember.error });
-    return "none";
+    return {
+      role: "none",
+      workspaceMember: workspaceMember.data,
+      clientMember: clientMember.data,
+    };
   }
-  console.log("ROLE ROUTE", { wmData: workspaceMember.data, clientData: clientMember.data });
-  if (clientMember?.data) return "client";
+  if (clientMember?.data) {
+    return {
+      role: "client",
+      workspaceMember: workspaceMember.data,
+      clientMember: clientMember.data,
+    };
+  }
 
   console.warn("Client record not found or not accessible", { userId, query: clientQuery });
 
-  return "none";
+  return {
+    role: "none",
+    workspaceMember: workspaceMember.data,
+    clientMember: clientMember.data,
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -97,8 +126,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<Error | null>(null);
   const [role, setRole] = useState<AppRole>("none");
-  const didRouteRef = useRef(false);
-  const lastRoutedUserIdRef = useRef<string | null>(null);
+  const resolvingRef = useRef(false);
+  const lastResolveKeyRef = useRef("");
+
+  const resolveRoleOnce = useCallback(
+    async (userId: string, options?: { force?: boolean }) => {
+      const pathname = window.location.pathname;
+      const key = `${userId ?? "none"}|${pathname}`;
+      if (!options?.force) {
+        if (resolvingRef.current || lastResolveKeyRef.current === key) return;
+      }
+      resolvingRef.current = true;
+      lastResolveKeyRef.current = key;
+      try {
+        const result = await resolveRole(userId);
+        console.log("ROLE ROUTE", {
+          userId,
+          pathname,
+          wmData: result.workspaceMember,
+          clientData: result.clientMember,
+        });
+        setRole((prev) => (prev === result.role ? prev : result.role));
+      } catch (error) {
+        console.error("Failed to resolve role", error);
+        setRole((prev) => (prev === "none" ? prev : "none"));
+      } finally {
+        resolvingRef.current = false;
+      }
+    },
+    []
+  );
+
+  const refreshRole = useCallback(async () => {
+    setLoading(true);
+    try {
+      setAuthError(null);
+      const { data, error } = await withTimeout(
+        supabase.auth.getSession(),
+        15000,
+        "Session load timed out (15s)."
+      );
+      if (error) {
+        setAuthError(new Error(error.message));
+        setSession(null);
+        setRole("none");
+        return;
+      }
+      const nextSession = data.session ?? null;
+      setSession(nextSession);
+      const userId = nextSession?.user?.id ?? null;
+      if (userId) {
+        await resolveRoleOnce(userId, { force: true });
+      } else {
+        setRole((prev) => (prev === "none" ? prev : "none"));
+      }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error : new Error(String(error)));
+      setSession(null);
+      setRole("none");
+    } finally {
+      setLoading(false);
+    }
+  }, [resolveRoleOnce]);
 
   useEffect(() => {
     let alive = true;
@@ -129,21 +218,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setSession(data.session ?? null);
         const userId = data.session?.user?.id ?? null;
-        if (userId && lastRoutedUserIdRef.current !== userId) {
-          lastRoutedUserIdRef.current = userId;
-          didRouteRef.current = false;
-        }
-        if (didRouteRef.current) return;
         if (userId) {
-          const nextRole = await resolveRole(userId);
           if (alive) {
-            setRole(nextRole);
-            didRouteRef.current = true;
+            await resolveRoleOnce(userId);
           }
         } else {
-          setRole("none");
-          didRouteRef.current = false;
-          lastRoutedUserIdRef.current = null;
+          setRole((prev) => (prev === "none" ? prev : "none"));
         }
       } catch (error) {
         if (!alive) return;
@@ -165,25 +245,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(newSession);
         try {
           const userId = newSession?.user?.id ?? null;
-          if (userId && lastRoutedUserIdRef.current !== userId) {
-            lastRoutedUserIdRef.current = userId;
-            didRouteRef.current = false;
-          }
-          if (didRouteRef.current) return;
           if (userId) {
-            const nextRole = await resolveRole(userId);
             if (alive) {
-              setRole(nextRole);
-              didRouteRef.current = true;
+              await resolveRoleOnce(userId);
             }
           } else {
-            setRole("none");
-            didRouteRef.current = false;
-            lastRoutedUserIdRef.current = null;
+            setRole((prev) => (prev === "none" ? prev : "none"));
           }
         } catch (error) {
           console.error("Failed to resolve role", error);
-          if (alive) setRole("none");
+          if (alive) setRole((prev) => (prev === "none" ? prev : "none"));
         } finally {
           if (alive) setLoading(false);
         }
@@ -203,8 +274,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       authError,
       role,
+      refreshRole,
     }),
-    [session, loading, authError, role]
+    [session, loading, authError, role, refreshRole]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

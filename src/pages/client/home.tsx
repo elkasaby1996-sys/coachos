@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
+import { formatRelativeTime } from "../../lib/relative-time";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -166,6 +167,21 @@ export function ClientHomePage() {
     },
   });
 
+  const coachActivityQuery = useQuery({
+    queryKey: ["coach-activity-log-latest", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coach_activity_log")
+        .select("id, action, created_at")
+        .eq("client_id", clientId ?? "")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const todayWorkoutQuery = useQuery({
     queryKey: ["assigned-workout-today", clientId, todayKey],
     enabled: !!clientId,
@@ -303,26 +319,21 @@ export function ClientHomePage() {
     [today]
   );
 
-  const coachSyncAt = useMemo(() => {
-    const dates: Date[] = [];
-    if (targets?.updated_at) dates.push(new Date(targets.updated_at));
-    if (todayWorkout?.created_at) dates.push(new Date(todayWorkout.created_at));
-    if (!dates.length) return null;
-    return dates.sort((a, b) => b.getTime() - a.getTime())[0];
-  }, [targets, todayWorkout]);
+  const latestCoachActivity =
+    coachActivityQuery.data && coachActivityQuery.data.length > 0
+      ? coachActivityQuery.data[0]
+      : null;
+
+  const coachBadgeLabel = latestCoachActivity?.created_at
+    ? `Coach reviewed your plan ${formatRelativeTime(latestCoachActivity.created_at)}`
+    : "Coach hasn’t reviewed your plan yet.";
 
   const coachUpdatedText = useMemo(() => {
-    if (!coachSyncAt) return "Coach is tracking your progress.";
-    const todayKeyValue = formatDateKey(today);
-    const coachKeyValue = formatDateKey(coachSyncAt);
-    if (todayKeyValue === coachKeyValue) return "Coach reviewed your plan today.";
-    const diffDays = Math.max(
-      0,
-      Math.floor((today.getTime() - coachSyncAt.getTime()) / (1000 * 60 * 60 * 24))
-    );
-    if (diffDays <= 1) return "Coach checked in yesterday.";
-    return "Coach will review your progress tomorrow.";
-  }, [coachSyncAt, today]);
+    if (!latestCoachActivity?.created_at) {
+      return "Coach hasn’t reviewed your plan yet.";
+    }
+    return `Coach reviewed your plan ${formatRelativeTime(latestCoachActivity.created_at)}.`;
+  }, [latestCoachActivity]);
 
   const profileCompletion = useMemo(() => {
     if (!clientQuery.data) return null;
@@ -371,6 +382,7 @@ export function ClientHomePage() {
   const errors = [
     clientQuery.error,
     todayWorkoutQuery.error,
+    coachActivityQuery.error,
     targetsQuery.error,
     workoutsWeekQuery.error,
     weeklyPlanQuery.error,
@@ -446,10 +458,10 @@ export function ClientHomePage() {
             {subtitleDate} &bull; {missionCopy}
           </p>
         </div>
-        <Badge variant={coachSyncAt ? "success" : "muted"}>
-          {coachSyncAt ? "Coach synced" : "Waiting on coach"}
-        </Badge>
-      </section>
+          <Badge variant={latestCoachActivity ? "success" : "muted"}>
+            {coachBadgeLabel}
+          </Badge>
+        </section>
 
       {!baselineSubmittedQuery.isLoading && !baselineSubmittedQuery.data ? (
         <Card className="border-dashed">
