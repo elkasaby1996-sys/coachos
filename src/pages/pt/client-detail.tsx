@@ -22,6 +22,7 @@ import { cn } from "../../lib/utils";
 import { getProfileCompletion } from "../../lib/profile-completion";
 import { getCoachActionLabel, logCoachActivity } from "../../lib/coach-activity";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 
 const tabs = [
   "overview",
@@ -32,6 +33,7 @@ const tabs = [
   "messages",
   "notes",
   "baseline",
+  "habits",
 ] as const;
 
 const formatDateKey = (date: Date) => {
@@ -43,6 +45,19 @@ const formatDateKey = (date: Date) => {
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Something went wrong.";
+
+const getErrorDetails = (error: unknown) => {
+  if (!error) return { code: null, message: "Something went wrong." };
+  if (error instanceof Error) {
+    const err = error as Error & { code?: string | null };
+    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
+  }
+  if (typeof error === "object") {
+    const err = error as { code?: string | null; message?: string | null };
+    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
+  }
+  return { code: null, message: "Something went wrong." };
+};
 
 const formatListValue = (value: string[] | string | null | undefined, fallback: string) => {
   if (!value) return fallback;
@@ -109,6 +124,23 @@ type BaselineMarkerRow = {
 type BaselinePhotoRow = {
   photo_type: string | null;
   url: string | null;
+};
+
+type HabitLog = {
+  id?: string | null;
+  log_date: string;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fats_g: number | null;
+  weight_value: number | null;
+  weight_unit: string | null;
+  sleep_hours: number | null;
+  steps: number | null;
+  energy: number | null;
+  hunger: number | null;
+  stress: number | null;
+  notes: string | null;
 };
 
 type CoachActivityRow = {
@@ -195,6 +227,15 @@ export function PtClientDetailPage() {
       return data;
     },
   });
+
+  const habitsToday = useMemo(
+    () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
+    [clientQuery.data?.timezone]
+  );
+  const habitsStart = useMemo(
+    () => addDaysToDateString(habitsToday, -6),
+    [habitsToday]
+  );
 
   useEffect(() => {
     if (!clientQuery.data) return;
@@ -316,6 +357,49 @@ export function PtClientDetailPage() {
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as BaselinePhotoRow[];
+    },
+  });
+
+  const habitsQuery = useQuery({
+    queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
+    enabled: !!clientId && !!habitsToday,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select(
+          "id, log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, sleep_hours, steps, energy, hunger, stress, notes"
+        )
+        .eq("client_id", clientId ?? "")
+        .gte("log_date", habitsStart)
+        .lte("log_date", habitsToday)
+        .order("log_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as HabitLog[];
+    },
+  });
+
+  const [selectedHabitDate, setSelectedHabitDate] = useState<string>("");
+
+  useEffect(() => {
+    if (!selectedHabitDate && habitsToday) {
+      setSelectedHabitDate(habitsToday);
+    }
+  }, [habitsToday, selectedHabitDate]);
+
+  const habitLogByDateQuery = useQuery({
+    queryKey: ["pt-client-habit-log", clientId, selectedHabitDate],
+    enabled: !!clientId && !!selectedHabitDate,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select(
+          "id, log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, sleep_hours, steps, energy, hunger, stress, notes"
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("log_date", selectedHabitDate)
+        .maybeSingle();
+      if (error) throw error;
+      return data as HabitLog | null;
     },
   });
 
@@ -512,6 +596,33 @@ export function PtClientDetailPage() {
     if (!clientSnapshot.timezone) missing.push("Timezone");
     return missing;
   }, [clientSnapshot]);
+
+  const habitTrends = useMemo(() => {
+    const logs = habitsQuery.data ?? [];
+    const daysLogged = logs.length;
+    const avg = (values: Array<number | null | undefined>) => {
+      const filtered = values.filter((value) => typeof value === "number") as number[];
+      if (filtered.length === 0) return null;
+      const sum = filtered.reduce((acc, value) => acc + value, 0);
+      return Math.round(sum / filtered.length);
+    };
+
+    const avgSteps = avg(logs.map((log) => log.steps ?? null));
+    const avgSleep = avg(logs.map((log) => log.sleep_hours ?? null));
+    const avgProtein = avg(logs.map((log) => log.protein_g ?? null));
+
+    const weightLogs = [...logs]
+      .filter((log) => typeof log.weight_value === "number")
+      .sort((a, b) => a.log_date.localeCompare(b.log_date));
+    const weightUnit = weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
+    const weightChange =
+      weightLogs.length >= 2
+        ? (weightLogs[weightLogs.length - 1].weight_value ?? 0) -
+          (weightLogs[0].weight_value ?? 0)
+        : null;
+
+    return { daysLogged, avgSteps, avgSleep, avgProtein, weightChange, weightUnit };
+  }, [habitsQuery.data]);
 
   const baselinePhotoMap = useMemo(() => {
     const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
@@ -875,19 +986,21 @@ export function PtClientDetailPage() {
         <CardHeader>
           <CardTitle className="capitalize">{active}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            {active === "overview"
-              ? "Latest entries, streaks, and momentum."
-              : active === "baseline"
-              ? "Latest submitted baseline details."
-              : "Section details coming soon."}
+              {active === "overview"
+                ? "Latest entries, streaks, and momentum."
+                : active === "baseline"
+                ? "Latest submitted baseline details."
+                : active === "habits"
+                ? "Daily habit logs from the past 7 days."
+                : "Section details coming soon."}
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {active === "overview" ? (
-            <>
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
-                <div>
-                  <p className="text-sm font-medium">Weekly check-in</p>
+            {active === "overview" ? (
+              <>
+                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
+                  <div>
+                    <p className="text-sm font-medium">Weekly check-in</p>
                   <p className="text-xs text-muted-foreground">Due Saturday</p>
                 </div>
                 <Badge variant="warning">Due</Badge>
@@ -898,20 +1011,20 @@ export function PtClientDetailPage() {
                   <p className="text-xs text-muted-foreground">Completed yesterday</p>
                 </div>
                 <Badge variant="success">Completed</Badge>
-              </div>
-            </>
-          ) : active === "baseline" ? (
-            baselineEntryQuery.isLoading ||
-            baselineMetricsQuery.isLoading ||
-            baselineMarkersQuery.isLoading ||
-            baselinePhotosQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-            ) : baselineEntryQuery.data ? (
-              <div className="space-y-4">
+                </div>
+              </>
+            ) : active === "baseline" ? (
+              baselineEntryQuery.isLoading ||
+              baselineMetricsQuery.isLoading ||
+              baselineMarkersQuery.isLoading ||
+              baselinePhotosQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ) : baselineEntryQuery.data ? (
+                <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Submitted at</p>
@@ -1041,18 +1154,201 @@ export function PtClientDetailPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No submitted baseline yet.</p>
-            )
-          ) : (
-            <p className="text-sm text-muted-foreground">No data yet for this tab.</p>
-          )}
-        </CardContent>
+                <p className="text-sm text-muted-foreground">No submitted baseline yet.</p>
+              )
+            ) : active === "habits" ? (
+              habitsQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <Card className="border-dashed">
+                    <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <CardTitle>Daily habit log</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Review a specific day’s log in read-only mode.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                        <Input
+                          type="date"
+                          value={selectedHabitDate}
+                          onChange={(event) => setSelectedHabitDate(event.target.value)}
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {habitLogByDateQuery.error ? (
+                        <Alert className="border-danger/30">
+                          <AlertTitle>Error</AlertTitle>
+                          <AlertDescription>
+                            <div className="space-y-1 text-xs text-muted-foreground">
+                              <div>code: {getErrorDetails(habitLogByDateQuery.error).code ?? "n/a"}</div>
+                              <div>
+                                message: {getErrorDetails(habitLogByDateQuery.error).message ?? "n/a"}
+                              </div>
+                            </div>
+                          </AlertDescription>
+                        </Alert>
+                      ) : habitLogByDateQuery.isLoading ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-6 w-1/2" />
+                          <Skeleton className="h-16 w-full" />
+                        </div>
+                      ) : habitLogByDateQuery.data ? (
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-muted-foreground">Calories</p>
+                            <p className="text-sm font-semibold">
+                              {habitLogByDateQuery.data.calories ?? "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-muted-foreground">Protein</p>
+                            <p className="text-sm font-semibold">
+                              {typeof habitLogByDateQuery.data.protein_g === "number"
+                                ? `${habitLogByDateQuery.data.protein_g} g`
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-muted-foreground">Weight</p>
+                            <p className="text-sm font-semibold">
+                              {typeof habitLogByDateQuery.data.weight_value === "number"
+                                ? `${habitLogByDateQuery.data.weight_value} ${
+                                    habitLogByDateQuery.data.weight_unit ?? ""
+                                  }`
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-muted-foreground">Steps</p>
+                            <p className="text-sm font-semibold">
+                              {typeof habitLogByDateQuery.data.steps === "number"
+                                ? habitLogByDateQuery.data.steps.toLocaleString()
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-muted-foreground">Sleep</p>
+                            <p className="text-sm font-semibold">
+                              {typeof habitLogByDateQuery.data.sleep_hours === "number"
+                                ? `${habitLogByDateQuery.data.sleep_hours} hrs`
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-muted-foreground">Notes</p>
+                            <p className="text-sm">
+                              {habitLogByDateQuery.data.notes ?? "—"}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No habit log for this date.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Days logged</p>
+                      <p className="text-lg font-semibold">{habitTrends.daysLogged}/7</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Avg steps</p>
+                      <p className="text-lg font-semibold">
+                        {habitTrends.avgSteps !== null
+                          ? habitTrends.avgSteps.toLocaleString()
+                          : "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Avg sleep</p>
+                      <p className="text-lg font-semibold">
+                        {habitTrends.avgSleep !== null ? `${habitTrends.avgSleep} hrs` : "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Avg protein</p>
+                      <p className="text-lg font-semibold">
+                        {habitTrends.avgProtein !== null ? `${habitTrends.avgProtein} g` : "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Weight change</p>
+                      <p className="text-lg font-semibold">
+                        {typeof habitTrends.weightChange === "number"
+                          ? `${habitTrends.weightChange > 0 ? "+" : ""}${habitTrends.weightChange.toFixed(1)} ${
+                              habitTrends.weightUnit ?? ""
+                            }`
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {habitsQuery.data && habitsQuery.data.length > 0 ? (
+                    <div className="overflow-hidden rounded-lg border border-border">
+                      <div className="grid grid-cols-7 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                        <span>Date</span>
+                        <span>Calories</span>
+                        <span>Protein</span>
+                        <span>Steps</span>
+                        <span>Sleep</span>
+                        <span>Weight</span>
+                        <span>Notes</span>
+                      </div>
+                      {habitsQuery.data.map((log) => (
+                        <div
+                          key={log.id ?? log.log_date}
+                          className="grid grid-cols-7 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0"
+                        >
+                          <span className="text-xs text-muted-foreground">{log.log_date}</span>
+                          <span>{typeof log.calories === "number" ? log.calories : "—"}</span>
+                          <span>
+                            {typeof log.protein_g === "number" ? `${log.protein_g} g` : "—"}
+                          </span>
+                          <span>
+                            {typeof log.steps === "number" ? log.steps.toLocaleString() : "—"}
+                          </span>
+                          <span>
+                            {typeof log.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "—"}
+                          </span>
+                          <span>
+                            {typeof log.weight_value === "number"
+                              ? `${log.weight_value} ${log.weight_unit ?? ""}`
+                              : "—"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {log.notes ?? "—"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No habit logs yet.</p>
+                  )}
+                </div>
+              )
+            ) : (
+              <p className="text-sm text-muted-foreground">No data yet for this tab.</p>
+            )}
+          </CardContent>
       </Card>
 
       {(workspaceQuery.error ||
         templatesQuery.error ||
         upcomingQuery.error ||
         coachActivityQuery.error ||
+        habitsQuery.error ||
+        habitLogByDateQuery.error ||
         baselineEntryQuery.error ||
         baselineMetricsQuery.error ||
         baselineMarkersQuery.error ||
@@ -1069,6 +1365,8 @@ export function PtClientDetailPage() {
                       templatesQuery.error ||
                       upcomingQuery.error ||
                       coachActivityQuery.error ||
+                      habitsQuery.error ||
+                      habitLogByDateQuery.error ||
                       clientQuery.error ||
                       baselineEntryQuery.error ||
                       baselineMetricsQuery.error ||

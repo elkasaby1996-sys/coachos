@@ -6,6 +6,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
+import { ClientReminders } from "../../components/common/client-reminders";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -149,6 +150,7 @@ export function ClientHomePage() {
   });
 
   const clientId = clientQuery.data?.id ?? null;
+  const clientTimezone = clientQuery.data?.timezone ?? null;
 
   const baselineSubmittedQuery = useQuery({
     queryKey: ["client-baseline-submitted-latest", clientId],
@@ -490,6 +492,8 @@ export function ClientHomePage() {
           ))}
         </div>
       ) : null}
+
+      <ClientReminders clientId={clientId} timezone={clientTimezone} />
 
       {profileCompletion && profileCompletion.completed < profileCompletion.total ? (
         <Card className="border-dashed">

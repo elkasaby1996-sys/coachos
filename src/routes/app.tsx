@@ -24,6 +24,7 @@ import { ClientProgressPage } from "../pages/client/progress";
 import { ClientCheckinPage } from "../pages/client/checkin";
 import { ClientMessagesPage } from "../pages/client/messages";
 import { ClientProfilePage } from "../pages/client/profile";
+import { ClientHabitsPage } from "../pages/client/habits";
 import { ClientBaselinePage } from "../pages/client/baseline";
 
 // ✅ assumes your AuthProvider exports this hook
@@ -187,6 +188,7 @@ export function App() {
         <Route path="checkin" element={<ClientCheckinPage />} />
         <Route path="messages" element={<ClientMessagesPage />} />
         <Route path="profile" element={<ClientProfilePage />} />
+        <Route path="habits" element={<ClientHabitsPage />} />
         <Route path="baseline" element={<ClientBaselinePage />} />
       </Route>
 

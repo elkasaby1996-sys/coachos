@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { KpiTile } from "../../components/common/kpi-tile";
@@ -8,6 +9,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
+import { addDaysToDateString, diffDays, formatDateInTimezone, getLastSaturday, getTodayInTimezone } from "../../lib/date-utils";
 
 type ClientRecord = {
   id: string;
@@ -17,6 +19,14 @@ type ClientRecord = {
   display_name: string | null;
   created_at: string;
   tags: string[] | null;
+  timezone: string | null;
+};
+
+type AtRiskClient = {
+  id: string;
+  name: string;
+  missingHabitDays: number;
+  checkinOverdue: boolean;
 };
 
 const weekOverview = [
@@ -31,10 +41,14 @@ const weekOverview = [
 
 export function PtDashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
   const [queueError, setQueueError] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [atRiskClients, setAtRiskClients] = useState<AtRiskClient[]>([]);
+  const [atRiskError, setAtRiskError] = useState<string | null>(null);
+  const [atRiskLoading, setAtRiskLoading] = useState(false);
 
   const kpis = useMemo(
     () => [
@@ -73,7 +87,7 @@ export function PtDashboardPage() {
         // ✅ MATCHES YOUR SCHEMA (no joined_at/name/email)
         const { data, error } = await supabase
           .from("clients")
-          .select("id, workspace_id, user_id, status, display_name, created_at, tags")
+          .select("id, workspace_id, user_id, status, display_name, created_at, tags, timezone")
           .eq("workspace_id", workspaceId)
           .order("created_at", { ascending: false })
           .limit(12);
@@ -91,6 +105,103 @@ export function PtDashboardPage() {
 
     loadQueue();
   }, [user?.id]);
+
+  useEffect(() => {
+    const loadAtRisk = async () => {
+      if (clients.length === 0) {
+        setAtRiskClients([]);
+        return;
+      }
+
+      setAtRiskLoading(true);
+      setAtRiskError(null);
+
+      try {
+        const clientIds = clients.map((client) => client.id);
+        const todayMap = new Map<string, string>();
+        const startMap = new Map<string, string>();
+        let minStart: string | null = null;
+        let maxToday: string | null = null;
+
+        clients.forEach((client) => {
+          const todayStr = getTodayInTimezone(client.timezone ?? null);
+          const startStr = addDaysToDateString(todayStr, -6);
+          todayMap.set(client.id, todayStr);
+          startMap.set(client.id, startStr);
+          if (!minStart || startStr < minStart) minStart = startStr;
+          if (!maxToday || todayStr > maxToday) maxToday = todayStr;
+        });
+
+        const { data: habitLogs, error: habitError } = await supabase
+          .from("habit_logs")
+          .select("client_id, log_date")
+          .in("client_id", clientIds)
+          .gte("log_date", minStart ?? "")
+          .lte("log_date", maxToday ?? "");
+        if (habitError) throw habitError;
+
+        const { data: checkins, error: checkinError } = await supabase
+          .from("checkin_submissions")
+          .select("client_id, submitted_at")
+          .in("client_id", clientIds)
+          .order("submitted_at", { ascending: false });
+        if (checkinError) throw checkinError;
+
+        const latestCheckins = new Map<string, string>();
+        (checkins ?? []).forEach((row) => {
+          if (!row.submitted_at) return;
+          const current = latestCheckins.get(row.client_id);
+          if (!current || new Date(row.submitted_at) > new Date(current)) {
+            latestCheckins.set(row.client_id, row.submitted_at);
+          }
+        });
+
+        const logsByClient = new Map<string, Set<string>>();
+        (habitLogs ?? []).forEach((row) => {
+          if (!logsByClient.has(row.client_id)) {
+            logsByClient.set(row.client_id, new Set<string>());
+          }
+          logsByClient.get(row.client_id)?.add(row.log_date);
+        });
+
+        const atRisk = clients
+          .map((client) => {
+            const todayStr = todayMap.get(client.id) ?? getTodayInTimezone(client.timezone ?? null);
+            const startStr = startMap.get(client.id) ?? addDaysToDateString(todayStr, -6);
+            const logDates = logsByClient.get(client.id) ?? new Set<string>();
+            const filteredDates = Array.from(logDates).filter(
+              (date) => date >= startStr && date <= todayStr
+            );
+            const missingHabitDays = Math.max(0, 7 - filteredDates.length);
+
+            const latestCheckin = latestCheckins.get(client.id) ?? null;
+            const latestCheckinDate = latestCheckin
+              ? formatDateInTimezone(latestCheckin, client.timezone ?? null)
+              : null;
+            const lastSaturday = getLastSaturday(todayStr);
+            const isPastSaturday = diffDays(todayStr, lastSaturday) >= 1;
+            const checkinOverdue =
+              isPastSaturday && (!latestCheckinDate || latestCheckinDate < lastSaturday);
+
+            const name = client.display_name?.trim()
+              ? client.display_name
+              : `Client ${client.user_id.slice(0, 6)}`;
+
+            return { id: client.id, name, missingHabitDays, checkinOverdue };
+          })
+          .filter((row) => row.missingHabitDays >= 2 || row.checkinOverdue);
+
+        setAtRiskClients(atRisk);
+      } catch (error: any) {
+        console.error("Failed to load at-risk clients", error);
+        setAtRiskError(error?.message ?? "Failed to load at-risk clients.");
+      } finally {
+        setAtRiskLoading(false);
+      }
+    };
+
+    loadAtRisk();
+  }, [clients]);
 
   const queueSections = useMemo(() => {
     const formatted = clients.map((client) => {
@@ -234,6 +345,66 @@ export function PtDashboardPage() {
         </Card>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">At-risk clients</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Missing habits or overdue check-ins this week.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {atRiskError ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  {atRiskError}
+                </div>
+              ) : null}
+
+              {atRiskLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : atRiskClients.length > 0 ? (
+                atRiskClients.map((client) => (
+                  <div
+                    key={client.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3"
+                  >
+                    <div>
+                      <div className="text-sm font-semibold">{client.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {client.missingHabitDays} missing habit log
+                        {client.missingHabitDays === 1 ? "" : "s"} (7d)
+                        {client.checkinOverdue ? " • Check-in overdue" : ""}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/pt/clients/${client.id}`)}
+                      >
+                        Open
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => navigate(`/pt/clients/${client.id}?tab=messages`)}
+                      >
+                        Message
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  No at-risk clients right now.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Weekly momentum</CardTitle>
