@@ -29,6 +29,12 @@ const getErrorDetails = (error: unknown) => {
   return { code: "unknown", message: "Unknown error" };
 };
 
+const formatWorkoutType = (value: string | null | undefined) => {
+  if (value === "bodybuilding") return "Bodybuilding";
+  if (value === "crossfit") return "CrossFit";
+  return "Workout";
+};
+
 type TemplateRow = {
   id: string;
   name: string | null;
@@ -325,7 +331,7 @@ export function PtWorkoutTemplateBuilderPage() {
           <p className="text-sm text-muted-foreground">Configure structured exercises.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="muted">{template?.workout_type ?? "Workout"}</Badge>
+          <Badge variant="muted">{formatWorkoutType(template?.workout_type)}</Badge>
           <Button variant="secondary" onClick={() => navigate("/pt/templates/workouts")}>
             Back to templates
           </Button>
@@ -372,7 +378,7 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Workout type</label>
-              <Input value={template.workout_type ?? ""} readOnly />
+              <Input value={formatWorkoutType(template.workout_type)} readOnly />
             </div>
           </CardContent>
         </Card>

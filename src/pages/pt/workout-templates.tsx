@@ -27,14 +27,15 @@ type TemplateRow = {
 };
 
 const workoutTypeOptions = [
-  "Bodybuilding",
-  "Strength",
-  "Hypertrophy",
-  "CrossFit",
-  "Conditioning",
-  "Mobility",
-  "Other",
+  { label: "Bodybuilding", value: "bodybuilding" },
+  { label: "CrossFit", value: "crossfit" },
 ] as const;
+
+const formatWorkoutType = (value: string | null | undefined) => {
+  if (value === "bodybuilding") return "Bodybuilding";
+  if (value === "crossfit") return "CrossFit";
+  return "Workout";
+};
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -160,6 +161,7 @@ export function PtWorkoutTemplatesPage() {
               day: "numeric",
             })
           : "Recently",
+        workoutTypeLabel: formatWorkoutType(template.workout_type),
       })),
     [templates]
   );
@@ -228,7 +230,7 @@ export function PtWorkoutTemplatesPage() {
                       <p className="text-xs text-muted-foreground">Last edited {template.updated}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="muted">{template.workout_type ?? "Workout"}</Badge>
+                      <Badge variant="muted">{template.workoutTypeLabel}</Badge>
                       <Button asChild size="sm" variant="secondary">
                         <Link to={`/pt/templates/workouts/${template.id}`}>Edit</Link>
                       </Button>
@@ -353,8 +355,8 @@ export function PtWorkoutTemplatesPage() {
               >
                 <option value="">Select type</option>
                 {workoutTypeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                  <option key={type.value} value={type.value}>
+                    {type.label}
                   </option>
                 ))}
               </select>
