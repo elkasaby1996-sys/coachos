@@ -9,7 +9,8 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
-import { addDaysToDateString, diffDays, formatDateInTimezone, getLastSaturday, getTodayInTimezone } from "../../lib/date-utils";
+import { addDaysToDateString, diffDays, getLastSaturday, getTodayInTimezone } from "../../lib/date-utils";
+import { getLatestCheckinDate } from "../../lib/checkins";
 
 type ClientRecord = {
   id: string;
@@ -141,18 +142,27 @@ export function PtDashboardPage() {
         if (habitError) throw habitError;
 
         const { data: checkins, error: checkinError } = await supabase
-          .from("checkin_submissions")
-          .select("client_id, submitted_at")
-          .in("client_id", clientIds)
-          .order("submitted_at", { ascending: false });
+          .from("checkins")
+          .select("*")
+          .in("client_id", clientIds);
         if (checkinError) throw checkinError;
 
-        const latestCheckins = new Map<string, string>();
+        const rowsByClient = new Map<string, Record<string, unknown>[]>();
         (checkins ?? []).forEach((row) => {
-          if (!row.submitted_at) return;
-          const current = latestCheckins.get(row.client_id);
-          if (!current || new Date(row.submitted_at) > new Date(current)) {
-            latestCheckins.set(row.client_id, row.submitted_at);
+          const clientId = (row as { client_id?: string | null }).client_id;
+          if (!clientId) return;
+          if (!rowsByClient.has(clientId)) {
+            rowsByClient.set(clientId, []);
+          }
+          rowsByClient.get(clientId)?.push(row as Record<string, unknown>);
+        });
+
+        const latestCheckins = new Map<string, string>();
+        clients.forEach((client) => {
+          const rows = rowsByClient.get(client.id) ?? [];
+          const latest = getLatestCheckinDate(rows, client.timezone ?? null);
+          if (latest) {
+            latestCheckins.set(client.id, latest);
           }
         });
 
@@ -174,10 +184,7 @@ export function PtDashboardPage() {
             );
             const missingHabitDays = Math.max(0, 7 - filteredDates.length);
 
-            const latestCheckin = latestCheckins.get(client.id) ?? null;
-            const latestCheckinDate = latestCheckin
-              ? formatDateInTimezone(latestCheckin, client.timezone ?? null)
-              : null;
+            const latestCheckinDate = latestCheckins.get(client.id) ?? null;
             const lastSaturday = getLastSaturday(todayStr);
             const isPastSaturday = diffDays(todayStr, lastSaturday) >= 1;
             const checkinOverdue =

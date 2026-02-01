@@ -23,6 +23,7 @@ import { getProfileCompletion } from "../../lib/profile-completion";
 import { getCoachActionLabel, logCoachActivity } from "../../lib/coach-activity";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
+import { computeStreak, getLatestLogDate } from "../../lib/habits";
 
 const tabs = [
   "overview",
@@ -43,8 +44,9 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Something went wrong.";
+const getErrorMessage = (_error: unknown) => "Something went wrong.";
+
+const getFriendlyErrorMessage = () => "Unable to load data right now. Please try again.";
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: null, message: "Something went wrong." };
@@ -150,6 +152,14 @@ type CoachActivityRow = {
   metadata: Record<string, unknown> | null;
 };
 
+type CheckinRow = {
+  id: string;
+  week_ending_saturday: string | null;
+  submitted_at: string | null;
+  pt_feedback: string | null;
+  created_at: string | null;
+};
+
 const baselinePhotoTypes = ["front", "side", "back"] as const;
 
 export function PtClientDetailPage() {
@@ -191,8 +201,16 @@ export function PtClientDetailPage() {
   );
   const [baselineNotesMessage, setBaselineNotesMessage] = useState<string | null>(null);
   const baselineReviewLoggedRef = useRef<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [selectedCheckin, setSelectedCheckin] = useState<CheckinRow | null>(null);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "saving" | "error">(
+    "idle"
+  );
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
+  const isDev = import.meta.env.DEV;
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const endKey = useMemo(() => {
     const date = new Date(today);
@@ -233,6 +251,10 @@ export function PtClientDetailPage() {
     [clientQuery.data?.timezone]
   );
   const habitsStart = useMemo(
+    () => addDaysToDateString(habitsToday, -29),
+    [habitsToday]
+  );
+  const habitsWeekStart = useMemo(
     () => addDaysToDateString(habitsToday, -6),
     [habitsToday]
   );
@@ -357,6 +379,20 @@ export function PtClientDetailPage() {
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as BaselinePhotoRow[];
+    },
+  });
+
+  const checkinsQuery = useQuery({
+    queryKey: ["pt-client-checkins", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkins")
+        .select("id, week_ending_saturday, submitted_at, pt_feedback, created_at")
+        .eq("client_id", clientId ?? "")
+        .order("week_ending_saturday", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as CheckinRow[];
     },
   });
 
@@ -597,9 +633,17 @@ export function PtClientDetailPage() {
     return missing;
   }, [clientSnapshot]);
 
+  const habitLogDates = useMemo(
+    () => (habitsQuery.data ?? []).map((log) => log.log_date),
+    [habitsQuery.data]
+  );
+
   const habitTrends = useMemo(() => {
     const logs = habitsQuery.data ?? [];
-    const daysLogged = logs.length;
+    const last7Logs = logs.filter(
+      (log) => log.log_date >= habitsWeekStart && log.log_date <= habitsToday
+    );
+    const daysLogged = last7Logs.length;
     const avg = (values: Array<number | null | undefined>) => {
       const filtered = values.filter((value) => typeof value === "number") as number[];
       if (filtered.length === 0) return null;
@@ -607,11 +651,11 @@ export function PtClientDetailPage() {
       return Math.round(sum / filtered.length);
     };
 
-    const avgSteps = avg(logs.map((log) => log.steps ?? null));
-    const avgSleep = avg(logs.map((log) => log.sleep_hours ?? null));
-    const avgProtein = avg(logs.map((log) => log.protein_g ?? null));
+    const avgSteps = avg(last7Logs.map((log) => log.steps ?? null));
+    const avgSleep = avg(last7Logs.map((log) => log.sleep_hours ?? null));
+    const avgProtein = avg(last7Logs.map((log) => log.protein_g ?? null));
 
-    const weightLogs = [...logs]
+    const weightLogs = [...last7Logs]
       .filter((log) => typeof log.weight_value === "number")
       .sort((a, b) => a.log_date.localeCompare(b.log_date));
     const weightUnit = weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
@@ -622,7 +666,16 @@ export function PtClientDetailPage() {
         : null;
 
     return { daysLogged, avgSteps, avgSleep, avgProtein, weightChange, weightUnit };
-  }, [habitsQuery.data]);
+  }, [habitsQuery.data, habitsToday, habitsWeekStart]);
+
+  const habitStreak = useMemo(
+    () => computeStreak(habitLogDates, habitsToday, 30),
+    [habitLogDates, habitsToday]
+  );
+  const lastHabitLogDate = useMemo(
+    () => getLatestLogDate(habitLogDates),
+    [habitLogDates]
+  );
 
   const baselinePhotoMap = useMemo(() => {
     const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
@@ -693,6 +746,53 @@ export function PtClientDetailPage() {
     setBaselineNotesStatus("idle");
     setBaselineNotesMessage("Baseline notes saved.");
     await queryClient.invalidateQueries({ queryKey: ["pt-client-baseline-entry", clientId] });
+  };
+
+  const openCheckinReview = (row: CheckinRow) => {
+    setSelectedCheckin(row);
+    setFeedbackText(row.pt_feedback ?? "");
+    setFeedbackMessage(null);
+    setFeedbackStatus("idle");
+    setReviewOpen(true);
+  };
+
+  const handleSaveCheckinFeedback = async () => {
+    if (!selectedCheckin) return;
+    setFeedbackStatus("saving");
+    setFeedbackMessage(null);
+    const nextFeedback = feedbackText.trim() || null;
+    const queryKey = ["pt-client-checkins", clientId];
+    const previous = queryClient.getQueryData(queryKey) as CheckinRow[] | undefined;
+
+    queryClient.setQueryData(queryKey, (old) => {
+      const rows = (old ?? []) as CheckinRow[];
+      return rows.map((row) =>
+        row.id === selectedCheckin.id ? { ...row, pt_feedback: nextFeedback } : row
+      );
+    });
+
+    const { error } = await supabase
+      .from("checkins")
+      .update({ pt_feedback: nextFeedback })
+      .eq("id", selectedCheckin.id);
+
+    if (error) {
+      if (previous) {
+        queryClient.setQueryData(queryKey, previous);
+      }
+      setFeedbackStatus("error");
+      setFeedbackMessage("Unable to save feedback.");
+      if (isDev) {
+        console.warn("CHECKIN_FEEDBACK_SAVE_ERROR", error);
+      }
+      return;
+    }
+
+    setFeedbackStatus("idle");
+    setFeedbackMessage("Feedback saved.");
+    setReviewOpen(false);
+    setSelectedCheckin(null);
+    await queryClient.invalidateQueries({ queryKey });
   };
 
   useEffect(() => {
@@ -990,8 +1090,10 @@ export function PtClientDetailPage() {
                 ? "Latest entries, streaks, and momentum."
                 : active === "baseline"
                 ? "Latest submitted baseline details."
+                : active === "checkins"
+                ? "Weekly check-ins and coach feedback."
                 : active === "habits"
-                ? "Daily habit logs from the past 7 days."
+                ? "Daily habit logs from the past 30 days."
                 : "Section details coming soon."}
           </p>
         </CardHeader>
@@ -1156,6 +1258,63 @@ export function PtClientDetailPage() {
             ) : (
                 <p className="text-sm text-muted-foreground">No submitted baseline yet.</p>
               )
+            ) : active === "checkins" ? (
+              checkinsQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : checkinsQuery.data && checkinsQuery.data.length > 0 ? (
+                <div className="space-y-3">
+                  {checkinsQuery.data.map((checkin) => {
+                    const status = !checkin.submitted_at
+                      ? "Not submitted"
+                      : checkin.pt_feedback
+                      ? "Reviewed"
+                      : "Submitted";
+                    const variant =
+                      status === "Reviewed"
+                        ? "success"
+                        : status === "Submitted"
+                        ? "secondary"
+                        : "muted";
+                    return (
+                      <div
+                        key={checkin.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
+                      >
+                        <div>
+                          <div className="text-sm font-semibold">
+                            {checkin.week_ending_saturday
+                              ? `Week ending ${checkin.week_ending_saturday}`
+                              : "Weekly check-in"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {checkin.submitted_at
+                              ? `Submitted ${formatRelativeTime(checkin.submitted_at)}`
+                              : "Awaiting submission"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={variant}>{status}</Badge>
+                          {checkin.submitted_at ? (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => openCheckinReview(checkin)}
+                            >
+                              {checkin.pt_feedback ? "Edit feedback" : "Review"}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No check-ins yet.</p>
+              )
             ) : active === "habits" ? (
               habitsQuery.isLoading ? (
                 <div className="space-y-3">
@@ -1165,6 +1324,30 @@ export function PtClientDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <Card className="border-dashed">
+                    <CardHeader>
+                      <CardTitle>Habits summary</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Snapshot of recent consistency and streaks.
+                      </p>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-muted/30 p-3">
+                        <p className="text-xs text-muted-foreground">Current streak</p>
+                        <p className="text-sm font-semibold">
+                          {habitStreak > 0 ? `${habitStreak} day${habitStreak === 1 ? "" : "s"}` : "--"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-muted/30 p-3">
+                        <p className="text-xs text-muted-foreground">Logs last 7 days</p>
+                        <p className="text-sm font-semibold">{habitTrends.daysLogged}/7</p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-muted/30 p-3">
+                        <p className="text-xs text-muted-foreground">Last logged</p>
+                        <p className="text-sm font-semibold">{lastHabitLogDate ?? "--"}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
                   <Card className="border-dashed">
                     <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
                       <div>
@@ -1187,12 +1370,18 @@ export function PtClientDetailPage() {
                         <Alert className="border-danger/30">
                           <AlertTitle>Error</AlertTitle>
                           <AlertDescription>
-                            <div className="space-y-1 text-xs text-muted-foreground">
-                              <div>code: {getErrorDetails(habitLogByDateQuery.error).code ?? "n/a"}</div>
-                              <div>
-                                message: {getErrorDetails(habitLogByDateQuery.error).message ?? "n/a"}
+                            {getFriendlyErrorMessage()}
+                            {isDev ? (
+                              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                <div>
+                                  code: {getErrorDetails(habitLogByDateQuery.error).code ?? "n/a"}
+                                </div>
+                                <div>
+                                  message:{" "}
+                                  {getErrorDetails(habitLogByDateQuery.error).message ?? "n/a"}
+                                </div>
                               </div>
-                            </div>
+                            ) : null}
                           </AlertDescription>
                         </Alert>
                       ) : habitLogByDateQuery.isLoading ? (
@@ -1353,6 +1542,7 @@ export function PtClientDetailPage() {
         baselineMetricsQuery.error ||
         baselineMarkersQuery.error ||
         baselinePhotosQuery.error ||
+        checkinsQuery.error ||
         clientQuery.error ||
         assignStatus === "error") && (
         <Alert className="border-destructive/30">
@@ -1360,19 +1550,35 @@ export function PtClientDetailPage() {
           <AlertDescription>
             {assignStatus === "error" && assignMessage
               ? assignMessage
-                : getErrorMessage(
-                    workspaceQuery.error ||
-                      templatesQuery.error ||
-                      upcomingQuery.error ||
-                      coachActivityQuery.error ||
-                      habitsQuery.error ||
-                      habitLogByDateQuery.error ||
-                      clientQuery.error ||
-                      baselineEntryQuery.error ||
-                      baselineMetricsQuery.error ||
-                    baselineMarkersQuery.error ||
-                    baselinePhotosQuery.error
-                )}
+              : getFriendlyErrorMessage()}
+            {isDev ? (
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {[
+                  workspaceQuery.error,
+                  templatesQuery.error,
+                  upcomingQuery.error,
+                  coachActivityQuery.error,
+                  habitsQuery.error,
+                  habitLogByDateQuery.error,
+                  baselineEntryQuery.error,
+                  baselineMetricsQuery.error,
+                  baselineMarkersQuery.error,
+                  baselinePhotosQuery.error,
+                  checkinsQuery.error,
+                  clientQuery.error,
+                ]
+                  .filter(Boolean)
+                  .map((error, index) => {
+                    const details = getErrorDetails(error);
+                    return (
+                      <div key={`${index}-${details.message}`}>
+                        {details.code ? `${details.code}: ` : ""}
+                        {details.message}
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : null}
           </AlertDescription>
         </Alert>
       )}
@@ -1595,6 +1801,53 @@ export function PtClientDetailPage() {
               disabled={assignStatus === "saving" || !editTemplateId || !editDate}
             >
               {assignStatus === "saving" ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={reviewOpen}
+        onOpenChange={(open) => {
+          setReviewOpen(open);
+          if (!open) {
+            setSelectedCheckin(null);
+            setFeedbackText("");
+            setFeedbackMessage(null);
+            setFeedbackStatus("idle");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Check-in feedback</DialogTitle>
+            <DialogDescription>
+              {selectedCheckin?.week_ending_saturday
+                ? `Week ending ${selectedCheckin.week_ending_saturday}`
+                : "Weekly check-in feedback"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground">Feedback</label>
+            <textarea
+              className="min-h-[140px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={feedbackText}
+              onChange={(event) => setFeedbackText(event.target.value)}
+              placeholder="Write notes for the client..."
+            />
+            {feedbackMessage ? (
+              <div className="text-xs text-muted-foreground">{feedbackMessage}</div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setReviewOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveCheckinFeedback}
+              disabled={feedbackStatus === "saving" || !selectedCheckin}
+            >
+              {feedbackStatus === "saving" ? "Saving..." : "Save feedback"}
             </Button>
           </DialogFooter>
         </DialogContent>

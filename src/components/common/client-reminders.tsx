@@ -6,12 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { supabase } from "../../lib/supabase";
 import {
   addDaysToDateString,
-  diffDays,
-  formatDateInTimezone,
-  getLastSaturday,
   getTodayInTimezone,
   getWeekEndSaturday,
-  getWeekStartSunday,
 } from "../../lib/date-utils";
 
 type ReminderSeverity = "info" | "warn";
@@ -25,14 +21,26 @@ type ReminderItem = {
   severity: ReminderSeverity;
 };
 
+type ReminderDefinition = ReminderItem & {
+  isRelevant: (context: ReminderContext) => boolean;
+};
+
+type ReminderContext = {
+  hasTodayLog: boolean;
+  baselineExists: boolean;
+  checkinDue: boolean;
+};
+
 type HabitLogRow = {
   client_id: string;
   log_date: string;
 };
 
-type CheckinRow = {
-  client_id: string;
+type CheckinAlertRow = {
+  id: string;
   submitted_at: string | null;
+  pt_feedback: string | null;
+  week_ending_saturday: string;
 };
 
 type DismissedReminderRow = {
@@ -52,13 +60,25 @@ const getAlertStyles = (severity: ReminderSeverity) =>
 const getDismissError = (error: unknown) => {
   if (!error) return null;
   if (error instanceof Error) {
-    return error.message ?? "Failed to dismiss reminder.";
+    return error.message ?? "Unable to update reminders.";
   }
   if (typeof error === "object") {
     const err = error as { message?: string | null };
-    return err.message ?? "Failed to dismiss reminder.";
+    return err.message ?? "Unable to update reminders.";
   }
-  return "Failed to dismiss reminder.";
+  return "Unable to update reminders.";
+};
+
+let didWarnCheckinAlertError = false;
+
+const warnCheckinAlertErrorOnce = (error: unknown) => {
+  if (didWarnCheckinAlertError || !error) return;
+  didWarnCheckinAlertError = true;
+  const err = error as { code?: string; message?: string };
+  const suffix = [err.code, err.message].filter(Boolean).join(" ");
+  if (import.meta.env.DEV) {
+    console.warn("CHECKIN_ALERT_ERROR", suffix || err);
+  }
 };
 
 export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
@@ -67,9 +87,8 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
   const [dismissingKey, setDismissingKey] = useState<string | null>(null);
 
   const todayStr = useMemo(() => getTodayInTimezone(timezone), [timezone]);
-  const weekStart = useMemo(() => getWeekStartSunday(todayStr), [todayStr]);
-  const weekEnd = useMemo(() => getWeekEndSaturday(todayStr), [todayStr]);
-  const lastSaturday = useMemo(() => getLastSaturday(todayStr), [todayStr]);
+  const weekEndingSaturday = useMemo(() => getWeekEndSaturday(todayStr), [todayStr]);
+  const isDev = import.meta.env.DEV;
 
   const habitLogsQuery = useQuery({
     queryKey: ["client-alerts-habit-logs", clientId, todayStr],
@@ -87,19 +106,38 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     },
   });
 
-  const checkinQuery = useQuery({
-    queryKey: ["client-alerts-checkin", clientId],
+  const baselineExistsQuery = useQuery({
+    queryKey: ["client-baseline-exists", clientId],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("checkin_submissions")
-        .select("client_id, submitted_at")
+        .from("baseline_entries")
+        .select("id")
         .eq("client_id", clientId ?? "")
-        .order("submitted_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as CheckinRow | null;
+      return Boolean(data?.id);
+    },
+  });
+
+  const checkinAlertQuery = useQuery({
+    queryKey: ["client-checkin-alert", clientId, weekEndingSaturday],
+    enabled: !!clientId && !!weekEndingSaturday,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkins")
+        .select("id, submitted_at, pt_feedback, week_ending_saturday")
+        .eq("client_id", clientId ?? "")
+        .eq("week_ending_saturday", weekEndingSaturday)
+        .maybeSingle();
+      if (error) {
+        warnCheckinAlertErrorOnce(error);
+        return { row: null, error: true };
+      }
+      return { row: (data ?? null) as CheckinAlertRow | null, error: false };
     },
   });
 
@@ -117,88 +155,132 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     },
   });
 
-  const alertsError =
-    habitLogsQuery.error || checkinQuery.error ? getDismissError(habitLogsQuery.error || checkinQuery.error) : null;
-
-  const alerts = useMemo(() => {
-    if (habitLogsQuery.isError || checkinQuery.isError) {
-      return [] as ReminderItem[];
-    }
-    const items: ReminderItem[] = [];
+  const reminderContext = useMemo(() => {
     const logs = habitLogsQuery.data ?? [];
-    const uniqueDates = new Set(logs.map((row) => row.log_date));
-    const missingCount = Math.max(0, 7 - uniqueDates.size);
-    const hasTodayLog = uniqueDates.has(todayStr);
+    const hasTodayLog = logs.some((row) => row.log_date === todayStr);
+    const baselineExists = Boolean(baselineExistsQuery.data);
+    const isSaturday = todayStr === weekEndingSaturday;
+    const checkinRow = checkinAlertQuery.data?.row ?? null;
+    const checkinError = Boolean(checkinAlertQuery.data?.error);
+    const checkinDue =
+      !checkinError && isSaturday && (!checkinRow || !checkinRow.submitted_at);
 
-    if (!hasTodayLog) {
-      items.push({
-        key: "habit_log_today",
-        title: "Log today's habits",
-        description: "You do not have a habit log for today.",
-        ctaLabel: "Log habits",
-        ctaTo: "/app/habits",
-        severity: "warn",
-      });
+    return { hasTodayLog, baselineExists, checkinDue };
+  }, [
+    habitLogsQuery.data,
+    baselineExistsQuery.data,
+    checkinAlertQuery.data,
+    todayStr,
+    weekEndingSaturday,
+  ]);
+
+  const alertItems = useMemo(() => {
+    const items: ReminderItem[] = [];
+    const result = checkinAlertQuery.data;
+    if (!result || result.error) return items;
+
+    const row = result.row;
+    const isTodaySaturday = todayStr === weekEndingSaturday;
+
+    let state: "due_today" | "in_progress" | "submitted_waiting" | "reviewed" | "no_alerts" = "no_alerts";
+
+    if (!row) {
+      state = isTodaySaturday ? "due_today" : "no_alerts";
+    } else if (!row.submitted_at) {
+      state = "in_progress";
+    } else if (!row.pt_feedback || row.pt_feedback.trim().length === 0) {
+      state = "submitted_waiting";
+    } else {
+      state = "reviewed";
     }
 
-    if (missingCount > 0) {
+    if (state === "due_today") {
       items.push({
-        key: "habit_log_week",
-        title: "Catch up on habits",
-        description: `${missingCount} day${missingCount === 1 ? "" : "s"} missing in the last 7 days.`,
-        ctaLabel: "Review logs",
-        ctaTo: "/app/habits",
-        severity: missingCount >= 3 ? "warn" : "info",
-      });
-    }
-
-    const latestCheckinDate = checkinQuery.data?.submitted_at
-      ? formatDateInTimezone(checkinQuery.data.submitted_at, timezone)
-      : null;
-    const hasSubmittedSinceLastSaturday =
-      latestCheckinDate && latestCheckinDate >= lastSaturday;
-    const overdue =
-      !hasSubmittedSinceLastSaturday && diffDays(todayStr, lastSaturday) >= 1;
-
-    if (overdue) {
-      items.push({
-        key: "checkin_overdue",
-        title: "Weekly check-in overdue",
-        description: "Your weekly check-in was due last Saturday.",
-        ctaLabel: "Submit check-in",
+        key: "checkin_due_today",
+        title: "Weekly check-in due today",
+        description: "Complete your check-in to stay on track.",
+        ctaLabel: "Complete check-in",
         ctaTo: "/app/checkin",
         severity: "warn",
       });
-    } else {
-      const hasSubmittedThisWeek = latestCheckinDate && latestCheckinDate >= weekStart;
-      if (!hasSubmittedThisWeek) {
-        const daysUntilSaturday = Math.max(0, diffDays(weekEnd, todayStr));
-        const dayLabel =
-          daysUntilSaturday === 0
-            ? "Due today"
-            : `Due in ${daysUntilSaturday} day${daysUntilSaturday === 1 ? "" : "s"}`;
-        items.push({
-          key: "checkin_due",
-          title: "Weekly check-in due Saturday",
-          description: dayLabel,
-          ctaLabel: "Open check-in",
-          ctaTo: "/app/checkin",
-          severity: "info",
-        });
-      }
+    } else if (state === "in_progress") {
+      items.push({
+        key: "checkin_in_progress",
+        title: "Check-in started - finish it",
+        description: "Continue where you left off.",
+        ctaLabel: "Continue",
+        ctaTo: "/app/checkin",
+        severity: "info",
+      });
+    } else if (state === "submitted_waiting") {
+      items.push({
+        key: "checkin_submitted_waiting_review",
+        title: "Check-in submitted - waiting on coach review",
+        description: "Your coach will follow up with feedback soon.",
+        ctaLabel: "",
+        ctaTo: "",
+        severity: "info",
+      });
+    } else if (state === "reviewed") {
+      items.push({
+        key: "checkin_reviewed",
+        title: "Coach reviewed your check-in",
+        description: "Check your feedback to keep progressing.",
+        ctaLabel: "",
+        ctaTo: "",
+        severity: "info",
+      });
     }
 
     return items;
+  }, [checkinAlertQuery.data, todayStr, weekEndingSaturday]);
+
+  const reminderItems = useMemo(() => {
+    if (
+      habitLogsQuery.isError ||
+      baselineExistsQuery.isError ||
+      dismissedQuery.isError
+    ) {
+      return [] as ReminderItem[];
+    }
+    const definitions: ReminderDefinition[] = [
+      {
+        key: "log_habits_today",
+        title: "Log habits today",
+        description: "No habit log saved for today.",
+        ctaLabel: "Log habits",
+        ctaTo: "/app/habits",
+        severity: "warn",
+        isRelevant: (context) => !context.hasTodayLog,
+      },
+      {
+        key: "baseline_missing",
+        title: "Complete your baseline",
+        description: "Your coach needs baseline data to personalize your plan.",
+        ctaLabel: "Start baseline",
+        ctaTo: "/app/baseline",
+        severity: "info",
+        isRelevant: (context) => !context.baselineExists,
+      },
+      {
+        key: "checkin_due",
+        title: "Weekly check-in due today",
+        description: "Submit your weekly check-in.",
+        ctaLabel: "Complete check-in",
+        ctaTo: "/app/checkin",
+        severity: "warn",
+        isRelevant: (context) => context.checkinDue,
+      },
+    ];
+
+    return definitions
+      .filter((definition) => definition.isRelevant(reminderContext))
+      .map(({ isRelevant: _unused, ...item }) => item);
   }, [
-    habitLogsQuery.data,
     habitLogsQuery.isError,
-    checkinQuery.isError,
-    checkinQuery.data?.submitted_at,
-    lastSaturday,
-    timezone,
-    todayStr,
-    weekEnd,
-    weekStart,
+    baselineExistsQuery.isError,
+    dismissedQuery.isError,
+    reminderContext,
   ]);
 
   const dismissedKeys = useMemo(() => {
@@ -206,7 +288,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     return new Set(rows.map((row) => row.key));
   }, [dismissedQuery.data]);
 
-  const reminders = alerts.filter((item) => !dismissedKeys.has(item.key));
+  const reminders = reminderItems.filter((item) => !dismissedKeys.has(item.key));
 
   const handleDismiss = async (key: string) => {
     if (!clientId || !todayStr) return;
@@ -218,8 +300,10 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
       dismissed_for_date: todayStr,
     });
     if (error && error.code !== "23505") {
-      console.log("DISMISS_REMINDER_ERROR", error);
-      setDismissError(getDismissError(error));
+      if (isDev) {
+        console.warn("DISMISS_REMINDER_ERROR", error);
+      }
+      setDismissError("Unable to update reminders.");
     }
     setDismissingKey(null);
     await dismissedQuery.refetch();
@@ -235,17 +319,12 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
           <p className="text-sm text-muted-foreground">Stay on track today.</p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {alertsError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {alertsError}
-            </div>
-          ) : null}
-          {alerts.length === 0 ? (
+          {alertItems.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
               No alerts today.
             </div>
           ) : (
-            alerts.map((item) => (
+            alertItems.map((item) => (
               <div
                 key={item.key}
                 className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 ${getAlertStyles(
@@ -256,9 +335,11 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
                   <p className="text-sm font-semibold">{item.title}</p>
                   <p className="text-xs text-muted-foreground">{item.description}</p>
                 </div>
-                <Button size="sm" onClick={() => navigate(item.ctaTo)}>
-                  {item.ctaLabel}
-                </Button>
+                {item.ctaLabel ? (
+                  <Button size="sm" onClick={() => navigate(item.ctaTo)}>
+                    {item.ctaLabel}
+                  </Button>
+                ) : null}
               </div>
             ))
           )}
@@ -278,7 +359,12 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
           ) : null}
           {dismissedQuery.error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {getDismissError(dismissedQuery.error)}
+              Unable to load reminders.
+              {isDev ? (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {getDismissError(dismissedQuery.error)}
+                </div>
+              ) : null}
             </div>
           ) : null}
           {reminders.length === 0 ? (

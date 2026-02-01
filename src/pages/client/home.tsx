@@ -10,6 +10,8 @@ import { ClientReminders } from "../../components/common/client-reminders";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
+import { computeStreak, getLatestLogDate } from "../../lib/habits";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -29,8 +31,20 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Something went wrong.";
+const getFriendlyErrorMessage = () => "Unable to load data right now. Please try again.";
+
+const getErrorDetails = (error: unknown) => {
+  if (!error) return { code: null, message: "Something went wrong." };
+  if (error instanceof Error) {
+    const err = error as Error & { code?: string | null };
+    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
+  }
+  if (typeof error === "object") {
+    const err = error as { code?: string | null; message?: string | null };
+    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
+  }
+  return { code: null, message: "Something went wrong." };
+};
 
 const readChecklist = (dateKey: string): ChecklistState => {
   if (typeof window === "undefined") return emptyChecklist;
@@ -40,7 +54,9 @@ const readChecklist = (dateKey: string): ChecklistState => {
     const parsed = JSON.parse(raw) as Partial<ChecklistState>;
     return { ...emptyChecklist, ...parsed };
   } catch (error) {
-    console.error("Failed to read checklist", error);
+    if (import.meta.env.DEV) {
+      console.error("Failed to read checklist", error);
+    }
     return emptyChecklist;
   }
 };
@@ -63,7 +79,9 @@ const readDayStatus = (dateKey: string): DayStatus | null => {
     }
     return { completed: parsed.completed, timestamp: parsed.timestamp };
   } catch (error) {
-    console.error("Failed to read day status", error);
+    if (import.meta.env.DEV) {
+      console.error("Failed to read day status", error);
+    }
     return null;
   }
 };
@@ -73,41 +91,11 @@ const writeDayStatus = (dateKey: string, status: DayStatus) => {
   window.localStorage.setItem(`coachos_day_status_${dateKey}`, JSON.stringify(status));
 };
 
-const getStepsAdherenceStats = (today: Date, days = 7) => {
-  let checked = 0;
-  let total = 0;
-
-  for (let i = 0; i < days; i += 1) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const key = formatDateKey(date);
-    const state = readChecklist(key);
-    if (state.steps) checked += 1;
-    total += 1;
-  }
-
-  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
-  return { checked, total, percent };
-};
-
-const getConsistencyStreak = (today: Date, maxDays = 30) => {
-  let streak = 0;
-  for (let i = 0; i < maxDays; i += 1) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const key = formatDateKey(date);
-    const status = readDayStatus(key);
-    const isPerfectDay = status?.completed === true;
-    if (!isPerfectDay) break;
-    streak += 1;
-  }
-  return streak;
-};
-
 export function ClientHomePage() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const today = useMemo(() => new Date(), []);
+  const isDev = import.meta.env.DEV;
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const weekStart = useMemo(() => {
     const date = new Date(today);
@@ -151,6 +139,18 @@ export function ClientHomePage() {
 
   const clientId = clientQuery.data?.id ?? null;
   const clientTimezone = clientQuery.data?.timezone ?? null;
+  const todayStr = useMemo(
+    () => getTodayInTimezone(clientTimezone),
+    [clientTimezone]
+  );
+  const habitsStart = useMemo(
+    () => addDaysToDateString(todayStr, -29),
+    [todayStr]
+  );
+  const habitsWeekStart = useMemo(
+    () => addDaysToDateString(todayStr, -6),
+    [todayStr]
+  );
 
   const baselineSubmittedQuery = useQuery({
     queryKey: ["client-baseline-submitted-latest", clientId],
@@ -233,7 +233,9 @@ export function ClientHomePage() {
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
       const weeklyAssignments = data ?? [];
-      console.log("[WEEKLY_ASSIGNMENTS_ROW0]", weeklyAssignments?.[0]);
+      if (isDev) {
+        console.log("[WEEKLY_ASSIGNMENTS_ROW0]", weeklyAssignments?.[0]);
+      }
       return weeklyAssignments;
     },
   });
@@ -249,6 +251,21 @@ export function ClientHomePage() {
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+
+  const habitLogsQuery = useQuery({
+    queryKey: ["client-habit-logs", clientId, habitsStart, todayStr],
+    enabled: !!clientId && !!todayStr,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select("log_date, steps")
+        .eq("client_id", clientId ?? "")
+        .gte("log_date", habitsStart)
+        .lte("log_date", todayStr);
+      if (error) throw error;
+      return (data ?? []) as Array<{ log_date: string; steps: number | null }>;
     },
   });
 
@@ -298,11 +315,32 @@ export function ClientHomePage() {
     setDayStatus(nextStatus);
   }, [dayStatus?.completed, isPerfectDay, todayKey]);
 
-  const stepsAdherence = useMemo(() => getStepsAdherenceStats(today, 7), [today, checklist]);
-  const consistencyStreak = useMemo(
-    () => getConsistencyStreak(today, 30),
-    [today, dayStatus, checklist]
+  const habitLogDates = useMemo(
+    () => (habitLogsQuery.data ?? []).map((row) => row.log_date),
+    [habitLogsQuery.data]
   );
+  const consistencyStreak = useMemo(
+    () => computeStreak(habitLogDates, todayStr, 30),
+    [habitLogDates, todayStr]
+  );
+  const lastLoggedDate = useMemo(
+    () => getLatestLogDate(habitLogDates),
+    [habitLogDates]
+  );
+  const stepsAdherence = useMemo(() => {
+    const weekLogs = (habitLogsQuery.data ?? []).filter(
+      (row) => row.log_date >= habitsWeekStart && row.log_date <= todayStr
+    );
+    const stepValues = weekLogs.filter(
+      (row) => typeof row.steps === "number"
+    );
+    if (stepValues.length === 0) {
+      return { percent: null };
+    }
+    const checked = stepValues.length;
+    const percent = Math.round((checked / 7) * 100);
+    return { percent };
+  }, [habitLogsQuery.data, habitsWeekStart, todayStr]);
 
   const workoutsCompletedThisWeek = workoutsWeek.length;
 
@@ -389,6 +427,7 @@ export function ClientHomePage() {
     workoutsWeekQuery.error,
     weeklyPlanQuery.error,
     baselineSubmittedQuery.error,
+    habitLogsQuery.error,
     actionError ? new Error(actionError) : null,
   ].filter(Boolean);
 
@@ -436,7 +475,7 @@ export function ClientHomePage() {
       .select("id")
       .maybeSingle();
     if (error || !data?.id) {
-      setActionError(error?.message ?? "Failed to start default session.");
+      setActionError("Unable to start a session right now.");
       return;
     }
     navigate(`/app/workout-run/${data.id}`);
@@ -483,14 +522,25 @@ export function ClientHomePage() {
       ) : null}
 
       {errors.length > 0 ? (
-        <div className="space-y-2">
-          {errors.map((error, index) => (
-            <Alert key={`${index}-${getErrorMessage(error)}`} className="border-danger/30">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{getErrorMessage(error)}</AlertDescription>
-            </Alert>
-          ))}
-        </div>
+        <Alert className="border-danger/30">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {getFriendlyErrorMessage()}
+            {isDev ? (
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {errors.map((error, index) => {
+                  const details = getErrorDetails(error);
+                  return (
+                    <div key={`${index}-${details.message}`}>
+                      {details.code ? `${details.code}: ` : ""}
+                      {details.message}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <ClientReminders clientId={clientId} timezone={clientTimezone} />
@@ -716,14 +766,14 @@ export function ClientHomePage() {
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">Steps adherence (7d)</p>
                       <p className="text-sm font-semibold">
-                        {stepsAdherence.checked === 0 && stepsAdherence.total === 0
-                          ? "No history yet"
-                          : `${stepsAdherence.percent}%`}
+                        {stepsAdherence.percent === null ? "--" : `${stepsAdherence.percent}%`}
                       </p>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Momentum is built by small wins.
+                    {lastLoggedDate
+                      ? `Last habit log: ${lastLoggedDate}. Momentum is built by small wins.`
+                      : "Momentum is built by small wins."}
                   </p>
                 </div>
               ) : (
