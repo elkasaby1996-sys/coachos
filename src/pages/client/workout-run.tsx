@@ -87,7 +87,7 @@ export function ClientWorkoutRunPage() {
       const { data: assignedWorkout, error: assignedError } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, workout_template:workout_templates(id, name, workout_type, description)"
+          "id, status, workout_template:workout_templates(id, name, workout_type_tag, description)"
         )
         .eq("client_id", clientId)
         .eq("id", assignedWorkoutId)

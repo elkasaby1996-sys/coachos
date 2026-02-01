@@ -27,7 +27,10 @@ type TemplateExerciseRow = {
   sort_order: number | null;
   sets: number | null;
   reps: string | null;
-  weight_kg: number | null;
+  weight_value: number | null;
+  weight_unit: string | null;
+  load_notes: string | null;
+  is_completed: boolean | null;
   rest_seconds: number | null;
   tempo: string | null;
   rpe: number | null;
@@ -49,6 +52,11 @@ const getErrorDetails = (error: unknown) => {
     return { code: err.code ?? "unknown", message: err.message ?? "Unknown error" };
   }
   return { code: "unknown", message: "Unknown error" };
+};
+
+type AssignedExerciseState = TemplateExerciseRow & {
+  loadNotesInput: string;
+  isCompletedInput: boolean;
 };
 
 export function ClientWorkoutDetailPage() {
@@ -82,7 +90,7 @@ export function ClientWorkoutDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, completed_at, workout_template:workout_templates(id, name, description, workout_type)"
+          "id, status, completed_at, workout_template:workout_templates(id, name, description, workout_type_tag)"
         )
         .eq("id", assignedWorkoutId ?? "")
         .eq("client_id", clientId ?? "")
@@ -99,7 +107,7 @@ export function ClientWorkoutDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
         .select(
-          "id, sort_order, sets, reps, weight_kg, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+          "id, sort_order, sets, reps, weight_value, weight_unit, load_notes, is_completed, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
         )
         .eq("assigned_workout_id", assignedWorkoutId ?? "")
         .order("sort_order", { ascending: true });
@@ -158,6 +166,9 @@ export function ClientWorkoutDetailPage() {
   });
 
   const [exercises, setExercises] = useState<ExerciseState[]>([]);
+  const [assignedExerciseState, setAssignedExerciseState] = useState<AssignedExerciseState[]>(
+    []
+  );
 
   useEffect(() => {
     if (!workoutLog) return;
@@ -183,6 +194,15 @@ export function ClientWorkoutDetailPage() {
   }, [logItemsQuery.data, workoutLog, assignedExercisesQuery.data]);
 
   useEffect(() => {
+    const rows = (assignedExercisesQuery.data ?? []).map((row) => ({
+      ...row,
+      loadNotesInput: row.load_notes ?? "",
+      isCompletedInput: row.is_completed === true,
+    }));
+    setAssignedExerciseState(rows);
+  }, [assignedExercisesQuery.data]);
+
+  useEffect(() => {
     if (assignedQuery.data?.status === "completed") {
       setShowSummary(true);
     }
@@ -197,6 +217,29 @@ export function ClientWorkoutDetailPage() {
   ].filter(Boolean);
 
   const templateExercises = assignedExercisesQuery.data ?? [];
+
+  const handleAssignedExerciseChange = (
+    id: string,
+    field: "loadNotesInput" | "isCompletedInput",
+    value: string | boolean
+  ) => {
+    setAssignedExerciseState((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  };
+
+  const saveAssignedExercise = async (row: AssignedExerciseState) => {
+    await supabase
+      .from("assigned_workout_exercises")
+      .update({
+        load_notes: row.loadNotesInput.trim() || null,
+        is_completed: row.isCompletedInput,
+      })
+      .eq("id", row.id);
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-exercises", assignedWorkoutId, clientId],
+    });
+  };
 
   const handleSetChange = (
     exerciseIndex: number,
@@ -409,8 +452,8 @@ export function ClientWorkoutDetailPage() {
                   const reps = exercise.reps ? `${exercise.reps} reps` : "";
                   const repLine = [sets, reps].filter(Boolean).join(" x ");
                   const weight =
-                    typeof exercise.weight_kg === "number"
-                      ? `${exercise.weight_kg} kg`
+                    typeof exercise.weight_value === "number"
+                      ? `${exercise.weight_value} ${exercise.weight_unit ?? "kg"}`
                       : null;
                   const details = [
                     repLine,
@@ -421,6 +464,8 @@ export function ClientWorkoutDetailPage() {
                   ].filter(Boolean);
                   const video =
                     exercise.video_url || exercise.exercise?.video_url || null;
+
+                  const rowState = assignedExerciseState.find((row) => row.id === exercise.id);
 
                   return (
                     <div
@@ -455,6 +500,42 @@ export function ClientWorkoutDetailPage() {
                         <p className="mt-2 text-xs text-muted-foreground">
                           Notes: {exercise.notes}
                         </p>
+                      ) : null}
+                      {rowState ? (
+                        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+                          <Input
+                            value={rowState.loadNotesInput}
+                            onChange={(event) =>
+                              handleAssignedExerciseChange(
+                                rowState.id,
+                                "loadNotesInput",
+                                event.target.value
+                              )
+                            }
+                            placeholder="Your notes"
+                          />
+                          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={rowState.isCompletedInput}
+                              onChange={(event) =>
+                                handleAssignedExerciseChange(
+                                  rowState.id,
+                                  "isCompletedInput",
+                                  event.target.checked
+                                )
+                              }
+                            />
+                            Completed
+                          </label>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => saveAssignedExercise(rowState)}
+                          >
+                            Save
+                          </Button>
+                        </div>
                       ) : null}
                     </div>
                   );

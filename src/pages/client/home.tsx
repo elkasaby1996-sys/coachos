@@ -191,7 +191,7 @@ export function ClientHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type, description)"
+          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
         )
         .eq("client_id", clientId)
         .eq("scheduled_date", todayKey)
@@ -225,7 +225,7 @@ export function ClientHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, scheduled_date, status, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type, description)"
+          "id, scheduled_date, status, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
         )
         .eq("client_id", clientId)
         .gte("scheduled_date", todayKey)
@@ -289,8 +289,8 @@ export function ClientHomePage() {
         : null;
 
     const workoutType =
-      tpl && typeof tpl === "object" && "workout_type" in tpl
-        ? (tpl as { workout_type?: string }).workout_type ?? null
+      tpl && typeof tpl === "object" && "workout_type_tag" in tpl
+        ? (tpl as { workout_type_tag?: string }).workout_type_tag ?? null
         : null;
 
     const description =

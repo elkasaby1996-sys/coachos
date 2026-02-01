@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
@@ -30,26 +31,38 @@ type ExerciseRow = {
   workspace_id: string;
   name: string;
   muscle_group: string | null;
+  primary_muscle: string | null;
+  secondary_muscles: string[] | null;
   equipment: string | null;
   video_url: string | null;
   notes: string | null;
+  is_unilateral: boolean | null;
+  tags: string[] | null;
   created_at: string | null;
 };
 
 type ExerciseFormState = {
   name: string;
   muscle_group: string;
+  primary_muscle: string;
+  secondary_muscles: string;
   equipment: string;
   video_url: string;
   notes: string;
+  is_unilateral: boolean;
+  tags: string;
 };
 
 const emptyForm: ExerciseFormState = {
   name: "",
   muscle_group: "",
+  primary_muscle: "",
+  secondary_muscles: "",
   equipment: "",
   video_url: "",
   notes: "",
+  is_unilateral: false,
+  tags: "",
 };
 
 const getErrorDetails = (error: unknown) => {
@@ -71,8 +84,27 @@ export function PtExerciseLibraryPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<ExerciseRow | null>(null);
   const [form, setForm] = useState<ExerciseFormState>(emptyForm);
+  const [filters, setFilters] = useState({ name: "", primary_muscle: "", tag: "" });
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<"idle" | "saving">("idle");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = setTimeout(() => setToastMessage(null), 2400);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
+
+  const splitList = (value: string) =>
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const toNullableList = (value: string) => {
+    const items = splitList(value);
+    return items.length > 0 ? items : null;
+  };
 
   const exercisesQuery = useQuery({
     queryKey: ["exercise-library", workspaceId],
@@ -80,7 +112,9 @@ export function PtExerciseLibraryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercises")
-        .select("id, workspace_id, name, muscle_group, equipment, video_url, notes, created_at")
+        .select(
+          "id, workspace_id, name, muscle_group, primary_muscle, secondary_muscles, equipment, video_url, notes, is_unilateral, tags, created_at"
+        )
         .eq("workspace_id", workspaceId ?? "")
         .order("name");
       if (error) throw error;
@@ -100,9 +134,13 @@ export function PtExerciseLibraryPage() {
     setForm({
       name: exercise.name ?? "",
       muscle_group: exercise.muscle_group ?? "",
+      primary_muscle: exercise.primary_muscle ?? "",
+      secondary_muscles: exercise.secondary_muscles?.join(", ") ?? "",
       equipment: exercise.equipment ?? "",
       video_url: exercise.video_url ?? "",
       notes: exercise.notes ?? "",
+      is_unilateral: exercise.is_unilateral ?? false,
+      tags: exercise.tags?.join(", ") ?? "",
     });
     setActionError(null);
     setModalOpen(true);
@@ -120,9 +158,13 @@ export function PtExerciseLibraryPage() {
       workspace_id: workspaceId,
       name: form.name.trim(),
       muscle_group: form.muscle_group.trim() || null,
+      primary_muscle: form.primary_muscle.trim() || null,
+      secondary_muscles: toNullableList(form.secondary_muscles),
       equipment: form.equipment.trim() || null,
       video_url: form.video_url.trim() || null,
       notes: form.notes.trim() || null,
+      is_unilateral: form.is_unilateral,
+      tags: toNullableList(form.tags),
     };
 
     const response = selected
@@ -143,6 +185,7 @@ export function PtExerciseLibraryPage() {
     setActionStatus("idle");
     setModalOpen(false);
     await queryClient.invalidateQueries({ queryKey: ["exercise-library", workspaceId] });
+    setToastMessage("Exercise saved");
   };
 
   const handleDelete = async () => {
@@ -163,9 +206,30 @@ export function PtExerciseLibraryPage() {
   };
 
   const exercises = exercisesQuery.data ?? [];
+  const filteredExercises = useMemo(() => {
+    const nameFilter = filters.name.trim().toLowerCase();
+    const primaryFilter = filters.primary_muscle.trim().toLowerCase();
+    const tagFilter = filters.tag.trim().toLowerCase();
+
+    return exercises.filter((exercise) => {
+      const nameMatch = !nameFilter || (exercise.name ?? "").toLowerCase().includes(nameFilter);
+      const primaryValue = exercise.primary_muscle ?? exercise.muscle_group ?? "";
+      const primaryMatch = !primaryFilter || primaryValue.toLowerCase().includes(primaryFilter);
+      const tags = exercise.tags ?? [];
+      const tagsMatch = !tagFilter || tags.some((tag) => tag.toLowerCase().includes(tagFilter));
+      return nameMatch && primaryMatch && tagsMatch;
+    });
+  }, [exercises, filters]);
 
   return (
     <div className="space-y-6">
+      {toastMessage ? (
+        <div className="fixed right-6 top-6 z-50 w-[260px]">
+          <Alert className="border-border bg-muted/90">
+            <AlertDescription className="text-sm">{toastMessage}</AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Exercise library</h2>
@@ -198,6 +262,25 @@ export function PtExerciseLibraryPage() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Input
+              placeholder="Filter by name"
+              value={filters.name}
+              onChange={(event) => setFilters((prev) => ({ ...prev, name: event.target.value }))}
+            />
+            <Input
+              placeholder="Filter by primary muscle"
+              value={filters.primary_muscle}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, primary_muscle: event.target.value }))
+              }
+            />
+            <Input
+              placeholder="Filter by tag"
+              value={filters.tag}
+              onChange={(event) => setFilters((prev) => ({ ...prev, tag: event.target.value }))}
+            />
+          </div>
           {workspaceLoading || exercisesQuery.isLoading ? (
             <div className="text-sm text-muted-foreground">Loading exercises...</div>
           ) : exercisesQuery.error ? (
@@ -208,8 +291,12 @@ export function PtExerciseLibraryPage() {
             <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
               No exercises yet. Add your first exercise to start building templates.
             </div>
+          ) : filteredExercises.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+              No exercises match those filters.
+            </div>
           ) : (
-            exercises.map((exercise) => (
+            filteredExercises.map((exercise) => (
               <div
                 key={exercise.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
@@ -217,9 +304,21 @@ export function PtExerciseLibraryPage() {
                 <div>
                   <p className="text-sm font-semibold">{exercise.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {exercise.muscle_group ?? "Other"}
-                    {exercise.equipment ? ` � ${exercise.equipment}` : ""}
+                    {exercise.primary_muscle ?? exercise.muscle_group ?? "Other"}
+                    {exercise.equipment ? ` • ${exercise.equipment}` : ""}
                   </p>
+                  {exercise.tags && exercise.tags.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {exercise.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="secondary" onClick={() => openEdit(exercise)}>
@@ -268,13 +367,33 @@ export function PtExerciseLibraryPage() {
               />
             </div>
             <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Primary muscle</label>
+              <Input
+                value={form.primary_muscle}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, primary_muscle: event.target.value }))
+                }
+                placeholder="e.g., Chest"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Secondary muscles (comma-separated)
+              </label>
+              <Input
+                value={form.secondary_muscles}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, secondary_muscles: event.target.value }))
+                }
+                placeholder="e.g., Triceps, Shoulders"
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Muscle group</label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={form.muscle_group}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, muscle_group: event.target.value }))
-                }
+                onChange={(event) => setForm((prev) => ({ ...prev, muscle_group: event.target.value }))}
               >
                 <option value="">Select group</option>
                 {muscleGroups.map((group) => (
@@ -308,6 +427,27 @@ export function PtExerciseLibraryPage() {
                 onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Tags (comma-separated)
+              </label>
+              <Input
+                value={form.tags}
+                onChange={(event) => setForm((prev) => ({ ...prev, tags: event.target.value }))}
+                placeholder="e.g., Strength, Compound"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={form.is_unilateral}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, is_unilateral: event.target.checked }))
+                }
+              />
+              Unilateral movement
+            </label>
             {actionError ? (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
                 {actionError}

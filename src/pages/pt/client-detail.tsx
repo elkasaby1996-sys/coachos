@@ -163,7 +163,16 @@ type CheckinRow = {
 type AssignedWorkoutExerciseRow = {
   id: string;
   assigned_workout_id: string;
-  weight_kg: number | null;
+  weight_value: number | null;
+  weight_unit: string | null;
+  load_notes: string | null;
+  is_completed: boolean | null;
+  sets: number | null;
+  reps: string | null;
+  rest_seconds: number | null;
+  tempo: string | null;
+  rpe: number | null;
+  notes: string | null;
   exercise: { id: string; name: string | null } | null;
 };
 
@@ -222,7 +231,14 @@ export function PtClientDetailPage() {
     null
   );
   const [assignedExercises, setAssignedExercises] = useState<
-    Array<AssignedWorkoutExerciseRow & { weightInput: string }>
+    Array<
+      AssignedWorkoutExerciseRow & {
+        weightInput: string;
+        weightUnit: string;
+        loadNotes: string;
+        isCompleted: boolean;
+      }
+    >
   >([]);
 
   const today = useMemo(() => new Date(), []);
@@ -289,7 +305,7 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
-        .select("id, name, workout_type")
+        .select("id, name, workout_type_tag")
         .eq("workspace_id", workspaceQuery.data ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -304,12 +320,16 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type)"
+          "id, status, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag), assigned_workout_exercises(id, sort_order, sets, reps, weight_value, weight_unit, exercise:exercises(id, name))"
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
         .lte("scheduled_date", endKey)
-        .order("scheduled_date", { ascending: true });
+        .order("scheduled_date", { ascending: true })
+        .order("sort_order", {
+          foreignTable: "assigned_workout_exercises",
+          ascending: true,
+        });
       if (error) throw error;
       return data ?? [];
     },
@@ -321,7 +341,9 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
-        .select("id, assigned_workout_id, weight_kg, exercise:exercises(id, name)")
+        .select(
+          "id, assigned_workout_id, weight_value, weight_unit, load_notes, is_completed, sets, reps, rest_seconds, tempo, rpe, notes, exercise:exercises(id, name)"
+        )
         .eq("assigned_workout_id", selectedAssignedWorkoutId ?? "")
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -539,8 +561,9 @@ export function PtClientDetailPage() {
         .eq("workout_template_id", selectedTemplateId);
 
       if (templateError) {
+        const details = getErrorDetails(templateError);
         setAssignStatus("error");
-        setAssignMessage(getErrorMessage(templateError));
+        setAssignMessage(details.message ?? getErrorMessage(templateError));
         return;
       }
 
@@ -555,7 +578,10 @@ export function PtClientDetailPage() {
         rpe: row.rpe,
         video_url: row.video_url,
         notes: row.notes,
-        weight_kg: null,
+        weight_value: null,
+        weight_unit: "kg",
+        load_notes: null,
+        is_completed: false,
       }));
 
       if (rows.length > 0) {
@@ -563,8 +589,9 @@ export function PtClientDetailPage() {
           .from("assigned_workout_exercises")
           .insert(rows);
         if (insertError) {
+          const details = getErrorDetails(insertError);
           setAssignStatus("error");
-          setAssignMessage(getErrorMessage(insertError));
+          setAssignMessage(details.message ?? getErrorMessage(insertError));
           return;
         }
       }
@@ -828,7 +855,10 @@ export function PtClientDetailPage() {
     const rows = assignedExercisesQuery.data.map((row) => ({
       ...row,
       weightInput:
-        typeof row.weight_kg === "number" ? String(row.weight_kg) : "",
+        typeof row.weight_value === "number" ? String(row.weight_value) : "",
+      weightUnit: row.weight_unit ?? "kg",
+      loadNotes: row.load_notes ?? "",
+      isCompleted: row.is_completed === true,
     }));
     setAssignedExercises(rows);
   }, [assignedExercisesQuery.data]);
@@ -839,19 +869,45 @@ export function PtClientDetailPage() {
     );
   };
 
+  const handleLoadUnitChange = (id: string, value: string) => {
+    setAssignedExercises((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, weightUnit: value } : row))
+    );
+  };
+
+  const handleLoadNotesChange = (id: string, value: string) => {
+    setAssignedExercises((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, loadNotes: value } : row))
+    );
+  };
+
+  const handleLoadCompletedChange = (id: string, value: boolean) => {
+    setAssignedExercises((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, isCompleted: value } : row))
+    );
+  };
+
   const handleSaveLoads = async () => {
     if (!selectedAssignedWorkoutId) return;
     setLoadsStatus("saving");
     setLoadsError(null);
     const updates = assignedExercises.map((row) => ({
       id: row.id,
-      weight_kg: row.weightInput.trim() ? Number(row.weightInput) : null,
+      weight_value: row.weightInput.trim() ? Number(row.weightInput) : null,
+      weight_unit: row.weightUnit || "kg",
+      load_notes: row.loadNotes.trim() || null,
+      is_completed: row.isCompleted,
     }));
     const results = await Promise.all(
       updates.map((row) =>
         supabase
           .from("assigned_workout_exercises")
-          .update({ weight_kg: row.weight_kg })
+          .update({
+            weight_value: row.weight_value,
+            weight_unit: row.weight_unit,
+            load_notes: row.load_notes,
+            is_completed: row.is_completed,
+          })
           .eq("id", row.id)
       )
     );
@@ -1740,7 +1796,8 @@ export function PtClientDetailPage() {
                     <option value="">Select a template</option>
                     {templatesQuery.data?.map((template) => (
                       <option key={template.id} value={template.id}>
-                        {template.name} {template.workout_type ? ` - ${template.workout_type}` : ""}
+                        {template.name}{" "}
+                        {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
                       </option>
                     ))}
                   </select>
@@ -1801,19 +1858,19 @@ export function PtClientDetailPage() {
                         : "Scheduled"}
                     </div>
                   </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={
-                          workout.status === "completed"
-                            ? "success"
-                            : workout.status === "skipped"
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={
+                        workout.status === "completed"
+                          ? "success"
+                          : workout.status === "skipped"
                           ? "danger"
                           : "muted"
-                        }
-                      >
-                        {workout.status ?? "planned"}
-                      </Badge>
-                      <div className="flex items-center gap-2">
+                      }
+                    >
+                      {workout.status ?? "planned"}
+                    </Badge>
+                    <div className="flex items-center gap-2">
                       <Button
                         size="sm"
                         variant="secondary"
@@ -1865,6 +1922,38 @@ export function PtClientDetailPage() {
                       </Button>
                     </div>
                   </div>
+                  {(workout as { assigned_workout_exercises?: AssignedWorkoutExerciseRow[] })
+                    .assigned_workout_exercises &&
+                  (workout as { assigned_workout_exercises?: AssignedWorkoutExerciseRow[] })
+                    .assigned_workout_exercises.length > 0 ? (
+                    <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                      {(workout as { assigned_workout_exercises?: AssignedWorkoutExerciseRow[] })
+                        .assigned_workout_exercises?.map((row) => {
+                        const weight =
+                          typeof row.weight_value === "number"
+                            ? `${row.weight_value} ${row.weight_unit ?? "kg"}`
+                            : "Set load";
+                        const label = row.exercise?.name ?? "Exercise";
+                        const sets = row.sets ? `${row.sets}x` : "";
+                        const reps = row.reps ?? "";
+                        const repLine =
+                          sets || reps ? `${sets}${reps}` : "";
+                        return (
+                          <div key={row.id} className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-foreground">{label}</span>
+                            <span>
+                              {repLine ? `${repLine} - ` : ""}
+                              {weight}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      No exercises in template yet.
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -1904,7 +1993,8 @@ export function PtClientDetailPage() {
                 <option value="">Select a template</option>
                 {templatesQuery.data?.map((template) => (
                   <option key={template.id} value={template.id}>
-                    {template.name} {template.workout_type ? ` - ${template.workout_type}` : ""}
+                    {template.name}{" "}
+                    {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
                   </option>
                 ))}
               </select>
@@ -2016,19 +2106,44 @@ export function PtClientDetailPage() {
               assignedExercises.map((row) => (
                 <div
                   key={row.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
+                  className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[1.4fr_1fr_1fr_auto]"
                 >
                   <div>
                     <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
-                    <p className="text-xs text-muted-foreground">Load (kg)</p>
+                    <p className="text-xs text-muted-foreground">Client load and notes</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      className="w-28"
+                      value={row.weightInput}
+                      onChange={(event) => handleLoadChange(row.id, event.target.value)}
+                    />
+                    <select
+                      className="h-10 w-20 rounded-md border border-input bg-background px-2 text-sm"
+                      value={row.weightUnit}
+                      onChange={(event) => handleLoadUnitChange(row.id, event.target.value)}
+                    >
+                      <option value="kg">kg</option>
+                      <option value="lb">lb</option>
+                    </select>
                   </div>
                   <Input
-                    type="number"
-                    inputMode="decimal"
-                    className="w-32"
-                    value={row.weightInput}
-                    onChange={(event) => handleLoadChange(row.id, event.target.value)}
+                    value={row.loadNotes}
+                    onChange={(event) => handleLoadNotesChange(row.id, event.target.value)}
+                    placeholder="Load notes"
                   />
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={row.isCompleted}
+                      onChange={(event) =>
+                        handleLoadCompletedChange(row.id, event.target.checked)
+                      }
+                    />
+                    Completed
+                  </label>
                 </div>
               ))
             ) : (

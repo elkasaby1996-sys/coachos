@@ -23,19 +23,12 @@ type TemplateRow = {
   name: string | null;
   description: string | null;
   workout_type: string | null;
+  workout_type_tag: string | null;
   created_at: string | null;
 };
 
-const workoutTypeOptions = [
-  { label: "Bodybuilding", value: "bodybuilding" },
-  { label: "CrossFit", value: "crossfit" },
-] as const;
-
-const formatWorkoutType = (value: string | null | undefined) => {
-  if (value === "bodybuilding") return "Bodybuilding";
-  if (value === "crossfit") return "CrossFit";
-  return "Workout";
-};
+const formatWorkoutTypeTag = (value: string | null | undefined) =>
+  value && value.trim().length > 0 ? value : "Workout";
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -87,10 +80,9 @@ export function PtWorkoutTemplatesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<"idle" | "saving">("idle");
   const [createError, setCreateError] = useState<string | null>(null);
-  const [workoutTypeError, setWorkoutTypeError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
-    workout_type: "",
+    workout_type_tag: "",
     description: "",
   });
 
@@ -100,7 +92,7 @@ export function PtWorkoutTemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
-        .select("id, name, description, workout_type, created_at")
+        .select("id, name, description, workout_type, workout_type_tag, created_at")
         .eq("workspace_id", workspaceId ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -114,20 +106,16 @@ export function PtWorkoutTemplatesPage() {
       setCreateError("Template name is required.");
       return;
     }
-    if (!form.workout_type.trim()) {
-      setWorkoutTypeError("Workout type is required.");
-      return;
-    }
     setCreateStatus("saving");
     setCreateError(null);
-    setWorkoutTypeError(null);
 
     const { data, error } = await supabase
       .from("workout_templates")
       .insert({
         workspace_id: workspaceId,
         name: form.name.trim(),
-        workout_type: form.workout_type.trim(),
+        workout_type: "bodybuilding",
+        workout_type_tag: form.workout_type_tag.trim() || null,
         description: form.description.trim() || null,
       })
       .select("id")
@@ -142,7 +130,7 @@ export function PtWorkoutTemplatesPage() {
 
     setCreateStatus("idle");
     setCreateOpen(false);
-    setForm({ name: "", workout_type: "", description: "" });
+    setForm({ name: "", workout_type_tag: "", description: "" });
     await queryClient.invalidateQueries({ queryKey: ["workout-templates", workspaceId] });
     if (data?.id) {
       navigate(`/pt/templates/workouts/${data.id}`);
@@ -161,7 +149,7 @@ export function PtWorkoutTemplatesPage() {
               day: "numeric",
             })
           : "Recently",
-        workoutTypeLabel: formatWorkoutType(template.workout_type),
+        workoutTypeLabel: formatWorkoutTypeTag(template.workout_type_tag),
       })),
     [templates]
   );
@@ -324,7 +312,6 @@ export function PtWorkoutTemplatesPage() {
           setCreateOpen(open);
           if (!open) {
             setCreateError(null);
-            setWorkoutTypeError(null);
             setCreateStatus("idle");
           }
         }}
@@ -345,24 +332,13 @@ export function PtWorkoutTemplatesPage() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Workout type</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={form.workout_type}
-                onChange={(event) => {
-                  setWorkoutTypeError(null);
-                  setForm((prev) => ({ ...prev, workout_type: event.target.value }));
-                }}
-              >
-                <option value="">Select type</option>
-                {workoutTypeOptions.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-              {workoutTypeError ? (
-                <div className="text-xs text-destructive">{workoutTypeError}</div>
-              ) : null}
+              <Input
+                value={form.workout_type_tag}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, workout_type_tag: event.target.value }))
+                }
+                placeholder="Hypertrophy, Strength, Powerbuilding..."
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Description</label>

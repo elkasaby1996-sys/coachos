@@ -29,25 +29,25 @@ const getErrorDetails = (error: unknown) => {
   return { code: "unknown", message: "Unknown error" };
 };
 
-const formatWorkoutType = (value: string | null | undefined) => {
-  if (value === "bodybuilding") return "Bodybuilding";
-  if (value === "crossfit") return "CrossFit";
-  return "Workout";
-};
+const formatWorkoutTypeTag = (value: string | null | undefined) =>
+  value && value.trim().length > 0 ? value : "Workout";
 
 type TemplateRow = {
   id: string;
   name: string | null;
   description: string | null;
   workout_type: string | null;
+  workout_type_tag: string | null;
 };
 
 type ExerciseRow = {
   id: string;
   name: string | null;
   muscle_group: string | null;
+  primary_muscle: string | null;
   equipment: string | null;
   video_url: string | null;
+  tags: string[] | null;
 };
 
 type TemplateExerciseRow = {
@@ -113,7 +113,7 @@ export function PtWorkoutTemplateBuilderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
-        .select("id, name, description, workout_type")
+        .select("id, name, description, workout_type, workout_type_tag")
         .eq("id", templateId ?? "")
         .maybeSingle();
       if (error) throw error;
@@ -127,7 +127,7 @@ export function PtWorkoutTemplateBuilderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercises")
-        .select("id, name, muscle_group, equipment, video_url")
+        .select("id, name, muscle_group, primary_muscle, equipment, video_url, tags")
         .eq("workspace_id", workspaceId ?? "")
         .order("name");
       if (error) throw error;
@@ -331,7 +331,7 @@ export function PtWorkoutTemplateBuilderPage() {
           <p className="text-sm text-muted-foreground">Configure structured exercises.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="muted">{formatWorkoutType(template?.workout_type)}</Badge>
+          <Badge variant="muted">{formatWorkoutTypeTag(template?.workout_type_tag)}</Badge>
           <Button variant="secondary" onClick={() => navigate("/pt/templates/workouts")}>
             Back to templates
           </Button>
@@ -378,7 +378,7 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Workout type</label>
-              <Input value={formatWorkoutType(template.workout_type)} readOnly />
+              <Input value={formatWorkoutTypeTag(template.workout_type_tag)} readOnly />
             </div>
           </CardContent>
         </Card>
@@ -510,9 +510,21 @@ export function PtWorkoutTemplateBuilderPage() {
                   >
                     <div className="font-medium">{exercise.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {exercise.muscle_group ?? "Other"}
+                      {exercise.primary_muscle ?? exercise.muscle_group ?? "Other"}
                       {exercise.equipment ? ` - ${exercise.equipment}` : ""}
                     </div>
+                    {exercise.tags && exercise.tags.length > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {exercise.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </button>
                 ))
               ) : (
