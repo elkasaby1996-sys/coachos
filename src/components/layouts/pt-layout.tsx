@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import {
   Bell,
+  BookOpen,
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
@@ -34,6 +35,7 @@ const navItems = [
   { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
   { label: "Clients", to: "/pt/clients", icon: Users },
   { label: "Workouts", to: "/pt/templates/workouts", icon: Dumbbell },
+  { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
   { label: "Check-ins", to: "/pt/checkins/templates", icon: ClipboardList },
   { label: "Settings", to: "/pt/settings", icon: Settings },
 ];

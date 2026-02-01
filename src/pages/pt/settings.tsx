@@ -73,6 +73,20 @@ export function PtSettingsPage() {
       </Card>
 
       <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle>Exercise library</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Create and manage exercises used in workout templates.
+            </p>
+          </div>
+          <Button asChild size="sm">
+            <Link to="/pt/settings/exercises">Manage exercises</Link>
+          </Button>
+        </CardHeader>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>Danger zone</CardTitle>
           <p className="text-sm text-muted-foreground">Log out of this workspace.</p>

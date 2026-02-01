@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -10,58 +12,62 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import { supabase } from "../../lib/supabase";
+import { useWorkspace } from "../../lib/use-workspace";
 
-const templates = [
-  {
-    id: "bb-1",
-    name: "Upper Power",
-    type: "Bodybuilding",
-    focus: "Strength",
-    duration: "55 min",
-    updated: "2 days ago",
-  },
-  {
-    id: "cf-1",
-    name: "AMRAP 16",
-    type: "CrossFit",
-    focus: "Metcon",
-    duration: "35 min",
-    updated: "5 days ago",
-  },
-  {
-    id: "hy-2",
-    name: "Lower Hypertrophy",
-    type: "Bodybuilding",
-    focus: "Hypertrophy",
-    duration: "60 min",
-    updated: "1 week ago",
-  },
-];
+type TemplateRow = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  workout_type: string | null;
+  created_at: string | null;
+};
+
+const workoutTypeOptions = [
+  "Bodybuilding",
+  "Strength",
+  "Hypertrophy",
+  "CrossFit",
+  "Conditioning",
+  "Mobility",
+  "Other",
+] as const;
+
+const getErrorDetails = (error: unknown) => {
+  if (!error) return { code: "unknown", message: "Unknown error" };
+  if (typeof error === "object") {
+    const err = error as { code?: string | null; message?: string | null };
+    return {
+      code: err.code ?? "unknown",
+      message: err.message ?? "Unknown error",
+    };
+  }
+  return { code: "unknown", message: "Unknown error" };
+};
 
 const calendarWeek = [
   {
     day: "Mon",
-    workouts: ["Upper Power · Avery", "Run Tempo · Jordan"],
+    workouts: ["Upper Power - Avery", "Run Tempo - Jordan"],
   },
   {
     day: "Tue",
-    workouts: ["AMRAP 16 · Morgan"],
+    workouts: ["AMRAP 16 - Morgan"],
   },
   {
     day: "Wed",
-    workouts: ["Lower Hypertrophy · Samira"],
+    workouts: ["Lower Hypertrophy - Samira"],
   },
   {
     day: "Thu",
-    workouts: ["Mobility Reset · Elena"],
+    workouts: ["Mobility Reset - Elena"],
   },
   {
     day: "Fri",
-    workouts: ["Upper Power · Avery"],
+    workouts: ["Upper Power - Avery"],
   },
   {
     day: "Sat",
@@ -74,8 +80,90 @@ const calendarWeek = [
 ];
 
 export function PtWorkoutTemplatesPage() {
-  const isLoading = false;
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createStatus, setCreateStatus] = useState<"idle" | "saving">("idle");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [workoutTypeError, setWorkoutTypeError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: "",
+    workout_type: "",
+    description: "",
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ["workout-templates", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_templates")
+        .select("id, name, description, workout_type, created_at")
+        .eq("workspace_id", workspaceId ?? "")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as TemplateRow[];
+    },
+  });
+
+  const handleCreate = async () => {
+    if (!workspaceId) return;
+    if (!form.name.trim()) {
+      setCreateError("Template name is required.");
+      return;
+    }
+    if (!form.workout_type.trim()) {
+      setWorkoutTypeError("Workout type is required.");
+      return;
+    }
+    setCreateStatus("saving");
+    setCreateError(null);
+    setWorkoutTypeError(null);
+
+    const { data, error } = await supabase
+      .from("workout_templates")
+      .insert({
+        workspace_id: workspaceId,
+        name: form.name.trim(),
+        workout_type: form.workout_type.trim(),
+        description: form.description.trim() || null,
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      const details = getErrorDetails(error);
+      setCreateError(`${details.code}: ${details.message}`);
+      setCreateStatus("idle");
+      return;
+    }
+
+    setCreateStatus("idle");
+    setCreateOpen(false);
+    setForm({ name: "", workout_type: "", description: "" });
+    await queryClient.invalidateQueries({ queryKey: ["workout-templates", workspaceId] });
+    if (data?.id) {
+      navigate(`/pt/templates/workouts/${data.id}`);
+    }
+  };
+
+  const templates = templatesQuery.data ?? [];
   const sharedTemplates: string[] = [];
+  const formattedTemplates = useMemo(
+    () =>
+      templates.map((template) => ({
+        ...template,
+        updated: template.created_at
+          ? new Date(template.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })
+          : "Recently",
+      })),
+    [templates]
+  );
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -85,7 +173,7 @@ export function PtWorkoutTemplatesPage() {
             Build reusable sessions and assign them fast.
           </p>
         </div>
-        <Button>Create template</Button>
+        <Button onClick={() => setCreateOpen(true)}>Create template</Button>
       </div>
 
       <Tabs defaultValue="templates">
@@ -112,49 +200,39 @@ export function PtWorkoutTemplatesPage() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isLoading ? (
+              {workspaceLoading || templatesQuery.isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, index) => (
                     <Skeleton key={index} className="h-20 w-full" />
                   ))}
                 </div>
-              ) : templates.length > 0 ? (
-                templates.map((template) => (
+              ) : workspaceError ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                  {getErrorDetails(workspaceError).code}: {getErrorDetails(workspaceError).message}
+                </div>
+              ) : templatesQuery.error ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                  {getErrorDetails(templatesQuery.error).code}: {getErrorDetails(templatesQuery.error).message}
+                </div>
+              ) : formattedTemplates.length > 0 ? (
+                formattedTemplates.map((template) => (
                   <div
                     key={template.id}
                     className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-background p-4 transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     <div>
-                      <p className="text-sm font-semibold">{template.name}</p>
+                      <p className="text-sm font-semibold">{template.name ?? "Workout template"}</p>
                       <p className="text-xs text-muted-foreground">
-                        Focus: {template.focus} · Est. {template.duration}
+                        {template.description ?? "No description"}
                       </p>
                       <p className="text-xs text-muted-foreground">Last edited {template.updated}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="muted">{template.type}</Badge>
+                      <Badge variant="muted">{template.workout_type ?? "Workout"}</Badge>
                       <Button asChild size="sm" variant="secondary">
                         <Link to={`/pt/templates/workouts/${template.id}`}>Edit</Link>
                       </Button>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="sm">Assign</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Assign {template.name}</DialogTitle>
-                            <DialogDescription>Select a client and date to assign.</DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-3">
-                            <Input placeholder="Search client" />
-                            <Input type="date" />
-                          </div>
-                          <DialogFooter>
-                            <Button variant="secondary">Cancel</Button>
-                            <Button>Assign workout</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <Button size="sm">Assign</Button>
                     </div>
                   </div>
                 ))
@@ -164,7 +242,7 @@ export function PtWorkoutTemplatesPage() {
                   <p className="mt-2 text-xs text-muted-foreground">
                     Create your first template to speed up programming.
                   </p>
-                  <Button className="mt-4" size="sm">
+                  <Button className="mt-4" size="sm" onClick={() => setCreateOpen(true)}>
                     Create template
                   </Button>
                 </div>
@@ -237,6 +315,79 @@ export function PtWorkoutTemplatesPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setCreateError(null);
+            setWorkoutTypeError(null);
+            setCreateStatus("idle");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Create template</DialogTitle>
+            <DialogDescription>Start a new workout template for your workspace.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Name</label>
+              <Input
+                value={form.name}
+                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="e.g., Upper Power"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Workout type</label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={form.workout_type}
+                onChange={(event) => {
+                  setWorkoutTypeError(null);
+                  setForm((prev) => ({ ...prev, workout_type: event.target.value }));
+                }}
+              >
+                <option value="">Select type</option>
+                {workoutTypeOptions.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+              {workoutTypeError ? (
+                <div className="text-xs text-destructive">{workoutTypeError}</div>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Description</label>
+              <textarea
+                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={form.description}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+              />
+            </div>
+            {createError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {createError}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={createStatus === "saving"} onClick={handleCreate}>
+              {createStatus === "saving" ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -160,6 +160,13 @@ type CheckinRow = {
   created_at: string | null;
 };
 
+type AssignedWorkoutExerciseRow = {
+  id: string;
+  assigned_workout_id: string;
+  weight_kg: number | null;
+  exercise: { id: string; name: string | null } | null;
+};
+
 const baselinePhotoTypes = ["front", "side", "back"] as const;
 
 export function PtClientDetailPage() {
@@ -208,6 +215,15 @@ export function PtClientDetailPage() {
     "idle"
   );
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [loadsOpen, setLoadsOpen] = useState(false);
+  const [loadsError, setLoadsError] = useState<string | null>(null);
+  const [loadsStatus, setLoadsStatus] = useState<"idle" | "saving">("idle");
+  const [selectedAssignedWorkoutId, setSelectedAssignedWorkoutId] = useState<string | null>(
+    null
+  );
+  const [assignedExercises, setAssignedExercises] = useState<
+    Array<AssignedWorkoutExerciseRow & { weightInput: string }>
+  >([]);
 
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
@@ -296,6 +312,20 @@ export function PtClientDetailPage() {
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const assignedExercisesQuery = useQuery({
+    queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
+    enabled: !!selectedAssignedWorkoutId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workout_exercises")
+        .select("id, assigned_workout_id, weight_kg, exercise:exercises(id, name)")
+        .eq("assigned_workout_id", selectedAssignedWorkoutId ?? "")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as AssignedWorkoutExerciseRow[];
     },
   });
 
@@ -480,12 +510,16 @@ export function PtClientDetailPage() {
       return;
     }
 
-    const { error } = await supabase.from("assigned_workouts").insert({
-      client_id: clientId,
-      workout_template_id: selectedTemplateId,
-      scheduled_date: scheduledDate,
-      status: "planned",
-    });
+    const { data: assignedWorkout, error } = await supabase
+      .from("assigned_workouts")
+      .insert({
+        client_id: clientId,
+        workout_template_id: selectedTemplateId,
+        scheduled_date: scheduledDate,
+        status: "planned",
+      })
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       if ("code" in error && (error as { code?: string }).code === "23505") {
@@ -496,6 +530,44 @@ export function PtClientDetailPage() {
       setAssignStatus("error");
       setAssignMessage(getErrorMessage(error));
       return;
+    }
+
+    if (assignedWorkout?.id) {
+      const { data: templateExercises, error: templateError } = await supabase
+        .from("workout_template_exercises")
+        .select("exercise_id, sort_order, sets, reps, rest_seconds, tempo, rpe, video_url, notes")
+        .eq("workout_template_id", selectedTemplateId);
+
+      if (templateError) {
+        setAssignStatus("error");
+        setAssignMessage(getErrorMessage(templateError));
+        return;
+      }
+
+      const rows = (templateExercises ?? []).map((row) => ({
+        assigned_workout_id: assignedWorkout.id,
+        exercise_id: row.exercise_id,
+        sort_order: row.sort_order,
+        sets: row.sets,
+        reps: row.reps,
+        rest_seconds: row.rest_seconds,
+        tempo: row.tempo,
+        rpe: row.rpe,
+        video_url: row.video_url,
+        notes: row.notes,
+        weight_kg: null,
+      }));
+
+      if (rows.length > 0) {
+        const { error: insertError } = await supabase
+          .from("assigned_workout_exercises")
+          .insert(rows);
+        if (insertError) {
+          setAssignStatus("error");
+          setAssignMessage(getErrorMessage(insertError));
+          return;
+        }
+      }
     }
 
     await logCoachActivity({
@@ -746,6 +818,55 @@ export function PtClientDetailPage() {
     setBaselineNotesStatus("idle");
     setBaselineNotesMessage("Baseline notes saved.");
     await queryClient.invalidateQueries({ queryKey: ["pt-client-baseline-entry", clientId] });
+  };
+
+  useEffect(() => {
+    if (!assignedExercisesQuery.data) {
+      setAssignedExercises([]);
+      return;
+    }
+    const rows = assignedExercisesQuery.data.map((row) => ({
+      ...row,
+      weightInput:
+        typeof row.weight_kg === "number" ? String(row.weight_kg) : "",
+    }));
+    setAssignedExercises(rows);
+  }, [assignedExercisesQuery.data]);
+
+  const handleLoadChange = (id: string, value: string) => {
+    setAssignedExercises((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, weightInput: value } : row))
+    );
+  };
+
+  const handleSaveLoads = async () => {
+    if (!selectedAssignedWorkoutId) return;
+    setLoadsStatus("saving");
+    setLoadsError(null);
+    const updates = assignedExercises.map((row) => ({
+      id: row.id,
+      weight_kg: row.weightInput.trim() ? Number(row.weightInput) : null,
+    }));
+    const results = await Promise.all(
+      updates.map((row) =>
+        supabase
+          .from("assigned_workout_exercises")
+          .update({ weight_kg: row.weight_kg })
+          .eq("id", row.id)
+      )
+    );
+    const errorResult = results.find((result) => result.error);
+    if (errorResult?.error) {
+      const details = getErrorDetails(errorResult.error);
+      setLoadsError(`${details.code}: ${details.message}`);
+      setLoadsStatus("idle");
+      return;
+    }
+    setLoadsStatus("idle");
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
+    });
+    setLoadsOpen(false);
   };
 
   const openCheckinReview = (row: CheckinRow) => {
@@ -1680,19 +1801,30 @@ export function PtClientDetailPage() {
                         : "Scheduled"}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        workout.status === "completed"
-                          ? "success"
-                          : workout.status === "skipped"
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          workout.status === "completed"
+                            ? "success"
+                            : workout.status === "skipped"
                           ? "danger"
                           : "muted"
-                      }
-                    >
-                      {workout.status ?? "planned"}
-                    </Badge>
-                    <div className="flex items-center gap-2">
+                        }
+                      >
+                        {workout.status ?? "planned"}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedAssignedWorkoutId(workout.id);
+                          setLoadsOpen(true);
+                          setLoadsError(null);
+                        }}
+                      >
+                        Edit loads
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1848,6 +1980,74 @@ export function PtClientDetailPage() {
               disabled={feedbackStatus === "saving" || !selectedCheckin}
             >
               {feedbackStatus === "saving" ? "Saving..." : "Save feedback"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={loadsOpen}
+        onOpenChange={(open) => {
+          setLoadsOpen(open);
+          if (!open) {
+            setSelectedAssignedWorkoutId(null);
+            setLoadsError(null);
+            setLoadsStatus("idle");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Edit loads</DialogTitle>
+            <DialogDescription>Set per-client loads for this assignment.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {assignedExercisesQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : assignedExercisesQuery.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {getErrorDetails(assignedExercisesQuery.error).code}:{" "}
+                {getErrorDetails(assignedExercisesQuery.error).message}
+              </div>
+            ) : assignedExercises.length > 0 ? (
+              assignedExercises.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
+                    <p className="text-xs text-muted-foreground">Load (kg)</p>
+                  </div>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    className="w-32"
+                    value={row.weightInput}
+                    onChange={(event) => handleLoadChange(row.id, event.target.value)}
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                No exercises assigned yet.
+              </div>
+            )}
+            {loadsError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {loadsError}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setLoadsOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveLoads} disabled={loadsStatus === "saving"}>
+              {loadsStatus === "saving" ? "Saving..." : "Save loads"}
             </Button>
           </DialogFooter>
         </DialogContent>

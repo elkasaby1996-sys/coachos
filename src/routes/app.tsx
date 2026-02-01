@@ -14,6 +14,7 @@ import { PtWorkoutTemplateBuilderPage } from "../pages/pt/workout-template-build
 import { PtCheckinTemplatesPage } from "../pages/pt/checkin-templates";
 import { PtSettingsPage } from "../pages/pt/settings";
 import { PtBaselineTemplatesPage } from "../pages/pt/settings-baseline";
+import { PtExerciseLibraryPage } from "../pages/pt/settings-exercises";
 
 import { ClientHomePage } from "../pages/client/home";
 import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
@@ -166,6 +167,7 @@ export function App() {
         <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />
         <Route path="settings" element={<PtSettingsPage />} />
         <Route path="settings/baseline" element={<PtBaselineTemplatesPage />} />
+        <Route path="settings/exercises" element={<PtExerciseLibraryPage />} />
       </Route>
 
       {/* Client Side */}
