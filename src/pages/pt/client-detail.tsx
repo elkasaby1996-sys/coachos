@@ -163,8 +163,6 @@ type CheckinRow = {
 type AssignedWorkoutExerciseRow = {
   id: string;
   assigned_workout_id: string;
-  weight_value: number | null;
-  weight_unit: string | null;
   load_notes: string | null;
   is_completed: boolean | null;
   sets: number | null;
@@ -174,6 +172,22 @@ type AssignedWorkoutExerciseRow = {
   rpe: number | null;
   notes: string | null;
   exercise: { id: string; name: string | null } | null;
+};
+
+type WorkoutSessionRow = {
+  id: string;
+  assigned_workout_id: string | null;
+};
+
+type WorkoutSetLogRow = {
+  id: string;
+  workout_session_id: string | null;
+  exercise_id: string | null;
+  set_number: number | null;
+  reps: number | null;
+  weight: number | null;
+  rpe: number | null;
+  created_at: string | null;
 };
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
@@ -233,8 +247,6 @@ export function PtClientDetailPage() {
   const [assignedExercises, setAssignedExercises] = useState<
     Array<
       AssignedWorkoutExerciseRow & {
-        weightInput: string;
-        weightUnit: string;
         loadNotes: string;
         isCompleted: boolean;
       }
@@ -320,7 +332,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag), assigned_workout_exercises(id, sort_order, sets, reps, weight_value, weight_unit, exercise:exercises(id, name))"
+          "id, status, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag), assigned_workout_exercises(id, sort_order, sets, reps, exercise:exercises(id, name))"
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
@@ -335,6 +347,69 @@ export function PtClientDetailPage() {
     },
   });
 
+  const upcomingAssignedWorkoutIds = useMemo(
+    () => (upcomingQuery.data ?? []).map((workout) => workout.id),
+    [upcomingQuery.data]
+  );
+
+  const workoutSessionsQuery = useQuery({
+    queryKey: ["workout-sessions", upcomingAssignedWorkoutIds],
+    enabled: upcomingAssignedWorkoutIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select("id, assigned_workout_id")
+        .in("assigned_workout_id", upcomingAssignedWorkoutIds);
+      if (error) throw error;
+      return (data ?? []) as WorkoutSessionRow[];
+    },
+  });
+
+  const workoutSessionIds = useMemo(
+    () => (workoutSessionsQuery.data ?? []).map((row) => row.id),
+    [workoutSessionsQuery.data]
+  );
+
+  const workoutSessionIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (workoutSessionsQuery.data ?? []).forEach((row) => {
+      if (row.id && row.assigned_workout_id) {
+        map.set(row.id, row.assigned_workout_id);
+      }
+    });
+    return map;
+  }, [workoutSessionsQuery.data]);
+
+  const workoutSetLogsQuery = useQuery({
+    queryKey: ["workout-set-logs", workoutSessionIds],
+    enabled: workoutSessionIds.length > 0,
+    queryFn: async () => {
+      if (workoutSessionIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("workout_set_logs")
+        .select("id, workout_session_id, exercise_id, set_number, reps, weight, rpe, created_at")
+        .in("workout_session_id", workoutSessionIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as WorkoutSetLogRow[];
+    },
+  });
+
+  const lastSetByWorkoutExercise = useMemo(() => {
+    const map = new Map<string, WorkoutSetLogRow>();
+    (workoutSetLogsQuery.data ?? []).forEach((log) => {
+      const assignedWorkoutId = log.workout_session_id
+        ? workoutSessionIdMap.get(log.workout_session_id)
+        : null;
+      if (!assignedWorkoutId || !log.exercise_id) return;
+      const key = `${assignedWorkoutId}-${log.exercise_id}`;
+      if (!map.has(key)) {
+        map.set(key, log);
+      }
+    });
+    return map;
+  }, [workoutSetLogsQuery.data, workoutSessionIdMap]);
+
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
     enabled: !!selectedAssignedWorkoutId,
@@ -342,7 +417,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
         .select(
-          "id, assigned_workout_id, weight_value, weight_unit, load_notes, is_completed, sets, reps, rest_seconds, tempo, rpe, notes, exercise:exercises(id, name)"
+          "id, assigned_workout_id, load_notes, is_completed, sets, reps, rest_seconds, tempo, rpe, notes, exercise:exercises(id, name)"
         )
         .eq("assigned_workout_id", selectedAssignedWorkoutId ?? "")
         .order("sort_order", { ascending: true });
@@ -854,26 +929,11 @@ export function PtClientDetailPage() {
     }
     const rows = assignedExercisesQuery.data.map((row) => ({
       ...row,
-      weightInput:
-        typeof row.weight_value === "number" ? String(row.weight_value) : "",
-      weightUnit: row.weight_unit ?? "kg",
       loadNotes: row.load_notes ?? "",
       isCompleted: row.is_completed === true,
     }));
     setAssignedExercises(rows);
   }, [assignedExercisesQuery.data]);
-
-  const handleLoadChange = (id: string, value: string) => {
-    setAssignedExercises((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, weightInput: value } : row))
-    );
-  };
-
-  const handleLoadUnitChange = (id: string, value: string) => {
-    setAssignedExercises((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, weightUnit: value } : row))
-    );
-  };
 
   const handleLoadNotesChange = (id: string, value: string) => {
     setAssignedExercises((prev) =>
@@ -893,8 +953,6 @@ export function PtClientDetailPage() {
     setLoadsError(null);
     const updates = assignedExercises.map((row) => ({
       id: row.id,
-      weight_value: row.weightInput.trim() ? Number(row.weightInput) : null,
-      weight_unit: row.weightUnit || "kg",
       load_notes: row.loadNotes.trim() || null,
       is_completed: row.isCompleted,
     }));
@@ -903,8 +961,6 @@ export function PtClientDetailPage() {
         supabase
           .from("assigned_workout_exercises")
           .update({
-            weight_value: row.weight_value,
-            weight_unit: row.weight_unit,
             load_notes: row.load_notes,
             is_completed: row.is_completed,
           })
@@ -1734,6 +1790,8 @@ export function PtClientDetailPage() {
                   workspaceQuery.error,
                   templatesQuery.error,
                   upcomingQuery.error,
+                  workoutSessionsQuery.error,
+                  workoutSetLogsQuery.error,
                   coachActivityQuery.error,
                   habitsQuery.error,
                   habitLogByDateQuery.error,
@@ -1929,10 +1987,14 @@ export function PtClientDetailPage() {
                     <div className="mt-3 space-y-2 text-xs text-muted-foreground">
                       {(workout as { assigned_workout_exercises?: AssignedWorkoutExerciseRow[] })
                         .assigned_workout_exercises?.map((row) => {
-                        const weight =
-                          typeof row.weight_value === "number"
-                            ? `${row.weight_value} ${row.weight_unit ?? "kg"}`
-                            : "Set load";
+                        const exerciseId = row.exercise?.id ?? "";
+                        const lastSet = lastSetByWorkoutExercise.get(
+                          `${workout.id}-${exerciseId}`
+                        );
+                        const performed =
+                          lastSet && (typeof lastSet.reps === "number" || typeof lastSet.weight === "number")
+                            ? `${lastSet.reps ?? "-"} reps @ ${lastSet.weight ?? "-"}`
+                            : "No sets logged";
                         const label = row.exercise?.name ?? "Exercise";
                         const sets = row.sets ? `${row.sets}x` : "";
                         const reps = row.reps ?? "";
@@ -1943,7 +2005,7 @@ export function PtClientDetailPage() {
                             <span className="font-semibold text-foreground">{label}</span>
                             <span>
                               {repLine ? `${repLine} - ` : ""}
-                              {weight}
+                              {performed}
                             </span>
                           </div>
                         );
@@ -2106,28 +2168,11 @@ export function PtClientDetailPage() {
               assignedExercises.map((row) => (
                 <div
                   key={row.id}
-                  className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[1.4fr_1fr_1fr_auto]"
+                  className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[1.4fr_1fr_auto]"
                 >
                   <div>
                     <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
                     <p className="text-xs text-muted-foreground">Client load and notes</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      className="w-28"
-                      value={row.weightInput}
-                      onChange={(event) => handleLoadChange(row.id, event.target.value)}
-                    />
-                    <select
-                      className="h-10 w-20 rounded-md border border-input bg-background px-2 text-sm"
-                      value={row.weightUnit}
-                      onChange={(event) => handleLoadUnitChange(row.id, event.target.value)}
-                    >
-                      <option value="kg">kg</option>
-                      <option value="lb">lb</option>
-                    </select>
                   </div>
                   <Input
                     value={row.loadNotes}

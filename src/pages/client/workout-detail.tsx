@@ -6,14 +6,16 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Input } from "../../components/ui/input";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 
 type SetState = {
   id?: string;
   reps: string;
-  weight_kg: string;
-  notes: string;
+  weight: string;
+  rpe: string;
+  is_completed: boolean;
 };
 
 type ExerciseState = {
@@ -27,8 +29,6 @@ type TemplateExerciseRow = {
   sort_order: number | null;
   sets: number | null;
   reps: string | null;
-  weight_value: number | null;
-  weight_unit: string | null;
   load_notes: string | null;
   is_completed: boolean | null;
   rest_seconds: number | null;
@@ -43,6 +43,24 @@ type TemplateExerciseRow = {
     equipment: string | null;
     video_url: string | null;
   } | null;
+};
+
+type WorkoutSetLog = {
+  id: string;
+  workout_session_id: string | null;
+  exercise_id: string | null;
+  set_number: number | null;
+  reps: number | null;
+  weight: number | null;
+  rpe: number | null;
+  is_completed: boolean | null;
+  created_at: string | null;
+};
+
+type WorkoutSessionRow = {
+  id: string;
+  assigned_workout_id: string | null;
+  client_id: string | null;
 };
 
 const getErrorDetails = (error: unknown) => {
@@ -107,7 +125,7 @@ export function ClientWorkoutDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
         .select(
-          "id, sort_order, sets, reps, weight_value, weight_unit, load_notes, is_completed, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+          "id, sort_order, sets, reps, load_notes, is_completed, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
         )
         .eq("assigned_workout_id", assignedWorkoutId ?? "")
         .order("sort_order", { ascending: true });
@@ -116,50 +134,46 @@ export function ClientWorkoutDetailPage() {
     },
   });
 
-  const workoutLogQuery = useQuery({
-    queryKey: ["workout-log", assignedWorkoutId, clientId],
+  const workoutSessionQuery = useQuery({
+    queryKey: ["workout-session", assignedWorkoutId, clientId],
     enabled: !!assignedWorkoutId && !!clientId && !!assignedQuery.data,
     queryFn: async () => {
       const { data: existing, error: existingError } = await supabase
-        .from("workout_logs")
-        .select("id, title, status, started_at, finished_at, assigned_workout_id")
+        .from("workout_sessions")
+        .select("id, assigned_workout_id, client_id")
         .eq("assigned_workout_id", assignedWorkoutId ?? "")
         .eq("client_id", clientId ?? "")
-        .eq("status", "in_progress")
         .order("created_at", { ascending: false })
         .maybeSingle();
       if (existingError) throw existingError;
-      if (existing) return existing;
+      if (existing) return existing as WorkoutSessionRow;
 
-      const title = assignedQuery.data?.workout_template?.name ?? "Workout";
       const { data: created, error: createError } = await supabase
-        .from("workout_logs")
+        .from("workout_sessions")
         .insert({
-          client_id: clientId,
           assigned_workout_id: assignedWorkoutId,
-          workout_template_id: assignedQuery.data?.workout_template?.id ?? null,
-          title,
-          status: "in_progress",
+          client_id: clientId,
         })
-        .select("id, title, status, started_at, finished_at, assigned_workout_id")
+        .select("id, assigned_workout_id, client_id")
         .maybeSingle();
       if (createError) throw createError;
-      return created;
+      return (created ?? null) as WorkoutSessionRow | null;
     },
   });
 
-  const workoutLog = workoutLogQuery.data ?? null;
+  const workoutSession = workoutSessionQuery.data ?? null;
 
-  const logItemsQuery = useQuery({
-    queryKey: ["workout-log-items", workoutLog?.id],
-    enabled: !!workoutLog?.id,
+  const workoutSetLogsQuery = useQuery({
+    queryKey: ["workout-set-logs", workoutSession?.id],
+    enabled: !!workoutSession?.id,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("workout_log_items")
-        .select("id, exercise_name, set_index, reps, weight_kg, notes")
-        .eq("workout_log_id", workoutLog?.id ?? "")
-        .order("exercise_name", { ascending: true })
-        .order("set_index", { ascending: true });
+        .from("workout_set_logs")
+        .select(
+          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, created_at"
+        )
+        .eq("workout_session_id", workoutSession?.id ?? "")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -171,27 +185,45 @@ export function ClientWorkoutDetailPage() {
   );
 
   useEffect(() => {
-    if (!workoutLog) return;
-    const items = logItemsQuery.data ?? [];
+    if (!workoutSession) return;
+    const items = (workoutSetLogsQuery.data ?? []) as WorkoutSetLog[];
+    const latestByKey = new Map<string, WorkoutSetLog>();
+    items.forEach((item) => {
+      if (!item.exercise_id || typeof item.set_number !== "number") return;
+      const key = `${item.exercise_id}-${item.set_number}`;
+      if (!latestByKey.has(key)) {
+        latestByKey.set(key, item);
+        return;
+      }
+      const existing = latestByKey.get(key);
+      const existingTime = existing?.created_at
+        ? new Date(existing.created_at).getTime()
+        : 0;
+      const nextTime = item.created_at ? new Date(item.created_at).getTime() : 0;
+      if (nextTime > existingTime) {
+        latestByKey.set(key, item);
+      }
+    });
     const templateExercises = assignedExercisesQuery.data ?? [];
     const next = templateExercises.map((row) => {
       const name = row.exercise?.name ?? "Exercise";
       const count = row.sets && row.sets > 0 ? row.sets : 3;
       const sets = Array.from({ length: count }).map((_, index) => {
-        const item = items.find(
-          (entry) => entry.exercise_name === name && entry.set_index === index + 1
-        );
+        const setNumber = index + 1;
+        const key = `${row.exercise?.id ?? ""}-${setNumber}`;
+        const item = latestByKey.get(key);
         return {
           id: item?.id,
-          reps: item?.reps ? String(item.reps) : "",
-          weight_kg: item?.weight_kg ? String(item.weight_kg) : "",
-          notes: item?.notes ?? "",
+          reps: typeof item?.reps === "number" ? String(item.reps) : "",
+          weight: typeof item?.weight === "number" ? String(item.weight) : "",
+          rpe: typeof item?.rpe === "number" ? String(item.rpe) : "",
+          is_completed: item?.is_completed === true,
         };
       });
       return { name, detail: row, sets };
     });
     setExercises(next);
-  }, [logItemsQuery.data, workoutLog, assignedExercisesQuery.data]);
+  }, [workoutSetLogsQuery.data, workoutSession, assignedExercisesQuery.data]);
 
   useEffect(() => {
     const rows = (assignedExercisesQuery.data ?? []).map((row) => ({
@@ -212,11 +244,37 @@ export function ClientWorkoutDetailPage() {
     clientQuery.error,
     assignedQuery.error,
     assignedExercisesQuery.error,
-    workoutLogQuery.error,
-    logItemsQuery.error,
+    workoutSessionQuery.error,
+    workoutSetLogsQuery.error,
   ].filter(Boolean);
 
   const templateExercises = assignedExercisesQuery.data ?? [];
+  const setLogsByExercise = useMemo(() => {
+    const map = new Map<string, WorkoutSetLog[]>();
+    (workoutSetLogsQuery.data ?? []).forEach((item) => {
+      const log = item as WorkoutSetLog;
+      if (!log.exercise_id) return;
+      const existing = map.get(log.exercise_id) ?? [];
+      existing.push(log);
+      map.set(log.exercise_id, existing);
+    });
+    for (const logs of map.values()) {
+      logs.sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
+    }
+    return map;
+  }, [workoutSetLogsQuery.data]);
+
+  const exerciseNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    (assignedExercisesQuery.data ?? []).forEach((row) => {
+      if (row.exercise?.id) map.set(row.exercise.id, row.exercise?.name ?? "Exercise");
+    });
+    return map;
+  }, [assignedExercisesQuery.data]);
 
   const handleAssignedExerciseChange = (
     id: string,
@@ -261,37 +319,48 @@ export function ClientWorkoutDetailPage() {
   };
 
   const saveSet = async (exerciseIndex: number, setIndex: number) => {
-    if (!workoutLog?.id) return;
+    if (!workoutSession?.id) return;
     const exercise = exercises[exerciseIndex];
     const setItem = exercise.sets[setIndex];
     const repsValue = setItem.reps.trim() ? Number(setItem.reps) : null;
-    const weightValue = setItem.weight_kg.trim() ? Number(setItem.weight_kg) : null;
-    const notesValue = setItem.notes.trim() || null;
-    const hasValues = Boolean(repsValue || weightValue || notesValue);
+    const weightValue = setItem.weight.trim() ? Number(setItem.weight) : null;
+    const rpeValue = setItem.rpe.trim() ? Number(setItem.rpe) : null;
+    const hasValues = Boolean(repsValue || weightValue || rpeValue);
+    const exerciseId = exercise.detail?.exercise?.id;
+    if (!exerciseId) return;
+    const isCompleted = Boolean(repsValue || weightValue || rpeValue);
 
-    if (setItem.id) {
+    const { data: existing, error: existingError } = await supabase
+      .from("workout_set_logs")
+      .select("id")
+      .eq("workout_session_id", workoutSession.id)
+      .eq("exercise_id", exerciseId)
+      .eq("set_number", setIndex + 1)
+      .maybeSingle();
+    if (existingError) return;
+
+    if (existing?.id) {
       const { error } = await supabase
-        .from("workout_log_items")
+        .from("workout_set_logs")
         .update({
           reps: repsValue,
-          weight_kg: weightValue,
-          notes: notesValue,
+          weight: weightValue,
+          rpe: rpeValue,
+          is_completed: isCompleted,
         })
-        .eq("id", setItem.id);
+        .eq("id", existing.id);
       if (error) return;
-      return;
-    }
-
-    if (hasValues) {
+    } else if (hasValues) {
       const { data, error } = await supabase
-        .from("workout_log_items")
+        .from("workout_set_logs")
         .insert({
-          workout_log_id: workoutLog.id,
-          exercise_name: exercise.name,
-          set_index: setIndex + 1,
+          workout_session_id: workoutSession.id,
+          exercise_id: exerciseId,
+          set_number: setIndex + 1,
           reps: repsValue,
-          weight_kg: weightValue,
-          notes: notesValue,
+          weight: weightValue,
+          rpe: rpeValue,
+          is_completed: isCompleted,
         })
         .select("id")
         .maybeSingle();
@@ -311,22 +380,20 @@ export function ClientWorkoutDetailPage() {
   };
 
   const handleSaveExercise = async (exerciseIndex: number) => {
-    if (!workoutLog?.id) return;
+    if (!workoutSession?.id) return;
     setSaveIndex(exerciseIndex);
     for (let idx = 0; idx < exercises[exerciseIndex].sets.length; idx += 1) {
       // eslint-disable-next-line no-await-in-loop
       await saveSet(exerciseIndex, idx);
     }
-    await queryClient.invalidateQueries({ queryKey: ["workout-log-items", workoutLog.id] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-set-logs", workoutSession.id],
+    });
     setSaveIndex(null);
   };
 
   const handleFinish = async () => {
-    if (!workoutLog?.id) return;
-    await supabase
-      .from("workout_logs")
-      .update({ status: "completed", finished_at: new Date().toISOString() })
-      .eq("id", workoutLog.id);
+    if (!assignedWorkoutId) return;
     await supabase
       .from("assigned_workouts")
       .update({ status: "completed", completed_at: new Date().toISOString() })
@@ -336,13 +403,15 @@ export function ClientWorkoutDetailPage() {
   };
 
   const summaryGroups = useMemo(() => {
-    const items = logItemsQuery.data ?? [];
-    return items.reduce<Record<string, typeof items>>((acc, item) => {
-      if (!acc[item.exercise_name]) acc[item.exercise_name] = [];
-      acc[item.exercise_name].push(item);
+    const items = (workoutSetLogsQuery.data ?? []) as WorkoutSetLog[];
+    return items.reduce<Record<string, WorkoutSetLog[]>>((acc, item) => {
+      const exerciseName =
+        exerciseNameById.get(item.exercise_id ?? "") ?? "Exercise";
+      if (!acc[exerciseName]) acc[exerciseName] = [];
+      acc[exerciseName].push(item);
       return acc;
     }, {});
-  }, [logItemsQuery.data]);
+  }, [exerciseNameById, workoutSetLogsQuery.data]);
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">
@@ -378,7 +447,7 @@ export function ClientWorkoutDetailPage() {
         </div>
       ) : null}
 
-      {assignedQuery.isLoading || workoutLogQuery.isLoading ? (
+      {assignedQuery.isLoading || workoutSessionQuery.isLoading ? (
         <Card>
           <CardHeader>
             <CardTitle>Workout log</CardTitle>
@@ -412,11 +481,11 @@ export function ClientWorkoutDetailPage() {
                 <div key={exercise} className="rounded-lg border border-border p-3">
                   <p className="text-sm font-semibold">{exercise}</p>
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                    {items.map((item) => (
+                    {items.map((item, index) => (
                       <div key={item.id}>
-                        Set {item.set_index}: {item.reps ?? "-"} reps @{" "}
-                        {item.weight_kg ?? "-"} kg
-                        {item.notes ? ` · ${item.notes}` : ""}
+                        Set {item.set_number ?? index + 1}: {item.reps ?? "-"} reps @{" "}
+                        {item.weight ?? "-"}
+                        {typeof item.rpe === "number" ? ` · RPE ${item.rpe}` : ""}
                       </div>
                     ))}
                   </div>
@@ -451,13 +520,17 @@ export function ClientWorkoutDetailPage() {
                   const sets = exercise.sets ? `${exercise.sets} sets` : "";
                   const reps = exercise.reps ? `${exercise.reps} reps` : "";
                   const repLine = [sets, reps].filter(Boolean).join(" x ");
-                  const weight =
-                    typeof exercise.weight_value === "number"
-                      ? `${exercise.weight_value} ${exercise.weight_unit ?? "kg"}`
+                  const lastLog = setLogsByExercise.get(exercise.exercise?.id ?? "")?.[0];
+                  const lastWeight =
+                    typeof lastLog?.weight === "number"
+                      ? `Last ${lastLog.weight}`
                       : null;
+                  const lastReps =
+                    typeof lastLog?.reps === "number" ? `Last reps ${lastLog.reps}` : null;
                   const details = [
                     repLine,
-                    weight ? `Weight ${weight}` : "Set load",
+                    lastWeight ?? "No sets logged yet",
+                    lastReps,
                     exercise.rest_seconds ? `Rest ${exercise.rest_seconds}s` : null,
                     exercise.tempo ? `Tempo ${exercise.tempo}` : null,
                     typeof exercise.rpe === "number" ? `RPE ${exercise.rpe}` : null,
@@ -561,7 +634,7 @@ export function ClientWorkoutDetailPage() {
                 {exercise.sets.map((setItem, setIndex) => (
                   <div
                     key={`${exercise.name}-${setIndex}`}
-                    className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[120px_1fr_1fr_2fr]"
+                    className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[120px_1fr_1fr_1fr]"
                   >
                     <div className="text-xs font-semibold text-muted-foreground">
                       Set {setIndex + 1}
@@ -581,20 +654,26 @@ export function ClientWorkoutDetailPage() {
                       className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                       type="number"
                       inputMode="decimal"
-                      placeholder="Weight (kg)"
-                      value={setItem.weight_kg}
+                      placeholder="Weight"
+                      value={setItem.weight}
                       onChange={(event) =>
-                        handleSetChange(exerciseIndex, setIndex, "weight_kg", event.target.value)
+                        handleSetChange(
+                          exerciseIndex,
+                          setIndex,
+                          "weight",
+                          event.target.value
+                        )
                       }
                       onBlur={() => saveSet(exerciseIndex, setIndex)}
                     />
                     <input
                       className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                      type="text"
-                      placeholder="Notes"
-                      value={setItem.notes}
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="RPE"
+                      value={setItem.rpe}
                       onChange={(event) =>
-                        handleSetChange(exerciseIndex, setIndex, "notes", event.target.value)
+                        handleSetChange(exerciseIndex, setIndex, "rpe", event.target.value)
                       }
                       onBlur={() => saveSet(exerciseIndex, setIndex)}
                     />
@@ -614,3 +693,4 @@ export function ClientWorkoutDetailPage() {
     </div>
   );
 }
+
