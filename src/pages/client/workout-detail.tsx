@@ -126,6 +126,30 @@ export function ClientWorkoutDetailPage() {
     },
   });
 
+  const templateExercisesQuery = useQuery({
+    queryKey: ["workout-template-exercises", assignedQuery.data?.workout_template?.id],
+    enabled: !!assignedQuery.data?.workout_template?.id,
+    queryFn: async () => {
+      const templateId = assignedQuery.data?.workout_template?.id ?? null;
+      if (!templateId) return [];
+      const baseQuery = () =>
+        supabase
+          .from("workout_template_exercises")
+          .select(
+            "id, sort_order, sets, reps, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+          )
+          .eq("workout_template_id", templateId);
+      const ordered = await baseQuery().order("sort_order", { ascending: true });
+      if (!ordered.error) return (ordered.data ?? []) as TemplateExerciseRow[];
+      if (ordered.error.code === "42703") {
+        const fallback = await baseQuery();
+        if (fallback.error) throw fallback.error;
+        return (fallback.data ?? []) as TemplateExerciseRow[];
+      }
+      throw ordered.error;
+    },
+  });
+
   const workoutSessionQuery = useQuery({
     queryKey: ["workout-session", assignedWorkoutId, clientId],
     enabled: !!assignedWorkoutId && !!clientId && !!assignedQuery.data,
@@ -200,7 +224,10 @@ export function ClientWorkoutDetailPage() {
         latestByKey.set(key, item);
       }
     });
-    const templateExercises = assignedExercisesQuery.data ?? [];
+    const templateExercises =
+      assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
+        ? assignedExercisesQuery.data
+        : templateExercisesQuery.data ?? [];
     const next = templateExercises.map((row) => {
       const name = row.exercise?.name ?? "Exercise";
       const count = row.sets && row.sets > 0 ? row.sets : 3;
@@ -219,7 +246,12 @@ export function ClientWorkoutDetailPage() {
       return { name, detail: row, sets };
     });
     setExercises(next);
-  }, [workoutSetLogsQuery.data, workoutSession, assignedExercisesQuery.data]);
+  }, [
+    workoutSetLogsQuery.data,
+    workoutSession,
+    assignedExercisesQuery.data,
+    templateExercisesQuery.data,
+  ]);
 
   useEffect(() => {
     if (assignedQuery.data?.status === "completed") {
@@ -231,11 +263,15 @@ export function ClientWorkoutDetailPage() {
     clientQuery.error,
     assignedQuery.error,
     assignedExercisesQuery.error,
+    templateExercisesQuery.error,
     workoutSessionQuery.error,
     workoutSetLogsQuery.error,
   ].filter(Boolean);
 
-  const templateExercises = assignedExercisesQuery.data ?? [];
+  const templateExercises =
+    assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
+      ? assignedExercisesQuery.data
+      : templateExercisesQuery.data ?? [];
   const setLogsByExercise = useMemo(() => {
     const map = new Map<string, WorkoutSetLog[]>();
     (workoutSetLogsQuery.data ?? []).forEach((item) => {
@@ -257,11 +293,11 @@ export function ClientWorkoutDetailPage() {
 
   const exerciseNameById = useMemo(() => {
     const map = new Map<string, string>();
-    (assignedExercisesQuery.data ?? []).forEach((row) => {
+    templateExercises.forEach((row) => {
       if (row.exercise?.id) map.set(row.exercise.id, row.exercise?.name ?? "Exercise");
     });
     return map;
-  }, [assignedExercisesQuery.data]);
+  }, [templateExercises]);
 
   const handleSetChange = (
     exerciseIndex: number,

@@ -131,6 +131,12 @@ export function ClientWorkoutTodayPage() {
                   {workoutQuery.data.status}
                 </Badge>
               </div>
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/app/workout-run/${workoutQuery.data?.id}`)}
+              >
+                Open workout
+              </Button>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button
                   disabled={

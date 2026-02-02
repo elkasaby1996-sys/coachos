@@ -56,6 +56,26 @@ type AssignedWorkoutExerciseRow = {
   } | null;
 };
 
+type TemplateWorkoutExerciseRow = {
+  id: string;
+  workout_template_id?: string | null;
+  sort_order?: number | null;
+  sets: number | null;
+  reps: number | null;
+  rpe: number | null;
+  tempo: string | null;
+  notes: string | null;
+  video_url?: string | null;
+  rest_seconds?: number | null;
+  exercise: {
+    id: string;
+    name: string | null;
+    video_url?: string | null;
+    category?: string | null;
+    equipment?: string | null;
+  } | null;
+};
+
 type WorkoutSessionRow = {
   id: string;
   assigned_workout_id: string | null;
@@ -171,6 +191,30 @@ export function ClientWorkoutRunPage() {
     },
   });
 
+  const templateExercisesQuery = useQuery({
+    queryKey: ["workout-template-exercises", assignedWorkoutQuery.data?.workout_template?.id],
+    enabled: !!assignedWorkoutQuery.data?.workout_template?.id,
+    queryFn: async () => {
+      const templateId = assignedWorkoutQuery.data?.workout_template?.id ?? null;
+      if (!templateId) return [];
+      const baseQuery = () =>
+        supabase
+          .from("workout_template_exercises")
+          .select(
+            "id, workout_template_id, sort_order, sets, reps, rpe, tempo, notes, rest_seconds, video_url, exercise:exercises(id, name, category, equipment, video_url)"
+          )
+          .eq("workout_template_id", templateId);
+      const ordered = await baseQuery().order("sort_order", { ascending: true });
+      if (!ordered.error) return (ordered.data ?? []) as TemplateWorkoutExerciseRow[];
+      if (ordered.error.code === "42703") {
+        const fallback = await baseQuery();
+        if (fallback.error) throw fallback.error;
+        return (fallback.data ?? []) as TemplateWorkoutExerciseRow[];
+      }
+      throw ordered.error;
+    },
+  });
+
   const setLogsQuery = useQuery({
     queryKey: ["workout-set-logs", workoutSession?.id],
     enabled: !!workoutSession?.id,
@@ -208,7 +252,11 @@ export function ClientWorkoutRunPage() {
         latestByKey.set(key, item);
       }
     });
-    const next = (assignedExercisesQuery.data ?? []).map((row) => {
+    const sourceRows =
+      assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
+        ? assignedExercisesQuery.data
+        : templateExercisesQuery.data ?? [];
+    const next = sourceRows.map((row) => {
       const name = row.exercise?.name ?? "Exercise (missing details)";
       const count = row.sets && row.sets > 0 ? row.sets : 3;
       const sets = Array.from({ length: count }).map((_, index) => {
@@ -231,13 +279,14 @@ export function ClientWorkoutRunPage() {
       };
     });
     setExercises(next);
-  }, [assignedExercisesQuery.data, setLogsQuery.data]);
+  }, [assignedExercisesQuery.data, setLogsQuery.data, templateExercisesQuery.data]);
 
   const errors = [
     clientQuery.error,
     assignedWorkoutQuery.error,
     workoutSessionQuery.error,
     assignedExercisesQuery.error,
+    templateExercisesQuery.error,
     setLogsQuery.error,
   ].filter(Boolean);
 
@@ -442,7 +491,7 @@ export function ClientWorkoutRunPage() {
               </CardContent>
             </Card>
           )}
-          {assignedExercisesQuery.isLoading ? null : exercises.length === 0 ? (
+          {assignedExercisesQuery.isLoading || templateExercisesQuery.isLoading ? null : exercises.length === 0 ? (
             <Card>
               <CardHeader>
                 <CardTitle>Workout</CardTitle>
