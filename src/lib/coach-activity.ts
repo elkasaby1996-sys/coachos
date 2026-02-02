@@ -20,9 +20,13 @@ export const logCoachActivity = async ({
   metadata,
 }: CoachActivityLogPayload) => {
   if (!clientId || !workspaceId) return { error: null };
+  const { data: authData } = await supabase.auth.getUser();
+  const actorUserId = authData?.user?.id ?? null;
+  if (!actorUserId) return { error: null };
   const { error } = await supabase.from("coach_activity_log").insert({
     client_id: clientId,
     workspace_id: workspaceId,
+    actor_user_id: actorUserId,
     action,
     metadata: metadata ?? null,
   });
