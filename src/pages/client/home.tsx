@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -90,6 +90,81 @@ const writeDayStatus = (dateKey: string, status: DayStatus) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(`coachos_day_status_${dateKey}`, JSON.stringify(status));
 };
+
+const cardChrome =
+  "border border-border/70 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_14px_30px_-18px_rgba(0,0,0,0.85)]";
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const summaryTrainingStatus =
+    todayWorkoutStatus === "completed"
+      ? "completed"
+      : todayWorkoutStatus === "skipped"
+        ? "skipped"
+        : todayWorkout
+          ? "planned"
+          : "rest";
+  const summaryTrainingTitle =
+    todayWorkout?.workout_template?.name ??
+    todayWorkout?.workout_template_name ??
+    "Recovery";
+  const summaryTrainingHint =
+    todayWorkoutStatus === "completed"
+      ? "Session logged"
+      : todayWorkoutStatus === "skipped"
+        ? "Coach notified"
+        : todayWorkout
+          ? "Ready when you are"
+          : "Mobility + steps";
+  const summaryNutritionValue =
+    typeof targets?.calories === "number"
+      ? `${targets.calories.toLocaleString()} kcal`
+      : "Coach setting in progress";
+  const summaryNutritionHint =
+    typeof targets?.protein_g === "number"
+      ? `${targets.protein_g}g protein target`
+      : "Ask coach for targets";
+  const summaryHabitHint = `${Object.values(checklist).filter(Boolean).length} of ${checklistKeys.length} complete`;
+  const summaryMomentumValue = `${workoutsCompletedThisWeek} workouts`;
+  const summaryMomentumHint =
+    consistencyStreak > 0 ? `${consistencyStreak} day streak` : "Start a streak";
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-primary/80 shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
+        <CardTitle>{title}</CardTitle>
+      </div>
+      {subtitle ? <span className="text-xs text-muted-foreground">{subtitle}</span> : null}
+    </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  hint,
+  status,
+  statusVariant = "muted",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  status: string;
+  statusVariant?: "muted" | "success" | "danger" | "secondary";
+}) {
+  return (
+    <Card className={`${cardChrome} bg-muted/20`}>
+      <CardHeader className="space-y-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="uppercase tracking-wide">{label}</span>
+          <Badge variant={statusVariant}>{status}</Badge>
+        </div>
+        <CardTitle className="text-lg">{value}</CardTitle>
+        {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      </CardHeader>
+    </Card>
+  );
+}
 
 export function ClientHomePage() {
   const navigate = useNavigate();
@@ -366,11 +441,11 @@ export function ClientHomePage() {
 
   const coachBadgeLabel = latestCoachActivity?.created_at
     ? `Coach reviewed your plan ${formatRelativeTime(latestCoachActivity.created_at)}`
-    : "Coach hasn’t reviewed your plan yet.";
+    : "Coach hasnâ€™t reviewed your plan yet.";
 
   const coachUpdatedText = useMemo(() => {
     if (!latestCoachActivity?.created_at) {
-      return "Coach hasn’t reviewed your plan yet.";
+      return "Coach hasnâ€™t reviewed your plan yet.";
     }
     return `Coach reviewed your plan ${formatRelativeTime(latestCoachActivity.created_at)}.`;
   }, [latestCoachActivity]);
@@ -484,7 +559,7 @@ export function ClientHomePage() {
   const handleRequestAdjustment = () => {
     navigate(
       `/app/messages?draft=${encodeURIComponent(
-        "I skipped today's workout — can we adjust?"
+        "I skipped today's workout â€” can we adjust?"
       )}`
     );
   };
@@ -499,13 +574,52 @@ export function ClientHomePage() {
             {subtitleDate} &bull; {missionCopy}
           </p>
         </div>
-          <Badge variant={latestCoachActivity ? "success" : "muted"}>
-            {coachBadgeLabel}
-          </Badge>
-        </section>
+        <Badge variant={latestCoachActivity ? "success" : "muted"}>
+          {coachBadgeLabel}
+        </Badge>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryStat
+          label="Training"
+          value={summaryTrainingTitle}
+          hint={summaryTrainingHint}
+          status={summaryTrainingStatus}
+          statusVariant={
+            summaryTrainingStatus === "completed"
+              ? "success"
+              : summaryTrainingStatus === "skipped"
+                ? "danger"
+                : summaryTrainingStatus === "planned"
+                  ? "secondary"
+                  : "muted"
+          }
+        />
+        <SummaryStat
+          label="Nutrition"
+          value={summaryNutritionValue}
+          hint={summaryNutritionHint}
+          status={typeof targets?.calories === "number" ? "set" : "pending"}
+          statusVariant={typeof targets?.calories === "number" ? "success" : "muted"}
+        />
+        <SummaryStat
+          label="Habits"
+          value={`${checklistProgress}%`}
+          hint={summaryHabitHint}
+          status={checklistProgress === 100 ? "perfect" : "in progress"}
+          statusVariant={checklistProgress === 100 ? "success" : "secondary"}
+        />
+        <SummaryStat
+          label="Momentum"
+          value={summaryMomentumValue}
+          hint={summaryMomentumHint}
+          status={workoutsCompletedThisWeek > 0 ? "moving" : "start"}
+          statusVariant={workoutsCompletedThisWeek > 0 ? "success" : "muted"}
+        />
+      </section>
 
       {!baselineSubmittedQuery.isLoading && !baselineSubmittedQuery.data ? (
-        <Card className="border-dashed">
+        <Card className={`border-dashed ${cardChrome}`}>
           <CardHeader>
             <CardTitle>Complete your baseline</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -543,10 +657,8 @@ export function ClientHomePage() {
         </Alert>
       ) : null}
 
-      <ClientReminders clientId={clientId} timezone={clientTimezone} />
-
       {profileCompletion && profileCompletion.completed < profileCompletion.total ? (
-        <Card className="border-dashed">
+        <Card className={`border-dashed ${cardChrome}`}>
           <CardHeader>
             <CardTitle>Complete your profile</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -563,365 +675,370 @@ export function ClientHomePage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Today&apos;s Training</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {todayWorkoutQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-8 w-1/3" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : todayWorkout ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {todayWorkoutStatus === "completed"
-                          ? "Workout completed"
-                          : todayWorkoutStatus === "skipped"
-                            ? "Workout skipped (coach notified)"
-                            : "Workout planned"}
-                      </p>
-                      <p className="text-lg font-semibold">
-                        {todayWorkout?.workout_template?.name ??
-                          todayWorkout?.workout_template_name ??
-                          "Planned session"}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        todayWorkoutStatus === "completed"
-                          ? "success"
-                          : todayWorkoutStatus === "skipped"
-                            ? "danger"
-                            : "muted"
-                      }
-                    >
-                      {todayWorkoutStatus ?? "planned"}
-                    </Badge>
-                  </div>
-                  {todayTemplateInfo.workoutType ? (
-                    <Badge variant="muted">{todayTemplateInfo.workoutType}</Badge>
-                  ) : null}
-                  {todayWorkoutStatus === "completed" ? (
-                    <Button
-                      className="w-full"
-                      onClick={() => navigate(`/app/workout-summary/${todayWorkout.id}`)}
-                    >
-                      View summary
-                    </Button>
-                  ) : todayWorkoutStatus === "skipped" ? (
-                    <Button className="w-full" onClick={handleRequestAdjustment}>
-                      Request adjustment
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      onClick={() => navigate(`/app/workout-run/${todayWorkout.id}`)}
-                    >
-                      Start workout
-                    </Button>
-                  )}
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => navigate("/app/messages")}
-                  >
-                    Message coach
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+        <Card className={`${cardChrome} lg:col-start-1`}>
+          <CardHeader>
+            <SectionHeader title="Today&apos;s Training" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {todayWorkoutQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-8 w-1/3" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : todayWorkout ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold">No workout assigned yet</p>
-                    <p className="text-sm text-muted-foreground">
-                      Your coach hasn&apos;t scheduled today&apos;s session. You can still do
-                      your default plan:
+                    <p className="text-xs text-muted-foreground">
+                      {todayWorkoutStatus === "completed"
+                        ? "Workout completed"
+                        : todayWorkoutStatus === "skipped"
+                          ? "Workout skipped (coach notified)"
+                          : "Workout planned"}
+                    </p>
+                    <p className="text-lg font-semibold">
+                      {todayWorkout?.workout_template?.name ??
+                        todayWorkout?.workout_template_name ??
+                        "Planned session"}
                     </p>
                   </div>
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                    {defaultPlan.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                  <Button className="w-full" onClick={handleStartDefaultSession}>
-                    Start default session
+                  <Badge
+                    variant={
+                      todayWorkoutStatus === "completed"
+                        ? "success"
+                        : todayWorkoutStatus === "skipped"
+                          ? "danger"
+                          : "muted"
+                    }
+                  >
+                    {todayWorkoutStatus ?? "planned"}
+                  </Badge>
+                </div>
+                {todayTemplateInfo.workoutType ? (
+                  <Badge variant="muted">{todayTemplateInfo.workoutType}</Badge>
+                ) : null}
+                {todayWorkoutStatus === "completed" ? (
+                  <Button
+                    className="w-full"
+                    onClick={() => navigate(`/app/workout-summary/${todayWorkout.id}`)}
+                  >
+                    View summary
                   </Button>
+                ) : todayWorkoutStatus === "skipped" ? (
+                  <Button className="w-full" onClick={handleRequestAdjustment}>
+                    Request adjustment
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => navigate(`/app/workout-run/${todayWorkout.id}`)}
+                  >
+                    Start workout
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => navigate("/app/messages")}
+                >
+                  Message coach
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+                <div>
+                  <p className="text-sm font-semibold">No workout assigned yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your coach hasn&apos;t scheduled today&apos;s session. You can still do
+                    your default plan:
+                  </p>
+                </div>
+                <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                  {defaultPlan.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+                <Button className="w-full" onClick={handleStartDefaultSession}>
+                  Start default session
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => navigate("/app/messages")}
+                >
+                  Message coach
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className={`${cardChrome} lg:col-start-2`}>
+          <CardHeader>
+            <SectionHeader title="Today&apos;s Checklist" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Progress</span>
+                <span>{checklistProgress}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted">
+                <div
+                  className="h-2 rounded-full bg-primary transition-all"
+                  style={{ width: `${checklistProgress}%` }}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              {checklistKeys.map((key) => (
+                <label
+                  key={key}
+                  className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <span className="capitalize">
+                    {key === "steps" && typeof targets?.steps === "number"
+                      ? `Steps (${targets.steps.toLocaleString()})`
+                      : key}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={checklist[key]}
+                    onChange={() =>
+                      setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            {dayStatus?.completed ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                {"\u2705"} Perfect day logged
+              </div>
+            ) : null}
+            <Button variant="secondary" className="w-full" onClick={() => setChecklist(emptyChecklist)}>
+              Reset today
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className={`${cardChrome} lg:col-start-2`}>
+          <CardHeader className="space-y-2">
+            <SectionHeader title="This Week" subtitle="Next 7 days" />
+            <p className="text-sm text-muted-foreground">
+              Training and recovery mapped out for you.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {weeklyPlanQuery.isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 7 }).map((_, index) => (
+                  <Skeleton key={index} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {weekRows.map((row) => {
+                  const isToday = row.key === todayKey;
+                  const workout = row.workout;
+                  const label = workout?.id
+                    ? workout?.workout_template?.name ??
+                      (workout as { workout_template_name?: string })?.workout_template_name ??
+                      "Planned session"
+                    : "Recovery / Mobility";
+                  return (
+                    <button
+                      key={row.key}
+                      type="button"
+                      className={
+                        isToday
+                          ? "flex w-full items-center justify-between rounded-lg border border-border bg-muted/50 px-3 py-2 text-left transition hover:border-border/80 hover:bg-muted/60"
+                          : "flex w-full items-center justify-between rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-left transition hover:border-border hover:bg-muted/40"
+                      }
+                      onClick={() => {
+                        if (workout?.id) navigate(`/app/workouts/${workout.id}`);
+                      }}
+                      disabled={!workout?.id}
+                    >
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          {row.date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                        <p className="text-sm font-semibold">{label}</p>
+                      </div>
+                      {workout?.id ? (
+                        <Badge
+                          variant={
+                            workout.status === "completed"
+                              ? "success"
+                              : workout.status === "skipped"
+                              ? "danger"
+                              : "muted"
+                          }
+                        >
+                          {workout.status ?? "planned"}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Recovery</Badge>
+                      )}
+                    </button>
+                  );
+                })}
+                {weeklyPlan.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    No sessions scheduled yet. Focus on steps, hydration, and sleep.
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className={`${cardChrome} lg:col-start-1`}>
+          <CardHeader>
+            <SectionHeader title="Nutrition Targets" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {targetsQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <div
+                className={
+                  hasTargets
+                    ? "space-y-3"
+                    : "space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4"
+                }
+              >
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-xs text-muted-foreground">Calories</p>
+                    <p className="text-sm font-semibold">
+                      {typeof targets?.calories === "number"
+                        ? targets.calories.toLocaleString()
+                        : "Coach setting in progress"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-xs text-muted-foreground">Protein</p>
+                    <p className="text-sm font-semibold">
+                      {typeof targets?.protein_g === "number"
+                        ? `${targets.protein_g} g`
+                        : "Prioritize protein today"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-xs text-muted-foreground">Steps</p>
+                    <p className="text-sm font-semibold">
+                      {typeof targets?.steps === "number"
+                        ? targets.steps.toLocaleString()
+                        : "8,000 (today's focus)"}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border bg-background p-3 text-sm">
+                  <p className="text-xs text-muted-foreground">Coach notes</p>
+                  <p>{targets?.coach_notes ?? "Today: protein first, hydrate, don't skip steps."}</p>
+                </div>
+                {!hasTargets ? (
                   <Button
                     variant="secondary"
                     className="w-full"
-                    onClick={() => navigate("/app/messages")}
+                    onClick={() =>
+                      navigate(
+                        `/app/messages?draft=${encodeURIComponent(
+                          "Can you set my nutrition targets for this week?"
+                        )}`
+                      )
+                    }
                   >
-                    Message coach
+                    Request targets
                   </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Nutrition Targets</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {targetsQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : (
-                <div
-                  className={
-                    hasTargets
-                      ? "space-y-3"
-                      : "space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4"
-                  }
-                >
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <p className="text-xs text-muted-foreground">Calories</p>
-                      <p className="text-sm font-semibold">
-                        {typeof targets?.calories === "number"
-                          ? targets.calories.toLocaleString()
-                          : "Coach setting in progress"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <p className="text-xs text-muted-foreground">Protein</p>
-                      <p className="text-sm font-semibold">
-                        {typeof targets?.protein_g === "number"
-                          ? `${targets.protein_g} g`
-                          : "Prioritize protein today"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <p className="text-xs text-muted-foreground">Steps</p>
-                      <p className="text-sm font-semibold">
-                        {typeof targets?.steps === "number"
-                          ? targets.steps.toLocaleString()
-                          : "8,000 (today's focus)"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-background p-3 text-sm">
-                    <p className="text-xs text-muted-foreground">Coach notes</p>
-                    <p>{targets?.coach_notes ?? "Today: protein first, hydrate, don't skip steps."}</p>
-                  </div>
-                  {!hasTargets ? (
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() =>
-                        navigate(
-                          `/app/messages?draft=${encodeURIComponent(
-                            "Can you set my nutrition targets for this week?"
-                          )}`
-                        )
-                      }
-                    >
-                      Request targets
-                    </Button>
-                  ) : null}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Progress Snapshot</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {clientQuery.isLoading || workoutsWeekQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : clientQuery.data ? (
-                <div className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Day streak
-                      </p>
-                      {consistencyStreak > 0 ? (
-                        <p className="text-2xl font-semibold">{consistencyStreak}</p>
-                      ) : (
-                        <p className="text-sm font-semibold">Start your streak today.</p>
-                      )}
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Workouts completed this week
-                      </p>
-                      <p className="text-sm font-semibold">
-                        {workoutsCompletedThisWeek}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Steps adherence (7d)</p>
-                      <p className="text-sm font-semibold">
-                        {stepsAdherence.percent === null ? "--" : `${stepsAdherence.percent}%`}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {lastLoggedDate
-                      ? `Last habit log: ${lastLoggedDate}. Momentum is built by small wins.`
-                      : "Momentum is built by small wins."}
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                  Your progress starts today. Complete your checklist to build momentum.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>This Week</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Next 7 days of training and recovery.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {weeklyPlanQuery.isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 7 }).map((_, index) => (
-                    <Skeleton key={index} className="h-10 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {weekRows.map((row) => {
-                    const isToday = row.key === todayKey;
-                    const workout = row.workout;
-                    const label = workout?.id
-                      ? workout?.workout_template?.name ??
-                        (workout as { workout_template_name?: string })?.workout_template_name ??
-                        "Planned session"
-                      : "Recovery / Mobility";
-                    return (
-                      <button
-                        key={row.key}
-                        type="button"
-                        className={
-                          isToday
-                            ? "flex w-full items-center justify-between rounded-lg border border-border bg-muted/40 px-3 py-2 text-left"
-                            : "flex w-full items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-left"
-                        }
-                        onClick={() => {
-                          if (workout?.id) navigate(`/app/workouts/${workout.id}`);
-                        }}
-                        disabled={!workout?.id}
-                      >
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            {row.date.toLocaleDateString("en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </p>
-                          <p className="text-sm font-semibold">{label}</p>
-                        </div>
-                        {workout?.id ? (
-                          <Badge
-                            variant={
-                              workout.status === "completed"
-                                ? "success"
-                                : workout.status === "skipped"
-                                ? "danger"
-                                : "muted"
-                            }
-                          >
-                            {workout.status ?? "planned"}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Recovery</Badge>
-                        )}
-                      </button>
-                    );
-                  })}
-                  {weeklyPlan.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      No sessions scheduled yet - focus on steps, hydration, and sleep. Your
-                      coach will program your week.
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Today&apos;s Checklist</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Progress</span>
-                  <span>{checklistProgress}%</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div
-                    className="h-2 rounded-full bg-primary transition-all"
-                    style={{ width: `${checklistProgress}%` }}
-                  />
-                </div>
+                ) : null}
               </div>
-              <div className="space-y-2">
-                {checklistKeys.map((key) => (
-                  <label
-                    key={key}
-                    className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  >
-                    <span className="capitalize">
-                      {key === "steps" && typeof targets?.steps === "number"
-                        ? `Steps (${targets.steps.toLocaleString()})`
-                        : key}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={checklist[key]}
-                      onChange={() =>
-                        setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
-                      }
-                    />
-                  </label>
-                ))}
-              </div>
-              {dayStatus?.completed ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-                  {"\u2705"} Perfect day logged
-                </div>
-              ) : null}
-              <Button variant="secondary" className="w-full" onClick={() => setChecklist(emptyChecklist)}>
-                Reset today
-              </Button>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Coach Awareness</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {coachUpdatedText}
-            </CardContent>
-          </Card>
-        </div>
+        <Card className={`${cardChrome} lg:col-start-1`}>
+          <CardHeader>
+            <SectionHeader title="Progress Snapshot" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {clientQuery.isLoading || workoutsWeekQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : clientQuery.data ? (
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Day streak
+                    </p>
+                    {consistencyStreak > 0 ? (
+                      <p className="text-2xl font-semibold">{consistencyStreak}</p>
+                    ) : (
+                      <p className="text-sm font-semibold">Start your streak today.</p>
+                    )}
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Workouts completed this week
+                    </p>
+                    <p className="text-sm font-semibold">
+                      {workoutsCompletedThisWeek}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Steps adherence (7d)</p>
+                    <p className="text-sm font-semibold">
+                      {stepsAdherence.percent === null ? "--" : `${stepsAdherence.percent}%`}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {lastLoggedDate
+                    ? `Last habit log: ${lastLoggedDate}. Momentum is built by small wins.`
+                    : "Momentum is built by small wins."}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                Your progress starts today. Complete your checklist to build momentum.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className={`${cardChrome} lg:col-start-2`}>
+          <CardHeader>
+            <SectionHeader title="Reminders" />
+          </CardHeader>
+          <CardContent>
+            <ClientReminders clientId={clientId} timezone={clientTimezone} />
+          </CardContent>
+        </Card>
+
+        <Card className={`${cardChrome} lg:col-start-2`}>
+          <CardHeader>
+            <SectionHeader title="Coach Awareness" />
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            {coachUpdatedText}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
+
