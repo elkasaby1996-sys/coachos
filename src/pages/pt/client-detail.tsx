@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { supabase } from "../../lib/supabase";
+import { getSupabaseErrorDetails, getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 import { cn } from "../../lib/utils";
@@ -44,22 +45,11 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getErrorMessage = (_error: unknown) => "Something went wrong.";
+const getErrorMessage = (error: unknown) => getSupabaseErrorMessage(error);
 
 const getFriendlyErrorMessage = () => "Unable to load data right now. Please try again.";
 
-const getErrorDetails = (error: unknown) => {
-  if (!error) return { code: null, message: "Something went wrong." };
-  if (error instanceof Error) {
-    const err = error as Error & { code?: string | null };
-    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
-  }
-  if (typeof error === "object") {
-    const err = error as { code?: string | null; message?: string | null };
-    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
-  }
-  return { code: null, message: "Something went wrong." };
-};
+const getErrorDetails = (error: unknown) => getSupabaseErrorDetails(error);
 
 const formatListValue = (value: string[] | string | null | undefined, fallback: string) => {
   if (!value) return fallback;
@@ -207,10 +197,18 @@ export function PtClientDetailPage() {
     return "overview";
   }, [location.search]);
   const [active, setActive] = useState<(typeof tabs)[number]>(initialTab);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
 
   useEffect(() => {
     setActive(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = setTimeout(() => setToastMessage(null), 2400);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => formatDateKey(new Date()));
   const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -587,89 +585,24 @@ export function PtClientDetailPage() {
     setAssignStatus("saving");
     setAssignMessage(null);
 
-    const { data: existing, error: checkError } = await supabase
-      .from("assigned_workouts")
-      .select("id")
-      .eq("client_id", clientId)
-      .eq("scheduled_date", scheduledDate)
-      .eq("workout_template_id", selectedTemplateId)
-      .maybeSingle();
-
-    if (checkError) {
-      setAssignStatus("error");
-      setAssignMessage(getErrorMessage(checkError));
-      return;
-    }
-
-    if (existing) {
-      setAssignStatus("idle");
-      setAssignMessage("Already scheduled for that date");
-      return;
-    }
-
-    const { data: assignedWorkout, error } = await supabase
-      .from("assigned_workouts")
-      .insert({
-        client_id: clientId,
-        workout_template_id: selectedTemplateId,
-        scheduled_date: scheduledDate,
-        status: "planned",
-      })
-      .select("id")
-      .maybeSingle();
+    const { data: assignedWorkoutId, error } = await supabase.rpc(
+      "assign_workout_with_template",
+      {
+        p_client_id: clientId,
+        p_scheduled_date: scheduledDate,
+        p_workout_template_id: selectedTemplateId,
+      }
+    );
 
     if (error) {
-      if ("code" in error && (error as { code?: string }).code === "23505") {
-        setAssignStatus("idle");
-        setAssignMessage("Already scheduled for that date");
-        return;
-      }
+      const details = getErrorDetails(error);
+      const message = details.message ?? getErrorMessage(error);
       setAssignStatus("error");
-      setAssignMessage(getErrorMessage(error));
+      setAssignMessage(message);
+      setToastVariant("error");
+      setToastMessage(message);
+      console.error("ASSIGN_WORKOUT_ERROR", details.code, details.message);
       return;
-    }
-
-    if (assignedWorkout?.id) {
-      const { data: templateExercises, error: templateError } = await supabase
-        .from("workout_template_exercises")
-        .select("exercise_id, sort_order, sets, reps, rest_seconds, tempo, rpe, video_url, notes")
-        .eq("workout_template_id", selectedTemplateId);
-
-      if (templateError) {
-        const details = getErrorDetails(templateError);
-        setAssignStatus("error");
-        setAssignMessage(details.message ?? getErrorMessage(templateError));
-        return;
-      }
-
-      const rows = (templateExercises ?? []).map((row) => ({
-        assigned_workout_id: assignedWorkout.id,
-        exercise_id: row.exercise_id,
-        sort_order: row.sort_order,
-        sets: row.sets,
-        reps: row.reps,
-        rest_seconds: row.rest_seconds,
-        tempo: row.tempo,
-        rpe: row.rpe,
-        video_url: row.video_url,
-        notes: row.notes,
-        weight_value: null,
-        weight_unit: "kg",
-        load_notes: null,
-        is_completed: false,
-      }));
-
-      if (rows.length > 0) {
-        const { error: insertError } = await supabase
-          .from("assigned_workout_exercises")
-          .insert(rows);
-        if (insertError) {
-          const details = getErrorDetails(insertError);
-          setAssignStatus("error");
-          setAssignMessage(details.message ?? getErrorMessage(insertError));
-          return;
-        }
-      }
     }
 
     await logCoachActivity({
@@ -679,14 +612,23 @@ export function PtClientDetailPage() {
       metadata: {
         scheduled_date: scheduledDate,
         workout_template_id: selectedTemplateId,
+        assigned_workout_id: assignedWorkoutId ?? null,
       },
     });
 
     setAssignStatus("idle");
     setAssignMessage("Workout assigned");
+    setToastVariant("success");
+    setToastMessage("Workout assigned");
+    setSelectedTemplateId("");
+    setScheduledDate(todayKey);
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
     });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-today", clientId, todayKey],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
   };
 
   const handleStatusUpdate = async (id: string, status: "completed" | "skipped") => {
@@ -1043,6 +985,14 @@ export function PtClientDetailPage() {
 
   return (
     <div className="space-y-6">
+      {toastMessage ? (
+        <div className="fixed right-6 top-6 z-50 w-[260px]">
+          <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
+            <AlertTitle>{toastVariant === "error" ? "Error" : "Success"}</AlertTitle>
+            <AlertDescription>{toastMessage}</AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
       <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
         PT CLIENT DETAIL ACTIVE (v1)
       </div>
@@ -1077,7 +1027,7 @@ export function PtClientDetailPage() {
               variant="secondary"
               onClick={() =>
                 handleQuickAction(
-                  "Let’s capture your baseline this week. Can you share weight, sleep, and key lifts?"
+                  "Letâ€™s capture your baseline this week. Can you share weight, sleep, and key lifts?"
                 )
               }
             >
@@ -1220,7 +1170,7 @@ export function PtClientDetailPage() {
         <CardHeader>
           <CardTitle>Profile completeness</CardTitle>
           {clientQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading profile details…</p>
+            <p className="text-sm text-muted-foreground">Loading profile detailsâ€¦</p>
           ) : clientSnapshot ? (
             <p className="text-sm text-muted-foreground">
               {completion.completed}/{completion.total} fields complete ({completion.percent}%)
@@ -1284,7 +1234,7 @@ export function PtClientDetailPage() {
                         {getCoachActionLabel(entry.action)}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} ·{" "}
+                        {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} Â·{" "}
                         {createdLabel}
                       </span>
                     </div>
@@ -1586,7 +1536,7 @@ export function PtClientDetailPage() {
                       <div>
                         <CardTitle>Daily habit log</CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          Review a specific day’s log in read-only mode.
+                          Review a specific dayâ€™s log in read-only mode.
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1627,7 +1577,7 @@ export function PtClientDetailPage() {
                           <div className="rounded-lg border border-border p-3">
                             <p className="text-xs text-muted-foreground">Calories</p>
                             <p className="text-sm font-semibold">
-                              {habitLogByDateQuery.data.calories ?? "—"}
+                              {habitLogByDateQuery.data.calories ?? "â€”"}
                             </p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
@@ -1635,7 +1585,7 @@ export function PtClientDetailPage() {
                             <p className="text-sm font-semibold">
                               {typeof habitLogByDateQuery.data.protein_g === "number"
                                 ? `${habitLogByDateQuery.data.protein_g} g`
-                                : "—"}
+                                : "â€”"}
                             </p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
@@ -1645,7 +1595,7 @@ export function PtClientDetailPage() {
                                 ? `${habitLogByDateQuery.data.weight_value} ${
                                     habitLogByDateQuery.data.weight_unit ?? ""
                                   }`
-                                : "—"}
+                                : "â€”"}
                             </p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
@@ -1653,7 +1603,7 @@ export function PtClientDetailPage() {
                             <p className="text-sm font-semibold">
                               {typeof habitLogByDateQuery.data.steps === "number"
                                 ? habitLogByDateQuery.data.steps.toLocaleString()
-                                : "—"}
+                                : "â€”"}
                             </p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
@@ -1661,13 +1611,13 @@ export function PtClientDetailPage() {
                             <p className="text-sm font-semibold">
                               {typeof habitLogByDateQuery.data.sleep_hours === "number"
                                 ? `${habitLogByDateQuery.data.sleep_hours} hrs`
-                                : "—"}
+                                : "â€”"}
                             </p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
                             <p className="text-xs text-muted-foreground">Notes</p>
                             <p className="text-sm">
-                              {habitLogByDateQuery.data.notes ?? "—"}
+                              {habitLogByDateQuery.data.notes ?? "â€”"}
                             </p>
                           </div>
                         </div>
@@ -1689,19 +1639,19 @@ export function PtClientDetailPage() {
                       <p className="text-lg font-semibold">
                         {habitTrends.avgSteps !== null
                           ? habitTrends.avgSteps.toLocaleString()
-                          : "—"}
+                          : "â€”"}
                       </p>
                     </div>
                     <div className="rounded-lg border border-border p-3">
                       <p className="text-xs text-muted-foreground">Avg sleep</p>
                       <p className="text-lg font-semibold">
-                        {habitTrends.avgSleep !== null ? `${habitTrends.avgSleep} hrs` : "—"}
+                        {habitTrends.avgSleep !== null ? `${habitTrends.avgSleep} hrs` : "â€”"}
                       </p>
                     </div>
                     <div className="rounded-lg border border-border p-3">
                       <p className="text-xs text-muted-foreground">Avg protein</p>
                       <p className="text-lg font-semibold">
-                        {habitTrends.avgProtein !== null ? `${habitTrends.avgProtein} g` : "—"}
+                        {habitTrends.avgProtein !== null ? `${habitTrends.avgProtein} g` : "â€”"}
                       </p>
                     </div>
                     <div className="rounded-lg border border-border p-3">
@@ -1711,7 +1661,7 @@ export function PtClientDetailPage() {
                           ? `${habitTrends.weightChange > 0 ? "+" : ""}${habitTrends.weightChange.toFixed(1)} ${
                               habitTrends.weightUnit ?? ""
                             }`
-                          : "—"}
+                          : "â€”"}
                       </p>
                     </div>
                   </div>
@@ -1733,23 +1683,23 @@ export function PtClientDetailPage() {
                           className="grid grid-cols-7 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0"
                         >
                           <span className="text-xs text-muted-foreground">{log.log_date}</span>
-                          <span>{typeof log.calories === "number" ? log.calories : "—"}</span>
+                          <span>{typeof log.calories === "number" ? log.calories : "â€”"}</span>
                           <span>
-                            {typeof log.protein_g === "number" ? `${log.protein_g} g` : "—"}
+                            {typeof log.protein_g === "number" ? `${log.protein_g} g` : "â€”"}
                           </span>
                           <span>
-                            {typeof log.steps === "number" ? log.steps.toLocaleString() : "—"}
+                            {typeof log.steps === "number" ? log.steps.toLocaleString() : "â€”"}
                           </span>
                           <span>
-                            {typeof log.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "—"}
+                            {typeof log.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "â€”"}
                           </span>
                           <span>
                             {typeof log.weight_value === "number"
                               ? `${log.weight_value} ${log.weight_unit ?? ""}`
-                              : "—"}
+                              : "â€”"}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {log.notes ?? "—"}
+                            {log.notes ?? "â€”"}
                           </span>
                         </div>
                       ))}
@@ -2238,3 +2188,5 @@ export function PtClientDetailPage() {
     </div>
   );
 }
+
+

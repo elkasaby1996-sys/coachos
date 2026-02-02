@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -6,8 +6,8 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Input } from "../../components/ui/input";
 import { supabase } from "../../lib/supabase";
+import { getSupabaseErrorDetails } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
 
 type SetState = {
@@ -26,22 +26,21 @@ type ExerciseState = {
 
 type TemplateExerciseRow = {
   id: string;
-  sort_order: number | null;
+  set_order?: number | null;
   sets: number | null;
-  reps: string | null;
-  load_notes: string | null;
-  is_completed: boolean | null;
-  rest_seconds: number | null;
-  tempo: string | null;
-  rpe: number | null;
-  video_url: string | null;
-  notes: string | null;
+  reps: number | null;
+  is_completed?: boolean | null;
+  rest_seconds?: number | null;
+  tempo?: string | null;
+  rpe?: number | null;
+  video_url?: string | null;
+  notes?: string | null;
   exercise: {
     id: string;
     name: string | null;
     muscle_group: string | null;
     equipment: string | null;
-    video_url: string | null;
+    video_url?: string | null;
   } | null;
 };
 
@@ -52,30 +51,17 @@ type WorkoutSetLog = {
   set_number: number | null;
   reps: number | null;
   weight: number | null;
-  rpe: number | null;
-  is_completed: boolean | null;
+  rpe?: number | null;
+  is_completed?: boolean | null;
   created_at: string | null;
 };
 
 type WorkoutSessionRow = {
   id: string;
   assigned_workout_id: string | null;
-  client_id: string | null;
 };
 
-const getErrorDetails = (error: unknown) => {
-  if (!error) return { code: "unknown", message: "Unknown error" };
-  if (typeof error === "object") {
-    const err = error as { code?: string | null; message?: string | null };
-    return { code: err.code ?? "unknown", message: err.message ?? "Unknown error" };
-  }
-  return { code: "unknown", message: "Unknown error" };
-};
-
-type AssignedExerciseState = TemplateExerciseRow & {
-  loadNotesInput: string;
-  isCompletedInput: boolean;
-};
+const getErrorDetails = (error: unknown) => getSupabaseErrorDetails(error);
 
 export function ClientWorkoutDetailPage() {
   const { assignedWorkoutId } = useParams();
@@ -122,15 +108,21 @@ export function ClientWorkoutDetailPage() {
     queryKey: ["assigned-workout-exercises", assignedWorkoutId, clientId],
     enabled: !!assignedWorkoutId && !!clientId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("assigned_workout_exercises")
-        .select(
-          "id, sort_order, sets, reps, load_notes, is_completed, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
-        )
-        .eq("assigned_workout_id", assignedWorkoutId ?? "")
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as TemplateExerciseRow[];
+      const baseQuery = () =>
+        supabase
+          .from("assigned_workout_exercises")
+          .select(
+            "id, assigned_workout_id, exercise_id, sets, reps, rpe, tempo, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+          )
+          .eq("assigned_workout_id", assignedWorkoutId ?? "");
+      const ordered = await baseQuery().order("created_at", { ascending: true });
+      if (!ordered.error) return (ordered.data ?? []) as TemplateExerciseRow[];
+      if (ordered.error.code === "42703") {
+        const fallback = await baseQuery();
+        if (fallback.error) throw fallback.error;
+        return (fallback.data ?? []) as TemplateExerciseRow[];
+      }
+      throw ordered.error;
     },
   });
 
@@ -138,13 +130,21 @@ export function ClientWorkoutDetailPage() {
     queryKey: ["workout-session", assignedWorkoutId, clientId],
     enabled: !!assignedWorkoutId && !!clientId && !!assignedQuery.data,
     queryFn: async () => {
-      const { data: existing, error: existingError } = await supabase
-        .from("workout_sessions")
-        .select("id, assigned_workout_id, client_id")
-        .eq("assigned_workout_id", assignedWorkoutId ?? "")
-        .eq("client_id", clientId ?? "")
-        .order("created_at", { ascending: false })
-        .maybeSingle();
+      const selectSession = async (orderColumn: "created_at" | "started_at") =>
+        supabase
+          .from("workout_sessions")
+          .select("id, assigned_workout_id")
+          .eq("assigned_workout_id", assignedWorkoutId ?? "")
+          .order(orderColumn, { ascending: false })
+          .maybeSingle();
+
+      const { data: existing, error: existingError } = await selectSession("created_at");
+      if (existingError?.code === "42703") {
+        const fallback = await selectSession("started_at");
+        if (fallback.error) throw fallback.error;
+        if (fallback.data) return fallback.data as WorkoutSessionRow;
+        return null;
+      }
       if (existingError) throw existingError;
       if (existing) return existing as WorkoutSessionRow;
 
@@ -152,9 +152,8 @@ export function ClientWorkoutDetailPage() {
         .from("workout_sessions")
         .insert({
           assigned_workout_id: assignedWorkoutId,
-          client_id: clientId,
         })
-        .select("id, assigned_workout_id, client_id")
+        .select("id, assigned_workout_id")
         .maybeSingle();
       if (createError) throw createError;
       return (created ?? null) as WorkoutSessionRow | null;
@@ -180,9 +179,6 @@ export function ClientWorkoutDetailPage() {
   });
 
   const [exercises, setExercises] = useState<ExerciseState[]>([]);
-  const [assignedExerciseState, setAssignedExerciseState] = useState<AssignedExerciseState[]>(
-    []
-  );
 
   useEffect(() => {
     if (!workoutSession) return;
@@ -226,15 +222,6 @@ export function ClientWorkoutDetailPage() {
   }, [workoutSetLogsQuery.data, workoutSession, assignedExercisesQuery.data]);
 
   useEffect(() => {
-    const rows = (assignedExercisesQuery.data ?? []).map((row) => ({
-      ...row,
-      loadNotesInput: row.load_notes ?? "",
-      isCompletedInput: row.is_completed === true,
-    }));
-    setAssignedExerciseState(rows);
-  }, [assignedExercisesQuery.data]);
-
-  useEffect(() => {
     if (assignedQuery.data?.status === "completed") {
       setShowSummary(true);
     }
@@ -275,29 +262,6 @@ export function ClientWorkoutDetailPage() {
     });
     return map;
   }, [assignedExercisesQuery.data]);
-
-  const handleAssignedExerciseChange = (
-    id: string,
-    field: "loadNotesInput" | "isCompletedInput",
-    value: string | boolean
-  ) => {
-    setAssignedExerciseState((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-    );
-  };
-
-  const saveAssignedExercise = async (row: AssignedExerciseState) => {
-    await supabase
-      .from("assigned_workout_exercises")
-      .update({
-        load_notes: row.loadNotesInput.trim() || null,
-        is_completed: row.isCompletedInput,
-      })
-      .eq("id", row.id);
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workout-exercises", assignedWorkoutId, clientId],
-    });
-  };
 
   const handleSetChange = (
     exerciseIndex: number,
@@ -485,7 +449,7 @@ export function ClientWorkoutDetailPage() {
                       <div key={item.id}>
                         Set {item.set_number ?? index + 1}: {item.reps ?? "-"} reps @{" "}
                         {item.weight ?? "-"}
-                        {typeof item.rpe === "number" ? ` · RPE ${item.rpe}` : ""}
+                        {typeof item.rpe === "number" ? ` Â· RPE ${item.rpe}` : ""}
                       </div>
                     ))}
                   </div>
@@ -538,8 +502,6 @@ export function ClientWorkoutDetailPage() {
                   const video =
                     exercise.video_url || exercise.exercise?.video_url || null;
 
-                  const rowState = assignedExerciseState.find((row) => row.id === exercise.id);
-
                   return (
                     <div
                       key={exercise.id}
@@ -573,42 +535,6 @@ export function ClientWorkoutDetailPage() {
                         <p className="mt-2 text-xs text-muted-foreground">
                           Notes: {exercise.notes}
                         </p>
-                      ) : null}
-                      {rowState ? (
-                        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                          <Input
-                            value={rowState.loadNotesInput}
-                            onChange={(event) =>
-                              handleAssignedExerciseChange(
-                                rowState.id,
-                                "loadNotesInput",
-                                event.target.value
-                              )
-                            }
-                            placeholder="Your notes"
-                          />
-                          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <input
-                              type="checkbox"
-                              checked={rowState.isCompletedInput}
-                              onChange={(event) =>
-                                handleAssignedExerciseChange(
-                                  rowState.id,
-                                  "isCompletedInput",
-                                  event.target.checked
-                                )
-                              }
-                            />
-                            Completed
-                          </label>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => saveAssignedExercise(rowState)}
-                          >
-                            Save
-                          </Button>
-                        </div>
                       ) : null}
                     </div>
                   );
@@ -693,4 +619,5 @@ export function ClientWorkoutDetailPage() {
     </div>
   );
 }
+
 

@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
+import { getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
 
 type SetState = {
@@ -26,18 +27,40 @@ type ExerciseState = {
 
 type AssignedWorkoutExerciseRow = {
   id: string;
+  assigned_workout_id: string | null;
+  exercise_id: string | null;
+  sort_order?: number | null;
+  set_order?: number | null;
+  set_number?: number | null;
   sets: number | null;
-  reps: string | null;
+  reps: number | null;
+  rpe: number | null;
+  tempo: string | null;
+  notes: string | null;
+  video_url?: string | null;
+  rest_seconds?: number | null;
+  default_weight_value?: number | null;
+  default_weight_unit?: string | null;
+  weight_value?: number | null;
+  weight_unit?: string | null;
+  actual_weight_value?: number | null;
+  actual_weight_unit?: string | null;
+  is_completed?: boolean | null;
+  load_notes?: string | null;
   exercise: {
     id: string;
     name: string | null;
+    video_url?: string | null;
+    category?: string | null;
+    equipment?: string | null;
   } | null;
 };
 
 type WorkoutSessionRow = {
   id: string;
   assigned_workout_id: string | null;
-  client_id: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
 };
 
 type WorkoutSetLogRow = {
@@ -52,15 +75,24 @@ type WorkoutSetLogRow = {
   created_at: string | null;
 };
 
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Something went wrong.";
+const getErrorMessage = (error: unknown) => getSupabaseErrorMessage(error);
+
+const isUuid = (value: string | undefined | null) =>
+  Boolean(
+    value &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value
+      )
+  );
 
 export function ClientWorkoutRunPage() {
   const navigate = useNavigate();
   const { assignedWorkoutId } = useParams();
+  const workoutId = isUuid(assignedWorkoutId) ? assignedWorkoutId : null;
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [saveIndex, setSaveIndex] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const clientQuery = useQuery({
     queryKey: ["client", session?.user?.id],
@@ -79,17 +111,17 @@ export function ClientWorkoutRunPage() {
   const clientId = clientQuery.data?.id ?? null;
 
   const assignedWorkoutQuery = useQuery({
-    queryKey: ["assigned-workout", assignedWorkoutId, clientId],
-    enabled: !!assignedWorkoutId && !!clientId,
+    queryKey: ["assigned-workout", workoutId, clientId],
+    enabled: !!workoutId && !!clientId,
     queryFn: async () => {
-      if (!assignedWorkoutId || !clientId) return null;
+      if (!workoutId || !clientId) return null;
       const { data: assignedWorkout, error: assignedError } = await supabase
         .from("assigned_workouts")
         .select(
           "id, status, workout_template:workout_templates(id, name, workout_type_tag, description)"
         )
         .eq("client_id", clientId)
-        .eq("id", assignedWorkoutId)
+        .eq("id", workoutId)
         .maybeSingle();
       if (assignedError) throw assignedError;
       return assignedWorkout ?? null;
@@ -97,43 +129,42 @@ export function ClientWorkoutRunPage() {
   });
 
   const workoutSessionQuery = useQuery({
-    queryKey: ["workout-session", assignedWorkoutId, clientId],
-    enabled: !!assignedWorkoutId && !!clientId,
+    queryKey: ["workout-session", workoutId],
+    enabled: !!workoutId && !!assignedWorkoutQuery.data,
     queryFn: async () => {
-      if (!assignedWorkoutId || !clientId) return null;
-      const { data: existing, error: existingError } = await supabase
-        .from("workout_sessions")
-        .select("id, assigned_workout_id, client_id")
-        .eq("assigned_workout_id", assignedWorkoutId)
-        .eq("client_id", clientId)
-        .order("created_at", { ascending: false })
-        .maybeSingle();
-      if (existingError) throw existingError;
-      if (existing) return existing as WorkoutSessionRow;
+      if (!workoutId) return null;
+      const selectSession = async (orderColumn: "created_at" | "started_at") =>
+        supabase
+          .from("workout_sessions")
+          .select("id, assigned_workout_id, started_at, completed_at, created_at")
+          .eq("assigned_workout_id", workoutId)
+          .order(orderColumn, { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      const { data: created, error: createError } = await supabase
-        .from("workout_sessions")
-        .insert({
-          assigned_workout_id: assignedWorkoutId,
-          client_id: clientId,
-        })
-        .select("id, assigned_workout_id, client_id")
-        .maybeSingle();
-      if (createError) throw createError;
-      return (created ?? null) as WorkoutSessionRow | null;
+      const { data: existing, error: existingError } = await selectSession("created_at");
+      if (existingError?.code === "42703") {
+        const fallback = await selectSession("started_at");
+        if (fallback.error) throw fallback.error;
+        return (fallback.data ?? null) as WorkoutSessionRow | null;
+      }
+      if (existingError) throw existingError;
+      return (existing ?? null) as WorkoutSessionRow | null;
     },
   });
 
   const workoutSession = workoutSessionQuery.data ?? null;
 
   const assignedExercisesQuery = useQuery({
-    queryKey: ["assigned-workout-exercises", assignedWorkoutId],
-    enabled: !!assignedWorkoutId,
+    queryKey: ["assigned-workout-exercises", workoutId],
+    enabled: !!workoutId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
-        .select("id, sets, reps, exercise:exercises(id, name)")
-        .eq("assigned_workout_id", assignedWorkoutId ?? "")
+        .select(
+          "id, assigned_workout_id, sort_order, sets, reps, rpe, tempo, notes, rest_seconds, video_url, default_weight_unit, default_weight_value, weight_unit, weight_value, actual_weight_value, actual_weight_unit, is_completed, exercise:exercises(id, name, category, equipment, video_url)"
+        )
+        .eq("assigned_workout_id", workoutId ?? "")
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return (data ?? []) as AssignedWorkoutExerciseRow[];
@@ -159,7 +190,6 @@ export function ClientWorkoutRunPage() {
   const [exercises, setExercises] = useState<ExerciseState[]>([]);
 
   useEffect(() => {
-    if (!workoutSession) return;
     const items = setLogsQuery.data ?? [];
     const latestByKey = new Map<string, WorkoutSetLogRow>();
     items.forEach((item) => {
@@ -179,7 +209,7 @@ export function ClientWorkoutRunPage() {
       }
     });
     const next = (assignedExercisesQuery.data ?? []).map((row) => {
-      const name = row.exercise?.name ?? "Exercise";
+      const name = row.exercise?.name ?? "Exercise (missing details)";
       const count = row.sets && row.sets > 0 ? row.sets : 3;
       const sets = Array.from({ length: count }).map((_, index) => {
         const setNumber = index + 1;
@@ -193,10 +223,15 @@ export function ClientWorkoutRunPage() {
           is_completed: item?.is_completed === true,
         };
       });
-      return { id: row.id, exerciseId: row.exercise?.id ?? "", name, sets };
+      return {
+        id: row.id,
+        exerciseId: row.exercise?.id ?? "",
+        name,
+        sets,
+      };
     });
     setExercises(next);
-  }, [assignedExercisesQuery.data, setLogsQuery.data, workoutSession]);
+  }, [assignedExercisesQuery.data, setLogsQuery.data]);
 
   const errors = [
     clientQuery.error,
@@ -210,7 +245,7 @@ export function ClientWorkoutRunPage() {
     exerciseIndex: number,
     setIndex: number,
     field: keyof SetState,
-    value: string
+    value: string | boolean
   ) => {
     setExercises((prev) =>
       prev.map((exercise, exIdx) => {
@@ -225,10 +260,29 @@ export function ClientWorkoutRunPage() {
     );
   };
 
+  const handleStartWorkout = async () => {
+    if (!workoutId || !clientId) return;
+    setSaveError(null);
+    const { error: createError } = await supabase.from("workout_sessions").upsert(
+      {
+        assigned_workout_id: workoutId,
+        client_id: clientId,
+        started_at: new Date().toISOString(),
+      },
+      { onConflict: "assigned_workout_id", ignoreDuplicates: true }
+    );
+    if (createError) {
+      setSaveError(getErrorMessage(createError));
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["workout-session", workoutId] });
+  };
+
   const handleSaveExercise = async (exerciseIndex: number) => {
     if (!workoutSession?.id) return;
     const exercise = exercises[exerciseIndex];
     setSaveIndex(exerciseIndex);
+    setSaveError(null);
 
     try {
       for (let idx = 0; idx < exercise.sets.length; idx += 1) {
@@ -236,43 +290,26 @@ export function ClientWorkoutRunPage() {
         const reps = setItem.reps.trim();
         const weight = setItem.weight.trim();
         const rpe = setItem.rpe.trim();
-        const hasValues = Boolean(reps || weight || rpe);
+        const hasValues = Boolean(reps || weight || rpe || setItem.is_completed);
 
         const repsValue = reps ? Number(reps) : null;
         const weightValue = weight ? Number(weight) : null;
         const rpeValue = rpe ? Number(rpe) : null;
-        const isCompleted = Boolean(repsValue || weightValue || rpeValue);
+        const isCompleted = Boolean(setItem.is_completed);
 
-        const { data: existing, error: existingError } = await supabase
-          .from("workout_set_logs")
-          .select("id")
-          .eq("workout_session_id", workoutSession.id)
-          .eq("exercise_id", exercise.exerciseId)
-          .eq("set_number", idx + 1)
-          .maybeSingle();
-        if (existingError) throw existingError;
-
-        if (existing?.id) {
-          const { error } = await supabase
-            .from("workout_set_logs")
-            .update({
+        if (hasValues) {
+          const { error } = await supabase.from("workout_set_logs").upsert(
+            {
+              workout_session_id: workoutSession.id,
+              exercise_id: exercise.exerciseId,
+              set_number: idx + 1,
               reps: repsValue,
               weight: weightValue,
               rpe: rpeValue,
               is_completed: isCompleted,
-            })
-            .eq("id", existing.id);
-          if (error) throw error;
-        } else if (hasValues) {
-          const { error } = await supabase.from("workout_set_logs").insert({
-            workout_session_id: workoutSession.id,
-            exercise_id: exercise.exerciseId,
-            set_number: idx + 1,
-            reps: repsValue,
-            weight: weightValue,
-            rpe: rpeValue,
-            is_completed: isCompleted,
-          });
+            },
+            { onConflict: "workout_session_id,exercise_id,set_number" }
+          );
           if (error) throw error;
         }
       }
@@ -280,33 +317,62 @@ export function ClientWorkoutRunPage() {
         queryKey: ["workout-set-logs", workoutSession.id],
       });
     } catch (error) {
-      console.error("Failed to save sets", error);
+      setSaveError(getErrorMessage(error));
     } finally {
       setSaveIndex(null);
     }
   };
 
   const handleFinishWorkout = async () => {
-    if (!assignedWorkoutId) return;
-    await supabase
+    if (!workoutId || !workoutSession?.id) return;
+    const completedAt = new Date().toISOString();
+    const { error: sessionError } = await supabase
+      .from("workout_sessions")
+      .update({ completed_at: completedAt })
+      .eq("id", workoutSession.id);
+    if (sessionError) {
+      setSaveError(getErrorMessage(sessionError));
+      return;
+    }
+    const { error: assignedError } = await supabase
       .from("assigned_workouts")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("id", assignedWorkoutId);
-    navigate(`/app/workout-summary/${assignedWorkoutId}`);
+      .update({ status: "completed", completed_at: completedAt })
+      .eq("id", workoutId);
+    if (assignedError) {
+      setSaveError(getErrorMessage(assignedError));
+      return;
+    }
+    navigate(`/app/workout-summary/${workoutId}`);
   };
 
   const handleSkipWorkout = async () => {
-    if (assignedWorkoutId) {
+    if (workoutId) {
       await supabase
         .from("assigned_workouts")
         .update({ status: "skipped" })
-        .eq("id", assignedWorkoutId);
+        .eq("id", workoutId);
     }
     navigate("/app/home");
   };
 
   const workoutTitle =
     assignedWorkoutQuery.data?.workout_template?.name ?? "Workout";
+
+  if (!workoutId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Invalid workout link</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <p>Workout id: {assignedWorkoutId ?? "missing"}</p>
+          <Button variant="secondary" onClick={() => navigate("/app/home")}>
+            Return home
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">
@@ -336,6 +402,12 @@ export function ClientWorkoutRunPage() {
           ))}
         </div>
       ) : null}
+      {saveError ? (
+        <Alert className="border-danger/30">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{saveError}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {assignedWorkoutQuery.isLoading || workoutSessionQuery.isLoading || setLogsQuery.isLoading ? (
         <Card>
@@ -348,8 +420,38 @@ export function ClientWorkoutRunPage() {
             <Skeleton className="h-20 w-full" />
           </CardContent>
         </Card>
-      ) : workoutSession ? (
+      ) : (
         <div className="space-y-4">
+          {workoutSession ? (
+            <div className="text-sm text-muted-foreground">
+              Total sets logged: {setLogsQuery.data?.length ?? 0}
+            </div>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Session</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>Ready to start this workout?</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleStartWorkout}>Start workout</Button>
+                  <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                    Return home
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {assignedExercisesQuery.isLoading ? null : exercises.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Workout</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                This workout has no exercises yet. Message your coach.
+              </CardContent>
+            </Card>
+          ) : null}
           {exercises.map((exercise, exerciseIndex) => (
             <Card key={exercise.name}>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -357,7 +459,7 @@ export function ClientWorkoutRunPage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled={saveIndex === exerciseIndex}
+                  disabled={!workoutSession || saveIndex === exerciseIndex}
                   onClick={() => handleSaveExercise(exerciseIndex)}
                 >
                   {saveIndex === exerciseIndex ? "Saving..." : "Save sets"}
@@ -367,7 +469,7 @@ export function ClientWorkoutRunPage() {
                 {exercise.sets.map((setItem, setIndex) => (
                   <div
                     key={`${exercise.name}-${setIndex}`}
-                    className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[120px_1fr_1fr_2fr]"
+                    className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[120px_1fr_1fr_1fr_auto]"
                   >
                     <div className="text-xs font-semibold text-muted-foreground">
                       Set {setIndex + 1}
@@ -381,6 +483,7 @@ export function ClientWorkoutRunPage() {
                       onChange={(event) =>
                         handleSetChange(exerciseIndex, setIndex, "reps", event.target.value)
                       }
+                      disabled={!workoutSession}
                     />
                     <input
                       className="h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -391,6 +494,7 @@ export function ClientWorkoutRunPage() {
                       onChange={(event) =>
                         handleSetChange(exerciseIndex, setIndex, "weight", event.target.value)
                       }
+                      disabled={!workoutSession}
                     />
                     <input
                       className="h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -401,31 +505,38 @@ export function ClientWorkoutRunPage() {
                       onChange={(event) =>
                         handleSetChange(exerciseIndex, setIndex, "rpe", event.target.value)
                       }
+                      disabled={!workoutSession}
                     />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={setItem.is_completed}
+                        onChange={(event) =>
+                          handleSetChange(
+                            exerciseIndex,
+                            setIndex,
+                            "is_completed",
+                            event.target.checked
+                          )
+                        }
+                        disabled={!workoutSession}
+                      />
+                      Done
+                    </label>
                   </div>
                 ))}
               </CardContent>
             </Card>
           ))}
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={handleFinishWorkout}>Finish workout</Button>
-            <Button variant="secondary" onClick={handleSkipWorkout}>
-              Skip workout
-            </Button>
-          </div>
+          {workoutSession ? (
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleFinishWorkout}>Finish workout</Button>
+              <Button variant="secondary" onClick={handleSkipWorkout}>
+                Skip workout
+              </Button>
+            </div>
+          ) : null}
         </div>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Session</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>No workout session found yet.</p>
-            <Button variant="secondary" onClick={() => navigate("/app/home")}>
-              Return home
-            </Button>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
