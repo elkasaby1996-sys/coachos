@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
@@ -7,6 +7,8 @@ import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { CalendarDays, MoreHorizontal, Rocket, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
+import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
+import { StatusPill } from "../../components/pt/dashboard/StatusPill";
+import { StatCard } from "../../components/pt/dashboard/StatCard";
+import { MiniSparkline } from "../../components/pt/dashboard/MiniSparkline";
+import { EmptyState } from "../../components/pt/dashboard/EmptyState";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorDetails, getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
@@ -57,6 +65,16 @@ const formatListValue = (value: string[] | string | null | undefined, fallback: 
   return value;
 };
 
+const getInitials = (name: string | null | undefined) => {
+  if (!name) return "PT";
+  const parts = name.trim().split(/\s+/);
+  const initials = parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+  return initials || "PT";
+};
+
 const trainingTypeOptions = [
   { value: "online", label: "Online" },
   { value: "hybrid", label: "Hybrid" },
@@ -66,6 +84,7 @@ const trainingTypeOptions = [
 type PtClientProfile = {
   id: string;
   workspace_id: string | null;
+  created_at: string | null;
   display_name: string | null;
   goal: string | null;
   status: string | null;
@@ -180,6 +199,29 @@ type WorkoutSetLogRow = {
   created_at: string | null;
 };
 
+type CheckinAnswerRow = {
+  id: string;
+  answer_text: string | null;
+  answer_number: number | null;
+  answer_boolean: boolean | null;
+  question: { question_text: string | null; prompt: string | null } | null;
+};
+
+type HabitTrends = {
+  daysLogged: number;
+  avgSteps: number | null;
+  avgSleep: number | null;
+  avgProtein: number | null;
+  weightChange: number | null;
+  weightUnit: string | null;
+};
+
+type QueryResult<T> = {
+  data?: T;
+  isLoading: boolean;
+  error: unknown;
+};
+
 const baselinePhotoTypes = ["front", "side", "back"] as const;
 
 export function PtClientDetailPage() {
@@ -205,10 +247,22 @@ export function PtClientDetailPage() {
   }, [initialTab]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const current = params.get("tab") ?? "overview";
+    if (current === active) return;
+    params.set("tab", active);
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+  }, [active, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
     if (!toastMessage) return;
     const timeout = setTimeout(() => setToastMessage(null), 2400);
     return () => clearTimeout(timeout);
   }, [toastMessage]);
+
+  const setActiveTab = (tab: (typeof tabs)[number]) => {
+    setActive(tab);
+  };
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => formatDateKey(new Date()));
   const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -250,13 +304,18 @@ export function PtClientDetailPage() {
       }
     >
   >([]);
+  const [todayTasks, setTodayTasks] = useState([
+    { id: "task-checkins", label: "Review check-ins", done: false },
+    { id: "task-messages", label: "Reply to messages", done: false },
+    { id: "task-program", label: "Adjust program", done: false },
+  ]);
 
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
   const todayKey = useMemo(() => formatDateKey(today), [today]);
-  const endKey = useMemo(() => {
+  const planEndKey = useMemo(() => {
     const date = new Date(today);
-    date.setDate(date.getDate() + 7);
+    date.setDate(date.getDate() + 14);
     return formatDateKey(date);
   }, [today]);
 
@@ -277,7 +336,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at"
+          "id, workspace_id, created_at, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at"
         )
         .eq("id", clientId ?? "")
         .eq("workspace_id", workspaceQuery.data ?? "")
@@ -293,7 +352,7 @@ export function PtClientDetailPage() {
     [clientQuery.data?.timezone]
   );
   const habitsStart = useMemo(
-    () => addDaysToDateString(habitsToday, -29),
+    () => addDaysToDateString(habitsToday, -6),
     [habitsToday]
   );
   const habitsWeekStart = useMemo(
@@ -311,7 +370,7 @@ export function PtClientDetailPage() {
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
-    enabled: !!workspaceQuery.data,
+    enabled: !!workspaceQuery.data && active === "plan",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
@@ -324,8 +383,8 @@ export function PtClientDetailPage() {
   });
 
   const upcomingQuery = useQuery({
-    queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
-    enabled: !!clientId,
+    queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    enabled: !!clientId && active === "plan",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
@@ -334,7 +393,7 @@ export function PtClientDetailPage() {
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
-        .lte("scheduled_date", endKey)
+        .lte("scheduled_date", planEndKey)
         .order("scheduled_date", { ascending: true })
         .order("sort_order", {
           foreignTable: "assigned_workout_exercises",
@@ -352,7 +411,7 @@ export function PtClientDetailPage() {
 
   const workoutSessionsQuery = useQuery({
     queryKey: ["workout-sessions", upcomingAssignedWorkoutIds],
-    enabled: upcomingAssignedWorkoutIds.length > 0,
+    enabled: upcomingAssignedWorkoutIds.length > 0 && active === "plan",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_sessions")
@@ -380,7 +439,7 @@ export function PtClientDetailPage() {
 
   const workoutSetLogsQuery = useQuery({
     queryKey: ["workout-set-logs", workoutSessionIds],
-    enabled: workoutSessionIds.length > 0,
+    enabled: workoutSessionIds.length > 0 && active === "plan",
     queryFn: async () => {
       if (workoutSessionIds.length === 0) return [];
       const { data, error } = await supabase
@@ -410,7 +469,7 @@ export function PtClientDetailPage() {
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
-    enabled: !!selectedAssignedWorkoutId,
+    enabled: !!selectedAssignedWorkoutId && active === "plan",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
@@ -426,7 +485,7 @@ export function PtClientDetailPage() {
 
   const baselineEntryQuery = useQuery({
     queryKey: ["pt-client-baseline-entry", clientId],
-    enabled: !!clientId,
+    enabled: !!clientId && active === "baseline",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_entries")
@@ -453,7 +512,7 @@ export function PtClientDetailPage() {
 
   const baselineMetricsQuery = useQuery({
     queryKey: ["pt-client-baseline-metrics", baselineId],
-    enabled: !!baselineId,
+    enabled: !!baselineId && active === "baseline",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_metrics")
@@ -469,7 +528,7 @@ export function PtClientDetailPage() {
 
   const baselineMarkersQuery = useQuery({
     queryKey: ["pt-client-baseline-markers", baselineId],
-    enabled: !!baselineId,
+    enabled: !!baselineId && active === "baseline",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_values")
@@ -496,7 +555,7 @@ export function PtClientDetailPage() {
 
   const baselinePhotosQuery = useQuery({
     queryKey: ["pt-client-baseline-photos", baselineId],
-    enabled: !!baselineId,
+    enabled: !!baselineId && active === "baseline",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_photos")
@@ -509,7 +568,7 @@ export function PtClientDetailPage() {
 
   const checkinsQuery = useQuery({
     queryKey: ["pt-client-checkins", clientId],
-    enabled: !!clientId,
+    enabled: !!clientId && (active === "checkins" || active === "overview"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("checkins")
@@ -523,7 +582,7 @@ export function PtClientDetailPage() {
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
-    enabled: !!clientId && !!habitsToday,
+    enabled: !!clientId && !!habitsToday && (active === "habits" || active === "overview"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
@@ -549,7 +608,7 @@ export function PtClientDetailPage() {
 
   const habitLogByDateQuery = useQuery({
     queryKey: ["pt-client-habit-log", clientId, selectedHabitDate],
-    enabled: !!clientId && !!selectedHabitDate,
+    enabled: !!clientId && !!selectedHabitDate && active === "habits",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
@@ -566,7 +625,7 @@ export function PtClientDetailPage() {
 
   const coachActivityQuery = useQuery({
     queryKey: ["coach-activity-log", clientId, workspaceQuery.data],
-    enabled: !!clientId && !!workspaceQuery.data,
+    enabled: !!clientId && !!workspaceQuery.data && active === "overview",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("coach_activity_log")
@@ -623,7 +682,7 @@ export function PtClientDetailPage() {
     setSelectedTemplateId("");
     setScheduledDate(todayKey);
     await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -643,7 +702,7 @@ export function PtClientDetailPage() {
       return;
     }
     await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -697,7 +756,7 @@ export function PtClientDetailPage() {
     setAssignMessage("Workout updated");
     setEditOpen(false);
     await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -719,7 +778,7 @@ export function PtClientDetailPage() {
     setAssignMessage("Workout deleted");
     setDeleteOpen(false);
     await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, endKey],
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -792,6 +851,78 @@ export function PtClientDetailPage() {
     () => getLatestLogDate(habitLogDates),
     [habitLogDates]
   );
+
+  const adherenceStat = useMemo(() => {
+    if (!habitsQuery.data) return null;
+    const daysLogged = habitTrends.daysLogged;
+    return Math.round((daysLogged / 7) * 100);
+  }, [habitTrends.daysLogged, habitsQuery.data]);
+
+  const lastCheckin = useMemo(() => {
+    if (!checkinsQuery.data || checkinsQuery.data.length === 0) return null;
+    const latest = checkinsQuery.data[0];
+    return latest.submitted_at ?? latest.week_ending_saturday ?? null;
+  }, [checkinsQuery.data]);
+
+  const checkinStatus = useMemo(() => {
+    if (!checkinsQuery.data || checkinsQuery.data.length === 0) return null;
+    const latest = checkinsQuery.data[0];
+    if (!latest.submitted_at) return "Due";
+    return latest.pt_feedback ? "Reviewed" : "Submitted";
+  }, [checkinsQuery.data]);
+
+  const lastWorkout = useMemo(() => {
+    if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) {
+      return workoutSetLogsQuery.data[0].created_at ?? null;
+    }
+    const completed = (upcomingQuery.data ?? []).find((row) => row.status === "completed");
+    return completed?.completed_at ?? completed?.scheduled_date ?? null;
+  }, [workoutSetLogsQuery.data, upcomingQuery.data]);
+
+  const lastWorkoutStatus = useMemo(() => {
+    if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) return "Completed";
+    const completed = (upcomingQuery.data ?? []).find((row) => row.status === "completed");
+    if (completed) return "Completed";
+    const planned = (upcomingQuery.data ?? [])[0];
+    return planned ? "Planned" : null;
+  }, [workoutSetLogsQuery.data, upcomingQuery.data]);
+
+  const lastSeen = useMemo(() => {
+    if (clientSnapshot?.updated_at) return formatRelativeTime(clientSnapshot.updated_at);
+    if (lastHabitLogDate) return formatRelativeTime(lastHabitLogDate);
+    return null;
+  }, [clientSnapshot?.updated_at, lastHabitLogDate]);
+
+  const joinedLabel = useMemo(() => {
+    const joinedAt = clientSnapshot?.created_at ?? clientSnapshot?.updated_at ?? null;
+    return joinedAt ? formatRelativeTime(joinedAt) : null;
+  }, [clientSnapshot?.created_at, clientSnapshot?.updated_at]);
+
+  const upcomingCheckins = useMemo(() => {
+    if (!checkinsQuery.data || checkinsQuery.data.length === 0) return [];
+    const start = habitsToday || todayKey;
+    const end = addDaysToDateString(start, 7);
+    return checkinsQuery.data
+      .filter(
+        (checkin) =>
+          checkin.week_ending_saturday &&
+          checkin.week_ending_saturday >= start &&
+          checkin.week_ending_saturday <= end &&
+          !checkin.submitted_at
+      )
+      .sort((a, b) =>
+        (a.week_ending_saturday ?? "").localeCompare(b.week_ending_saturday ?? "")
+      )
+      .slice(0, 5);
+  }, [checkinsQuery.data, habitsToday, todayKey]);
+
+  const upcomingSessionsNext7 = useMemo(() => {
+    if (!upcomingQuery.data || upcomingQuery.data.length === 0) return [];
+    const end = addDaysToDateString(todayKey, 7);
+    return upcomingQuery.data.filter(
+      (workout) => !workout.scheduled_date || workout.scheduled_date <= end
+    );
+  }, [upcomingQuery.data, todayKey]);
 
   const baselinePhotoMap = useMemo(() => {
     const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
@@ -983,8 +1114,14 @@ export function PtClientDetailPage() {
     });
   }, [active, clientId, workspaceQuery.data, baselineEntryQuery.data]);
 
+  const toggleTask = (taskId: string) => {
+    setTodayTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? { ...task, done: !task.done } : task))
+    );
+  };
+
   return (
-    <div className="space-y-6">
+    <DashboardShell>
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
           <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
@@ -993,222 +1130,343 @@ export function PtClientDetailPage() {
           </Alert>
         </div>
       ) : null}
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-        PT CLIENT DETAIL ACTIVE (v1)
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
-            {clientSnapshot?.display_name ?? "Client profile"}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {clientSnapshot?.goal ?? "Training plan overview"}
-          </p>
+
+      <div className="mx-auto w-full max-w-[1400px] space-y-6 px-6 py-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/90 px-4 py-4 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+            {getInitials(clientSnapshot?.display_name)}
+          </div>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl font-semibold tracking-tight">
+                {clientSnapshot?.display_name ?? "Client profile"}
+              </h2>
+              <StatusPill status={clientSnapshot?.status ?? "active"} />
+              {lastSeen ? (
+                <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
+              ) : null}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
+                .filter(Boolean)
+                .join(" • ") || "Training plan overview"}
+              {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={clientSnapshot?.status === "inactive" ? "muted" : "success"}>
-            {clientSnapshot?.status ?? "Active"}
-          </Badge>
-          <Button variant="secondary">Message</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+            onClick={() => handleQuickAction("")}
+          >
+            Message
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              handleQuickAction(
+                "Quick favor: please update your profile details so I can refine your plan."
+              )
+            }
+          >
+            Request check-in
+          </Button>
+          <Button variant="secondary" onClick={() => setActiveTab("plan")}>
+            Assign workout
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="More actions">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle>Client Snapshot</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Read-first summary of profile details and gaps.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() =>
-                handleQuickAction(
-                  "Letâ€™s capture your baseline this week. Can you share weight, sleep, and key lifts?"
-                )
-              }
-            >
-              Request baseline
-            </Button>
-            <Button
-              size="sm"
-              onClick={() =>
-                handleQuickAction(
-                  "Quick favor: please update your profile details so I can refine your plan."
-                )
-              }
-            >
-              Request profile update
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {clientQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-full" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          ) : clientSnapshot ? (
-            <>
-              {missingFields.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  <span className="text-xs text-muted-foreground">Missing info:</span>
-                  {missingFields.map((field) => (
-                    <Badge key={field} variant="warning">
-                      {field}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <Badge variant="success">All key info captured</Badge>
-              )}
-              <div className="grid gap-4 lg:grid-cols-3">
-                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Identity & Preferences
-                  </p>
-                  <div className="text-sm">
-                    <div>{clientSnapshot.display_name ?? "Name needed"}</div>
-                    <div>{clientSnapshot.phone ?? "Phone needed"}</div>
-                    <div>{clientSnapshot.location ?? "Country needed"}</div>
-                    <div>{clientSnapshot.timezone ?? "Timezone needed"}</div>
-                    <div>{clientSnapshot.unit_preference ?? "Units needed"}</div>
-                    <div>{clientSnapshot.dob ?? "Birthdate needed"}</div>
-                    <div>{clientSnapshot.gender ?? "Gender needed"}</div>
-                  </div>
-                </div>
-                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Training Context
-                  </p>
-                  <div className="text-sm">
-                    <div>{clientSnapshot.training_type ?? "Training type needed"}</div>
-                    <div>{clientSnapshot.gym_name ?? "Gym name needed"}</div>
-                    <div>
-                      {typeof clientSnapshot.days_per_week === "number"
-                        ? `${clientSnapshot.days_per_week} days/week`
-                        : "Days per week needed"}
-                    </div>
-                    <div>{formatListValue(clientSnapshot.tags ?? null, "Tags optional")}</div>
-                  </div>
-                </div>
-                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Health & Limitations
-                  </p>
-                  <div className="text-sm">
-                    <div>{clientSnapshot.goal ?? "Goal needed"}</div>
-                    <div>{clientSnapshot.injuries ?? "Injuries needed"}</div>
-                    <div>{clientSnapshot.limitations ?? "Limitations needed"}</div>
-                    <div>
-                      {typeof clientSnapshot.height_cm === "number"
-                        ? `${clientSnapshot.height_cm} cm`
-                        : "Height needed"}
-                    </div>
-                    <div>
-                      {typeof clientSnapshot.current_weight === "number"
-                        ? `${clientSnapshot.current_weight}`
-                        : "Weight needed"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
-                    Training type (PT-only)
-                  </label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={adminTrainingType}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setAdminTrainingType(value);
-                      updateAdminFields(value, adminTags);
-                    }}
-                  >
-                    <option value="">Select training type</option>
-                    {trainingTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
-                    Tags (optional)
-                  </label>
-                  <Input
-                    value={adminTags}
-                    onChange={(event) => setAdminTags(event.target.value)}
-                    placeholder="Strength, Mobility"
-                  />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={adminStatus === "saving"}
-                    onClick={() => updateAdminFields(adminTrainingType, adminTags)}
-                  >
-                    {adminStatus === "saving" ? "Saving..." : "Save tags"}
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              Client details are unavailable.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Adherence"
+          value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
+          helper="Last 7 days"
+          icon={Sparkles}
+          sparkline={<MiniSparkline />}
+        />
+        <StatCard
+          label="Consistency streak"
+          value={habitStreak > 0 ? `${habitStreak}d` : "--"}
+          helper="Habit streak"
+          icon={Rocket}
+          sparkline={<MiniSparkline />}
+        />
+        <StatCard
+          label="Check-in status"
+          value={checkinStatus ?? "--"}
+          helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
+          icon={CalendarDays}
+          sparkline={<MiniSparkline />}
+        />
+        <StatCard
+          label="Last workout"
+          value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
+          helper={lastWorkoutStatus ?? "No workouts"}
+          icon={Sparkles}
+          sparkline={<MiniSparkline />}
+        />
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile completeness</CardTitle>
-          {clientQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading profile detailsâ€¦</p>
-          ) : clientSnapshot ? (
-            <p className="text-sm text-muted-foreground">
-              {completion.completed}/{completion.total} fields complete ({completion.percent}%)
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">Client profile not available.</p>
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-8 space-y-6">
+          <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="sticky top-24 z-10 flex w-full flex-wrap gap-2 rounded-xl border border-border/70 bg-card/80 p-2">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="plan">Plan</TabsTrigger>
+              <TabsTrigger value="logs">Logs</TabsTrigger>
+              <TabsTrigger value="progress">Progress</TabsTrigger>
+              <TabsTrigger value="checkins">Check-ins</TabsTrigger>
+              <TabsTrigger value="messages">Messages</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="baseline">Baseline</TabsTrigger>
+              <TabsTrigger value="habits">Habits</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview">
+              <PtClientOverviewTab />
+            </TabsContent>
+            <TabsContent value="plan">
+              <PtClientPlanTab
+                templatesQuery={templatesQuery}
+                upcomingQuery={upcomingQuery}
+                selectedTemplateId={selectedTemplateId}
+                scheduledDate={scheduledDate}
+                assignStatus={assignStatus}
+                lastSetByWorkoutExercise={lastSetByWorkoutExercise}
+                onTemplateChange={setSelectedTemplateId}
+                onDateChange={setScheduledDate}
+                onAssign={handleAssignWorkout}
+                onEdit={openEditDialog}
+                onDelete={(id) => {
+                  setEditWorkoutId(id);
+                  setDeleteOpen(true);
+                }}
+                onEditLoads={(id) => {
+                  setSelectedAssignedWorkoutId(id);
+                  setLoadsOpen(true);
+                  setLoadsError(null);
+                }}
+                onStatusChange={handleStatusUpdate}
+              />
+            </TabsContent>
+            <TabsContent value="logs">
+              <PtClientLogsTab />
+            </TabsContent>
+            <TabsContent value="progress">
+              <PtClientProgressTab />
+            </TabsContent>
+            <TabsContent value="checkins">
+              <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+            </TabsContent>
+            <TabsContent value="messages">
+              <PtClientMessagesTab />
+            </TabsContent>
+            <TabsContent value="notes">
+              <PtClientNotesTab />
+            </TabsContent>
+            <TabsContent value="baseline">
+              <PtClientBaselineTab
+                baselineEntryQuery={baselineEntryQuery}
+                baselineMetricsQuery={baselineMetricsQuery}
+                baselineMarkersQuery={baselineMarkersQuery}
+                baselinePhotosQuery={baselinePhotosQuery}
+                baselineNotes={baselineNotes}
+                baselineNotesStatus={baselineNotesStatus}
+                baselineNotesMessage={baselineNotesMessage}
+                baselinePhotoMap={baselinePhotoMap}
+                onNotesChange={setBaselineNotes}
+                onNotesSave={handleBaselineNotesSave}
+              />
+            </TabsContent>
+            <TabsContent value="habits">
+              <PtClientHabitsTab
+                habitsQuery={habitsQuery}
+                habitLogByDateQuery={habitLogByDateQuery}
+                selectedHabitDate={selectedHabitDate}
+                onSelectHabitDate={setSelectedHabitDate}
+                habitStreak={habitStreak}
+                habitTrends={habitTrends}
+                lastHabitLogDate={lastHabitLogDate}
+              />
+            </TabsContent>
+          </Tabs>
+
+          {(workspaceQuery.error ||
+            templatesQuery.error ||
+            upcomingQuery.error ||
+            coachActivityQuery.error ||
+            habitsQuery.error ||
+            habitLogByDateQuery.error ||
+            baselineEntryQuery.error ||
+            baselineMetricsQuery.error ||
+            baselineMarkersQuery.error ||
+            baselinePhotosQuery.error ||
+            checkinsQuery.error ||
+            clientQuery.error ||
+            assignStatus === "error") && (
+            <Alert className="border-destructive/30">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {assignStatus === "error" && assignMessage
+                  ? assignMessage
+                  : getFriendlyErrorMessage()}
+                {isDev ? (
+                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    {[
+                      workspaceQuery.error,
+                      templatesQuery.error,
+                      upcomingQuery.error,
+                      workoutSessionsQuery.error,
+                      workoutSetLogsQuery.error,
+                      coachActivityQuery.error,
+                      habitsQuery.error,
+                      habitLogByDateQuery.error,
+                      baselineEntryQuery.error,
+                      baselineMetricsQuery.error,
+                      baselineMarkersQuery.error,
+                      baselinePhotosQuery.error,
+                      checkinsQuery.error,
+                      clientQuery.error,
+                    ]
+                      .filter(Boolean)
+                      .map((error, index) => {
+                        const details = getErrorDetails(error);
+                        return (
+                          <div key={`${index}-${details.message}`}>
+                            {details.code ? `${details.code}: ` : ""}
+                            {details.message}
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : null}
+              </AlertDescription>
+            </Alert>
           )}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {clientQuery.isLoading ? (
+
+          {assignStatus !== "error" && assignMessage ? (
+            <Alert className="border-border">
+              <AlertTitle>Update</AlertTitle>
+              <AlertDescription>{assignMessage}</AlertDescription>
+            </Alert>
+          ) : null}
+        </div>
+
+        <div className="lg:col-span-4 space-y-6">
+          <DashboardCard
+            title="Client Overview"
+            subtitle="Key details and profile status."
+            action={
+              <Button size="sm" variant="secondary" onClick={() => setActiveTab("baseline")}>
+                Edit profile
+              </Button>
+            }
+          >
+            {clientSnapshot ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <StatusPill status={clientSnapshot.status ?? "active"} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Goal</span>
+                  <span>{clientSnapshot.goal ?? "Not set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Training</span>
+                  <span>{clientSnapshot.training_type ?? "Not set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Timezone</span>
+                  <span>{clientSnapshot.timezone ?? "Not set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Joined</span>
+                  <span>{joinedLabel ?? "--"}</span>
+                </div>
+              </div>
+            ) : (
+              <EmptyState title="No client data" description="Profile details are unavailable." />
+            )}
+          </DashboardCard>
+
+          <DashboardCard title="Today Tasks" subtitle="Coach to-dos for today.">
             <div className="space-y-2">
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-8 w-full" />
+              {todayTasks.map((task) => (
+                <label
+                  key={task.id}
+                  className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
+                >
+                  <span
+                    className={cn(
+                      "font-medium",
+                      task.done ? "text-muted-foreground line-through" : "text-foreground"
+                    )}
+                  >
+                    {task.label}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={task.done}
+                    onChange={() => toggleTask(task.id)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                </label>
+              ))}
             </div>
-          ) : clientSnapshot ? (
-            completion.missing.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-muted-foreground">Missing:</span>
-                {completion.missing.map((field) => (
-                  <Badge key={field} variant="warning">
-                    {field}
-                  </Badge>
+          </DashboardCard>
+
+          <DashboardCard title="Upcoming" subtitle="Next 7 days sessions.">
+            {upcomingQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : upcomingSessionsNext7.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingSessionsNext7.slice(0, 5).map((workout) => (
+                  <div
+                    key={workout.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {workout.workout_template?.name ?? "Workout"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {workout.scheduled_date
+                          ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "Scheduled"}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        workout.status === "completed"
+                          ? "success"
+                          : workout.status === "skipped"
+                          ? "danger"
+                          : "muted"
+                      }
+                    >
+                      {workout.status ?? "planned"}
+                    </Badge>
+                  </div>
                 ))}
               </div>
             ) : (
-              <Badge variant="success">Profile complete</Badge>
-            )
-          ) : (
-            <p className="text-sm text-muted-foreground">Client profile not available.</p>
-          )}
-        </CardContent>
-        </Card>
+              <EmptyState title="No upcoming sessions" description="Nothing scheduled yet." />
+            )}
+          </DashboardCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent coach actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          <DashboardCard title="Recent activity" subtitle="Last 5 coach actions.">
             {coachActivityQuery.isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-1/2" />
@@ -1216,7 +1474,7 @@ export function PtClientDetailPage() {
               </div>
             ) : coachActivityQuery.data && coachActivityQuery.data.length > 0 ? (
               <div className="space-y-2 text-sm">
-                {coachActivityQuery.data.map((entry) => {
+                {coachActivityQuery.data.slice(0, 5).map((entry) => {
                   const createdLabel = entry.created_at
                     ? new Date(entry.created_at).toLocaleString("en-US", {
                         month: "short",
@@ -1230,752 +1488,21 @@ export function PtClientDetailPage() {
                       key={entry.id}
                       className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
                     >
-                      <span className="font-medium">
-                        {getCoachActionLabel(entry.action)}
-                      </span>
+                      <span className="font-medium">{getCoachActionLabel(entry.action)}</span>
                       <span className="text-xs text-muted-foreground">
-                        {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} Â·{" "}
-                        {createdLabel}
+                        {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} - {createdLabel}
                       </span>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No coach actions logged yet.</p>
+              <EmptyState title="No recent activity" description="No actions logged yet." />
             )}
-          </CardContent>
-        </Card>
-
-        <div className="flex flex-wrap gap-2 border-b border-border pb-2">
-          {tabs.map((tab) => (
-            <button
-            key={tab}
-            type="button"
-            onClick={() => setActive(tab)}
-            className={cn(
-              "rounded-md px-3 py-2 text-sm font-medium capitalize",
-              active === tab
-                ? "border-b-2 border-accent text-foreground"
-                : "text-muted-foreground"
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+          </DashboardCard>
+        </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="capitalize">{active}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-              {active === "overview"
-                ? "Latest entries, streaks, and momentum."
-                : active === "baseline"
-                ? "Latest submitted baseline details."
-                : active === "checkins"
-                ? "Weekly check-ins and coach feedback."
-                : active === "habits"
-                ? "Daily habit logs from the past 30 days."
-                : "Section details coming soon."}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-            {active === "overview" ? (
-              <>
-                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
-                  <div>
-                    <p className="text-sm font-medium">Weekly check-in</p>
-                  <p className="text-xs text-muted-foreground">Due Saturday</p>
-                </div>
-                <Badge variant="warning">Due</Badge>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
-                <div>
-                  <p className="text-sm font-medium">Last workout</p>
-                  <p className="text-xs text-muted-foreground">Completed yesterday</p>
-                </div>
-                <Badge variant="success">Completed</Badge>
-                </div>
-              </>
-            ) : active === "baseline" ? (
-              baselineEntryQuery.isLoading ||
-              baselineMetricsQuery.isLoading ||
-              baselineMarkersQuery.isLoading ||
-              baselinePhotosQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              ) : baselineEntryQuery.data ? (
-                <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Submitted at</p>
-                    <p className="text-sm font-semibold">
-                      {baselineEntryQuery.data.submitted_at
-                        ? new Date(baselineEntryQuery.data.submitted_at).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })
-                        : "Submitted"}
-                    </p>
-                  </div>
-                  <Badge variant="success">Submitted</Badge>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {[
-                    { label: "Weight", value: baselineMetricsQuery.data?.weight_kg, unit: "kg" },
-                    { label: "Height", value: baselineMetricsQuery.data?.height_cm, unit: "cm" },
-                    { label: "Body fat", value: baselineMetricsQuery.data?.body_fat_pct, unit: "%" },
-                    { label: "Waist", value: baselineMetricsQuery.data?.waist_cm, unit: "cm" },
-                    { label: "Chest", value: baselineMetricsQuery.data?.chest_cm, unit: "cm" },
-                    { label: "Hips", value: baselineMetricsQuery.data?.hips_cm, unit: "cm" },
-                    { label: "Thigh", value: baselineMetricsQuery.data?.thigh_cm, unit: "cm" },
-                    { label: "Arm", value: baselineMetricsQuery.data?.arm_cm, unit: "cm" },
-                    {
-                      label: "Resting HR",
-                      value: baselineMetricsQuery.data?.resting_hr,
-                      unit: "bpm",
-                    },
-                    {
-                      label: "VO2 max",
-                      value: baselineMetricsQuery.data?.vo2max,
-                      unit: "ml/kg/min",
-                    },
-                  ].map((metric) => (
-                    <div key={metric.label} className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">{metric.label}</p>
-                      <p className="text-sm font-semibold">
-                        {typeof metric.value === "number"
-                          ? `${metric.value} ${metric.unit}`
-                          : "Not provided"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Performance markers
-                  </p>
-                  {baselineMarkersQuery.data && baselineMarkersQuery.data.length > 0 ? (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {baselineMarkersQuery.data.map((marker, index) => (
-                        <div
-                          key={`${marker.template?.name ?? "marker"}-${index}`}
-                          className="rounded-lg border border-border p-3 text-sm"
-                        >
-                          <p className="text-xs text-muted-foreground">
-                            {marker.template?.name ?? "Marker"}
-                          </p>
-                          <p className="font-semibold">
-                            {marker.value_number !== null && marker.value_number !== undefined
-                              ? marker.value_number
-                              : marker.value_text ?? "Not provided"}
-                            {marker.template?.unit_label ? ` ${marker.template.unit_label}` : ""}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No markers submitted.</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">Photos</p>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {baselinePhotoTypes.map((type) => (
-                      <div key={type} className="space-y-2">
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">
-                          {type}
-                        </p>
-                        <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
-                          {baselinePhotoMap[type] ? (
-                            <img
-                              src={baselinePhotoMap[type] ?? ""}
-                              alt={`${type} baseline`}
-                              className="h-full w-full rounded-md object-cover"
-                            />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Missing</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
-                    Coach notes
-                  </label>
-                  <textarea
-                    className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    value={baselineNotes}
-                    onChange={(event) => setBaselineNotes(event.target.value)}
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={baselineNotesStatus === "saving"}
-                      onClick={handleBaselineNotesSave}
-                    >
-                      {baselineNotesStatus === "saving" ? "Saving..." : "Save notes"}
-                    </Button>
-                    {baselineNotesMessage ? (
-                      <span className="text-xs text-muted-foreground">
-                        {baselineNotesMessage}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ) : (
-                <p className="text-sm text-muted-foreground">No submitted baseline yet.</p>
-              )
-            ) : active === "checkins" ? (
-              checkinsQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : checkinsQuery.data && checkinsQuery.data.length > 0 ? (
-                <div className="space-y-3">
-                  {checkinsQuery.data.map((checkin) => {
-                    const status = !checkin.submitted_at
-                      ? "Not submitted"
-                      : checkin.pt_feedback
-                      ? "Reviewed"
-                      : "Submitted";
-                    const variant =
-                      status === "Reviewed"
-                        ? "success"
-                        : status === "Submitted"
-                        ? "secondary"
-                        : "muted";
-                    return (
-                      <div
-                        key={checkin.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
-                      >
-                        <div>
-                          <div className="text-sm font-semibold">
-                            {checkin.week_ending_saturday
-                              ? `Week ending ${checkin.week_ending_saturday}`
-                              : "Weekly check-in"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {checkin.submitted_at
-                              ? `Submitted ${formatRelativeTime(checkin.submitted_at)}`
-                              : "Awaiting submission"}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={variant}>{status}</Badge>
-                          {checkin.submitted_at ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => openCheckinReview(checkin)}
-                            >
-                              {checkin.pt_feedback ? "Edit feedback" : "Review"}
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No check-ins yet.</p>
-              )
-            ) : active === "habits" ? (
-              habitsQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Card className="border-dashed">
-                    <CardHeader>
-                      <CardTitle>Habits summary</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Snapshot of recent consistency and streaks.
-                      </p>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="text-xs text-muted-foreground">Current streak</p>
-                        <p className="text-sm font-semibold">
-                          {habitStreak > 0 ? `${habitStreak} day${habitStreak === 1 ? "" : "s"}` : "--"}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="text-xs text-muted-foreground">Logs last 7 days</p>
-                        <p className="text-sm font-semibold">{habitTrends.daysLogged}/7</p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="text-xs text-muted-foreground">Last logged</p>
-                        <p className="text-sm font-semibold">{lastHabitLogDate ?? "--"}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-dashed">
-                    <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <CardTitle>Daily habit log</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          Review a specific dayâ€™s log in read-only mode.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-semibold text-muted-foreground">Date</label>
-                        <Input
-                          type="date"
-                          value={selectedHabitDate}
-                          onChange={(event) => setSelectedHabitDate(event.target.value)}
-                        />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {habitLogByDateQuery.error ? (
-                        <Alert className="border-danger/30">
-                          <AlertTitle>Error</AlertTitle>
-                          <AlertDescription>
-                            {getFriendlyErrorMessage()}
-                            {isDev ? (
-                              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                                <div>
-                                  code: {getErrorDetails(habitLogByDateQuery.error).code ?? "n/a"}
-                                </div>
-                                <div>
-                                  message:{" "}
-                                  {getErrorDetails(habitLogByDateQuery.error).message ?? "n/a"}
-                                </div>
-                              </div>
-                            ) : null}
-                          </AlertDescription>
-                        </Alert>
-                      ) : habitLogByDateQuery.isLoading ? (
-                        <div className="space-y-2">
-                          <Skeleton className="h-6 w-1/2" />
-                          <Skeleton className="h-16 w-full" />
-                        </div>
-                      ) : habitLogByDateQuery.data ? (
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-muted-foreground">Calories</p>
-                            <p className="text-sm font-semibold">
-                              {habitLogByDateQuery.data.calories ?? "â€”"}
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-muted-foreground">Protein</p>
-                            <p className="text-sm font-semibold">
-                              {typeof habitLogByDateQuery.data.protein_g === "number"
-                                ? `${habitLogByDateQuery.data.protein_g} g`
-                                : "â€”"}
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-muted-foreground">Weight</p>
-                            <p className="text-sm font-semibold">
-                              {typeof habitLogByDateQuery.data.weight_value === "number"
-                                ? `${habitLogByDateQuery.data.weight_value} ${
-                                    habitLogByDateQuery.data.weight_unit ?? ""
-                                  }`
-                                : "â€”"}
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-muted-foreground">Steps</p>
-                            <p className="text-sm font-semibold">
-                              {typeof habitLogByDateQuery.data.steps === "number"
-                                ? habitLogByDateQuery.data.steps.toLocaleString()
-                                : "â€”"}
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-muted-foreground">Sleep</p>
-                            <p className="text-sm font-semibold">
-                              {typeof habitLogByDateQuery.data.sleep_hours === "number"
-                                ? `${habitLogByDateQuery.data.sleep_hours} hrs`
-                                : "â€”"}
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-muted-foreground">Notes</p>
-                            <p className="text-sm">
-                              {habitLogByDateQuery.data.notes ?? "â€”"}
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No habit log for this date.
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Days logged</p>
-                      <p className="text-lg font-semibold">{habitTrends.daysLogged}/7</p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Avg steps</p>
-                      <p className="text-lg font-semibold">
-                        {habitTrends.avgSteps !== null
-                          ? habitTrends.avgSteps.toLocaleString()
-                          : "â€”"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Avg sleep</p>
-                      <p className="text-lg font-semibold">
-                        {habitTrends.avgSleep !== null ? `${habitTrends.avgSleep} hrs` : "â€”"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Avg protein</p>
-                      <p className="text-lg font-semibold">
-                        {habitTrends.avgProtein !== null ? `${habitTrends.avgProtein} g` : "â€”"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Weight change</p>
-                      <p className="text-lg font-semibold">
-                        {typeof habitTrends.weightChange === "number"
-                          ? `${habitTrends.weightChange > 0 ? "+" : ""}${habitTrends.weightChange.toFixed(1)} ${
-                              habitTrends.weightUnit ?? ""
-                            }`
-                          : "â€”"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {habitsQuery.data && habitsQuery.data.length > 0 ? (
-                    <div className="overflow-hidden rounded-lg border border-border">
-                      <div className="grid grid-cols-7 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
-                        <span>Date</span>
-                        <span>Calories</span>
-                        <span>Protein</span>
-                        <span>Steps</span>
-                        <span>Sleep</span>
-                        <span>Weight</span>
-                        <span>Notes</span>
-                      </div>
-                      {habitsQuery.data.map((log) => (
-                        <div
-                          key={log.id ?? log.log_date}
-                          className="grid grid-cols-7 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0"
-                        >
-                          <span className="text-xs text-muted-foreground">{log.log_date}</span>
-                          <span>{typeof log.calories === "number" ? log.calories : "â€”"}</span>
-                          <span>
-                            {typeof log.protein_g === "number" ? `${log.protein_g} g` : "â€”"}
-                          </span>
-                          <span>
-                            {typeof log.steps === "number" ? log.steps.toLocaleString() : "â€”"}
-                          </span>
-                          <span>
-                            {typeof log.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "â€”"}
-                          </span>
-                          <span>
-                            {typeof log.weight_value === "number"
-                              ? `${log.weight_value} ${log.weight_unit ?? ""}`
-                              : "â€”"}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {log.notes ?? "â€”"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No habit logs yet.</p>
-                  )}
-                </div>
-              )
-            ) : (
-              <p className="text-sm text-muted-foreground">No data yet for this tab.</p>
-            )}
-          </CardContent>
-      </Card>
-
-      {(workspaceQuery.error ||
-        templatesQuery.error ||
-        upcomingQuery.error ||
-        coachActivityQuery.error ||
-        habitsQuery.error ||
-        habitLogByDateQuery.error ||
-        baselineEntryQuery.error ||
-        baselineMetricsQuery.error ||
-        baselineMarkersQuery.error ||
-        baselinePhotosQuery.error ||
-        checkinsQuery.error ||
-        clientQuery.error ||
-        assignStatus === "error") && (
-        <Alert className="border-destructive/30">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {assignStatus === "error" && assignMessage
-              ? assignMessage
-              : getFriendlyErrorMessage()}
-            {isDev ? (
-              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                {[
-                  workspaceQuery.error,
-                  templatesQuery.error,
-                  upcomingQuery.error,
-                  workoutSessionsQuery.error,
-                  workoutSetLogsQuery.error,
-                  coachActivityQuery.error,
-                  habitsQuery.error,
-                  habitLogByDateQuery.error,
-                  baselineEntryQuery.error,
-                  baselineMetricsQuery.error,
-                  baselineMarkersQuery.error,
-                  baselinePhotosQuery.error,
-                  checkinsQuery.error,
-                  clientQuery.error,
-                ]
-                  .filter(Boolean)
-                  .map((error, index) => {
-                    const details = getErrorDetails(error);
-                    return (
-                      <div key={`${index}-${details.message}`}>
-                        {details.code ? `${details.code}: ` : ""}
-                        {details.message}
-                      </div>
-                    );
-                  })}
-              </div>
-            ) : null}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {assignStatus !== "error" && assignMessage ? (
-        <Alert className="border-border">
-          <AlertTitle>Update</AlertTitle>
-          <AlertDescription>{assignMessage}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Schedule workout</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Assign a template to this client with a planned date.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {templatesQuery.isLoading || workspaceQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Workout template
-                  </label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={selectedTemplateId}
-                    onChange={(event) => setSelectedTemplateId(event.target.value)}
-                  >
-                    <option value="">Select a template</option>
-                    {templatesQuery.data?.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}{" "}
-                        {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Date</label>
-                  <input
-                    type="date"
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={scheduledDate}
-                    onChange={(event) => setScheduledDate(event.target.value)}
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={
-                    assignStatus === "saving" || !selectedTemplateId || !scheduledDate
-                  }
-                  onClick={handleAssignWorkout}
-                >
-                  {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Scheduled sessions for the next 7 days.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {upcomingQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : upcomingQuery.data && upcomingQuery.data.length > 0 ? (
-              upcomingQuery.data.map((workout) => (
-                <div
-                  key={workout.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
-                >
-                  <div>
-                    <div className="text-sm font-semibold">
-                      {workout.workout_template?.name ?? "Workout"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {workout.scheduled_date
-                        ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : "Scheduled"}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        workout.status === "completed"
-                          ? "success"
-                          : workout.status === "skipped"
-                          ? "danger"
-                          : "muted"
-                      }
-                    >
-                      {workout.status ?? "planned"}
-                    </Badge>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          setSelectedAssignedWorkoutId(workout.id);
-                          setLoadsOpen(true);
-                          setLoadsError(null);
-                        }}
-                      >
-                        Edit loads
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          openEditDialog({
-                            id: workout.id,
-                            scheduled_date: workout.scheduled_date,
-                            workout_template_id: workout.workout_template_id,
-                            status: workout.status,
-                          })
-                        }
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditWorkoutId(workout.id);
-                          setDeleteOpen(true);
-                        }}
-                      >
-                        Delete
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleStatusUpdate(workout.id, "completed")}
-                      >
-                        Mark completed
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStatusUpdate(workout.id, "skipped")}
-                      >
-                        Skip
-                      </Button>
-                    </div>
-                  </div>
-                  {(workout as { assigned_workout_exercises?: AssignedWorkoutExerciseRow[] })
-                    .assigned_workout_exercises &&
-                  (workout as { assigned_workout_exercises?: AssignedWorkoutExerciseRow[] })
-                    .assigned_workout_exercises.length > 0 ? (
-                    <div className="mt-3 space-y-2 text-xs text-muted-foreground">
-                      {(workout as { assigned_workout_exercises?: AssignedWorkoutExerciseRow[] })
-                        .assigned_workout_exercises?.map((row) => {
-                        const exerciseId = row.exercise?.id ?? "";
-                        const lastSet = lastSetByWorkoutExercise.get(
-                          `${workout.id}-${exerciseId}`
-                        );
-                        const performed =
-                          lastSet && (typeof lastSet.reps === "number" || typeof lastSet.weight === "number")
-                            ? `${lastSet.reps ?? "-"} reps @ ${lastSet.weight ?? "-"}`
-                            : "No sets logged";
-                        const label = row.exercise?.name ?? "Exercise";
-                        const sets = row.sets ? `${row.sets}x` : "";
-                        const reps = row.reps ?? "";
-                        const repLine =
-                          sets || reps ? `${sets}${reps}` : "";
-                        return (
-                          <div key={row.id} className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold text-foreground">{label}</span>
-                            <span>
-                              {repLine ? `${repLine} - ` : ""}
-                              {performed}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="mt-3 text-xs text-muted-foreground">
-                      No exercises in template yet.
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                No workouts scheduled for the next 7 days.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+    </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[480px]">
@@ -2185,7 +1712,795 @@ export function PtClientDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </DashboardShell>
+  );
+}
+
+
+
+
+
+
+function PtClientOverviewTab() {
+  return (
+    <Card className="border-border/70 bg-card/80 xl:col-start-1">
+      <CardHeader>
+        <CardTitle>Overview</CardTitle>
+        <p className="text-sm text-muted-foreground">Latest entries, streaks, and momentum.</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
+          <div>
+            <p className="text-sm font-medium">Weekly check-in</p>
+            <p className="text-xs text-muted-foreground">Due Saturday</p>
+          </div>
+          <Badge variant="warning">Due</Badge>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
+          <div>
+            <p className="text-sm font-medium">Last workout</p>
+            <p className="text-xs text-muted-foreground">Completed yesterday</p>
+          </div>
+          <Badge variant="success">Completed</Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PtClientBaselineTab({
+  baselineEntryQuery,
+  baselineMetricsQuery,
+  baselineMarkersQuery,
+  baselinePhotosQuery,
+  baselineNotes,
+  baselineNotesStatus,
+  baselineNotesMessage,
+  baselinePhotoMap,
+  onNotesChange,
+  onNotesSave,
+}: {
+  baselineEntryQuery: QueryResult<BaselineEntry | null>;
+  baselineMetricsQuery: QueryResult<BaselineMetrics | null>;
+  baselineMarkersQuery: QueryResult<BaselineMarkerRow[]>;
+  baselinePhotosQuery: QueryResult<BaselinePhotoRow[]>;
+  baselineNotes: string;
+  baselineNotesStatus: "idle" | "saving" | "error";
+  baselineNotesMessage: string | null;
+  baselinePhotoMap: Record<(typeof baselinePhotoTypes)[number], string | null>;
+  onNotesChange: (value: string) => void;
+  onNotesSave: () => void;
+}) {
+  return (
+    <Card className="border-border/70 bg-card/80 xl:col-start-1">
+      <CardHeader>
+        <CardTitle>Baseline</CardTitle>
+        <p className="text-sm text-muted-foreground">Latest submitted baseline details.</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {baselineEntryQuery.isLoading ||
+        baselineMetricsQuery.isLoading ||
+        baselineMarkersQuery.isLoading ||
+        baselinePhotosQuery.isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : baselineEntryQuery.data ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Submitted at</p>
+                <p className="text-sm font-semibold">
+                  {baselineEntryQuery.data.submitted_at
+                    ? new Date(baselineEntryQuery.data.submitted_at).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : "Submitted"}
+                </p>
+              </div>
+              <Badge variant="success">Submitted</Badge>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { label: "Weight", value: baselineMetricsQuery.data?.weight_kg, unit: "kg" },
+                { label: "Height", value: baselineMetricsQuery.data?.height_cm, unit: "cm" },
+                { label: "Body fat", value: baselineMetricsQuery.data?.body_fat_pct, unit: "%" },
+                { label: "Waist", value: baselineMetricsQuery.data?.waist_cm, unit: "cm" },
+                { label: "Chest", value: baselineMetricsQuery.data?.chest_cm, unit: "cm" },
+                { label: "Hips", value: baselineMetricsQuery.data?.hips_cm, unit: "cm" },
+                { label: "Thigh", value: baselineMetricsQuery.data?.thigh_cm, unit: "cm" },
+                { label: "Arm", value: baselineMetricsQuery.data?.arm_cm, unit: "cm" },
+                {
+                  label: "Resting HR",
+                  value: baselineMetricsQuery.data?.resting_hr,
+                  unit: "bpm",
+                },
+                {
+                  label: "VO2 max",
+                  value: baselineMetricsQuery.data?.vo2max,
+                  unit: "ml/kg/min",
+                },
+              ].map((metric) => (
+                <div key={metric.label} className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">{metric.label}</p>
+                  <p className="text-sm font-semibold">
+                    {typeof metric.value === "number"
+                      ? `${metric.value} ${metric.unit}`
+                      : "Not provided"}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Performance markers
+              </p>
+              {baselineMarkersQuery.data && baselineMarkersQuery.data.length > 0 ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {baselineMarkersQuery.data.map((marker, index) => (
+                    <div
+                      key={`${marker.template?.name ?? "marker"}-${index}`}
+                      className="rounded-lg border border-border p-3 text-sm"
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        {marker.template?.name ?? "Marker"}
+                      </p>
+                      <p className="font-semibold">
+                        {marker.value_number !== null && marker.value_number !== undefined
+                          ? marker.value_number
+                          : marker.value_text ?? "Not provided"}
+                        {marker.template?.unit_label ? ` ${marker.template.unit_label}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No markers submitted.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Photos</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {baselinePhotoTypes.map((type) => (
+                  <div key={type} className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      {type}
+                    </p>
+                    <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
+                      {baselinePhotoMap[type] ? (
+                        <img
+                          src={baselinePhotoMap[type] ?? ""}
+                          alt={`${type} baseline`}
+                          className="h-full w-full rounded-md object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Missing</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-muted-foreground">
+                Coach notes
+              </label>
+              <textarea
+                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={baselineNotes}
+                onChange={(event) => onNotesChange(event.target.value)}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={baselineNotesStatus === "saving"}
+                  onClick={onNotesSave}
+                >
+                  {baselineNotesStatus === "saving" ? "Saving..." : "Save notes"}
+                </Button>
+                {baselineNotesMessage ? (
+                  <span className="text-xs text-muted-foreground">{baselineNotesMessage}</span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No submitted baseline yet.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PtClientCheckinsTab({
+  checkinsQuery,
+  onReview,
+}: {
+  checkinsQuery: QueryResult<CheckinRow[]>;
+  onReview: (checkin: CheckinRow) => void;
+}) {
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailCheckin, setDetailCheckin] = useState<CheckinRow | null>(null);
+
+  const answersQuery = useQuery({
+    queryKey: ["checkin-answers", detailCheckin?.id],
+    enabled: !!detailCheckin?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkin_answers")
+        .select(
+          "id, answer_text, answer_number, answer_boolean, question:checkin_questions(question_text, prompt)"
+        )
+        .eq("checkin_id", detailCheckin?.id ?? "");
+      if (error) throw error;
+      return (data ?? []) as CheckinAnswerRow[];
+    },
+  });
+
+  const closeDetail = () => {
+    setDetailOpen(false);
+    setDetailCheckin(null);
+  };
+
+  const renderAnswerValue = (answer: CheckinAnswerRow) => {
+    if (answer.answer_text) return answer.answer_text;
+    if (typeof answer.answer_number === "number") return `${answer.answer_number}`;
+    if (typeof answer.answer_boolean === "boolean") return answer.answer_boolean ? "Yes" : "No";
+    return "--";
+  };
+
+  return (
+    <>
+      <Card className="border-border/70 bg-card/80 xl:col-start-1">
+        <CardHeader>
+          <CardTitle>Check-ins</CardTitle>
+          <p className="text-sm text-muted-foreground">Weekly check-ins and coach feedback.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {checkinsQuery.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : checkinsQuery.data && checkinsQuery.data.length > 0 ? (
+            <div className="space-y-3">
+              {checkinsQuery.data.map((checkin) => {
+                const status = !checkin.submitted_at
+                  ? "Due"
+                  : checkin.pt_feedback
+                  ? "Reviewed"
+                  : "Submitted";
+                const variant =
+                  status === "Reviewed" ? "success" : status === "Submitted" ? "secondary" : "warning";
+                return (
+                  <button
+                    key={checkin.id}
+                    type="button"
+                    onClick={() => {
+                      setDetailCheckin(checkin);
+                      setDetailOpen(true);
+                    }}
+                    className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/50"
+                  >
+                    <div>
+                      <div className="text-sm font-semibold">
+                        {checkin.week_ending_saturday
+                          ? `Week ending ${checkin.week_ending_saturday}`
+                          : "Weekly check-in"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {checkin.submitted_at
+                          ? `Submitted ${formatRelativeTime(checkin.submitted_at)}`
+                          : "Awaiting submission"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={variant}>{status}</Badge>
+                      {checkin.submitted_at ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onReview(checkin);
+                          }}
+                        >
+                          {checkin.pt_feedback ? "Edit feedback" : "Review"}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No check-ins yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={detailOpen} onOpenChange={(open) => (open ? null : closeDetail())}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Check-in details</DialogTitle>
+            <DialogDescription>
+              {detailCheckin?.week_ending_saturday
+                ? `Week ending ${detailCheckin.week_ending_saturday}`
+                : "Weekly check-in responses"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {answersQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : answersQuery.error ? (
+              <Alert className="border-destructive/30">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{getFriendlyErrorMessage()}</AlertDescription>
+              </Alert>
+            ) : answersQuery.data && answersQuery.data.length > 0 ? (
+              <div className="space-y-2">
+                {answersQuery.data.map((answer) => (
+                  <div
+                    key={answer.id}
+                    className="rounded-lg border border-border bg-muted/30 p-3"
+                  >
+                    <p className="text-xs text-muted-foreground">
+                      {answer.question?.question_text ?? answer.question?.prompt ?? "Question"}
+                    </p>
+                    <p className="text-sm font-semibold">{renderAnswerValue(answer)}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No responses recorded.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={closeDetail}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function PtClientHabitsTab({
+  habitsQuery,
+  habitLogByDateQuery,
+  selectedHabitDate,
+  onSelectHabitDate,
+  habitStreak,
+  habitTrends,
+  lastHabitLogDate,
+}: {
+  habitsQuery: QueryResult<HabitLog[]>;
+  habitLogByDateQuery: QueryResult<HabitLog | null>;
+  selectedHabitDate: string;
+  onSelectHabitDate: (value: string) => void;
+  habitStreak: number;
+  habitTrends: HabitTrends;
+  lastHabitLogDate: string | null;
+}) {
+  return (
+    <Card className="border-border/70 bg-card/80 xl:col-start-1">
+      <CardHeader>
+        <CardTitle>Habits</CardTitle>
+        <p className="text-sm text-muted-foreground">Last 7 days of habit logs.</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {habitsQuery.isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">Adherence</p>
+                <p className="text-sm font-semibold">{habitTrends.daysLogged}/7 days</p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">Current streak</p>
+                <p className="text-sm font-semibold">
+                  {habitStreak > 0 ? `${habitStreak} day${habitStreak === 1 ? "" : "s"}` : "--"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">Last logged</p>
+                <p className="text-sm font-semibold">{lastHabitLogDate ?? "--"}</p>
+              </div>
+            </div>
+
+            <Card className="border-dashed">
+              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle>Daily habit log</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Review a specific day's log in read-only mode.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                  <Input
+                    type="date"
+                    value={selectedHabitDate}
+                    onChange={(event) => onSelectHabitDate(event.target.value)}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {habitLogByDateQuery.error ? (
+                  <Alert className="border-danger/30">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{getFriendlyErrorMessage()}</AlertDescription>
+                  </Alert>
+                ) : habitLogByDateQuery.isLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : habitLogByDateQuery.data ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Calories</p>
+                      <p className="text-sm font-semibold">
+                        {habitLogByDateQuery.data.calories ?? "--"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Protein</p>
+                      <p className="text-sm font-semibold">
+                        {typeof habitLogByDateQuery.data.protein_g === "number"
+                          ? `${habitLogByDateQuery.data.protein_g} g`
+                          : "--"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Weight</p>
+                      <p className="text-sm font-semibold">
+                        {typeof habitLogByDateQuery.data.weight_value === "number"
+                          ? `${habitLogByDateQuery.data.weight_value} ${habitLogByDateQuery.data.weight_unit ?? ""}`
+                          : "--"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Steps</p>
+                      <p className="text-sm font-semibold">
+                        {typeof habitLogByDateQuery.data.steps === "number"
+                          ? habitLogByDateQuery.data.steps.toLocaleString()
+                          : "--"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Sleep</p>
+                      <p className="text-sm font-semibold">
+                        {typeof habitLogByDateQuery.data.sleep_hours === "number"
+                          ? `${habitLogByDateQuery.data.sleep_hours} hrs`
+                          : "--"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Notes</p>
+                      <p className="text-sm">{habitLogByDateQuery.data.notes ?? "--"}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No habit log for this date.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {habitsQuery.data && habitsQuery.data.length > 0 ? (
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="grid grid-cols-7 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                  <span>Date</span>
+                  <span>Calories</span>
+                  <span>Protein</span>
+                  <span>Steps</span>
+                  <span>Sleep</span>
+                  <span>Weight</span>
+                  <span>Notes</span>
+                </div>
+                {habitsQuery.data.map((log) => (
+                  <div
+                    key={log.id ?? log.log_date}
+                    className="grid grid-cols-7 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0"
+                  >
+                    <span className="text-xs text-muted-foreground">{log.log_date}</span>
+                    <span>{typeof log.calories === "number" ? log.calories : "--"}</span>
+                    <span>
+                      {typeof log.protein_g === "number" ? `${log.protein_g} g` : "--"}
+                    </span>
+                    <span>
+                      {typeof log.steps === "number" ? log.steps.toLocaleString() : "--"}
+                    </span>
+                    <span>
+                      {typeof log.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "--"}
+                    </span>
+                    <span>
+                      {typeof log.weight_value === "number"
+                        ? `${log.weight_value} ${log.weight_unit ?? ""}`
+                        : "--"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{log.notes ?? "--"}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No habit logs yet.</p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PtClientPlanTab({
+  templatesQuery,
+  upcomingQuery,
+  selectedTemplateId,
+  scheduledDate,
+  assignStatus,
+  lastSetByWorkoutExercise,
+  onTemplateChange,
+  onDateChange,
+  onAssign,
+  onEdit,
+  onDelete,
+  onEditLoads,
+  onStatusChange,
+}: {
+  templatesQuery: QueryResult<Array<{ id: string; name: string | null; workout_type_tag: string | null }>>;
+  upcomingQuery: QueryResult<
+    Array<{
+      id: string;
+      status: string | null;
+      scheduled_date: string | null;
+      completed_at: string | null;
+      workout_template_id: string | null;
+      workout_template: { name: string | null } | null;
+      assigned_workout_exercises?: AssignedWorkoutExerciseRow[];
+    }>
+  >;
+  selectedTemplateId: string;
+  scheduledDate: string;
+  assignStatus: "idle" | "saving" | "error";
+  lastSetByWorkoutExercise: Map<string, WorkoutSetLogRow>;
+  onTemplateChange: (value: string) => void;
+  onDateChange: (value: string) => void;
+  onAssign: () => void;
+  onEdit: (workout: {
+    id: string;
+    scheduled_date: string | null;
+    workout_template_id: string | null;
+    status: string | null;
+  }) => void;
+  onDelete: (id: string) => void;
+  onEditLoads: (id: string) => void;
+  onStatusChange: (id: string, status: "planned" | "completed" | "skipped") => void;
+}) {
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] xl:col-start-1">
+      <Card className="border-border/70 bg-card/80">
+        <CardHeader>
+          <CardTitle>Schedule workout</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Assign a template to this client with a planned date.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {templatesQuery.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Workout template
+                </label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={selectedTemplateId}
+                  onChange={(event) => onTemplateChange(event.target.value)}
+                >
+                  <option value="">Select a template</option>
+                  {templatesQuery.data?.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}{" "}
+                      {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                <input
+                  type="date"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={scheduledDate}
+                  onChange={(event) => onDateChange(event.target.value)}
+                />
+              </div>
+              <Button
+                className="w-full"
+                disabled={assignStatus === "saving" || !selectedTemplateId || !scheduledDate}
+                onClick={onAssign}
+              >
+                {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70 bg-card/80">
+        <CardHeader>
+          <CardTitle>Upcoming</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Scheduled sessions for the next 14 days.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {upcomingQuery.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : upcomingQuery.data && upcomingQuery.data.length > 0 ? (
+            upcomingQuery.data.map((workout) => (
+              <div
+                key={workout.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
+              >
+                <div>
+                  <div className="text-sm font-semibold">
+                    {workout.workout_template?.name ?? "Workout"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {workout.scheduled_date
+                      ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "Scheduled"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={
+                      workout.status === "completed"
+                        ? "success"
+                        : workout.status === "skipped"
+                        ? "danger"
+                        : "muted"
+                    }
+                  >
+                    {workout.status ?? "planned"}
+                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => onEditLoads(workout.id)}>
+                      Edit loads
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onEdit(workout)}>
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onDelete(workout.id)}>
+                      Delete
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onStatusChange(workout.id, "completed")}
+                    >
+                      Mark completed
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onStatusChange(workout.id, "skipped")}
+                    >
+                      Skip
+                    </Button>
+                  </div>
+                </div>
+                {workout.assigned_workout_exercises &&
+                workout.assigned_workout_exercises.length > 0 ? (
+                  <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                    {workout.assigned_workout_exercises.map((row) => {
+                      const exerciseId = row.exercise?.id ?? "";
+                      const lastSet = lastSetByWorkoutExercise.get(
+                        `${workout.id}-${exerciseId}`
+                      );
+                      const performed =
+                        lastSet &&
+                        (typeof lastSet.reps === "number" || typeof lastSet.weight === "number")
+                          ? `${lastSet.reps ?? "-"} reps @ ${lastSet.weight ?? "-"}`
+                          : "No sets logged";
+                      const label = row.exercise?.name ?? "Exercise";
+                      const sets = row.sets ? `${row.sets}x` : "";
+                      const reps = row.reps ?? "";
+                      const repLine = sets || reps ? `${sets}${reps}` : "";
+                      return (
+                        <div key={row.id} className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-foreground">{label}</span>
+                          <span>
+                            {repLine ? `${repLine} - ` : ""}
+                            {performed}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-xs text-muted-foreground">
+                    No exercises in template yet.
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+              No workouts scheduled for the next 14 days.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function PtClientLogsTab() {
+  return <PtClientPlaceholderTab title="logs" />;
+}
+
+function PtClientProgressTab() {
+  return <PtClientPlaceholderTab title="progress" />;
+}
+
+function PtClientMessagesTab() {
+  return <PtClientPlaceholderTab title="messages" />;
+}
+
+function PtClientNotesTab() {
+  return <PtClientPlaceholderTab title="notes" />;
+}
+
+function PtClientPlaceholderTab({ title }: { title: string }) {
+  return (
+    <Card className="border-border/70 bg-card/80 xl:col-start-1">
+      <CardHeader>
+        <CardTitle className="capitalize">{title}</CardTitle>
+        <p className="text-sm text-muted-foreground">Section details coming soon.</p>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">No data yet for this tab.</p>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -7,12 +7,19 @@ import {
   Plus,
   Rocket,
   Sparkles,
+  Trash2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Input } from "../../components/ui/input";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
+import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
+import { StatCard } from "../../components/pt/dashboard/StatCard";
+import { ClientRow } from "../../components/pt/dashboard/ClientRow";
+import { StatusPill } from "../../components/pt/dashboard/StatusPill";
+import { MiniSparkline } from "../../components/pt/dashboard/MiniSparkline";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
@@ -40,7 +47,6 @@ type AssignedWorkoutRow = {
 type CheckinRow = {
   id: string;
   client_id: string | null;
-  due_date: string | null;
   week_ending_saturday: string | null;
   submitted_at: string | null;
   created_at: string | null;
@@ -51,6 +57,7 @@ type MessageRow = {
   created_at: string | null;
   sender_name: string | null;
   preview: string | null;
+  unread: boolean | null;
 };
 
 type TaskItem = {
@@ -59,84 +66,17 @@ type TaskItem = {
   done: boolean;
 };
 
-const makeInitials = (name: string) =>
-  name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-
-const statusPill = (status: string | null) => {
-  const normalized = status?.toLowerCase() ?? "active";
-  if (normalized === "active") return { label: "Active", variant: "success" as const };
-  if (normalized === "inactive") return { label: "Inactive", variant: "muted" as const };
-  if (normalized === "paused") return { label: "Paused", variant: "warning" as const };
-  if (normalized === "at risk") return { label: "At risk", variant: "danger" as const };
-  return { label: "Active", variant: "success" as const };
-};
-
-function DashboardCard({
-  title,
-  subtitle,
-  action,
-  children,
-}: {
+type CoachTodo = {
+  id: string;
   title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="border-border/70 bg-card/80">
-      <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <div>
-          <CardTitle className="text-base">{title}</CardTitle>
-          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
-        </div>
-        {action}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  helper,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  helper?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  accent?: boolean;
-}) {
-  return (
-    <Card
-      className={
-        accent
-          ? "border-primary/40 bg-card/90 shadow-glow"
-          : "border-border/70 bg-card/80"
-      }
-    >
-      <CardHeader className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="uppercase tracking-[0.25em]">{label}</span>
-          <Icon className="h-4 w-4 text-primary" />
-        </div>
-        <CardTitle className="text-2xl font-semibold tracking-tight">{value}</CardTitle>
-        {helper ? <p className="text-xs text-muted-foreground">{helper}</p> : null}
-      </CardHeader>
-    </Card>
-  );
-}
+  is_done: boolean;
+  created_at: string | null;
+};
 
 export function PtDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const messagesEnabled = Boolean(import.meta.env.VITE_MESSAGES_ENABLED);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -145,26 +85,40 @@ export function PtDashboardPage() {
   const [checkins, setCheckins] = useState<CheckinRow[]>([]);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [coachTodos, setCoachTodos] = useState<CoachTodo[]>([]);
+  const [todoDraft, setTodoDraft] = useState("");
+  const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
+  const [todoEdits, setTodoEdits] = useState<Record<string, string>>({});
   const [tasks, setTasks] = useState<TaskItem[]>([
-    { id: "task-1", label: "Review weekly check-ins", done: false },
-    { id: "task-2", label: "Update active programs", done: false },
-    { id: "task-3", label: "Send follow-up messages", done: false },
+    { id: "task-1", label: "Review check-ins", done: false },
+    { id: "task-2", label: "Reply to messages", done: false },
+    { id: "task-3", label: "Adjust active programs", done: false },
+    { id: "task-4", label: "Prep next week", done: false },
   ]);
 
   useEffect(() => {
     const loadDashboard = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       setLoadError(null);
 
       try {
-        const workspaceId = await getWorkspaceIdForUser(user.id);
-        if (!workspaceId) throw new Error("Workspace not found for this PT.");
+        const resolvedWorkspaceId = await getWorkspaceIdForUser(user.id);
+        if (!resolvedWorkspaceId) {
+          setLoadError("Workspace not found for this PT.");
+          setIsLoading(false);
+          return;
+        }
+        setWorkspaceId(resolvedWorkspaceId);
 
         const { data: clientRows, error: clientError } = await supabase
           .from("clients")
           .select("id, workspace_id, user_id, status, display_name, created_at, tags, timezone")
-          .eq("workspace_id", workspaceId)
+          .eq("workspace_id", resolvedWorkspaceId)
           .order("created_at", { ascending: false });
 
         if (clientError) throw clientError;
@@ -185,7 +139,7 @@ export function PtDashboardPage() {
         const startWeek = addDaysToDateString(todayStr, -6);
         const endWeek = addDaysToDateString(todayStr, 6);
 
-        const [assignedResponse, checkinResponse, messageResponse] = await Promise.all([
+        const [assignedResponse, checkinResponse, messageResponse, todosResponse] = await Promise.all([
           supabase
             .from("assigned_workouts")
             .select("id, client_id, status, scheduled_date")
@@ -194,14 +148,23 @@ export function PtDashboardPage() {
             .lte("scheduled_date", todayStr),
           supabase
             .from("checkins")
-            .select("id, client_id, due_date, week_ending_saturday, submitted_at, created_at")
+            .select("id, client_id, week_ending_saturday, submitted_at, created_at")
             .in("client_id", clientIds)
-            .gte("due_date", startWeek)
-            .lte("due_date", endWeek),
+            .gte("week_ending_saturday", startWeek)
+            .lte("week_ending_saturday", endWeek),
+          // TODO: Replace with real messages table or messaging RPC when available.
+          messagesEnabled
+            ? supabase
+                .from("messages")
+                .select("id, created_at, sender_name, preview, unread")
+                .limit(5)
+            : Promise.resolve({ data: [], error: null }),
           supabase
-            .from("messages")
-            .select("id, created_at, sender_name, preview")
-            .limit(5),
+            .from("coach_todos")
+            .select("id, title, is_done, created_at")
+            .eq("workspace_id", resolvedWorkspaceId)
+            .eq("coach_id", user.id)
+            .order("created_at", { ascending: true }),
         ]);
 
         if (!assignedResponse.error) {
@@ -222,17 +185,26 @@ export function PtDashboardPage() {
           setMessages([]);
         }
 
-        const unreadResponse = await supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("unread", true);
-        if (!unreadResponse.error) {
-          setUnreadCount(unreadResponse.count ?? 0);
+        if (!todosResponse.error) {
+          setCoachTodos((todosResponse.data ?? []) as CoachTodo[]);
+        } else {
+          setCoachTodos([]);
+        }
+
+        if (messagesEnabled) {
+          const unreadResponse = await supabase
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("unread", true);
+          if (!unreadResponse.error) {
+            setUnreadCount(unreadResponse.count ?? 0);
+          } else {
+            setUnreadCount(0);
+          }
         } else {
           setUnreadCount(0);
         }
       } catch (error: any) {
-        console.error("Failed to load PT dashboard", error);
         setLoadError(error?.message ?? "Failed to load dashboard.");
       } finally {
         setIsLoading(false);
@@ -241,6 +213,66 @@ export function PtDashboardPage() {
 
     loadDashboard();
   }, [user?.id]);
+
+  const addTodo = async () => {
+    if (!user?.id || !workspaceId || !todoDraft.trim()) return;
+    const title = todoDraft.trim();
+    setTodoDraft("");
+    const { data, error } = await supabase
+      .from("coach_todos")
+      .insert({ title, coach_id: user.id, workspace_id: workspaceId })
+      .select("id, title, is_done, created_at")
+      .single();
+    if (!error && data) {
+      setCoachTodos((prev) => [...prev, data as CoachTodo]);
+    }
+  };
+
+  const toggleTodo = async (todo: CoachTodo) => {
+    setTodoBusyId(todo.id);
+    const { data, error } = await supabase
+      .from("coach_todos")
+      .update({ is_done: !todo.is_done })
+      .eq("id", todo.id)
+      .select("id, title, is_done, created_at")
+      .single();
+    if (!error && data) {
+      setCoachTodos((prev) =>
+        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row))
+      );
+    }
+    setTodoBusyId(null);
+  };
+
+  const updateTodoTitle = async (todo: CoachTodo, title: string) => {
+    setTodoBusyId(todo.id);
+    const trimmed = title.trim();
+    if (!trimmed) {
+      await deleteTodo(todo);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("coach_todos")
+      .update({ title: trimmed })
+      .eq("id", todo.id)
+      .select("id, title, is_done, created_at")
+      .single();
+    if (!error && data) {
+      setCoachTodos((prev) =>
+        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row))
+      );
+    }
+    setTodoBusyId(null);
+  };
+
+  const deleteTodo = async (todo: CoachTodo) => {
+    setTodoBusyId(todo.id);
+    const { error } = await supabase.from("coach_todos").delete().eq("id", todo.id);
+    if (!error) {
+      setCoachTodos((prev) => prev.filter((row) => row.id !== todo.id));
+    }
+    setTodoBusyId(null);
+  };
 
   const activeClientsCount = useMemo(
     () => clients.filter((client) => (client.status ?? "active").toLowerCase() === "active").length,
@@ -259,9 +291,7 @@ export function PtDashboardPage() {
     const todayStr = getTodayInTimezone(null);
     const currentSaturday = getLastSaturday(todayStr);
     return checkins.filter((checkin) => {
-      const due = checkin.due_date ?? "";
       const weekEnding = checkin.week_ending_saturday ?? "";
-      if (due === todayStr) return true;
       return weekEnding === currentSaturday && !checkin.submitted_at;
     }).length;
   }, [checkins]);
@@ -272,7 +302,7 @@ export function PtDashboardPage() {
     return checkins
       .map((row) => ({
         ...row,
-        due: row.due_date ?? row.week_ending_saturday ?? row.created_at ?? todayStr,
+        due: row.week_ending_saturday ?? row.created_at ?? todayStr,
       }))
       .filter((row) => row.due && row.due >= todayStr && row.due <= end)
       .slice(0, 5);
@@ -300,6 +330,9 @@ export function PtDashboardPage() {
       prev.map((task) => (task.id === taskId ? { ...task, done: !task.done } : task))
     );
   };
+
+  const visibleClients = clientRows.slice(0, 6);
+  const messageRows = messages.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -335,25 +368,44 @@ export function PtDashboardPage() {
           ))
         ) : (
           <>
-            <StatCard label="Active clients" value={activeClientsCount} helper="Roster size" icon={Sparkles} />
+            <StatCard
+              label="Active clients"
+              value={activeClientsCount}
+              helper="Roster size"
+              icon={Sparkles}
+              sparkline={<MiniSparkline />}
+            />
             <StatCard
               label="Avg adherence"
               value={`${adherencePercent}%`}
               helper="Last 7 days"
               icon={Rocket}
               accent
+              sparkline={<MiniSparkline />}
             />
-            <StatCard label="Unread messages" value={unreadCount} helper="Needs replies" icon={MessageCircle} />
-            <StatCard label="Check-ins today" value={checkinsTodayCount} helper="Due now" icon={CalendarDays} />
+            <StatCard
+              label="Unread messages"
+              value={unreadCount}
+              helper="Needs replies"
+              icon={MessageCircle}
+              sparkline={<MiniSparkline />}
+            />
+            <StatCard
+              label="Check-ins today"
+              value={checkinsTodayCount}
+              helper="Due now"
+              icon={CalendarDays}
+              sparkline={<MiniSparkline />}
+            />
           </>
         )}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <div className="space-y-4 xl:col-span-7">
+        <div className="space-y-4 xl:col-span-8">
           <DashboardCard
-            title="Client overview"
-            subtitle="Adherence and recent activity"
+            title="Client Overview"
+            subtitle="Recent activity and adherence"
             action={
               <Button variant="ghost" size="sm" onClick={() => navigate("/pt/clients")}>
                 View all
@@ -362,42 +414,22 @@ export function PtDashboardPage() {
           >
             {isLoading ? (
               <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, index) => (
+                {Array.from({ length: 5 }).map((_, index) => (
                   <Skeleton key={index} className="h-14 w-full" />
                 ))}
               </div>
-            ) : clientRows.length > 0 ? (
+            ) : visibleClients.length > 0 ? (
               <div className="space-y-2">
-                {clientRows.map((client) => {
-                  const pill = statusPill(client.status);
-                  return (
-                    <button
-                      key={client.id}
-                      type="button"
-                      onClick={() => navigate(`/pt/clients/${client.id}`)}
-                      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background/40 px-4 py-3 text-left transition hover:border-border hover:bg-muted/40"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/70 text-xs font-semibold">
-                          {makeInitials(client.name)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold">{client.name}</p>
-                            <Badge variant={pill.variant} className="text-[10px] uppercase">
-                              {pill.label}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">Joined {client.joined}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Adherence</p>
-                        <p className="text-sm font-semibold text-accent">{client.adherence}</p>
-                      </div>
-                    </button>
-                  );
-                })}
+                {visibleClients.map((client) => (
+                  <ClientRow
+                    key={client.id}
+                    name={client.name}
+                    joined={client.joined}
+                    adherence={client.adherence}
+                    status={client.status}
+                    onClick={() => navigate(`/pt/clients/${client.id}`)}
+                  />
+                ))}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-6 text-sm text-muted-foreground">
@@ -407,15 +439,15 @@ export function PtDashboardPage() {
           </DashboardCard>
         </div>
 
-        <div className="space-y-4 xl:col-span-3">
+        <div className="space-y-4 xl:col-span-4">
           <DashboardCard
-            title="Upcoming check-ins"
+            title="Upcoming Check-ins"
             subtitle="Next 7 days"
             action={<Button variant="ghost" size="sm">View calendar</Button>}
           >
             {isLoading ? (
               <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, index) => (
+                {Array.from({ length: 4 }).map((_, index) => (
                   <Skeleton key={index} className="h-10 w-full" />
                 ))}
               </div>
@@ -442,6 +474,7 @@ export function PtDashboardPage() {
                         <p className="text-sm font-medium">{name}</p>
                         <p className="text-xs text-muted-foreground">Check-in due</p>
                       </div>
+                      <StatusPill status="pending" />
                       <Badge variant="secondary" className="text-[10px]">
                         {dueLabel}
                       </Badge>
@@ -456,7 +489,7 @@ export function PtDashboardPage() {
             )}
           </DashboardCard>
 
-          <DashboardCard title="Today's tasks" subtitle="Quick wins">
+          <DashboardCard title="Today's Tasks" subtitle="Quick wins">
             <div className="space-y-2">
               {tasks.map((task) => (
                 <label
@@ -476,76 +509,162 @@ export function PtDashboardPage() {
             </div>
           </DashboardCard>
         </div>
+      </div>
 
-        <div className="space-y-4 xl:col-span-2">
-          <DashboardCard title="Recent messages" subtitle="Last 5 threads">
-            {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <Skeleton key={index} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : messages.length > 0 ? (
-              <div className="space-y-2">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className="rounded-xl border border-border/70 bg-background/40 px-3 py-2"
-                  >
+      <div className="grid gap-4 lg:grid-cols-3">
+        <DashboardCard title="Recent Messages" subtitle="Latest 5 threads">
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : messageRows.length > 0 ? (
+            <div className="space-y-2">
+              {messageRows.map((message) => (
+                <div
+                  key={message.id}
+                  className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2"
+                >
+                  <div>
                     <p className="text-sm font-medium">{message.sender_name ?? "Client"}</p>
                     <p className="text-xs text-muted-foreground">
                       {message.preview ?? "No preview available"}
                     </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {message.created_at ? formatRelativeTime(message.created_at) : "Recently"}
+                    </p>
                   </div>
-                ))}
+                  {message.unread ? (
+                    <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
+              No messages yet.
+            </div>
+          )}
+        </DashboardCard>
+
+        <DashboardCard title="Quick Actions" subtitle="Shortcuts">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => navigate("/pt/programs")}
+              className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
+            >
+              <Plus className="h-4 w-4 text-primary" />
+              New program
+            </button>
+            <InviteClientDialog
+              trigger={
+                <button
+                  type="button"
+                  className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
+                >
+                  <ClipboardCheck className="h-4 w-4 text-primary" />
+                  Invite client
+                </button>
+              }
+            />
+            <button
+              type="button"
+              onClick={() => navigate("/pt/reports")}
+              className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
+            >
+              <Rocket className="h-4 w-4 text-primary" />
+              Reports
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/pt/messages")}
+              className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
+            >
+              <MessageCircle className="h-4 w-4 text-primary" />
+              Message
+            </button>
+          </div>
+        </DashboardCard>
+
+        <DashboardCard title="To-Do list" subtitle="Coach tasks">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Input
+                value={todoDraft}
+                onChange={(event) => setTodoDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void addTodo();
+                  }
+                }}
+                placeholder="Add a new task"
+              />
+              <Button onClick={() => void addTodo()} disabled={!todoDraft.trim()}>
+                Add
+              </Button>
+            </div>
+            {coachTodos.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
+                No tasks yet.
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
-                No messages yet.
+              <div className="space-y-2">
+                {coachTodos.map((todo) => {
+                  const draft = todoEdits[todo.id] ?? todo.title;
+                  return (
+                    <div
+                      key={todo.id}
+                      className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={todo.is_done}
+                        onChange={() => void toggleTodo(todo)}
+                        className="h-4 w-4 accent-primary"
+                        disabled={todoBusyId === todo.id}
+                      />
+                      <input
+                        value={draft}
+                        onChange={(event) =>
+                          setTodoEdits((prev) => ({
+                            ...prev,
+                            [todo.id]: event.target.value,
+                          }))
+                        }
+                        onBlur={() => {
+                          if (draft !== todo.title) {
+                            void updateTodoTitle(todo, draft);
+                          }
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void updateTodoTitle(todo, draft);
+                          }
+                        }}
+                        className={`w-full bg-transparent text-sm outline-none ${
+                          todo.is_done ? "text-muted-foreground line-through" : "text-foreground"
+                        }`}
+                        disabled={todoBusyId === todo.id}
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => void deleteTodo(todo)}
+                        disabled={todoBusyId === todo.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </DashboardCard>
-
-          <DashboardCard title="Quick actions" subtitle="Shortcut tools">
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => navigate("/pt/programs")}
-                className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm transition hover:border-border hover:bg-muted/40"
-              >
-                <Plus className="h-4 w-4 text-primary" />
-                New program
-              </button>
-              <InviteClientDialog
-                trigger={
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm transition hover:border-border hover:bg-muted/40"
-                  >
-                    <ClipboardCheck className="h-4 w-4 text-primary" />
-                    Invite client
-                  </button>
-                }
-              />
-              <button
-                type="button"
-                onClick={() => navigate("/pt/reports")}
-                className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm transition hover:border-border hover:bg-muted/40"
-              >
-                <Rocket className="h-4 w-4 text-primary" />
-                Reports
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/pt/messages")}
-                className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm transition hover:border-border hover:bg-muted/40"
-              >
-                <MessageCircle className="h-4 w-4 text-primary" />
-                Message
-              </button>
-            </div>
-          </DashboardCard>
-        </div>
+          </div>
+        </DashboardCard>
       </div>
     </div>
   );

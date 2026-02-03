@@ -38,6 +38,31 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
+async function ensureFreshSession(session: Session | null): Promise<Session | null> {
+  if (!session) return null;
+  const expiresAtMs = (session.expires_at ?? 0) * 1000;
+  const now = Date.now();
+  if (expiresAtMs === 0 || expiresAtMs - now > 30_000) {
+    return session;
+  }
+
+  try {
+    const { data, error } = await withTimeout(
+      supabase.auth.refreshSession(),
+      10000,
+      "Session refresh timed out (10s)."
+    );
+    if (error || !data.session) {
+      await supabase.auth.signOut();
+      return null;
+    }
+    return data.session;
+  } catch (error) {
+    await supabase.auth.signOut();
+    return null;
+  }
+}
+
 async function resolveRole(userId: string): Promise<{
   role: AppRole;
   workspaceMember: unknown;
@@ -132,12 +157,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resolveRoleOnce = useCallback(
     async (userId: string, options?: { force?: boolean }) => {
       const pathname = window.location.pathname;
-      const key = `${userId ?? "none"}|${pathname}`;
+      const key = `${userId ?? "none"}`;
       if (!options?.force) {
         if (resolvingRef.current || lastResolveKeyRef.current === key) return;
       }
       resolvingRef.current = true;
-      lastResolveKeyRef.current = key;
+      let resolved = false;
+      let skippedDemotion = false;
       try {
         const result = await resolveRole(userId);
         console.log("ROLE ROUTE", {
@@ -146,11 +172,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           wmData: result.workspaceMember,
           clientData: result.clientMember,
         });
-        setRole((prev) => (prev === result.role ? prev : result.role));
+        setRole((prev) => {
+          if (result.role === "none" && prev !== "none" && !options?.force) {
+            skippedDemotion = true;
+            return prev;
+          }
+          return prev === result.role ? prev : result.role;
+        });
+        if (!skippedDemotion) {
+          lastResolveKeyRef.current = key;
+          resolved = true;
+        }
       } catch (error) {
         console.error("Failed to resolve role", error);
-        setRole((prev) => (prev === "none" ? prev : "none"));
+        setRole((prev) => (prev === "none" ? prev : prev));
       } finally {
+        if (!resolved) {
+          lastResolveKeyRef.current = "";
+        }
         resolvingRef.current = false;
       }
     },
@@ -172,13 +211,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole("none");
         return;
       }
-      const nextSession = data.session ?? null;
+      const nextSession = await ensureFreshSession(data.session ?? null);
       setSession(nextSession);
       const userId = nextSession?.user?.id ?? null;
       if (userId) {
         await resolveRoleOnce(userId, { force: true });
       } else {
         setRole((prev) => (prev === "none" ? prev : "none"));
+        lastResolveKeyRef.current = "";
       }
     } catch (error) {
       setAuthError(error instanceof Error ? error : new Error(String(error)));
@@ -216,14 +256,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setSession(data.session ?? null);
-        const userId = data.session?.user?.id ?? null;
+        const nextSession = await ensureFreshSession(data.session ?? null);
+        setSession(nextSession);
+        const userId = nextSession?.user?.id ?? null;
         if (userId) {
           if (alive) {
             await resolveRoleOnce(userId);
           }
         } else {
           setRole((prev) => (prev === "none" ? prev : "none"));
+          lastResolveKeyRef.current = "";
         }
       } catch (error) {
         if (!alive) return;
@@ -242,15 +284,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (_event, newSession) => {
         if (!alive) return;
         setLoading(true);
-        setSession(newSession);
+        const nextSession = await ensureFreshSession(newSession ?? null);
+        setSession(nextSession);
         try {
-          const userId = newSession?.user?.id ?? null;
+          const userId = nextSession?.user?.id ?? null;
           if (userId) {
             if (alive) {
               await resolveRoleOnce(userId);
             }
           } else {
             setRole((prev) => (prev === "none" ? prev : "none"));
+            lastResolveKeyRef.current = "";
           }
         } catch (error) {
           console.error("Failed to resolve role", error);
