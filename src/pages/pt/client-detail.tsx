@@ -313,6 +313,8 @@ export function PtClientDetailPage() {
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
   const todayKey = useMemo(() => formatDateKey(today), [today]);
+  const scheduleStartKey = useMemo(() => todayKey, [todayKey]);
+  const scheduleEndKey = useMemo(() => addDaysToDateString(todayKey, 6), [todayKey]);
   const planEndKey = useMemo(() => {
     const date = new Date(today);
     date.setDate(date.getDate() + 14);
@@ -685,6 +687,9 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
+      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+    });
+    await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
     });
     await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
@@ -703,6 +708,9 @@ export function PtClientDetailPage() {
     }
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -759,6 +767,9 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
+      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+    });
+    await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
     });
     await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
@@ -781,8 +792,42 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
+      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+    });
+    await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
     });
+  };
+
+  const handleOpenDeleteDialog = (workoutId: string) => {
+    setEditWorkoutId(workoutId);
+    setDeleteOpen(true);
+  };
+
+  const handleRescheduleWorkout = async (id: string, nextDate: string) => {
+    setAssignStatus("saving");
+    setAssignMessage(null);
+    const { error } = await supabase
+      .from("assigned_workouts")
+      .update({ scheduled_date: nextDate })
+      .eq("id", id);
+    if (error) {
+      setAssignStatus("error");
+      setAssignMessage(getErrorMessage(error));
+      return;
+    }
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-today", clientId, todayKey],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+    setAssignStatus("idle");
+    setAssignMessage("Workout rescheduled");
   };
 
   const clientSnapshot = clientProfile ?? (clientQuery.data as PtClientProfile | null);
@@ -1131,378 +1176,397 @@ export function PtClientDetailPage() {
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[1400px] space-y-6 px-6 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/90 px-4 py-4 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-            {getInitials(clientSnapshot?.display_name)}
-          </div>
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight">
-                {clientSnapshot?.display_name ?? "Client profile"}
-              </h2>
-              <StatusPill status={clientSnapshot?.status ?? "active"} />
-              {lastSeen ? (
-                <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
-              ) : null}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
-                .filter(Boolean)
-                .join(" • ") || "Training plan overview"}
-              {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
-            onClick={() => handleQuickAction("")}
-          >
-            Message
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              handleQuickAction(
-                "Quick favor: please update your profile details so I can refine your plan."
-              )
-            }
-          >
-            Request check-in
-          </Button>
-          <Button variant="secondary" onClick={() => setActiveTab("plan")}>
-            Assign workout
-          </Button>
-          <Button variant="ghost" size="icon" aria-label="More actions">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Adherence"
-          value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
-          helper="Last 7 days"
-          icon={Sparkles}
-          sparkline={<MiniSparkline />}
-        />
-        <StatCard
-          label="Consistency streak"
-          value={habitStreak > 0 ? `${habitStreak}d` : "--"}
-          helper="Habit streak"
-          icon={Rocket}
-          sparkline={<MiniSparkline />}
-        />
-        <StatCard
-          label="Check-in status"
-          value={checkinStatus ?? "--"}
-          helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
-          icon={CalendarDays}
-          sparkline={<MiniSparkline />}
-        />
-        <StatCard
-          label="Last workout"
-          value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
-          helper={lastWorkoutStatus ?? "No workouts"}
-          icon={Sparkles}
-          sparkline={<MiniSparkline />}
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8 space-y-6">
-          <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="sticky top-24 z-10 flex w-full flex-wrap gap-2 rounded-xl border border-border/70 bg-card/80 p-2">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="plan">Plan</TabsTrigger>
-              <TabsTrigger value="logs">Logs</TabsTrigger>
-              <TabsTrigger value="progress">Progress</TabsTrigger>
-              <TabsTrigger value="checkins">Check-ins</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="baseline">Baseline</TabsTrigger>
-              <TabsTrigger value="habits">Habits</TabsTrigger>
-            </TabsList>
-            <TabsContent value="overview">
-              <PtClientOverviewTab />
-            </TabsContent>
-            <TabsContent value="plan">
-              <PtClientPlanTab
-                templatesQuery={templatesQuery}
-                upcomingQuery={upcomingQuery}
-                selectedTemplateId={selectedTemplateId}
-                scheduledDate={scheduledDate}
-                assignStatus={assignStatus}
-                lastSetByWorkoutExercise={lastSetByWorkoutExercise}
-                onTemplateChange={setSelectedTemplateId}
-                onDateChange={setScheduledDate}
-                onAssign={handleAssignWorkout}
-                onEdit={openEditDialog}
-                onDelete={(id) => {
-                  setEditWorkoutId(id);
-                  setDeleteOpen(true);
-                }}
-                onEditLoads={(id) => {
-                  setSelectedAssignedWorkoutId(id);
-                  setLoadsOpen(true);
-                  setLoadsError(null);
-                }}
-                onStatusChange={handleStatusUpdate}
-              />
-            </TabsContent>
-            <TabsContent value="logs">
-              <PtClientLogsTab />
-            </TabsContent>
-            <TabsContent value="progress">
-              <PtClientProgressTab />
-            </TabsContent>
-            <TabsContent value="checkins">
-              <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
-            </TabsContent>
-            <TabsContent value="messages">
-              <PtClientMessagesTab />
-            </TabsContent>
-            <TabsContent value="notes">
-              <PtClientNotesTab />
-            </TabsContent>
-            <TabsContent value="baseline">
-              <PtClientBaselineTab
-                baselineEntryQuery={baselineEntryQuery}
-                baselineMetricsQuery={baselineMetricsQuery}
-                baselineMarkersQuery={baselineMarkersQuery}
-                baselinePhotosQuery={baselinePhotosQuery}
-                baselineNotes={baselineNotes}
-                baselineNotesStatus={baselineNotesStatus}
-                baselineNotesMessage={baselineNotesMessage}
-                baselinePhotoMap={baselinePhotoMap}
-                onNotesChange={setBaselineNotes}
-                onNotesSave={handleBaselineNotesSave}
-              />
-            </TabsContent>
-            <TabsContent value="habits">
-              <PtClientHabitsTab
-                habitsQuery={habitsQuery}
-                habitLogByDateQuery={habitLogByDateQuery}
-                selectedHabitDate={selectedHabitDate}
-                onSelectHabitDate={setSelectedHabitDate}
-                habitStreak={habitStreak}
-                habitTrends={habitTrends}
-                lastHabitLogDate={lastHabitLogDate}
-              />
-            </TabsContent>
-          </Tabs>
-
-          {(workspaceQuery.error ||
-            templatesQuery.error ||
-            upcomingQuery.error ||
-            coachActivityQuery.error ||
-            habitsQuery.error ||
-            habitLogByDateQuery.error ||
-            baselineEntryQuery.error ||
-            baselineMetricsQuery.error ||
-            baselineMarkersQuery.error ||
-            baselinePhotosQuery.error ||
-            checkinsQuery.error ||
-            clientQuery.error ||
-            assignStatus === "error") && (
-            <Alert className="border-destructive/30">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                {assignStatus === "error" && assignMessage
-                  ? assignMessage
-                  : getFriendlyErrorMessage()}
-                {isDev ? (
-                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                    {[
-                      workspaceQuery.error,
-                      templatesQuery.error,
-                      upcomingQuery.error,
-                      workoutSessionsQuery.error,
-                      workoutSetLogsQuery.error,
-                      coachActivityQuery.error,
-                      habitsQuery.error,
-                      habitLogByDateQuery.error,
-                      baselineEntryQuery.error,
-                      baselineMetricsQuery.error,
-                      baselineMarkersQuery.error,
-                      baselinePhotosQuery.error,
-                      checkinsQuery.error,
-                      clientQuery.error,
-                    ]
+            <div className="mx-auto w-full max-w-[1400px] px-6 py-6">
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/90 px-5 py-5 shadow-sm backdrop-blur">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                  {getInitials(clientSnapshot?.display_name)}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold tracking-tight">
+                      {clientSnapshot?.display_name ?? "Client profile"}
+                    </h2>
+                    <StatusPill status={clientSnapshot?.status ?? "active"} />
+                    {lastSeen ? (
+                      <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
+                    ) : null}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
                       .filter(Boolean)
-                      .map((error, index) => {
-                        const details = getErrorDetails(error);
-                        return (
-                          <div key={`${index}-${details.message}`}>
-                            {details.code ? `${details.code}: ` : ""}
-                            {details.message}
-                          </div>
-                        );
-                      })}
-                  </div>
-                ) : null}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {assignStatus !== "error" && assignMessage ? (
-            <Alert className="border-border">
-              <AlertTitle>Update</AlertTitle>
-              <AlertDescription>{assignMessage}</AlertDescription>
-            </Alert>
-          ) : null}
-        </div>
-
-        <div className="lg:col-span-4 space-y-6">
-          <DashboardCard
-            title="Client Overview"
-            subtitle="Key details and profile status."
-            action={
-              <Button size="sm" variant="secondary" onClick={() => setActiveTab("baseline")}>
-                Edit profile
-              </Button>
-            }
-          >
-            {clientSnapshot ? (
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Status</span>
-                  <StatusPill status={clientSnapshot.status ?? "active"} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Goal</span>
-                  <span>{clientSnapshot.goal ?? "Not set"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Training</span>
-                  <span>{clientSnapshot.training_type ?? "Not set"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Timezone</span>
-                  <span>{clientSnapshot.timezone ?? "Not set"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Joined</span>
-                  <span>{joinedLabel ?? "--"}</span>
+                      .join(" • ") || "Training plan overview"}
+                    {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
+                  </p>
                 </div>
               </div>
-            ) : (
-              <EmptyState title="No client data" description="Profile details are unavailable." />
-            )}
-          </DashboardCard>
-
-          <DashboardCard title="Today Tasks" subtitle="Coach to-dos for today.">
-            <div className="space-y-2">
-              {todayTasks.map((task) => (
-                <label
-                  key={task.id}
-                  className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+                  onClick={() => handleQuickAction("")}
                 >
-                  <span
-                    className={cn(
-                      "font-medium",
-                      task.done ? "text-muted-foreground line-through" : "text-foreground"
-                    )}
-                  >
-                    {task.label}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={task.done}
-                    onChange={() => toggleTask(task.id)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                </label>
-              ))}
-            </div>
-          </DashboardCard>
-
-          <DashboardCard title="Upcoming" subtitle="Next 7 days sessions.">
-            {upcomingQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
+                  Message
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    handleQuickAction(
+                      "Quick favor: please update your profile details so I can refine your plan."
+                    )
+                  }
+                >
+                  Request check-in
+                </Button>
+                <Button variant="secondary" onClick={() => setActiveTab("plan")}>
+                  Assign workout
+                </Button>
+                <Button variant="ghost" size="icon" aria-label="More actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
               </div>
-            ) : upcomingSessionsNext7.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingSessionsNext7.slice(0, 5).map((workout) => (
-                  <div
-                    key={workout.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">
-                        {workout.workout_template?.name ?? "Workout"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {workout.scheduled_date
-                          ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : "Scheduled"}
-                      </p>
+            </div>
+          </div>
+
+          <div className="col-span-12">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="Adherence"
+                value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
+                helper="Last 7 days"
+                icon={Sparkles}
+                sparkline={<MiniSparkline />}
+              />
+              <StatCard
+                label="Consistency streak"
+                value={habitStreak > 0 ? `${habitStreak}d` : "--"}
+                helper="Habit streak"
+                icon={Rocket}
+                sparkline={<MiniSparkline />}
+              />
+              <StatCard
+                label="Check-in status"
+                value={checkinStatus ?? "--"}
+                helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
+                icon={CalendarDays}
+                sparkline={<MiniSparkline />}
+              />
+              <StatCard
+                label="Last workout"
+                value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
+                helper={lastWorkoutStatus ?? "No workouts"}
+                icon={Sparkles}
+                sparkline={<MiniSparkline />}
+              />
+            </div>
+          </div>
+
+          <div className="col-span-12 lg:col-span-8 space-y-6">
+            <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="sticky top-24 z-10 flex w-full flex-wrap gap-2 rounded-xl border border-border/70 bg-card/80 p-2">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="plan">Plan</TabsTrigger>
+                <TabsTrigger value="logs">Logs</TabsTrigger>
+                <TabsTrigger value="progress">Progress</TabsTrigger>
+                <TabsTrigger value="checkins">Check-ins</TabsTrigger>
+                <TabsTrigger value="messages">Messages</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="baseline">Baseline</TabsTrigger>
+                <TabsTrigger value="habits">Habits</TabsTrigger>
+              </TabsList>
+              <TabsContent value="overview">
+                <PtClientOverviewTab />
+              </TabsContent>
+              <TabsContent value="plan">
+                <PtClientPlanTab
+                  templatesQuery={templatesQuery}
+                  upcomingQuery={upcomingQuery}
+                  selectedTemplateId={selectedTemplateId}
+                  scheduledDate={scheduledDate}
+                  assignStatus={assignStatus}
+                  lastSetByWorkoutExercise={lastSetByWorkoutExercise}
+                  onTemplateChange={setSelectedTemplateId}
+                  onDateChange={setScheduledDate}
+                  onAssign={handleAssignWorkout}
+                  onEdit={openEditDialog}
+                  onDelete={(id) => {
+                    setEditWorkoutId(id);
+                    setDeleteOpen(true);
+                  }}
+                  onEditLoads={(id) => {
+                    setSelectedAssignedWorkoutId(id);
+                    setLoadsOpen(true);
+                    setLoadsError(null);
+                  }}
+                  onStatusChange={handleStatusUpdate}
+                />
+              </TabsContent>
+              <TabsContent value="logs">
+                <PtClientLogsTab />
+              </TabsContent>
+              <TabsContent value="progress">
+                <PtClientProgressTab />
+              </TabsContent>
+              <TabsContent value="checkins">
+                <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+              </TabsContent>
+              <TabsContent value="messages">
+                <PtClientMessagesTab />
+              </TabsContent>
+              <TabsContent value="notes">
+                <PtClientNotesTab />
+              </TabsContent>
+              <TabsContent value="baseline">
+                <PtClientBaselineTab
+                  baselineEntryQuery={baselineEntryQuery}
+                  baselineMetricsQuery={baselineMetricsQuery}
+                  baselineMarkersQuery={baselineMarkersQuery}
+                  baselinePhotosQuery={baselinePhotosQuery}
+                  baselineNotes={baselineNotes}
+                  baselineNotesStatus={baselineNotesStatus}
+                  baselineNotesMessage={baselineNotesMessage}
+                  baselinePhotoMap={baselinePhotoMap}
+                  onNotesChange={setBaselineNotes}
+                  onNotesSave={handleBaselineNotesSave}
+                />
+              </TabsContent>
+              <TabsContent value="habits">
+                <PtClientHabitsTab
+                  habitsQuery={habitsQuery}
+                  habitLogByDateQuery={habitLogByDateQuery}
+                  selectedHabitDate={selectedHabitDate}
+                  onSelectHabitDate={setSelectedHabitDate}
+                  habitStreak={habitStreak}
+                  habitTrends={habitTrends}
+                  lastHabitLogDate={lastHabitLogDate}
+                />
+              </TabsContent>
+            </Tabs>
+
+            {(workspaceQuery.error ||
+              templatesQuery.error ||
+              upcomingQuery.error ||
+              coachActivityQuery.error ||
+              habitsQuery.error ||
+              habitLogByDateQuery.error ||
+              baselineEntryQuery.error ||
+              baselineMetricsQuery.error ||
+              baselineMarkersQuery.error ||
+              baselinePhotosQuery.error ||
+              checkinsQuery.error ||
+              clientQuery.error ||
+              assignStatus === "error") && (
+              <Alert className="border-destructive/30">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>
+                  {assignStatus === "error" && assignMessage
+                    ? assignMessage
+                    : getFriendlyErrorMessage()}
+                  {isDev ? (
+                    <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {[
+                        workspaceQuery.error,
+                        templatesQuery.error,
+                        upcomingQuery.error,
+                        workoutSessionsQuery.error,
+                        workoutSetLogsQuery.error,
+                        coachActivityQuery.error,
+                        habitsQuery.error,
+                        habitLogByDateQuery.error,
+                        baselineEntryQuery.error,
+                        baselineMetricsQuery.error,
+                        baselineMarkersQuery.error,
+                        baselinePhotosQuery.error,
+                        checkinsQuery.error,
+                        clientQuery.error,
+                      ]
+                        .filter(Boolean)
+                        .map((error, index) => {
+                          const details = getErrorDetails(error);
+                          return (
+                            <div key={`${index}-${details.message}`}>
+                              {details.code ? `${details.code}: ` : ""}
+                              {details.message}
+                            </div>
+                          );
+                        })}
                     </div>
-                    <Badge
-                      variant={
-                        workout.status === "completed"
-                          ? "success"
-                          : workout.status === "skipped"
-                          ? "danger"
-                          : "muted"
-                      }
-                    >
-                      {workout.status ?? "planned"}
-                    </Badge>
+                  ) : null}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {assignStatus !== "error" && assignMessage ? (
+              <Alert className="border-border">
+                <AlertTitle>Update</AlertTitle>
+                <AlertDescription>{assignMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+
+          <div className="col-span-12 lg:col-span-4 space-y-6">
+            <DashboardCard
+              title="Client Overview"
+              subtitle="Key details and profile status."
+              action={
+                <Button size="sm" variant="secondary" onClick={() => setActiveTab("baseline")}>
+                  Edit profile
+                </Button>
+              }
+            >
+              {clientSnapshot ? (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <StatusPill status={clientSnapshot.status ?? "active"} />
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Goal</span>
+                    <span>{clientSnapshot.goal ?? "Not set"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Training</span>
+                    <span>{clientSnapshot.training_type ?? "Not set"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Timezone</span>
+                    <span>{clientSnapshot.timezone ?? "Not set"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Joined</span>
+                    <span>{joinedLabel ?? "--"}</span>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState title="No client data" description="Profile details are unavailable." />
+              )}
+            </DashboardCard>
+
+            <PtClientScheduleCard
+              clientId={clientId ?? null}
+              workspaceId={workspaceQuery.data ?? null}
+              timezone={clientSnapshot?.timezone ?? null}
+              scheduleStartKey={scheduleStartKey}
+              scheduleEndKey={scheduleEndKey}
+              onAssign={(dateKey) => {
+                setScheduledDate(dateKey);
+                setActiveTab("plan");
+              }}
+              onReschedule={handleRescheduleWorkout}
+              onDelete={handleOpenDeleteDialog}
+              onStatusChange={handleStatusUpdate}
+            />
+
+            <DashboardCard title="Today Tasks" subtitle="Coach to-dos for today.">
+              <div className="space-y-2">
+                {todayTasks.map((task) => (
+                  <label
+                    key={task.id}
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
+                  >
+                    <span
+                      className={cn(
+                        "font-medium",
+                        task.done ? "text-muted-foreground line-through" : "text-foreground"
+                      )}
+                    >
+                      {task.label}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={task.done}
+                      onChange={() => toggleTask(task.id)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                  </label>
                 ))}
               </div>
-            ) : (
-              <EmptyState title="No upcoming sessions" description="Nothing scheduled yet." />
-            )}
-          </DashboardCard>
+            </DashboardCard>
 
-          <DashboardCard title="Recent activity" subtitle="Last 5 coach actions.">
-            {coachActivityQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : coachActivityQuery.data && coachActivityQuery.data.length > 0 ? (
-              <div className="space-y-2 text-sm">
-                {coachActivityQuery.data.slice(0, 5).map((entry) => {
-                  const createdLabel = entry.created_at
-                    ? new Date(entry.created_at).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })
-                    : "today";
-                  return (
+            <DashboardCard title="Upcoming" subtitle="Next 7 days sessions.">
+              {upcomingQuery.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : upcomingSessionsNext7.length > 0 ? (
+                <div className="space-y-3">
+                  {upcomingSessionsNext7.slice(0, 5).map((workout) => (
                     <div
-                      key={entry.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                      key={workout.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
                     >
-                      <span className="font-medium">{getCoachActionLabel(entry.action)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} - {createdLabel}
-                      </span>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {workout.workout_template?.name ?? "Workout"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {workout.scheduled_date
+                            ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "Scheduled"}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          workout.status === "completed"
+                            ? "success"
+                            : workout.status === "skipped"
+                            ? "danger"
+                            : "muted"
+                        }
+                      >
+                        {workout.status ?? "planned"}
+                      </Badge>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState title="No recent activity" description="No actions logged yet." />
-            )}
-          </DashboardCard>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title="No upcoming sessions" description="Nothing scheduled yet." />
+              )}
+            </DashboardCard>
+
+            <DashboardCard title="Recent activity" subtitle="Last 5 coach actions.">
+              {coachActivityQuery.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : coachActivityQuery.data && coachActivityQuery.data.length > 0 ? (
+                <div className="space-y-2 text-sm">
+                  {coachActivityQuery.data.slice(0, 5).map((entry) => {
+                    const createdLabel = entry.created_at
+                      ? new Date(entry.created_at).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })
+                      : "today";
+                    return (
+                      <div
+                        key={entry.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                      >
+                        <span className="font-medium">{getCoachActionLabel(entry.action)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} - {createdLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyState title="No recent activity" description="No actions logged yet." />
+              )}
+            </DashboardCard>
+          </div>
         </div>
       </div>
-    </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[480px]">
@@ -1720,6 +1784,254 @@ export function PtClientDetailPage() {
 
 
 
+
+function PtClientScheduleCard({
+  clientId,
+  workspaceId,
+  timezone,
+  scheduleStartKey,
+  scheduleEndKey,
+  onAssign,
+  onReschedule,
+  onDelete,
+  onStatusChange,
+}: {
+  clientId: string | null;
+  workspaceId: string | null;
+  timezone: string | null;
+  scheduleStartKey: string;
+  scheduleEndKey: string;
+  onAssign: (dateKey: string) => void;
+  onReschedule: (id: string, dateKey: string) => void;
+  onDelete: (id: string) => void;
+  onStatusChange: (id: string, status: "completed" | "skipped") => void;
+}) {
+  const [selectedKey, setSelectedKey] = useState(scheduleStartKey);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDate, setEditDate] = useState(scheduleStartKey);
+
+  useEffect(() => {
+    setSelectedKey(scheduleStartKey);
+  }, [scheduleStartKey]);
+
+  const scheduleQuery = useQuery({
+    queryKey: ["pt-client-schedule-week", clientId, workspaceId, scheduleStartKey, scheduleEndKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workouts")
+        .select(
+          "id, scheduled_date, status, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
+        )
+        .eq("client_id", clientId ?? "")
+        .gte("scheduled_date", scheduleStartKey)
+        .lte("scheduled_date", scheduleEndKey)
+        .order("scheduled_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const weekRows = useMemo(() => {
+    const rows = Array.from({ length: 7 }).map((_, idx) => {
+      const key = addDaysToDateString(scheduleStartKey, idx);
+      const match =
+        scheduleQuery.data?.find((item) => item.scheduled_date === key) ?? null;
+      return { key, workout: match };
+    });
+    return rows;
+  }, [scheduleQuery.data, scheduleStartKey]);
+
+  const selectedRow = weekRows.find((row) => row.key === selectedKey) ?? weekRows[0];
+  const selectedWorkout = selectedRow?.workout ?? null;
+  const selectedStatus = selectedWorkout?.status ?? (selectedWorkout ? "planned" : "rest");
+
+  const formatLabel = (key: string) => {
+    const [year, month, day] = key.split("-").map(Number);
+    if (!year || !month || !day) return key;
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      timeZone: timezone ?? undefined,
+    });
+  };
+
+  const formatWeekday = (key: string) => {
+    const [year, month, day] = key.split("-").map(Number);
+    if (!year || !month || !day) return key;
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      timeZone: timezone ?? undefined,
+    });
+  };
+
+  const formatDayNumber = (key: string) => {
+    const [year, month, day] = key.split("-").map(Number);
+    if (!year || !month || !day) return "";
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("en-US", {
+      day: "numeric",
+      timeZone: timezone ?? undefined,
+    });
+  };
+
+  return (
+    <DashboardCard title="Schedule (7 days)" subtitle="Planned sessions and recovery">
+      {scheduleQuery.isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-10 w-full" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="overflow-hidden rounded-xl border border-border bg-background/40">
+            <div className="grid grid-cols-2 border-b border-border/60 sm:grid-cols-4 md:grid-cols-7">
+              {weekRows.map((row) => (
+                <div
+                  key={`${row.key}-header`}
+                  className="border-r border-border/50 px-3 py-2 text-xs text-muted-foreground last:border-r-0"
+                >
+                  <div className="font-semibold text-foreground">{formatWeekday(row.key)}</div>
+                  <div className="text-sm font-semibold">{formatDayNumber(row.key)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7">
+              {weekRows.map((row) => {
+                const workout = row.workout;
+                const status = workout?.status ?? (workout ? "planned" : "rest");
+                const title = workout?.workout_template?.name ?? "Rest Day";
+                const isSelected = row.key === selectedKey;
+                return (
+                  <button
+                    key={row.key}
+                    type="button"
+                    onClick={() => setSelectedKey(row.key)}
+                    className={cn(
+                      "min-h-[110px] min-w-0 border-r border-border/50 px-3 py-3 text-left transition last:border-r-0",
+                      isSelected
+                        ? "bg-primary/10"
+                        : "bg-background/30 hover:bg-muted/40"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="truncate text-sm font-semibold">
+                          {workout ? title : "Rest Day"}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {workout?.workout_template?.workout_type_tag ?? "Recovery / Mobility"}
+                        </p>
+                      </div>
+                      <StatusPill status={status} />
+                    </div>
+                    <div className="mt-3">
+                      {workout ? (
+                        <div className="text-xs text-muted-foreground">
+                          Scheduled
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="text-sm">+</span> Add
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-muted/20 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Selected day</p>
+                <p className="text-sm font-semibold">{formatLabel(selectedRow.key)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedWorkout?.workout_template?.name ?? "Recovery / Mobility"}
+                </p>
+              </div>
+              <StatusPill status={selectedStatus} />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedWorkout ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setEditDate(selectedRow.key);
+                      setEditOpen(true);
+                    }}
+                  >
+                    Edit date
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onDelete(selectedWorkout.id)}>
+                    Delete assignment
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onStatusChange(selectedWorkout.id, "completed")}
+                  >
+                    Mark completed
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onStatusChange(selectedWorkout.id, "skipped")}
+                  >
+                    Mark skipped
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" onClick={() => onAssign(selectedRow.key)}>
+                  Assign workout
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Edit scheduled date</DialogTitle>
+            <DialogDescription>Reschedule this workout for a different day.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground">Date</label>
+            <Input
+              type="date"
+              value={editDate}
+              onChange={(event) => setEditDate(event.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedWorkout) {
+                  onReschedule(selectedWorkout.id, editDate);
+                }
+                setEditOpen(false);
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </DashboardCard>
+  );
+}
 
 function PtClientOverviewTab() {
   return (
@@ -2503,5 +2815,6 @@ function PtClientPlaceholderTab({ title }: { title: string }) {
     </Card>
   );
 }
+
 
 
