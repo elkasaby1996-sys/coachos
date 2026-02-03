@@ -100,6 +100,9 @@ export function PtWorkoutTemplateBuilderPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
+  const [deleteTemplateStatus, setDeleteTemplateStatus] = useState<"idle" | "deleting">("idle");
+  const [deleteTemplateError, setDeleteTemplateError] = useState<string | null>(null);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<TemplateExerciseRow | null>(null);
@@ -258,6 +261,25 @@ export function PtWorkoutTemplateBuilderPage() {
     await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
   };
 
+  const handleTemplateDelete = async () => {
+    if (!templateId) return;
+    setDeleteTemplateStatus("deleting");
+    setDeleteTemplateError(null);
+
+    const { error } = await supabase.from("workout_templates").delete().eq("id", templateId);
+    if (error) {
+      const details = getErrorDetails(error);
+      setDeleteTemplateError(`${details.code}: ${details.message}`);
+      setDeleteTemplateStatus("idle");
+      return;
+    }
+
+    setDeleteTemplateStatus("idle");
+    setDeleteTemplateOpen(false);
+    await queryClient.invalidateQueries({ queryKey: ["workout-templates", workspaceId] });
+    navigate("/pt/templates/workouts");
+  };
+
   const handleMove = async (row: TemplateExerciseRow, direction: "up" | "down") => {
     if (!templateId) return;
     const rows = templateExercisesQuery.data ?? [];
@@ -334,6 +356,9 @@ export function PtWorkoutTemplateBuilderPage() {
           <Badge variant="muted">{formatWorkoutTypeTag(template?.workout_type_tag)}</Badge>
           <Button variant="secondary" onClick={() => navigate("/pt/templates/workouts")}>
             Back to templates
+          </Button>
+          <Button variant="ghost" onClick={() => setDeleteTemplateOpen(true)}>
+            Delete template
           </Button>
         </div>
       </div>
@@ -662,6 +687,43 @@ export function PtWorkoutTemplateBuilderPage() {
             </Button>
             <Button variant="destructive" disabled={actionStatus === "saving"} onClick={handleDelete}>
               {actionStatus === "saving" ? "Removing..." : "Remove"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteTemplateOpen}
+        onOpenChange={(open) => {
+          setDeleteTemplateOpen(open);
+          if (!open) {
+            setDeleteTemplateError(null);
+            setDeleteTemplateStatus("idle");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete template</DialogTitle>
+            <DialogDescription>
+              This will delete the template and all dependent workouts and exercises.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteTemplateError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              {deleteTemplateError}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleteTemplateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteTemplateStatus === "deleting"}
+              onClick={handleTemplateDelete}
+            >
+              {deleteTemplateStatus === "deleting" ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

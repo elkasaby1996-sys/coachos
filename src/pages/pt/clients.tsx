@@ -6,6 +6,7 @@ import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Input } from "../../components/ui/input";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
@@ -21,13 +22,6 @@ type ClientRecord = {
 };
 
 const stages = ["All", "Onboarding", "Active", "At Risk", "Paused"];
-
-const statusDot: Record<string, string> = {
-  Active: "bg-success",
-  "At Risk": "bg-danger",
-  Onboarding: "bg-warning",
-  Paused: "bg-muted-foreground",
-};
 
 export function PtClientsPage() {
   const { user } = useAuth();
@@ -129,45 +123,103 @@ export function PtClientsPage() {
       };
     });
   }, [clients]);
+
+  const stats = useMemo(() => {
+    const total = formattedClients.length;
+    const active = formattedClients.filter((client) => client.status === "Active").length;
+    const onboarding = formattedClients.filter((client) => client.status === "Onboarding").length;
+    const atRisk = formattedClients.filter((client) => client.status === "At Risk").length;
+    return [
+      { label: "Total clients", value: total, tone: "text-foreground" },
+      { label: "Active", value: active, tone: "text-success" },
+      { label: "Pending onboard", value: onboarding, tone: "text-warning" },
+      { label: "Needs attention", value: atRisk, tone: "text-danger" },
+    ];
+  }, [formattedClients]);
+
+  const getStatusVariant = (status: string) => {
+    if (status === "Active") return "success";
+    if (status === "Onboarding") return "warning";
+    if (status === "At Risk") return "danger";
+    return "muted";
+  };
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+
   return (
     <div className="space-y-8">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-        PT CLIENTS PAGE ACTIVE (v1)
-      </div>
       {error ? (
         <Alert className="border-destructive/30">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Clients pipeline</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Clients</h2>
           <p className="text-sm text-muted-foreground">
-            Track onboarding, adherence, and at-risk athletes.
+            Manage your client roster and track their progress.
           </p>
         </div>
-        <InviteClientDialog trigger={<Button>Create invite code</Button>} />
+        <InviteClientDialog trigger={<Button>Add client</Button>} />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        {stats.map((stat) => (
+          <Card key={stat.label} className="border-border/70 bg-card/80">
+            <CardHeader className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                {stat.label}
+              </p>
+              <CardTitle className={`text-2xl ${stat.tone}`}>{stat.value}</CardTitle>
+            </CardHeader>
+          </Card>
+        ))}
       </div>
 
       <Tabs defaultValue="All">
-        <TabsList className="flex w-full flex-wrap justify-start gap-2 bg-transparent p-0">
-          {stages.map((stage) => (
-            <TabsTrigger key={stage} value={stage} className="border border-border bg-muted/50">
-              {stage}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-3 lg:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Input
+                placeholder="Search clients..."
+                className="h-9 rounded-full bg-secondary/40 pl-10"
+              />
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                ⌕
+              </span>
+            </div>
+            <Button variant="secondary" size="sm">
+              All status
+            </Button>
+            <Button variant="secondary" size="sm">
+              Sort by name
+            </Button>
+          </div>
+          <TabsList className="flex w-full flex-wrap justify-start gap-2 bg-transparent p-0 lg:w-auto">
+            {stages.map((stage) => (
+              <TabsTrigger key={stage} value={stage} className="border border-border/70 bg-muted/50">
+                {stage}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {stages.map((stage) => {
           const filtered =
             stage === "All" ? formattedClients : formattedClients.filter((client) => client.status === stage);
           return (
             <TabsContent key={stage} value={stage}>
-              <Card>
+              <Card className="border-border/70 bg-card/80">
                 <CardHeader className="flex flex-row items-start justify-between gap-4">
                   <div>
-                    <CardTitle>{stage === "All" ? "All clients" : `${stage} clients`}</CardTitle>
+                    <CardTitle>{stage === "All" ? "Client roster" : `${stage} clients`}</CardTitle>
                     <p className="text-sm text-muted-foreground">
                       {stage === "All"
                         ? "Keep an eye on adherence and outreach."
@@ -189,31 +241,45 @@ export function PtClientsPage() {
                     filtered.map((client) => (
                       <div
                         key={client.id}
-                        className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-background p-4 transition hover:-translate-y-0.5 hover:shadow-lg"
+                        className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background/40 p-4 transition hover:border-border hover:bg-muted/40"
                       >
-                        <div className="min-w-[220px]">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`h-2.5 w-2.5 rounded-full ${statusDot[client.status] ?? "bg-muted"}`}
-                            />
-                            <p className="text-sm font-semibold">{client.name}</p>
+                        <div className="flex min-w-[220px] items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/70 text-xs font-semibold text-foreground">
+                            {getInitials(client.name)}
                           </div>
-                          <p className="text-xs text-muted-foreground">{client.status}</p>
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold">{client.name}</p>
+                              <Badge variant={getStatusVariant(client.status)} className="text-[10px] uppercase">
+                                {client.status}
+                              </Badge>
+                              {client.tags.slice(0, 1).map((tag) => (
+                                <Badge key={tag} variant="secondary" className="text-[10px]">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {client.tags.slice(1, 2)[0] ?? "No program assigned"}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex flex-1 flex-wrap items-center gap-2">
-                          {client.tags.map((tag) => (
-                            <Badge key={tag} variant="muted">
-                              {tag}
-                            </Badge>
-                          ))}
+                        <div className="flex flex-1 items-center gap-4 text-xs text-muted-foreground">
+                          <div>
+                            <p>Last workout</p>
+                            <p className="text-foreground">{client.lastWorkout}</p>
+                          </div>
+                          <div>
+                            <p>Last check-in</p>
+                            <p className="text-foreground">{client.lastCheckIn}</p>
+                          </div>
                         </div>
-                        <div className="min-w-[160px] text-xs text-muted-foreground">
-                          <p>Last workout: {client.lastWorkout}</p>
-                          <p>Last check-in: {client.lastCheckIn}</p>
-                        </div>
-                        <div className="min-w-[120px] text-right">
+                        <div className="min-w-[140px] text-right">
                           <p className="text-xs text-muted-foreground">Adherence</p>
-                          <p className="text-sm font-semibold text-accent">{client.adherence}</p>
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            <p className="text-sm font-semibold text-accent">{client.adherence}</p>
+                            <div className="h-6 w-16 rounded-full border border-border/70 bg-muted/30" />
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button asChild size="sm" variant="secondary">

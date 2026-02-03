@@ -470,8 +470,8 @@ export function PtExerciseLibraryPage() {
           <DialogHeader>
             <DialogTitle>Delete exercise</DialogTitle>
             <DialogDescription>
-              This will remove the exercise from your library. It will not delete any
-              template exercise rows.
+              This will remove the exercise from your library and delete dependent template
+              and workout rows.
             </DialogDescription>
           </DialogHeader>
           {actionError ? (
