@@ -9,6 +9,8 @@ import { NoWorkspacePage } from "../pages/public/no-workspace";
 import { PtDashboardPage } from "../pages/pt/dashboard";
 import { PtClientsPage } from "../pages/pt/clients";
 import { PtClientDetailPage } from "../pages/pt/client-detail";
+import { PtProgramsPage } from "../pages/pt/programs";
+import { PtProgramBuilderPage } from "../pages/pt/program-builder";
 import { PtWorkoutTemplatesPage } from "../pages/pt/workout-templates";
 import { PtWorkoutTemplateBuilderPage } from "../pages/pt/workout-template-builder";
 import { PtCheckinTemplatesPage } from "../pages/pt/checkin-templates";
@@ -162,6 +164,9 @@ export function App() {
         <Route path="dashboard" element={<PtDashboardPage />} />
         <Route path="clients" element={<PtClientsPage />} />
         <Route path="clients/:clientId" element={<PtClientDetailPage />} />
+        <Route path="programs" element={<PtProgramsPage />} />
+        <Route path="programs/new" element={<PtProgramBuilderPage />} />
+        <Route path="programs/:id/edit" element={<PtProgramBuilderPage />} />
         <Route path="templates/workouts" element={<PtWorkoutTemplatesPage />} />
         <Route path="templates/workouts/:id" element={<PtWorkoutTemplateBuilderPage />} />
         <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />

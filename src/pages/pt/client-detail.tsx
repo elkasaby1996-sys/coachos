@@ -53,6 +53,13 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const diffDays = (start: string, end: string) => {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const diff = endDate.getTime() - startDate.getTime();
+  return Math.max(0, Math.floor(diff / 86400000));
+};
+
 const getErrorMessage = (error: unknown) => getSupabaseErrorMessage(error);
 
 const getFriendlyErrorMessage = () => "Unable to load data right now. Please try again.";
@@ -199,6 +206,31 @@ type WorkoutSetLogRow = {
   created_at: string | null;
 };
 
+type ProgramTemplateRow = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  weeks_count: number | null;
+  is_active: boolean | null;
+  updated_at: string | null;
+};
+
+type ClientProgramRow = {
+  id: string;
+  start_date: string | null;
+  program_template_id: string | null;
+  program_template: { id: string; name: string | null; weeks_count: number | null } | null;
+};
+
+type ProgramOverrideRow = {
+  id: string;
+  override_date: string | null;
+  workout_template_id: string | null;
+  is_rest: boolean | null;
+  notes: string | null;
+  workout_template: { id: string; name: string | null } | null;
+};
+
 type CheckinAnswerRow = {
   id: string;
   answer_text: string | null;
@@ -260,6 +292,7 @@ export function PtClientDetailPage() {
     return () => clearTimeout(timeout);
   }, [toastMessage]);
 
+
   const setActiveTab = (tab: (typeof tabs)[number]) => {
     setActive(tab);
   };
@@ -267,6 +300,17 @@ export function PtClientDetailPage() {
   const [scheduledDate, setScheduledDate] = useState(() => formatDateKey(new Date()));
   const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">("idle");
   const [assignMessage, setAssignMessage] = useState<string | null>(null);
+  const [selectedProgramId, setSelectedProgramId] = useState("");
+  const [programStartDate, setProgramStartDate] = useState(() => formatDateKey(new Date()));
+  const [programStatus, setProgramStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [programMessage, setProgramMessage] = useState<string | null>(null);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideDate, setOverrideDate] = useState<string | null>(null);
+  const [overrideTemplateId, setOverrideTemplateId] = useState("");
+  const [overrideIsRest, setOverrideIsRest] = useState(false);
+  const [overrideNotes, setOverrideNotes] = useState("");
+  const [overrideStatus, setOverrideStatus] = useState<"idle" | "saving">("idle");
+  const [overrideError, setOverrideError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editWorkoutId, setEditWorkoutId] = useState<string | null>(null);
@@ -693,6 +737,112 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workout-today", clientId, todayKey],
     });
     await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+  };
+
+  const handleApplyProgram = async () => {
+    if (!clientId || !selectedProgramId || !programStartDate) return;
+    setProgramStatus("saving");
+    setProgramMessage(null);
+
+    const { error } = await supabase.rpc("apply_program_to_client", {
+      p_client_id: clientId,
+      p_program_template_id: selectedProgramId,
+      p_start_date: programStartDate,
+      p_horizon_days: 14,
+    });
+
+    if (error) {
+      const details = getErrorDetails(error);
+      const message = details.message ?? getErrorMessage(error);
+      setProgramStatus("error");
+      setProgramMessage(message);
+      setToastVariant("error");
+      setToastMessage(message);
+      return;
+    }
+
+    setProgramStatus("idle");
+    setProgramMessage("Program applied.");
+    setToastVariant("success");
+    setToastMessage("Program applied.");
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["client-program-active", clientId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-overrides", activeProgramQuery.data?.id, todayKey, planEndKey],
+    });
+  };
+
+  const handleOpenOverride = (date: string) => {
+    const override = (programOverridesQuery.data ?? []).find(
+      (row) => row.override_date === date
+    );
+    setOverrideDate(date);
+    setOverrideTemplateId(override?.workout_template_id ?? "");
+    setOverrideIsRest(override?.is_rest ?? false);
+    setOverrideNotes(override?.notes ?? "");
+    setOverrideError(null);
+    setOverrideOpen(true);
+  };
+
+  const handleSaveOverride = async () => {
+    if (!clientId || !overrideDate) return;
+    const activeProgram = activeProgramQuery.data;
+    if (!activeProgram?.id || !activeProgram.program_template_id) {
+      setOverrideError("Apply a program before adding overrides.");
+      return;
+    }
+    if (!overrideIsRest && !overrideTemplateId) {
+      setOverrideError("Select a workout template or mark a rest day.");
+      return;
+    }
+
+    setOverrideStatus("saving");
+    setOverrideError(null);
+
+    const { error } = await supabase.from("client_program_overrides").upsert(
+      {
+        client_program_id: activeProgram.id,
+        override_date: overrideDate,
+        workout_template_id: overrideIsRest ? null : overrideTemplateId,
+        is_rest: overrideIsRest,
+        notes: overrideNotes.trim() || null,
+      },
+      { onConflict: "client_program_id,override_date" }
+    );
+
+    if (error) {
+      const details = getErrorDetails(error);
+      setOverrideError(`${details.code}: ${details.message}`);
+      setOverrideStatus("idle");
+      return;
+    }
+
+    const anchorStart = activeProgram.start_date ?? programStartDate ?? todayKey;
+    const horizonDays = Math.max(14, diffDays(anchorStart, todayKey) + 14);
+    const { error: applyError } = await supabase.rpc("apply_program_to_client", {
+      p_client_id: clientId,
+      p_program_template_id: activeProgram.program_template_id,
+      p_start_date: anchorStart,
+      p_horizon_days: horizonDays,
+    });
+    if (applyError) {
+      const details = getErrorDetails(applyError);
+      setOverrideError(`${details.code}: ${details.message}`);
+      setOverrideStatus("idle");
+      return;
+    }
+
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-overrides", activeProgram.id, todayKey, planEndKey],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    });
+
+    setOverrideStatus("idle");
+    setOverrideOpen(false);
   };
 
   const handleStatusUpdate = async (id: string, status: "completed" | "skipped") => {
@@ -1281,14 +1431,25 @@ export function PtClientDetailPage() {
               <TabsContent value="plan">
                 <PtClientPlanTab
                   templatesQuery={templatesQuery}
+                  programTemplatesQuery={programTemplatesQuery}
+                  activeProgram={activeProgramQuery.data ?? null}
+                  programOverrides={programOverridesQuery.data ?? []}
                   upcomingQuery={upcomingQuery}
                   selectedTemplateId={selectedTemplateId}
                   scheduledDate={scheduledDate}
                   assignStatus={assignStatus}
+                  selectedProgramId={selectedProgramId}
+                  programStartDate={programStartDate}
+                  programStatus={programStatus}
+                  programMessage={programMessage}
                   lastSetByWorkoutExercise={lastSetByWorkoutExercise}
                   onTemplateChange={setSelectedTemplateId}
                   onDateChange={setScheduledDate}
                   onAssign={handleAssignWorkout}
+                  onProgramChange={setSelectedProgramId}
+                  onProgramDateChange={setProgramStartDate}
+                  onApplyProgram={handleApplyProgram}
+                  onOpenOverride={handleOpenOverride}
                   onEdit={openEditDialog}
                   onDelete={(id) => {
                     setEditWorkoutId(id);
@@ -1832,6 +1993,68 @@ function PtClientScheduleCard({
     },
   });
 
+  const programTemplatesQuery = useQuery({
+    queryKey: ["program-templates", workspaceQuery.data],
+    enabled: !!workspaceQuery.data && active === "plan",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("program_templates")
+        .select("id, name, description, weeks_count, is_active, updated_at")
+        .eq("workspace_id", workspaceQuery.data ?? "")
+        .eq("is_active", true)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ProgramTemplateRow[];
+    },
+  });
+
+  const activeProgramQuery = useQuery({
+    queryKey: ["client-program-active", clientId],
+    enabled: !!clientId && active === "plan",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_programs")
+        .select(
+          "id, start_date, program_template_id, program_template:program_templates(id, name, weeks_count)"
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClientProgramRow | null;
+    },
+  });
+
+  const programOverridesQuery = useQuery({
+    queryKey: ["client-program-overrides", activeProgramQuery.data?.id, todayKey, planEndKey],
+    enabled: !!activeProgramQuery.data?.id && active === "plan",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_program_overrides")
+        .select(
+          "id, override_date, workout_template_id, is_rest, notes, workout_template:workout_templates(id, name)"
+        )
+        .eq("client_program_id", activeProgramQuery.data?.id ?? "")
+        .gte("override_date", todayKey)
+        .lte("override_date", planEndKey)
+        .order("override_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as ProgramOverrideRow[];
+    },
+  });
+
+  useEffect(() => {
+    if (!activeProgramQuery.data) return;
+    if (!selectedProgramId && activeProgramQuery.data.program_template_id) {
+      setSelectedProgramId(activeProgramQuery.data.program_template_id);
+    }
+    if (activeProgramQuery.data.start_date) {
+      setProgramStartDate(activeProgramQuery.data.start_date);
+    }
+  }, [activeProgramQuery.data, selectedProgramId]);
+
   const weekRows = useMemo(() => {
     const rows = Array.from({ length: 7 }).map((_, idx) => {
       const key = addDaysToDateString(scheduleStartKey, idx);
@@ -2025,6 +2248,95 @@ function PtClientScheduleCard({
               }}
             >
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={overrideOpen}
+        onOpenChange={(open) => {
+          setOverrideOpen(open);
+          if (!open) {
+            setOverrideDate(null);
+            setOverrideTemplateId("");
+            setOverrideIsRest(false);
+            setOverrideNotes("");
+            setOverrideError(null);
+            setOverrideStatus("idle");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Program override</DialogTitle>
+            <DialogDescription>
+              Adjust the program day for {overrideDate ?? "this date"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Date</label>
+              <Input type="date" value={overrideDate ?? ""} readOnly />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Workout template
+              </label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={overrideTemplateId}
+                disabled={overrideIsRest}
+                onChange={(event) => {
+                  setOverrideTemplateId(event.target.value);
+                  if (event.target.value) {
+                    setOverrideIsRest(false);
+                  }
+                }}
+              >
+                <option value="">Select a template</option>
+                {templatesQuery.data?.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}{" "}
+                    {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={overrideIsRest}
+                onChange={(event) => {
+                  setOverrideIsRest(event.target.checked);
+                  if (event.target.checked) {
+                    setOverrideTemplateId("");
+                  }
+                }}
+              />
+              Mark as rest day
+            </label>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Notes</label>
+              <textarea
+                className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={overrideNotes}
+                onChange={(event) => setOverrideNotes(event.target.value)}
+                placeholder="Optional notes for the client."
+              />
+            </div>
+            {overrideError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {overrideError}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setOverrideOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={overrideStatus === "saving"} onClick={handleSaveOverride}>
+              {overrideStatus === "saving" ? "Saving..." : "Save override"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2570,20 +2882,34 @@ function PtClientHabitsTab({
 
 function PtClientPlanTab({
   templatesQuery,
+  programTemplatesQuery,
+  activeProgram,
+  programOverrides,
   upcomingQuery,
   selectedTemplateId,
   scheduledDate,
   assignStatus,
+  selectedProgramId,
+  programStartDate,
+  programStatus,
+  programMessage,
   lastSetByWorkoutExercise,
   onTemplateChange,
   onDateChange,
   onAssign,
+  onProgramChange,
+  onProgramDateChange,
+  onApplyProgram,
+  onOpenOverride,
   onEdit,
   onDelete,
   onEditLoads,
   onStatusChange,
 }: {
   templatesQuery: QueryResult<Array<{ id: string; name: string | null; workout_type_tag: string | null }>>;
+  programTemplatesQuery: QueryResult<ProgramTemplateRow[]>;
+  activeProgram: ClientProgramRow | null;
+  programOverrides: ProgramOverrideRow[];
   upcomingQuery: QueryResult<
     Array<{
       id: string;
@@ -2598,10 +2924,18 @@ function PtClientPlanTab({
   selectedTemplateId: string;
   scheduledDate: string;
   assignStatus: "idle" | "saving" | "error";
+  selectedProgramId: string;
+  programStartDate: string;
+  programStatus: "idle" | "saving" | "error";
+  programMessage: string | null;
   lastSetByWorkoutExercise: Map<string, WorkoutSetLogRow>;
   onTemplateChange: (value: string) => void;
   onDateChange: (value: string) => void;
   onAssign: () => void;
+  onProgramChange: (value: string) => void;
+  onProgramDateChange: (value: string) => void;
+  onApplyProgram: () => void;
+  onOpenOverride: (date: string) => void;
   onEdit: (workout: {
     id: string;
     scheduled_date: string | null;
@@ -2612,110 +2946,210 @@ function PtClientPlanTab({
   onEditLoads: (id: string) => void;
   onStatusChange: (id: string, status: "planned" | "completed" | "skipped") => void;
 }) {
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] xl:col-start-1">
-      <Card className="border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle>Schedule workout</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Assign a template to this client with a planned date.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {templatesQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Workout template
-                </label>
-                <select
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={selectedTemplateId}
-                  onChange={(event) => onTemplateChange(event.target.value)}
-                >
-                  <option value="">Select a template</option>
-                  {templatesQuery.data?.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}{" "}
-                      {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">Date</label>
-                <input
-                  type="date"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={scheduledDate}
-                  onChange={(event) => onDateChange(event.target.value)}
-                />
-              </div>
-              <Button
-                className="w-full"
-                disabled={assignStatus === "saving" || !selectedTemplateId || !scheduledDate}
-                onClick={onAssign}
-              >
-                {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+  const overrideByDate = useMemo(() => {
+    const map = new Map<string, ProgramOverrideRow>();
+    programOverrides.forEach((row) => {
+      if (row.override_date) map.set(row.override_date, row);
+    });
+    return map;
+  }, [programOverrides]);
 
-      <Card className="border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle>Upcoming</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Scheduled sessions for the next 14 days.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {upcomingQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : upcomingQuery.data && upcomingQuery.data.length > 0 ? (
-            upcomingQuery.data.map((workout) => (
-              <div
-                key={workout.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
-              >
-                <div>
-                  <div className="text-sm font-semibold">
-                    {workout.workout_template?.name ?? "Workout"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {workout.scheduled_date
-                      ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
-                          weekday: "short",
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "Scheduled"}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={
-                      workout.status === "completed"
-                        ? "success"
-                        : workout.status === "skipped"
-                        ? "danger"
-                        : "muted"
-                    }
+  return (
+    <div className="space-y-6 xl:col-start-1">
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle>Program assignment</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Apply a multi-week program and materialize the next 14 days.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {programTemplatesQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : programTemplatesQuery.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {getErrorDetails(programTemplatesQuery.error).code}:{" "}
+                {getErrorDetails(programTemplatesQuery.error).message}
+              </div>
+            ) : programTemplatesQuery.data && programTemplatesQuery.data.length === 0 ? (
+              <EmptyState
+                title="No program templates yet."
+                description="Create a program template to start scheduling multi-week blocks."
+              />
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Program template
+                  </label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={selectedProgramId}
+                    onChange={(event) => onProgramChange(event.target.value)}
                   >
-                    {workout.status ?? "planned"}
-                  </Badge>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => onEditLoads(workout.id)}>
+                    <option value="">Select a program</option>
+                    {programTemplatesQuery.data?.map((program) => (
+                      <option key={program.id} value={program.id}>
+                        {program.name ?? "Program"} {program.weeks_count ? `· ${program.weeks_count}w` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Start date</label>
+                  <input
+                    type="date"
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={programStartDate}
+                    onChange={(event) => onProgramDateChange(event.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={programStatus === "saving" || !selectedProgramId || !programStartDate}
+                  onClick={onApplyProgram}
+                >
+                  {programStatus === "saving"
+                    ? "Applying..."
+                    : "Apply program (next 14 days)"}
+                </Button>
+                {programMessage ? (
+                  <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                    {programMessage}
+                  </div>
+                ) : null}
+                {activeProgram ? (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <span>Active program</span>
+                      <StatusPill status="active" />
+                    </div>
+                    <div className="mt-2 text-sm text-foreground">
+                      {activeProgram.program_template?.name ?? "Program"}
+                    </div>
+                    <div className="mt-1">
+                      Start date {activeProgram.start_date ?? "—"}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle>Schedule workout</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Assign a one-off template to this client.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {templatesQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Workout template
+                  </label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={selectedTemplateId}
+                    onChange={(event) => onTemplateChange(event.target.value)}
+                  >
+                    <option value="">Select a template</option>
+                    {templatesQuery.data?.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}{" "}
+                        {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                  <input
+                    type="date"
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={scheduledDate}
+                    onChange={(event) => onDateChange(event.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={assignStatus === "saving" || !selectedTemplateId || !scheduledDate}
+                  onClick={onAssign}
+                >
+                  {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <DashboardCard
+        title="Schedule (next 14 days)"
+        subtitle="Planned sessions, recovery, and overrides."
+      >
+        {upcomingQuery.isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : upcomingQuery.data && upcomingQuery.data.length > 0 ? (
+          <div className="space-y-3">
+            {upcomingQuery.data.map((workout) => {
+              const dateKey = workout.scheduled_date ?? "";
+              const override = overrideByDate.get(dateKey);
+              const title =
+                workout.workout_template?.name ??
+                (workout.status === "recovery" ? "Rest day" : "Workout");
+              const dateLabel = workout.scheduled_date
+                ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "Scheduled";
+              const canOverride = Boolean(workout.scheduled_date);
+              return (
+                <div
+                  key={workout.id}
+                  className="rounded-xl border border-border/70 bg-background/40 p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold">{title}</div>
+                      <div className="text-xs text-muted-foreground">{dateLabel}</div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={override ? "secondary" : "muted"} className="text-[10px] uppercase">
+                        {override ? "Override" : "Scheduled"}
+                      </Badge>
+                      <StatusPill status={workout.status ?? "planned"} />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!canOverride}
+                      onClick={() => onOpenOverride(workout.scheduled_date ?? "")}
+                    >
+                      Override
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onEditLoads(workout.id)}>
                       Edit loads
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => onEdit(workout)}>
@@ -2739,49 +3173,49 @@ function PtClientPlanTab({
                       Skip
                     </Button>
                   </div>
+                  {workout.assigned_workout_exercises &&
+                  workout.assigned_workout_exercises.length > 0 ? (
+                    <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                      {workout.assigned_workout_exercises.map((row) => {
+                        const exerciseId = row.exercise?.id ?? "";
+                        const lastSet = lastSetByWorkoutExercise.get(
+                          `${workout.id}-${exerciseId}`
+                        );
+                        const performed =
+                          lastSet &&
+                          (typeof lastSet.reps === "number" || typeof lastSet.weight === "number")
+                            ? `${lastSet.reps ?? "-"} reps @ ${lastSet.weight ?? "-"}`
+                            : "No sets logged";
+                        const label = row.exercise?.name ?? "Exercise";
+                        const sets = row.sets ? `${row.sets}x` : "";
+                        const reps = row.reps ?? "";
+                        const repLine = sets || reps ? `${sets}${reps}` : "";
+                        return (
+                          <div key={row.id} className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-foreground">{label}</span>
+                            <span>
+                              {repLine ? `${repLine} - ` : ""}
+                              {performed}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      No exercises in template yet.
+                    </div>
+                  )}
                 </div>
-                {workout.assigned_workout_exercises &&
-                workout.assigned_workout_exercises.length > 0 ? (
-                  <div className="mt-3 space-y-2 text-xs text-muted-foreground">
-                    {workout.assigned_workout_exercises.map((row) => {
-                      const exerciseId = row.exercise?.id ?? "";
-                      const lastSet = lastSetByWorkoutExercise.get(
-                        `${workout.id}-${exerciseId}`
-                      );
-                      const performed =
-                        lastSet &&
-                        (typeof lastSet.reps === "number" || typeof lastSet.weight === "number")
-                          ? `${lastSet.reps ?? "-"} reps @ ${lastSet.weight ?? "-"}`
-                          : "No sets logged";
-                      const label = row.exercise?.name ?? "Exercise";
-                      const sets = row.sets ? `${row.sets}x` : "";
-                      const reps = row.reps ?? "";
-                      const repLine = sets || reps ? `${sets}${reps}` : "";
-                      return (
-                        <div key={row.id} className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-foreground">{label}</span>
-                          <span>
-                            {repLine ? `${repLine} - ` : ""}
-                            {performed}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    No exercises in template yet.
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-              No workouts scheduled for the next 14 days.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+            No workouts scheduled for the next 14 days.
+          </div>
+        )}
+      </DashboardCard>
     </div>
   );
 }

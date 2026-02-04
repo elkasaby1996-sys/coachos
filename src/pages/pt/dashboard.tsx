@@ -552,7 +552,7 @@ export function PtDashboardPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              onClick={() => navigate("/pt/programs")}
+              onClick={() => navigate("/pt/programs/new")}
               className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
             >
               <Plus className="h-4 w-4 text-primary" />

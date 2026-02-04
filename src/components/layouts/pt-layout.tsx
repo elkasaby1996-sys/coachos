@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   Bell,
   BookOpen,
+  CalendarDays,
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
@@ -34,6 +35,7 @@ import { LoadingScreen } from "../common/bootstrap-gate";
 const navItems = [
   { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
   { label: "Clients", to: "/pt/clients", icon: Users },
+  { label: "Programs", to: "/pt/programs", icon: CalendarDays },
   { label: "Workouts", to: "/pt/templates/workouts", icon: Dumbbell },
   { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
   { label: "Check-ins", to: "/pt/checkins/templates", icon: ClipboardList },
