@@ -14,6 +14,7 @@ import {
   ActiveExercisePanel,
   type ActiveExercise,
   type SetState,
+  type PreviousSetMap,
 } from "../../components/client/workout-session/ActiveExercisePanel";
 import {
   ExerciseNav,
@@ -178,6 +179,7 @@ export function ClientWorkoutRunPage() {
   });
 
   const workoutSession = workoutSessionQuery.data ?? null;
+  const workoutTemplateId = assignedWorkoutQuery.data?.workout_template?.id ?? null;
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", workoutId],
@@ -255,6 +257,46 @@ export function ClientWorkoutRunPage() {
         )
         .eq("workout_session_id", workoutSession?.id ?? "")
         .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as WorkoutSetLogRow[];
+    },
+  });
+
+  const previousSessionQuery = useQuery({
+    queryKey: ["workout-session-prev", clientId, workoutTemplateId, workoutSession?.id],
+    enabled: !!clientId && !!workoutTemplateId,
+    queryFn: async () => {
+      let query = supabase
+        .from("workout_sessions")
+        .select("id, completed_at, assigned_workout:assigned_workouts(workout_template_id)")
+        .eq("client_id", clientId ?? "")
+        .not("completed_at", "is", null)
+        .order("completed_at", { ascending: false })
+        .limit(5);
+
+      if (workoutSession?.id) {
+        query = query.neq("id", workoutSession.id);
+      }
+
+      if (workoutTemplateId) {
+        query = query.eq("assigned_workout.workout_template_id", workoutTemplateId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data?.[0] as { id: string } | null) ?? null;
+    },
+  });
+
+  const previousLogsQuery = useQuery({
+    queryKey: ["workout-set-logs-prev", previousSessionQuery.data?.id],
+    enabled: !!previousSessionQuery.data?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_set_logs")
+        .select("exercise_id, set_number, reps, weight, is_completed")
+        .eq("workout_session_id", previousSessionQuery.data?.id ?? "")
+        .eq("is_completed", true);
       if (error) throw error;
       return (data ?? []) as WorkoutSetLogRow[];
     },
@@ -361,6 +403,8 @@ export function ClientWorkoutRunPage() {
     exercisesQuery.error,
     templateExercisesQuery.error,
     setLogsQuery.error,
+    previousSessionQuery.error,
+    previousLogsQuery.error,
   ].filter(Boolean);
 
   const handleSetChange = (
@@ -562,6 +606,24 @@ export function ClientWorkoutRunPage() {
       })),
     [exercises]
   );
+  const previousMap = useMemo(() => {
+    const map = new Map<string, PreviousSetMap>();
+    (previousLogsQuery.data ?? []).forEach((log) => {
+      if (!log.exercise_id || typeof log.set_number !== "number") return;
+      if (!map.has(log.exercise_id)) {
+        map.set(log.exercise_id, new Map());
+      }
+      const exerciseMap = map.get(log.exercise_id);
+      if (!exerciseMap) return;
+      if (!exerciseMap.has(log.set_number)) {
+        exerciseMap.set(log.set_number, {
+          weight: typeof log.weight === "number" ? log.weight : null,
+          reps: typeof log.reps === "number" ? log.reps : null,
+        });
+      }
+    });
+    return map;
+  }, [previousLogsQuery.data]);
 
   if (!workoutId) {
     return (
@@ -690,6 +752,9 @@ export function ClientWorkoutRunPage() {
                     isSaving={saveIndex === activeExerciseIndex}
                     onSave={() => handleSaveExercise(activeExerciseIndex)}
                     onSetChange={handleSetChange}
+                    previousBySet={
+                      previousMap.get(activeExercise.exerciseId) ?? new Map()
+                    }
                   />
                 ) : null}
           {workoutSession ? (

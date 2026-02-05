@@ -21,6 +21,8 @@ export type ActiveExercise = {
   sets: SetState[];
 };
 
+export type PreviousSetMap = Map<number, { weight: number | null; reps: number | null }>;
+
 export function ActiveExercisePanel({
   exercise,
   exerciseIndex,
@@ -28,6 +30,7 @@ export function ActiveExercisePanel({
   isSaving,
   onSave,
   onSetChange,
+  previousBySet,
 }: {
   exercise: ActiveExercise;
   exerciseIndex: number;
@@ -40,6 +43,7 @@ export function ActiveExercisePanel({
     field: keyof SetState,
     value: string | boolean
   ) => void;
+  previousBySet: PreviousSetMap;
 }) {
   return (
     <DashboardCard
@@ -64,6 +68,7 @@ export function ActiveExercisePanel({
           exerciseIndex={exerciseIndex}
           canEdit={canEdit}
           onSetChange={onSetChange}
+          previousBySet={previousBySet}
         />
         <Button size="sm" variant="secondary" disabled={!canEdit || isSaving} onClick={onSave}>
           {isSaving ? "Saving..." : "Save sets"}
@@ -78,6 +83,7 @@ function ExerciseSetTable({
   exerciseIndex,
   canEdit,
   onSetChange,
+  previousBySet,
 }: {
   exercise: ActiveExercise;
   exerciseIndex: number;
@@ -88,6 +94,7 @@ function ExerciseSetTable({
     field: keyof SetState,
     value: string | boolean
   ) => void;
+  previousBySet: PreviousSetMap;
 }) {
   const unitLabel = exercise.weightUnit ?? "kg";
   return (
@@ -101,6 +108,11 @@ function ExerciseSetTable({
       </div>
       {exercise.sets.map((setItem, setIndex) => {
         const isDone = setItem.is_completed;
+        const previous = previousBySet.get(setIndex + 1);
+        const previousLabel =
+          previous && typeof previous.weight === "number" && typeof previous.reps === "number"
+            ? `${previous.weight}${unitLabel ? ` ${unitLabel}` : ""} × ${previous.reps}`
+            : "—";
         return (
           <div
             key={`${exercise.exerciseId}-${setIndex}`}
@@ -110,7 +122,7 @@ function ExerciseSetTable({
           >
             <span className="text-xs font-semibold text-muted-foreground">{setIndex + 1}</span>
             <span className={`text-xs text-muted-foreground ${isDone ? "line-through" : ""}`}>
-              {exercise.previousLabel ?? "—"}
+              {previousLabel}
             </span>
             <div className="flex items-center gap-2">
               <input
