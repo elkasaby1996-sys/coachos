@@ -8,7 +8,19 @@ import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { CalendarDays, MoreHorizontal, Rocket, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  Flame,
+  MessageCircle,
+  Moon,
+  MoreHorizontal,
+  Pencil,
+  Rocket,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -268,7 +280,7 @@ export function PtClientDetailPage() {
     if (tab && tabs.includes(tab as (typeof tabs)[number])) {
       return tab as (typeof tabs)[number];
     }
-    return "overview";
+    return "plan";
   }, [location.search]);
   const [active, setActive] = useState<(typeof tabs)[number]>(initialTab);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -304,6 +316,7 @@ export function PtClientDetailPage() {
   const [programStartDate, setProgramStartDate] = useState(() => formatDateKey(new Date()));
   const [programStatus, setProgramStatus] = useState<"idle" | "saving" | "error">("idle");
   const [programMessage, setProgramMessage] = useState<string | null>(null);
+  const [unassignStatus, setUnassignStatus] = useState<"idle" | "saving" | "error">("idle");
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
   const [overrideTemplateId, setOverrideTemplateId] = useState("");
@@ -348,11 +361,12 @@ export function PtClientDetailPage() {
       }
     >
   >([]);
-  const [todayTasks, setTodayTasks] = useState([
-    { id: "task-checkins", label: "Review check-ins", done: false },
-    { id: "task-messages", label: "Reply to messages", done: false },
-    { id: "task-program", label: "Adjust program", done: false },
+  const [clientTodos, setClientTodos] = useState([
+    { id: "client-task-checkins", label: "Review check-ins", done: false },
+    { id: "client-task-messages", label: "Reply to messages", done: false },
+    { id: "client-task-program", label: "Adjust program", done: false },
   ]);
+  const [todoInput, setTodoInput] = useState("");
 
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
@@ -428,6 +442,71 @@ export function PtClientDetailPage() {
     },
   });
 
+  const programTemplatesQuery = useQuery({
+    queryKey: ["program-templates", workspaceQuery.data],
+    enabled: !!workspaceQuery.data && active === "plan",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("program_templates")
+        .select("id, name, description, weeks_count, is_active, updated_at")
+        .eq("workspace_id", workspaceQuery.data ?? "")
+        .eq("is_active", true)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ProgramTemplateRow[];
+    },
+  });
+
+  const activeProgramQuery = useQuery({
+    queryKey: ["client-program-active", clientId],
+    enabled: !!clientId && active === "plan",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_programs")
+        .select(
+          "id, start_date, program_template_id, is_active, program_template:program_templates(id, name, weeks_count)"
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("is_active", true)
+        .order("is_active", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClientProgramRow | null;
+    },
+  });
+
+  const activeProgram = activeProgramQuery.data ?? null;
+
+  const programOverridesQuery = useQuery({
+    queryKey: ["client-program-overrides", activeProgram?.id, todayKey, planEndKey],
+    enabled: !!activeProgram?.id && active === "plan",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_program_overrides")
+        .select(
+          "id, override_date, workout_template_id, is_rest, notes, workout_template:workout_templates(id, name)"
+        )
+        .eq("client_program_id", activeProgram?.id ?? "")
+        .gte("override_date", todayKey)
+        .lte("override_date", planEndKey)
+        .order("override_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as ProgramOverrideRow[];
+    },
+  });
+
+  useEffect(() => {
+    if (!activeProgram) return;
+    if (!selectedProgramId && activeProgram.program_template_id) {
+      setSelectedProgramId(activeProgram.program_template_id);
+    }
+    if (activeProgram.start_date) {
+      setProgramStartDate(activeProgram.start_date);
+    }
+  }, [activeProgram, selectedProgramId]);
+
   const upcomingQuery = useQuery({
     queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     enabled: !!clientId && active === "plan",
@@ -435,7 +514,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag), assigned_workout_exercises(id, sort_order, sets, reps, exercise:exercises(id, name))"
+          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag), assigned_workout_exercises(id, sort_order, sets, reps, exercise:exercises(id, name))"
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
@@ -744,11 +823,11 @@ export function PtClientDetailPage() {
     setProgramStatus("saving");
     setProgramMessage(null);
 
-    const { error } = await supabase.rpc("apply_program_to_client", {
+    const { data, error } = await supabase.rpc("assign_program_to_client", {
       p_client_id: clientId,
-      p_program_template_id: selectedProgramId,
+      p_program_id: selectedProgramId,
       p_start_date: programStartDate,
-      p_horizon_days: 14,
+      p_days_ahead: 14,
     });
 
     if (error) {
@@ -762,16 +841,83 @@ export function PtClientDetailPage() {
     }
 
     setProgramStatus("idle");
-    setProgramMessage("Program applied.");
+    const updatedCount = typeof data === "number" ? data : null;
+    const successMessage = updatedCount
+      ? `Program assigned. ${updatedCount} day${updatedCount === 1 ? "" : "s"} scheduled.`
+      : "Program assigned.";
+    setProgramMessage(successMessage);
     setToastVariant("success");
-    setToastMessage("Program applied.");
+    setToastMessage(successMessage);
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({ queryKey: ["client-program-active", clientId] });
     await queryClient.invalidateQueries({
-      queryKey: ["client-program-overrides", activeProgramQuery.data?.id, todayKey, planEndKey],
+      queryKey: ["client-program-overrides", activeProgram?.id, todayKey, planEndKey],
     });
+  };
+
+  const handleUnassignProgram = async () => {
+    if (!clientId || !activeProgram?.id) return;
+    const confirmed = window.confirm("Unassign the active program for this client?");
+    if (!confirmed) return;
+    setUnassignStatus("saving");
+    setProgramMessage(null);
+    try {
+      if (activeProgram.program_template_id) {
+        const { error: deleteError } = await supabase
+          .from("assigned_workouts")
+          .delete()
+          .eq("client_id", clientId)
+          .eq("program_id", activeProgram.program_template_id)
+          .gte("scheduled_date", todayKey);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+      }
+
+      const { error: assignmentError } = await supabase
+        .from("client_program_assignments")
+        .update({ is_active: false })
+        .eq("client_id", clientId)
+        .eq("is_active", true);
+
+      if (assignmentError) {
+        throw assignmentError;
+      }
+
+      const { error: legacyError } = await supabase
+        .from("client_programs")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("client_id", clientId)
+        .eq("is_active", true);
+
+      if (legacyError && legacyError.code !== "42P01") {
+        throw legacyError;
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["client-program-active", clientId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["client-program-overrides", activeProgram.id, todayKey, planEndKey],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["assigned-workout-today", clientId, todayKey],
+      });
+      setProgramMessage("Program unassigned.");
+      setUnassignStatus("idle");
+    } catch (error) {
+      setUnassignStatus("error");
+      setProgramMessage(getErrorDetails(error).message);
+    }
   };
 
   const handleOpenOverride = (date: string) => {
@@ -788,7 +934,6 @@ export function PtClientDetailPage() {
 
   const handleSaveOverride = async () => {
     if (!clientId || !overrideDate) return;
-    const activeProgram = activeProgramQuery.data;
     if (!activeProgram?.id || !activeProgram.program_template_id) {
       setOverrideError("Apply a program before adding overrides.");
       return;
@@ -1111,13 +1256,16 @@ export function PtClientDetailPage() {
       .slice(0, 5);
   }, [checkinsQuery.data, habitsToday, todayKey]);
 
-  const upcomingSessionsNext7 = useMemo(() => {
-    if (!upcomingQuery.data || upcomingQuery.data.length === 0) return [];
-    const end = addDaysToDateString(todayKey, 7);
-    return upcomingQuery.data.filter(
-      (workout) => !workout.scheduled_date || workout.scheduled_date <= end
-    );
+  const todaySession = useMemo(() => {
+    return (upcomingQuery.data ?? []).find((workout) => workout.scheduled_date === todayKey) ?? null;
   }, [upcomingQuery.data, todayKey]);
+
+  const todaySessionStatus = todaySession?.status ?? "planned";
+  const todaySessionTitle =
+    todaySession?.workout_template?.name ??
+    (todaySession?.day_type === "rest" ? "Rest day" : "Workout");
+  const pendingCheckin = upcomingCheckins[0] ?? null;
+  const lastNoteSummary = baselineNotes.trim() ? baselineNotes.trim() : "No recent PT notes.";
 
   const baselinePhotoMap = useMemo(() => {
     const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
@@ -1310,9 +1458,21 @@ export function PtClientDetailPage() {
   }, [active, clientId, workspaceQuery.data, baselineEntryQuery.data]);
 
   const toggleTask = (taskId: string) => {
-    setTodayTasks((prev) =>
+    setClientTodos((prev) =>
       prev.map((task) => (task.id === taskId ? { ...task, done: !task.done } : task))
     );
+  };
+
+  const addTask = () => {
+    const next = todoInput.trim();
+    if (!next) return;
+    const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setClientTodos((prev) => [{ id, label: next, done: false }, ...prev]);
+    setTodoInput("");
+  };
+
+  const removeTask = (taskId: string) => {
+    setClientTodos((prev) => prev.filter((task) => task.id !== taskId));
   };
 
   return (
@@ -1412,98 +1572,197 @@ export function PtClientDetailPage() {
             </div>
           </div>
 
+          <div className="col-span-12">
+            <PtClientScheduleCard
+              clientId={clientId ?? null}
+              workspaceId={workspaceQuery.data ?? null}
+              timezone={clientSnapshot?.timezone ?? null}
+              todayKey={todayKey}
+              scheduleStartKey={scheduleStartKey}
+              scheduleEndKey={scheduleEndKey}
+              templatesQuery={templatesQuery}
+              overrideOpen={overrideOpen}
+              setOverrideOpen={setOverrideOpen}
+              overrideDate={overrideDate}
+              setOverrideDate={setOverrideDate}
+              overrideTemplateId={overrideTemplateId}
+              setOverrideTemplateId={setOverrideTemplateId}
+              overrideIsRest={overrideIsRest}
+              setOverrideIsRest={setOverrideIsRest}
+              overrideNotes={overrideNotes}
+              setOverrideNotes={setOverrideNotes}
+              overrideStatus={overrideStatus}
+              setOverrideStatus={setOverrideStatus}
+              overrideError={overrideError}
+              setOverrideError={setOverrideError}
+              onSaveOverride={handleSaveOverride}
+              onAssign={(dateKey) => {
+                setScheduledDate(dateKey);
+                setActiveTab("plan");
+              }}
+              onReschedule={handleRescheduleWorkout}
+              onDelete={handleOpenDeleteDialog}
+              onStatusChange={handleStatusUpdate}
+            />
+          </div>
+
           <div className="col-span-12 lg:col-span-8 space-y-6">
-            <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="sticky top-24 z-10 flex w-full flex-wrap gap-2 rounded-xl border border-border/70 bg-card/80 p-2">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="plan">Plan</TabsTrigger>
-                <TabsTrigger value="logs">Logs</TabsTrigger>
-                <TabsTrigger value="progress">Progress</TabsTrigger>
-                <TabsTrigger value="checkins">Check-ins</TabsTrigger>
-                <TabsTrigger value="messages">Messages</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
-                <TabsTrigger value="baseline">Baseline</TabsTrigger>
-                <TabsTrigger value="habits">Habits</TabsTrigger>
-              </TabsList>
-              <TabsContent value="overview">
-                <PtClientOverviewTab />
-              </TabsContent>
-              <TabsContent value="plan">
-                <PtClientPlanTab
-                  templatesQuery={templatesQuery}
-                  programTemplatesQuery={programTemplatesQuery}
-                  activeProgram={activeProgramQuery.data ?? null}
-                  programOverrides={programOverridesQuery.data ?? []}
-                  upcomingQuery={upcomingQuery}
-                  selectedTemplateId={selectedTemplateId}
-                  scheduledDate={scheduledDate}
-                  assignStatus={assignStatus}
-                  selectedProgramId={selectedProgramId}
-                  programStartDate={programStartDate}
-                  programStatus={programStatus}
-                  programMessage={programMessage}
-                  lastSetByWorkoutExercise={lastSetByWorkoutExercise}
-                  onTemplateChange={setSelectedTemplateId}
-                  onDateChange={setScheduledDate}
-                  onAssign={handleAssignWorkout}
-                  onProgramChange={setSelectedProgramId}
-                  onProgramDateChange={setProgramStartDate}
-                  onApplyProgram={handleApplyProgram}
-                  onOpenOverride={handleOpenOverride}
-                  onEdit={openEditDialog}
-                  onDelete={(id) => {
-                    setEditWorkoutId(id);
-                    setDeleteOpen(true);
-                  }}
-                  onEditLoads={(id) => {
-                    setSelectedAssignedWorkoutId(id);
-                    setLoadsOpen(true);
-                    setLoadsError(null);
-                  }}
-                  onStatusChange={handleStatusUpdate}
-                />
-              </TabsContent>
-              <TabsContent value="logs">
-                <PtClientLogsTab />
-              </TabsContent>
-              <TabsContent value="progress">
-                <PtClientProgressTab />
-              </TabsContent>
-              <TabsContent value="checkins">
-                <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
-              </TabsContent>
-              <TabsContent value="messages">
-                <PtClientMessagesTab />
-              </TabsContent>
-              <TabsContent value="notes">
-                <PtClientNotesTab />
-              </TabsContent>
-              <TabsContent value="baseline">
-                <PtClientBaselineTab
-                  baselineEntryQuery={baselineEntryQuery}
-                  baselineMetricsQuery={baselineMetricsQuery}
-                  baselineMarkersQuery={baselineMarkersQuery}
-                  baselinePhotosQuery={baselinePhotosQuery}
-                  baselineNotes={baselineNotes}
-                  baselineNotesStatus={baselineNotesStatus}
-                  baselineNotesMessage={baselineNotesMessage}
-                  baselinePhotoMap={baselinePhotoMap}
-                  onNotesChange={setBaselineNotes}
-                  onNotesSave={handleBaselineNotesSave}
-                />
-              </TabsContent>
-              <TabsContent value="habits">
-                <PtClientHabitsTab
-                  habitsQuery={habitsQuery}
-                  habitLogByDateQuery={habitLogByDateQuery}
-                  selectedHabitDate={selectedHabitDate}
-                  onSelectHabitDate={setSelectedHabitDate}
-                  habitStreak={habitStreak}
-                  habitTrends={habitTrends}
-                  lastHabitLogDate={lastHabitLogDate}
-                />
-              </TabsContent>
-            </Tabs>
+            <DashboardCard title="Today’s Focus" subtitle="What needs attention right now.">
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Today
+                      </p>
+                      <p className="text-lg font-semibold text-foreground">
+                        {todaySessionTitle}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {todaySession?.day_type === "rest"
+                          ? "Planned recovery day"
+                          : todaySession
+                          ? "Workout scheduled"
+                          : "No workout scheduled"}
+                      </p>
+                    </div>
+                    <StatusPill status={todaySessionStatus} />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      Check-in
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {pendingCheckin ? "Pending this week" : "No pending check-in"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {pendingCheckin?.week_ending_saturday ?? "All caught up"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      Last PT note
+                    </p>
+                    <p className="text-sm text-foreground">{lastNoteSummary}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => setActiveTab("checkins")}>
+                    Review check-in
+                  </Button>
+                  <Button variant="secondary" onClick={() => setActiveTab("plan")}>
+                    Edit plan
+                  </Button>
+                  <Button
+                    onClick={() => handleQuickAction("Quick check-in: how did today’s session feel?")}
+                  >
+                    Message
+                  </Button>
+                </div>
+              </div>
+            </DashboardCard>
+
+            <DashboardCard
+              title="Client Workbench"
+              subtitle="Plan, habits, and progress organized by tab."
+              className="bg-card/90"
+            >
+              <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
+                <div className="rounded-lg bg-card/80 p-2">
+                  <TabsList className="flex h-auto w-full flex-wrap gap-2 rounded-lg bg-transparent p-0">
+                  <TabsTrigger value="plan">Plan</TabsTrigger>
+                  <TabsTrigger value="habits">Habits</TabsTrigger>
+                  <TabsTrigger value="progress">Progress</TabsTrigger>
+                  <TabsTrigger value="logs">Logs</TabsTrigger>
+                  <TabsTrigger value="checkins">Check-ins</TabsTrigger>
+                  <TabsTrigger value="messages">Messages</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="baseline">Baseline</TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="plan">
+                  <PtClientPlanTab
+                    templatesQuery={templatesQuery}
+                    programTemplatesQuery={programTemplatesQuery}
+                    activeProgram={activeProgram}
+                    programOverrides={programOverridesQuery.data ?? []}
+                    upcomingQuery={upcomingQuery}
+                    selectedTemplateId={selectedTemplateId}
+                    scheduledDate={scheduledDate}
+                    assignStatus={assignStatus}
+                    selectedProgramId={selectedProgramId}
+                    programStartDate={programStartDate}
+                    programStatus={programStatus}
+                    programMessage={programMessage}
+                    unassignStatus={unassignStatus}
+                    lastSetByWorkoutExercise={lastSetByWorkoutExercise}
+                    onTemplateChange={setSelectedTemplateId}
+                    onDateChange={setScheduledDate}
+                    onAssign={handleAssignWorkout}
+                    onProgramChange={setSelectedProgramId}
+                    onProgramDateChange={setProgramStartDate}
+                    onApplyProgram={handleApplyProgram}
+                    onUnassignProgram={handleUnassignProgram}
+                    onOpenOverride={handleOpenOverride}
+                    onEdit={openEditDialog}
+                    onDelete={(id) => {
+                      setEditWorkoutId(id);
+                      setDeleteOpen(true);
+                    }}
+                    onEditLoads={(id) => {
+                      setSelectedAssignedWorkoutId(id);
+                      setLoadsOpen(true);
+                      setLoadsError(null);
+                    }}
+                    onStatusChange={handleStatusUpdate}
+                  />
+                </TabsContent>
+                <TabsContent value="habits">
+                  <PtClientHabitsTab
+                    habitsQuery={habitsQuery}
+                    habitLogByDateQuery={habitLogByDateQuery}
+                    selectedHabitDate={selectedHabitDate}
+                    onSelectHabitDate={setSelectedHabitDate}
+                    habitStreak={habitStreak}
+                    habitTrends={habitTrends}
+                    lastHabitLogDate={lastHabitLogDate}
+                  />
+                </TabsContent>
+                <TabsContent value="progress">
+                  <PtClientProgressTab />
+                </TabsContent>
+                <TabsContent value="logs">
+                  <PtClientLogsTab />
+                </TabsContent>
+                <TabsContent value="checkins">
+                  <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+                </TabsContent>
+                <TabsContent value="messages">
+                  <PtClientMessagesTab />
+                </TabsContent>
+                <TabsContent value="notes">
+                  <PtClientNotesTab />
+                </TabsContent>
+                <TabsContent value="baseline">
+                  <PtClientBaselineTab
+                    baselineEntryQuery={baselineEntryQuery}
+                    baselineMetricsQuery={baselineMetricsQuery}
+                    baselineMarkersQuery={baselineMarkersQuery}
+                    baselinePhotosQuery={baselinePhotosQuery}
+                    baselineNotes={baselineNotes}
+                    baselineNotesStatus={baselineNotesStatus}
+                    baselineNotesMessage={baselineNotesMessage}
+                    baselinePhotoMap={baselinePhotoMap}
+                    onNotesChange={setBaselineNotes}
+                    onNotesSave={handleBaselineNotesSave}
+                  />
+                </TabsContent>
+              </Tabs>
+            </DashboardCard>
 
             {(workspaceQuery.error ||
               templatesQuery.error ||
@@ -1598,97 +1857,79 @@ export function PtClientDetailPage() {
                     <span className="text-muted-foreground">Joined</span>
                     <span>{joinedLabel ?? "--"}</span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Active program</span>
+                    <span>{activeProgram?.program_template?.name ?? "None"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Program start</span>
+                    <span>{activeProgram?.start_date ?? "--"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Weekly check-in</span>
+                    <span>{checkinStatus ?? "--"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Last workout</span>
+                    <span>{lastWorkoutStatus ?? "--"}</span>
+                  </div>
                 </div>
               ) : (
                 <EmptyState title="No client data" description="Profile details are unavailable." />
               )}
             </DashboardCard>
 
-            <PtClientScheduleCard
-              clientId={clientId ?? null}
-              workspaceId={workspaceQuery.data ?? null}
-              timezone={clientSnapshot?.timezone ?? null}
-              scheduleStartKey={scheduleStartKey}
-              scheduleEndKey={scheduleEndKey}
-              onAssign={(dateKey) => {
-                setScheduledDate(dateKey);
-                setActiveTab("plan");
-              }}
-              onReschedule={handleRescheduleWorkout}
-              onDelete={handleOpenDeleteDialog}
-              onStatusChange={handleStatusUpdate}
-            />
-
-            <DashboardCard title="Today Tasks" subtitle="Coach to-dos for today.">
-              <div className="space-y-2">
-                {todayTasks.map((task) => (
-                  <label
-                    key={task.id}
-                    className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
-                  >
-                    <span
-                      className={cn(
-                        "font-medium",
-                        task.done ? "text-muted-foreground line-through" : "text-foreground"
-                      )}
-                    >
-                      {task.label}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={() => toggleTask(task.id)}
-                      className="h-4 w-4 accent-primary"
-                    />
-                  </label>
-                ))}
-              </div>
-            </DashboardCard>
-
-            <DashboardCard title="Upcoming" subtitle="Next 7 days sessions.">
-              {upcomingQuery.isLoading ? (
+            <DashboardCard title="Todo List" subtitle="Create tasks for this client.">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={todoInput}
+                    onChange={(event) => setTodoInput(event.target.value)}
+                    placeholder="Add a new task"
+                  />
+                  <Button onClick={addTask} disabled={!todoInput.trim()}>
+                    Add
+                  </Button>
+                </div>
                 <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : upcomingSessionsNext7.length > 0 ? (
-                <div className="space-y-3">
-                  {upcomingSessionsNext7.slice(0, 5).map((workout) => (
-                    <div
-                      key={workout.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {workout.workout_template?.name ?? "Workout"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {workout.scheduled_date
-                            ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
-                                weekday: "short",
-                                month: "short",
-                                day: "numeric",
-                              })
-                            : "Scheduled"}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          workout.status === "completed"
-                            ? "success"
-                            : workout.status === "skipped"
-                            ? "danger"
-                            : "muted"
-                        }
-                      >
-                        {workout.status ?? "planned"}
-                      </Badge>
+                  {clientTodos.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                      No tasks yet.
                     </div>
-                  ))}
+                  ) : (
+                    clientTodos.map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
+                      >
+                        <label className="flex flex-1 items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={task.done}
+                            onChange={() => toggleTask(task.id)}
+                            className="h-4 w-4 accent-primary"
+                          />
+                          <span
+                            className={cn(
+                              "font-medium",
+                              task.done ? "text-muted-foreground line-through" : "text-foreground"
+                            )}
+                          >
+                            {task.label}
+                          </span>
+                        </label>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeTask(task.id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))
+                  )}
                 </div>
-              ) : (
-                <EmptyState title="No upcoming sessions" description="Nothing scheduled yet." />
-              )}
+              </div>
             </DashboardCard>
 
             <DashboardCard title="Recent activity" subtitle="Last 5 coach actions.">
@@ -1950,8 +2191,25 @@ function PtClientScheduleCard({
   clientId,
   workspaceId,
   timezone,
+  todayKey,
   scheduleStartKey,
   scheduleEndKey,
+  templatesQuery,
+  overrideOpen,
+  setOverrideOpen,
+  overrideDate,
+  setOverrideDate,
+  overrideTemplateId,
+  setOverrideTemplateId,
+  overrideIsRest,
+  setOverrideIsRest,
+  overrideNotes,
+  setOverrideNotes,
+  overrideStatus,
+  setOverrideStatus,
+  overrideError,
+  setOverrideError,
+  onSaveOverride,
   onAssign,
   onReschedule,
   onDelete,
@@ -1960,8 +2218,25 @@ function PtClientScheduleCard({
   clientId: string | null;
   workspaceId: string | null;
   timezone: string | null;
+  todayKey: string;
   scheduleStartKey: string;
   scheduleEndKey: string;
+  templatesQuery: QueryResult<Array<{ id: string; name: string | null; workout_type_tag: string | null }>>;
+  overrideOpen: boolean;
+  setOverrideOpen: (open: boolean) => void;
+  overrideDate: string | null;
+  setOverrideDate: (value: string | null) => void;
+  overrideTemplateId: string;
+  setOverrideTemplateId: (value: string) => void;
+  overrideIsRest: boolean;
+  setOverrideIsRest: (value: boolean) => void;
+  overrideNotes: string;
+  setOverrideNotes: (value: string) => void;
+  overrideStatus: "idle" | "saving";
+  setOverrideStatus: (value: "idle" | "saving") => void;
+  overrideError: string | null;
+  setOverrideError: (value: string | null) => void;
+  onSaveOverride: () => void;
   onAssign: (dateKey: string) => void;
   onReschedule: (id: string, dateKey: string) => void;
   onDelete: (id: string) => void;
@@ -1970,6 +2245,8 @@ function PtClientScheduleCard({
   const [selectedKey, setSelectedKey] = useState(scheduleStartKey);
   const [editOpen, setEditOpen] = useState(false);
   const [editDate, setEditDate] = useState(scheduleStartKey);
+  const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
+  const [dayNote, setDayNote] = useState("");
 
   useEffect(() => {
     setSelectedKey(scheduleStartKey);
@@ -1982,7 +2259,7 @@ function PtClientScheduleCard({
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, scheduled_date, status, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
+          "id, scheduled_date, status, day_type, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", scheduleStartKey)
@@ -1992,68 +2269,6 @@ function PtClientScheduleCard({
       return data ?? [];
     },
   });
-
-  const programTemplatesQuery = useQuery({
-    queryKey: ["program-templates", workspaceQuery.data],
-    enabled: !!workspaceQuery.data && active === "plan",
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("program_templates")
-        .select("id, name, description, weeks_count, is_active, updated_at")
-        .eq("workspace_id", workspaceQuery.data ?? "")
-        .eq("is_active", true)
-        .order("updated_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ProgramTemplateRow[];
-    },
-  });
-
-  const activeProgramQuery = useQuery({
-    queryKey: ["client-program-active", clientId],
-    enabled: !!clientId && active === "plan",
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_programs")
-        .select(
-          "id, start_date, program_template_id, program_template:program_templates(id, name, weeks_count)"
-        )
-        .eq("client_id", clientId ?? "")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data as ClientProgramRow | null;
-    },
-  });
-
-  const programOverridesQuery = useQuery({
-    queryKey: ["client-program-overrides", activeProgramQuery.data?.id, todayKey, planEndKey],
-    enabled: !!activeProgramQuery.data?.id && active === "plan",
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_program_overrides")
-        .select(
-          "id, override_date, workout_template_id, is_rest, notes, workout_template:workout_templates(id, name)"
-        )
-        .eq("client_program_id", activeProgramQuery.data?.id ?? "")
-        .gte("override_date", todayKey)
-        .lte("override_date", planEndKey)
-        .order("override_date", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as ProgramOverrideRow[];
-    },
-  });
-
-  useEffect(() => {
-    if (!activeProgramQuery.data) return;
-    if (!selectedProgramId && activeProgramQuery.data.program_template_id) {
-      setSelectedProgramId(activeProgramQuery.data.program_template_id);
-    }
-    if (activeProgramQuery.data.start_date) {
-      setProgramStartDate(activeProgramQuery.data.start_date);
-    }
-  }, [activeProgramQuery.data, selectedProgramId]);
 
   const weekRows = useMemo(() => {
     const rows = Array.from({ length: 7 }).map((_, idx) => {
@@ -2067,7 +2282,61 @@ function PtClientScheduleCard({
 
   const selectedRow = weekRows.find((row) => row.key === selectedKey) ?? weekRows[0];
   const selectedWorkout = selectedRow?.workout ?? null;
-  const selectedStatus = selectedWorkout?.status ?? (selectedWorkout ? "planned" : "rest");
+  const selectedStatus =
+    selectedWorkout?.day_type === "rest"
+      ? "rest day"
+      : selectedWorkout?.status ?? (selectedWorkout ? "planned" : "rest day");
+  const selectedTitle =
+    selectedWorkout?.day_type === "rest"
+      ? "Rest day"
+      : selectedWorkout?.workout_template?.name ?? "Workout";
+
+  const weeklyWorkouts = weekRows.filter(
+    (row) => row.workout && row.workout.day_type !== "rest"
+  );
+  const weeklyCompleted = weeklyWorkouts.filter(
+    (row) => row.workout?.status === "completed"
+  ).length;
+  const weeklyMissed = weeklyWorkouts.filter(
+    (row) => row.workout?.status === "skipped"
+  ).length;
+  const weeklyAdherence = weeklyWorkouts.length > 0
+    ? Math.round((weeklyCompleted / weeklyWorkouts.length) * 100)
+    : 0;
+
+  const streakKeys = useMemo(() => {
+    const keys = new Set<string>();
+    let streaking = true;
+    for (let i = weekRows.length - 1; i >= 0; i -= 1) {
+      const row = weekRows[i];
+      if (row.key > todayKey) continue;
+      const isWorkout = row.workout && row.workout.day_type !== "rest";
+      const isCompleted = row.workout?.status === "completed";
+      if (isWorkout && isCompleted && streaking) {
+        keys.add(row.key);
+      } else if (isWorkout && !isCompleted) {
+        streaking = false;
+      }
+    }
+    return keys;
+  }, [todayKey, weekRows]);
+
+  useEffect(() => {
+    const noteKey = selectedWorkout?.id
+      ? `coachos_pt_note_${selectedWorkout.id}`
+      : `coachos_pt_note_${selectedKey}`;
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(noteKey) ?? "";
+    setDayNote(stored);
+  }, [selectedKey, selectedWorkout?.id]);
+
+  const handleSaveDayNote = () => {
+    if (typeof window === "undefined") return;
+    const noteKey = selectedWorkout?.id
+      ? `coachos_pt_note_${selectedWorkout.id}`
+      : `coachos_pt_note_${selectedKey}`;
+    window.localStorage.setItem(noteKey, dayNote.trim());
+  };
 
   const formatLabel = (key: string) => {
     const [year, month, day] = key.split("-").map(Number);
@@ -2102,7 +2371,10 @@ function PtClientScheduleCard({
   };
 
   return (
-    <DashboardCard title="Schedule (7 days)" subtitle="Planned sessions and recovery">
+    <DashboardCard
+      title="Coach Calendar (7 days)"
+      subtitle="Your coaching calendar for this client."
+    >
       {scheduleQuery.isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
@@ -2111,72 +2383,134 @@ function PtClientScheduleCard({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="overflow-hidden rounded-xl border border-border bg-background/40">
-            <div className="grid grid-cols-2 border-b border-border/60 sm:grid-cols-4 md:grid-cols-7">
-              {weekRows.map((row) => (
-                <div
-                  key={`${row.key}-header`}
-                  className="border-r border-border/50 px-3 py-2 text-xs text-muted-foreground last:border-r-0"
-                >
-                  <div className="font-semibold text-foreground">{formatWeekday(row.key)}</div>
-                  <div className="text-sm font-semibold">{formatDayNumber(row.key)}</div>
-                </div>
-              ))}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/80 px-4 py-3 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Weekly Adherence
+              </div>
+              <div className="text-lg font-semibold text-foreground">
+                {weeklyAdherence}%
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <AlertTriangle className="h-4 w-4 text-amber-300" />
+              {weeklyMissed > 0
+                ? `${weeklyMissed} session${weeklyMissed === 1 ? "" : "s"} missed this week`
+                : "No missed sessions this week"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               {weekRows.map((row) => {
                 const workout = row.workout;
-                const status = workout?.status ?? (workout ? "planned" : "rest");
-                const title = workout?.workout_template?.name ?? "Rest Day";
+                const isRestDay = workout?.day_type === "rest";
+                const status = isRestDay
+                  ? "rest day"
+                  : workout?.status ?? (workout ? "planned" : "rest day");
+                const title = isRestDay
+                  ? "Rest day"
+                  : workout?.workout_template?.name ?? "Workout";
                 const isSelected = row.key === selectedKey;
+                const isToday = row.key === todayKey;
+                const isPast = row.key < todayKey;
+                const isFuture = row.key > todayKey;
+                const isCompleted = workout?.status === "completed";
+                const isSkipped = workout?.status === "skipped";
+                const isStreak = streakKeys.has(row.key);
                 return (
                   <button
                     key={row.key}
                     type="button"
-                    onClick={() => setSelectedKey(row.key)}
+                    onClick={() => {
+                      setSelectedKey(row.key);
+                      setDayDrawerOpen(true);
+                    }}
                     className={cn(
-                      "min-h-[110px] min-w-0 border-r border-border/50 px-3 py-3 text-left transition last:border-r-0",
+                      "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border",
                       isSelected
                         ? "bg-primary/10"
                         : "bg-background/30 hover:bg-muted/40"
+                      ,
+                      isToday
+                        ? "min-h-[190px] shadow-[0_0_22px_rgba(56,189,248,0.2)]"
+                        : "",
+                      isPast && !isSelected ? "opacity-70" : "",
+                      isFuture && !isSelected ? "opacity-90" : ""
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="truncate text-sm font-semibold">
-                          {workout ? title : "Rest Day"}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="uppercase tracking-[0.2em]">
+                          {formatWeekday(row.key)} {formatDayNumber(row.key)}
+                        </span>
+                        {isStreak ? <Flame className="h-4 w-4 text-amber-300" /> : null}
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-base font-semibold text-foreground">
+                          {workout ? title : "Rest day"}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {workout?.workout_template?.workout_type_tag ?? "Recovery / Mobility"}
+                        <p className="text-sm text-muted-foreground">
+                          {isRestDay
+                            ? "Planned rest day"
+                            : workout?.workout_template?.workout_type_tag ?? "Workout"}
                         </p>
                       </div>
-                      <StatusPill status={status} />
-                    </div>
-                    <div className="mt-3">
-                      {workout ? (
-                        <div className="text-xs text-muted-foreground">
-                          Scheduled
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <span className="text-sm">+</span> Add
-                        </div>
-                      )}
+
+                      <div className="flex items-center gap-2">
+                        <StatusPill status={status} />
+                        {isCompleted ? (
+                          <Badge variant="success" className="text-[10px] uppercase">
+                            Done
+                          </Badge>
+                        ) : null}
+                        {isSkipped ? (
+                          <Badge variant="warning" className="text-[10px] uppercase">
+                            Missed
+                          </Badge>
+                        ) : null}
+                        {isSkipped ? <AlertTriangle className="h-4 w-4 text-amber-300" /> : null}
+                        {isRestDay ? <Moon className="h-4 w-4 text-sky-200" /> : null}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-muted-foreground opacity-0 transition group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (workout?.id) {
+                              setEditDate(row.key);
+                              setEditOpen(true);
+                            } else {
+                              onAssign(row.key);
+                            }
+                          }}
+                          className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setDayDrawerOpen(true);
+                          }}
+                          className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </button>
                 );
               })}
             </div>
-          </div>
-
           <div className="rounded-lg border border-border bg-muted/20 p-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Selected day</p>
                 <p className="text-sm font-semibold">{formatLabel(selectedRow.key)}</p>
-                <p className="text-xs text-muted-foreground">
-                  {selectedWorkout?.workout_template?.name ?? "Recovery / Mobility"}
-                </p>
+                <p className="text-xs text-muted-foreground">{selectedTitle}</p>
               </div>
               <StatusPill status={selectedStatus} />
             </div>
@@ -2250,6 +2584,86 @@ function PtClientScheduleCard({
               Save
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dayDrawerOpen} onOpenChange={setDayDrawerOpen}>
+        <DialogContent className="sm:max-w-[560px] lg:ml-auto lg:mr-6">
+          <DialogHeader>
+            <DialogTitle>Day details</DialogTitle>
+            <DialogDescription>
+              {formatWeekday(selectedRow.key)} {formatDayNumber(selectedRow.key)} •{" "}
+              {selectedTitle}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Status
+                </span>
+                <StatusPill status={selectedStatus} />
+              </div>
+              <div className="mt-2 text-base font-semibold text-foreground">
+                {selectedTitle}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => selectedWorkout && onStatusChange(selectedWorkout.id, "completed")}
+                disabled={!selectedWorkout}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Mark complete
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => selectedWorkout && onStatusChange(selectedWorkout.id, "skipped")}
+                disabled={!selectedWorkout}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Mark missed
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">PT notes</label>
+              <textarea
+                className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={dayNote}
+                onChange={(event) => setDayNote(event.target.value)}
+                placeholder="Add a private coaching note for this day."
+              />
+              <div className="text-xs text-muted-foreground">
+                Saved locally for now.
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (selectedWorkout) {
+                    setEditDate(selectedRow.key);
+                    setEditOpen(true);
+                  } else {
+                    onAssign(selectedRow.key);
+                  }
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit workout
+              </Button>
+              <Button variant="ghost" onClick={handleSaveDayNote}>
+                Save note
+              </Button>
+              <Button variant="ghost" onClick={() => setDayDrawerOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -2335,40 +2749,13 @@ function PtClientScheduleCard({
             <Button variant="secondary" onClick={() => setOverrideOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={overrideStatus === "saving"} onClick={handleSaveOverride}>
+            <Button disabled={overrideStatus === "saving"} onClick={onSaveOverride}>
               {overrideStatus === "saving" ? "Saving..." : "Save override"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardCard>
-  );
-}
-
-function PtClientOverviewTab() {
-  return (
-    <Card className="border-border/70 bg-card/80 xl:col-start-1">
-      <CardHeader>
-        <CardTitle>Overview</CardTitle>
-        <p className="text-sm text-muted-foreground">Latest entries, streaks, and momentum.</p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
-          <div>
-            <p className="text-sm font-medium">Weekly check-in</p>
-            <p className="text-xs text-muted-foreground">Due Saturday</p>
-          </div>
-          <Badge variant="warning">Due</Badge>
-        </div>
-        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
-          <div>
-            <p className="text-sm font-medium">Last workout</p>
-            <p className="text-xs text-muted-foreground">Completed yesterday</p>
-          </div>
-          <Badge variant="success">Completed</Badge>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -2893,6 +3280,7 @@ function PtClientPlanTab({
   programStartDate,
   programStatus,
   programMessage,
+  unassignStatus,
   lastSetByWorkoutExercise,
   onTemplateChange,
   onDateChange,
@@ -2900,6 +3288,7 @@ function PtClientPlanTab({
   onProgramChange,
   onProgramDateChange,
   onApplyProgram,
+  onUnassignProgram,
   onOpenOverride,
   onEdit,
   onDelete,
@@ -2914,6 +3303,7 @@ function PtClientPlanTab({
     Array<{
       id: string;
       status: string | null;
+      day_type?: string | null;
       scheduled_date: string | null;
       completed_at: string | null;
       workout_template_id: string | null;
@@ -2928,6 +3318,7 @@ function PtClientPlanTab({
   programStartDate: string;
   programStatus: "idle" | "saving" | "error";
   programMessage: string | null;
+  unassignStatus: "idle" | "saving" | "error";
   lastSetByWorkoutExercise: Map<string, WorkoutSetLogRow>;
   onTemplateChange: (value: string) => void;
   onDateChange: (value: string) => void;
@@ -2935,6 +3326,7 @@ function PtClientPlanTab({
   onProgramChange: (value: string) => void;
   onProgramDateChange: (value: string) => void;
   onApplyProgram: () => void;
+  onUnassignProgram: () => void;
   onOpenOverride: (date: string) => void;
   onEdit: (workout: {
     id: string;
@@ -2959,9 +3351,9 @@ function PtClientPlanTab({
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
         <Card className="border-border/70 bg-card/80">
           <CardHeader>
-            <CardTitle>Program assignment</CardTitle>
+            <CardTitle>Program</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Apply a multi-week program and materialize the next 14 days.
+              Assign a multi-week program and materialize the next 14 days.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -2984,9 +3376,7 @@ function PtClientPlanTab({
             ) : (
               <>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Program template
-                  </label>
+                  <label className="text-xs font-semibold text-muted-foreground">Program</label>
                   <select
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={selectedProgramId}
@@ -2995,7 +3385,7 @@ function PtClientPlanTab({
                     <option value="">Select a program</option>
                     {programTemplatesQuery.data?.map((program) => (
                       <option key={program.id} value={program.id}>
-                        {program.name ?? "Program"} {program.weeks_count ? `· ${program.weeks_count}w` : ""}
+                        {program.name ?? "Program"} {program.weeks_count ? `- ${program.weeks_count}w` : ""}
                       </option>
                     ))}
                   </select>
@@ -3015,8 +3405,8 @@ function PtClientPlanTab({
                   onClick={onApplyProgram}
                 >
                   {programStatus === "saving"
-                    ? "Applying..."
-                    : "Apply program (next 14 days)"}
+                    ? "Assigning..."
+                    : "Assign program (next 14 days)"}
                 </Button>
                 {programMessage ? (
                   <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
@@ -3033,8 +3423,16 @@ function PtClientPlanTab({
                       {activeProgram.program_template?.name ?? "Program"}
                     </div>
                     <div className="mt-1">
-                      Start date {activeProgram.start_date ?? "—"}
+                      Start date {activeProgram.start_date ?? "--"}
                     </div>
+                    <Button
+                      className="mt-3 w-full"
+                      variant="secondary"
+                      disabled={unassignStatus === "saving"}
+                      onClick={onUnassignProgram}
+                    >
+                      {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
+                    </Button>
                   </div>
                 ) : null}
               </>
@@ -3112,9 +3510,8 @@ function PtClientPlanTab({
             {upcomingQuery.data.map((workout) => {
               const dateKey = workout.scheduled_date ?? "";
               const override = overrideByDate.get(dateKey);
-              const title =
-                workout.workout_template?.name ??
-                (workout.status === "recovery" ? "Rest day" : "Workout");
+              const isRestDay = workout.day_type === "rest";
+              const title = isRestDay ? "Rest day" : workout.workout_template?.name ?? "Workout";
               const dateLabel = workout.scheduled_date
                 ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
                     weekday: "short",
@@ -3137,7 +3534,7 @@ function PtClientPlanTab({
                       <Badge variant={override ? "secondary" : "muted"} className="text-[10px] uppercase">
                         {override ? "Override" : "Scheduled"}
                       </Badge>
-                      <StatusPill status={workout.status ?? "planned"} />
+                      <StatusPill status={isRestDay ? "rest day" : workout.status ?? "planned"} />
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -3173,8 +3570,10 @@ function PtClientPlanTab({
                       Skip
                     </Button>
                   </div>
-                  {workout.assigned_workout_exercises &&
-                  workout.assigned_workout_exercises.length > 0 ? (
+                  {isRestDay ? (
+                    <div className="mt-3 text-xs text-muted-foreground">Rest day.</div>
+                  ) : workout.assigned_workout_exercises &&
+                    workout.assigned_workout_exercises.length > 0 ? (
                     <div className="mt-3 space-y-2 text-xs text-muted-foreground">
                       {workout.assigned_workout_exercises.map((row) => {
                         const exerciseId = row.exercise?.id ?? "";
@@ -3249,6 +3648,3 @@ function PtClientPlaceholderTab({ title }: { title: string }) {
     </Card>
   );
 }
-
-
-

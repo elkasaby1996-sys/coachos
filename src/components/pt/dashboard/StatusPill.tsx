@@ -11,7 +11,8 @@ const statusMap: Record<string, { label: string; variant: "success" | "warning" 
   "in progress": { label: "In progress", variant: "warning" },
   completed: { label: "Completed", variant: "success" },
   skipped: { label: "Skipped", variant: "danger" },
-  rest: { label: "Rest", variant: "muted" },
+  rest: { label: "Rest day", variant: "warning" },
+  "rest day": { label: "Rest day", variant: "warning" },
   recovery: { label: "Recovery", variant: "muted" },
 };
 

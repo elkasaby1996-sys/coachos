@@ -95,39 +95,6 @@ const cardChrome =
   "border border-border/70 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_14px_30px_-18px_rgba(0,0,0,0.85)]";
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const summaryTrainingStatus =
-    todayWorkoutStatus === "completed"
-      ? "completed"
-      : todayWorkoutStatus === "skipped"
-        ? "skipped"
-        : todayWorkout
-          ? "planned"
-          : "rest";
-  const summaryTrainingTitle =
-    todayWorkout?.workout_template?.name ??
-    todayWorkout?.workout_template_name ??
-    "Recovery";
-  const summaryTrainingHint =
-    todayWorkoutStatus === "completed"
-      ? "Session logged"
-      : todayWorkoutStatus === "skipped"
-        ? "Coach notified"
-        : todayWorkout
-          ? "Ready when you are"
-          : "Mobility + steps";
-  const summaryNutritionValue =
-    typeof targets?.calories === "number"
-      ? `${targets.calories.toLocaleString()} kcal`
-      : "Coach setting in progress";
-  const summaryNutritionHint =
-    typeof targets?.protein_g === "number"
-      ? `${targets.protein_g}g protein target`
-      : "Ask coach for targets";
-  const summaryHabitHint = `${Object.values(checklist).filter(Boolean).length} of ${checklistKeys.length} complete`;
-  const summaryMomentumValue = `${workoutsCompletedThisWeek} workouts`;
-  const summaryMomentumHint =
-    consistencyStreak > 0 ? `${consistencyStreak} day streak` : "Start a streak";
-
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2">
@@ -266,7 +233,7 @@ export function ClientHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, scheduled_date, created_at, completed_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
+          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
         )
         .eq("client_id", clientId)
         .eq("scheduled_date", todayKey)
@@ -300,7 +267,7 @@ export function ClientHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, scheduled_date, status, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
+          "id, scheduled_date, status, day_type, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
         )
         .eq("client_id", clientId)
         .gte("scheduled_date", todayKey)
@@ -345,6 +312,7 @@ export function ClientHomePage() {
   });
 
   const todayWorkout = todayWorkoutQuery.data ?? null;
+  const isRestDay = todayWorkout?.day_type === "rest";
   const todayWorkoutStatus = todayWorkout?.status === "pending"
     ? "planned"
     : todayWorkout?.status ?? null;
@@ -418,6 +386,41 @@ export function ClientHomePage() {
   }, [habitLogsQuery.data, habitsWeekStart, todayStr]);
 
   const workoutsCompletedThisWeek = workoutsWeek.length;
+  const summaryTrainingStatus = isRestDay
+    ? "Rest day"
+    : todayWorkoutStatus === "completed"
+      ? "completed"
+      : todayWorkoutStatus === "skipped"
+        ? "skipped"
+        : todayWorkout
+          ? "planned"
+          : "Rest day";
+  const summaryTrainingTitle = isRestDay
+    ? "Rest day"
+    : todayWorkout?.workout_template?.name ??
+      todayWorkout?.workout_template_name ??
+      "Rest day";
+  const summaryTrainingHint = isRestDay
+    ? "Rest day. Steps + nutrition still count."
+    : todayWorkoutStatus === "completed"
+      ? "Session logged"
+      : todayWorkoutStatus === "skipped"
+        ? "Coach notified"
+        : todayWorkout
+          ? "Ready when you are"
+          : "Rest day. Steps + nutrition still count.";
+  const summaryNutritionValue =
+    typeof targets?.calories === "number"
+      ? `${targets.calories.toLocaleString()} kcal`
+      : "Coach setting in progress";
+  const summaryNutritionHint =
+    typeof targets?.protein_g === "number"
+      ? `${targets.protein_g}g protein target`
+      : "Ask coach for targets";
+  const summaryHabitHint = `${Object.values(checklist).filter(Boolean).length} of ${checklistKeys.length} complete`;
+  const summaryMomentumValue = `${workoutsCompletedThisWeek} workouts`;
+  const summaryMomentumHint =
+    consistencyStreak > 0 ? `${consistencyStreak} day streak` : "Start a streak";
 
   const defaultPlan = useMemo(
     () => ["30-45 min strength OR 20 min conditioning", "10 min mobility"],
@@ -524,7 +527,7 @@ export function ClientHomePage() {
   }, [todayWorkoutStatus, checklist.workout]);
 
   const missionCopy = useMemo(() => {
-    if (!todayWorkout) return "Recovery day. Steps + nutrition still count.";
+    if (isRestDay || !todayWorkout) return "Rest day. Steps + nutrition still count.";
     if (todayWorkoutStatus === "completed") {
       return "Workout done. Recovery and nutrition matter now.";
     }
@@ -534,8 +537,8 @@ export function ClientHomePage() {
     if (todayWorkoutStatus === "skipped") {
       return "Session skipped. Stay on track with steps + nutrition.";
     }
-    return "Recovery day. Steps + nutrition still count.";
-  }, [todayWorkout, todayWorkoutStatus, todayTemplateInfo.description]);
+    return "Rest day. Steps + nutrition still count.";
+  }, [isRestDay, todayWorkout, todayWorkoutStatus, todayTemplateInfo.description]);
 
   const handleStartDefaultSession = async () => {
     if (!clientId) return;
@@ -592,7 +595,9 @@ export function ClientHomePage() {
                 ? "danger"
                 : summaryTrainingStatus === "planned"
                   ? "secondary"
-                  : "muted"
+                  : summaryTrainingStatus.toLowerCase().includes("rest")
+                    ? "warning"
+                    : "muted"
           }
         />
         <SummaryStat
@@ -687,64 +692,86 @@ export function ClientHomePage() {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : todayWorkout ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      {todayWorkoutStatus === "completed"
-                        ? "Workout completed"
-                        : todayWorkoutStatus === "skipped"
-                          ? "Workout skipped (coach notified)"
-                          : "Workout planned"}
-                    </p>
-                    <p className="text-lg font-semibold">
-                      {todayWorkout?.workout_template?.name ??
-                        todayWorkout?.workout_template_name ??
-                        "Planned session"}
-                    </p>
+              isRestDay ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Rest day</p>
+                      <p className="text-lg font-semibold">Rest day</p>
+                    </div>
+                    <Badge variant="warning">Rest day</Badge>
                   </div>
-                  <Badge
-                    variant={
-                      todayWorkoutStatus === "completed"
-                        ? "success"
-                        : todayWorkoutStatus === "skipped"
-                          ? "danger"
-                          : "muted"
-                    }
+                  <p className="text-sm text-muted-foreground">
+                    Rest day. Steps + nutrition still count.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => navigate("/app/messages")}
                   >
-                    {todayWorkoutStatus ?? "planned"}
-                  </Badge>
+                    Message coach
+                  </Button>
                 </div>
-                {todayTemplateInfo.workoutType ? (
-                  <Badge variant="muted">{todayTemplateInfo.workoutType}</Badge>
-                ) : null}
-                {todayWorkoutStatus === "completed" ? (
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {todayWorkoutStatus === "completed"
+                          ? "Workout completed"
+                          : todayWorkoutStatus === "skipped"
+                            ? "Workout skipped (coach notified)"
+                            : "Workout planned"}
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {todayWorkout?.workout_template?.name ??
+                          todayWorkout?.workout_template_name ??
+                          "Planned session"}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        todayWorkoutStatus === "completed"
+                          ? "success"
+                          : todayWorkoutStatus === "skipped"
+                            ? "danger"
+                            : "muted"
+                      }
+                    >
+                      {todayWorkoutStatus ?? "planned"}
+                    </Badge>
+                  </div>
+                  {todayTemplateInfo.workoutType ? (
+                    <Badge variant="muted">{todayTemplateInfo.workoutType}</Badge>
+                  ) : null}
+                  {todayWorkoutStatus === "completed" ? (
+                    <Button
+                      className="w-full"
+                      onClick={() => navigate(`/app/workout-summary/${todayWorkout.id}`)}
+                    >
+                      View summary
+                    </Button>
+                  ) : todayWorkoutStatus === "skipped" ? (
+                    <Button className="w-full" onClick={handleRequestAdjustment}>
+                      Request adjustment
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      onClick={() => navigate(`/app/workout-run/${todayWorkout.id}`)}
+                    >
+                      Start workout
+                    </Button>
+                  )}
                   <Button
+                    variant="secondary"
                     className="w-full"
-                    onClick={() => navigate(`/app/workout-summary/${todayWorkout.id}`)}
+                    onClick={() => navigate("/app/messages")}
                   >
-                    View summary
+                    Message coach
                   </Button>
-                ) : todayWorkoutStatus === "skipped" ? (
-                  <Button className="w-full" onClick={handleRequestAdjustment}>
-                    Request adjustment
-                  </Button>
-                ) : (
-                  <Button
-                    className="w-full"
-                    onClick={() => navigate(`/app/workout-run/${todayWorkout.id}`)}
-                  >
-                    Start workout
-                  </Button>
-                )}
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() => navigate("/app/messages")}
-                >
-                  Message coach
-                </Button>
-              </div>
+                </div>
+              )
             ) : (
               <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
                 <div>
@@ -842,11 +869,14 @@ export function ClientHomePage() {
                 {weekRows.map((row) => {
                   const isToday = row.key === todayKey;
                   const workout = row.workout;
+                  const isRest = workout?.day_type === "rest";
                   const label = workout?.id
-                    ? workout?.workout_template?.name ??
-                      (workout as { workout_template_name?: string })?.workout_template_name ??
-                      "Planned session"
-                    : "Recovery / Mobility";
+                    ? isRest
+                      ? "Rest day"
+                      : workout?.workout_template?.name ??
+                        (workout as { workout_template_name?: string })?.workout_template_name ??
+                        "Planned session"
+                    : "Rest day";
                   return (
                     <button
                       key={row.key}
@@ -857,9 +887,9 @@ export function ClientHomePage() {
                           : "flex w-full items-center justify-between rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-left transition hover:border-border hover:bg-muted/40"
                       }
                       onClick={() => {
-                        if (workout?.id) navigate(`/app/workouts/${workout.id}`);
+                        if (workout?.id && !isRest) navigate(`/app/workouts/${workout.id}`);
                       }}
-                      disabled={!workout?.id}
+                      disabled={!workout?.id || isRest}
                     >
                       <div>
                         <p className="text-xs text-muted-foreground">
@@ -872,19 +902,23 @@ export function ClientHomePage() {
                         <p className="text-sm font-semibold">{label}</p>
                       </div>
                       {workout?.id ? (
-                        <Badge
-                          variant={
-                            workout.status === "completed"
-                              ? "success"
-                              : workout.status === "skipped"
-                              ? "danger"
-                              : "muted"
-                          }
-                        >
-                          {workout.status ?? "planned"}
-                        </Badge>
+                        isRest ? (
+                          <Badge variant="warning">Rest day</Badge>
+                        ) : (
+                          <Badge
+                            variant={
+                              workout.status === "completed"
+                                ? "success"
+                                : workout.status === "skipped"
+                                ? "danger"
+                                : "muted"
+                            }
+                          >
+                            {workout.status ?? "planned"}
+                          </Badge>
+                        )
                       ) : (
-                        <Badge variant="secondary">Recovery</Badge>
+                        <Badge variant="warning">Rest day</Badge>
                       )}
                     </button>
                   );
