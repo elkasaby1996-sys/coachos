@@ -265,27 +265,45 @@ export function ClientWorkoutRunPage() {
 
   const previousSessionQuery = useQuery({
     queryKey: ["workout-session-prev", clientId, workoutTemplateId, workoutSession?.id],
-    enabled: !!clientId && !!workoutTemplateId,
+    enabled: !!clientId,
     queryFn: async () => {
-      let query = supabase
+      const { data: sessions, error: sessionError } = await supabase
         .from("workout_sessions")
-        .select("id, completed_at, assigned_workout:assigned_workouts(workout_template_id)")
+        .select("id, assigned_workout_id, completed_at")
         .eq("client_id", clientId ?? "")
         .not("completed_at", "is", null)
         .order("completed_at", { ascending: false })
-        .limit(5);
+        .limit(20);
 
-      if (workoutSession?.id) {
-        query = query.neq("id", workoutSession.id);
+      if (sessionError) throw sessionError;
+      const filtered = (sessions ?? []).filter(
+        (row) => row.id && row.id !== workoutSession?.id
+      );
+      if (filtered.length === 0) return null;
+
+      if (!workoutTemplateId) {
+        return filtered[0] as { id: string } | null;
       }
 
-      if (workoutTemplateId) {
-        query = query.eq("assigned_workout.workout_template_id", workoutTemplateId);
-      }
+      const assignedIds = filtered
+        .map((row) => row.assigned_workout_id)
+        .filter((id): id is string => Boolean(id));
+      if (assignedIds.length === 0) return null;
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data?.[0] as { id: string } | null) ?? null;
+      const { data: assignments, error: assignedError } = await supabase
+        .from("assigned_workouts")
+        .select("id, workout_template_id")
+        .in("id", assignedIds);
+      if (assignedError) throw assignedError;
+
+      const templateMap = new Map(
+        (assignments ?? []).map((row) => [row.id, row.workout_template_id])
+      );
+
+      const match = filtered.find(
+        (row) => row.assigned_workout_id && templateMap.get(row.assigned_workout_id) === workoutTemplateId
+      );
+      return (match as { id: string } | null) ?? null;
     },
   });
 
@@ -336,8 +354,9 @@ export function ClientWorkoutRunPage() {
       assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
         ? assignedExercisesQuery.data
         : templateExercisesQuery.data ?? [];
-    const next = sourceRows.map((row) => {
+    const next = sourceRows.map((row, index) => {
       const exercise = "exercise" in row ? row.exercise : exerciseById.get(row.exercise_id ?? "");
+      const exerciseId = exercise?.id ?? row.exercise_id ?? row.id ?? `exercise-${index}`;
       const name = exercise?.name ?? "Exercise (missing details)";
       const count = row.sets && row.sets > 0 ? row.sets : 3;
       const sets = Array.from({ length: count }).map((_, index) => {
@@ -369,7 +388,7 @@ export function ClientWorkoutRunPage() {
           : null;
       return {
         id: row.id,
-        exerciseId: exercise?.id ?? "",
+        exerciseId,
         name,
         notes: row.notes ?? null,
         videoUrl: row.video_url ?? exercise?.video_url ?? null,
@@ -735,6 +754,22 @@ export function ClientWorkoutRunPage() {
                 />
               </div>
               <div className="xl:col-span-6 space-y-4">
+                {!workoutSession ? (
+                  <Card className="rounded-xl border-border/70 bg-card/80">
+                    <CardHeader>
+                      <CardTitle>Start workout</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm text-muted-foreground">
+                      <p>Start the session to begin logging sets.</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button onClick={handleStartWorkout}>Start workout</Button>
+                        <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                          Return home
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : null}
                 <div className="xl:hidden">
                   <label className="text-xs font-semibold text-muted-foreground">Exercise</label>
                   <select

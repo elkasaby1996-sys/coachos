@@ -207,6 +207,32 @@ type WorkoutSessionRow = {
   assigned_workout_id: string | null;
 };
 
+type PtWorkoutSessionRow = {
+  id: string;
+  assigned_workout_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string | null;
+  client_notes: string | null;
+  assigned_workout: {
+    id: string | null;
+    status: string | null;
+    workout_template: { id: string | null; name: string | null } | null;
+  } | null;
+};
+
+type PtWorkoutSessionLogRow = {
+  id: string;
+  workout_session_id: string | null;
+  exercise_id: string | null;
+  set_number: number | null;
+  reps: number | null;
+  weight: number | null;
+  rpe: number | null;
+  is_completed: boolean | null;
+  exercise: { id: string; name: string | null } | null;
+};
+
 type WorkoutSetLogRow = {
   id: string;
   workout_session_id: string | null;
@@ -216,6 +242,7 @@ type WorkoutSetLogRow = {
   weight: number | null;
   rpe: number | null;
   created_at: string | null;
+  is_completed?: boolean | null;
 };
 
 type ProgramTemplateRow = {
@@ -367,6 +394,8 @@ export function PtClientDetailPage() {
     { id: "client-task-program", label: "Adjust program", done: false },
   ]);
   const [todoInput, setTodoInput] = useState("");
+  const [sessionDetailOpen, setSessionDetailOpen] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
@@ -406,6 +435,89 @@ export function PtClientDetailPage() {
       return data;
     },
   });
+
+  const ptSessionsQuery = useQuery({
+    queryKey: ["pt-client-sessions", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select(
+          "id, assigned_workout_id, started_at, completed_at, created_at, client_notes, assigned_workout:assigned_workouts(id, status, workout_template:workout_templates(id, name))"
+        )
+        .eq("client_id", clientId ?? "")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return (data ?? []) as PtWorkoutSessionRow[];
+    },
+  });
+
+  const ptSessionIds = useMemo(
+    () => (ptSessionsQuery.data ?? []).map((row) => row.id),
+    [ptSessionsQuery.data]
+  );
+
+  const ptSessionVolumeLogsQuery = useQuery({
+    queryKey: ["pt-client-session-logs", ptSessionIds],
+    enabled: ptSessionIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_set_logs")
+        .select("workout_session_id, reps, weight, is_completed")
+        .in("workout_session_id", ptSessionIds);
+      if (error) throw error;
+      return (data ?? []) as WorkoutSetLogRow[];
+    },
+  });
+
+  const sessionVolumeById = useMemo(() => {
+    const map = new Map<string, number>();
+    (ptSessionVolumeLogsQuery.data ?? []).forEach((log) => {
+      if (!log.workout_session_id) return;
+      if (!log.is_completed) return;
+      const reps = typeof log.reps === "number" ? log.reps : null;
+      const weight = typeof log.weight === "number" ? log.weight : null;
+      if (!reps || !weight) return;
+      map.set(log.workout_session_id, (map.get(log.workout_session_id) ?? 0) + reps * weight);
+    });
+    return map;
+  }, [ptSessionVolumeLogsQuery.data]);
+
+  const selectedSession = useMemo(
+    () => (ptSessionsQuery.data ?? []).find((session) => session.id === selectedSessionId) ?? null,
+    [ptSessionsQuery.data, selectedSessionId]
+  );
+
+  const sessionDetailQuery = useQuery({
+    queryKey: ["pt-client-session-detail", selectedSessionId],
+    enabled: !!selectedSessionId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_set_logs")
+        .select(
+          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, exercise:exercises(id, name)"
+        )
+        .eq("workout_session_id", selectedSessionId ?? "")
+        .order("exercise_id", { ascending: true })
+        .order("set_number", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as PtWorkoutSessionLogRow[];
+    },
+  });
+
+  const sessionDetailByExercise = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; rows: PtWorkoutSessionLogRow[] }>();
+    (sessionDetailQuery.data ?? []).forEach((log) => {
+      const exerciseId = log.exercise_id ?? "unknown";
+      const name = log.exercise?.name ?? "Exercise";
+      if (!map.has(exerciseId)) {
+        map.set(exerciseId, { id: exerciseId, name, rows: [] });
+      }
+      map.get(exerciseId)?.rows.push(log);
+    });
+    return Array.from(map.values());
+  }, [sessionDetailQuery.data]);
 
   const habitsToday = useMemo(
     () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
@@ -1767,6 +1879,7 @@ export function PtClientDetailPage() {
             {(workspaceQuery.error ||
               templatesQuery.error ||
               upcomingQuery.error ||
+              ptSessionsQuery.error ||
               coachActivityQuery.error ||
               habitsQuery.error ||
               habitLogByDateQuery.error ||
@@ -1789,6 +1902,7 @@ export function PtClientDetailPage() {
                         workspaceQuery.error,
                         templatesQuery.error,
                         upcomingQuery.error,
+                        ptSessionsQuery.error,
                         workoutSessionsQuery.error,
                         workoutSetLogsQuery.error,
                         coachActivityQuery.error,
@@ -1932,6 +2046,71 @@ export function PtClientDetailPage() {
               </div>
             </DashboardCard>
 
+            <DashboardCard title="Recent sessions" subtitle="Last 10 workout sessions.">
+              {ptSessionsQuery.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : ptSessionsQuery.error ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                  {getErrorDetails(ptSessionsQuery.error).code}: {getErrorDetails(ptSessionsQuery.error).message}
+                </div>
+              ) : ptSessionsQuery.data && ptSessionsQuery.data.length > 0 ? (
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-[110px_1fr_90px_90px_70px] gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    <span>Date</span>
+                    <span>Workout</span>
+                    <span>Status</span>
+                    <span>Volume</span>
+                    <span>Notes</span>
+                  </div>
+                  {ptSessionsQuery.data.map((session) => {
+                    const dateValue =
+                      session.completed_at ??
+                      session.started_at ??
+                      session.created_at ??
+                      null;
+                    const dateLabel = dateValue
+                      ? new Date(dateValue).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "--";
+                    const workoutName =
+                      session.assigned_workout?.workout_template?.name ?? "Workout";
+                    const statusLabel =
+                      session.completed_at ? "completed" : session.assigned_workout?.status ?? "active";
+                    const volume = sessionVolumeById.get(session.id);
+                    const notesIndicator = session.client_notes ? "Yes" : "—";
+                    return (
+                      <button
+                        key={session.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSessionId(session.id);
+                          setSessionDetailOpen(true);
+                        }}
+                        className="grid w-full grid-cols-[110px_1fr_90px_90px_70px] items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-left transition hover:bg-muted/50"
+                      >
+                        <span className="text-xs text-muted-foreground">{dateLabel}</span>
+                        <span className="font-medium text-foreground">{workoutName}</span>
+                        <Badge variant={statusLabel === "completed" ? "success" : "muted"} className="text-[10px] uppercase">
+                          {statusLabel}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {typeof volume === "number" ? volume.toFixed(0) : "—"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{notesIndicator}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyState title="No sessions yet" description="No workout sessions recorded." />
+              )}
+            </DashboardCard>
+
             <DashboardCard title="Recent activity" subtitle="Last 5 coach actions.">
               {coachActivityQuery.isLoading ? (
                 <div className="space-y-2">
@@ -1969,6 +2148,96 @@ export function PtClientDetailPage() {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={sessionDetailOpen}
+        onOpenChange={(open) => {
+          setSessionDetailOpen(open);
+          if (!open) {
+            setSelectedSessionId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[720px]">
+          <DialogHeader>
+            <DialogTitle>Session details</DialogTitle>
+            <DialogDescription>
+              {selectedSession?.assigned_workout?.workout_template?.name ?? "Workout"} •{" "}
+              {selectedSession?.completed_at
+                ? new Date(selectedSession.completed_at).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : selectedSession?.started_at
+                ? new Date(selectedSession.started_at).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : "In progress"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Client notes
+              </p>
+              <p className="mt-2">
+                {selectedSession?.client_notes ?? "No notes provided."}
+              </p>
+            </div>
+            {sessionDetailQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : sessionDetailQuery.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                {getErrorDetails(sessionDetailQuery.error).code}: {getErrorDetails(sessionDetailQuery.error).message}
+              </div>
+            ) : sessionDetailByExercise.length > 0 ? (
+              <div className="space-y-4">
+                {sessionDetailByExercise.map((group) => (
+                  <div
+                    key={group.id}
+                    className="rounded-lg border border-border bg-background/40 p-3"
+                  >
+                    <div className="text-sm font-semibold text-foreground">{group.name}</div>
+                    <div className="mt-2 grid grid-cols-[60px_120px_80px_80px_80px] gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      <span>Set</span>
+                      <span>Weight</span>
+                      <span>Reps</span>
+                      <span>RPE</span>
+                      <span>Done</span>
+                    </div>
+                    {group.rows.map((row) => (
+                      <div
+                        key={row.id}
+                        className="mt-2 grid grid-cols-[60px_120px_80px_80px_80px] items-center gap-2 text-sm"
+                      >
+                        <span className="text-xs text-muted-foreground">{row.set_number ?? "--"}</span>
+                        <span>{typeof row.weight === "number" ? row.weight : "--"}</span>
+                        <span>{typeof row.reps === "number" ? row.reps : "--"}</span>
+                        <span>{typeof row.rpe === "number" ? row.rpe : "--"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {row.is_completed ? "Yes" : "No"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                No set logs for this session.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[480px]">

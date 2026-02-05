@@ -145,7 +145,7 @@ export function PtLayout() {
               </Button>
             </div>
           </aside>
-          <div className="flex flex-1 flex-col">
+          <div className="flex flex-1 min-w-0 flex-col">
             <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-card px-4 py-4 md:px-8">
               <div>
                 <p className="text-sm text-muted-foreground">Welcome back</p>
@@ -197,8 +197,8 @@ export function PtLayout() {
                 <ThemeToggle />
               </div>
             </header>
-            <main className="flex-1 bg-background px-4 py-6 md:px-8">
-              <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+            <main className="flex-1 min-w-0 bg-background px-4 py-6 md:px-8">
+              <div className="flex w-full flex-col gap-6">
                 <Outlet />
               </div>
             </main>

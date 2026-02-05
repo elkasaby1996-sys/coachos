@@ -59,7 +59,7 @@ export function ClientLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen max-w-6xl">
+      <div className="flex min-h-screen w-full">
         <aside className="hidden w-64 flex-col border-r border-border bg-card px-4 py-6 md:flex">
           <div className="mb-8 flex items-center justify-between">
             <span className="text-lg font-semibold tracking-tight">CoachOS</span>
@@ -83,7 +83,7 @@ export function ClientLayout() {
             ))}
           </nav>
         </aside>
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 min-w-0 flex-col">
           <header className="flex items-center justify-between border-b border-border bg-card px-4 py-4 md:hidden">
             <div>
               <p className="text-sm text-muted-foreground">Client portal</p>
@@ -91,7 +91,7 @@ export function ClientLayout() {
             </div>
             <ThemeToggle />
           </header>
-          <main className="flex-1 px-4 py-6 md:px-8">
+          <main className="flex-1 min-w-0 px-4 py-6 md:px-8">
             <Outlet />
           </main>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card px-4 py-2 md:hidden">

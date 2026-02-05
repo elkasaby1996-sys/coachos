@@ -21,12 +21,12 @@ export function ExerciseNav({
     <div className="hidden xl:block">
       <DashboardCard title="Exercises" subtitle="Tap to jump between movements.">
         <div className="space-y-2">
-          {exercises.map((exercise) => {
+          {exercises.map((exercise, index) => {
             const isActive = exercise.exerciseId === activeExerciseId;
             const isDone = exercise.totalSets > 0 && exercise.setsCompleted === exercise.totalSets;
             return (
               <button
-                key={exercise.exerciseId}
+                key={`${exercise.exerciseId}-${index}`}
                 type="button"
                 onClick={() => onSelect(exercise.exerciseId)}
                 className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
