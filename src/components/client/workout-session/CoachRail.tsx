@@ -1,16 +1,23 @@
 import { ListChecks } from "lucide-react";
 import { DashboardCard } from "../../pt/dashboard/DashboardCard";
+import { RestTimer } from "./RestTimer";
 
 export function CoachRail({
   sessionNotes,
   completedSets,
   totalSets,
   progressPct,
+  autoStartEnabled,
+  autoStartTrigger,
+  onToggleAutoStart,
 }: {
   sessionNotes: string | null;
   completedSets: number;
   totalSets: number;
   progressPct: number;
+  autoStartEnabled: boolean;
+  autoStartTrigger: number;
+  onToggleAutoStart: (next: boolean) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -39,11 +46,11 @@ export function CoachRail({
           </div>
         </div>
       </DashboardCard>
-      <DashboardCard title="Rest timer" subtitle="Coming in step 3.">
-        <div className="rounded-lg border border-dashed border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
-          Rest timer placeholder
-        </div>
-      </DashboardCard>
+      <RestTimer
+        autoStartEnabled={autoStartEnabled}
+        autoStartTrigger={autoStartTrigger}
+        onToggleAutoStart={onToggleAutoStart}
+      />
     </div>
   );
 }

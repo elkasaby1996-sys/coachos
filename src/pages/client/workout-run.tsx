@@ -118,6 +118,7 @@ export function ClientWorkoutRunPage() {
   const [finishNotes, setFinishNotes] = useState("");
   const [finishStatus, setFinishStatus] = useState<"idle" | "saving" | "error">("idle");
   const [finishError, setFinishError] = useState<string | null>(null);
+  const [restAutoStart, setRestAutoStart] = useState(true);
 
   const clientQuery = useQuery({
     queryKey: ["client", session?.user?.id],
@@ -580,6 +581,10 @@ export function ClientWorkoutRunPage() {
       ).length,
     [exercises]
   );
+  const completedSetCount = useMemo(
+    () => exercises.reduce((sum, exercise) => sum + exercise.sets.filter((s) => s.is_completed).length, 0),
+    [exercises]
+  );
   const totalVolume = useMemo(
     () =>
       exercises.reduce((sum, exercise) => {
@@ -772,6 +777,9 @@ export function ClientWorkoutRunPage() {
                   completedSets={completedSets}
                   totalSets={totalSets}
                   progressPct={progressPct}
+                  autoStartEnabled={restAutoStart}
+                  autoStartTrigger={completedSetCount}
+                  onToggleAutoStart={setRestAutoStart}
                 />
               </div>
             </div>
