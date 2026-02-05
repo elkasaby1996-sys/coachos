@@ -10,26 +10,18 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
-import { Check, Film, ListChecks } from "lucide-react";
+import {
+  ActiveExercisePanel,
+  type ActiveExercise,
+  type SetState,
+} from "../../components/client/workout-session/ActiveExercisePanel";
+import {
+  ExerciseNav,
+  type ExerciseNavItem,
+} from "../../components/client/workout-session/ExerciseNav";
+import { CoachRail } from "../../components/client/workout-session/CoachRail";
 
-type SetState = {
-  id?: string;
-  reps: string;
-  weight: string;
-  rpe: string;
-  is_completed: boolean;
-};
-
-type ExerciseState = {
-  id: string;
-  exerciseId: string;
-  name: string;
-  notes: string | null;
-  videoUrl: string | null;
-  previousLabel: string | null;
-  weightUnit: string | null;
-  sets: SetState[];
-};
+type ExerciseState = ActiveExercise;
 
 type AssignedWorkoutExerciseRow = {
   id: string;
@@ -120,7 +112,7 @@ export function ClientWorkoutRunPage() {
   const queryClient = useQueryClient();
   const [saveIndex, setSaveIndex] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
+  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
   const [finishNotes, setFinishNotes] = useState("");
   const [finishStatus, setFinishStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -353,10 +345,13 @@ export function ClientWorkoutRunPage() {
 
   useEffect(() => {
     if (exercises.length === 0) return;
-    if (activeExerciseIndex >= exercises.length) {
-      setActiveExerciseIndex(0);
+    const exists = activeExerciseId
+      ? exercises.some((exercise) => exercise.exerciseId === activeExerciseId)
+      : false;
+    if (!exists) {
+      setActiveExerciseId(exercises[0].exerciseId);
     }
-  }, [activeExerciseIndex, exercises.length]);
+  }, [activeExerciseId, exercises]);
 
   const errors = [
     clientQuery.error,
@@ -513,7 +508,12 @@ export function ClientWorkoutRunPage() {
     assignedWorkoutQuery.data?.workout_template?.name ?? "Workout";
   const sessionNotes =
     assignedWorkoutQuery.data?.workout_template?.description ?? null;
-  const activeExercise = exercises[activeExerciseIndex] ?? null;
+  const activeExerciseIndex = useMemo(
+    () => exercises.findIndex((exercise) => exercise.exerciseId === activeExerciseId),
+    [activeExerciseId, exercises]
+  );
+  const activeExercise =
+    activeExerciseIndex >= 0 ? exercises[activeExerciseIndex] : null;
   const totalSets = useMemo(
     () => exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0),
     [exercises]
@@ -552,6 +552,16 @@ export function ClientWorkoutRunPage() {
       }, 0),
     [exercises]
   );
+  const navItems = useMemo<ExerciseNavItem[]>(
+    () =>
+      exercises.map((exercise) => ({
+        exerciseId: exercise.exerciseId,
+        name: exercise.name,
+        setsCompleted: exercise.sets.filter((setItem) => setItem.is_completed).length,
+        totalSets: exercise.sets.length,
+      })),
+    [exercises]
+  );
 
   if (!workoutId) {
     return (
@@ -570,7 +580,7 @@ export function ClientWorkoutRunPage() {
   }
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
+    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6 pb-16 md:pb-0">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Workout run</p>
@@ -649,24 +659,24 @@ export function ClientWorkoutRunPage() {
           ) : null}
 
           {exercises.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-12">
-              <div className="md:col-span-3">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+              <div className="xl:col-span-3">
                 <ExerciseNav
-                  exercises={exercises}
-                  activeExerciseIndex={activeExerciseIndex}
-                  onSelect={setActiveExerciseIndex}
+                  exercises={navItems}
+                  activeExerciseId={activeExerciseId}
+                  onSelect={setActiveExerciseId}
                 />
               </div>
-              <div className="md:col-span-6 space-y-4">
-                <div className="md:hidden">
+              <div className="xl:col-span-6 space-y-4">
+                <div className="xl:hidden">
                   <label className="text-xs font-semibold text-muted-foreground">Exercise</label>
                   <select
                     className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                    value={activeExerciseIndex}
-                    onChange={(event) => setActiveExerciseIndex(Number(event.target.value))}
+                    value={activeExerciseId ?? ""}
+                    onChange={(event) => setActiveExerciseId(event.target.value)}
                   >
                     {exercises.map((exercise, index) => (
-                      <option key={`${exercise.exerciseId}-${index}`} value={index}>
+                      <option key={`${exercise.exerciseId}-${index}`} value={exercise.exerciseId}>
                         {exercise.name}
                       </option>
                     ))}
@@ -691,7 +701,7 @@ export function ClientWorkoutRunPage() {
             </div>
           ) : null}
               </div>
-              <div className="md:col-span-3">
+              <div className="xl:col-span-3">
                 <CoachRail
                   sessionNotes={sessionNotes}
                   completedSets={completedSets}
@@ -777,253 +787,3 @@ export function ClientWorkoutRunPage() {
   );
 }
 
-function ExerciseNav({
-  exercises,
-  activeExerciseIndex,
-  onSelect,
-}: {
-  exercises: ExerciseState[];
-  activeExerciseIndex: number;
-  onSelect: (index: number) => void;
-}) {
-  return (
-    <Card className="hidden rounded-xl border-border/70 bg-card/80 md:block">
-      <CardHeader>
-        <CardTitle className="text-base">Exercises</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {exercises.map((exercise, index) => {
-          const completed = exercise.sets.filter((setItem) => setItem.is_completed).length;
-          const total = exercise.sets.length;
-          const isDone = total > 0 && completed === total;
-          return (
-            <button
-              key={`${exercise.exerciseId}-${index}`}
-              type="button"
-              onClick={() => onSelect(index)}
-              className={`flex w-full items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left text-sm transition ${
-                index === activeExerciseIndex
-                  ? "border-primary/40 bg-primary/10 text-foreground"
-                  : "hover:bg-muted/40"
-              } ${isDone ? "text-muted-foreground" : "text-foreground"}`}
-            >
-              <div className="flex flex-col gap-1">
-                <span className="font-medium">{exercise.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {completed}/{total} sets completed
-                </span>
-              </div>
-              {isDone ? (
-                <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
-                  <Check className="h-4 w-4" />
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActiveExercisePanel({
-  exercise,
-  exerciseIndex,
-  canEdit,
-  isSaving,
-  onSave,
-  onSetChange,
-}: {
-  exercise: ExerciseState;
-  exerciseIndex: number;
-  canEdit: boolean;
-  isSaving: boolean;
-  onSave: () => void;
-  onSetChange: (
-    exerciseIndex: number,
-    setIndex: number,
-    field: keyof SetState,
-    value: string | boolean
-  ) => void;
-}) {
-  return (
-    <Card className="rounded-xl border-border/70 bg-card/80">
-      <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <CardTitle className="text-lg">{exercise.name}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {exercise.notes ?? "No coach notes for this exercise."}
-          </p>
-        </div>
-        {exercise.videoUrl ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => window.open(exercise.videoUrl ?? "", "_blank")}
-          >
-            <Film className="mr-2 h-4 w-4" />
-            Watch demo
-          </Button>
-        ) : null}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <ExerciseSetTable
-          exercise={exercise}
-          exerciseIndex={exerciseIndex}
-          canEdit={canEdit}
-          onSetChange={onSetChange}
-        />
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={!canEdit || isSaving}
-          onClick={onSave}
-        >
-          {isSaving ? "Saving..." : "Save sets"}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ExerciseSetTable({
-  exercise,
-  exerciseIndex,
-  canEdit,
-  onSetChange,
-}: {
-  exercise: ExerciseState;
-  exerciseIndex: number;
-  canEdit: boolean;
-  onSetChange: (
-    exerciseIndex: number,
-    setIndex: number,
-    field: keyof SetState,
-    value: string | boolean
-  ) => void;
-}) {
-  const unitLabel = exercise.weightUnit ?? "kg";
-  return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="grid grid-cols-[60px_1fr_120px_100px_80px] gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
-        <span>Set</span>
-        <span>Previous</span>
-        <span>Weight</span>
-        <span>Reps</span>
-        <span>Done</span>
-      </div>
-      {exercise.sets.map((setItem, setIndex) => {
-        const isDone = setItem.is_completed;
-        return (
-          <div
-            key={`${exercise.exerciseId}-${setIndex}`}
-            className={`grid grid-cols-[60px_1fr_120px_100px_80px] items-center gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0 ${
-              isDone ? "opacity-60" : ""
-            }`}
-          >
-            <span className="text-xs font-semibold text-muted-foreground">{setIndex + 1}</span>
-            <span
-              className={`text-xs text-muted-foreground ${
-                isDone ? "line-through" : ""
-              }`}
-            >
-              {exercise.previousLabel ?? "—"}
-            </span>
-            <div className="flex items-center gap-2">
-              <input
-                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-                type="number"
-                inputMode="decimal"
-                placeholder="0"
-                value={setItem.weight}
-                onChange={(event) =>
-                  onSetChange(exerciseIndex, setIndex, "weight", event.target.value)
-                }
-                disabled={!canEdit}
-              />
-              <span className="text-xs text-muted-foreground">{unitLabel}</span>
-            </div>
-            <input
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-              type="number"
-              inputMode="numeric"
-              placeholder="0"
-              value={setItem.reps}
-              onChange={(event) =>
-                onSetChange(exerciseIndex, setIndex, "reps", event.target.value)
-              }
-              disabled={!canEdit}
-            />
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={setItem.is_completed}
-                onChange={(event) =>
-                  onSetChange(exerciseIndex, setIndex, "is_completed", event.target.checked)
-                }
-                disabled={!canEdit}
-              />
-              Done
-            </label>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function CoachRail({
-  sessionNotes,
-  completedSets,
-  totalSets,
-  progressPct,
-}: {
-  sessionNotes: string | null;
-  completedSets: number;
-  totalSets: number;
-  progressPct: number;
-}) {
-  return (
-    <div className="space-y-4">
-      <Card className="rounded-xl border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle className="text-base">Coach notes</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          {sessionNotes ?? "No additional notes from your coach."}
-        </CardContent>
-      </Card>
-      <Card className="rounded-xl border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle className="text-base">Today&apos;s focus</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Stay consistent, keep form tight, and log every working set.
-        </CardContent>
-      </Card>
-      <Card className="rounded-xl border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle className="text-base">Session progress</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {completedSets}/{totalSets} sets completed
-            </span>
-            <span>{progressPct}%</span>
-          </div>
-          <div className="h-2 w-full rounded-full bg-muted/40">
-            <div
-              className="h-2 rounded-full bg-primary transition-all"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <ListChecks className="h-4 w-4 text-primary" />
-            Track progress as you go.
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
