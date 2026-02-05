@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -17,6 +17,7 @@ import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
+import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 
 type TemplateRow = {
   id: string;
@@ -75,6 +76,7 @@ const calendarWeek = [
 
 export function PtWorkoutTemplatesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
   const [createOpen, setCreateOpen] = useState(false);
@@ -89,6 +91,19 @@ export function PtWorkoutTemplatesPage() {
     workout_type_tag: "",
     description: "",
   });
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
+  const [typeFilter, setTypeFilter] = useState(searchParams.get("type") ?? "all");
+  const [sortBy, setSortBy] = useState(searchParams.get("sort") ?? "newest");
+
+  useEffect(() => {
+    const nextQuery = searchParams.get("q") ?? "";
+    const nextType = searchParams.get("type") ?? "all";
+    const nextSort = searchParams.get("sort") ?? "newest";
+
+    if (nextQuery !== searchQuery) setSearchQuery(nextQuery);
+    if (nextType !== typeFilter) setTypeFilter(nextType);
+    if (nextSort !== sortBy) setSortBy(nextSort);
+  }, [searchParams, searchQuery, typeFilter, sortBy]);
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceId],
@@ -176,6 +191,72 @@ export function PtWorkoutTemplatesPage() {
       })),
     [templates]
   );
+  const workoutTypeOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    templates.forEach((template) => {
+      const value = template.workout_type_tag?.trim() || template.workout_type?.trim();
+      if (!value) return;
+      const key = value.toLowerCase();
+      if (!seen.has(key)) {
+        seen.set(key, value);
+      }
+    });
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [templates]);
+
+  const updateParams = (next: { q?: string; type?: string; sort?: string }) => {
+    const params = new URLSearchParams(searchParams);
+    const q = next.q ?? searchQuery;
+    const type = next.type ?? typeFilter;
+    const sort = next.sort ?? sortBy;
+
+    if (q.trim()) {
+      params.set("q", q.trim());
+    } else {
+      params.delete("q");
+    }
+
+    if (type && type !== "all") {
+      params.set("type", type);
+    } else {
+      params.delete("type");
+    }
+
+    if (sort && sort !== "newest") {
+      params.set("sort", sort);
+    } else {
+      params.delete("sort");
+    }
+
+    setSearchParams(params, { replace: true });
+  };
+
+  const filteredTemplates = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const typeKey = typeFilter.toLowerCase();
+    const matches = formattedTemplates.filter((template) => {
+      const typeValue =
+        template.workout_type_tag?.trim() || template.workout_type?.trim() || "";
+      if (typeFilter !== "all" && typeValue.toLowerCase() !== typeKey) return false;
+      if (!query) return true;
+      const name = template.name?.toLowerCase() ?? "";
+      const desc = template.description?.toLowerCase() ?? "";
+      const type = typeValue.toLowerCase();
+      return name.includes(query) || desc.includes(query) || type.includes(query);
+    });
+
+    if (sortBy === "name") {
+      return matches.sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+      );
+    }
+
+    return matches.sort((a, b) => {
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [formattedTemplates, searchQuery, typeFilter, sortBy]);
 
   return (
     <div className="space-y-8">
@@ -213,17 +294,45 @@ export function PtWorkoutTemplatesPage() {
                   <Input
                     placeholder="Search templates..."
                     className="h-9 rounded-full bg-secondary/40 pl-10"
+                    value={searchQuery}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setSearchQuery(next);
+                      updateParams({ q: next });
+                    }}
                   />
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                     ⌕
                   </span>
                 </div>
-                <Button variant="secondary" size="sm">
-                  All categories
-                </Button>
-                <Button variant="secondary" size="sm">
-                  Sort by last updated
-                </Button>
+                <select
+                  className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
+                  value={typeFilter}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setTypeFilter(next);
+                    updateParams({ type: next });
+                  }}
+                >
+                  <option value="all">All workout types</option>
+                  {workoutTypeOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
+                  value={sortBy}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setSortBy(next);
+                    updateParams({ sort: next });
+                  }}
+                >
+                  <option value="newest">Sort by newest</option>
+                  <option value="name">Sort by name</option>
+                </select>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -241,12 +350,19 @@ export function PtWorkoutTemplatesPage() {
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
                   {getErrorDetails(templatesQuery.error).code}: {getErrorDetails(templatesQuery.error).message}
                 </div>
-              ) : formattedTemplates.length > 0 ? (
+              ) : filteredTemplates.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {formattedTemplates.map((template, index) => (
-                    <div
+                  {filteredTemplates.map((template, index) => (
+                    <DashboardCard
                       key={template.id}
-                      className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-background/40 p-4 transition hover:border-border hover:bg-muted/40"
+                      title={template.name ?? "Workout template"}
+                      subtitle={template.workoutTypeLabel}
+                      className="h-full border-border/70 bg-background/40"
+                      action={
+                        <Button asChild size="sm" variant="secondary">
+                          <Link to={`/pt/templates/workouts/${template.id}`}>Edit</Link>
+                        </Button>
+                      }
                     >
                       <div className="space-y-3">
                         <div className="flex items-start justify-between">
@@ -256,8 +372,7 @@ export function PtWorkoutTemplatesPage() {
                           <span className="text-xs text-warning">★</span>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">{template.name ?? "Workout template"}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             {template.description ?? "No description"}
                           </p>
                         </div>
@@ -269,38 +384,36 @@ export function PtWorkoutTemplatesPage() {
                             {index + 4} exercises
                           </Badge>
                         </div>
+                        <div className="flex items-center justify-between border-t border-border/70 pt-3 text-xs text-muted-foreground">
+                          <span>Used {index + 8} times</span>
+                          <span>{template.updated}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="ghost" className="flex-1">
+                            Assign
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="flex-1"
+                            onClick={() => {
+                              setDeleteTarget(template);
+                              setDeleteError(null);
+                              setDeleteOpen(true);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                      <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3 text-xs text-muted-foreground">
-                        <span>Used {index + 8} times</span>
-                        <span>{template.updated}</span>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <Button asChild size="sm" variant="secondary" className="flex-1">
-                          <Link to={`/pt/templates/workouts/${template.id}`}>Edit</Link>
-                        </Button>
-                        <Button size="sm" variant="ghost" className="flex-1">
-                          Assign
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setDeleteTarget(template);
-                            setDeleteError(null);
-                            setDeleteOpen(true);
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
+                    </DashboardCard>
                   ))}
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
-                  <p className="text-sm font-semibold">No templates yet.</p>
+                  <p className="text-sm font-semibold">No templates found.</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Create your first template to speed up programming.
+                    Try adjusting filters or create a new template.
                   </p>
                   <Button className="mt-4" size="sm" onClick={() => setCreateOpen(true)}>
                     Create template

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseConfigured } from "../../lib/supabase";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -17,89 +17,86 @@ export function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setErrorMsg(null);
-    
+    try {
+      if (!supabaseConfigured) {
+        setErrorMsg("Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+        return;
+      }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setErrorMsg(error.message);
+      if (error) {
+        setErrorMsg(error.message);
+        return;
+      }
+
+      const session = data.session ?? null;
+
+      if (session) {
+        const from = (location.state as { from?: unknown } | null)?.from;
+        if (typeof from === "string" && from.startsWith("/join/")) {
+          navigate(from, { replace: true });
+          return;
+        }
+
+        try {
+          const workspaceMember = await supabase
+            .from("workspace_members")
+            .select("workspace_id, role")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+
+          if (workspaceMember.error) {
+            setErrorMsg(workspaceMember.error.message);
+            return;
+          }
+
+          const isPt =
+            workspaceMember.data?.role && workspaceMember.data.role.startsWith("pt");
+
+          if (workspaceMember.data && isPt) {
+            if (location.pathname !== "/pt/dashboard") {
+              navigate("/pt/dashboard", { replace: true });
+            }
+            return;
+          }
+
+          const clientMember = await supabase
+            .from("clients")
+            .select("id, workspace_id, status")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+
+          if (clientMember.error) {
+            setErrorMsg(clientMember.error.message);
+            return;
+          }
+
+          if (clientMember.data) {
+            if (location.pathname !== "/app/home") {
+              navigate("/app/home", { replace: true });
+            }
+            return;
+          }
+
+          if (location.pathname !== "/no-workspace") {
+            navigate("/no-workspace", { replace: true });
+          }
+          return;
+        } catch (err) {
+          console.error("ROLE ROUTE ERROR", err);
+          setErrorMsg(err instanceof Error ? err.message : "Failed to route after login.");
+          return;
+        }
+      }
+
+      setErrorMsg("Sign-in succeeded, but no session was created.");
+    } catch (err) {
+      console.error("SIGN IN ERROR", err);
+      setErrorMsg(err instanceof Error ? err.message : "Sign-in failed.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    
-
-    const { data: s } = await supabase.auth.getSession();
-
-    if (s.session) {
-      
-
-      const from = (location.state as { from?: unknown } | null)?.from;
-      if (typeof from === "string" && from.startsWith("/join/")) {
-        navigate(from, { replace: true });
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const workspaceMember = await supabase
-          .from("workspace_members")
-          .select("workspace_id, role")
-          .eq("user_id", s.session.user.id)
-          .maybeSingle();
-
-        if (workspaceMember.error) {
-          setErrorMsg(workspaceMember.error.message);
-          setLoading(false);
-          return;
-        }
-
-        const isPt =
-          workspaceMember.data?.role && workspaceMember.data.role.startsWith("pt");
-
-        if (workspaceMember.data && isPt) {
-          if (location.pathname !== "/pt/dashboard") {
-            navigate("/pt/dashboard", { replace: true });
-          }
-          setLoading(false);
-          return;
-        }
-
-        const clientMember = await supabase
-          .from("clients")
-          .select("id, workspace_id, status")
-          .eq("user_id", s.session.user.id)
-          .maybeSingle();
-
-        if (clientMember.error) {
-          setErrorMsg(clientMember.error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (clientMember.data) {
-          if (location.pathname !== "/app/home") {
-            navigate("/app/home", { replace: true });
-          }
-          setLoading(false);
-          return;
-        }
-
-        if (location.pathname !== "/no-workspace") {
-          navigate("/no-workspace", { replace: true });
-        }
-        setLoading(false);
-        return;
-      } catch (err) {
-        console.error("ROLE ROUTE ERROR", err);
-        setErrorMsg(err instanceof Error ? err.message : "Failed to route after login.");
-        setLoading(false);
-        return;
-      }
-    }
-
-    
-    setLoading(false);
   };
 
   return (

@@ -2418,19 +2418,26 @@ function PtClientScheduleCard({
                 const isSkipped = workout?.status === "skipped";
                 const isStreak = streakKeys.has(row.key);
                 return (
-                  <button
+                  <div
                     key={row.key}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setSelectedKey(row.key);
                       setDayDrawerOpen(true);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedKey(row.key);
+                        setDayDrawerOpen(true);
+                      }
                     }}
                     className={cn(
                       "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border",
                       isSelected
                         ? "bg-primary/10"
-                        : "bg-background/30 hover:bg-muted/40"
-                      ,
+                        : "bg-background/30 hover:bg-muted/40",
                       isToday
                         ? "min-h-[190px] shadow-[0_0_22px_rgba(56,189,248,0.2)]"
                         : "",
@@ -2501,7 +2508,7 @@ function PtClientScheduleCard({
                         </button>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
