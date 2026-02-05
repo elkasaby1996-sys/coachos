@@ -1,6 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -16,6 +31,7 @@ import {
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
+import { GripVertical } from "lucide-react";
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -91,6 +107,91 @@ const isUuid = (value: string | undefined | null) =>
       )
   );
 
+type SortableExerciseRowProps = {
+  row: TemplateExerciseRow;
+  index: number;
+  total: number;
+  actionStatus: "idle" | "saving";
+  onMove: (row: TemplateExerciseRow, direction: "up" | "down") => void;
+  onEdit: (row: TemplateExerciseRow) => void;
+  onDelete: (row: TemplateExerciseRow) => void;
+};
+
+function SortableExerciseRow({
+  row,
+  index,
+  total,
+  actionStatus,
+  onMove,
+  onEdit,
+  onDelete,
+}: SortableExerciseRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={
+        isDragging
+          ? "rounded-lg border border-border bg-muted/50 p-3 shadow-lg"
+          : "rounded-lg border border-border bg-muted/30 p-3"
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            aria-label="Drag to reorder"
+            className="mt-0.5 rounded-md border border-border bg-background/60 p-1 text-muted-foreground hover:text-foreground"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div>
+            <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
+            <p className="text-xs text-muted-foreground">
+              {row.sets ?? "--"} sets - {row.reps ?? "--"} reps
+              {row.rpe ? ` - RPE ${row.rpe}` : ""}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={index === 0 || actionStatus === "saving"}
+            onClick={() => onMove(row, "up")}
+          >
+            Up
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={index === total - 1 || actionStatus === "saving"}
+            onClick={() => onMove(row, "down")}
+          >
+            Down
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => onEdit(row)}>
+            Edit
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onDelete(row)}>
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PtWorkoutTemplateBuilderPage() {
   const { id } = useParams();
   const templateId = isUuid(id) ? id : null;
@@ -109,6 +210,11 @@ export function PtWorkoutTemplateBuilderPage() {
   const [form, setForm] = useState<TemplateExerciseForm>(emptyExerciseForm);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<"idle" | "saving">("idle");
+  const [exerciseRows, setExerciseRows] = useState<TemplateExerciseRow[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
 
   const templateQuery = useQuery({
     queryKey: ["workout-template", templateId],
@@ -154,6 +260,19 @@ export function PtWorkoutTemplateBuilderPage() {
     },
   });
 
+  useEffect(() => {
+    const rows = templateExercisesQuery.data ?? [];
+    const normalized = rows
+      .map((row, index) => ({
+        row,
+        index,
+        order: row.sort_order ?? Number.MAX_SAFE_INTEGER,
+      }))
+      .sort((a, b) => (a.order === b.order ? a.index - b.index : a.order - b.order))
+      .map((item) => item.row);
+    setExerciseRows(normalized);
+  }, [templateExercisesQuery.data]);
+
   const exercises = exercisesQuery.data ?? [];
   const filteredExercises = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -168,7 +287,7 @@ export function PtWorkoutTemplateBuilderPage() {
     setActionStatus("saving");
     setActionError(null);
 
-    const rows = templateExercisesQuery.data ?? [];
+    const rows = exerciseRows.length > 0 ? exerciseRows : templateExercisesQuery.data ?? [];
     const maxSort = rows.reduce((acc, row) => Math.max(acc, row.sort_order ?? 0), 0);
 
     const { error } = await supabase.from("workout_template_exercises").insert({
@@ -282,7 +401,7 @@ export function PtWorkoutTemplateBuilderPage() {
 
   const handleMove = async (row: TemplateExerciseRow, direction: "up" | "down") => {
     if (!templateId) return;
-    const rows = templateExercisesQuery.data ?? [];
+    const rows = exerciseRows.length > 0 ? exerciseRows : templateExercisesQuery.data ?? [];
     const index = rows.findIndex((item) => item.id === row.id);
     if (index === -1) return;
     const swapIndex = direction === "up" ? index - 1 : index + 1;
@@ -322,6 +441,59 @@ export function PtWorkoutTemplateBuilderPage() {
 
     setActionStatus("idle");
     await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (actionStatus === "saving") return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = exerciseRows.findIndex((row) => row.id === active.id);
+    const newIndex = exerciseRows.findIndex((row) => row.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const updated = arrayMove(exerciseRows, oldIndex, newIndex);
+    setExerciseRows(updated);
+
+    const updates = updated.map((row, index) => ({
+      id: row.id,
+      sort_order: (index + 1) * 10,
+    }));
+
+    const changed = updates.filter((update, index) => {
+      const prev = exerciseRows[index];
+      if (!prev) return true;
+      return prev.id !== update.id || (prev.sort_order ?? null) !== update.sort_order;
+    });
+
+    if (changed.length === 0) return;
+
+    setActionStatus("saving");
+    setActionError(null);
+
+    try {
+      const results = await Promise.all(
+        changed.map((update) =>
+          supabase
+            .from("workout_template_exercises")
+            .update({ sort_order: update.sort_order })
+            .eq("id", update.id)
+        )
+      );
+      const firstError = results.find((result) => result.error)?.error;
+      if (firstError) {
+        const details = getErrorDetails(firstError);
+        setActionError(`${details.code}: ${details.message}`);
+      }
+    } catch (error) {
+      const details = getErrorDetails(error);
+      setActionError(`${details.code}: ${details.message}`);
+    } finally {
+      setActionStatus("idle");
+      await queryClient.invalidateQueries({
+        queryKey: ["workout-template-exercises", templateId],
+      });
+    }
   };
 
   const template = templateQuery.data;
@@ -436,54 +608,35 @@ export function PtWorkoutTemplateBuilderPage() {
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
               {getErrorDetails(templateExercisesQuery.error).code}: {getErrorDetails(templateExercisesQuery.error).message}
             </div>
-          ) : templateExercisesQuery.data && templateExercisesQuery.data.length > 0 ? (
-            templateExercisesQuery.data.map((row, index) => (
-              <div
-                key={row.id}
-                className="rounded-lg border border-border bg-muted/30 p-3"
+          ) : exerciseRows.length > 0 ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={exerciseRows.map((row) => row.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {row.sets ?? "--"} sets - {row.reps ?? "--"} reps
-                      {row.rpe ? ` - RPE ${row.rpe}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={index === 0 || actionStatus === "saving"}
-                      onClick={() => handleMove(row, "up")}
-                    >
-                      Up
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={index === (templateExercisesQuery.data?.length ?? 1) - 1 || actionStatus === "saving"}
-                      onClick={() => handleMove(row, "down")}
-                    >
-                      Down
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setSelectedRow(row);
+                <div className="space-y-3">
+                  {exerciseRows.map((row, index) => (
+                    <SortableExerciseRow
+                      key={row.id}
+                      row={row}
+                      index={index}
+                      total={exerciseRows.length}
+                      actionStatus={actionStatus}
+                      onMove={handleMove}
+                      onEdit={openEdit}
+                      onDelete={(target) => {
+                        setSelectedRow(target);
                         setDeleteOpen(true);
                       }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+                    />
+                  ))}
                 </div>
-              </div>
-            ))
+              </SortableContext>
+            </DndContext>
           ) : (
             <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
               No exercises yet. Add one to start building this template.

@@ -360,7 +360,7 @@ export function PtWorkoutTemplatesPage() {
                       className="h-full border-border/70 bg-background/40"
                       action={
                         <Button asChild size="sm" variant="secondary">
-                          <Link to={`/pt/templates/workouts/${template.id}`}>Edit</Link>
+                          <Link to={`/pt/templates/workouts/${template.id}/edit`}>Edit</Link>
                         </Button>
                       }
                     >
