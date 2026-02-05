@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -135,6 +135,7 @@ function SummaryStat({
 
 export function ClientHomePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session } = useAuth();
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
@@ -153,6 +154,7 @@ export function ClientHomePage() {
   const [checklist, setChecklist] = useState<ChecklistState>(() => readChecklist(todayKey));
   const [dayStatus, setDayStatus] = useState<DayStatus | null>(() => readDayStatus(todayKey));
   const [actionError, setActionError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setChecklist(readChecklist(todayKey));
@@ -162,6 +164,19 @@ export function ClientHomePage() {
   useEffect(() => {
     writeChecklist(todayKey, checklist);
   }, [todayKey, checklist]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = window.setTimeout(() => setToastMessage(null), 2400);
+    return () => window.clearTimeout(timeout);
+  }, [toastMessage]);
+
+  useEffect(() => {
+    const state = location.state as { toast?: string } | null;
+    if (!state?.toast) return;
+    setToastMessage(state.toast);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate]);
 
   const clientQuery = useQuery({
     queryKey: ["client", session?.user?.id],
@@ -638,6 +653,13 @@ export function ClientHomePage() {
             <Button onClick={() => navigate("/app/baseline")}>Start baseline</Button>
           </CardContent>
         </Card>
+      ) : null}
+
+      {toastMessage ? (
+        <Alert className="border-emerald-200">
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{toastMessage}</AlertDescription>
+        </Alert>
       ) : null}
 
       {errors.length > 0 ? (
