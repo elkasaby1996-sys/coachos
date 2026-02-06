@@ -443,7 +443,15 @@ export function PtDashboardPage() {
           <DashboardCard
             title="Upcoming Check-ins"
             subtitle="Next 7 days"
-            action={<Button variant="ghost" size="sm">View calendar</Button>}
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/pt/checkins")}
+              >
+                View queue
+              </Button>
+            }
           >
             {isLoading ? (
               <div className="space-y-2">

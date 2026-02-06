@@ -190,6 +190,15 @@ type CheckinRow = {
   created_at: string | null;
 };
 
+type CheckinPhotoRow = {
+  id: string;
+  checkin_id: string;
+  client_id: string;
+  url: string;
+  storage_path: string;
+  photo_type: string;
+};
+
 type AssignedWorkoutExerciseRow = {
   id: string;
   assigned_workout_id: string;
@@ -376,6 +385,32 @@ export function PtClientDetailPage() {
     "idle"
   );
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const selectedCheckinAnswersQuery = useQuery({
+    queryKey: ["pt-checkin-answers", selectedCheckin?.id],
+    enabled: !!selectedCheckin?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkin_answers")
+        .select(
+          "id, answer_text, answer_number, answer_boolean, question:checkin_questions(question_text, prompt)"
+        )
+        .eq("checkin_id", selectedCheckin?.id ?? "");
+      if (error) throw error;
+      return (data ?? []) as CheckinAnswerRow[];
+    },
+  });
+  const selectedCheckinPhotosQuery = useQuery({
+    queryKey: ["pt-checkin-photos", selectedCheckin?.id],
+    enabled: !!selectedCheckin?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkin_photos")
+        .select("id, checkin_id, client_id, url, storage_path, photo_type")
+        .eq("checkin_id", selectedCheckin?.id ?? "");
+      if (error) throw error;
+      return (data ?? []) as CheckinPhotoRow[];
+    },
+  });
   const [loadsOpen, setLoadsOpen] = useState(false);
   const [loadsError, setLoadsError] = useState<string | null>(null);
   const [loadsStatus, setLoadsStatus] = useState<"idle" | "saving">("idle");
@@ -1416,6 +1451,13 @@ export function PtClientDetailPage() {
   const pendingCheckin = upcomingCheckins[0] ?? null;
   const lastNoteSummary = baselineNotes.trim() ? baselineNotes.trim() : "No recent PT notes.";
 
+  const renderCheckinAnswerValue = (answer: CheckinAnswerRow) => {
+    if (answer.answer_text) return answer.answer_text;
+    if (typeof answer.answer_number === "number") return `${answer.answer_number}`;
+    if (typeof answer.answer_boolean === "boolean") return answer.answer_boolean ? "Yes" : "No";
+    return "--";
+  };
+
   const baselinePhotoMap = useMemo(() => {
     const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
       front: null,
@@ -1640,7 +1682,7 @@ export function PtClientDetailPage() {
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full space-y-6">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
           <div className="xl:col-span-4">
             {identityLoading ? (
@@ -1676,8 +1718,8 @@ export function PtClientDetailPage() {
                       <p className="text-sm text-muted-foreground">
                         {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
                           .filter(Boolean)
-                          .join(" • ") || "Training plan overview"}
-                        {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
+                          .join("  -  ") || "Training plan overview"}
+                        {joinedLabel ? `  -  Joined ${joinedLabel}` : ""}
                       </p>
                     </div>
                   </div>
@@ -1821,9 +1863,9 @@ export function PtClientDetailPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="lg:col-span-8 space-y-6">
-            <DashboardCard title="Today’s Focus" subtitle="What needs attention right now.">
+            <DashboardCard title="Today's Focus" subtitle="What needs attention right now.">
               {focusLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-5 w-1/3" />
@@ -1832,60 +1874,62 @@ export function PtClientDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
+                  <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          Today
+                        </p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {todaySessionTitle}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {todaySession?.day_type === "rest"
+                            ? "Planned recovery day"
+                            : todaySession
+                            ? "Workout scheduled"
+                            : "No workout scheduled"}
+                        </p>
+                      </div>
+                      <StatusPill status={todaySessionStatus} />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-border/60 bg-background/40 p-3">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Today
+                        Check-in
                       </p>
-                      <p className="text-lg font-semibold text-foreground">
-                        {todaySessionTitle}
+                      <p className="text-sm font-semibold text-foreground">
+                        {pendingCheckin ? "Pending this week" : "No pending check-in"}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {todaySession?.day_type === "rest"
-                          ? "Planned recovery day"
-                          : todaySession
-                          ? "Workout scheduled"
-                          : "No workout scheduled"}
+                      <p className="text-xs text-muted-foreground">
+                        {pendingCheckin?.week_ending_saturday ?? "All caught up"}
                       </p>
                     </div>
-                    <StatusPill status={todaySessionStatus} />
+                    <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Last PT note
+                      </p>
+                      <p className="text-sm text-foreground">{lastNoteSummary}</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Check-in
-                    </p>
-                    <p className="text-sm font-semibold text-foreground">
-                      {pendingCheckin ? "Pending this week" : "No pending check-in"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {pendingCheckin?.week_ending_saturday ?? "All caught up"}
-                    </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" onClick={() => setActiveTab("checkins")}>
+                      Review check-in
+                    </Button>
+                    <Button variant="secondary" onClick={() => setActiveTab("plan")}>
+                      Edit plan
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        handleQuickAction("Quick check-in: how did today's session feel?")
+                      }
+                    >
+                      Message
+                    </Button>
                   </div>
-                  <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Last PT note
-                    </p>
-                    <p className="text-sm text-foreground">{lastNoteSummary}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => setActiveTab("checkins")}>
-                    Review check-in
-                  </Button>
-                  <Button variant="secondary" onClick={() => setActiveTab("plan")}>
-                    Edit plan
-                  </Button>
-                  <Button
-                    onClick={() => handleQuickAction("Quick check-in: how did today’s session feel?")}
-                  >
-                    Message
-                  </Button>
-                </div>
                 </div>
               )}
             </DashboardCard>
@@ -2098,7 +2142,7 @@ export function PtClientDetailPage() {
                     const statusLabel =
                       session.completed_at ? "completed" : session.assigned_workout?.status ?? "active";
                     const volume = sessionVolumeById.get(session.id);
-                    const notesIndicator = session.client_notes ? "Yes" : "—";
+                    const notesIndicator = session.client_notes ? "Yes" : "--";
                     return (
                       <button
                         key={session.id}
@@ -2115,7 +2159,7 @@ export function PtClientDetailPage() {
                           {statusLabel}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {typeof volume === "number" ? volume.toFixed(0) : "—"}
+                          {typeof volume === "number" ? volume.toFixed(0) : "--"}
                         </span>
                         <span className="text-xs text-muted-foreground">{notesIndicator}</span>
                       </button>
@@ -2164,15 +2208,15 @@ export function PtClientDetailPage() {
           </div>
         </div>
 
-        <div className="mt-6">
-        <DashboardCard
-              title="Client Workbench"
-              subtitle="Plan, habits, and progress organized by tab."
-              className="bg-card/90"
-            >
-              <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
-                <div className="rounded-lg bg-card/80 p-2">
-                  <TabsList className="flex h-auto w-full flex-wrap gap-2 rounded-lg bg-transparent p-0">
+        <div>
+          <DashboardCard
+            title="Client Workbench"
+            subtitle="Plan, habits, and progress organized by tab."
+            className="bg-card/90"
+          >
+            <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
+              <div className="rounded-lg bg-card/80 p-2">
+                <TabsList className="flex h-auto w-full flex-wrap gap-2 rounded-lg bg-transparent p-0">
                   <TabsTrigger value="plan">Plan</TabsTrigger>
                   <TabsTrigger value="habits">Habits</TabsTrigger>
                   <TabsTrigger value="progress">Progress</TabsTrigger>
@@ -2181,9 +2225,9 @@ export function PtClientDetailPage() {
                   <TabsTrigger value="messages">Messages</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="baseline">Baseline</TabsTrigger>
-                  </TabsList>
-                </div>
-                <TabsContent value="plan">
+                </TabsList>
+              </div>
+              <TabsContent value="plan">
                   <PtClientPlanTab
                     templatesQuery={templatesQuery}
                     programTemplatesQuery={programTemplatesQuery}
@@ -2219,46 +2263,46 @@ export function PtClientDetailPage() {
                     }}
                     onStatusChange={handleStatusUpdate}
                   />
-                </TabsContent>
-                <TabsContent value="habits">
-                  <PtClientHabitsTab
-                    habitsQuery={habitsQuery}
-                    hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
-                    habitsToday={habitsToday}
-                    habitStreak={habitStreak}
-                  />
-                </TabsContent>
-                <TabsContent value="progress">
-                  <PtClientProgressTab />
-                </TabsContent>
-                <TabsContent value="logs">
-                  <PtClientLogsTab />
-                </TabsContent>
-                <TabsContent value="checkins">
-                  <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
-                </TabsContent>
-                <TabsContent value="messages">
-                  <PtClientMessagesTab />
-                </TabsContent>
-                <TabsContent value="notes">
-                  <PtClientNotesTab />
-                </TabsContent>
-                <TabsContent value="baseline">
-                  <PtClientBaselineTab
-                    baselineEntryQuery={baselineEntryQuery}
-                    baselineMetricsQuery={baselineMetricsQuery}
-                    baselineMarkersQuery={baselineMarkersQuery}
-                    baselinePhotosQuery={baselinePhotosQuery}
-                    baselineNotes={baselineNotes}
-                    baselineNotesStatus={baselineNotesStatus}
-                    baselineNotesMessage={baselineNotesMessage}
-                    baselinePhotoMap={baselinePhotoMap}
-                    onNotesChange={setBaselineNotes}
-                    onNotesSave={handleBaselineNotesSave}
-                  />
-                </TabsContent>
-              </Tabs>
-            </DashboardCard>
+              </TabsContent>
+              <TabsContent value="habits">
+                <PtClientHabitsTab
+                  habitsQuery={habitsQuery}
+                  hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
+                  habitsToday={habitsToday}
+                  habitStreak={habitStreak}
+                />
+              </TabsContent>
+              <TabsContent value="progress">
+                <PtClientProgressTab />
+              </TabsContent>
+              <TabsContent value="logs">
+                <PtClientLogsTab />
+              </TabsContent>
+              <TabsContent value="checkins">
+                <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+              </TabsContent>
+              <TabsContent value="messages">
+                <PtClientMessagesTab />
+              </TabsContent>
+              <TabsContent value="notes">
+                <PtClientNotesTab />
+              </TabsContent>
+              <TabsContent value="baseline">
+                <PtClientBaselineTab
+                  baselineEntryQuery={baselineEntryQuery}
+                  baselineMetricsQuery={baselineMetricsQuery}
+                  baselineMarkersQuery={baselineMarkersQuery}
+                  baselinePhotosQuery={baselinePhotosQuery}
+                  baselineNotes={baselineNotes}
+                  baselineNotesStatus={baselineNotesStatus}
+                  baselineNotesMessage={baselineNotesMessage}
+                  baselinePhotoMap={baselinePhotoMap}
+                  onNotesChange={setBaselineNotes}
+                  onNotesSave={handleBaselineNotesSave}
+                />
+              </TabsContent>
+            </Tabs>
+          </DashboardCard>
         </div>
       </div>
 
@@ -2275,7 +2319,7 @@ export function PtClientDetailPage() {
           <DialogHeader>
             <DialogTitle>Session details</DialogTitle>
             <DialogDescription>
-              {selectedSession?.assigned_workout?.workout_template?.name ?? "Workout"} •{" "}
+              {selectedSession?.assigned_workout?.workout_template?.name ?? "Workout"}  - {" "}
               {selectedSession?.completed_at
                 ? new Date(selectedSession.completed_at).toLocaleString("en-US", {
                     month: "short",
@@ -2427,26 +2471,93 @@ export function PtClientDetailPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
-            <DialogTitle>Check-in feedback</DialogTitle>
+            <DialogTitle>Check-in review</DialogTitle>
             <DialogDescription>
               {selectedCheckin?.week_ending_saturday
                 ? `Week ending ${selectedCheckin.week_ending_saturday}`
                 : "Weekly check-in feedback"}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground">Feedback</label>
-            <textarea
-              className="min-h-[140px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={feedbackText}
-              onChange={(event) => setFeedbackText(event.target.value)}
-              placeholder="Write notes for the client..."
-            />
-            {feedbackMessage ? (
-              <div className="text-xs text-muted-foreground">{feedbackMessage}</div>
-            ) : null}
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Responses</p>
+              {selectedCheckinAnswersQuery.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : selectedCheckinAnswersQuery.error ? (
+                <Alert className="border-destructive/30">
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{getFriendlyErrorMessage()}</AlertDescription>
+                </Alert>
+              ) : selectedCheckinAnswersQuery.data && selectedCheckinAnswersQuery.data.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedCheckinAnswersQuery.data.map((answer) => (
+                    <div
+                      key={answer.id}
+                      className="rounded-lg border border-border bg-muted/30 p-3"
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        {answer.question?.question_text ?? answer.question?.prompt ?? "Question"}
+                      </p>
+                      <p className="text-sm font-semibold">{renderCheckinAnswerValue(answer)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No responses recorded.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Photos</p>
+              {selectedCheckinPhotosQuery.isLoading ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-32 w-full" />
+                </div>
+              ) : selectedCheckinPhotosQuery.data &&
+                selectedCheckinPhotosQuery.data.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {selectedCheckinPhotosQuery.data.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="rounded-lg border border-border bg-muted/30 p-2"
+                    >
+                      <img
+                        src={photo.url}
+                        alt={`${photo.photo_type} photo`}
+                        className="h-40 w-full rounded-md object-cover"
+                      />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {photo.photo_type}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No photos uploaded.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-muted-foreground">
+                Feedback
+              </label>
+              <textarea
+                className="min-h-[140px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={feedbackText}
+                onChange={(event) => setFeedbackText(event.target.value)}
+                placeholder="Write notes for the client..."
+              />
+              {feedbackMessage ? (
+                <div className="text-xs text-muted-foreground">{feedbackMessage}</div>
+              ) : null}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setReviewOpen(false)}>
@@ -2981,7 +3092,7 @@ function PtClientScheduleCard({
           <DialogHeader>
             <DialogTitle>Day details</DialogTitle>
             <DialogDescription>
-              {formatWeekday(selectedRow.key)} {formatDayNumber(selectedRow.key)} •{" "}
+              {formatWeekday(selectedRow.key)} {formatDayNumber(selectedRow.key)}  - {" "}
               {selectedTitle}
             </DialogDescription>
           </DialogHeader>
@@ -3330,36 +3441,6 @@ function PtClientCheckinsTab({
   checkinsQuery: QueryResult<CheckinRow[]>;
   onReview: (checkin: CheckinRow) => void;
 }) {
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailCheckin, setDetailCheckin] = useState<CheckinRow | null>(null);
-
-  const answersQuery = useQuery({
-    queryKey: ["checkin-answers", detailCheckin?.id],
-    enabled: !!detailCheckin?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("checkin_answers")
-        .select(
-          "id, answer_text, answer_number, answer_boolean, question:checkin_questions(question_text, prompt)"
-        )
-        .eq("checkin_id", detailCheckin?.id ?? "");
-      if (error) throw error;
-      return (data ?? []) as CheckinAnswerRow[];
-    },
-  });
-
-  const closeDetail = () => {
-    setDetailOpen(false);
-    setDetailCheckin(null);
-  };
-
-  const renderAnswerValue = (answer: CheckinAnswerRow) => {
-    if (answer.answer_text) return answer.answer_text;
-    if (typeof answer.answer_number === "number") return `${answer.answer_number}`;
-    if (typeof answer.answer_boolean === "boolean") return answer.answer_boolean ? "Yes" : "No";
-    return "--";
-  };
-
   return (
     <>
       <Card className="border-border/70 bg-card/80 xl:col-start-1">
@@ -3388,10 +3469,7 @@ function PtClientCheckinsTab({
                   <button
                     key={checkin.id}
                     type="button"
-                    onClick={() => {
-                      setDetailCheckin(checkin);
-                      setDetailOpen(true);
-                    }}
+                    onClick={() => onReview(checkin)}
                     className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/50"
                   >
                     <div>
@@ -3430,54 +3508,6 @@ function PtClientCheckinsTab({
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={detailOpen} onOpenChange={(open) => (open ? null : closeDetail())}>
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle>Check-in details</DialogTitle>
-            <DialogDescription>
-              {detailCheckin?.week_ending_saturday
-                ? `Week ending ${detailCheckin.week_ending_saturday}`
-                : "Weekly check-in responses"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {answersQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : answersQuery.error ? (
-              <Alert className="border-destructive/30">
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{getFriendlyErrorMessage()}</AlertDescription>
-              </Alert>
-            ) : answersQuery.data && answersQuery.data.length > 0 ? (
-              <div className="space-y-2">
-                {answersQuery.data.map((answer) => (
-                  <div
-                    key={answer.id}
-                    className="rounded-lg border border-border bg-muted/30 p-3"
-                  >
-                    <p className="text-xs text-muted-foreground">
-                      {answer.question?.question_text ?? answer.question?.prompt ?? "Question"}
-                    </p>
-                    <p className="text-sm font-semibold">{renderAnswerValue(answer)}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No responses recorded.</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={closeDetail}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
@@ -3601,20 +3631,20 @@ function PtClientHabitsTab({
                       <span className="text-xs text-muted-foreground">{row.dateKey}</span>
                       {!log ? <StatusPill status="not logged" /> : null}
                     </div>
-                    <span>{log?.calories ?? "—"}</span>
-                    <span>{typeof log?.protein_g === "number" ? `${log?.protein_g} g` : "—"}</span>
-                    <span>{typeof log?.carbs_g === "number" ? `${log?.carbs_g} g` : "—"}</span>
-                    <span>{typeof log?.fats_g === "number" ? `${log?.fats_g} g` : "—"}</span>
+                    <span>{log?.calories ?? "--"}</span>
+                    <span>{typeof log?.protein_g === "number" ? `${log?.protein_g} g` : "--"}</span>
+                    <span>{typeof log?.carbs_g === "number" ? `${log?.carbs_g} g` : "--"}</span>
+                    <span>{typeof log?.fats_g === "number" ? `${log?.fats_g} g` : "--"}</span>
                     <span>
                       {typeof log?.weight_value === "number"
                         ? `${log?.weight_value} ${log?.weight_unit ?? ""}`
-                        : "—"}
+                        : "--"}
                     </span>
-                    <span>{typeof log?.steps === "number" ? log.steps.toLocaleString() : "—"}</span>
-                    <span>{typeof log?.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "—"}</span>
-                    <span>{typeof log?.energy === "number" ? log.energy : "—"}</span>
-                    <span>{typeof log?.hunger === "number" ? log.hunger : "—"}</span>
-                    <span>{typeof log?.stress === "number" ? log.stress : "—"}</span>
+                    <span>{typeof log?.steps === "number" ? log.steps.toLocaleString() : "--"}</span>
+                    <span>{typeof log?.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "--"}</span>
+                    <span>{typeof log?.energy === "number" ? log.energy : "--"}</span>
+                    <span>{typeof log?.hunger === "number" ? log.hunger : "--"}</span>
+                    <span>{typeof log?.stress === "number" ? log.stress : "--"}</span>
                   </div>
                 );
               })}
@@ -4011,3 +4041,4 @@ function PtClientPlaceholderTab({ title }: { title: string }) {
     </Card>
   );
 }
+

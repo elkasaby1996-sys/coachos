@@ -8,6 +8,7 @@ import {
   addDaysToDateString,
   getTodayInTimezone,
   getWeekEndSaturday,
+  getWeekdayFromDateString,
 } from "../../lib/date-utils";
 
 type ReminderSeverity = "info" | "warn";
@@ -159,11 +160,12 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     const logs = habitLogsQuery.data ?? [];
     const hasTodayLog = logs.some((row) => row.log_date === todayStr);
     const baselineExists = Boolean(baselineExistsQuery.data);
-    const isSaturday = todayStr === weekEndingSaturday;
+    const weekday = getWeekdayFromDateString(todayStr);
+    const isFridayOrSaturday = weekday === 5 || weekday === 6;
     const checkinRow = checkinAlertQuery.data?.row ?? null;
     const checkinError = Boolean(checkinAlertQuery.data?.error);
     const checkinDue =
-      !checkinError && isSaturday && (!checkinRow || !checkinRow.submitted_at);
+      !checkinError && isFridayOrSaturday && (!checkinRow || !checkinRow.submitted_at);
 
     return { hasTodayLog, baselineExists, checkinDue };
   }, [
@@ -180,14 +182,15 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     if (!result || result.error) return items;
 
     const row = result.row;
-    const isTodaySaturday = todayStr === weekEndingSaturday;
+    const weekday = getWeekdayFromDateString(todayStr);
+    const isTodayFridayOrSaturday = weekday === 5 || weekday === 6;
 
     let state: "due_today" | "in_progress" | "submitted_waiting" | "reviewed" | "no_alerts" = "no_alerts";
 
     if (!row) {
-      state = isTodaySaturday ? "due_today" : "no_alerts";
+      state = isTodayFridayOrSaturday ? "due_today" : "no_alerts";
     } else if (!row.submitted_at) {
-      state = "in_progress";
+      state = isTodayFridayOrSaturday ? "in_progress" : "no_alerts";
     } else if (!row.pt_feedback || row.pt_feedback.trim().length === 0) {
       state = "submitted_waiting";
     } else {

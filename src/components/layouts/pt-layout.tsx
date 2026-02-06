@@ -41,7 +41,7 @@ const navItems = [
   { label: "Programs", to: "/pt/programs", icon: CalendarDays },
   { label: "Workouts", to: "/pt/templates/workouts", icon: Dumbbell },
   { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
-  { label: "Check-ins", to: "/pt/checkins/templates", icon: ClipboardList },
+  { label: "Check-ins", to: "/pt/checkins", icon: ClipboardList },
   { label: "Settings", to: "/pt/settings", icon: Settings },
 ];
 
