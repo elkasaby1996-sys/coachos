@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
+import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
@@ -666,7 +667,7 @@ export function ClientWorkoutRunPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6 space-y-6 pb-16 md:pb-0">
+    <div className="w-full space-y-6 pb-16 md:pb-0">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Workout run</p>
@@ -879,7 +880,7 @@ export function ClientWorkoutRunPage() {
         </DialogContent>
       </Dialog>
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 bg-background/80 backdrop-blur md:static md:border-none md:bg-transparent md:backdrop-blur-0">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <PageContainer className="flex items-center justify-between py-3">
           <div className="text-xs text-muted-foreground">
             {workoutSession ? "Ready to finish? Save and log your session." : "Start the workout to log sets."}
           </div>
@@ -889,7 +890,7 @@ export function ClientWorkoutRunPage() {
           >
             Finish workout
           </Button>
-        </div>
+        </PageContainer>
       </div>
     </div>
   );

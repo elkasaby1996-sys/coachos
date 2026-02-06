@@ -90,6 +90,7 @@ export function ClientHabitsPage() {
   const { session } = useAuth();
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [formState, setFormState] = useState<HabitFormState>(emptyForm);
+  const [initialFormState, setInitialFormState] = useState<HabitFormState>(emptyForm);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
@@ -164,16 +165,18 @@ export function ClientHabitsPage() {
     const log = habitLogQuery.data;
     if (!log) {
       const unitPreference = clientQuery.data?.unit_preference?.toLowerCase() === "imperial";
-      setFormState({
+      const nextState = {
         ...emptyForm,
         weight_unit: unitPreference ? "lb" : "kg",
-      });
+      };
+      setFormState(nextState);
+      setInitialFormState(nextState);
       setLastSavedAt(null);
       setSaveError(null);
       return;
     }
 
-    setFormState({
+    const nextState = {
       calories: log.calories ? String(log.calories) : "",
       protein_g: log.protein_g ? String(log.protein_g) : "",
       carbs_g: log.carbs_g ? String(log.carbs_g) : "",
@@ -186,7 +189,9 @@ export function ClientHabitsPage() {
       hunger: log.hunger ? String(log.hunger) : "5",
       stress: log.stress ? String(log.stress) : "5",
       notes: log.notes ?? "",
-    });
+    };
+    setFormState(nextState);
+    setInitialFormState(nextState);
     setLastSavedAt(log.updated_at ?? log.created_at ?? null);
     setSaveError(null);
   }, [habitLogQuery.data, habitLogQuery.isLoading, clientQuery.data?.unit_preference]);
@@ -197,6 +202,23 @@ export function ClientHabitsPage() {
   }, [selectedDate, todayStr]);
 
   const isEditable = daysAgo >= 0 && daysAgo <= 6;
+  const normalizeForm = (state: HabitFormState) => ({
+    calories: state.calories.trim(),
+    protein_g: state.protein_g.trim(),
+    carbs_g: state.carbs_g.trim(),
+    fats_g: state.fats_g.trim(),
+    weight_value: state.weight_value.trim(),
+    weight_unit: state.weight_unit,
+    sleep_hours: state.sleep_hours.trim(),
+    steps: state.steps.trim(),
+    energy: state.energy.trim(),
+    hunger: state.hunger.trim(),
+    stress: state.stress.trim(),
+    notes: state.notes.trim(),
+  });
+  const isDirty = useMemo(() => {
+    return JSON.stringify(normalizeForm(formState)) !== JSON.stringify(normalizeForm(initialFormState));
+  }, [formState, initialFormState]);
 
   const trends = useMemo(() => {
     const logs = trendsQuery.data ?? [];
@@ -270,6 +292,7 @@ export function ClientHabitsPage() {
     setToastVariant("success");
     setToastMessage("Habits saved.");
     setLastSavedAt(data?.updated_at ?? data?.created_at ?? null);
+    setInitialFormState(formState);
     setSaveStatus("idle");
     await habitLogQuery.refetch();
     await trendsQuery.refetch();
@@ -297,6 +320,20 @@ export function ClientHabitsPage() {
         <Badge variant={isEditable ? "success" : "muted"}>
           {isEditable ? "Editable" : "Read-only"}
         </Badge>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/60 px-4 py-3">
+        <div className="text-sm text-muted-foreground">
+          Editing date: <span className="font-medium text-foreground">{selectedDate || todayStr}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-muted-foreground">Date</label>
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+          />
+        </div>
       </div>
 
       <ClientReminders clientId={clientId} timezone={clientTimezone} />
@@ -357,14 +394,6 @@ export function ClientHabitsPage() {
             <p className="text-sm text-muted-foreground">
               Select a date to edit. You can change logs from today or the previous 6 days.
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-muted-foreground">Date</label>
-            <Input
-              type="date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-            />
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -558,10 +587,18 @@ export function ClientHabitsPage() {
                 <div className="text-xs text-muted-foreground">
                   {lastSavedLabel ? `Last saved at ${lastSavedLabel}` : "Not saved yet"}
                 </div>
-                <Button onClick={handleSave} disabled={!isEditable || saveStatus === "saving"}>
+                <Button
+                  onClick={handleSave}
+                  disabled={!isEditable || saveStatus === "saving" || !isDirty}
+                >
                   {saveStatus === "saving" ? "Saving..." : "Save"}
                 </Button>
               </div>
+              {!isDirty ? (
+                <div className="text-xs text-muted-foreground">
+                  No changes to save.
+                </div>
+              ) : null}
             </>
           )}
         </CardContent>

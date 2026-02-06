@@ -5,7 +5,7 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Skeleton } from "../../components/ui/skeleton";
+import { Skeleton } from "../../components/ui/coachos/skeleton";
 import { Input } from "../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
@@ -29,12 +29,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
-import { StatusPill } from "../../components/pt/dashboard/StatusPill";
-import { StatCard } from "../../components/pt/dashboard/StatCard";
-import { MiniSparkline } from "../../components/pt/dashboard/MiniSparkline";
-import { EmptyState } from "../../components/pt/dashboard/EmptyState";
+import {
+  DashboardCard,
+  EmptyState,
+  MiniSparkline,
+  StatCard,
+  StatusPill,
+} from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorDetails, getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
@@ -835,6 +837,37 @@ export function PtClientDetailPage() {
     },
   });
 
+  const habitsAnyQuery = useQuery({
+    queryKey: ["pt-client-habits-any", clientId],
+    enabled: !!clientId && (active === "habits" || active === "overview"),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select("id")
+        .eq("client_id", clientId ?? "")
+        .limit(1);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string }>;
+    },
+  });
+
+  const habitsStreakQuery = useQuery({
+    queryKey: ["pt-client-habits-streak", clientId, habitsToday],
+    enabled: !!clientId && !!habitsToday && (active === "habits" || active === "overview"),
+    queryFn: async () => {
+      const streakStart = addDaysToDateString(habitsToday, -29);
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select("log_date")
+        .eq("client_id", clientId ?? "")
+        .gte("log_date", streakStart)
+        .lte("log_date", habitsToday)
+        .order("log_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{ log_date: string }>;
+    },
+  });
+
   const [selectedHabitDate, setSelectedHabitDate] = useState<string>("");
 
   useEffect(() => {
@@ -1264,6 +1297,10 @@ export function PtClientDetailPage() {
     () => (habitsQuery.data ?? []).map((log) => log.log_date),
     [habitsQuery.data]
   );
+  const habitStreakDates = useMemo(
+    () => (habitsStreakQuery.data ?? []).map((log) => log.log_date),
+    [habitsStreakQuery.data]
+  );
 
   const habitTrends = useMemo(() => {
     const logs = habitsQuery.data ?? [];
@@ -1296,8 +1333,8 @@ export function PtClientDetailPage() {
   }, [habitsQuery.data, habitsToday, habitsWeekStart]);
 
   const habitStreak = useMemo(
-    () => computeStreak(habitLogDates, habitsToday, 30),
-    [habitLogDates, habitsToday]
+    () => computeStreak(habitStreakDates, habitsToday, 30),
+    [habitStreakDates, habitsToday]
   );
   const lastHabitLogDate = useMemo(
     () => getLatestLogDate(habitLogDates),
@@ -1587,6 +1624,11 @@ export function PtClientDetailPage() {
     setClientTodos((prev) => prev.filter((task) => task.id !== taskId));
   };
 
+  const identityLoading = clientQuery.isLoading;
+  const scheduleLoading = templatesQuery.isLoading || upcomingQuery.isLoading;
+  const statsLoading = coachActivityQuery.isLoading || habitsQuery.isLoading || checkinsQuery.isLoading;
+  const focusLoading = upcomingQuery.isLoading || checkinsQuery.isLoading || coachActivityQuery.isLoading;
+
   return (
     <DashboardShell>
       {toastMessage ? (
@@ -1598,129 +1640,198 @@ export function PtClientDetailPage() {
         </div>
       ) : null}
 
-            <div className="mx-auto w-full max-w-[1400px] px-6 py-6">
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12">
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/90 px-5 py-5 shadow-sm backdrop-blur">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                  {getInitials(clientSnapshot?.display_name)}
-                </div>
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold tracking-tight">
-                      {clientSnapshot?.display_name ?? "Client profile"}
-                    </h2>
-                    <StatusPill status={clientSnapshot?.status ?? "active"} />
-                    {lastSeen ? (
-                      <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
-                    ) : null}
+      <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <div className="xl:col-span-4">
+            {identityLoading ? (
+              <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
+                <CardContent className="space-y-4 p-5">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-4 w-52" />
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
-                      .filter(Boolean)
-                      .join(" • ") || "Training plan overview"}
-                    {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
-                  </p>
+                  <Skeleton className="h-9 w-48" />
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                      {getInitials(clientSnapshot?.display_name)}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-xl font-semibold tracking-tight">
+                          {clientSnapshot?.display_name ?? "Client profile"}
+                        </h2>
+                        <StatusPill status={clientSnapshot?.status ?? "active"} />
+                        {lastSeen ? (
+                          <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
+                        ) : null}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
+                          .filter(Boolean)
+                          .join(" • ") || "Training plan overview"}
+                        {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+                      onClick={() => handleQuickAction("")}
+                    >
+                      Message
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        handleQuickAction(
+                          "Quick favor: please update your profile details so I can refine your plan."
+                        )
+                      }
+                    >
+                      Request check-in
+                    </Button>
+                    <Button variant="secondary" onClick={() => setActiveTab("plan")}>
+                      Assign workout
+                    </Button>
+                    <Button variant="ghost" size="icon" aria-label="More actions">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="xl:col-span-5">
+            {scheduleLoading ? (
+              <DashboardCard title="Plan & Calendar" subtitle="Loading schedule...">
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-1/3" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
                 </div>
+              </DashboardCard>
+            ) : clientSnapshot ? (
+              <PtClientScheduleCard
+                clientId={clientId ?? null}
+                workspaceId={workspaceQuery.data ?? null}
+                timezone={clientSnapshot?.timezone ?? null}
+                todayKey={todayKey}
+                scheduleStartKey={scheduleStartKey}
+                scheduleEndKey={scheduleEndKey}
+                templatesQuery={templatesQuery}
+                overrideOpen={overrideOpen}
+                setOverrideOpen={setOverrideOpen}
+                overrideDate={overrideDate}
+                setOverrideDate={setOverrideDate}
+                overrideTemplateId={overrideTemplateId}
+                setOverrideTemplateId={setOverrideTemplateId}
+                overrideIsRest={overrideIsRest}
+                setOverrideIsRest={setOverrideIsRest}
+                overrideNotes={overrideNotes}
+                setOverrideNotes={setOverrideNotes}
+                overrideStatus={overrideStatus}
+                setOverrideStatus={setOverrideStatus}
+                overrideError={overrideError}
+                setOverrideError={setOverrideError}
+                onSaveOverride={handleSaveOverride}
+                onAssign={(dateKey) => {
+                  setScheduledDate(dateKey);
+                  setActiveTab("plan");
+                }}
+                onReschedule={handleRescheduleWorkout}
+                onDelete={handleOpenDeleteDialog}
+                onStatusChange={handleStatusUpdate}
+              />
+            ) : (
+              <EmptyState title="No plan yet" description="Assign a workout or program to get started." />
+            )}
+          </div>
+
+          <div className="xl:col-span-3">
+            {statsLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                <Card className="border-border/70 bg-card/80">
+                  <CardHeader className="space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-7 w-20" />
+                  </CardHeader>
+                </Card>
+                <Card className="border-border/70 bg-card/80">
+                  <CardHeader className="space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-7 w-20" />
+                  </CardHeader>
+                </Card>
+                <Card className="border-border/70 bg-card/80">
+                  <CardHeader className="space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-7 w-20" />
+                  </CardHeader>
+                </Card>
+                <Card className="border-border/70 bg-card/80">
+                  <CardHeader className="space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-7 w-20" />
+                  </CardHeader>
+                </Card>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
-                  onClick={() => handleQuickAction("")}
-                >
-                  Message
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    handleQuickAction(
-                      "Quick favor: please update your profile details so I can refine your plan."
-                    )
-                  }
-                >
-                  Request check-in
-                </Button>
-                <Button variant="secondary" onClick={() => setActiveTab("plan")}>
-                  Assign workout
-                </Button>
-                <Button variant="ghost" size="icon" aria-label="More actions">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
+            ) : clientSnapshot ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                <StatCard
+                  label="Adherence"
+                  value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
+                  helper="Last 7 days"
+                  icon={Sparkles}
+                  sparkline={<MiniSparkline />}
+                />
+                <StatCard
+                  label="Consistency streak"
+                  value={habitStreak > 0 ? `${habitStreak}d` : "--"}
+                  helper="Habit streak"
+                  icon={Rocket}
+                  sparkline={<MiniSparkline />}
+                />
+                <StatCard
+                  label="Check-in status"
+                  value={checkinStatus ?? "--"}
+                  helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
+                  icon={CalendarDays}
+                  sparkline={<MiniSparkline />}
+                />
+                <StatCard
+                  label="Last workout"
+                  value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
+                  helper={lastWorkoutStatus ?? "No workouts"}
+                  icon={Sparkles}
+                  sparkline={<MiniSparkline />}
+                />
               </div>
-            </div>
+            ) : (
+              <EmptyState title="No stats yet" description="Client activity will show here once sessions begin." />
+            )}
           </div>
+        </div>
 
-          <div className="col-span-12">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                label="Adherence"
-                value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
-                helper="Last 7 days"
-                icon={Sparkles}
-                sparkline={<MiniSparkline />}
-              />
-              <StatCard
-                label="Consistency streak"
-                value={habitStreak > 0 ? `${habitStreak}d` : "--"}
-                helper="Habit streak"
-                icon={Rocket}
-                sparkline={<MiniSparkline />}
-              />
-              <StatCard
-                label="Check-in status"
-                value={checkinStatus ?? "--"}
-                helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
-                icon={CalendarDays}
-                sparkline={<MiniSparkline />}
-              />
-              <StatCard
-                label="Last workout"
-                value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
-                helper={lastWorkoutStatus ?? "No workouts"}
-                icon={Sparkles}
-                sparkline={<MiniSparkline />}
-              />
-            </div>
-          </div>
-
-          <div className="col-span-12">
-            <PtClientScheduleCard
-              clientId={clientId ?? null}
-              workspaceId={workspaceQuery.data ?? null}
-              timezone={clientSnapshot?.timezone ?? null}
-              todayKey={todayKey}
-              scheduleStartKey={scheduleStartKey}
-              scheduleEndKey={scheduleEndKey}
-              templatesQuery={templatesQuery}
-              overrideOpen={overrideOpen}
-              setOverrideOpen={setOverrideOpen}
-              overrideDate={overrideDate}
-              setOverrideDate={setOverrideDate}
-              overrideTemplateId={overrideTemplateId}
-              setOverrideTemplateId={setOverrideTemplateId}
-              overrideIsRest={overrideIsRest}
-              setOverrideIsRest={setOverrideIsRest}
-              overrideNotes={overrideNotes}
-              setOverrideNotes={setOverrideNotes}
-              overrideStatus={overrideStatus}
-              setOverrideStatus={setOverrideStatus}
-              overrideError={overrideError}
-              setOverrideError={setOverrideError}
-              onSaveOverride={handleSaveOverride}
-              onAssign={(dateKey) => {
-                setScheduledDate(dateKey);
-                setActiveTab("plan");
-              }}
-              onReschedule={handleRescheduleWorkout}
-              onDelete={handleOpenDeleteDialog}
-              onStatusChange={handleStatusUpdate}
-            />
-          </div>
-
-          <div className="col-span-12 lg:col-span-8 space-y-6">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-8 space-y-6">
             <DashboardCard title="Today’s Focus" subtitle="What needs attention right now.">
-              <div className="space-y-4">
+              {focusLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-1/3" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-10 w-2/3" />
+                </div>
+              ) : (
+                <div className="space-y-4">
                 <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -1775,106 +1886,11 @@ export function PtClientDetailPage() {
                     Message
                   </Button>
                 </div>
-              </div>
+                </div>
+              )}
             </DashboardCard>
 
-            <DashboardCard
-              title="Client Workbench"
-              subtitle="Plan, habits, and progress organized by tab."
-              className="bg-card/90"
-            >
-              <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
-                <div className="rounded-lg bg-card/80 p-2">
-                  <TabsList className="flex h-auto w-full flex-wrap gap-2 rounded-lg bg-transparent p-0">
-                  <TabsTrigger value="plan">Plan</TabsTrigger>
-                  <TabsTrigger value="habits">Habits</TabsTrigger>
-                  <TabsTrigger value="progress">Progress</TabsTrigger>
-                  <TabsTrigger value="logs">Logs</TabsTrigger>
-                  <TabsTrigger value="checkins">Check-ins</TabsTrigger>
-                  <TabsTrigger value="messages">Messages</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
-                  <TabsTrigger value="baseline">Baseline</TabsTrigger>
-                  </TabsList>
-                </div>
-                <TabsContent value="plan">
-                  <PtClientPlanTab
-                    templatesQuery={templatesQuery}
-                    programTemplatesQuery={programTemplatesQuery}
-                    activeProgram={activeProgram}
-                    programOverrides={programOverridesQuery.data ?? []}
-                    upcomingQuery={upcomingQuery}
-                    selectedTemplateId={selectedTemplateId}
-                    scheduledDate={scheduledDate}
-                    assignStatus={assignStatus}
-                    selectedProgramId={selectedProgramId}
-                    programStartDate={programStartDate}
-                    programStatus={programStatus}
-                    programMessage={programMessage}
-                    unassignStatus={unassignStatus}
-                    lastSetByWorkoutExercise={lastSetByWorkoutExercise}
-                    onTemplateChange={setSelectedTemplateId}
-                    onDateChange={setScheduledDate}
-                    onAssign={handleAssignWorkout}
-                    onProgramChange={setSelectedProgramId}
-                    onProgramDateChange={setProgramStartDate}
-                    onApplyProgram={handleApplyProgram}
-                    onUnassignProgram={handleUnassignProgram}
-                    onOpenOverride={handleOpenOverride}
-                    onEdit={openEditDialog}
-                    onDelete={(id) => {
-                      setEditWorkoutId(id);
-                      setDeleteOpen(true);
-                    }}
-                    onEditLoads={(id) => {
-                      setSelectedAssignedWorkoutId(id);
-                      setLoadsOpen(true);
-                      setLoadsError(null);
-                    }}
-                    onStatusChange={handleStatusUpdate}
-                  />
-                </TabsContent>
-                <TabsContent value="habits">
-                  <PtClientHabitsTab
-                    habitsQuery={habitsQuery}
-                    habitLogByDateQuery={habitLogByDateQuery}
-                    selectedHabitDate={selectedHabitDate}
-                    onSelectHabitDate={setSelectedHabitDate}
-                    habitStreak={habitStreak}
-                    habitTrends={habitTrends}
-                    lastHabitLogDate={lastHabitLogDate}
-                  />
-                </TabsContent>
-                <TabsContent value="progress">
-                  <PtClientProgressTab />
-                </TabsContent>
-                <TabsContent value="logs">
-                  <PtClientLogsTab />
-                </TabsContent>
-                <TabsContent value="checkins">
-                  <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
-                </TabsContent>
-                <TabsContent value="messages">
-                  <PtClientMessagesTab />
-                </TabsContent>
-                <TabsContent value="notes">
-                  <PtClientNotesTab />
-                </TabsContent>
-                <TabsContent value="baseline">
-                  <PtClientBaselineTab
-                    baselineEntryQuery={baselineEntryQuery}
-                    baselineMetricsQuery={baselineMetricsQuery}
-                    baselineMarkersQuery={baselineMarkersQuery}
-                    baselinePhotosQuery={baselinePhotosQuery}
-                    baselineNotes={baselineNotes}
-                    baselineNotesStatus={baselineNotesStatus}
-                    baselineNotesMessage={baselineNotesMessage}
-                    baselinePhotoMap={baselinePhotoMap}
-                    onNotesChange={setBaselineNotes}
-                    onNotesSave={handleBaselineNotesSave}
-                  />
-                </TabsContent>
-              </Tabs>
-            </DashboardCard>
+            
 
             {(workspaceQuery.error ||
               templatesQuery.error ||
@@ -1939,7 +1955,7 @@ export function PtClientDetailPage() {
             ) : null}
           </div>
 
-          <div className="col-span-12 lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-6">
             <DashboardCard
               title="Client Overview"
               subtitle="Key details and profile status."
@@ -2146,6 +2162,103 @@ export function PtClientDetailPage() {
               )}
             </DashboardCard>
           </div>
+        </div>
+
+        <div className="mt-6">
+        <DashboardCard
+              title="Client Workbench"
+              subtitle="Plan, habits, and progress organized by tab."
+              className="bg-card/90"
+            >
+              <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
+                <div className="rounded-lg bg-card/80 p-2">
+                  <TabsList className="flex h-auto w-full flex-wrap gap-2 rounded-lg bg-transparent p-0">
+                  <TabsTrigger value="plan">Plan</TabsTrigger>
+                  <TabsTrigger value="habits">Habits</TabsTrigger>
+                  <TabsTrigger value="progress">Progress</TabsTrigger>
+                  <TabsTrigger value="logs">Logs</TabsTrigger>
+                  <TabsTrigger value="checkins">Check-ins</TabsTrigger>
+                  <TabsTrigger value="messages">Messages</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="baseline">Baseline</TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="plan">
+                  <PtClientPlanTab
+                    templatesQuery={templatesQuery}
+                    programTemplatesQuery={programTemplatesQuery}
+                    activeProgram={activeProgram}
+                    programOverrides={programOverridesQuery.data ?? []}
+                    upcomingQuery={upcomingQuery}
+                    selectedTemplateId={selectedTemplateId}
+                    scheduledDate={scheduledDate}
+                    assignStatus={assignStatus}
+                    selectedProgramId={selectedProgramId}
+                    programStartDate={programStartDate}
+                    programStatus={programStatus}
+                    programMessage={programMessage}
+                    unassignStatus={unassignStatus}
+                    lastSetByWorkoutExercise={lastSetByWorkoutExercise}
+                    onTemplateChange={setSelectedTemplateId}
+                    onDateChange={setScheduledDate}
+                    onAssign={handleAssignWorkout}
+                    onProgramChange={setSelectedProgramId}
+                    onProgramDateChange={setProgramStartDate}
+                    onApplyProgram={handleApplyProgram}
+                    onUnassignProgram={handleUnassignProgram}
+                    onOpenOverride={handleOpenOverride}
+                    onEdit={openEditDialog}
+                    onDelete={(id) => {
+                      setEditWorkoutId(id);
+                      setDeleteOpen(true);
+                    }}
+                    onEditLoads={(id) => {
+                      setSelectedAssignedWorkoutId(id);
+                      setLoadsOpen(true);
+                      setLoadsError(null);
+                    }}
+                    onStatusChange={handleStatusUpdate}
+                  />
+                </TabsContent>
+                <TabsContent value="habits">
+                  <PtClientHabitsTab
+                    habitsQuery={habitsQuery}
+                    hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
+                    habitsToday={habitsToday}
+                    habitStreak={habitStreak}
+                  />
+                </TabsContent>
+                <TabsContent value="progress">
+                  <PtClientProgressTab />
+                </TabsContent>
+                <TabsContent value="logs">
+                  <PtClientLogsTab />
+                </TabsContent>
+                <TabsContent value="checkins">
+                  <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+                </TabsContent>
+                <TabsContent value="messages">
+                  <PtClientMessagesTab />
+                </TabsContent>
+                <TabsContent value="notes">
+                  <PtClientNotesTab />
+                </TabsContent>
+                <TabsContent value="baseline">
+                  <PtClientBaselineTab
+                    baselineEntryQuery={baselineEntryQuery}
+                    baselineMetricsQuery={baselineMetricsQuery}
+                    baselineMarkersQuery={baselineMarkersQuery}
+                    baselinePhotosQuery={baselinePhotosQuery}
+                    baselineNotes={baselineNotes}
+                    baselineNotesStatus={baselineNotesStatus}
+                    baselineNotesMessage={baselineNotesMessage}
+                    baselinePhotoMap={baselinePhotoMap}
+                    onNotesChange={setBaselineNotes}
+                    onNotesSave={handleBaselineNotesSave}
+                  />
+                </TabsContent>
+              </Tabs>
+            </DashboardCard>
         </div>
       </div>
 
@@ -3371,175 +3484,145 @@ function PtClientCheckinsTab({
 
 function PtClientHabitsTab({
   habitsQuery,
-  habitLogByDateQuery,
-  selectedHabitDate,
-  onSelectHabitDate,
+  hasAnyHabits,
+  habitsToday,
   habitStreak,
-  habitTrends,
-  lastHabitLogDate,
 }: {
   habitsQuery: QueryResult<HabitLog[]>;
-  habitLogByDateQuery: QueryResult<HabitLog | null>;
-  selectedHabitDate: string;
-  onSelectHabitDate: (value: string) => void;
+  hasAnyHabits: boolean;
+  habitsToday: string;
   habitStreak: number;
-  habitTrends: HabitTrends;
-  lastHabitLogDate: string | null;
 }) {
+  const weeklyDates = useMemo(() => {
+    return Array.from({ length: 7 }, (_, idx) => addDaysToDateString(habitsToday, -(6 - idx)));
+  }, [habitsToday]);
+  const weeklyLogMap = useMemo(() => {
+    const map = new Map<string, HabitLog>();
+    (habitsQuery.data ?? []).forEach((log) => {
+      map.set(log.log_date, log);
+    });
+    return map;
+  }, [habitsQuery.data]);
+  const weeklyRows = useMemo(
+    () =>
+      weeklyDates.map((dateKey) => ({
+        dateKey,
+        log: weeklyLogMap.get(dateKey) ?? null,
+      })),
+    [weeklyDates, weeklyLogMap]
+  );
+  const loggedDays = weeklyRows.filter((row) => row.log).length;
+  const adherencePct = Math.round((loggedDays / 7) * 100);
+  const average = (values: Array<number | null | undefined>) => {
+    const nums = values.filter((value) => typeof value === "number") as number[];
+    if (nums.length === 0) return null;
+    return nums.reduce((sum, value) => sum + value, 0) / nums.length;
+  };
+  const avgSteps = average(weeklyRows.map((row) => row.log?.steps));
+  const avgProtein = average(weeklyRows.map((row) => row.log?.protein_g));
+
   return (
-    <Card className="border-border/70 bg-card/80 xl:col-start-1">
-      <CardHeader>
-        <CardTitle>Habits</CardTitle>
-        <p className="text-sm text-muted-foreground">Last 7 days of habit logs.</p>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-6">
+      <DashboardCard title="Weekly summary" subtitle="Last 7 days.">
         {habitsQuery.isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-24 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <StatCard
+                label="Adherence"
+                value={`${Number.isFinite(adherencePct) ? adherencePct : 0}%`}
+                helper="Logged days / 7"
+                icon={Sparkles}
+              />
+              <StatCard
+                label="Streak"
+                value={`${habitStreak} days`}
+                helper="Days logged in a row"
+                icon={Rocket}
+              />
+              <StatCard
+                label="Avg steps / protein"
+                value={
+                  avgSteps !== null || avgProtein !== null
+                    ? `${avgSteps !== null ? Math.round(avgSteps).toLocaleString() : "--"} / ${
+                        avgProtein !== null ? `${Math.round(avgProtein)}g` : "--"
+                      }`
+                    : "--"
+                }
+                helper="7-day averages"
+                icon={Flame}
+              />
+            </div>
+          </div>
+        )}
+      </DashboardCard>
+
+      <DashboardCard title="Day-by-day" subtitle="Last 7 days of habit logs.">
+        {habitsQuery.isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-24 w-full" />
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">Adherence</p>
-                <p className="text-sm font-semibold">{habitTrends.daysLogged}/7 days</p>
+            {!hasAnyHabits ? (
+              <EmptyState title="No habit logs yet" description="Logs will appear as the client checks in." />
+            ) : null}
+            <div className="overflow-hidden rounded-lg border border-border">
+              <div className="grid grid-cols-11 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                <span>Date</span>
+                <span>Calories</span>
+                <span>Protein</span>
+                <span>Carbs</span>
+                <span>Fats</span>
+                <span>Weight</span>
+                <span>Steps</span>
+                <span>Sleep</span>
+                <span>Energy</span>
+                <span>Hunger</span>
+                <span>Stress</span>
               </div>
-              <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">Current streak</p>
-                <p className="text-sm font-semibold">
-                  {habitStreak > 0 ? `${habitStreak} day${habitStreak === 1 ? "" : "s"}` : "--"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">Last logged</p>
-                <p className="text-sm font-semibold">{lastHabitLogDate ?? "--"}</p>
-              </div>
-            </div>
-
-            <Card className="border-dashed">
-              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-                <div>
-                  <CardTitle>Daily habit log</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Review a specific day's log in read-only mode.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Date</label>
-                  <Input
-                    type="date"
-                    value={selectedHabitDate}
-                    onChange={(event) => onSelectHabitDate(event.target.value)}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {habitLogByDateQuery.error ? (
-                  <Alert className="border-danger/30">
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{getFriendlyErrorMessage()}</AlertDescription>
-                  </Alert>
-                ) : habitLogByDateQuery.isLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-16 w-full" />
-                  </div>
-                ) : habitLogByDateQuery.data ? (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Calories</p>
-                      <p className="text-sm font-semibold">
-                        {habitLogByDateQuery.data.calories ?? "--"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Protein</p>
-                      <p className="text-sm font-semibold">
-                        {typeof habitLogByDateQuery.data.protein_g === "number"
-                          ? `${habitLogByDateQuery.data.protein_g} g`
-                          : "--"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Weight</p>
-                      <p className="text-sm font-semibold">
-                        {typeof habitLogByDateQuery.data.weight_value === "number"
-                          ? `${habitLogByDateQuery.data.weight_value} ${habitLogByDateQuery.data.weight_unit ?? ""}`
-                          : "--"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Steps</p>
-                      <p className="text-sm font-semibold">
-                        {typeof habitLogByDateQuery.data.steps === "number"
-                          ? habitLogByDateQuery.data.steps.toLocaleString()
-                          : "--"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Sleep</p>
-                      <p className="text-sm font-semibold">
-                        {typeof habitLogByDateQuery.data.sleep_hours === "number"
-                          ? `${habitLogByDateQuery.data.sleep_hours} hrs`
-                          : "--"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-3">
-                      <p className="text-xs text-muted-foreground">Notes</p>
-                      <p className="text-sm">{habitLogByDateQuery.data.notes ?? "--"}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No habit log for this date.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {habitsQuery.data && habitsQuery.data.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border border-border">
-                <div className="grid grid-cols-7 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
-                  <span>Date</span>
-                  <span>Calories</span>
-                  <span>Protein</span>
-                  <span>Steps</span>
-                  <span>Sleep</span>
-                  <span>Weight</span>
-                  <span>Notes</span>
-                </div>
-                {habitsQuery.data.map((log) => (
+              {weeklyRows.map((row) => {
+                const log = row.log;
+                const muted = !log;
+                return (
                   <div
-                    key={log.id ?? log.log_date}
-                    className="grid grid-cols-7 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0"
+                    key={row.dateKey}
+                    className={cn(
+                      "grid grid-cols-11 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0",
+                      muted && "text-muted-foreground"
+                    )}
                   >
-                    <span className="text-xs text-muted-foreground">{log.log_date}</span>
-                    <span>{typeof log.calories === "number" ? log.calories : "--"}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{row.dateKey}</span>
+                      {!log ? <StatusPill status="not logged" /> : null}
+                    </div>
+                    <span>{log?.calories ?? "—"}</span>
+                    <span>{typeof log?.protein_g === "number" ? `${log?.protein_g} g` : "—"}</span>
+                    <span>{typeof log?.carbs_g === "number" ? `${log?.carbs_g} g` : "—"}</span>
+                    <span>{typeof log?.fats_g === "number" ? `${log?.fats_g} g` : "—"}</span>
                     <span>
-                      {typeof log.protein_g === "number" ? `${log.protein_g} g` : "--"}
+                      {typeof log?.weight_value === "number"
+                        ? `${log?.weight_value} ${log?.weight_unit ?? ""}`
+                        : "—"}
                     </span>
-                    <span>
-                      {typeof log.steps === "number" ? log.steps.toLocaleString() : "--"}
-                    </span>
-                    <span>
-                      {typeof log.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "--"}
-                    </span>
-                    <span>
-                      {typeof log.weight_value === "number"
-                        ? `${log.weight_value} ${log.weight_unit ?? ""}`
-                        : "--"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{log.notes ?? "--"}</span>
+                    <span>{typeof log?.steps === "number" ? log.steps.toLocaleString() : "—"}</span>
+                    <span>{typeof log?.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "—"}</span>
+                    <span>{typeof log?.energy === "number" ? log.energy : "—"}</span>
+                    <span>{typeof log?.hunger === "number" ? log.hunger : "—"}</span>
+                    <span>{typeof log?.stress === "number" ? log.stress : "—"}</span>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No habit logs yet.</p>
-            )}
+                );
+              })}
+            </div>
           </>
         )}
-      </CardContent>
-    </Card>
+      </DashboardCard>
+    </div>
   );
 }
 
@@ -3624,152 +3707,156 @@ function PtClientPlanTab({
 
   return (
     <div className="space-y-6 xl:col-start-1">
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle>Program</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Assign a multi-week program and materialize the next 14 days.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {programTemplatesQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : programTemplatesQuery.error ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-                {getErrorDetails(programTemplatesQuery.error).code}:{" "}
-                {getErrorDetails(programTemplatesQuery.error).message}
-              </div>
-            ) : programTemplatesQuery.data && programTemplatesQuery.data.length === 0 ? (
-              <EmptyState
-                title="No program templates yet."
-                description="Create a program template to start scheduling multi-week blocks."
-              />
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Program</label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={selectedProgramId}
-                    onChange={(event) => onProgramChange(event.target.value)}
-                  >
-                    <option value="">Select a program</option>
-                    {programTemplatesQuery.data?.map((program) => (
-                      <option key={program.id} value={program.id}>
-                        {program.name ?? "Program"} {program.weeks_count ? `- ${program.weeks_count}w` : ""}
-                      </option>
-                    ))}
-                  </select>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="space-y-6">
+          <Card className="border-border/70 bg-card/80">
+            <CardHeader>
+              <CardTitle>Program</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Assign a multi-week program and materialize the next 14 days.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {programTemplatesQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Start date</label>
-                  <input
-                    type="date"
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={programStartDate}
-                    onChange={(event) => onProgramDateChange(event.target.value)}
-                  />
+              ) : programTemplatesQuery.error ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                  {getErrorDetails(programTemplatesQuery.error).code}:{" "}
+                  {getErrorDetails(programTemplatesQuery.error).message}
                 </div>
-                <Button
-                  className="w-full"
-                  disabled={programStatus === "saving" || !selectedProgramId || !programStartDate}
-                  onClick={onApplyProgram}
-                >
-                  {programStatus === "saving"
-                    ? "Assigning..."
-                    : "Assign program (next 14 days)"}
-                </Button>
-                {programMessage ? (
-                  <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                    {programMessage}
-                  </div>
-                ) : null}
-                {activeProgram ? (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                    <div className="flex items-center justify-between">
-                      <span>Active program</span>
-                      <StatusPill status="active" />
-                    </div>
-                    <div className="mt-2 text-sm text-foreground">
-                      {activeProgram.program_template?.name ?? "Program"}
-                    </div>
-                    <div className="mt-1">
-                      Start date {activeProgram.start_date ?? "--"}
-                    </div>
-                    <Button
-                      className="mt-3 w-full"
-                      variant="secondary"
-                      disabled={unassignStatus === "saving"}
-                      onClick={onUnassignProgram}
+              ) : programTemplatesQuery.data && programTemplatesQuery.data.length === 0 ? (
+                <EmptyState
+                  title="No program templates yet."
+                  description="Create a program template to start scheduling multi-week blocks."
+                />
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground">Program</label>
+                    <select
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={selectedProgramId}
+                      onChange={(event) => onProgramChange(event.target.value)}
                     >
-                      {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
-                    </Button>
+                      <option value="">Select a program</option>
+                      {programTemplatesQuery.data?.map((program) => (
+                        <option key={program.id} value={program.id}>
+                          {program.name ?? "Program"} {program.weeks_count ? `- ${program.weeks_count}w` : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ) : null}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle>Schedule workout</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Assign a one-off template to this client.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {templatesQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Workout template
-                  </label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={selectedTemplateId}
-                    onChange={(event) => onTemplateChange(event.target.value)}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground">Start date</label>
+                    <input
+                      type="date"
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={programStartDate}
+                      onChange={(event) => onProgramDateChange(event.target.value)}
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    disabled={programStatus === "saving" || !selectedProgramId || !programStartDate}
+                    onClick={onApplyProgram}
                   >
-                    <option value="">Select a template</option>
-                    {templatesQuery.data?.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}{" "}
-                        {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    {programStatus === "saving"
+                      ? "Assigning..."
+                      : "Assign program (next 14 days)"}
+                  </Button>
+                  {programMessage ? (
+                    <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                      {programMessage}
+                    </div>
+                  ) : null}
+                  {activeProgram ? (
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>Active program</span>
+                        <StatusPill status="active" />
+                      </div>
+                      <div className="mt-2 text-sm text-foreground">
+                        {activeProgram.program_template?.name ?? "Program"}
+                      </div>
+                      <div className="mt-1">
+                        Start date {activeProgram.start_date ?? "--"}
+                      </div>
+                      <Button
+                        className="mt-3 w-full"
+                        variant="secondary"
+                        disabled={unassignStatus === "saving"}
+                        onClick={onUnassignProgram}
+                      >
+                        {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="border-border/70 bg-card/80">
+            <CardHeader>
+              <CardTitle>Schedule workout</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Assign a one-off template to this client.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {templatesQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Date</label>
-                  <input
-                    type="date"
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={scheduledDate}
-                    onChange={(event) => onDateChange(event.target.value)}
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={assignStatus === "saving" || !selectedTemplateId || !scheduledDate}
-                  onClick={onAssign}
-                >
-                  {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Workout template
+                    </label>
+                    <select
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={selectedTemplateId}
+                      onChange={(event) => onTemplateChange(event.target.value)}
+                    >
+                      <option value="">Select a template</option>
+                      {templatesQuery.data?.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}{" "}
+                          {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                    <input
+                      type="date"
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={scheduledDate}
+                      onChange={(event) => onDateChange(event.target.value)}
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    disabled={assignStatus === "saving" || !selectedTemplateId || !scheduledDate}
+                    onClick={onAssign}
+                  >
+                    {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <DashboardCard
