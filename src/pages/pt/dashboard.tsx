@@ -317,7 +317,6 @@ export function PtDashboardPage() {
               value={`${adherencePercent}%`}
               helper="Last 7 days"
               icon={Rocket}
-              accent
               sparkline={<MiniSparkline />}
             />
             <StatCard
