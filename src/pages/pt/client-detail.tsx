@@ -29,6 +29,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
 import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
@@ -433,6 +441,15 @@ export function PtClientDetailPage() {
     "idle"
   );
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [profileEditStatus, setProfileEditStatus] = useState<"idle" | "saving">("idle");
+  const [profileEditForm, setProfileEditForm] = useState({
+    display_name: "",
+    goal: "",
+    training_type: "",
+    timezone: "",
+    status: "active",
+  });
   const selectedCheckinAnswersQuery = useQuery({
     queryKey: ["pt-checkin-answers", selectedCheckin?.id],
     enabled: !!selectedCheckin?.id,
@@ -1576,6 +1593,81 @@ export function PtClientDetailPage() {
       .map((entry) => entry.trim())
       .filter(Boolean);
 
+  const openProfileEdit = () => {
+    if (!clientSnapshot) return;
+    setProfileEditForm({
+      display_name: clientSnapshot.display_name ?? "",
+      goal: clientSnapshot.goal ?? "",
+      training_type: clientSnapshot.training_type ?? "",
+      timezone: clientSnapshot.timezone ?? "",
+      status: clientSnapshot.status ?? "active",
+    });
+    setProfileEditOpen(true);
+  };
+
+  const updateClientStatus = async (status: "active" | "paused" | "terminated") => {
+    if (!clientSnapshot?.id) return;
+    const { data, error } = await supabase
+      .from("clients")
+      .update({ status })
+      .eq("id", clientSnapshot.id)
+      .select("id, status")
+      .maybeSingle();
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(getErrorMessage(error));
+      return;
+    }
+    if (data?.status) {
+      setClientProfile((prev) => (prev ? { ...prev, status: data.status } : prev));
+      queryClient.setQueryData(
+        ["pt-client", clientId, workspaceQuery.data],
+        (prev: PtClientProfile | undefined) =>
+          prev ? { ...prev, status: data.status } : prev
+      );
+    }
+    setToastVariant("success");
+    setToastMessage(`Client marked ${status}.`);
+  };
+
+  const handleProfileSave = async () => {
+    if (!clientSnapshot?.id) return;
+    setProfileEditStatus("saving");
+    const payload = {
+      display_name: profileEditForm.display_name.trim() || null,
+      goal: profileEditForm.goal.trim() || null,
+      training_type: profileEditForm.training_type || null,
+      timezone: profileEditForm.timezone.trim() || null,
+      status: profileEditForm.status || "active",
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from("clients")
+      .update(payload)
+      .eq("id", clientSnapshot.id)
+      .select(
+        "id, display_name, goal, training_type, timezone, status, updated_at"
+      )
+      .maybeSingle();
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(getErrorMessage(error));
+      setProfileEditStatus("idle");
+      return;
+    }
+    if (data) {
+      setClientProfile((prev) => (prev ? { ...prev, ...data } : prev));
+      queryClient.setQueryData(
+        ["pt-client", clientId, workspaceQuery.data],
+        (prev: PtClientProfile | undefined) => (prev ? { ...prev, ...data } : prev)
+      );
+    }
+    setProfileEditStatus("idle");
+    setProfileEditOpen(false);
+    setToastVariant("success");
+    setToastMessage("Client profile updated.");
+  };
+
   const updateAdminFields = async (nextTrainingType: string, nextTags: string) => {
     if (!clientSnapshot) return;
     setAdminStatus("saving");
@@ -1891,9 +1983,30 @@ export function PtClientDetailPage() {
                 >
                   Message
                 </Button>
-                <Button variant="ghost" size="icon" aria-label="More actions">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="More actions">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Client actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={openProfileEdit}>
+                      Edit profile
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => updateClientStatus("active")}>
+                      Mark active
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateClientStatus("paused")}>
+                      Mark paused
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateClientStatus("terminated")}>
+                      Mark terminated
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
           </Card>
@@ -2727,6 +2840,98 @@ export function PtClientDetailPage() {
               disabled={assignStatus === "saving"}
             >
               {assignStatus === "saving" ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={profileEditOpen} onOpenChange={setProfileEditOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Edit client profile</DialogTitle>
+            <DialogDescription>Update client status and profile details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <label className="text-xs font-semibold text-muted-foreground">Display name</label>
+              <Input
+                value={profileEditForm.display_name}
+                onChange={(event) =>
+                  setProfileEditForm((prev) => ({
+                    ...prev,
+                    display_name: event.target.value,
+                  }))
+                }
+                placeholder="Client name"
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <label className="text-xs font-semibold text-muted-foreground">Goal</label>
+              <Input
+                value={profileEditForm.goal}
+                onChange={(event) =>
+                  setProfileEditForm((prev) => ({ ...prev, goal: event.target.value }))
+                }
+                placeholder="Client goal"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Training type</label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={profileEditForm.training_type}
+                onChange={(event) =>
+                  setProfileEditForm((prev) => ({
+                    ...prev,
+                    training_type: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Select</option>
+                {trainingTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Status</label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={profileEditForm.status}
+                onChange={(event) =>
+                  setProfileEditForm((prev) => ({
+                    ...prev,
+                    status: event.target.value,
+                  }))
+                }
+              >
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="terminated">Terminated</option>
+              </select>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <label className="text-xs font-semibold text-muted-foreground">Timezone</label>
+              <Input
+                value={profileEditForm.timezone}
+                onChange={(event) =>
+                  setProfileEditForm((prev) => ({
+                    ...prev,
+                    timezone: event.target.value,
+                  }))
+                }
+                placeholder="e.g., America/New_York"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setProfileEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleProfileSave} disabled={profileEditStatus === "saving"}>
+              {profileEditStatus === "saving" ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4134,7 +4339,24 @@ function PtClientProgressTab() {
 }
 
 function PtClientMessagesTab() {
-  return <PtClientPlaceholderTab title="messages" />;
+  const { clientId } = useParams();
+  const navigate = useNavigate();
+
+  return (
+    <Card className="border-border/70 bg-card/80 xl:col-start-1">
+      <CardHeader>
+        <CardTitle>Messages</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Jump to the full chat experience for this client.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={() => navigate(`/pt/messages?client=${clientId ?? ""}`)}>
+          Open chat
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
 function PtClientNotesTab() {
