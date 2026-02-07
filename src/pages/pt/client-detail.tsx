@@ -67,6 +67,29 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const computeNextCheckinDate = (
+  startDate: string | null | undefined,
+  frequency: string | null | undefined,
+  fromDate: string
+) => {
+  if (!startDate) return null;
+  const start = new Date(`${startDate}T00:00:00Z`);
+  if (Number.isNaN(start.getTime())) return null;
+  const from = new Date(`${fromDate}T00:00:00Z`);
+  if (Number.isNaN(from.getTime())) return null;
+
+  const freq = frequency ?? "weekly";
+  const stepDays = freq === "biweekly" ? 14 : freq === "monthly" ? 30 : 7;
+  const next = new Date(start);
+  while (next < from) {
+    next.setDate(next.getDate() + stepDays);
+  }
+  const yyyy = next.getUTCFullYear();
+  const mm = String(next.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(next.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const diffDays = (start: string, end: string) => {
   const startDate = new Date(start);
   const endDate = new Date(end);
@@ -102,9 +125,23 @@ const trainingTypeOptions = [
   { value: "in_person", label: "In person" },
 ];
 
+const checkinFrequencyOptions = [
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Bi-weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
+const checkinTemplateStatusMap = {
+  default: { label: "Default", variant: "muted" },
+  override: { label: "Override", variant: "warning" },
+};
+
 type PtClientProfile = {
   id: string;
   workspace_id: string | null;
+  checkin_template_id?: string | null;
+  checkin_frequency?: string | null;
+  checkin_start_date?: string | null;
   created_at: string | null;
   display_name: string | null;
   goal: string | null;
@@ -188,6 +225,12 @@ type CheckinRow = {
   submitted_at: string | null;
   pt_feedback: string | null;
   created_at: string | null;
+};
+
+type CheckinTemplateRow = {
+  id: string;
+  name: string | null;
+  is_active?: boolean | null;
 };
 
 type CheckinPhotoRow = {
@@ -283,9 +326,8 @@ type ProgramOverrideRow = {
 
 type CheckinAnswerRow = {
   id: string;
-  answer_text: string | null;
-  answer_number: number | null;
-  answer_boolean: boolean | null;
+  value_text: string | null;
+  value_number: number | null;
   question: { question_text: string | null; prompt: string | null } | null;
 };
 
@@ -347,6 +389,12 @@ export function PtClientDetailPage() {
     setActive(tab);
   };
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [checkinTemplateId, setCheckinTemplateId] = useState("");
+  const [checkinTemplateStatus, setCheckinTemplateStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
+  const [checkinFrequency, setCheckinFrequency] = useState("weekly");
+  const [checkinStartDate, setCheckinStartDate] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => formatDateKey(new Date()));
   const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">("idle");
   const [assignMessage, setAssignMessage] = useState<string | null>(null);
@@ -392,7 +440,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("checkin_answers")
         .select(
-          "id, answer_text, answer_number, answer_boolean, question:checkin_questions(question_text, prompt)"
+          "id, value_text, value_number, question:checkin_questions(question_text, prompt)"
         )
         .eq("checkin_id", selectedCheckin?.id ?? "");
       if (error) throw error;
@@ -455,6 +503,34 @@ export function PtClientDetailPage() {
     },
   });
 
+  const workspaceDetailsQuery = useQuery({
+    queryKey: ["pt-workspace-details", workspaceQuery.data],
+    enabled: !!workspaceQuery.data,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, default_checkin_template_id")
+        .eq("id", workspaceQuery.data ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; default_checkin_template_id: string | null } | null;
+    },
+  });
+
+  const checkinTemplatesQuery = useQuery({
+    queryKey: ["pt-checkin-templates", workspaceQuery.data],
+    enabled: !!workspaceQuery.data,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkin_templates")
+        .select("id, workspace_id, name, description, is_active, created_at")
+        .eq("workspace_id", workspaceQuery.data ?? "")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as CheckinTemplateRow[];
+    },
+  });
+
   const clientQuery = useQuery({
     queryKey: ["pt-client", clientId, workspaceQuery.data],
     enabled: !!clientId && !!workspaceQuery.data,
@@ -462,7 +538,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, created_at, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at"
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at"
         )
         .eq("id", clientId ?? "")
         .eq("workspace_id", workspaceQuery.data ?? "")
@@ -575,7 +651,24 @@ export function PtClientDetailPage() {
     setClientProfile(data);
     setAdminTrainingType(data.training_type ?? "");
     setAdminTags(formatListValue(data.tags ?? null, ""));
+    setCheckinTemplateId(data.checkin_template_id ?? "");
+    setCheckinFrequency(data.checkin_frequency ?? "weekly");
+    setCheckinStartDate(data.checkin_start_date ?? "");
   }, [clientQuery.data]);
+
+  const availableCheckinTemplates = useMemo(() => {
+    const rows = checkinTemplatesQuery.data ?? [];
+    return rows.filter((row) => row.is_active !== false);
+  }, [checkinTemplatesQuery.data]);
+
+  const assignedCheckinTemplate =
+    availableCheckinTemplates.find((template) => template.id === checkinTemplateId) ?? null;
+  const defaultCheckinTemplate =
+    availableCheckinTemplates.find(
+      (template) => template.id === workspaceDetailsQuery.data?.default_checkin_template_id
+    ) ?? null;
+  const effectiveCheckinTemplate = assignedCheckinTemplate ?? defaultCheckinTemplate ?? null;
+  const checkinTemplateStatusKey = checkinTemplateId ? "override" : "default";
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
@@ -1452,9 +1545,8 @@ export function PtClientDetailPage() {
   const lastNoteSummary = baselineNotes.trim() ? baselineNotes.trim() : "No recent PT notes.";
 
   const renderCheckinAnswerValue = (answer: CheckinAnswerRow) => {
-    if (answer.answer_text) return answer.answer_text;
-    if (typeof answer.answer_number === "number") return `${answer.answer_number}`;
-    if (typeof answer.answer_boolean === "boolean") return answer.answer_boolean ? "Yes" : "No";
+    if (answer.value_text) return answer.value_text;
+    if (typeof answer.value_number === "number") return `${answer.value_number}`;
     return "--";
   };
 
@@ -1509,6 +1601,77 @@ export function PtClientDetailPage() {
       );
     }
     setAdminStatus("idle");
+  };
+
+  const handleSaveCheckinTemplate = async () => {
+    if (!clientQuery.data?.id) return;
+    setCheckinTemplateStatus("saving");
+    const nextId = checkinTemplateId || null;
+    const nextFrequency = checkinFrequency || "weekly";
+    const nextStartDate = checkinStartDate || null;
+
+    const clientUpdate = await supabase
+      .from("clients")
+      .update({
+        checkin_template_id: nextId,
+        checkin_frequency: nextFrequency,
+        checkin_start_date: nextStartDate,
+      })
+      .eq("id", clientQuery.data.id)
+      .select("id, checkin_template_id, checkin_frequency, checkin_start_date")
+      .maybeSingle();
+
+    if (clientUpdate.error) {
+      setCheckinTemplateStatus("error");
+      setToastVariant("error");
+      setToastMessage("Unable to save check-in template.");
+      return;
+    }
+
+    if (clientUpdate.data) {
+      queryClient.setQueryData(
+        ["pt-client", clientId, workspaceQuery.data],
+        (prev: PtClientProfile | undefined) => ({
+          ...(prev ?? {}),
+          checkin_template_id: clientUpdate.data?.checkin_template_id ?? null,
+          checkin_frequency: clientUpdate.data?.checkin_frequency ?? "weekly",
+          checkin_start_date: clientUpdate.data?.checkin_start_date ?? null,
+        })
+      );
+      setClientProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              checkin_template_id: clientUpdate.data?.checkin_template_id ?? null,
+              checkin_frequency: clientUpdate.data?.checkin_frequency ?? "weekly",
+              checkin_start_date: clientUpdate.data?.checkin_start_date ?? null,
+            }
+          : prev
+      );
+    }
+
+    if (nextId && nextStartDate) {
+      const nextDate = computeNextCheckinDate(nextStartDate, nextFrequency, todayKey);
+      if (nextDate) {
+        const { error: scheduleError } = await supabase
+          .from("checkins")
+          .upsert(
+            {
+              client_id: clientQuery.data.id,
+              template_id: nextId,
+              week_ending_saturday: nextDate,
+            },
+            { onConflict: "client_id,week_ending_saturday" }
+          );
+        if (scheduleError && isDev) {
+          console.warn("CHECKIN_SCHEDULE_ERROR", scheduleError);
+        }
+      }
+    }
+
+    setCheckinTemplateStatus("idle");
+    setToastVariant("success");
+    setToastMessage("Check-in template updated.");
   };
 
   const handleBaselineNotesSave = async () => {
@@ -1683,259 +1846,252 @@ export function PtClientDetailPage() {
       ) : null}
 
       <div className="w-full space-y-6">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-          <div className="xl:col-span-4">
-            {identityLoading ? (
-              <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
-                <CardContent className="space-y-4 p-5">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-5 w-40" />
-                      <Skeleton className="h-4 w-52" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-9 w-48" />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
-                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                      {getInitials(clientSnapshot?.display_name)}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-xl font-semibold tracking-tight">
-                          {clientSnapshot?.display_name ?? "Client profile"}
-                        </h2>
-                        <StatusPill status={clientSnapshot?.status ?? "active"} />
-                        {lastSeen ? (
-                          <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
-                        ) : null}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
-                          .filter(Boolean)
-                          .join("  -  ") || "Training plan overview"}
-                        {joinedLabel ? `  -  Joined ${joinedLabel}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
-                      onClick={() => handleQuickAction("")}
-                    >
-                      Message
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() =>
-                        handleQuickAction(
-                          "Quick favor: please update your profile details so I can refine your plan."
-                        )
-                      }
-                    >
-                      Request check-in
-                    </Button>
-                    <Button variant="secondary" onClick={() => setActiveTab("plan")}>
-                      Assign workout
-                    </Button>
-                    <Button variant="ghost" size="icon" aria-label="More actions">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          <div className="xl:col-span-5">
-            {scheduleLoading ? (
-              <DashboardCard title="Plan & Calendar" subtitle="Loading schedule...">
-                <div className="space-y-3">
-                  <Skeleton className="h-6 w-1/3" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
+        {identityLoading ? (
+          <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-52" />
                 </div>
-              </DashboardCard>
-            ) : clientSnapshot ? (
-              <PtClientScheduleCard
-                clientId={clientId ?? null}
-                workspaceId={workspaceQuery.data ?? null}
-                timezone={clientSnapshot?.timezone ?? null}
-                todayKey={todayKey}
-                scheduleStartKey={scheduleStartKey}
-                scheduleEndKey={scheduleEndKey}
-                templatesQuery={templatesQuery}
-                overrideOpen={overrideOpen}
-                setOverrideOpen={setOverrideOpen}
-                overrideDate={overrideDate}
-                setOverrideDate={setOverrideDate}
-                overrideTemplateId={overrideTemplateId}
-                setOverrideTemplateId={setOverrideTemplateId}
-                overrideIsRest={overrideIsRest}
-                setOverrideIsRest={setOverrideIsRest}
-                overrideNotes={overrideNotes}
-                setOverrideNotes={setOverrideNotes}
-                overrideStatus={overrideStatus}
-                setOverrideStatus={setOverrideStatus}
-                overrideError={overrideError}
-                setOverrideError={setOverrideError}
-                onSaveOverride={handleSaveOverride}
-                onAssign={(dateKey) => {
-                  setScheduledDate(dateKey);
-                  setActiveTab("plan");
-                }}
-                onReschedule={handleRescheduleWorkout}
-                onDelete={handleOpenDeleteDialog}
-                onStatusChange={handleStatusUpdate}
-              />
-            ) : (
-              <EmptyState title="No plan yet" description="Assign a workout or program to get started." />
-            )}
-          </div>
+              </div>
+              <Skeleton className="h-9 w-48" />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
+            <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                  {getInitials(clientSnapshot?.display_name)}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold tracking-tight">
+                      {clientSnapshot?.display_name ?? "Client profile"}
+                    </h2>
+                    <StatusPill status={clientSnapshot?.status ?? "active"} />
+                    {lastSeen ? (
+                      <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
+                    ) : null}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
+                      .filter(Boolean)
+                      .join("  -  ") || "Training plan overview"}
+                    {joinedLabel ? `  -  Joined ${joinedLabel}` : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+                  onClick={() => handleQuickAction("")}
+                >
+                  Message
+                </Button>
+                <Button variant="ghost" size="icon" aria-label="More actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          <div className="xl:col-span-3">
-            {statsLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                <Card className="border-border/70 bg-card/80">
-                  <CardHeader className="space-y-2">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-7 w-20" />
-                  </CardHeader>
-                </Card>
-                <Card className="border-border/70 bg-card/80">
-                  <CardHeader className="space-y-2">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-7 w-20" />
-                  </CardHeader>
-                </Card>
-                <Card className="border-border/70 bg-card/80">
-                  <CardHeader className="space-y-2">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-7 w-20" />
-                  </CardHeader>
-                </Card>
-                <Card className="border-border/70 bg-card/80">
-                  <CardHeader className="space-y-2">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-7 w-20" />
-                  </CardHeader>
-                </Card>
-              </div>
-            ) : clientSnapshot ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                <StatCard
-                  label="Adherence"
-                  value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
-                  helper="Last 7 days"
-                  icon={Sparkles}
-                  sparkline={<MiniSparkline />}
-                />
-                <StatCard
-                  label="Consistency streak"
-                  value={habitStreak > 0 ? `${habitStreak}d` : "--"}
-                  helper="Habit streak"
-                  icon={Rocket}
-                  sparkline={<MiniSparkline />}
-                />
-                <StatCard
-                  label="Check-in status"
-                  value={checkinStatus ?? "--"}
-                  helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
-                  icon={CalendarDays}
-                  sparkline={<MiniSparkline />}
-                />
-                <StatCard
-                  label="Last workout"
-                  value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
-                  helper={lastWorkoutStatus ?? "No workouts"}
-                  icon={Sparkles}
-                  sparkline={<MiniSparkline />}
-                />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DashboardCard title="Client Overview" subtitle="Key details and profile status.">
+            {clientSnapshot ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <StatusPill status={clientSnapshot.status ?? "active"} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Goal</span>
+                  <span>{clientSnapshot.goal ?? "Not set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Training</span>
+                  <span>{clientSnapshot.training_type ?? "Not set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Timezone</span>
+                  <span>{clientSnapshot.timezone ?? "Not set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Joined</span>
+                  <span>{joinedLabel ?? "--"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Active program</span>
+                  <span>{activeProgram?.program_template?.name ?? "None"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Program start</span>
+                  <span>{activeProgram?.start_date ?? "--"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Weekly check-in</span>
+                  <span>{checkinStatus ?? "--"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Last workout</span>
+                  <span>{lastWorkoutStatus ?? "--"}</span>
+                </div>
               </div>
             ) : (
-              <EmptyState title="No stats yet" description="Client activity will show here once sessions begin." />
+              <EmptyState title="No client data" description="Profile details are unavailable." />
             )}
-          </div>
+          </DashboardCard>
+
+          <DashboardCard title="Todo List" subtitle="Create tasks for this client.">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={todoInput}
+                  onChange={(event) => setTodoInput(event.target.value)}
+                  placeholder="Add a new task"
+                />
+                <Button onClick={addTask} disabled={!todoInput.trim()}>
+                  Add
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {clientTodos.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                    No tasks yet.
+                  </div>
+                ) : (
+                  clientTodos.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
+                    >
+                      <label className="flex flex-1 items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={task.done}
+                          onChange={() => toggleTask(task.id)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        <span
+                          className={cn(
+                            "font-medium",
+                            task.done ? "text-muted-foreground line-through" : "text-foreground"
+                          )}
+                        >
+                          {task.label}
+                        </span>
+                      </label>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeTask(task.id)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </DashboardCard>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-8 space-y-6">
-            <DashboardCard title="Today's Focus" subtitle="What needs attention right now.">
-              {focusLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-1/3" />
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-10 w-2/3" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          Today
-                        </p>
-                        <p className="text-lg font-semibold text-foreground">
-                          {todaySessionTitle}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {todaySession?.day_type === "rest"
-                            ? "Planned recovery day"
-                            : todaySession
-                            ? "Workout scheduled"
-                            : "No workout scheduled"}
-                        </p>
-                      </div>
-                      <StatusPill status={todaySessionStatus} />
-                    </div>
-                  </div>
+        <DashboardCard title="Metrics" subtitle="Snapshot of recent progress.">
+          {statsLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Card key={index} className="border-border/70 bg-card/80">
+                  <CardHeader className="space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-7 w-20" />
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          ) : clientSnapshot ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Adherence"
+                value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
+                helper="Last 7 days"
+                icon={Sparkles}
+                sparkline={<MiniSparkline />}
+              />
+              <StatCard
+                label="Consistency streak"
+                value={habitStreak > 0 ? `${habitStreak}d` : "--"}
+                helper="Habit streak"
+                icon={Rocket}
+                sparkline={<MiniSparkline />}
+              />
+              <StatCard
+                label="Check-in status"
+                value={checkinStatus ?? "--"}
+                helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
+                icon={CalendarDays}
+                sparkline={<MiniSparkline />}
+              />
+              <StatCard
+                label="Last workout"
+                value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
+                helper={lastWorkoutStatus ?? "No workouts"}
+                icon={Sparkles}
+                sparkline={<MiniSparkline />}
+              />
+            </div>
+          ) : (
+            <EmptyState title="No stats yet" description="Client activity will show here once sessions begin." />
+          )}
+        </DashboardCard>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Check-in
-                      </p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {pendingCheckin ? "Pending this week" : "No pending check-in"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {pendingCheckin?.week_ending_saturday ?? "All caught up"}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Last PT note
-                      </p>
-                      <p className="text-sm text-foreground">{lastNoteSummary}</p>
-                    </div>
-                  </div>
+        {scheduleLoading ? (
+          <DashboardCard title="Plan & Calendar" subtitle="Loading schedule...">
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          </DashboardCard>
+        ) : clientSnapshot ? (
+          <PtClientScheduleCard
+            clientId={clientId ?? null}
+            workspaceId={workspaceQuery.data ?? null}
+            timezone={clientSnapshot?.timezone ?? null}
+            todayKey={todayKey}
+            scheduleStartKey={scheduleStartKey}
+            scheduleEndKey={scheduleEndKey}
+            templatesQuery={templatesQuery}
+            overrideOpen={overrideOpen}
+            setOverrideOpen={setOverrideOpen}
+            overrideDate={overrideDate}
+            setOverrideDate={setOverrideDate}
+            overrideTemplateId={overrideTemplateId}
+            setOverrideTemplateId={setOverrideTemplateId}
+            overrideIsRest={overrideIsRest}
+            setOverrideIsRest={setOverrideIsRest}
+            overrideNotes={overrideNotes}
+            setOverrideNotes={setOverrideNotes}
+            overrideStatus={overrideStatus}
+            setOverrideStatus={setOverrideStatus}
+            overrideError={overrideError}
+            setOverrideError={setOverrideError}
+            onSaveOverride={handleSaveOverride}
+            onAssign={(dateKey) => {
+              setScheduledDate(dateKey);
+              setActiveTab("plan");
+            }}
+            onReschedule={handleRescheduleWorkout}
+            onDelete={handleOpenDeleteDialog}
+            onStatusChange={handleStatusUpdate}
+          />
+        ) : (
+          <EmptyState title="No plan yet" description="Assign a workout or program to get started." />
+        )}
 
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" onClick={() => setActiveTab("checkins")}>
-                      Review check-in
-                    </Button>
-                    <Button variant="secondary" onClick={() => setActiveTab("plan")}>
-                      Edit plan
-                    </Button>
-                    <Button
-                      onClick={() =>
-                        handleQuickAction("Quick check-in: how did today's session feel?")
-                      }
-                    >
-                      Message
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </DashboardCard>
-
-            
-
+        <div className="space-y-6">
             {(workspaceQuery.error ||
               templatesQuery.error ||
               upcomingQuery.error ||
@@ -1997,215 +2153,6 @@ export function PtClientDetailPage() {
                 <AlertDescription>{assignMessage}</AlertDescription>
               </Alert>
             ) : null}
-          </div>
-
-          <div className="lg:col-span-4 space-y-6">
-            <DashboardCard
-              title="Client Overview"
-              subtitle="Key details and profile status."
-              action={
-                <Button size="sm" variant="secondary" onClick={() => setActiveTab("baseline")}>
-                  Edit profile
-                </Button>
-              }
-            >
-              {clientSnapshot ? (
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Status</span>
-                    <StatusPill status={clientSnapshot.status ?? "active"} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Goal</span>
-                    <span>{clientSnapshot.goal ?? "Not set"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Training</span>
-                    <span>{clientSnapshot.training_type ?? "Not set"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Timezone</span>
-                    <span>{clientSnapshot.timezone ?? "Not set"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Joined</span>
-                    <span>{joinedLabel ?? "--"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Active program</span>
-                    <span>{activeProgram?.program_template?.name ?? "None"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Program start</span>
-                    <span>{activeProgram?.start_date ?? "--"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Weekly check-in</span>
-                    <span>{checkinStatus ?? "--"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Last workout</span>
-                    <span>{lastWorkoutStatus ?? "--"}</span>
-                  </div>
-                </div>
-              ) : (
-                <EmptyState title="No client data" description="Profile details are unavailable." />
-              )}
-            </DashboardCard>
-
-            <DashboardCard title="Todo List" subtitle="Create tasks for this client.">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={todoInput}
-                    onChange={(event) => setTodoInput(event.target.value)}
-                    placeholder="Add a new task"
-                  />
-                  <Button onClick={addTask} disabled={!todoInput.trim()}>
-                    Add
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {clientTodos.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-                      No tasks yet.
-                    </div>
-                  ) : (
-                    clientTodos.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
-                      >
-                        <label className="flex flex-1 items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={task.done}
-                            onChange={() => toggleTask(task.id)}
-                            className="h-4 w-4 accent-primary"
-                          />
-                          <span
-                            className={cn(
-                              "font-medium",
-                              task.done ? "text-muted-foreground line-through" : "text-foreground"
-                            )}
-                          >
-                            {task.label}
-                          </span>
-                        </label>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeTask(task.id)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </DashboardCard>
-
-            <DashboardCard title="Recent sessions" subtitle="Last 10 workout sessions.">
-              {ptSessionsQuery.isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : ptSessionsQuery.error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                  {getErrorDetails(ptSessionsQuery.error).code}: {getErrorDetails(ptSessionsQuery.error).message}
-                </div>
-              ) : ptSessionsQuery.data && ptSessionsQuery.data.length > 0 ? (
-                <div className="space-y-2 text-sm">
-                  <div className="grid grid-cols-[110px_1fr_90px_90px_70px] gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    <span>Date</span>
-                    <span>Workout</span>
-                    <span>Status</span>
-                    <span>Volume</span>
-                    <span>Notes</span>
-                  </div>
-                  {ptSessionsQuery.data.map((session) => {
-                    const dateValue =
-                      session.completed_at ??
-                      session.started_at ??
-                      session.created_at ??
-                      null;
-                    const dateLabel = dateValue
-                      ? new Date(dateValue).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "--";
-                    const workoutName =
-                      session.assigned_workout?.workout_template?.name ?? "Workout";
-                    const statusLabel =
-                      session.completed_at ? "completed" : session.assigned_workout?.status ?? "active";
-                    const volume = sessionVolumeById.get(session.id);
-                    const notesIndicator = session.client_notes ? "Yes" : "--";
-                    return (
-                      <button
-                        key={session.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedSessionId(session.id);
-                          setSessionDetailOpen(true);
-                        }}
-                        className="grid w-full grid-cols-[110px_1fr_90px_90px_70px] items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-left transition hover:bg-muted/50"
-                      >
-                        <span className="text-xs text-muted-foreground">{dateLabel}</span>
-                        <span className="font-medium text-foreground">{workoutName}</span>
-                        <Badge variant={statusLabel === "completed" ? "success" : "muted"} className="text-[10px] uppercase">
-                          {statusLabel}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {typeof volume === "number" ? volume.toFixed(0) : "--"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">{notesIndicator}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <EmptyState title="No sessions yet" description="No workout sessions recorded." />
-              )}
-            </DashboardCard>
-
-            <DashboardCard title="Recent activity" subtitle="Last 5 coach actions.">
-              {coachActivityQuery.isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              ) : coachActivityQuery.data && coachActivityQuery.data.length > 0 ? (
-                <div className="space-y-2 text-sm">
-                  {coachActivityQuery.data.slice(0, 5).map((entry) => {
-                    const createdLabel = entry.created_at
-                      ? new Date(entry.created_at).toLocaleString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })
-                      : "today";
-                    return (
-                      <div
-                        key={entry.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
-                      >
-                        <span className="font-medium">{getCoachActionLabel(entry.action)}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {entry.created_at ? formatRelativeTime(entry.created_at) : "today"} - {createdLabel}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <EmptyState title="No recent activity" description="No actions logged yet." />
-              )}
-            </DashboardCard>
-          </div>
         </div>
 
         <div>
@@ -2276,10 +2223,123 @@ export function PtClientDetailPage() {
                 <PtClientProgressTab />
               </TabsContent>
               <TabsContent value="logs">
-                <PtClientLogsTab />
+                <PtClientLogsTab
+                  ptSessionsQuery={ptSessionsQuery}
+                  sessionVolumeById={sessionVolumeById}
+                  onOpenSession={(id) => {
+                    setSelectedSessionId(id);
+                    setSessionDetailOpen(true);
+                  }}
+                />
               </TabsContent>
               <TabsContent value="checkins">
-                <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+                <div className="space-y-6">
+                  <DashboardCard
+                    title="Check-in template"
+                    subtitle="Assign a template for this client."
+                    action={
+                      <StatusPill
+                        status={checkinTemplateStatusKey}
+                        statusMap={checkinTemplateStatusMap}
+                      />
+                    }
+                  >
+                    {checkinTemplatesQuery.isLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-40" />
+                      </div>
+                    ) : checkinTemplatesQuery.error || availableCheckinTemplates.length === 0 ? (
+                      <EmptyState
+                        title="No check-in templates created yet"
+                        description="Create a template to assign it to clients."
+                        actionLabel="Create template"
+                        onAction={() => navigate("/pt/checkins/templates")}
+                      />
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-muted-foreground">
+                            Template
+                          </label>
+                          <select
+                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            value={checkinTemplateId}
+                            onChange={(event) => setCheckinTemplateId(event.target.value)}
+                            disabled={
+                              checkinTemplatesQuery.isLoading ||
+                              checkinTemplateStatus === "saving"
+                            }
+                          >
+                            <option value="">Use workspace default</option>
+                            {availableCheckinTemplates.map((template) => (
+                              <option key={template.id} value={template.id}>
+                                {template.name ?? "Untitled template"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-muted-foreground">
+                              Frequency
+                            </label>
+                            <select
+                              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                              value={checkinFrequency}
+                              onChange={(event) => setCheckinFrequency(event.target.value)}
+                            >
+                              {checkinFrequencyOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-muted-foreground">
+                              First check-in
+                            </label>
+                            <Input
+                              type="date"
+                              value={checkinStartDate}
+                              onChange={(event) => setCheckinStartDate(event.target.value)}
+                            />
+                          </div>
+                        </div>
+                        {checkinStartDate ? (
+                          <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground">Next:</span>{" "}
+                            {computeNextCheckinDate(
+                              checkinStartDate,
+                              checkinFrequency,
+                              todayKey
+                            ) ?? "--"}
+                          </div>
+                        ) : null}
+                        {!effectiveCheckinTemplate ? (
+                          <EmptyState
+                            title="No template assigned"
+                            description="Assign a template to start weekly check-ins."
+                          />
+                        ) : null}
+                        <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                          <span className="font-semibold text-foreground">Using:</span>{" "}
+                          {effectiveCheckinTemplate?.name ?? "No template selected"}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={handleSaveCheckinTemplate}
+                          disabled={checkinTemplateStatus === "saving"}
+                        >
+                          {checkinTemplateStatus === "saving" ? "Saving..." : "Assign template"}
+                        </Button>
+                      </div>
+                    )}
+                  </DashboardCard>
+
+                  <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+                </div>
               </TabsContent>
               <TabsContent value="messages">
                 <PtClientMessagesTab />
@@ -2763,18 +2823,37 @@ function PtClientScheduleCard({
     },
   });
 
+  const checkinsQuery = useQuery({
+    queryKey: ["pt-client-checkins-week", clientId, scheduleStartKey, scheduleEndKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkins")
+        .select("id, week_ending_saturday, submitted_at")
+        .eq("client_id", clientId ?? "")
+        .gte("week_ending_saturday", scheduleStartKey)
+        .lte("week_ending_saturday", scheduleEndKey)
+        .order("week_ending_saturday", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const weekRows = useMemo(() => {
     const rows = Array.from({ length: 7 }).map((_, idx) => {
       const key = addDaysToDateString(scheduleStartKey, idx);
       const match =
         scheduleQuery.data?.find((item) => item.scheduled_date === key) ?? null;
-      return { key, workout: match };
+      const checkin =
+        checkinsQuery.data?.find((item) => item.week_ending_saturday === key) ?? null;
+      return { key, workout: match, checkin };
     });
     return rows;
-  }, [scheduleQuery.data, scheduleStartKey]);
+  }, [scheduleQuery.data, checkinsQuery.data, scheduleStartKey]);
 
   const selectedRow = weekRows.find((row) => row.key === selectedKey) ?? weekRows[0];
   const selectedWorkout = selectedRow?.workout ?? null;
+  const selectedCheckin = selectedRow?.checkin ?? null;
   const selectedStatus =
     selectedWorkout?.day_type === "rest"
       ? "rest day"
@@ -2853,22 +2932,22 @@ function PtClientScheduleCard({
     });
   };
 
-  const formatDayNumber = (key: string) => {
-    const [year, month, day] = key.split("-").map(Number);
-    if (!year || !month || !day) return "";
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return date.toLocaleDateString("en-US", {
-      day: "numeric",
-      timeZone: timezone ?? undefined,
-    });
-  };
+const formatDayNumber = (key: string) => {
+  const [year, month, day] = key.split("-").map(Number);
+  if (!year || !month || !day) return "";
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: timezone ?? undefined,
+  });
+};
 
   return (
     <DashboardCard
       title="Coach Calendar (7 days)"
       subtitle="Your coaching calendar for this client."
     >
-      {scheduleQuery.isLoading ? (
+      {scheduleQuery.isLoading || checkinsQuery.isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
@@ -2876,26 +2955,10 @@ function PtClientScheduleCard({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/80 px-4 py-3 text-sm">
-            <div className="flex items-center gap-3">
-              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Weekly Adherence
-              </div>
-              <div className="text-lg font-semibold text-foreground">
-                {weeklyAdherence}%
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <AlertTriangle className="h-4 w-4 text-amber-300" />
-              {weeklyMissed > 0
-                ? `${weeklyMissed} session${weeklyMissed === 1 ? "" : "s"} missed this week`
-                : "No missed sessions this week"}
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               {weekRows.map((row) => {
                 const workout = row.workout;
+                const checkin = row.checkin;
                 const isRestDay = workout?.day_type === "rest";
                 const status = isRestDay
                   ? "rest day"
@@ -2973,6 +3036,17 @@ function PtClientScheduleCard({
                         {isRestDay ? <Moon className="h-4 w-4 text-sky-200" /> : null}
                       </div>
 
+                      {checkin ? (
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={checkin.submitted_at ? "success" : "warning"}
+                            className="text-[10px] uppercase"
+                          >
+                            {checkin.submitted_at ? "Check-in submitted" : "Check-in due"}
+                          </Badge>
+                        </div>
+                      ) : null}
+
                       <div className="flex items-center gap-2 text-muted-foreground opacity-0 transition group-hover:opacity-100">
                         <button
                           type="button"
@@ -3005,53 +3079,6 @@ function PtClientScheduleCard({
                 );
               })}
             </div>
-          <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Selected day</p>
-                <p className="text-sm font-semibold">{formatLabel(selectedRow.key)}</p>
-                <p className="text-xs text-muted-foreground">{selectedTitle}</p>
-              </div>
-              <StatusPill status={selectedStatus} />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedWorkout ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setEditDate(selectedRow.key);
-                      setEditOpen(true);
-                    }}
-                  >
-                    Edit date
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onDelete(selectedWorkout.id)}>
-                    Delete assignment
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => onStatusChange(selectedWorkout.id, "completed")}
-                  >
-                    Mark completed
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onStatusChange(selectedWorkout.id, "skipped")}
-                  >
-                    Mark skipped
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" onClick={() => onAssign(selectedRow.key)}>
-                  Assign workout
-                </Button>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -3466,10 +3493,17 @@ function PtClientCheckinsTab({
                 const variant =
                   status === "Reviewed" ? "success" : status === "Submitted" ? "secondary" : "warning";
                 return (
-                  <button
+                  <div
                     key={checkin.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onReview(checkin)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onReview(checkin);
+                      }
+                    }}
                     className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/50"
                   >
                     <div>
@@ -3499,7 +3533,7 @@ function PtClientCheckinsTab({
                         </Button>
                       ) : null}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -3629,7 +3663,6 @@ function PtClientHabitsTab({
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{row.dateKey}</span>
-                      {!log ? <StatusPill status="not logged" /> : null}
                     </div>
                     <span>{log?.calories ?? "--"}</span>
                     <span>{typeof log?.protein_g === "number" ? `${log?.protein_g} g` : "--"}</span>
@@ -4012,8 +4045,88 @@ function PtClientPlanTab({
   );
 }
 
-function PtClientLogsTab() {
-  return <PtClientPlaceholderTab title="logs" />;
+function PtClientLogsTab({
+  ptSessionsQuery,
+  sessionVolumeById,
+  onOpenSession,
+}: {
+  ptSessionsQuery: QueryResult<PtWorkoutSessionRow[]>;
+  sessionVolumeById: Map<string, number>;
+  onOpenSession: (id: string) => void;
+}) {
+  return (
+    <Card className="border-border/70 bg-card/80 xl:col-start-1">
+      <CardHeader>
+        <CardTitle>Session logs</CardTitle>
+        <p className="text-sm text-muted-foreground">Last 10 workout sessions.</p>
+      </CardHeader>
+      <CardContent>
+        {ptSessionsQuery.isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : ptSessionsQuery.error ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+            {getErrorDetails(ptSessionsQuery.error).code}:{" "}
+            {getErrorDetails(ptSessionsQuery.error).message}
+          </div>
+        ) : ptSessionsQuery.data && ptSessionsQuery.data.length > 0 ? (
+          <div className="space-y-2 text-sm">
+            <div className="grid grid-cols-[110px_1fr_90px_90px_70px] gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <span>Date</span>
+              <span>Workout</span>
+              <span>Status</span>
+              <span>Volume</span>
+              <span>Notes</span>
+            </div>
+            {ptSessionsQuery.data.map((session) => {
+              const dateValue =
+                session.completed_at ??
+                session.started_at ??
+                session.created_at ??
+                null;
+              const dateLabel = dateValue
+                ? new Date(dateValue).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "--";
+              const workoutName =
+                session.assigned_workout?.workout_template?.name ?? "Workout";
+              const statusLabel =
+                session.completed_at ? "completed" : session.assigned_workout?.status ?? "active";
+              const volume = sessionVolumeById.get(session.id);
+              const notesIndicator = session.client_notes ? "Yes" : "--";
+              return (
+                <button
+                  key={session.id}
+                  type="button"
+                  onClick={() => onOpenSession(session.id)}
+                  className="grid w-full grid-cols-[110px_1fr_90px_90px_70px] items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-left transition hover:bg-muted/50"
+                >
+                  <span className="text-xs text-muted-foreground">{dateLabel}</span>
+                  <span className="font-medium text-foreground">{workoutName}</span>
+                  <Badge
+                    variant={statusLabel === "completed" ? "success" : "muted"}
+                    className="text-[10px] uppercase"
+                  >
+                    {statusLabel}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {typeof volume === "number" ? volume.toFixed(0) : "--"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{notesIndicator}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState title="No sessions yet" description="No workout sessions recorded." />
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function PtClientProgressTab() {

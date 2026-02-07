@@ -1,11 +1,99 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { EmptyState, Skeleton } from "../../components/ui/coachos";
+import { supabase } from "../../lib/supabase";
+import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtSettingsPage() {
+  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const queryClient = useQueryClient();
+  const [defaultTemplateId, setDefaultTemplateId] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = setTimeout(() => setToastMessage(null), 2400);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
+
+  const workspaceQuery = useQuery({
+    queryKey: ["pt-settings-workspace", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, default_checkin_template_id")
+        .eq("id", workspaceId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; default_checkin_template_id: string | null } | null;
+    },
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ["pt-settings-checkin-templates", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkin_templates")
+        .select("id, workspace_id, name, description, is_active, created_at")
+        .eq("workspace_id", workspaceId ?? "")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string;
+        workspace_id: string;
+        name: string | null;
+        description?: string | null;
+        is_active?: boolean | null;
+        created_at?: string | null;
+      }>;
+    },
+  });
+
+  useEffect(() => {
+    if (!workspaceQuery.data) return;
+    setDefaultTemplateId(workspaceQuery.data.default_checkin_template_id ?? "");
+  }, [workspaceQuery.data]);
+
+  const handleSaveDefaultTemplate = async () => {
+    if (!workspaceId) return;
+    setSaveStatus("saving");
+    const nextId = defaultTemplateId || null;
+    const { error } = await supabase
+      .from("workspaces")
+      .update({ default_checkin_template_id: nextId })
+      .eq("id", workspaceId);
+    if (error) {
+      setSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage("Unable to save default check-in template.");
+      return;
+    }
+    setSaveStatus("idle");
+    setToastVariant("success");
+    setToastMessage("Default check-in template updated.");
+    await queryClient.invalidateQueries({ queryKey: ["pt-settings-workspace", workspaceId] });
+  };
+
   return (
     <div className="space-y-8">
+      {toastMessage ? (
+        <div className="fixed right-6 top-6 z-50 w-[260px]">
+          <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
+            <AlertTitle>{toastVariant === "error" ? "Error" : "Success"}</AlertTitle>
+            <AlertDescription>{toastMessage}</AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
+
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Settings</h2>
         <p className="text-sm text-muted-foreground">Manage workspace branding and account access.</p>
@@ -70,6 +158,61 @@ export function PtSettingsPage() {
             <Link to="/pt/settings/baseline">Manage templates</Link>
           </Button>
         </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle>Check-in templates</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Select the default template for new check-ins.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {workspaceLoading || templatesQuery.isLoading || workspaceQuery.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-40" />
+            </div>
+          ) : workspaceError || workspaceQuery.error || templatesQuery.error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              Unable to load check-in templates.
+            </div>
+          ) : templatesQuery.data && templatesQuery.data.length === 0 ? (
+            <EmptyState
+              title="No check-in templates yet"
+              description="Create a template to set a default."
+            />
+          ) : (
+            <>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Default template
+                </label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={defaultTemplateId}
+                  onChange={(event) => setDefaultTemplateId(event.target.value)}
+                >
+                  <option value="">No default</option>
+                  {templatesQuery.data?.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name ?? "Template"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSaveDefaultTemplate}
+                disabled={saveStatus === "saving"}
+              >
+                {saveStatus === "saving" ? "Saving..." : "Save default"}
+              </Button>
+            </>
+          )}
+        </CardContent>
       </Card>
 
       <Card>

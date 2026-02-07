@@ -347,8 +347,6 @@ export function PtDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary">Clear today's queue</Button>
-          <Button>Schedule check-in</Button>
         </div>
       </div>
 

@@ -39,6 +39,7 @@ const navItems = [
   { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
   { label: "Clients", to: "/pt/clients", icon: Users },
   { label: "Programs", to: "/pt/programs", icon: CalendarDays },
+  { label: "Calendar", to: "/pt/calendar", icon: CalendarDays },
   { label: "Workouts", to: "/pt/templates/workouts", icon: Dumbbell },
   { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
   { label: "Check-ins", to: "/pt/checkins", icon: ClipboardList },

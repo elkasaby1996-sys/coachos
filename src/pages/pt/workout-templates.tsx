@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -42,37 +41,6 @@ const getErrorDetails = (error: unknown) => {
   }
   return { code: "unknown", message: "Unknown error" };
 };
-
-const calendarWeek = [
-  {
-    day: "Mon",
-    workouts: ["Upper Power - Avery", "Run Tempo - Jordan"],
-  },
-  {
-    day: "Tue",
-    workouts: ["AMRAP 16 - Morgan"],
-  },
-  {
-    day: "Wed",
-    workouts: ["Lower Hypertrophy - Samira"],
-  },
-  {
-    day: "Thu",
-    workouts: ["Mobility Reset - Elena"],
-  },
-  {
-    day: "Fri",
-    workouts: ["Upper Power - Avery"],
-  },
-  {
-    day: "Sat",
-    workouts: [],
-  },
-  {
-    day: "Sun",
-    workouts: [],
-  },
-];
 
 export function PtWorkoutTemplatesPage() {
   const navigate = useNavigate();
@@ -271,18 +239,7 @@ export function PtWorkoutTemplatesPage() {
         <Button onClick={() => setCreateOpen(true)}>Create template</Button>
       </div>
 
-      <Tabs defaultValue="templates">
-        <TabsList className="flex w-full flex-wrap justify-start gap-2 bg-transparent p-0">
-          <TabsTrigger value="templates" className="border border-border/70 bg-muted/50">
-            Workouts
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="border border-border/70 bg-muted/50">
-            Calendar
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="templates">
-          <Card className="border-border/70 bg-card/80">
+      <Card className="border-border/70 bg-card/80">
             <CardHeader className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 <Badge variant="secondary" className="text-[10px]">Workouts</Badge>
@@ -421,8 +378,8 @@ export function PtWorkoutTemplatesPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
-          <Card className="mt-6 border-border/70 bg-card/80">
+      </Card>
+      <Card className="mt-6 border-border/70 bg-card/80">
             <CardHeader>
               <CardTitle>Shared template packs</CardTitle>
               <p className="text-sm text-muted-foreground">
@@ -444,50 +401,7 @@ export function PtWorkoutTemplatesPage() {
                 <div>Template packs</div>
               )}
             </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="calendar">
-          <Card className="border-border/70 bg-card/80">
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle>Weekly calendar</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Visualize assigned workouts across the week.
-                </p>
-              </div>
-              <Button variant="secondary" size="sm">
-                Sync calendar
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-7">
-                {calendarWeek.map((day) => (
-                  <div
-                    key={day.day}
-                    className="rounded-xl border border-border/70 bg-background/40 p-3 transition hover:border-border hover:bg-muted/40"
-                  >
-                    <p className="text-xs font-semibold uppercase text-muted-foreground">{day.day}</p>
-                    <div className="mt-2 space-y-2">
-                      {day.workouts.length > 0 ? (
-                        day.workouts.map((workout) => (
-                          <div key={workout} className="rounded-lg border border-border bg-muted/60 px-2 py-1 text-xs">
-                            {workout}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="rounded-lg border border-dashed border-border p-2 text-center text-xs text-muted-foreground">
-                          No assignments
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      </Card>
 
       <Dialog
         open={createOpen}

@@ -16,6 +16,7 @@ import { PtWorkoutTemplateBuilderPage } from "../pages/pt/workout-template-build
 import { PtWorkoutTemplatePreviewPage } from "../pages/pt/workout-template-preview";
 import { PtCheckinsQueuePage } from "../pages/pt/checkins";
 import { PtCheckinTemplatesPage } from "../pages/pt/checkin-templates";
+import { PtCalendarPage } from "../pages/pt/calendar";
 import { PtSettingsPage } from "../pages/pt/settings";
 import { PtBaselineTemplatesPage } from "../pages/pt/settings-baseline";
 import { PtExerciseLibraryPage } from "../pages/pt/settings-exercises";
@@ -172,6 +173,7 @@ export function App() {
         <Route path="templates/workouts" element={<PtWorkoutTemplatesPage />} />
         <Route path="templates/workouts/:id" element={<PtWorkoutTemplatePreviewPage />} />
         <Route path="templates/workouts/:id/edit" element={<PtWorkoutTemplateBuilderPage />} />
+        <Route path="calendar" element={<PtCalendarPage />} />
         <Route path="checkins" element={<PtCheckinsQueuePage />} />
         <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />
         <Route path="settings" element={<PtSettingsPage />} />

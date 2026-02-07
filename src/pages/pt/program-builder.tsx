@@ -101,6 +101,8 @@ export function PtProgramBuilderPage() {
   );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [draggingTemplateId, setDraggingTemplateId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   const templateQuery = useQuery({
     queryKey: ["program-template", templateId],
@@ -195,6 +197,11 @@ export function PtProgramBuilderPage() {
         ...payload,
       },
     }));
+  };
+
+  const handleDropTemplate = (week: number, day: number, templateId: string) => {
+    if (!templateId) return;
+    updateDay(week, day, { workout_template_id: templateId, is_rest: false });
   };
 
   const handleSave = async () => {
@@ -432,6 +439,86 @@ export function PtProgramBuilderPage() {
           </p>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">
+              Workout templates
+            </div>
+            <div className="mt-3 flex w-full gap-3 overflow-x-auto pb-2">
+              {workoutTemplatesQuery.isLoading ? (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-20 w-40 shrink-0 rounded-xl border border-border/60 bg-muted/40"
+                  />
+                ))
+              ) : workoutTemplates.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  No workout templates yet.
+                </div>
+              ) : (
+                workoutTemplates.map((template) => {
+                  const isDragging = draggingTemplateId === template.id;
+                  const isSelected = selectedTemplateId === template.id;
+                  return (
+                    <div
+                      key={template.id}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("text/plain", template.id);
+                        event.dataTransfer.effectAllowed = "copy";
+                        setDraggingTemplateId(template.id);
+                        const target = event.currentTarget as HTMLElement;
+                        const ghost = target.cloneNode(true) as HTMLElement;
+                        ghost.style.position = "fixed";
+                        ghost.style.top = "-9999px";
+                        ghost.style.left = "-9999px";
+                        ghost.style.transform = "scale(1.03)";
+                        ghost.style.boxShadow = "0 0 24px rgba(56,189,248,0.45)";
+                        ghost.style.borderColor = "rgba(56,189,248,0.65)";
+                        ghost.style.background = "rgba(30,41,59,0.85)";
+                        document.body.appendChild(ghost);
+                        event.dataTransfer.setDragImage(
+                          ghost,
+                          ghost.offsetWidth / 2,
+                          ghost.offsetHeight / 2
+                        );
+                        window.requestAnimationFrame(() => {
+                          ghost.remove();
+                        });
+                      }}
+                      onDragEnd={() => setDraggingTemplateId(null)}
+                      onClick={() =>
+                        setSelectedTemplateId((prev) =>
+                          prev === template.id ? null : template.id
+                        )
+                      }
+                      className={`shrink-0 rounded-xl border px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition ${
+                        isDragging
+                          ? "scale-[0.98] border-accent/60 bg-accent/20 shadow-[0_0_20px_rgba(56,189,248,0.35)]"
+                          : isSelected
+                            ? "border-accent/60 bg-accent/10"
+                            : "border-border/60 bg-background/50 hover:border-border"
+                      }`}
+                    >
+                      {template.name ?? "Workout template"}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Drag a template onto a day or click a template then click a day.
+            </p>
+            {selectedTemplateId ? (
+              <div className="mt-2 text-xs text-muted-foreground">
+                Selected:{" "}
+                <span className="font-semibold text-foreground">
+                  {workoutTemplates.find((t) => t.id === selectedTemplateId)?.name ??
+                    "Workout template"}
+                </span>
+              </div>
+            ) : null}
+          </div>
           <Tabs value={activeWeek} onValueChange={setActiveWeek}>
             <TabsList className="flex w-full flex-wrap justify-start gap-2 bg-transparent p-0">
               {weekOptions.map((week) => (
@@ -457,7 +544,24 @@ export function PtProgramBuilderPage() {
                     return (
                       <div
                         key={`${week}-${day}`}
-                        className="flex h-full flex-col justify-between rounded-xl border border-border/70 bg-background/40 p-3"
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const templateId = event.dataTransfer.getData("text/plain");
+                          handleDropTemplate(week, day, templateId);
+                        }}
+                        onClick={() => {
+                          if (selectedTemplateId) {
+                            handleDropTemplate(week, day, selectedTemplateId);
+                          }
+                        }}
+                        className={`flex h-full flex-col justify-between rounded-xl border border-border/70 bg-background/40 p-3 transition ${
+                          draggingTemplateId
+                            ? "border-accent/60 bg-accent/10"
+                            : "hover:border-border"
+                        }`}
                       >
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
@@ -471,24 +575,11 @@ export function PtProgramBuilderPage() {
                             ) : null}
                           </div>
                           <div className="space-y-2">
-                            <select
-                              className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
-                              value={state?.workout_template_id ?? ""}
-                              disabled={state?.is_rest}
-                              onChange={(event) =>
-                                updateDay(week, day, {
-                                  workout_template_id: event.target.value || null,
-                                  is_rest: false,
-                                })
-                              }
-                            >
-                              <option value="">Select workout</option>
-                              {workoutTemplates.map((template) => (
-                                <option key={template.id} value={template.id}>
-                                  {template.name ?? "Workout template"}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                              {state?.workout_template_id
+                                ? selectedTemplate?.name ?? "Workout assigned"
+                                : "Drop a template here"}
+                            </div>
                             <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                               <input
                                 type="checkbox"

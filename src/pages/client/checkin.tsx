@@ -12,16 +12,24 @@ import { getTodayInTimezone, getWeekEndSaturday } from "../../lib/date-utils";
 type ClientRow = {
   id: string;
   workspace_id: string | null;
+  checkin_template_id?: string | null;
+  checkin_frequency?: string | null;
+  checkin_start_date?: string | null;
   timezone?: string | null;
   [key: string]: unknown;
+};
+
+type WorkspaceRow = {
+  id: string;
+  default_checkin_template_id: string | null;
 };
 
 type CheckinTemplateRow = Record<string, unknown> & {
   id: string;
   name?: string | null;
-  title?: string | null;
   is_default?: boolean | null;
   is_active?: boolean | null;
+  checkin_questions?: CheckinQuestionRow[] | null;
 };
 
 type CheckinQuestionRow = Record<string, unknown> & {
@@ -50,9 +58,8 @@ type CheckinRow = {
 type CheckinAnswerRow = {
   id: string;
   question_id: string;
-  answer_text: string | null;
-  answer_number: number | null;
-  answer_boolean: boolean | null;
+  value_text: string | null;
+  value_number: number | null;
 };
 
 type CheckinPhotoRow = {
@@ -125,6 +132,29 @@ const formatWeekEnding = (dateStr: string) => {
   });
 };
 
+const computeNextCheckinDate = (
+  startDate: string | null | undefined,
+  frequency: string | null | undefined,
+  fromDate: string
+) => {
+  if (!startDate) return null;
+  const start = new Date(`${startDate}T00:00:00Z`);
+  if (Number.isNaN(start.getTime())) return null;
+  const from = new Date(`${fromDate}T00:00:00Z`);
+  if (Number.isNaN(from.getTime())) return null;
+
+  const freq = frequency ?? "weekly";
+  const stepDays = freq === "biweekly" ? 14 : freq === "monthly" ? 30 : 7;
+  const next = new Date(start);
+  while (next <= from) {
+    next.setDate(next.getDate() + stepDays);
+  }
+  const yyyy = next.getUTCFullYear();
+  const mm = String(next.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(next.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export function ClientCheckinPage() {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
@@ -146,7 +176,7 @@ export function ClientCheckinPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("*")
+        .select("id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, timezone")
         .eq("user_id", user?.id ?? "")
         .maybeSingle();
       if (error) throw error;
@@ -160,46 +190,61 @@ export function ClientCheckinPage() {
   );
   const weekEndingSaturday = useMemo(() => getWeekEndSaturday(todayStr), [todayStr]);
 
-  const templatesQuery = useQuery({
-    queryKey: ["client-checkin-templates", clientQuery.data?.workspace_id],
+  const workspaceQuery = useQuery({
+    queryKey: ["client-checkin-workspace", clientQuery.data?.workspace_id],
     enabled: !!clientQuery.data?.workspace_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, default_checkin_template_id")
+        .eq("id", clientQuery.data?.workspace_id ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as WorkspaceRow | null;
+    },
+  });
+
+  const assignedTemplateId = clientQuery.data?.checkin_template_id ?? null;
+  const workspaceDefaultTemplateId =
+    workspaceQuery.data?.default_checkin_template_id ?? null;
+
+  const latestTemplateQuery = useQuery({
+    queryKey: ["client-checkin-latest-template", clientQuery.data?.workspace_id],
+    enabled:
+      !!clientQuery.data?.workspace_id &&
+      workspaceQuery.isFetched &&
+      !assignedTemplateId &&
+      !workspaceDefaultTemplateId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("checkin_templates")
         .select("*")
-        .eq("workspace_id", clientQuery.data?.workspace_id ?? "");
+        .eq("workspace_id", clientQuery.data?.workspace_id ?? "")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (error) throw error;
-      return (data ?? []) as CheckinTemplateRow[];
+      return (data ?? null) as CheckinTemplateRow | null;
     },
   });
 
-  const selectedTemplate = useMemo(() => {
-    const templates = templatesQuery.data ?? [];
-    if (templates.length === 0) return null;
-    const assignedId =
-      (clientQuery.data?.checkin_template_id as string | null | undefined) ??
-      (clientQuery.data?.checkin_template_override_id as string | null | undefined) ??
-      null;
-    if (assignedId) {
-      const assigned = templates.find((template) => template.id === assignedId);
-      if (assigned) return assigned;
-    }
-    const defaultTemplate = templates.find((template) => template.is_default === true);
-    if (defaultTemplate) return defaultTemplate;
-    const activeTemplate = templates.find((template) => template.is_active !== false);
-    return activeTemplate ?? templates[0];
-  }, [templatesQuery.data, clientQuery.data]);
+  const templateId =
+    assignedTemplateId ?? workspaceDefaultTemplateId ?? latestTemplateQuery.data?.id ?? null;
 
-  const questionsQuery = useQuery({
-    queryKey: ["client-checkin-questions", selectedTemplate?.id],
-    enabled: !!selectedTemplate?.id,
+  const templateQuery = useQuery({
+    queryKey: ["client-checkin-template", templateId],
+    enabled: !!templateId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("checkin_questions")
-        .select("*")
-        .eq("template_id", selectedTemplate?.id ?? "");
-      if (error) throw error;
-      return (data ?? []) as CheckinQuestionRow[];
+        .from("checkin_templates")
+        .select("id, name, checkin_questions(*)")
+        .eq("id", templateId ?? "")
+        .single();
+      if (error) {
+        if ((error as { code?: string }).code === "PGRST116") return null;
+        throw error;
+      }
+      return (data ?? null) as CheckinTemplateRow | null;
     },
   });
 
@@ -224,7 +269,7 @@ export function ClientCheckinPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("checkin_answers")
-        .select("id, question_id, answer_text, answer_number, answer_boolean")
+        .select("id, question_id, value_text, value_number")
         .eq("checkin_id", checkinQuery.data?.id ?? "");
       if (error) throw error;
       return (data ?? []) as CheckinAnswerRow[];
@@ -245,21 +290,23 @@ export function ClientCheckinPage() {
   });
 
   const questions = useMemo(() => {
-    const rows = questionsQuery.data ?? [];
+    const rows = templateQuery.data?.checkin_questions ?? [];
     return [...rows].sort((a, b) => {
       const aOrder = a.sort_order ?? a.position ?? 0;
       const bOrder = b.sort_order ?? b.position ?? 0;
       return aOrder - bOrder;
     });
-  }, [questionsQuery.data]);
+  }, [templateQuery.data]);
 
   const isSubmitted = Boolean(checkinQuery.data?.submitted_at);
   const isLoading =
     clientQuery.isLoading ||
-    templatesQuery.isLoading ||
-    questionsQuery.isLoading ||
+    workspaceQuery.isLoading ||
+    latestTemplateQuery.isLoading ||
+    templateQuery.isLoading ||
     checkinQuery.isLoading;
-  const hasTemplate = Boolean(selectedTemplate);
+  const hasTemplate = Boolean(templateQuery.data);
+  const missingTemplate = !isLoading && !hasTemplate && !!clientQuery.data?.workspace_id;
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -285,9 +332,9 @@ export function ClientCheckinPage() {
     const hydratedAnswers: Record<string, QuestionValue> = {};
     (answersQuery.data ?? []).forEach((row) => {
       hydratedAnswers[row.question_id] = {
-        text: row.answer_text ?? "",
-        number: row.answer_number ?? null,
-        boolean: row.answer_boolean ?? null,
+        text: row.value_text ?? "",
+        number: typeof row.value_number === "number" ? row.value_number : null,
+        boolean: row.value_text === "Yes" ? true : row.value_text === "No" ? false : null,
       };
     });
     setAnswers(hydratedAnswers);
@@ -346,7 +393,7 @@ export function ClientCheckinPage() {
   };
 
   const handleSubmit = async () => {
-    if (!clientQuery.data?.id || !weekEndingSaturday || !selectedTemplate?.id) return;
+    if (!clientQuery.data?.id || !weekEndingSaturday || !templateQuery.data?.id) return;
     setSubmitting(true);
     setToastMessage(null);
     try {
@@ -356,8 +403,7 @@ export function ClientCheckinPage() {
           {
             client_id: clientQuery.data.id,
             week_ending_saturday: weekEndingSaturday,
-            template_id: selectedTemplate.id,
-            submitted_at: new Date().toISOString(),
+            template_id: templateQuery.data.id,
           },
           { onConflict: "client_id,week_ending_saturday" }
         )
@@ -380,17 +426,22 @@ export function ClientCheckinPage() {
           return {
             checkin_id: checkinRow.id,
             question_id: question.id,
-            answer_text: typeof value.text === "string" ? value.text.trim() : null,
-            answer_number: typeof value.number === "number" ? value.number : null,
-            answer_boolean: typeof value.boolean === "boolean" ? value.boolean : null,
+            value_text:
+              typeof value.text === "string"
+                ? value.text.trim()
+                : typeof value.boolean === "boolean"
+                ? value.boolean
+                  ? "Yes"
+                  : "No"
+                : null,
+            value_number: typeof value.number === "number" ? value.number : null,
           };
         })
         .filter(Boolean) as Array<{
         checkin_id: string;
         question_id: string;
-        answer_text: string | null;
-        answer_number: number | null;
-        answer_boolean: boolean | null;
+        value_text: string | null;
+        value_number: number | null;
       }>;
 
       if (payload.length > 0) {
@@ -436,6 +487,28 @@ export function ClientCheckinPage() {
         if (photosError) throw photosError;
       }
 
+      const { error: submitError } = await supabase
+        .from("checkins")
+        .update({ submitted_at: new Date().toISOString() })
+        .eq("id", checkinRow.id);
+      if (submitError) throw submitError;
+
+      const nextDate = computeNextCheckinDate(
+        clientQuery.data?.checkin_start_date ?? null,
+        clientQuery.data?.checkin_frequency ?? "weekly",
+        weekEndingSaturday
+      );
+      if (nextDate && templateQuery.data?.id) {
+        await supabase.from("checkins").upsert(
+          {
+            client_id: clientQuery.data.id,
+            week_ending_saturday: nextDate,
+            template_id: templateQuery.data.id,
+          },
+          { onConflict: "client_id,week_ending_saturday" }
+        );
+      }
+
       setToastVariant("success");
       setToastMessage("Check-in submitted.");
       await checkinQuery.refetch();
@@ -456,8 +529,9 @@ export function ClientCheckinPage() {
   const statusKey = isSubmitted ? "submitted" : checkinQuery.data ? "active" : "due";
   const pageError =
     clientQuery.error ||
-    templatesQuery.error ||
-    questionsQuery.error ||
+    workspaceQuery.error ||
+    latestTemplateQuery.error ||
+    templateQuery.error ||
     checkinQuery.error ||
     answersQuery.error ||
     photosQuery.error;
@@ -474,22 +548,29 @@ export function ClientCheckinPage() {
       ) : null}
 
       <DashboardCard title="Weekly check-in" subtitle="Stay aligned with your coach each week.">
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        ) : clientQuery.data ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <StatusPill status={statusKey} statusMap={statusMap} />
-            <span>Due Saturday</span>
-            <span className="text-muted-foreground">|</span>
-            <span>Week ending: {weekEndingLabel}</span>
-          </div>
-        ) : (
-          <EmptyState title="No client profile found" description="Please finish onboarding first." />
-        )}
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          ) : clientQuery.data ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <StatusPill status={statusKey} statusMap={statusMap} />
+              <span>Due Saturday</span>
+              <span className="text-muted-foreground">|</span>
+              <span>Week ending: {weekEndingLabel}</span>
+            </div>
+          ) : (
+            <EmptyState title="No client profile found" description="Please finish onboarding first." />
+          )}
       </DashboardCard>
+
+      {missingTemplate ? (
+        <EmptyState
+          title="Your coach hasn’t assigned a check-in yet."
+          description="Check back soon once your coach adds one."
+        />
+      ) : null}
 
       {pageError ? (
         <Alert className="border-destructive/30">
@@ -544,10 +625,15 @@ export function ClientCheckinPage() {
                 <Skeleton key={index} className="h-12 w-full" />
               ))}
             </div>
+          ) : missingTemplate ? (
+            <EmptyState
+              title="Your coach hasn’t assigned a check-in yet."
+              description="Check back soon once your coach adds one."
+            />
           ) : !hasTemplate ? (
             <EmptyState
-              title="No check-in template assigned"
-              description="Your coach has not assigned a weekly check-in template yet."
+              title="Your coach hasn’t assigned a check-in yet."
+              description="Check back soon once your coach adds one."
             />
           ) : questions.length === 0 ? (
             <EmptyState
@@ -659,6 +745,11 @@ export function ClientCheckinPage() {
             </div>
           ) : !clientQuery.data ? (
             <EmptyState title="No profile found" description="Please finish onboarding first." />
+          ) : missingTemplate ? (
+            <EmptyState
+              title="Your coach hasn’t assigned a check-in yet."
+              description="Check back soon once your coach adds one."
+            />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {photoSlots.map((slot) => {
@@ -733,6 +824,11 @@ export function ClientCheckinPage() {
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-24 w-full" />
             </div>
+          ) : missingTemplate ? (
+            <EmptyState
+              title="Your coach hasn’t assigned a check-in yet."
+              description="Check back soon once your coach adds one."
+            />
           ) : (
             <div className="space-y-6">
               <div className="space-y-3">
