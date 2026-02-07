@@ -559,11 +559,12 @@ export function ClientHomePage() {
     if (!clientId) return;
     setActionError(null);
     const { data, error } = await supabase
-      .from("workout_logs")
+      .from("assigned_workouts")
       .insert({
         client_id: clientId,
-        title: "Default Session",
-        status: "in_progress",
+        scheduled_date: todayKey,
+        status: "planned",
+        day_type: "workout",
       })
       .select("id")
       .maybeSingle();

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { DashboardCard, EmptyState, Skeleton } from "../../components/ui/coachos";
@@ -51,6 +51,7 @@ export function ClientMessagesPage() {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+  const messagePageSize = 50;
 
   useEffect(() => {
     if (draft) {
@@ -104,25 +105,36 @@ export function ClientMessagesPage() {
     }
   }, [clientQuery.data?.id, clientQuery.data?.workspace_id]);
 
-  const messagesQuery = useQuery({
+  const messagesQuery = useInfiniteQuery({
     queryKey: ["client-messages", conversationId],
     enabled: !!conversationId,
-    queryFn: async () => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const from = pageParam * messagePageSize;
+      const to = from + messagePageSize - 1;
       const { data, error } = await supabase
         .from("messages")
         .select("id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at")
         .eq("conversation_id", conversationId ?? "")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false })
+        .range(from, to);
       if (error) throw error;
       return (data ?? []) as MessageRow[];
     },
-    refetchInterval: 4000,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === messagePageSize ? allPages.length : undefined,
   });
+
+  const messageRows = useMemo(() => {
+    const pages = messagesQuery.data?.pages ?? [];
+    const flat = pages.flat();
+    return [...flat].reverse();
+  }, [messagesQuery.data]);
 
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messagesQuery.data]);
+  }, [messageRows.length]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -206,10 +218,6 @@ export function ClientMessagesPage() {
         unread: true,
       });
       if (error) throw error;
-      await supabase
-        .from("conversations")
-        .update({ last_message_at: new Date().toISOString() })
-        .eq("id", conversationId);
     },
     onSuccess: async () => {
       setMessageInput("");
@@ -244,13 +252,26 @@ export function ClientMessagesPage() {
         ) : (
           <div className="flex h-[520px] flex-col">
             <div className="flex-1 space-y-3 overflow-y-auto pr-2">
-              {(messagesQuery.data ?? []).length === 0 ? (
+              {messageRows.length === 0 ? (
                 <EmptyState
                   title="No messages yet"
                   description="Send a message to start the conversation."
                 />
               ) : (
-                (messagesQuery.data ?? []).map((message) => {
+                <>
+                  {messagesQuery.hasNextPage ? (
+                    <div className="flex justify-center">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => messagesQuery.fetchNextPage()}
+                        disabled={messagesQuery.isFetchingNextPage}
+                      >
+                        {messagesQuery.isFetchingNextPage ? "Loading..." : "Load older"}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {messageRows.map((message) => {
                   const isClient = message.sender_role === "client";
                   return (
                     <div
@@ -270,7 +291,8 @@ export function ClientMessagesPage() {
                       </div>
                     </div>
                   );
-                })
+                  })}
+                </>
               )}
               {typingUsers.length > 0 ? (
                 <div className="text-xs text-muted-foreground">Coach is typing...</div>

@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { CalendarDays, Home, MessageCircle, TrendingUp, UserCircle } from "lucide-react";
+import { CalendarDays, Home, MessageCircle, UserCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
@@ -12,7 +12,6 @@ import { LoadingScreen } from "../common/bootstrap-gate";
 
 const navItems = [
   { label: "Home", to: "/app/home", icon: Home },
-  { label: "Progress", to: "/app/progress", icon: TrendingUp },
   { label: "Habits", to: "/app/habits", icon: CalendarDays },
   { label: "Messages", to: "/app/messages", icon: MessageCircle },
   { label: "Profile", to: "/app/profile", icon: UserCircle },

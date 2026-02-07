@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -14,6 +14,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
+import { safeSelect } from "../../lib/supabase-safe";
 import { useWorkspace } from "../../lib/use-workspace";
 
 type CheckinTemplateRow = {
@@ -53,6 +54,7 @@ export function PtCheckinTemplatesPage() {
   const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
+  const templatesPageSize = 20;
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -60,33 +62,50 @@ export function PtCheckinTemplatesPage() {
     return () => clearTimeout(timeout);
   }, [toastMessage]);
 
-  const templatesQuery = useQuery({
+  const templatesQuery = useInfiniteQuery({
     queryKey: ["pt-checkin-templates", workspaceId],
     enabled: !!workspaceId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("checkin_templates")
-        .select("id, workspace_id, name, description, is_active, created_at")
-        .eq("workspace_id", workspaceId ?? "")
-        .order("created_at", { ascending: false });
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const from = pageParam * templatesPageSize;
+      const to = from + templatesPageSize - 1;
+      const { data, error } = await safeSelect<CheckinTemplateRow>({
+        table: "checkin_templates",
+        columns: "id, workspace_id, name, description, is_active, created_at",
+        fallbackColumns: "id, workspace_id, name, created_at",
+        filter: (query) =>
+          query
+            .eq("workspace_id", workspaceId ?? "")
+            .order("created_at", { ascending: false })
+            .range(from, to),
+      });
       if (error) throw error;
       return (data ?? []) as CheckinTemplateRow[];
     },
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === templatesPageSize ? allPages.length : undefined,
   });
 
-  const activeTemplates = useMemo(
-    () => (templatesQuery.data ?? []).filter((row) => row.is_active !== false),
+  const templateRows = useMemo(
+    () => (templatesQuery.data?.pages ?? []).flat(),
     [templatesQuery.data]
+  );
+
+  const activeTemplates = useMemo(
+    () => templateRows.filter((row) => row.is_active !== false),
+    [templateRows]
   );
 
   const questionsQuery = useQuery({
     queryKey: ["pt-checkin-questions", activeTemplateId],
     enabled: !!activeTemplateId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("checkin_questions")
-        .select("id, template_id, question_text, prompt, is_required, sort_order, position")
-        .eq("template_id", activeTemplateId ?? "");
+      const { data, error } = await safeSelect<CheckinQuestionRow>({
+        table: "checkin_questions",
+        columns: "id, template_id, question_text, prompt, is_required, sort_order, position",
+        fallbackColumns: "id, template_id, question_text, prompt, is_required",
+        filter: (query) => query.eq("template_id", activeTemplateId ?? ""),
+      });
       if (error) throw error;
       return (data ?? []) as CheckinQuestionRow[];
     },
@@ -128,7 +147,17 @@ export function PtCheckinTemplatesPage() {
     if (newTemplate) {
       queryClient.setQueryData(
         ["pt-checkin-templates", workspaceId],
-        (prev: CheckinTemplateRow[] | undefined) => [newTemplate, ...(prev ?? [])]
+        (prev: any) => {
+          if (!prev) {
+            return { pages: [[newTemplate]], pageParams: [0] };
+          }
+          const pages = prev.pages ?? [];
+          const nextPages = [
+            [newTemplate, ...(pages[0] ?? [])],
+            ...pages.slice(1),
+          ];
+          return { ...prev, pages: nextPages };
+        }
       );
       setActiveTemplateId(newTemplate.id);
       await queryClient.invalidateQueries({ queryKey: ["pt-checkin-templates", workspaceId] });
@@ -317,6 +346,18 @@ export function PtCheckinTemplatesPage() {
                 </Card>
               );
             })}
+            {templatesQuery.hasNextPage ? (
+              <div className="flex justify-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => templatesQuery.fetchNextPage()}
+                  disabled={templatesQuery.isFetchingNextPage}
+                >
+                  {templatesQuery.isFetchingNextPage ? "Loading..." : "Load more"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
       </DashboardCard>

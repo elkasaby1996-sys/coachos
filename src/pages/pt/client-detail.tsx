@@ -392,6 +392,12 @@ export function PtClientDetailPage() {
     return () => clearTimeout(timeout);
   }, [toastMessage]);
 
+  useEffect(() => {
+    if (active !== "checkins") {
+      setCheckinsPage(0);
+    }
+  }, [active]);
+
 
   const setActiveTab = (tab: (typeof tabs)[number]) => {
     setActive(tab);
@@ -498,6 +504,9 @@ export function PtClientDetailPage() {
   const [todoInput, setTodoInput] = useState("");
   const [sessionDetailOpen, setSessionDetailOpen] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [checkinsPage, setCheckinsPage] = useState(0);
+  const checkinsPageSize = 12;
+  const [checkinsList, setCheckinsList] = useState<CheckinRow[]>([]);
 
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
@@ -509,6 +518,7 @@ export function PtClientDetailPage() {
     date.setDate(date.getDate() + 14);
     return formatDateKey(date);
   }, [today]);
+  const showLogs = active === "logs";
 
   const workspaceQuery = useQuery({
     queryKey: ["pt-workspace", user?.id],
@@ -568,7 +578,7 @@ export function PtClientDetailPage() {
 
   const ptSessionsQuery = useQuery({
     queryKey: ["pt-client-sessions", clientId],
-    enabled: !!clientId,
+    enabled: !!clientId && showLogs,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_sessions")
@@ -590,7 +600,7 @@ export function PtClientDetailPage() {
 
   const ptSessionVolumeLogsQuery = useQuery({
     queryKey: ["pt-client-session-logs", ptSessionIds],
-    enabled: ptSessionIds.length > 0,
+    enabled: ptSessionIds.length > 0 && showLogs,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_set_logs")
@@ -768,21 +778,17 @@ export function PtClientDetailPage() {
 
   const upcomingQuery = useQuery({
     queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
-    enabled: !!clientId && active === "plan",
+    enabled: !!clientId && (active === "plan" || active === "overview"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag), assigned_workout_exercises(id, sort_order, sets, reps, exercise:exercises(id, name))"
+          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag)"
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
         .lte("scheduled_date", planEndKey)
-        .order("scheduled_date", { ascending: true })
-        .order("sort_order", {
-          foreignTable: "assigned_workout_exercises",
-          ascending: true,
-        });
+        .order("scheduled_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -795,7 +801,7 @@ export function PtClientDetailPage() {
 
   const workoutSessionsQuery = useQuery({
     queryKey: ["workout-sessions", upcomingAssignedWorkoutIds],
-    enabled: upcomingAssignedWorkoutIds.length > 0 && active === "plan",
+    enabled: upcomingAssignedWorkoutIds.length > 0 && active === "overview",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_sessions")
@@ -823,14 +829,15 @@ export function PtClientDetailPage() {
 
   const workoutSetLogsQuery = useQuery({
     queryKey: ["workout-set-logs", workoutSessionIds],
-    enabled: workoutSessionIds.length > 0 && active === "plan",
+    enabled: workoutSessionIds.length > 0 && active === "overview",
     queryFn: async () => {
       if (workoutSessionIds.length === 0) return [];
       const { data, error } = await supabase
         .from("workout_set_logs")
         .select("id, workout_session_id, exercise_id, set_number, reps, weight, rpe, created_at")
         .in("workout_session_id", workoutSessionIds)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(500);
       if (error) throw error;
       return (data ?? []) as WorkoutSetLogRow[];
     },
@@ -853,7 +860,7 @@ export function PtClientDetailPage() {
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
-    enabled: !!selectedAssignedWorkoutId && active === "plan",
+    enabled: !!selectedAssignedWorkoutId && active === "plan" && loadsOpen,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
@@ -951,18 +958,53 @@ export function PtClientDetailPage() {
   });
 
   const checkinsQuery = useQuery({
-    queryKey: ["pt-client-checkins", clientId],
+    queryKey: ["pt-client-checkins", clientId, active, checkinsPage],
     enabled: !!clientId && (active === "checkins" || active === "overview"),
     queryFn: async () => {
-      const { data, error } = await supabase
+      const base = supabase
         .from("checkins")
         .select("id, week_ending_saturday, submitted_at, pt_feedback, created_at")
         .eq("client_id", clientId ?? "")
         .order("week_ending_saturday", { ascending: false });
+      if (active === "overview") {
+        const { data, error } = await base.limit(6);
+        if (error) throw error;
+        return (data ?? []) as CheckinRow[];
+      }
+      const { data, error } = await base.range(
+        checkinsPage * checkinsPageSize,
+        checkinsPage * checkinsPageSize + checkinsPageSize - 1
+      );
       if (error) throw error;
       return (data ?? []) as CheckinRow[];
     },
   });
+
+  useEffect(() => {
+    if (active !== "checkins") {
+      setCheckinsList(checkinsQuery.data ?? []);
+      return;
+    }
+    if (!checkinsQuery.data) return;
+    if (checkinsPage === 0) {
+      setCheckinsList(checkinsQuery.data);
+      return;
+    }
+    setCheckinsList((prev) => {
+      const next = [...prev];
+      const existingIds = new Set(prev.map((row) => row.id));
+      checkinsQuery.data?.forEach((row) => {
+        if (!existingIds.has(row.id)) {
+          next.push(row);
+        }
+      });
+      return next;
+    });
+  }, [checkinsPage, checkinsQuery.data, active]);
+
+  const checkinsRows = active === "checkins" ? checkinsList : checkinsQuery.data ?? [];
+  const checkinsCanLoadMore =
+    active === "checkins" && (checkinsQuery.data?.length ?? 0) === checkinsPageSize;
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
@@ -1493,17 +1535,17 @@ export function PtClientDetailPage() {
   }, [habitTrends.daysLogged, habitsQuery.data]);
 
   const lastCheckin = useMemo(() => {
-    if (!checkinsQuery.data || checkinsQuery.data.length === 0) return null;
-    const latest = checkinsQuery.data[0];
+    if (!checkinsRows || checkinsRows.length === 0) return null;
+    const latest = checkinsRows[0];
     return latest.submitted_at ?? latest.week_ending_saturday ?? null;
-  }, [checkinsQuery.data]);
+  }, [checkinsRows]);
 
   const checkinStatus = useMemo(() => {
-    if (!checkinsQuery.data || checkinsQuery.data.length === 0) return null;
-    const latest = checkinsQuery.data[0];
+    if (!checkinsRows || checkinsRows.length === 0) return null;
+    const latest = checkinsRows[0];
     if (!latest.submitted_at) return "Due";
     return latest.pt_feedback ? "Reviewed" : "Submitted";
-  }, [checkinsQuery.data]);
+  }, [checkinsRows]);
 
   const lastWorkout = useMemo(() => {
     if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) {
@@ -1533,10 +1575,10 @@ export function PtClientDetailPage() {
   }, [clientSnapshot?.created_at, clientSnapshot?.updated_at]);
 
   const upcomingCheckins = useMemo(() => {
-    if (!checkinsQuery.data || checkinsQuery.data.length === 0) return [];
+    if (!checkinsRows || checkinsRows.length === 0) return [];
     const start = habitsToday || todayKey;
     const end = addDaysToDateString(start, 7);
-    return checkinsQuery.data
+    return checkinsRows
       .filter(
         (checkin) =>
           checkin.week_ending_saturday &&
@@ -1548,7 +1590,7 @@ export function PtClientDetailPage() {
         (a.week_ending_saturday ?? "").localeCompare(b.week_ending_saturday ?? "")
       )
       .slice(0, 5);
-  }, [checkinsQuery.data, habitsToday, todayKey]);
+  }, [checkinsRows, habitsToday, todayKey]);
 
   const todaySession = useMemo(() => {
     return (upcomingQuery.data ?? []).find((workout) => workout.scheduled_date === todayKey) ?? null;
@@ -2451,7 +2493,14 @@ export function PtClientDetailPage() {
                     )}
                   </DashboardCard>
 
-                  <PtClientCheckinsTab checkinsQuery={checkinsQuery} onReview={openCheckinReview} />
+                  <PtClientCheckinsTab
+                    rows={checkinsRows}
+                    isLoading={checkinsQuery.isLoading}
+                    error={checkinsQuery.error}
+                    canLoadMore={checkinsCanLoadMore}
+                    onLoadMore={() => setCheckinsPage((prev) => prev + 1)}
+                    onReview={openCheckinReview}
+                  />
                 </div>
               </TabsContent>
               <TabsContent value="messages">
@@ -3667,10 +3716,18 @@ function PtClientBaselineTab({
 }
 
 function PtClientCheckinsTab({
-  checkinsQuery,
+  rows,
+  isLoading,
+  error,
+  canLoadMore,
+  onLoadMore,
   onReview,
 }: {
-  checkinsQuery: QueryResult<CheckinRow[]>;
+  rows: CheckinRow[];
+  isLoading: boolean;
+  error: unknown;
+  canLoadMore: boolean;
+  onLoadMore: () => void;
   onReview: (checkin: CheckinRow) => void;
 }) {
   return (
@@ -3681,15 +3738,19 @@ function PtClientCheckinsTab({
           <p className="text-sm text-muted-foreground">Weekly check-ins and coach feedback.</p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {checkinsQuery.isLoading ? (
+          {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-6 w-1/2" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
-          ) : checkinsQuery.data && checkinsQuery.data.length > 0 ? (
+          ) : error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {getFriendlyErrorMessage()}
+            </div>
+          ) : rows && rows.length > 0 ? (
             <div className="space-y-3">
-              {checkinsQuery.data.map((checkin) => {
+              {rows.map((checkin) => {
                 const status = !checkin.submitted_at
                   ? "Due"
                   : checkin.pt_feedback
@@ -3741,6 +3802,13 @@ function PtClientCheckinsTab({
                   </div>
                 );
               })}
+              {canLoadMore ? (
+                <div className="flex justify-center pt-1">
+                  <Button variant="secondary" size="sm" onClick={onLoadMore}>
+                    Load more
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No check-ins yet.</p>

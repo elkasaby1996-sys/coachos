@@ -49,61 +49,43 @@ export function PtCheckinsQueuePage() {
   const todayStr = useMemo(() => getTodayInTimezone(null), []);
   const weekEndingSaturday = useMemo(() => getWeekEndSaturday(todayStr), [todayStr]);
 
-  const clientsQuery = useQuery({
-    queryKey: ["pt-checkins-clients", workspaceId],
-    enabled: !!workspaceId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id, display_name, user_id, status")
-        .eq("workspace_id", workspaceId ?? "")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ClientRow[];
-    },
-  });
-
   const checkinsQuery = useQuery({
     queryKey: ["pt-checkins-week", workspaceId, weekEndingSaturday],
-    enabled: !!workspaceId && !!weekEndingSaturday && (clientsQuery.data?.length ?? 0) > 0,
+    enabled: !!workspaceId && !!weekEndingSaturday,
     queryFn: async () => {
-      const clientIds = (clientsQuery.data ?? []).map((row) => row.id);
       const { data, error } = await supabase
         .from("checkins")
-        .select("id, client_id, week_ending_saturday, submitted_at, pt_feedback")
-        .in("client_id", clientIds)
-        .eq("week_ending_saturday", weekEndingSaturday);
+        .select(
+          "id, client_id, week_ending_saturday, submitted_at, pt_feedback, client:clients(id, display_name, user_id, status)"
+        )
+        .eq("week_ending_saturday", weekEndingSaturday)
+        .eq("client.workspace_id", workspaceId ?? "");
       if (error) throw error;
-      return (data ?? []) as CheckinRow[];
+      return (data ?? []) as Array<
+        CheckinRow & { client: ClientRow | ClientRow[] | null }
+      >;
     },
   });
 
-  const rowMap = useMemo(() => {
-    const map = new Map<string, CheckinRow>();
-    (checkinsQuery.data ?? []).forEach((row) => {
-      if (!row.client_id) return;
-      map.set(row.client_id, row);
+  const queueRows = useMemo(() => {
+    const rows = (checkinsQuery.data ?? []).map((row) => {
+      const clientRow = Array.isArray(row.client) ? row.client[0] : row.client;
+      const client: ClientRow = clientRow ?? {
+        id: row.client_id ?? "",
+        display_name: null,
+        user_id: null,
+        status: null,
+      };
+      let status: QueueStatus = "due";
+      if (row.submitted_at) {
+        status = row.pt_feedback && row.pt_feedback.trim().length > 0 ? "reviewed" : "submitted";
+      }
+      return { client, checkin: row, status };
     });
-    return map;
+    return rows;
   }, [checkinsQuery.data]);
 
-  const queueRows = useMemo(() => {
-    const clients = clientsQuery.data ?? [];
-    return clients.map((client) => {
-      const checkin = rowMap.get(client.id) ?? null;
-      let status: QueueStatus = "due";
-      if (checkin?.submitted_at) {
-        status = checkin.pt_feedback && checkin.pt_feedback.trim().length > 0 ? "reviewed" : "submitted";
-      }
-      return {
-        client,
-        checkin,
-        status,
-      };
-    });
-  }, [clientsQuery.data, rowMap]);
-
-  const isLoading = clientsQuery.isLoading || checkinsQuery.isLoading;
+  const isLoading = checkinsQuery.isLoading;
   const dueCount = queueRows.filter((row) => row.status === "due").length;
   const submittedCount = queueRows.filter((row) => row.status === "submitted").length;
   const reviewedCount = queueRows.filter((row) => row.status === "reviewed").length;

@@ -9,8 +9,8 @@ import { ClientsFilters } from "../../components/pt/clients/ClientsFilters";
 import { ClientListRow } from "../../components/pt/clients/ClientListRow";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
-import { getWorkspaceIdForUser } from "../../lib/workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { useWorkspace } from "../../lib/use-workspace";
 
 type ClientRecord = {
   id: string;
@@ -19,6 +19,8 @@ type ClientRecord = {
   display_name: string | null;
   tags: string[] | null;
   created_at: string | null;
+  last_session_at?: string | null;
+  last_checkin_at?: string | null;
 };
 
 const stages = ["All", "Onboarding", "Active", "At Risk", "Paused"];
@@ -53,64 +55,46 @@ const makeTrend = (seed: string) => {
 
 export function PtClientsPage() {
   const { user } = useAuth();
+  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState("All");
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const pageSize = 50;
 
   useEffect(() => {
     let isMounted = true;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const loadClients = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
       }
+      if (workspaceLoading) {
+        setIsLoading(true);
+        return;
+      }
 
       try {
         setIsLoading(true);
-        const workspaceId = await getWorkspaceIdForUser(user.id);
-        if (!workspaceId) {
-          throw new Error("Workspace not found.");
-        }
+        if (!workspaceId) throw new Error("Workspace not found.");
 
-        const { data, error: clientsError } = await supabase
-          .from("clients")
-          .select("id, user_id, status, display_name, tags, created_at")
-          .eq("workspace_id", workspaceId)
-          .order("created_at", { ascending: false })
-          .limit(50);
+        const { data, error: clientsError } = await supabase.rpc("pt_clients_summary", {
+          p_workspace_id: workspaceId,
+          p_limit: pageSize,
+          p_offset: page * pageSize,
+        });
 
         if (clientsError) throw clientsError;
         if (!isMounted) return;
 
-        setClients((data as ClientRecord[]) ?? []);
+        const rows = (data as ClientRecord[]) ?? [];
+        setClients((prev) => (page === 0 ? rows : [...prev, ...rows]));
+        setHasMore(rows.length === pageSize);
         setError(null);
-
-        channel = supabase
-          .channel(`clients-updates-${workspaceId}`)
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: "clients", filter: `workspace_id=eq.${workspaceId}` },
-            (payload) => {
-              setClients((prev) => {
-                const record = payload.new as ClientRecord;
-                if (payload.eventType === "INSERT") {
-                  return [record, ...prev];
-                }
-                if (payload.eventType === "UPDATE") {
-                  return prev.map((client) => (client.id === record.id ? record : client));
-                }
-                if (payload.eventType === "DELETE") {
-                  return prev.filter((client) => client.id !== (payload.old as ClientRecord).id);
-                }
-                return prev;
-              });
-            }
-          )
-          .subscribe();
       } catch (err) {
         if (isMounted) {
           setError(err instanceof Error ? err.message : "Failed to load clients.");
@@ -124,9 +108,14 @@ export function PtClientsPage() {
 
     return () => {
       isMounted = false;
-      if (channel) supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, workspaceId, workspaceLoading, page]);
+
+  useEffect(() => {
+    if (workspaceError) {
+      setError(workspaceError.message);
+    }
+  }, [workspaceError]);
 
   const formattedClients = useMemo(() => {
     return clients.map((client) => {
@@ -135,6 +124,8 @@ export function PtClientsPage() {
       const program = client.tags?.[0] ?? "No program assigned";
       const week = client.tags?.[1] ?? "Week —";
       const adherenceValue = makeAdherence(client.id);
+      const lastActivityRaw =
+        client.last_session_at ?? client.last_checkin_at ?? client.created_at ?? null;
       return {
         ...client,
         name,
@@ -143,7 +134,7 @@ export function PtClientsPage() {
         week,
         adherence: `${adherenceValue}%`,
         trend: makeTrend(client.id),
-        lastActivity: client.created_at ? formatRelativeTime(client.created_at) : "Never",
+        lastActivity: lastActivityRaw ? formatRelativeTime(lastActivityRaw) : "Never",
       };
     });
   }, [clients]);
@@ -216,19 +207,32 @@ export function PtClientsPage() {
             ))}
           </div>
         ) : filteredClients.length > 0 ? (
-          filteredClients.map((client) => (
-            <ClientListRow
-              key={client.id}
-              name={client.name}
-              program={client.program}
-              week={client.week}
-              status={client.status}
-              adherence={client.adherence}
-              lastActivity={client.lastActivity}
-              trend={client.trend}
-              onClick={() => navigate(`/pt/clients/${client.id}`)}
-            />
-          ))
+          <>
+            {filteredClients.map((client) => (
+              <ClientListRow
+                key={client.id}
+                name={client.name}
+                program={client.program}
+                week={client.week}
+                status={client.status}
+                adherence={client.adherence}
+                lastActivity={client.lastActivity}
+                trend={client.trend}
+                onClick={() => navigate(`/pt/clients/${client.id}`)}
+              />
+            ))}
+            {hasMore ? (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setPage((prev) => prev + 1)}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Loading..." : "Load more"}
+                </Button>
+              </div>
+            ) : null}
+          </>
         ) : (
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/40 p-8 text-center">
             <p className="text-sm font-semibold">No clients in this view yet.</p>

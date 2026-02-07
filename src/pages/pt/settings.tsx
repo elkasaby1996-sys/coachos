@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Input } from "../../components/ui/input";
 import { EmptyState, Skeleton } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
+import { safeSelect } from "../../lib/supabase-safe";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtSettingsPage() {
@@ -41,11 +42,22 @@ export function PtSettingsPage() {
     queryKey: ["pt-settings-checkin-templates", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("checkin_templates")
-        .select("id, workspace_id, name, description, is_active, created_at")
-        .eq("workspace_id", workspaceId ?? "")
-        .order("created_at", { ascending: false });
+      const { data, error } = await safeSelect<{
+        id: string;
+        workspace_id: string;
+        name: string | null;
+        description?: string | null;
+        is_active?: boolean | null;
+        created_at?: string | null;
+      }>({
+        table: "checkin_templates",
+        columns: "id, workspace_id, name, description, is_active, created_at",
+        fallbackColumns: "id, workspace_id, name, created_at",
+        filter: (query) =>
+          query
+            .eq("workspace_id", workspaceId ?? "")
+            .order("created_at", { ascending: false }),
+      });
       if (error) throw error;
       return (data ?? []) as Array<{
         id: string;

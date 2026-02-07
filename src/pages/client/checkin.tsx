@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
+import { safeSelect } from "../../lib/supabase-safe";
 import { useAuth } from "../../lib/auth";
 import { cn } from "../../lib/utils";
 import { getTodayInTimezone, getWeekEndSaturday } from "../../lib/date-utils";
@@ -216,15 +217,18 @@ export function ClientCheckinPage() {
       !assignedTemplateId &&
       !workspaceDefaultTemplateId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("checkin_templates")
-        .select("*")
-        .eq("workspace_id", clientQuery.data?.workspace_id ?? "")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await safeSelect<CheckinTemplateRow>({
+        table: "checkin_templates",
+        columns: "id, workspace_id, name, description, is_active, created_at",
+        fallbackColumns: "id, workspace_id, name, created_at",
+        filter: (query) =>
+          query
+            .eq("workspace_id", clientQuery.data?.workspace_id ?? "")
+            .order("created_at", { ascending: false })
+            .limit(1),
+      });
       if (error) throw error;
-      return (data ?? null) as CheckinTemplateRow | null;
+      return ((data ?? [])[0] ?? null) as CheckinTemplateRow | null;
     },
   });
 
@@ -235,16 +239,14 @@ export function ClientCheckinPage() {
     queryKey: ["client-checkin-template", templateId],
     enabled: !!templateId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("checkin_templates")
-        .select("id, name, checkin_questions(*)")
-        .eq("id", templateId ?? "")
-        .single();
-      if (error) {
-        if ((error as { code?: string }).code === "PGRST116") return null;
-        throw error;
-      }
-      return (data ?? null) as CheckinTemplateRow | null;
+      const { data, error } = await safeSelect<CheckinTemplateRow>({
+        table: "checkin_templates",
+        columns: "id, name, checkin_questions(*)",
+        fallbackColumns: "id, name",
+        filter: (query) => query.eq("id", templateId ?? "").limit(1),
+      });
+      if (error) throw error;
+      return ((data ?? [])[0] ?? null) as CheckinTemplateRow | null;
     },
   });
 

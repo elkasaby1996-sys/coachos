@@ -27,7 +27,6 @@ import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
 import { ClientWorkoutTodayPage } from "../pages/client/workout-today";
 import { ClientWorkoutRunPage } from "../pages/client/workout-run";
 import { ClientWorkoutSummaryPage } from "../pages/client/workout-summary";
-import { ClientProgressPage } from "../pages/client/progress";
 import { ClientCheckinPage } from "../pages/client/checkin";
 import { ClientMessagesPage } from "../pages/client/messages";
 import { ClientProfilePage } from "../pages/client/profile";
@@ -199,7 +198,6 @@ export function App() {
         <Route path="workouts/:assignedWorkoutId" element={<ClientWorkoutDetailPage />} />
         <Route path="workout-run/:assignedWorkoutId" element={<ClientWorkoutRunPage />} />
         <Route path="workout-summary/:assignedWorkoutId" element={<ClientWorkoutSummaryPage />} />
-        <Route path="progress" element={<ClientProgressPage />} />
         <Route path="checkin" element={<ClientCheckinPage />} />
         <Route path="messages" element={<ClientMessagesPage />} />
         <Route path="profile" element={<ClientProfilePage />} />

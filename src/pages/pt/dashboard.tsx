@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Badge } from "../../components/ui/badge";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
-import { getWorkspaceIdForUser } from "../../lib/workspace";
+import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getLastSaturday, getTodayInTimezone } from "../../lib/date-utils";
 
@@ -57,7 +57,6 @@ type MessageRow = {
   created_at: string | null;
   sender_name: string | null;
   preview: string | null;
-  unread: boolean | null;
 };
 
 type TaskItem = {
@@ -77,6 +76,7 @@ export function PtDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const messagesEnabled = Boolean(import.meta.env.VITE_MESSAGES_ENABLED);
+  const { workspaceId: cachedWorkspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -103,107 +103,40 @@ export function PtDashboardPage() {
         setIsLoading(false);
         return;
       }
+      if (workspaceLoading) {
+        setIsLoading(true);
+        return;
+      }
       setIsLoading(true);
       setLoadError(null);
 
       try {
-        const resolvedWorkspaceId = await getWorkspaceIdForUser(user.id);
-        if (!resolvedWorkspaceId) {
+        if (!cachedWorkspaceId) {
           setLoadError("Workspace not found for this PT.");
           setIsLoading(false);
           return;
         }
-        setWorkspaceId(resolvedWorkspaceId);
+        setWorkspaceId(cachedWorkspaceId);
 
-        const { data: clientRows, error: clientError } = await supabase
-          .from("clients")
-          .select("id, workspace_id, user_id, status, display_name, created_at, tags, timezone")
-          .eq("workspace_id", resolvedWorkspaceId)
-          .order("created_at", { ascending: false });
-
-        if (clientError) throw clientError;
-        const clientList = (clientRows ?? []) as ClientRecord[];
-        setClients(clientList);
-
-        const clientIds = clientList.map((client) => client.id);
-        if (clientIds.length === 0) {
-          setAssignedWorkouts([]);
-          setCheckins([]);
-          setMessages([]);
-          setUnreadCount(0);
-          setIsLoading(false);
-          return;
-        }
-
-        const todayStr = getTodayInTimezone(null);
-        const startWeek = addDaysToDateString(todayStr, -6);
-        const endWeek = addDaysToDateString(todayStr, 6);
-
-        const [assignedResponse, checkinResponse, messageResponse, todosResponse] = await Promise.all([
-          supabase
-            .from("assigned_workouts")
-            .select("id, client_id, status, scheduled_date")
-            .in("client_id", clientIds)
-            .gte("scheduled_date", startWeek)
-            .lte("scheduled_date", todayStr),
-          supabase
-            .from("checkins")
-            .select("id, client_id, week_ending_saturday, submitted_at, created_at")
-            .in("client_id", clientIds)
-            .gte("week_ending_saturday", startWeek)
-            .lte("week_ending_saturday", endWeek),
-          // TODO: Replace with real messages table or messaging RPC when available.
-          messagesEnabled
-            ? supabase
-                .from("messages")
-                .select("id, created_at, sender_name, preview, unread")
-                .limit(5)
-            : Promise.resolve({ data: [], error: null }),
-          supabase
-            .from("coach_todos")
-            .select("id, title, is_done, created_at")
-            .eq("workspace_id", resolvedWorkspaceId)
-            .eq("coach_id", user.id)
-            .order("created_at", { ascending: true }),
-        ]);
-
-        if (!assignedResponse.error) {
-          setAssignedWorkouts((assignedResponse.data ?? []) as AssignedWorkoutRow[]);
-        } else {
-          setAssignedWorkouts([]);
-        }
-
-        if (!checkinResponse.error) {
-          setCheckins((checkinResponse.data ?? []) as CheckinRow[]);
-        } else {
-          setCheckins([]);
-        }
-
-        if (!messageResponse.error) {
-          setMessages((messageResponse.data ?? []) as MessageRow[]);
-        } else {
-          setMessages([]);
-        }
-
-        if (!todosResponse.error) {
-          setCoachTodos((todosResponse.data ?? []) as CoachTodo[]);
-        } else {
-          setCoachTodos([]);
-        }
-
-        if (messagesEnabled) {
-          const unreadResponse = await supabase
-            .from("messages")
-            .select("id", { count: "exact", head: true })
-            .eq("unread", true);
-          if (!unreadResponse.error) {
-            setUnreadCount(unreadResponse.count ?? 0);
-          } else {
-            setUnreadCount(0);
-          }
-        } else {
-          setUnreadCount(0);
-        }
+        const { data, error } = await supabase.rpc("pt_dashboard_summary", {
+          p_workspace_id: cachedWorkspaceId,
+          p_coach_id: user.id,
+        });
+        if (error) throw error;
+        const summary = data as {
+          clients: ClientRecord[];
+          assignedWorkouts: AssignedWorkoutRow[];
+          checkins: CheckinRow[];
+          messages: MessageRow[];
+          unreadCount: number;
+          coachTodos: CoachTodo[];
+        };
+        setClients(summary?.clients ?? []);
+        setAssignedWorkouts(summary?.assignedWorkouts ?? []);
+        setCheckins(summary?.checkins ?? []);
+        setMessages(messagesEnabled ? summary?.messages ?? [] : []);
+        setUnreadCount(messagesEnabled ? summary?.unreadCount ?? 0 : 0);
+        setCoachTodos(summary?.coachTodos ?? []);
       } catch (error: any) {
         setLoadError(error?.message ?? "Failed to load dashboard.");
       } finally {
@@ -212,7 +145,13 @@ export function PtDashboardPage() {
     };
 
     loadDashboard();
-  }, [user?.id]);
+  }, [user?.id, cachedWorkspaceId, workspaceLoading]);
+
+  useEffect(() => {
+    if (workspaceError) {
+      setLoadError(workspaceError.message);
+    }
+  }, [workspaceError]);
 
   const addTodo = async () => {
     if (!user?.id || !workspaceId || !todoDraft.trim()) return;
@@ -541,9 +480,6 @@ export function PtDashboardPage() {
                       {message.created_at ? formatRelativeTime(message.created_at) : "Recently"}
                     </p>
                   </div>
-                  {message.unread ? (
-                    <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
-                  ) : null}
                 </div>
               ))}
             </div>

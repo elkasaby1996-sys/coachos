@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
@@ -29,6 +29,9 @@ type ConversationRow = {
   client_id: string;
   workspace_id: string;
   last_message_at: string | null;
+  last_message_preview?: string | null;
+  last_message_sender_name?: string | null;
+  last_message_sender_role?: string | null;
 };
 
 type MessageRow = {
@@ -56,6 +59,7 @@ export function PtMessagesPage() {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+  const messagePageSize = 50;
 
   useEffect(() => {
     if (initialClientId) {
@@ -83,7 +87,9 @@ export function PtMessagesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("conversations")
-        .select("id, client_id, workspace_id, last_message_at")
+        .select(
+          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role"
+        )
         .eq("workspace_id", workspaceId ?? "")
         .order("last_message_at", { ascending: false });
       if (error) throw error;
@@ -144,7 +150,9 @@ export function PtMessagesPage() {
           },
           { onConflict: "workspace_id,client_id" }
         )
-        .select("id, client_id, workspace_id, last_message_at")
+        .select(
+          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role"
+        )
         .maybeSingle();
       if (error) throw error;
       return data as ConversationRow | null;
@@ -167,63 +175,62 @@ export function PtMessagesPage() {
     }
   }, [conversationMap, ensureConversationMutation, selectedClientId]);
 
-  const messagesQuery = useQuery({
+  const messagesQuery = useInfiniteQuery({
     queryKey: ["pt-messages-thread", activeConversationId],
     enabled: !!activeConversationId,
-    queryFn: async () => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const from = pageParam * messagePageSize;
+      const to = from + messagePageSize - 1;
       const { data, error } = await supabase
         .from("messages")
         .select("id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at")
         .eq("conversation_id", activeConversationId ?? "")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false })
+        .range(from, to);
       if (error) throw error;
       return (data ?? []) as MessageRow[];
     },
-    refetchInterval: 4000,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === messagePageSize ? allPages.length : undefined,
   });
 
-  const messagesSummaryQuery = useQuery({
-    queryKey: ["pt-messages-summary", conversationsQuery.data],
+  const messageRows = useMemo(() => {
+    const pages = messagesQuery.data?.pages ?? [];
+    const flat = pages.flat();
+    return [...flat].reverse();
+  }, [messagesQuery.data]);
+
+  const unreadCountsQuery = useQuery({
+    queryKey: ["pt-messages-unread", conversationsQuery.data],
     enabled: (conversationsQuery.data ?? []).length > 0,
     queryFn: async () => {
       const conversationIds = (conversationsQuery.data ?? []).map((row) => row.id);
       const { data, error } = await supabase
         .from("messages")
-        .select("conversation_id, body, created_at, unread, sender_role")
+        .select("conversation_id")
         .in("conversation_id", conversationIds)
-        .order("created_at", { ascending: false })
-        .limit(300);
+        .eq("unread", true)
+        .eq("sender_role", "client");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const summaryMap = useMemo(() => {
-    const map = new Map<string, { preview: string; time: string | null; unreadCount: number }>();
-    const rows = messagesSummaryQuery.data ?? [];
-    rows.forEach((row) => {
-      const id = row.conversation_id as string;
-      if (!map.has(id)) {
-        map.set(id, {
-          preview: row.body ?? "Message",
-          time: row.created_at ?? null,
-          unreadCount: 0,
-        });
-      }
-      if (row.unread && row.sender_role === "client") {
-        const existing = map.get(id);
-        if (existing) {
-          existing.unreadCount += 1;
-        }
-      }
+  const unreadMap = useMemo(() => {
+    const map = new Map<string, number>();
+    (unreadCountsQuery.data ?? []).forEach((row) => {
+      const id = (row as { conversation_id?: string | null }).conversation_id;
+      if (!id) return;
+      map.set(id, (map.get(id) ?? 0) + 1);
     });
     return map;
-  }, [messagesSummaryQuery.data]);
+  }, [unreadCountsQuery.data]);
 
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messagesQuery.data]);
+  }, [messageRows.length]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -242,7 +249,7 @@ export function PtMessagesPage() {
             queryKey: ["pt-messages-thread", activeConversationId],
           });
           queryClient.invalidateQueries({
-            queryKey: ["pt-messages-summary", conversationsQuery.data],
+            queryKey: ["pt-messages-unread", conversationsQuery.data],
           });
         }
       )
@@ -297,13 +304,18 @@ export function PtMessagesPage() {
   };
 
   useEffect(() => {
-    if (!activeConversationId || !messagesQuery.data?.length) return;
+    if (!activeConversationId || messageRows.length === 0) return;
     void supabase
       .from("messages")
       .update({ unread: false })
       .eq("conversation_id", activeConversationId)
-      .eq("sender_role", "client");
-  }, [activeConversationId, messagesQuery.data]);
+      .eq("sender_role", "client")
+      .then(() => {
+        queryClient.invalidateQueries({
+          queryKey: ["pt-messages-unread", conversationsQuery.data],
+        });
+      });
+  }, [activeConversationId, conversationsQuery.data, messageRows.length, queryClient]);
 
   const sendMutation = useMutation({
     mutationFn: async () => {
@@ -322,10 +334,6 @@ export function PtMessagesPage() {
         unread: false,
       });
       if (error) throw error;
-      await supabase
-        .from("conversations")
-        .update({ last_message_at: new Date().toISOString() })
-        .eq("id", activeConversationId);
     },
     onSuccess: async () => {
       setMessageDraft("");
@@ -335,6 +343,9 @@ export function PtMessagesPage() {
       });
       await queryClient.invalidateQueries({
         queryKey: ["pt-messages-conversations", workspaceId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-messages-unread", conversationsQuery.data],
       });
     },
   });
@@ -381,7 +392,7 @@ export function PtMessagesPage() {
                     ? `Client ${client.user_id.slice(0, 6)}`
                     : "Client";
                 const conversation = conversationMap.get(client.id);
-                const summary = conversation ? summaryMap.get(conversation.id) : null;
+                const unreadCount = conversation ? unreadMap.get(conversation.id) ?? 0 : 0;
                 return (
                   <button
                     key={client.id}
@@ -397,19 +408,21 @@ export function PtMessagesPage() {
                     <div>
                       <div className="font-semibold text-foreground">{name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {summary?.preview ?? client.status ?? "active"}
+                        {conversation?.last_message_preview ??
+                          client.status ??
+                          "active"}
                       </div>
-                      {summary?.time ? (
+                      {conversation?.last_message_at ? (
                         <div className="text-[10px] text-muted-foreground">
-                          {formatTime(summary.time)}
+                          {formatTime(conversation.last_message_at)}
                         </div>
                       ) : null}
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <StatusPill status={client.status ?? "active"} />
-                      {summary?.unreadCount ? (
+                      {unreadCount ? (
                         <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                          {summary.unreadCount}
+                          {unreadCount}
                         </span>
                       ) : null}
                     </div>
@@ -438,13 +451,26 @@ export function PtMessagesPage() {
           ) : (
             <div className="flex h-[460px] flex-col">
               <div className="flex-1 space-y-3 overflow-y-auto pr-2">
-                {(messagesQuery.data ?? []).length === 0 ? (
+                {messageRows.length === 0 ? (
                   <EmptyState
                     title="No messages yet"
                     description="Send a message to start the conversation."
                   />
                 ) : (
-                  (messagesQuery.data ?? []).map((message) => {
+                  <>
+                    {messagesQuery.hasNextPage ? (
+                      <div className="flex justify-center">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => messagesQuery.fetchNextPage()}
+                          disabled={messagesQuery.isFetchingNextPage}
+                        >
+                          {messagesQuery.isFetchingNextPage ? "Loading..." : "Load older"}
+                        </Button>
+                      </div>
+                    ) : null}
+                    {messageRows.map((message) => {
                     const isCoach = message.sender_role === "pt";
                     return (
                       <div
@@ -465,7 +491,8 @@ export function PtMessagesPage() {
                         </div>
                       </div>
                     );
-                  })
+                    })}
+                  </>
                 )}
                 {typingUsers.length > 0 ? (
                   <div className="text-xs text-muted-foreground">Client is typing...</div>
