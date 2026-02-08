@@ -8,6 +8,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -71,6 +73,7 @@ type TemplateExerciseRow = {
   sort_order: number | null;
   sets: number | null;
   reps: string | null;
+  superset_group: string | null;
   rest_seconds: number | null;
   tempo: string | null;
   rpe: number | null;
@@ -82,6 +85,7 @@ type TemplateExerciseRow = {
 type TemplateExerciseForm = {
   sets: string;
   reps: string;
+  superset_group: string;
   rest_seconds: string;
   tempo: string;
   rpe: string;
@@ -92,6 +96,7 @@ type TemplateExerciseForm = {
 const emptyExerciseForm: TemplateExerciseForm = {
   sets: "",
   reps: "",
+  superset_group: "",
   rest_seconds: "",
   tempo: "",
   rpe: "",
@@ -107,22 +112,34 @@ const isUuid = (value: string | undefined | null) =>
       )
   );
 
+const nextSupersetGroup = (rows: TemplateExerciseRow[]) => {
+  const used = new Set(
+    rows
+      .map((row) => row.superset_group?.trim())
+      .filter((group): group is string => Boolean(group))
+  );
+  for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+    if (!used.has(letter)) return letter;
+  }
+  let index = 1;
+  while (used.has(`G${index}`)) index += 1;
+  return `G${index}`;
+};
+
 type SortableExerciseRowProps = {
   row: TemplateExerciseRow;
-  index: number;
-  total: number;
-  actionStatus: "idle" | "saving";
-  onMove: (row: TemplateExerciseRow, direction: "up" | "down") => void;
+  groupPosition?: "single" | "top" | "middle" | "bottom";
+  compactWithPrevious?: boolean;
+  isSupersetDropTarget?: boolean;
   onEdit: (row: TemplateExerciseRow) => void;
   onDelete: (row: TemplateExerciseRow) => void;
 };
 
 function SortableExerciseRow({
   row,
-  index,
-  total,
-  actionStatus,
-  onMove,
+  groupPosition = "single",
+  compactWithPrevious = false,
+  isSupersetDropTarget = false,
   onEdit,
   onDelete,
 }: SortableExerciseRowProps) {
@@ -133,6 +150,15 @@ function SortableExerciseRow({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+  const isGrouped = Boolean(row.superset_group);
+  const groupClass =
+    groupPosition === "top"
+      ? "rounded-t-lg rounded-b-none border-b-0"
+      : groupPosition === "middle"
+        ? "rounded-none border-b-0"
+        : groupPosition === "bottom"
+          ? "rounded-b-lg rounded-t-none"
+          : "rounded-lg";
 
   return (
     <div
@@ -140,8 +166,8 @@ function SortableExerciseRow({
       style={style}
       className={
         isDragging
-          ? "rounded-lg border border-border bg-muted/50 p-3 shadow-lg"
-          : "rounded-lg border border-border bg-muted/30 p-3"
+          ? `${compactWithPrevious ? "mt-0" : "mt-3"} first:mt-0 ${groupClass} border p-3 shadow-lg ${isGrouped ? "border-emerald-500/60 bg-emerald-500/10" : "border-border bg-muted/50"}`
+          : `${compactWithPrevious ? "mt-0" : "mt-3"} first:mt-0 ${groupClass} border p-3 ${isSupersetDropTarget ? "border-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-400/50" : isGrouped ? "border-emerald-500/40 bg-emerald-500/5" : "border-border bg-muted/30"}`
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -159,27 +185,17 @@ function SortableExerciseRow({
             <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
             <p className="text-xs text-muted-foreground">
               {row.sets ?? "--"} sets - {row.reps ?? "--"} reps
+              {row.superset_group ? " - Superset" : ""}
               {row.rpe ? ` - RPE ${row.rpe}` : ""}
             </p>
+            {row.superset_group && groupPosition === "top" ? (
+              <span className="mt-1 inline-flex rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                Superset
+              </span>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={index === 0 || actionStatus === "saving"}
-            onClick={() => onMove(row, "up")}
-          >
-            Up
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={index === total - 1 || actionStatus === "saving"}
-            onClick={() => onMove(row, "down")}
-          >
-            Down
-          </Button>
           <Button size="sm" variant="secondary" onClick={() => onEdit(row)}>
             Edit
           </Button>
@@ -204,13 +220,15 @@ export function PtWorkoutTemplateBuilderPage() {
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
   const [deleteTemplateStatus, setDeleteTemplateStatus] = useState<"idle" | "deleting">("idle");
   const [deleteTemplateError, setDeleteTemplateError] = useState<string | null>(null);
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<TemplateExerciseRow | null>(null);
   const [form, setForm] = useState<TemplateExerciseForm>(emptyExerciseForm);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<"idle" | "saving">("idle");
   const [exerciseRows, setExerciseRows] = useState<TemplateExerciseRow[]>([]);
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -251,7 +269,7 @@ export function PtWorkoutTemplateBuilderPage() {
       const { data, error } = await supabase
         .from("workout_template_exercises")
         .select(
-          "id, sort_order, sets, reps, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,muscle_group,equipment,video_url)"
+          "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,muscle_group,equipment,video_url)"
         )
         .eq("workout_template_id", templateId ?? "")
         .order("sort_order", { ascending: true });
@@ -283,18 +301,19 @@ export function PtWorkoutTemplateBuilderPage() {
   }, [exercises, search]);
 
   const handleAddExercise = async () => {
-    if (!templateId || !selectedExerciseId) return;
+    if (!templateId || selectedExerciseIds.length === 0) return;
     setActionStatus("saving");
     setActionError(null);
 
     const rows = exerciseRows.length > 0 ? exerciseRows : templateExercisesQuery.data ?? [];
     const maxSort = rows.reduce((acc, row) => Math.max(acc, row.sort_order ?? 0), 0);
-
-    const { error } = await supabase.from("workout_template_exercises").insert({
+    const payload = selectedExerciseIds.map((exerciseId, index) => ({
       workout_template_id: templateId,
-      exercise_id: selectedExerciseId,
-      sort_order: maxSort + 10,
-    });
+      exercise_id: exerciseId,
+      sort_order: maxSort + (index + 1) * 10,
+    }));
+
+    const { error } = await supabase.from("workout_template_exercises").insert(payload);
 
     if (error) {
       const details = getErrorDetails(error);
@@ -305,7 +324,7 @@ export function PtWorkoutTemplateBuilderPage() {
 
     setActionStatus("idle");
     setAddOpen(false);
-    setSelectedExerciseId("");
+    setSelectedExerciseIds([]);
     await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
   };
 
@@ -314,6 +333,7 @@ export function PtWorkoutTemplateBuilderPage() {
     setForm({
       sets: row.sets?.toString() ?? "",
       reps: row.reps ?? "",
+      superset_group: row.superset_group ?? "",
       rest_seconds: row.rest_seconds?.toString() ?? "",
       tempo: row.tempo ?? "",
       rpe: row.rpe?.toString() ?? "",
@@ -332,7 +352,8 @@ export function PtWorkoutTemplateBuilderPage() {
     const payload = {
       sets: form.sets.trim() ? Number(form.sets) : null,
       reps: form.reps.trim() || null,
-      rest_seconds: form.rest_seconds.trim() ? Number(form.rest_seconds) : null,
+      superset_group: form.superset_group.trim() || null,
+      rest_seconds: form.superset_group.trim() ? 0 : form.rest_seconds.trim() ? Number(form.rest_seconds) : null,
       tempo: form.tempo.trim() || null,
       rpe: form.rpe.trim() ? Number(form.rpe) : null,
       video_url: form.video_url.trim() || null,
@@ -399,85 +420,98 @@ export function PtWorkoutTemplateBuilderPage() {
     navigate("/pt/templates/workouts");
   };
 
-  const handleMove = async (row: TemplateExerciseRow, direction: "up" | "down") => {
-    if (!templateId) return;
-    const rows = exerciseRows.length > 0 ? exerciseRows : templateExercisesQuery.data ?? [];
-    const index = rows.findIndex((item) => item.id === row.id);
-    if (index === -1) return;
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= rows.length) return;
-
-    const current = rows[index];
-    const target = rows[swapIndex];
-    const currentOrder = current.sort_order ?? index * 10;
-    const targetOrder = target.sort_order ?? swapIndex * 10;
-
-    setActionStatus("saving");
-    setActionError(null);
-
-    const { error: firstError } = await supabase
-      .from("workout_template_exercises")
-      .update({ sort_order: targetOrder })
-      .eq("id", current.id);
-
-    if (firstError) {
-      const details = getErrorDetails(firstError);
-      setActionError(`${details.code}: ${details.message}`);
-      setActionStatus("idle");
-      return;
-    }
-
-    const { error: secondError } = await supabase
-      .from("workout_template_exercises")
-      .update({ sort_order: currentOrder })
-      .eq("id", target.id);
-
-    if (secondError) {
-      const details = getErrorDetails(secondError);
-      setActionError(`${details.code}: ${details.message}`);
-      setActionStatus("idle");
-      return;
-    }
-
-    setActionStatus("idle");
-    await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
-  };
-
   const handleDragEnd = async (event: DragEndEvent) => {
     if (actionStatus === "saving") return;
     const { active, over } = event;
+    setDragActiveId(null);
+    setDragOverId(null);
     if (!over || active.id === over.id) return;
 
     const oldIndex = exerciseRows.findIndex((row) => row.id === active.id);
     const newIndex = exerciseRows.findIndex((row) => row.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const updated = arrayMove(exerciseRows, oldIndex, newIndex);
-    setExerciseRows(updated);
+    const movedRows = arrayMove(exerciseRows, oldIndex, newIndex);
+    const draggedRow = movedRows.find((row) => row.id === active.id) ?? null;
+    const targetRow = movedRows.find((row) => row.id === over.id) ?? null;
+    const draggedPrevRow = exerciseRows.find((row) => row.id === active.id) ?? null;
+    const targetPrevRow = exerciseRows.find((row) => row.id === over.id) ?? null;
+    if (!draggedRow || !targetRow || !draggedPrevRow || !targetPrevRow) return;
 
-    const updates = updated.map((row, index) => ({
-      id: row.id,
-      sort_order: (index + 1) * 10,
-    }));
+    const draggedGroup = draggedPrevRow.superset_group?.trim() ?? "";
+    const targetGroup = targetPrevRow.superset_group?.trim() ?? "";
+    const shouldCreateSuperset = draggedGroup.length === 0 && targetGroup.length === 0;
+    const shouldSplitDraggedSuperset =
+      draggedGroup.length > 0 && targetGroup !== draggedGroup;
+    const sharedSupersetGroup = shouldCreateSuperset ? nextSupersetGroup(movedRows) : null;
 
-    const changed = updates.filter((update, index) => {
-      const prev = exerciseRows[index];
-      if (!prev) return true;
-      return prev.id !== update.id || (prev.sort_order ?? null) !== update.sort_order;
+    const updatedRows = movedRows.map((row) => {
+      if (shouldCreateSuperset && (row.id === draggedRow.id || row.id === targetRow.id)) {
+        return { ...row, superset_group: sharedSupersetGroup, rest_seconds: 0 };
+      }
+      if (shouldSplitDraggedSuperset && row.superset_group?.trim() === draggedGroup) {
+        return {
+          ...row,
+          superset_group: null,
+          rest_seconds: row.rest_seconds === 0 ? null : row.rest_seconds,
+        };
+      }
+      return row;
+    });
+    setExerciseRows(updatedRows);
+
+    const changedPayload = new Map<string, Record<string, unknown>>();
+    updatedRows.forEach((row, index) => {
+      const prevRow = exerciseRows.find((item) => item.id === row.id);
+      if (!prevRow) return;
+
+      const nextSort = (index + 1) * 10;
+      if ((prevRow.sort_order ?? null) !== nextSort) {
+        const existing = changedPayload.get(row.id) ?? {};
+        changedPayload.set(row.id, { ...existing, sort_order: nextSort });
+      }
+
+      if (
+        shouldCreateSuperset &&
+        (row.id === draggedRow.id || row.id === targetRow.id) &&
+        ((prevRow.superset_group ?? null) !== sharedSupersetGroup ||
+          (prevRow.rest_seconds ?? null) !== 0)
+      ) {
+        const existing = changedPayload.get(row.id) ?? {};
+        changedPayload.set(row.id, {
+          ...existing,
+          superset_group: sharedSupersetGroup,
+          rest_seconds: 0,
+        });
+      }
+
+      if (
+        shouldSplitDraggedSuperset &&
+        prevRow.superset_group?.trim() === draggedGroup &&
+        ((prevRow.superset_group ?? null) !== (row.superset_group ?? null) ||
+          (prevRow.rest_seconds ?? null) !== (row.rest_seconds ?? null))
+      ) {
+        const existing = changedPayload.get(row.id) ?? {};
+        changedPayload.set(row.id, {
+          ...existing,
+          superset_group: row.superset_group,
+          rest_seconds: row.rest_seconds,
+        });
+      }
     });
 
-    if (changed.length === 0) return;
+    if (changedPayload.size === 0) return;
 
     setActionStatus("saving");
     setActionError(null);
 
     try {
       const results = await Promise.all(
-        changed.map((update) =>
+        Array.from(changedPayload.entries()).map(([id, payload]) =>
           supabase
             .from("workout_template_exercises")
-            .update({ sort_order: update.sort_order })
-            .eq("id", update.id)
+            .update(payload)
+            .eq("id", id)
         )
       );
       const firstError = results.find((result) => result.error)?.error;
@@ -494,6 +528,14 @@ export function PtWorkoutTemplateBuilderPage() {
         queryKey: ["workout-template-exercises", templateId],
       });
     }
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setDragActiveId(String(event.active.id));
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setDragOverId(event.over ? String(event.over.id) : null);
   };
 
   const template = templateQuery.data;
@@ -586,7 +628,8 @@ export function PtWorkoutTemplateBuilderPage() {
           <div>
             <CardTitle>Exercises</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Add exercises with sets, reps, RPE, tempo, and notes.
+              Add exercises with sets, reps, RPE, tempo, and notes. Drag one exercise onto
+              another to create a superset pair.
             </p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>
@@ -612,27 +655,63 @@ export function PtWorkoutTemplateBuilderPage() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragCancel={() => {
+                setDragActiveId(null);
+                setDragOverId(null);
+              }}
               onDragEnd={handleDragEnd}
             >
               <SortableContext
                 items={exerciseRows.map((row) => row.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="space-y-3">
+                <div className="flex flex-col">
                   {exerciseRows.map((row, index) => (
+                    (() => {
+                      const prev = exerciseRows[index - 1] ?? null;
+                      const next = exerciseRows[index + 1] ?? null;
+                      const sameAsPrev =
+                        Boolean(row.superset_group) &&
+                        prev?.superset_group === row.superset_group;
+                      const sameAsNext =
+                        Boolean(row.superset_group) &&
+                        next?.superset_group === row.superset_group;
+                      const groupPosition: "single" | "top" | "middle" | "bottom" = sameAsPrev
+                        ? sameAsNext
+                          ? "middle"
+                          : "bottom"
+                        : sameAsNext
+                          ? "top"
+                          : "single";
+                      const isSupersetDropTarget =
+                        (() => {
+                          if (!dragActiveId || dragActiveId === row.id || dragOverId !== row.id) {
+                            return false;
+                          }
+                          const activeRow =
+                            exerciseRows.find((item) => item.id === dragActiveId) ?? null;
+                          if (!activeRow) return false;
+                          const activeHasGroup = Boolean(activeRow.superset_group?.trim());
+                          const targetHasGroup = Boolean(row.superset_group?.trim());
+                          return !activeHasGroup && !targetHasGroup;
+                        })();
+                      return (
                     <SortableExerciseRow
                       key={row.id}
                       row={row}
-                      index={index}
-                      total={exerciseRows.length}
-                      actionStatus={actionStatus}
-                      onMove={handleMove}
+                      groupPosition={groupPosition}
+                      compactWithPrevious={sameAsPrev}
+                      isSupersetDropTarget={isSupersetDropTarget}
                       onEdit={openEdit}
                       onDelete={(target) => {
                         setSelectedRow(target);
                         setDeleteOpen(true);
                       }}
                     />
+                      );
+                    })()
                   ))}
                 </div>
               </SortableContext>
@@ -651,7 +730,7 @@ export function PtWorkoutTemplateBuilderPage() {
           setAddOpen(open);
           if (!open) {
             setSearch("");
-            setSelectedExerciseId("");
+            setSelectedExerciseIds([]);
             setActionError(null);
           }
         }}
@@ -667,6 +746,18 @@ export function PtWorkoutTemplateBuilderPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{selectedExerciseIds.length} selected</span>
+              {selectedExerciseIds.length > 0 ? (
+                <button
+                  type="button"
+                  className="font-medium text-foreground hover:underline"
+                  onClick={() => setSelectedExerciseIds([])}
+                >
+                  Clear selection
+                </button>
+              ) : null}
+            </div>
             <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border bg-background p-2">
               {exercisesQuery.isLoading ? (
                 <div className="text-xs text-muted-foreground">Loading exercises...</div>
@@ -679,9 +770,15 @@ export function PtWorkoutTemplateBuilderPage() {
                   <button
                     type="button"
                     key={exercise.id}
-                    onClick={() => setSelectedExerciseId(exercise.id)}
+                    onClick={() =>
+                      setSelectedExerciseIds((prev) =>
+                        prev.includes(exercise.id)
+                          ? prev.filter((id) => id !== exercise.id)
+                          : [...prev, exercise.id]
+                      )
+                    }
                     className={
-                      selectedExerciseId === exercise.id
+                      selectedExerciseIds.includes(exercise.id)
                         ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
                         : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
                     }
@@ -720,10 +817,14 @@ export function PtWorkoutTemplateBuilderPage() {
               Cancel
             </Button>
             <Button
-              disabled={!selectedExerciseId || actionStatus === "saving"}
+              disabled={selectedExerciseIds.length === 0 || actionStatus === "saving"}
               onClick={handleAddExercise}
             >
-              {actionStatus === "saving" ? "Adding..." : "Add"}
+              {actionStatus === "saving"
+                ? "Adding..."
+                : selectedExerciseIds.length > 1
+                  ? `Add ${selectedExerciseIds.length} exercises`
+                  : "Add exercise"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -762,6 +863,22 @@ export function PtWorkoutTemplateBuilderPage() {
               />
             </div>
             <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Superset group</label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={form.superset_group}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, superset_group: event.target.value }))
+                }
+              >
+                <option value="">None</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+              </select>
+            </div>
+            <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Rest (sec)</label>
               <Input
                 type="number"
@@ -769,7 +886,13 @@ export function PtWorkoutTemplateBuilderPage() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, rest_seconds: event.target.value }))
                 }
+                disabled={Boolean(form.superset_group)}
               />
+              {form.superset_group ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Superset active. Rest is forced to 0 between paired exercises.
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Tempo</label>

@@ -49,6 +49,7 @@ type TemplateExerciseRow = {
   sort_order: number | null;
   sets: number | null;
   reps: string | null;
+  superset_group: string | null;
   rest_seconds: number | null;
   tempo: string | null;
   rpe: number | null;
@@ -83,7 +84,7 @@ export function PtWorkoutTemplatePreviewPage() {
       const { data, error } = await supabase
         .from("workout_template_exercises")
         .select(
-          "id, sort_order, sets, reps, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,video_url)"
+          "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,video_url)"
         )
         .eq("workout_template_id", templateId ?? "")
         .order("sort_order", { ascending: true });
@@ -202,7 +203,11 @@ export function PtWorkoutTemplatePreviewPage() {
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{row.sets ?? "--"} sets</span>
                           <span>{row.reps ?? "--"} reps</span>
-                          <span>Rest {row.rest_seconds ?? "--"}s</span>
+                          {row.superset_group ? (
+                            <span>Superset (no rest)</span>
+                          ) : (
+                            <span>Rest {row.rest_seconds ?? "--"}s</span>
+                          )}
                           <span>Tempo {row.tempo ?? "--"}</span>
                           <span>RPE {row.rpe ?? "--"}</span>
                         </div>

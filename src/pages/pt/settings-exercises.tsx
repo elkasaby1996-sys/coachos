@@ -44,25 +44,19 @@ type ExerciseRow = {
 type ExerciseFormState = {
   name: string;
   muscle_group: string;
-  primary_muscle: string;
   secondary_muscles: string;
   equipment: string;
   video_url: string;
-  notes: string;
   is_unilateral: boolean;
-  tags: string;
 };
 
 const emptyForm: ExerciseFormState = {
   name: "",
   muscle_group: "",
-  primary_muscle: "",
   secondary_muscles: "",
   equipment: "",
   video_url: "",
-  notes: "",
   is_unilateral: false,
-  tags: "",
 };
 
 const getErrorDetails = (error: unknown) => {
@@ -134,13 +128,10 @@ export function PtExerciseLibraryPage() {
     setForm({
       name: exercise.name ?? "",
       muscle_group: exercise.muscle_group ?? "",
-      primary_muscle: exercise.primary_muscle ?? "",
       secondary_muscles: exercise.secondary_muscles?.join(", ") ?? "",
       equipment: exercise.equipment ?? "",
       video_url: exercise.video_url ?? "",
-      notes: exercise.notes ?? "",
       is_unilateral: exercise.is_unilateral ?? false,
-      tags: exercise.tags?.join(", ") ?? "",
     });
     setActionError(null);
     setModalOpen(true);
@@ -158,13 +149,10 @@ export function PtExerciseLibraryPage() {
       workspace_id: workspaceId,
       name: form.name.trim(),
       muscle_group: form.muscle_group.trim() || null,
-      primary_muscle: form.primary_muscle.trim() || null,
       secondary_muscles: toNullableList(form.secondary_muscles),
       equipment: form.equipment.trim() || null,
       video_url: form.video_url.trim() || null,
-      notes: form.notes.trim() || null,
       is_unilateral: form.is_unilateral,
-      tags: toNullableList(form.tags),
     };
 
     const response = selected
@@ -257,9 +245,6 @@ export function PtExerciseLibraryPage() {
             <CardTitle>Exercises</CardTitle>
             <p className="text-sm text-muted-foreground">Workspace-scoped movement library.</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={openCreate}>
-            New exercise
-          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-3">
@@ -367,28 +352,6 @@ export function PtExerciseLibraryPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Primary muscle</label>
-              <Input
-                value={form.primary_muscle}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, primary_muscle: event.target.value }))
-                }
-                placeholder="e.g., Chest"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Secondary muscles (comma-separated)
-              </label>
-              <Input
-                value={form.secondary_muscles}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, secondary_muscles: event.target.value }))
-                }
-                placeholder="e.g., Triceps, Shoulders"
-              />
-            </div>
-            <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Muscle group</label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -404,6 +367,18 @@ export function PtExerciseLibraryPage() {
               </select>
             </div>
             <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Secondary muscles (comma-separated)
+              </label>
+              <Input
+                value={form.secondary_muscles}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, secondary_muscles: event.target.value }))
+                }
+                placeholder="e.g., Triceps, Shoulders"
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Equipment</label>
               <Input
                 value={form.equipment}
@@ -417,24 +392,6 @@ export function PtExerciseLibraryPage() {
                 value={form.video_url}
                 onChange={(event) => setForm((prev) => ({ ...prev, video_url: event.target.value }))}
                 placeholder="https://"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Notes</label>
-              <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={form.notes}
-                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Tags (comma-separated)
-              </label>
-              <Input
-                value={form.tags}
-                onChange={(event) => setForm((prev) => ({ ...prev, tags: event.target.value }))}
-                placeholder="e.g., Strength, Compound"
               />
             </div>
             <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">

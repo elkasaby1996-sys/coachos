@@ -62,7 +62,6 @@ const tabs = [
   "logs",
   "progress",
   "checkins",
-  "messages",
   "notes",
   "baseline",
   "habits",
@@ -1219,6 +1218,17 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({ queryKey: ["client-program-active", clientId] });
+    await queryClient.invalidateQueries({ queryKey: ["client-program-paused", clientId] });
+    await queryClient.invalidateQueries({
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceQuery.data ?? null,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
     await queryClient.invalidateQueries({
       queryKey: ["client-program-overrides", activeProgram?.id, todayKey, planEndKey],
     });
@@ -1383,24 +1393,31 @@ export function PtClientDetailPage() {
         }
       }
 
-      const { error: assignmentError } = await supabase
-        .from("client_program_assignments")
-        .update({ is_active: false })
-        .eq("client_id", clientId)
-        .eq("is_active", true);
-
-      if (assignmentError) {
-        throw assignmentError;
+      if (targetProgram.program_template_id) {
+        const { error: assignmentDeleteError } = await supabase
+          .from("client_program_assignments")
+          .delete()
+          .eq("client_id", clientId)
+          .eq("program_id", targetProgram.program_template_id);
+        if (assignmentDeleteError && assignmentDeleteError.code !== "42P01") {
+          throw assignmentDeleteError;
+        }
       }
 
-      const { error: legacyError } = await supabase
-        .from("client_programs")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
-        .eq("client_id", clientId)
-        .eq("is_active", true);
+      const { error: overrideDeleteError } = await supabase
+        .from("client_program_overrides")
+        .delete()
+        .eq("client_program_id", targetProgram.id);
+      if (overrideDeleteError && overrideDeleteError.code !== "42P01") {
+        throw overrideDeleteError;
+      }
 
-      if (legacyError && legacyError.code !== "42P01") {
-        throw legacyError;
+      const { error: programDeleteError } = await supabase
+        .from("client_programs")
+        .delete()
+        .eq("id", targetProgram.id);
+      if (programDeleteError && programDeleteError.code !== "42P01") {
+        throw programDeleteError;
       }
 
       await queryClient.invalidateQueries({
@@ -1802,8 +1819,8 @@ export function PtClientDetailPage() {
 
   const handleQuickAction = (message: string) => {
     if (!clientId) return;
-    const params = new URLSearchParams({ tab: "messages", draft: message });
-    navigate(`/pt/clients/${clientId}?${params.toString()}`);
+    const params = new URLSearchParams({ client: clientId, draft: message });
+    navigate(`/pt/messages?${params.toString()}`);
   };
 
   const parseTags = (value: string) =>
@@ -2509,7 +2526,6 @@ export function PtClientDetailPage() {
                   <TabsTrigger value="progress">Progress</TabsTrigger>
                   <TabsTrigger value="logs">Logs</TabsTrigger>
                   <TabsTrigger value="checkins">Check-ins</TabsTrigger>
-                  <TabsTrigger value="messages">Messages</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="baseline">Baseline</TabsTrigger>
                 </TabsList>
@@ -2564,7 +2580,7 @@ export function PtClientDetailPage() {
                 />
               </TabsContent>
               <TabsContent value="progress">
-                <PtClientProgressTab />
+                <PtClientProgressTab clientSnapshot={clientSnapshot} />
               </TabsContent>
               <TabsContent value="logs">
                 <PtClientLogsTab
@@ -2691,9 +2707,6 @@ export function PtClientDetailPage() {
                     onReview={openCheckinReview}
                   />
                 </div>
-              </TabsContent>
-              <TabsContent value="messages">
-                <PtClientMessagesTab />
               </TabsContent>
               <TabsContent value="notes">
                 <PtClientNotesTab />
@@ -4960,28 +4973,404 @@ function PtClientLogsTab({
   );
 }
 
-function PtClientProgressTab() {
-  return <PtClientPlaceholderTab title="progress" />;
-}
-
-function PtClientMessagesTab() {
+function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfile | null }) {
   const { clientId } = useParams();
-  const navigate = useNavigate();
+  const todayKey = formatDateKey(new Date());
+  const habitsStart = addDaysToDateString(todayKey, -55);
+  const sessionsStart = addDaysToDateString(todayKey, -83);
+  const checkinsStart = addDaysToDateString(todayKey, -83);
+
+  const progressHabitsQuery = useQuery({
+    queryKey: ["pt-client-progress-habits", clientId, habitsStart, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select(
+          "log_date, weight_value, weight_unit, steps, sleep_hours, protein_g, calories, energy, hunger, stress"
+        )
+        .eq("client_id", clientId ?? "")
+        .gte("log_date", habitsStart)
+        .lte("log_date", todayKey)
+        .order("log_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as HabitLog[];
+    },
+  });
+
+  const progressSessionsQuery = useQuery({
+    queryKey: ["pt-client-progress-sessions", clientId, sessionsStart, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select("id, completed_at, created_at")
+        .eq("client_id", clientId ?? "")
+        .gte("created_at", `${sessionsStart}T00:00:00.000Z`)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; completed_at: string | null; created_at: string | null }>;
+    },
+  });
+
+  const progressSessionIds = useMemo(
+    () => (progressSessionsQuery.data ?? []).map((row) => row.id),
+    [progressSessionsQuery.data]
+  );
+
+  const progressSetLogsQuery = useQuery({
+    queryKey: ["pt-client-progress-set-logs", progressSessionIds],
+    enabled: progressSessionIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workout_set_logs")
+        .select("exercise_id, reps, weight, created_at, exercise:exercises(name), workout_session_id")
+        .in("workout_session_id", progressSessionIds)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        exercise_id: string | null;
+        reps: number | null;
+        weight: number | null;
+        created_at: string | null;
+        workout_session_id: string | null;
+        exercise: { name: string | null } | { name: string | null }[] | null;
+      }>;
+    },
+  });
+
+  const progressCheckinAnswersQuery = useQuery({
+    queryKey: ["pt-client-progress-checkin-answers", clientId, checkinsStart, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkin_answers")
+        .select(
+          "value_number, value_text, question:checkin_questions(question_text, prompt), checkin:checkins!inner(client_id, week_ending_saturday, submitted_at)"
+        )
+        .eq("checkin.client_id", clientId ?? "")
+        .gte("checkin.week_ending_saturday", checkinsStart)
+        .lte("checkin.week_ending_saturday", todayKey);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        value_number: number | null;
+        value_text: string | null;
+        question:
+          | { question_text: string | null; prompt: string | null }
+          | { question_text: string | null; prompt: string | null }[]
+          | null;
+        checkin:
+          | { client_id: string | null; week_ending_saturday: string | null; submitted_at: string | null }
+          | { client_id: string | null; week_ending_saturday: string | null; submitted_at: string | null }[]
+          | null;
+      }>;
+    },
+  });
+
+  const habitsAnalysis = useMemo(() => {
+    const logs = progressHabitsQuery.data ?? [];
+    if (logs.length === 0) return null;
+
+    const weightLogs = logs.filter((log) => typeof log.weight_value === "number");
+    const stepsLogs = logs.filter((log) => typeof log.steps === "number");
+    const midpoint = Math.floor(logs.length / 2);
+    const firstHalf = logs.slice(0, midpoint);
+    const secondHalf = logs.slice(midpoint);
+
+    const avg = (values: Array<number | null | undefined>) => {
+      const nums = values.filter((value) => typeof value === "number") as number[];
+      if (nums.length === 0) return null;
+      return nums.reduce((sum, value) => sum + value, 0) / nums.length;
+    };
+
+    const firstWeight = weightLogs[0]?.weight_value ?? null;
+    const latestWeight = weightLogs[weightLogs.length - 1]?.weight_value ?? null;
+    const weightChange = firstWeight !== null && latestWeight !== null ? latestWeight - firstWeight : null;
+    const weightUnit = weightLogs.find((log) => log.weight_unit)?.weight_unit ?? "kg";
+
+    return {
+      logsCount: logs.length,
+      latestWeight,
+      weightChange,
+      weightUnit,
+      avgStepsFirst: avg(firstHalf.map((log) => log.steps)),
+      avgStepsSecond: avg(secondHalf.map((log) => log.steps)),
+      avgSleepFirst: avg(firstHalf.map((log) => log.sleep_hours)),
+      avgSleepSecond: avg(secondHalf.map((log) => log.sleep_hours)),
+      avgProteinFirst: avg(firstHalf.map((log) => log.protein_g)),
+      avgProteinSecond: avg(secondHalf.map((log) => log.protein_g)),
+      avgCaloriesFirst: avg(firstHalf.map((log) => log.calories)),
+      avgCaloriesSecond: avg(secondHalf.map((log) => log.calories)),
+      latestSteps: stepsLogs.length > 0 ? stepsLogs[stepsLogs.length - 1].steps : null,
+      firstSteps: stepsLogs.length > 0 ? stepsLogs[0].steps : null,
+    };
+  }, [progressHabitsQuery.data]);
+
+  const exerciseImprovements = useMemo(() => {
+    const logs = progressSetLogsQuery.data ?? [];
+    const byExercise = new Map<
+      string,
+      Array<{ created_at: string | null; reps: number | null; weight: number | null; name: string }>
+    >();
+    logs.forEach((row) => {
+      if (!row.exercise_id) return;
+      const name = Array.isArray(row.exercise)
+        ? row.exercise[0]?.name ?? "Exercise"
+        : row.exercise?.name ?? "Exercise";
+      if (!byExercise.has(row.exercise_id)) byExercise.set(row.exercise_id, []);
+      byExercise.get(row.exercise_id)?.push({
+        created_at: row.created_at ?? null,
+        reps: row.reps ?? null,
+        weight: row.weight ?? null,
+        name,
+      });
+    });
+
+    const improved: Array<{
+      exerciseId: string;
+      exerciseName: string;
+      startWeight: number;
+      latestWeight: number;
+      change: number;
+    }> = [];
+
+    byExercise.forEach((rows, exerciseId) => {
+      const weighted = rows.filter((row) => typeof row.weight === "number") as Array<
+        typeof rows[number] & { weight: number }
+      >;
+      if (weighted.length < 2) return;
+      const startWeight = weighted[0].weight;
+      const latestWeight = weighted[weighted.length - 1].weight;
+      if (latestWeight <= startWeight) return;
+      improved.push({
+        exerciseId,
+        exerciseName: rows[0]?.name ?? "Exercise",
+        startWeight,
+        latestWeight,
+        change: latestWeight - startWeight,
+      });
+    });
+
+    return improved.sort((a, b) => b.change - a.change).slice(0, 6);
+  }, [progressSetLogsQuery.data]);
+
+  const checkinQuestionTrends = useMemo(() => {
+    const rows = progressCheckinAnswersQuery.data ?? [];
+    const byQuestion = new Map<
+      string,
+      Array<{ value_number: number | null; value_text: string | null; date: string | null }>
+    >();
+
+    rows.forEach((row) => {
+      const question = Array.isArray(row.question) ? row.question[0] ?? null : row.question;
+      const checkin = Array.isArray(row.checkin) ? row.checkin[0] ?? null : row.checkin;
+      const key = question?.question_text ?? question?.prompt ?? "Question";
+      if (!byQuestion.has(key)) byQuestion.set(key, []);
+      byQuestion.get(key)?.push({
+        value_number: row.value_number ?? null,
+        value_text: row.value_text ?? null,
+        date: checkin?.week_ending_saturday ?? checkin?.submitted_at ?? null,
+      });
+    });
+
+    const numericChanges: Array<{ question: string; from: number; to: number; delta: number }> = [];
+    const textChanges: Array<{ question: string; previous: string; latest: string }> = [];
+
+    byQuestion.forEach((entries, question) => {
+      const ordered = [...entries].sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")));
+      const numeric = ordered.filter((entry) => typeof entry.value_number === "number") as Array<
+        typeof ordered[number] & { value_number: number }
+      >;
+      if (numeric.length >= 2) {
+        const from = numeric[0].value_number;
+        const to = numeric[numeric.length - 1].value_number;
+        if (from !== to) numericChanges.push({ question, from, to, delta: to - from });
+      }
+
+      const texts = ordered
+        .map((entry) => entry.value_text?.trim())
+        .filter((value): value is string => Boolean(value));
+      if (texts.length >= 2) {
+        const previous = texts[texts.length - 2];
+        const latest = texts[texts.length - 1];
+        if (previous !== latest) textChanges.push({ question, previous, latest });
+      }
+    });
+
+    return {
+      numeric: numericChanges.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 6),
+      text: textChanges.slice(0, 4),
+    };
+  }, [progressCheckinAnswersQuery.data]);
+
+  const loading =
+    progressHabitsQuery.isLoading ||
+    progressSessionsQuery.isLoading ||
+    progressSetLogsQuery.isLoading ||
+    progressCheckinAnswersQuery.isLoading;
 
   return (
-    <Card className="border-border/70 bg-card/80 xl:col-start-1">
-      <CardHeader>
-        <CardTitle>Messages</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Jump to the full chat experience for this client.
-        </p>
-      </CardHeader>
-      <CardContent>
-        <Button onClick={() => navigate(`/pt/messages?client=${clientId ?? ""}`)}>
-          Open chat
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <DashboardCard
+        title="Progress analysis"
+        subtitle="Weight, habits, lifts, steps, and check-in trend shifts."
+      >
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Weight change"
+              value={
+                habitsAnalysis?.weightChange !== null && habitsAnalysis?.weightChange !== undefined
+                  ? `${habitsAnalysis.weightChange > 0 ? "+" : ""}${habitsAnalysis.weightChange.toFixed(1)} ${
+                      habitsAnalysis.weightUnit
+                    }`
+                  : "--"
+              }
+              helper="First to latest logged"
+              icon={Flame}
+            />
+            <StatCard
+              label="Steps change"
+              value={
+                typeof habitsAnalysis?.latestSteps === "number" && typeof habitsAnalysis?.firstSteps === "number"
+                  ? `${(habitsAnalysis.latestSteps - habitsAnalysis.firstSteps) > 0 ? "+" : ""}${(
+                      habitsAnalysis.latestSteps - habitsAnalysis.firstSteps
+                    ).toLocaleString()}`
+                  : "--"
+              }
+              helper="First to latest logged"
+              icon={Rocket}
+            />
+            <StatCard
+              label="Lifts improved"
+              value={`${exerciseImprovements.length}`}
+              helper="Exercises with higher logged weight"
+              icon={CheckCircle2}
+            />
+            <StatCard
+              label="Check-in shifts"
+              value={`${checkinQuestionTrends.numeric.length + checkinQuestionTrends.text.length}`}
+              helper="Questions with changed responses"
+              icon={MessageCircle}
+            />
+          </div>
+        )}
+      </DashboardCard>
+
+      <DashboardCard title="Habit changes" subtitle="Comparing earlier vs later logs in the selected window.">
+        {loading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : habitsAnalysis ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Steps avg</p>
+              <p className="text-sm font-semibold">
+                {habitsAnalysis.avgStepsFirst !== null ? Math.round(habitsAnalysis.avgStepsFirst).toLocaleString() : "--"}{" "}
+                to{" "}
+                {habitsAnalysis.avgStepsSecond !== null ? Math.round(habitsAnalysis.avgStepsSecond).toLocaleString() : "--"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Sleep avg</p>
+              <p className="text-sm font-semibold">
+                {habitsAnalysis.avgSleepFirst !== null ? habitsAnalysis.avgSleepFirst.toFixed(1) : "--"} hrs to{" "}
+                {habitsAnalysis.avgSleepSecond !== null ? habitsAnalysis.avgSleepSecond.toFixed(1) : "--"} hrs
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Protein avg</p>
+              <p className="text-sm font-semibold">
+                {habitsAnalysis.avgProteinFirst !== null ? Math.round(habitsAnalysis.avgProteinFirst) : "--"} g to{" "}
+                {habitsAnalysis.avgProteinSecond !== null ? Math.round(habitsAnalysis.avgProteinSecond) : "--"} g
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Calories avg</p>
+              <p className="text-sm font-semibold">
+                {habitsAnalysis.avgCaloriesFirst !== null ? Math.round(habitsAnalysis.avgCaloriesFirst) : "--"} to{" "}
+                {habitsAnalysis.avgCaloriesSecond !== null ? Math.round(habitsAnalysis.avgCaloriesSecond) : "--"}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <EmptyState title="No habit logs yet" description="Progress analysis appears once logs are available." />
+        )}
+      </DashboardCard>
+
+      <DashboardCard title="Exercise load improvements" subtitle="Where logged weights increased.">
+        {loading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : exerciseImprovements.length > 0 ? (
+          <div className="space-y-2">
+            {exerciseImprovements.map((item) => (
+              <div
+                key={item.exerciseId}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+              >
+                <span className="font-medium">{item.exerciseName}</span>
+                <span className="text-muted-foreground">
+                  {item.startWeight} to {item.latestWeight} ({item.change > 0 ? "+" : ""}
+                  {item.change})
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No clear exercise load increases yet in the selected window.
+          </p>
+        )}
+      </DashboardCard>
+
+      <DashboardCard title="Check-in question changes" subtitle="Numeric deltas and latest text shifts.">
+        {loading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">Numeric question trends</p>
+              {checkinQuestionTrends.numeric.length > 0 ? (
+                checkinQuestionTrends.numeric.map((row) => (
+                  <div
+                    key={row.question}
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+                  >
+                    <span className="truncate pr-3">{row.question}</span>
+                    <span className="text-muted-foreground">
+                      {row.from} to {row.to} ({row.delta > 0 ? "+" : ""}
+                      {row.delta})
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No numeric answer changes detected.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">Text response shifts</p>
+              {checkinQuestionTrends.text.length > 0 ? (
+                checkinQuestionTrends.text.map((row) => (
+                  <div key={row.question} className="rounded-lg border border-border px-3 py-2 text-sm">
+                    <p className="font-medium">{row.question}</p>
+                    <p className="text-xs text-muted-foreground">Prev: {row.previous}</p>
+                    <p className="text-xs text-muted-foreground">Latest: {row.latest}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No text response changes detected.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </DashboardCard>
+
+    </div>
   );
 }
 
