@@ -220,6 +220,18 @@ type HabitLog = {
   notes: string | null;
 };
 
+type HabitMetricKey =
+  | "calories"
+  | "protein_g"
+  | "carbs_g"
+  | "fats_g"
+  | "weight_value"
+  | "steps"
+  | "sleep_hours"
+  | "energy"
+  | "hunger"
+  | "stress";
+
 type CoachActivityRow = {
   id: string;
   action: string | null;
@@ -320,6 +332,8 @@ type ClientProgramRow = {
   id: string;
   start_date: string | null;
   program_template_id: string | null;
+  is_active?: boolean | null;
+  updated_at?: string | null;
   program_template: { id: string; name: string | null; weeks_count: number | null } | null;
 };
 
@@ -511,8 +525,8 @@ export function PtClientDetailPage() {
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
   const todayKey = useMemo(() => formatDateKey(today), [today]);
-  const scheduleStartKey = useMemo(() => todayKey, [todayKey]);
-  const scheduleEndKey = useMemo(() => addDaysToDateString(todayKey, 6), [todayKey]);
+  const scheduleStartKey = useMemo(() => addDaysToDateString(todayKey, -6), [todayKey]);
+  const scheduleEndKey = useMemo(() => addDaysToDateString(todayKey, 7), [todayKey]);
   const planEndKey = useMemo(() => {
     const date = new Date(today);
     date.setDate(date.getDate() + 14);
@@ -747,6 +761,27 @@ export function PtClientDetailPage() {
   });
 
   const activeProgram = activeProgramQuery.data ?? null;
+
+  const pausedProgramQuery = useQuery({
+    queryKey: ["client-program-paused", clientId],
+    enabled: !!clientId && active === "plan",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_programs")
+        .select(
+          "id, start_date, program_template_id, is_active, updated_at, program_template:program_templates(id, name, weeks_count)"
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("is_active", false)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClientProgramRow | null;
+    },
+  });
+
+  const pausedProgram = pausedProgramQuery.data ?? null;
 
   const programOverridesQuery = useQuery({
     queryKey: ["client-program-overrides", activeProgram?.id, todayKey, planEndKey],
@@ -1189,19 +1224,158 @@ export function PtClientDetailPage() {
     });
   };
 
-  const handleUnassignProgram = async () => {
+  const invalidateProgramAndSchedule = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["client-program-active", clientId] });
+    await queryClient.invalidateQueries({ queryKey: ["client-program-paused", clientId] });
+    await queryClient.invalidateQueries({
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceQuery.data ?? null,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+  };
+
+  const handlePauseProgram = async () => {
     if (!clientId || !activeProgram?.id) return;
-    const confirmed = window.confirm("Unassign the active program for this client?");
+    const confirmed = window.confirm("Pause this client's active program?");
+    if (!confirmed) return;
+    setProgramStatus("saving");
+    setProgramMessage(null);
+    try {
+      const { error: pauseProgramError } = await supabase
+        .from("client_programs")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("id", activeProgram.id);
+      if (pauseProgramError) throw pauseProgramError;
+
+      if (activeProgram.program_template_id) {
+        const { error: pauseAssignmentError } = await supabase
+          .from("client_program_assignments")
+          .update({ is_active: false })
+          .eq("client_id", clientId)
+          .eq("program_id", activeProgram.program_template_id)
+          .eq("is_active", true);
+        if (pauseAssignmentError && pauseAssignmentError.code !== "42P01") {
+          throw pauseAssignmentError;
+        }
+      }
+
+      setProgramStatus("idle");
+      setProgramMessage("Program paused.");
+      setToastVariant("success");
+      setToastMessage("Program paused");
+      await invalidateProgramAndSchedule();
+    } catch (error) {
+      setProgramStatus("error");
+      setProgramMessage(getErrorDetails(error).message);
+      setToastVariant("error");
+      setToastMessage(getErrorDetails(error).message);
+    }
+  };
+
+  const handleResumeProgram = async () => {
+    if (!clientId || !pausedProgram?.id || !pausedProgram.program_template_id) return;
+    setProgramStatus("saving");
+    setProgramMessage(null);
+    try {
+      const { error: deactivateOthersError } = await supabase
+        .from("client_programs")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("client_id", clientId)
+        .eq("is_active", true);
+      if (deactivateOthersError) throw deactivateOthersError;
+
+      const { error: resumeProgramError } = await supabase
+        .from("client_programs")
+        .update({ is_active: true, updated_at: new Date().toISOString() })
+        .eq("id", pausedProgram.id);
+      if (resumeProgramError) throw resumeProgramError;
+
+      const { error: deactivateAssignmentsError } = await supabase
+        .from("client_program_assignments")
+        .update({ is_active: false })
+        .eq("client_id", clientId)
+        .eq("is_active", true);
+      if (deactivateAssignmentsError && deactivateAssignmentsError.code !== "42P01") {
+        throw deactivateAssignmentsError;
+      }
+
+      const { error: resumeAssignmentError } = await supabase
+        .from("client_program_assignments")
+        .update({ is_active: true })
+        .eq("client_id", clientId)
+        .eq("program_id", pausedProgram.program_template_id);
+      if (resumeAssignmentError && resumeAssignmentError.code !== "42P01") {
+        throw resumeAssignmentError;
+      }
+
+      setProgramStatus("idle");
+      setProgramMessage("Program resumed.");
+      setToastVariant("success");
+      setToastMessage("Program resumed");
+      await invalidateProgramAndSchedule();
+    } catch (error) {
+      setProgramStatus("error");
+      setProgramMessage(getErrorDetails(error).message);
+      setToastVariant("error");
+      setToastMessage(getErrorDetails(error).message);
+    }
+  };
+
+  const handleSwitchProgramMidCycle = async () => {
+    if (!clientId || !selectedProgramId) return;
+    const confirmed = window.confirm("Switch program from today?");
+    if (!confirmed) return;
+    setProgramStatus("saving");
+    setProgramMessage(null);
+    const { data, error } = await supabase.rpc("assign_program_to_client", {
+      p_client_id: clientId,
+      p_program_id: selectedProgramId,
+      p_start_date: todayKey,
+      p_days_ahead: 14,
+    });
+    if (error) {
+      const message = getErrorDetails(error).message;
+      setProgramStatus("error");
+      setProgramMessage(message);
+      setToastVariant("error");
+      setToastMessage(message);
+      return;
+    }
+    setProgramStatus("idle");
+    const updatedCount = typeof data === "number" ? data : null;
+    setProgramMessage(
+      updatedCount
+        ? `Program switched. ${updatedCount} day${updatedCount === 1 ? "" : "s"} updated.`
+        : "Program switched."
+    );
+    setToastVariant("success");
+    setToastMessage("Program switched from today");
+    setProgramStartDate(todayKey);
+    await invalidateProgramAndSchedule();
+  };
+
+  const handleUnassignProgram = async () => {
+    const targetProgram = activeProgram ?? pausedProgram;
+    if (!clientId || !targetProgram?.id) return;
+    const confirmed = window.confirm("Unassign this program for this client?");
     if (!confirmed) return;
     setUnassignStatus("saving");
     setProgramMessage(null);
     try {
-      if (activeProgram.program_template_id) {
+      if (targetProgram.program_template_id) {
         const { error: deleteError } = await supabase
           .from("assigned_workouts")
           .delete()
           .eq("client_id", clientId)
-          .eq("program_id", activeProgram.program_template_id)
+          .eq("program_id", targetProgram.program_template_id)
           .gte("scheduled_date", todayKey);
 
         if (deleteError) {
@@ -1233,7 +1407,10 @@ export function PtClientDetailPage() {
         queryKey: ["client-program-active", clientId],
       });
       await queryClient.invalidateQueries({
-        queryKey: ["client-program-overrides", activeProgram.id, todayKey, planEndKey],
+        queryKey: ["client-program-paused", clientId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["client-program-overrides", targetProgram.id, todayKey, planEndKey],
       });
       await queryClient.invalidateQueries({
         queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
@@ -2248,6 +2425,10 @@ export function PtClientDetailPage() {
 
         <div className="space-y-6">
             {(workspaceQuery.error ||
+              programTemplatesQuery.error ||
+              activeProgramQuery.error ||
+              pausedProgramQuery.error ||
+              programOverridesQuery.error ||
               templatesQuery.error ||
               upcomingQuery.error ||
               ptSessionsQuery.error ||
@@ -2271,6 +2452,10 @@ export function PtClientDetailPage() {
                     <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                       {[
                         workspaceQuery.error,
+                        programTemplatesQuery.error,
+                        activeProgramQuery.error,
+                        pausedProgramQuery.error,
+                        programOverridesQuery.error,
                         templatesQuery.error,
                         upcomingQuery.error,
                         ptSessionsQuery.error,
@@ -2334,6 +2519,7 @@ export function PtClientDetailPage() {
                     templatesQuery={templatesQuery}
                     programTemplatesQuery={programTemplatesQuery}
                     activeProgram={activeProgram}
+                    pausedProgram={pausedProgram}
                     programOverrides={programOverridesQuery.data ?? []}
                     upcomingQuery={upcomingQuery}
                     selectedTemplateId={selectedTemplateId}
@@ -2351,6 +2537,9 @@ export function PtClientDetailPage() {
                     onProgramChange={setSelectedProgramId}
                     onProgramDateChange={setProgramStartDate}
                     onApplyProgram={handleApplyProgram}
+                    onPauseProgram={handlePauseProgram}
+                    onResumeProgram={handleResumeProgram}
+                    onSwitchProgramMidCycle={handleSwitchProgramMidCycle}
                     onUnassignProgram={handleUnassignProgram}
                     onOpenOverride={handleOpenOverride}
                     onEdit={openEditDialog}
@@ -2590,7 +2779,7 @@ export function PtClientDetailPage() {
                       <span>Weight</span>
                       <span>Reps</span>
                       <span>RPE</span>
-                      <span>Done</span>
+                      <span>Completed</span>
                     </div>
                     {group.rows.map((row) => (
                       <div
@@ -3094,7 +3283,7 @@ function PtClientScheduleCard({
   });
 
   const weekRows = useMemo(() => {
-    const rows = Array.from({ length: 7 }).map((_, idx) => {
+    const rows = Array.from({ length: 14 }).map((_, idx) => {
       const key = addDaysToDateString(scheduleStartKey, idx);
       const match =
         scheduleQuery.data?.find((item) => item.scheduled_date === key) ?? null;
@@ -3129,6 +3318,10 @@ function PtClientScheduleCard({
   const weeklyAdherence = weeklyWorkouts.length > 0
     ? Math.round((weeklyCompleted / weeklyWorkouts.length) * 100)
     : 0;
+  const weeklyPlanned = weeklyWorkouts.filter(
+    (row) => (row.workout?.status ?? "planned") === "planned"
+  ).length;
+  const weeklyRest = weekRows.filter((row) => row.workout?.day_type === "rest" || !row.workout).length;
 
   const streakKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -3198,8 +3391,8 @@ const formatDayNumber = (key: string) => {
 
   return (
     <DashboardCard
-      title="Coach Calendar (7 days)"
-      subtitle="Your coaching calendar for this client."
+      title="Coach Calendar (14 days)"
+      subtitle="Day-by-day client status (completed, skipped, planned, rest)."
     >
       {scheduleQuery.isLoading || checkinsQuery.isLoading ? (
         <div className="space-y-2">
@@ -3209,6 +3402,28 @@ const formatDayNumber = (key: string) => {
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+              <div className="text-muted-foreground">Completed</div>
+              <div className="text-sm font-semibold text-foreground">{weeklyCompleted}</div>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+              <div className="text-muted-foreground">Skipped</div>
+              <div className="text-sm font-semibold text-foreground">{weeklyMissed}</div>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+              <div className="text-muted-foreground">Planned</div>
+              <div className="text-sm font-semibold text-foreground">{weeklyPlanned}</div>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+              <div className="text-muted-foreground">Rest</div>
+              <div className="text-sm font-semibold text-foreground">{weeklyRest}</div>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+              <div className="text-muted-foreground">Adherence</div>
+              <div className="text-sm font-semibold text-foreground">{weeklyAdherence}%</div>
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               {weekRows.map((row) => {
                 const workout = row.workout;
@@ -3274,18 +3489,8 @@ const formatDayNumber = (key: string) => {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <StatusPill status={status} />
-                        {isCompleted ? (
-                          <Badge variant="success" className="text-[10px] uppercase">
-                            Done
-                          </Badge>
-                        ) : null}
-                        {isSkipped ? (
-                          <Badge variant="warning" className="text-[10px] uppercase">
-                            Missed
-                          </Badge>
-                        ) : null}
                         {isSkipped ? <AlertTriangle className="h-4 w-4 text-amber-300" /> : null}
                         {isRestDay ? <Moon className="h-4 w-4 text-sky-200" /> : null}
                       </div>
@@ -3373,8 +3578,7 @@ const formatDayNumber = (key: string) => {
           <DialogHeader>
             <DialogTitle>Day details</DialogTitle>
             <DialogDescription>
-              {formatWeekday(selectedRow.key)} {formatDayNumber(selectedRow.key)}  - {" "}
-              {selectedTitle}
+              {formatLabel(selectedRow.key)} - {selectedTitle}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -3400,7 +3604,7 @@ const formatDayNumber = (key: string) => {
                 Mark complete
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => selectedWorkout && onStatusChange(selectedWorkout.id, "skipped")}
                 disabled={!selectedWorkout}
               >
@@ -3830,6 +4034,11 @@ function PtClientHabitsTab({
   habitsToday: string;
   habitStreak: number;
 }) {
+  const [selectedHabitMetric, setSelectedHabitMetric] = useState<{
+    metric: HabitMetricKey;
+    dateKey: string;
+  } | null>(null);
+
   const weeklyDates = useMemo(() => {
     return Array.from({ length: 7 }, (_, idx) => addDaysToDateString(habitsToday, -(6 - idx)));
   }, [habitsToday]);
@@ -3857,6 +4066,102 @@ function PtClientHabitsTab({
   };
   const avgSteps = average(weeklyRows.map((row) => row.log?.steps));
   const avgProtein = average(weeklyRows.map((row) => row.log?.protein_g));
+
+  const habitMetricConfig: Record<
+    HabitMetricKey,
+    {
+      label: string;
+      extract: (log: HabitLog) => number | null;
+      format: (value: number, weightUnit?: string | null) => string;
+    }
+  > = {
+    calories: {
+      label: "Calories",
+      extract: (log) => (typeof log.calories === "number" ? log.calories : null),
+      format: (value) => Math.round(value).toString(),
+    },
+    protein_g: {
+      label: "Protein",
+      extract: (log) => (typeof log.protein_g === "number" ? log.protein_g : null),
+      format: (value) => `${Math.round(value)} g`,
+    },
+    carbs_g: {
+      label: "Carbs",
+      extract: (log) => (typeof log.carbs_g === "number" ? log.carbs_g : null),
+      format: (value) => `${Math.round(value)} g`,
+    },
+    fats_g: {
+      label: "Fats",
+      extract: (log) => (typeof log.fats_g === "number" ? log.fats_g : null),
+      format: (value) => `${Math.round(value)} g`,
+    },
+    weight_value: {
+      label: "Weight",
+      extract: (log) => (typeof log.weight_value === "number" ? log.weight_value : null),
+      format: (value, weightUnit) => `${value.toFixed(1)} ${weightUnit ?? ""}`.trim(),
+    },
+    steps: {
+      label: "Steps",
+      extract: (log) => (typeof log.steps === "number" ? log.steps : null),
+      format: (value) => Math.round(value).toLocaleString(),
+    },
+    sleep_hours: {
+      label: "Sleep",
+      extract: (log) => (typeof log.sleep_hours === "number" ? log.sleep_hours : null),
+      format: (value) => `${value.toFixed(1)} hrs`,
+    },
+    energy: {
+      label: "Energy",
+      extract: (log) => (typeof log.energy === "number" ? log.energy : null),
+      format: (value) => value.toFixed(0),
+    },
+    hunger: {
+      label: "Hunger",
+      extract: (log) => (typeof log.hunger === "number" ? log.hunger : null),
+      format: (value) => value.toFixed(0),
+    },
+    stress: {
+      label: "Stress",
+      extract: (log) => (typeof log.stress === "number" ? log.stress : null),
+      format: (value) => value.toFixed(0),
+    },
+  };
+
+  const habitMetricTrend = useMemo(() => {
+    if (!selectedHabitMetric) return null;
+    const config = habitMetricConfig[selectedHabitMetric.metric];
+    const weightUnit =
+      selectedHabitMetric.metric === "weight_value"
+        ? weeklyRows.find((row) => row.log?.weight_unit)?.log?.weight_unit ?? null
+        : null;
+
+    const points = weeklyRows
+      .map((row) => ({
+        date: row.dateKey,
+        value: row.log ? config.extract(row.log) : null,
+      }))
+      .filter((point): point is { date: string; value: number } => typeof point.value === "number");
+
+    const selectedPoint = points.find((point) => point.date === selectedHabitMetric.dateKey) ?? null;
+    const latest = points.length > 0 ? points[points.length - 1].value : null;
+    const earliest = points.length > 0 ? points[0].value : null;
+    const averageValue =
+      points.length > 0 ? points.reduce((sum, point) => sum + point.value, 0) / points.length : null;
+    const delta = latest !== null && earliest !== null ? latest - earliest : null;
+    const coveragePct = Math.round((points.length / 7) * 100);
+
+    return {
+      label: config.label,
+      weightUnit,
+      points,
+      selectedPoint,
+      latest,
+      averageValue,
+      delta,
+      coveragePct,
+      format: config.format,
+    };
+  }, [habitMetricConfig, selectedHabitMetric, weeklyRows]);
 
   return (
     <div className="space-y-6">
@@ -3937,20 +4242,138 @@ function PtClientHabitsTab({
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{row.dateKey}</span>
                     </div>
-                    <span>{log?.calories ?? "--"}</span>
-                    <span>{typeof log?.protein_g === "number" ? `${log?.protein_g} g` : "--"}</span>
-                    <span>{typeof log?.carbs_g === "number" ? `${log?.carbs_g} g` : "--"}</span>
-                    <span>{typeof log?.fats_g === "number" ? `${log?.fats_g} g` : "--"}</span>
                     <span>
-                      {typeof log?.weight_value === "number"
-                        ? `${log?.weight_value} ${log?.weight_unit ?? ""}`
-                        : "--"}
+                      {typeof log?.calories === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "calories", dateKey: row.dateKey })}
+                        >
+                          {log.calories}
+                        </button>
+                      ) : (
+                        "--"
+                      )}
                     </span>
-                    <span>{typeof log?.steps === "number" ? log.steps.toLocaleString() : "--"}</span>
-                    <span>{typeof log?.sleep_hours === "number" ? `${log.sleep_hours} hrs` : "--"}</span>
-                    <span>{typeof log?.energy === "number" ? log.energy : "--"}</span>
-                    <span>{typeof log?.hunger === "number" ? log.hunger : "--"}</span>
-                    <span>{typeof log?.stress === "number" ? log.stress : "--"}</span>
+                    <span>
+                      {typeof log?.protein_g === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "protein_g", dateKey: row.dateKey })}
+                        >
+                          {log.protein_g} g
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.carbs_g === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "carbs_g", dateKey: row.dateKey })}
+                        >
+                          {log.carbs_g} g
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.fats_g === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "fats_g", dateKey: row.dateKey })}
+                        >
+                          {log.fats_g} g
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.weight_value === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() =>
+                            setSelectedHabitMetric({ metric: "weight_value", dateKey: row.dateKey })
+                          }
+                        >
+                          {log.weight_value} {log.weight_unit ?? ""}
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.steps === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "steps", dateKey: row.dateKey })}
+                        >
+                          {log.steps.toLocaleString()}
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.sleep_hours === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "sleep_hours", dateKey: row.dateKey })}
+                        >
+                          {log.sleep_hours} hrs
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.energy === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "energy", dateKey: row.dateKey })}
+                        >
+                          {log.energy}
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.hunger === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "hunger", dateKey: row.dateKey })}
+                        >
+                          {log.hunger}
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
+                    <span>
+                      {typeof log?.stress === "number" ? (
+                        <button
+                          type="button"
+                          className="font-medium hover:text-foreground/80"
+                          onClick={() => setSelectedHabitMetric({ metric: "stress", dateKey: row.dateKey })}
+                        >
+                          {log.stress}
+                        </button>
+                      ) : (
+                        "--"
+                      )}
+                    </span>
                   </div>
                 );
               })}
@@ -3958,6 +4381,84 @@ function PtClientHabitsTab({
           </>
         )}
       </DashboardCard>
+
+      <Dialog
+        open={selectedHabitMetric !== null}
+        onOpenChange={(open) => (!open ? setSelectedHabitMetric(null) : null)}
+      >
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>{habitMetricTrend ? `${habitMetricTrend.label} trend` : "Habit trend"}</DialogTitle>
+            <DialogDescription>
+              {selectedHabitMetric
+                ? `Clicked ${selectedHabitMetric.dateKey}. Showing last 7 days for this metric.`
+                : "Showing last 7 days for this metric."}
+            </DialogDescription>
+          </DialogHeader>
+          {habitMetricTrend ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Selected day</p>
+                  <p className="text-base font-semibold">
+                    {habitMetricTrend.selectedPoint
+                      ? habitMetricTrend.format(habitMetricTrend.selectedPoint.value, habitMetricTrend.weightUnit)
+                      : "No data"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Latest</p>
+                  <p className="text-base font-semibold">
+                    {habitMetricTrend.latest !== null
+                      ? habitMetricTrend.format(habitMetricTrend.latest, habitMetricTrend.weightUnit)
+                      : "No data"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">7-day average</p>
+                  <p className="text-base font-semibold">
+                    {habitMetricTrend.averageValue !== null
+                      ? habitMetricTrend.format(habitMetricTrend.averageValue, habitMetricTrend.weightUnit)
+                      : "No data"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Change (first to latest)</p>
+                  <p className="text-base font-semibold">
+                    {habitMetricTrend.delta !== null
+                      ? `${habitMetricTrend.delta > 0 ? "+" : ""}${habitMetricTrend.format(
+                          habitMetricTrend.delta,
+                          habitMetricTrend.weightUnit
+                        )}`
+                      : "No data"}
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">Coverage</p>
+                <p className="text-base font-semibold">{habitMetricTrend.coveragePct}% of days</p>
+              </div>
+              <div className="space-y-2 rounded-lg border border-border p-3">
+                <p className="text-xs font-semibold text-muted-foreground">Day-by-day</p>
+                {habitMetricTrend.points.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No entries in the last 7 days.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {habitMetricTrend.points.map((point) => (
+                      <div key={point.date} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{point.date}</span>
+                        <span className="font-medium">
+                          {habitMetricTrend.format(point.value, habitMetricTrend.weightUnit)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -3966,6 +4467,7 @@ function PtClientPlanTab({
   templatesQuery,
   programTemplatesQuery,
   activeProgram,
+  pausedProgram,
   programOverrides,
   upcomingQuery,
   selectedTemplateId,
@@ -3983,6 +4485,9 @@ function PtClientPlanTab({
   onProgramChange,
   onProgramDateChange,
   onApplyProgram,
+  onPauseProgram,
+  onResumeProgram,
+  onSwitchProgramMidCycle,
   onUnassignProgram,
   onOpenOverride,
   onEdit,
@@ -3993,6 +4498,7 @@ function PtClientPlanTab({
   templatesQuery: QueryResult<Array<{ id: string; name: string | null; workout_type_tag: string | null }>>;
   programTemplatesQuery: QueryResult<ProgramTemplateRow[]>;
   activeProgram: ClientProgramRow | null;
+  pausedProgram: ClientProgramRow | null;
   programOverrides: ProgramOverrideRow[];
   upcomingQuery: QueryResult<
     Array<{
@@ -4021,6 +4527,9 @@ function PtClientPlanTab({
   onProgramChange: (value: string) => void;
   onProgramDateChange: (value: string) => void;
   onApplyProgram: () => void;
+  onPauseProgram: () => void;
+  onResumeProgram: () => void;
+  onSwitchProgramMidCycle: () => void;
   onUnassignProgram: () => void;
   onOpenOverride: (date: string) => void;
   onEdit: (workout: {
@@ -4031,7 +4540,7 @@ function PtClientPlanTab({
   }) => void;
   onDelete: (id: string) => void;
   onEditLoads: (id: string) => void;
-  onStatusChange: (id: string, status: "planned" | "completed" | "skipped") => void;
+  onStatusChange: (id: string, status: "completed" | "skipped") => void;
 }) {
   const overrideByDate = useMemo(() => {
     const map = new Map<string, ProgramOverrideRow>();
@@ -4121,15 +4630,64 @@ function PtClientPlanTab({
                       <div className="mt-1">
                         Start date {activeProgram.start_date ?? "--"}
                       </div>
-                      <Button
-                        className="mt-3 w-full"
-                        variant="secondary"
-                        disabled={unassignStatus === "saving"}
-                        onClick={onUnassignProgram}
-                      >
-                        {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
-                      </Button>
+                      <div className="mt-3 grid gap-2">
+                        <Button
+                          className="w-full"
+                          variant="secondary"
+                          disabled={unassignStatus === "saving" || programStatus === "saving"}
+                          onClick={onPauseProgram}
+                        >
+                          {programStatus === "saving" ? "Updating..." : "Pause program"}
+                        </Button>
+                        <Button
+                          className="w-full"
+                          variant="ghost"
+                          disabled={unassignStatus === "saving" || programStatus === "saving"}
+                          onClick={onUnassignProgram}
+                        >
+                          {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
+                        </Button>
+                      </div>
                     </div>
+                  ) : pausedProgram ? (
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>Paused program</span>
+                        <StatusPill status="paused" />
+                      </div>
+                      <div className="mt-2 text-sm text-foreground">
+                        {pausedProgram.program_template?.name ?? "Program"}
+                      </div>
+                      <div className="mt-1">Start date {pausedProgram.start_date ?? "--"}</div>
+                      <div className="mt-3 grid gap-2">
+                        <Button
+                          className="w-full"
+                          variant="secondary"
+                          disabled={programStatus === "saving"}
+                          onClick={onResumeProgram}
+                        >
+                          {programStatus === "saving" ? "Updating..." : "Resume program"}
+                        </Button>
+                        <Button
+                          className="w-full"
+                          variant="ghost"
+                          disabled={unassignStatus === "saving" || programStatus === "saving"}
+                          onClick={onUnassignProgram}
+                        >
+                          {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {activeProgram && selectedProgramId && selectedProgramId !== activeProgram.program_template_id ? (
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      disabled={programStatus === "saving"}
+                      onClick={onSwitchProgramMidCycle}
+                    >
+                      {programStatus === "saving" ? "Switching..." : "Switch program from today"}
+                    </Button>
                   ) : null}
                 </>
               )}
@@ -4263,7 +4821,7 @@ function PtClientPlanTab({
                     </Button>
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="ghost"
                       onClick={() => onStatusChange(workout.id, "skipped")}
                     >
                       Skip

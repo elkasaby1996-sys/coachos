@@ -96,6 +96,12 @@ type WorkoutSetLogRow = {
   created_at: string | null;
 };
 
+type WorkoutSetLogHistoryRow = {
+  exercise_id: string | null;
+  weight: number | null;
+  reps: number | null;
+};
+
 const getErrorMessage = (error: unknown) => getSupabaseErrorMessage(error);
 
 const isUuid = (value: string | undefined | null) =>
@@ -105,6 +111,13 @@ const isUuid = (value: string | undefined | null) =>
         value
       )
   );
+
+const parseOptionalNumber = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 export function ClientWorkoutRunPage() {
   const navigate = useNavigate();
@@ -119,6 +132,7 @@ export function ClientWorkoutRunPage() {
   const [finishNotes, setFinishNotes] = useState("");
   const [finishStatus, setFinishStatus] = useState<"idle" | "saving" | "error">("idle");
   const [finishError, setFinishError] = useState<string | null>(null);
+  const [restTimerEnabled, setRestTimerEnabled] = useState(true);
   const [restAutoStart, setRestAutoStart] = useState(true);
 
   const clientQuery = useQuery({
@@ -322,6 +336,27 @@ export function ClientWorkoutRunPage() {
     },
   });
 
+  const historicalLogsQuery = useQuery({
+    queryKey: ["workout-set-logs-history", clientId, workoutSession?.id],
+    enabled: !!clientId,
+    queryFn: async () => {
+      let query = supabase
+        .from("workout_set_logs")
+        .select("exercise_id, weight, reps, workout_session:workout_sessions!inner(id, completed_at)")
+        .eq("workout_session.client_id", clientId ?? "")
+        .not("workout_session.completed_at", "is", null)
+        .eq("is_completed", true);
+
+      if (workoutSession?.id) {
+        query = query.neq("workout_session_id", workoutSession.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as WorkoutSetLogHistoryRow[];
+    },
+  });
+
   const [exercises, setExercises] = useState<ExerciseState[]>([]);
 
   const exerciseById = useMemo(() => {
@@ -426,6 +461,7 @@ export function ClientWorkoutRunPage() {
     setLogsQuery.error,
     previousSessionQuery.error,
     previousLogsQuery.error,
+    historicalLogsQuery.error,
   ].filter(Boolean);
 
   const handleSetChange = (
@@ -465,6 +501,61 @@ export function ClientWorkoutRunPage() {
     await queryClient.invalidateQueries({ queryKey: ["workout-session", workoutId] });
   };
 
+  const saveExerciseSets = async (exercise: ExerciseState, sessionId: string) => {
+    for (let idx = 0; idx < exercise.sets.length; idx += 1) {
+      const setItem = exercise.sets[idx];
+      const repsValue = parseOptionalNumber(setItem.reps);
+      const weightValue = parseOptionalNumber(setItem.weight);
+      const rpeValue = parseOptionalNumber(setItem.rpe);
+      const isCompleted = Boolean(setItem.is_completed);
+      const hasValues =
+        repsValue !== null ||
+        weightValue !== null ||
+        rpeValue !== null ||
+        isCompleted;
+
+      if (hasValues) {
+        const { error } = await supabase.from("workout_set_logs").upsert(
+          {
+            workout_session_id: sessionId,
+            exercise_id: exercise.exerciseId,
+            set_number: idx + 1,
+            reps: repsValue,
+            weight: weightValue,
+            rpe: rpeValue,
+            is_completed: isCompleted,
+          },
+          { onConflict: "workout_session_id,exercise_id,set_number" }
+        );
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("workout_set_logs")
+          .delete()
+          .eq("workout_session_id", sessionId)
+          .eq("exercise_id", exercise.exerciseId)
+          .eq("set_number", idx + 1);
+        if (error) throw error;
+      }
+    }
+  };
+
+  const saveAllExercises = async () => {
+    if (!workoutSession?.id) return;
+    try {
+      for (let exerciseIndex = 0; exerciseIndex < exercises.length; exerciseIndex += 1) {
+        setSaveIndex(exerciseIndex);
+        // eslint-disable-next-line no-await-in-loop
+        await saveExerciseSets(exercises[exerciseIndex], workoutSession.id);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["workout-set-logs", workoutSession.id],
+      });
+    } finally {
+      setSaveIndex(null);
+    }
+  };
+
   const handleSaveExercise = async (exerciseIndex: number) => {
     if (!workoutSession?.id) return;
     const exercise = exercises[exerciseIndex];
@@ -472,34 +563,7 @@ export function ClientWorkoutRunPage() {
     setSaveError(null);
 
     try {
-      for (let idx = 0; idx < exercise.sets.length; idx += 1) {
-        const setItem = exercise.sets[idx];
-        const reps = setItem.reps.trim();
-        const weight = setItem.weight.trim();
-        const rpe = setItem.rpe.trim();
-        const hasValues = Boolean(reps || weight || rpe || setItem.is_completed);
-
-        const repsValue = reps ? Number(reps) : null;
-        const weightValue = weight ? Number(weight) : null;
-        const rpeValue = rpe ? Number(rpe) : null;
-        const isCompleted = Boolean(setItem.is_completed);
-
-        if (hasValues) {
-          const { error } = await supabase.from("workout_set_logs").upsert(
-            {
-              workout_session_id: workoutSession.id,
-              exercise_id: exercise.exerciseId,
-              set_number: idx + 1,
-              reps: repsValue,
-              weight: weightValue,
-              rpe: rpeValue,
-              is_completed: isCompleted,
-            },
-            { onConflict: "workout_session_id,exercise_id,set_number" }
-          );
-          if (error) throw error;
-        }
-      }
+      await saveExerciseSets(exercise, workoutSession.id);
       await queryClient.invalidateQueries({
         queryKey: ["workout-set-logs", workoutSession.id],
       });
@@ -510,34 +574,15 @@ export function ClientWorkoutRunPage() {
     }
   };
 
-  const handleFinishWorkout = async () => {
-    if (!workoutId || !workoutSession?.id) return;
-    const completedAt = new Date().toISOString();
-    const { error: sessionError } = await supabase
-      .from("workout_sessions")
-      .update({ completed_at: completedAt })
-      .eq("id", workoutSession.id);
-    if (sessionError) {
-      setSaveError(getErrorMessage(sessionError));
-      return;
-    }
-    const { error: assignedError } = await supabase
-      .from("assigned_workouts")
-      .update({ status: "completed", completed_at: completedAt })
-      .eq("id", workoutId);
-    if (assignedError) {
-      setSaveError(getErrorMessage(assignedError));
-      return;
-    }
-    navigate(`/app/workout-summary/${workoutId}`);
-  };
-
   const handleConfirmFinish = async () => {
     if (!workoutId || !workoutSession?.id) return;
     setFinishStatus("saving");
     setFinishError(null);
+    setSaveError(null);
     const completedAt = new Date().toISOString();
     try {
+      await saveAllExercises();
+
       const { error: sessionError } = await supabase
         .from("workout_sessions")
         .update({ completed_at: completedAt, client_notes: finishNotes.trim() || null })
@@ -620,6 +665,61 @@ export function ClientWorkoutRunPage() {
         );
       }, 0),
     [exercises]
+  );
+  const historicalBestByExercise = useMemo(() => {
+    const map = new Map<string, { bestWeight: number; bestVolume: number }>();
+    (historicalLogsQuery.data ?? []).forEach((log) => {
+      if (!log.exercise_id) return;
+      const weight = typeof log.weight === "number" ? log.weight : 0;
+      const reps = typeof log.reps === "number" ? log.reps : 0;
+      const volume = weight > 0 && reps > 0 ? weight * reps : 0;
+      const current = map.get(log.exercise_id) ?? { bestWeight: 0, bestVolume: 0 };
+      map.set(log.exercise_id, {
+        bestWeight: Math.max(current.bestWeight, weight),
+        bestVolume: Math.max(current.bestVolume, volume),
+      });
+    });
+    return map;
+  }, [historicalLogsQuery.data]);
+  const prSummary = useMemo(() => {
+    return exercises
+      .map((exercise) => {
+        const bestWeightThisSession = exercise.sets.reduce((max, setItem) => {
+          const weight = parseOptionalNumber(setItem.weight);
+          if (weight === null) return max;
+          return Math.max(max, weight);
+        }, 0);
+        const bestVolumeThisSession = exercise.sets.reduce((max, setItem) => {
+          const weight = parseOptionalNumber(setItem.weight);
+          const reps = parseOptionalNumber(setItem.reps);
+          if (weight === null || reps === null) return max;
+          const volume = weight * reps;
+          return Math.max(max, volume);
+        }, 0);
+        const previousBest = historicalBestByExercise.get(exercise.exerciseId) ?? {
+          bestWeight: 0,
+          bestVolume: 0,
+        };
+        const newWeightPr =
+          bestWeightThisSession > 0 && bestWeightThisSession > previousBest.bestWeight;
+        const newVolumePr =
+          bestVolumeThisSession > 0 && bestVolumeThisSession > previousBest.bestVolume;
+        return {
+          exerciseId: exercise.exerciseId,
+          exerciseName: exercise.name,
+          newWeightPr,
+          newVolumePr,
+        };
+      })
+      .filter((item) => item.newWeightPr || item.newVolumePr);
+  }, [exercises, historicalBestByExercise]);
+  const totalPrCount = useMemo(
+    () =>
+      prSummary.reduce(
+        (sum, row) => sum + (row.newWeightPr ? 1 : 0) + (row.newVolumePr ? 1 : 0),
+        0
+      ),
+    [prSummary]
   );
   const navItems = useMemo<ExerciseNavItem[]>(
     () =>
@@ -813,8 +913,10 @@ export function ClientWorkoutRunPage() {
                   completedSets={completedSets}
                   totalSets={totalSets}
                   progressPct={progressPct}
+                  restTimerEnabled={restTimerEnabled}
                   autoStartEnabled={restAutoStart}
                   autoStartTrigger={completedSetCount}
+                  onToggleRestTimer={setRestTimerEnabled}
                   onToggleAutoStart={setRestAutoStart}
                 />
               </div>
@@ -828,7 +930,7 @@ export function ClientWorkoutRunPage() {
             <DialogTitle>Finish workout</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 text-sm text-muted-foreground">
-            <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-3">
+            <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-4">
               <div>
                 <p className="text-xs uppercase text-muted-foreground">Exercises</p>
                 <p className="text-lg font-semibold text-foreground">
@@ -844,9 +946,37 @@ export function ClientWorkoutRunPage() {
               <div>
                 <p className="text-xs uppercase text-muted-foreground">Volume</p>
                 <p className="text-lg font-semibold text-foreground">
-                  {totalVolume > 0 ? totalVolume.toFixed(0) : "—"}
+                  {totalVolume > 0 ? totalVolume.toFixed(0) : "--"}
                 </p>
               </div>
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">PRs</p>
+                <p className="text-lg font-semibold text-foreground">{totalPrCount}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Auto summary
+              </p>
+              {prSummary.length > 0 ? (
+                <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs">
+                  {prSummary.map((row) => {
+                    const labels = [
+                      row.newWeightPr ? "weight PR" : null,
+                      row.newVolumePr ? "volume PR" : null,
+                    ].filter(Boolean);
+                    return (
+                      <p key={row.exerciseId} className="text-foreground">
+                        {row.exerciseName}: {labels.join(" + ")}
+                      </p>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-xs">
+                  No PRs this session.
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">

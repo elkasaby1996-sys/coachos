@@ -99,11 +99,12 @@ function ExerciseSetTable({
   const unitLabel = exercise.weightUnit ?? "kg";
   return (
     <div className="overflow-hidden rounded-lg border border-border">
-      <div className="grid grid-cols-[60px_1fr_120px_100px_80px] gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
+      <div className="grid grid-cols-[60px_1fr_120px_90px_90px_80px] gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
         <span>Set</span>
         <span>Previous</span>
         <span>Weight</span>
         <span>Reps</span>
+        <span>RPE</span>
         <span>Done</span>
       </div>
       {exercise.sets.map((setItem, setIndex) => {
@@ -111,12 +112,12 @@ function ExerciseSetTable({
         const previous = previousBySet.get(setIndex + 1);
         const previousLabel =
           previous && typeof previous.weight === "number" && typeof previous.reps === "number"
-            ? `${previous.weight}${unitLabel ? ` ${unitLabel}` : ""} × ${previous.reps}`
-            : "—";
+            ? `${previous.weight}${unitLabel ? ` ${unitLabel}` : ""} x ${previous.reps}`
+            : "--";
         return (
           <div
             key={`${exercise.exerciseId}-${setIndex}`}
-            className={`grid grid-cols-[60px_1fr_120px_100px_80px] items-center gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0 ${
+            className={`grid grid-cols-[60px_1fr_120px_90px_90px_80px] items-center gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0 ${
               isDone ? "opacity-60" : ""
             }`}
           >
@@ -146,6 +147,20 @@ function ExerciseSetTable({
               value={setItem.reps}
               onChange={(event) =>
                 onSetChange(exerciseIndex, setIndex, "reps", event.target.value)
+              }
+              disabled={!canEdit}
+            />
+            <input
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              type="number"
+              inputMode="decimal"
+              min={1}
+              max={10}
+              step="0.5"
+              placeholder="--"
+              value={setItem.rpe}
+              onChange={(event) =>
+                onSetChange(exerciseIndex, setIndex, "rpe", event.target.value)
               }
               disabled={!canEdit}
             />
