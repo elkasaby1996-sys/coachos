@@ -93,6 +93,14 @@ type TemplateExerciseForm = {
   notes: string;
 };
 
+type BulkTemplateExerciseForm = {
+  sets: string;
+  reps: string;
+  rest_seconds: string;
+  tempo: string;
+  rpe: string;
+};
+
 const emptyExerciseForm: TemplateExerciseForm = {
   sets: "",
   reps: "",
@@ -102,6 +110,14 @@ const emptyExerciseForm: TemplateExerciseForm = {
   rpe: "",
   video_url: "",
   notes: "",
+};
+
+const emptyBulkExerciseForm: BulkTemplateExerciseForm = {
+  sets: "",
+  reps: "",
+  rest_seconds: "",
+  tempo: "",
+  rpe: "",
 };
 
 const isUuid = (value: string | undefined | null) =>
@@ -131,6 +147,8 @@ type SortableExerciseRowProps = {
   groupPosition?: "single" | "top" | "middle" | "bottom";
   compactWithPrevious?: boolean;
   isSupersetDropTarget?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (rowId: string) => void;
   onEdit: (row: TemplateExerciseRow) => void;
   onDelete: (row: TemplateExerciseRow) => void;
 };
@@ -140,6 +158,8 @@ function SortableExerciseRow({
   groupPosition = "single",
   compactWithPrevious = false,
   isSupersetDropTarget = false,
+  isSelected = false,
+  onToggleSelect,
   onEdit,
   onDelete,
 }: SortableExerciseRowProps) {
@@ -172,6 +192,13 @@ function SortableExerciseRow({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect?.(row.id)}
+            className="mt-1 h-4 w-4 rounded border-border bg-background"
+            aria-label={`Select ${row.exercise?.name ?? "exercise"}`}
+          />
           <button
             type="button"
             aria-label="Drag to reorder"
@@ -224,6 +251,9 @@ export function PtWorkoutTemplateBuilderPage() {
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<TemplateExerciseRow | null>(null);
   const [form, setForm] = useState<TemplateExerciseForm>(emptyExerciseForm);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkExerciseIds, setBulkExerciseIds] = useState<string[]>([]);
+  const [bulkForm, setBulkForm] = useState<BulkTemplateExerciseForm>(emptyBulkExerciseForm);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<"idle" | "saving">("idle");
   const [exerciseRows, setExerciseRows] = useState<TemplateExerciseRow[]>([]);
@@ -290,6 +320,10 @@ export function PtWorkoutTemplateBuilderPage() {
       .map((item) => item.row);
     setExerciseRows(normalized);
   }, [templateExercisesQuery.data]);
+
+  useEffect(() => {
+    setBulkExerciseIds((prev) => prev.filter((id) => exerciseRows.some((row) => row.id === id)));
+  }, [exerciseRows]);
 
   const exercises = exercisesQuery.data ?? [];
   const filteredExercises = useMemo(() => {
@@ -376,6 +410,56 @@ export function PtWorkoutTemplateBuilderPage() {
     setEditOpen(false);
     setSelectedRow(null);
     await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
+  };
+
+  const handleBulkEditSave = async () => {
+    if (bulkExerciseIds.length === 0) return;
+    const hasAnyField =
+      bulkForm.sets.trim() ||
+      bulkForm.reps.trim() ||
+      bulkForm.rest_seconds.trim() ||
+      bulkForm.tempo.trim() ||
+      bulkForm.rpe.trim();
+    if (!hasAnyField) {
+      setActionError("Enter at least one value to apply.");
+      return;
+    }
+
+    setActionStatus("saving");
+    setActionError(null);
+    try {
+      const results = await Promise.all(
+        bulkExerciseIds.map((id) => {
+          const row = exerciseRows.find((item) => item.id === id) ?? null;
+          const payload: Record<string, string | number | null> = {};
+          if (bulkForm.sets.trim()) payload.sets = Number(bulkForm.sets);
+          if (bulkForm.reps.trim()) payload.reps = bulkForm.reps.trim();
+          if (bulkForm.tempo.trim()) payload.tempo = bulkForm.tempo.trim();
+          if (bulkForm.rpe.trim()) payload.rpe = Number(bulkForm.rpe);
+          if (bulkForm.rest_seconds.trim()) {
+            payload.rest_seconds = row?.superset_group ? 0 : Number(bulkForm.rest_seconds);
+          }
+          return supabase.from("workout_template_exercises").update(payload).eq("id", id);
+        })
+      );
+      const firstError = results.find((result) => result.error)?.error;
+      if (firstError) {
+        const details = getErrorDetails(firstError);
+        setActionError(`${details.code}: ${details.message}`);
+        setActionStatus("idle");
+        return;
+      }
+
+      setActionStatus("idle");
+      setBulkEditOpen(false);
+      setBulkForm(emptyBulkExerciseForm);
+      setBulkExerciseIds([]);
+      await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
+    } catch (error) {
+      const details = getErrorDetails(error);
+      setActionError(`${details.code}: ${details.message}`);
+      setActionStatus("idle");
+    }
   };
 
   const handleDelete = async () => {
@@ -632,9 +716,38 @@ export function PtWorkoutTemplateBuilderPage() {
               another to create a superset pair.
             </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>
-            Add exercise
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>
+              Add exercise
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={exerciseRows.length === 0}
+              onClick={() => setBulkExerciseIds(exerciseRows.map((row) => row.id))}
+            >
+              Select all
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={bulkExerciseIds.length === 0}
+              onClick={() => setBulkExerciseIds([])}
+            >
+              Clear
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={bulkExerciseIds.length === 0}
+              onClick={() => {
+                setActionError(null);
+                setBulkEditOpen(true);
+              }}
+            >
+              Bulk edit ({bulkExerciseIds.length})
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {actionError ? (
@@ -704,6 +817,14 @@ export function PtWorkoutTemplateBuilderPage() {
                       groupPosition={groupPosition}
                       compactWithPrevious={sameAsPrev}
                       isSupersetDropTarget={isSupersetDropTarget}
+                      isSelected={bulkExerciseIds.includes(row.id)}
+                      onToggleSelect={(rowId) =>
+                        setBulkExerciseIds((prev) =>
+                          prev.includes(rowId)
+                            ? prev.filter((id) => id !== rowId)
+                            : [...prev, rowId]
+                        )
+                      }
                       onEdit={openEdit}
                       onDelete={(target) => {
                         setSelectedRow(target);
@@ -723,6 +844,83 @@ export function PtWorkoutTemplateBuilderPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={bulkEditOpen}
+        onOpenChange={(open) => {
+          setBulkEditOpen(open);
+          if (!open) {
+            setBulkForm(emptyBulkExerciseForm);
+            setActionError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Bulk edit exercises</DialogTitle>
+            <DialogDescription>
+              Apply values to {bulkExerciseIds.length} selected exercise
+              {bulkExerciseIds.length === 1 ? "" : "s"}. Leave a field blank to keep current values.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Sets</label>
+              <Input
+                type="number"
+                value={bulkForm.sets}
+                onChange={(event) => setBulkForm((prev) => ({ ...prev, sets: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Reps</label>
+              <Input
+                value={bulkForm.reps}
+                onChange={(event) => setBulkForm((prev) => ({ ...prev, reps: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Rest (sec)</label>
+              <Input
+                type="number"
+                value={bulkForm.rest_seconds}
+                onChange={(event) =>
+                  setBulkForm((prev) => ({ ...prev, rest_seconds: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Tempo</label>
+              <Input
+                value={bulkForm.tempo}
+                onChange={(event) => setBulkForm((prev) => ({ ...prev, tempo: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">RPE</label>
+              <Input
+                type="number"
+                step="0.1"
+                value={bulkForm.rpe}
+                onChange={(event) => setBulkForm((prev) => ({ ...prev, rpe: event.target.value }))}
+              />
+            </div>
+          </div>
+          {actionError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              {actionError}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setBulkEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={actionStatus === "saving"} onClick={handleBulkEditSave}>
+              {actionStatus === "saving" ? "Applying..." : "Apply to selected"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={addOpen}
