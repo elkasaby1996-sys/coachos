@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
@@ -29,6 +29,7 @@ type AssignedWorkoutExerciseRow = {
   id: string;
   assigned_workout_id: string | null;
   exercise_id: string | null;
+  superset_group?: string | null;
   sort_order?: number | null;
   set_order?: number | null;
   set_number?: number | null;
@@ -53,6 +54,7 @@ type TemplateWorkoutExerciseRow = {
   id: string;
   workout_template_id?: string | null;
   sort_order?: number | null;
+  superset_group?: string | null;
   sets: number | null;
   reps: number | null;
   rpe: number | null;
@@ -127,7 +129,7 @@ export function ClientWorkoutRunPage() {
   const queryClient = useQueryClient();
   const [saveIndex, setSaveIndex] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
   const [finishNotes, setFinishNotes] = useState("");
   const [finishStatus, setFinishStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -204,7 +206,7 @@ export function ClientWorkoutRunPage() {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
         .select(
-          "id, assigned_workout_id, exercise_id, sort_order, sets, reps, rpe, tempo, notes, rest_seconds, video_url, default_weight_unit, default_weight_value, weight_unit, weight_value, actual_weight_value, actual_weight_unit, is_completed"
+          "id, assigned_workout_id, exercise_id, sort_order, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, video_url, default_weight_unit, default_weight_value, weight_unit, weight_value, actual_weight_value, actual_weight_unit, is_completed"
         )
         .eq("assigned_workout_id", workoutId ?? "")
         .order("sort_order", { ascending: true });
@@ -248,7 +250,7 @@ export function ClientWorkoutRunPage() {
         supabase
           .from("workout_template_exercises")
           .select(
-            "id, workout_template_id, sort_order, sets, reps, rpe, tempo, notes, rest_seconds, video_url, exercise:exercises(id, name, category, equipment, video_url)"
+            "id, workout_template_id, sort_order, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, video_url, exercise:exercises(id, name, category, equipment, video_url)"
           )
           .eq("workout_template_id", templateId);
       const ordered = await baseQuery().order("sort_order", { ascending: true });
@@ -426,6 +428,7 @@ export function ClientWorkoutRunPage() {
         id: row.id,
         exerciseId,
         name,
+        supersetGroup: row.superset_group ?? null,
         notes: row.notes ?? null,
         videoUrl: row.video_url ?? exercise?.video_url ?? null,
         previousLabel,
@@ -441,15 +444,38 @@ export function ClientWorkoutRunPage() {
     exerciseById,
   ]);
 
+  const exerciseBlocks = useMemo(() => {
+    type ExerciseBlock = {
+      blockId: string;
+      supersetGroup: string | null;
+      items: Array<{ exercise: ExerciseState; exerciseIndex: number }>;
+    };
+    const blocks: ExerciseBlock[] = [];
+    exercises.forEach((exercise, exerciseIndex) => {
+      const group = exercise.supersetGroup?.trim() || null;
+      const last = blocks[blocks.length - 1];
+      if (group && last && last.supersetGroup === group) {
+        last.items.push({ exercise, exerciseIndex });
+        return;
+      }
+      blocks.push({
+        blockId: group ? `superset-${group}-${exerciseIndex}` : `exercise-${exercise.exerciseId}`,
+        supersetGroup: group,
+        items: [{ exercise, exerciseIndex }],
+      });
+    });
+    return blocks;
+  }, [exercises]);
+
   useEffect(() => {
-    if (exercises.length === 0) return;
-    const exists = activeExerciseId
-      ? exercises.some((exercise) => exercise.exerciseId === activeExerciseId)
+    if (exerciseBlocks.length === 0) return;
+    const exists = activeBlockId
+      ? exerciseBlocks.some((block) => block.blockId === activeBlockId)
       : false;
     if (!exists) {
-      setActiveExerciseId(exercises[0].exerciseId);
+      setActiveBlockId(exerciseBlocks[0].blockId);
     }
-  }, [activeExerciseId, exercises]);
+  }, [activeBlockId, exerciseBlocks]);
 
   const errors = [
     clientQuery.error,
@@ -574,6 +600,25 @@ export function ClientWorkoutRunPage() {
     }
   };
 
+  const handleSaveBlock = async (exerciseIndexes: number[]) => {
+    if (!workoutSession?.id || exerciseIndexes.length === 0) return;
+    setSaveIndex(-1);
+    setSaveError(null);
+    try {
+      for (const exerciseIndex of exerciseIndexes) {
+        // eslint-disable-next-line no-await-in-loop
+        await saveExerciseSets(exercises[exerciseIndex], workoutSession.id);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["workout-set-logs", workoutSession.id],
+      });
+    } catch (error) {
+      setSaveError(getErrorMessage(error));
+    } finally {
+      setSaveIndex(null);
+    }
+  };
+
   const handleConfirmFinish = async () => {
     if (!workoutId || !workoutSession?.id) return;
     setFinishStatus("saving");
@@ -618,12 +663,20 @@ export function ClientWorkoutRunPage() {
     assignedWorkoutQuery.data?.workout_template?.name ?? "Workout";
   const sessionNotes =
     assignedWorkoutQuery.data?.workout_template?.description ?? null;
-  const activeExerciseIndex = useMemo(
-    () => exercises.findIndex((exercise) => exercise.exerciseId === activeExerciseId),
-    [activeExerciseId, exercises]
+  const activeBlock = useMemo(
+    () => exerciseBlocks.find((block) => block.blockId === activeBlockId) ?? null,
+    [activeBlockId, exerciseBlocks]
   );
-  const activeExercise =
-    activeExerciseIndex >= 0 ? exercises[activeExerciseIndex] : null;
+  const activeSingle = activeBlock && activeBlock.items.length === 1 ? activeBlock.items[0] : null;
+  const activeBlockIsSaving = useMemo(
+    () =>
+      Boolean(
+        activeBlock &&
+          (saveIndex === -1 ||
+            activeBlock.items.some((item) => saveIndex === item.exerciseIndex))
+      ),
+    [activeBlock, saveIndex]
+  );
   const totalSets = useMemo(
     () => exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0),
     [exercises]
@@ -723,13 +776,24 @@ export function ClientWorkoutRunPage() {
   );
   const navItems = useMemo<ExerciseNavItem[]>(
     () =>
-      exercises.map((exercise) => ({
-        exerciseId: exercise.exerciseId,
-        name: exercise.name,
-        setsCompleted: exercise.sets.filter((setItem) => setItem.is_completed).length,
-        totalSets: exercise.sets.length,
-      })),
-    [exercises]
+      exerciseBlocks.map((block) => {
+        const isSuperset = Boolean(block.supersetGroup) && block.items.length > 1;
+        const setsCompleted = block.items.reduce(
+          (sum, item) => sum + item.exercise.sets.filter((setItem) => setItem.is_completed).length,
+          0
+        );
+        const totalSets = block.items.reduce((sum, item) => sum + item.exercise.sets.length, 0);
+        return {
+          exerciseId: block.blockId,
+          name: isSuperset
+            ? block.items.map((item) => item.exercise.name).join(" + ")
+            : block.items[0]?.exercise.name ?? "Exercise",
+          supersetGroup: block.supersetGroup ?? null,
+          setsCompleted,
+          totalSets,
+        };
+      }),
+    [exerciseBlocks]
   );
   const previousMap = useMemo(() => {
     const map = new Map<string, PreviousSetMap>();
@@ -850,8 +914,8 @@ export function ClientWorkoutRunPage() {
               <div className="xl:col-span-3">
                 <ExerciseNav
                   exercises={navItems}
-                  activeExerciseId={activeExerciseId}
-                  onSelect={setActiveExerciseId}
+                  activeExerciseId={activeBlockId}
+                  onSelect={setActiveBlockId}
                 />
               </div>
               <div className="xl:col-span-6 space-y-4">
@@ -872,31 +936,161 @@ export function ClientWorkoutRunPage() {
                   </Card>
                 ) : null}
                 <div className="xl:hidden">
-                  <label className="text-xs font-semibold text-muted-foreground">Exercise</label>
+                  <label className="text-xs font-semibold text-muted-foreground">Exercise / Superset</label>
                   <select
                     className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                    value={activeExerciseId ?? ""}
-                    onChange={(event) => setActiveExerciseId(event.target.value)}
+                    value={activeBlockId ?? ""}
+                    onChange={(event) => setActiveBlockId(event.target.value)}
                   >
-                    {exercises.map((exercise, index) => (
-                      <option key={`${exercise.exerciseId}-${index}`} value={exercise.exerciseId}>
-                        {exercise.name}
+                    {exerciseBlocks.map((block) => (
+                      <option key={block.blockId} value={block.blockId}>
+                        {block.supersetGroup && block.items.length > 1
+                          ? `Superset ${block.supersetGroup}: ${block.items
+                              .map((item) => item.exercise.name)
+                              .join(" + ")}`
+                          : block.items[0]?.exercise.name ?? "Exercise"}
                       </option>
                     ))}
                   </select>
                 </div>
-                {activeExercise ? (
+                {activeSingle ? (
                   <ActiveExercisePanel
-                    exercise={activeExercise}
-                    exerciseIndex={activeExerciseIndex}
+                    exercise={activeSingle.exercise}
+                    exerciseIndex={activeSingle.exerciseIndex}
                     canEdit={Boolean(workoutSession)}
-                    isSaving={saveIndex === activeExerciseIndex}
-                    onSave={() => handleSaveExercise(activeExerciseIndex)}
+                    isSaving={saveIndex === activeSingle.exerciseIndex}
+                    onSave={() => handleSaveExercise(activeSingle.exerciseIndex)}
                     onSetChange={handleSetChange}
                     previousBySet={
-                      previousMap.get(activeExercise.exerciseId) ?? new Map()
+                      previousMap.get(activeSingle.exercise.exerciseId) ?? new Map()
                     }
                   />
+                ) : activeBlock && activeBlock.items.length > 1 ? (
+                  <Card className="rounded-xl border-emerald-500/40 bg-emerald-500/5">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle>
+                        Superset {activeBlock.supersetGroup}:{" "}
+                        {activeBlock.items.map((item) => item.exercise.name).join(" + ")}
+                      </CardTitle>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={!workoutSession || activeBlockIsSaving}
+                        onClick={() =>
+                          handleSaveBlock(activeBlock.items.map((item) => item.exerciseIndex))
+                        }
+                      >
+                        {activeBlockIsSaving ? "Saving..." : "Save superset"}
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {activeBlock.items.map((item) => (
+                        <div
+                          key={`${activeBlock.blockId}-${item.exercise.exerciseId}`}
+                          className="space-y-2 rounded-lg border border-border/70 bg-background/50 p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold">{item.exercise.name}</p>
+                            {item.exercise.videoUrl ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => window.open(item.exercise.videoUrl ?? "", "_blank")}
+                              >
+                                Watch demo
+                              </Button>
+                            ) : null}
+                          </div>
+                          <div className="space-y-2">
+                            {item.exercise.sets.map((setItem, setIndex) => {
+                              const previous = previousMap
+                                .get(item.exercise.exerciseId)
+                                ?.get(setIndex + 1);
+                              const previousLabel =
+                                previous && typeof previous.weight === "number" && typeof previous.reps === "number"
+                                  ? `${previous.weight}${item.exercise.weightUnit ? ` ${item.exercise.weightUnit}` : ""} x ${previous.reps}`
+                                  : "--";
+                              return (
+                                <div
+                                  key={`${item.exercise.exerciseId}-${setIndex}`}
+                                  className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[70px_1fr_110px_90px_90px_80px]"
+                                >
+                                  <div className="text-xs font-semibold text-muted-foreground">
+                                    Set {setIndex + 1}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{previousLabel}</div>
+                                  <input
+                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                    type="number"
+                                    inputMode="decimal"
+                                    placeholder="Weight"
+                                    value={setItem.weight}
+                                    onChange={(event) =>
+                                      handleSetChange(
+                                        item.exerciseIndex,
+                                        setIndex,
+                                        "weight",
+                                        event.target.value
+                                      )
+                                    }
+                                    disabled={!workoutSession}
+                                  />
+                                  <input
+                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                    type="number"
+                                    inputMode="numeric"
+                                    placeholder="Reps"
+                                    value={setItem.reps}
+                                    onChange={(event) =>
+                                      handleSetChange(
+                                        item.exerciseIndex,
+                                        setIndex,
+                                        "reps",
+                                        event.target.value
+                                      )
+                                    }
+                                    disabled={!workoutSession}
+                                  />
+                                  <input
+                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                    type="number"
+                                    inputMode="decimal"
+                                    placeholder="RPE"
+                                    value={setItem.rpe}
+                                    onChange={(event) =>
+                                      handleSetChange(
+                                        item.exerciseIndex,
+                                        setIndex,
+                                        "rpe",
+                                        event.target.value
+                                      )
+                                    }
+                                    disabled={!workoutSession}
+                                  />
+                                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <input
+                                      type="checkbox"
+                                      checked={setItem.is_completed}
+                                      onChange={(event) =>
+                                        handleSetChange(
+                                          item.exerciseIndex,
+                                          setIndex,
+                                          "is_completed",
+                                          event.target.checked
+                                        )
+                                      }
+                                      disabled={!workoutSession}
+                                    />
+                                    Done
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
                 ) : null}
           {workoutSession ? (
             <div className="flex flex-wrap gap-2">
@@ -928,6 +1122,9 @@ export function ClientWorkoutRunPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Finish workout</DialogTitle>
+            <DialogDescription>
+              Review your session summary and add optional notes before submitting.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 text-sm text-muted-foreground">
             <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-4">

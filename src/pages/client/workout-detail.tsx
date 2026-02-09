@@ -29,6 +29,7 @@ type TemplateExerciseRow = {
   set_order?: number | null;
   sets: number | null;
   reps: number | null;
+  superset_group?: string | null;
   is_completed?: boolean | null;
   rest_seconds?: number | null;
   tempo?: string | null;
@@ -112,7 +113,7 @@ export function ClientWorkoutDetailPage() {
         supabase
           .from("assigned_workout_exercises")
           .select(
-            "id, assigned_workout_id, exercise_id, sets, reps, rpe, tempo, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+            "id, assigned_workout_id, exercise_id, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, exercise:exercises(id, name, muscle_group, equipment, video_url)"
           )
           .eq("assigned_workout_id", assignedWorkoutId ?? "");
       const ordered = await baseQuery().order("created_at", { ascending: true });
@@ -136,7 +137,7 @@ export function ClientWorkoutDetailPage() {
         supabase
           .from("workout_template_exercises")
           .select(
-            "id, sort_order, sets, reps, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+            "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
           )
           .eq("workout_template_id", templateId);
       const ordered = await baseQuery().order("sort_order", { ascending: true });
@@ -299,6 +300,29 @@ export function ClientWorkoutDetailPage() {
     return map;
   }, [templateExercises]);
 
+  const exerciseGroups = useMemo(() => {
+    type ExerciseGroup = {
+      key: string;
+      supersetGroup: string | null;
+      rows: TemplateExerciseRow[];
+    };
+    const groups: ExerciseGroup[] = [];
+    templateExercises.forEach((row, index) => {
+      const group = row.superset_group?.trim() || null;
+      const last = groups[groups.length - 1];
+      if (group && last && last.supersetGroup === group) {
+        last.rows.push(row);
+        return;
+      }
+      groups.push({
+        key: group ? `superset-${group}-${index}` : `single-${row.id}`,
+        supersetGroup: group,
+        rows: [row],
+      });
+    });
+    return groups;
+  }, [templateExercises]);
+
   const handleSetChange = (
     exerciseIndex: number,
     setIndex: number,
@@ -392,6 +416,21 @@ export function ClientWorkoutDetailPage() {
     setSaveIndex(null);
   };
 
+  const handleSaveSuperset = async (exerciseIndexes: number[]) => {
+    if (!workoutSession?.id || exerciseIndexes.length === 0) return;
+    setSaveIndex(-1);
+    for (const exerciseIndex of exerciseIndexes) {
+      for (let setIndex = 0; setIndex < exercises[exerciseIndex].sets.length; setIndex += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await saveSet(exerciseIndex, setIndex);
+      }
+    }
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-set-logs", workoutSession.id],
+    });
+    setSaveIndex(null);
+  };
+
   const handleFinish = async () => {
     if (!assignedWorkoutId) return;
     await supabase
@@ -412,6 +451,38 @@ export function ClientWorkoutDetailPage() {
       return acc;
     }, {});
   }, [exerciseNameById, workoutSetLogsQuery.data]);
+
+  const exerciseLogGroups = useMemo(() => {
+    type GroupMember = {
+      exercise: ExerciseState;
+      exerciseIndex: number;
+    };
+    type ExerciseLogGroup = {
+      key: string;
+      supersetGroup: string | null;
+      members: GroupMember[];
+    };
+
+    const groups: ExerciseLogGroup[] = [];
+    exercises.forEach((exercise, exerciseIndex) => {
+      const supersetGroup = templateExercises[exerciseIndex]?.superset_group?.trim() || null;
+      const last = groups[groups.length - 1];
+      if (
+        supersetGroup &&
+        last &&
+        last.supersetGroup === supersetGroup
+      ) {
+        last.members.push({ exercise, exerciseIndex });
+        return;
+      }
+      groups.push({
+        key: supersetGroup ? `log-superset-${supersetGroup}-${exerciseIndex}` : `log-single-${exerciseIndex}`,
+        supersetGroup,
+        members: [{ exercise, exerciseIndex }],
+      });
+    });
+    return groups;
+  }, [exercises, templateExercises]);
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">
@@ -515,7 +586,24 @@ export function ClientWorkoutDetailPage() {
                   Coach hasn't added exercises yet.
                 </div>
               ) : (
-                templateExercises.map((exercise) => {
+                exerciseGroups.map((group) => {
+                  const groupIsSuperset = Boolean(group.supersetGroup) && group.rows.length > 1;
+                  return (
+                    <div
+                      key={group.key}
+                      className={`rounded-lg border p-3 ${
+                        groupIsSuperset
+                          ? "border-emerald-500/40 bg-emerald-500/5"
+                          : "border-border bg-muted/30"
+                      }`}
+                    >
+                      {groupIsSuperset ? (
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                          Superset {group.supersetGroup}
+                        </p>
+                      ) : null}
+                      <div className="space-y-2">
+                        {group.rows.map((exercise) => {
                   const name = exercise.exercise?.name ?? "Exercise";
                   const sets = exercise.sets ? `${exercise.sets} sets` : "";
                   const reps = exercise.reps ? `${exercise.reps} reps` : "";
@@ -529,6 +617,7 @@ export function ClientWorkoutDetailPage() {
                     typeof lastLog?.reps === "number" ? `Last reps ${lastLog.reps}` : null;
                   const details = [
                     repLine,
+                    exercise.superset_group ? `Superset ${exercise.superset_group} (no rest)` : null,
                     lastWeight ?? "No sets logged yet",
                     lastReps,
                     exercise.rest_seconds ? `Rest ${exercise.rest_seconds}s` : null,
@@ -539,10 +628,7 @@ export function ClientWorkoutDetailPage() {
                     exercise.video_url || exercise.exercise?.video_url || null;
 
                   return (
-                    <div
-                      key={exercise.id}
-                      className="rounded-lg border border-border bg-muted/30 p-3"
-                    >
+                    <div key={exercise.id} className="rounded-lg border border-border/60 bg-background/30 p-3">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold">{name}</p>
@@ -574,76 +660,194 @@ export function ClientWorkoutDetailPage() {
                       ) : null}
                     </div>
                   );
+                })}
+                      </div>
+                    </div>
+                  );
                 })
               )}
             </CardContent>
           </Card>
 
-          {exercises.map((exercise, exerciseIndex) => (
-            <Card key={exercise.name}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">{exercise.name}</CardTitle>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={saveIndex === exerciseIndex}
-                  onClick={() => handleSaveExercise(exerciseIndex)}
-                >
-                  {saveIndex === exerciseIndex ? "Saving..." : "Save sets"}
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {exercise.sets.map((setItem, setIndex) => (
-                  <div
-                    key={`${exercise.name}-${setIndex}`}
-                    className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[120px_1fr_1fr_1fr]"
+          {exerciseLogGroups.map((group) => {
+            const isSuperset = Boolean(group.supersetGroup) && group.members.length > 1;
+            if (isSuperset) {
+              const memberIndexes = group.members.map((member) => member.exerciseIndex);
+              const maxSets = group.members.reduce(
+                (max, member) => Math.max(max, member.exercise.sets.length),
+                0
+              );
+              const groupIsSaving =
+                saveIndex === -1 || group.members.some((member) => saveIndex === member.exerciseIndex);
+              return (
+                <Card key={group.key}>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-base">
+                      Superset {group.supersetGroup}:{" "}
+                      {group.members.map((member) => member.exercise.name).join(" + ")}
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={groupIsSaving}
+                      onClick={() => handleSaveSuperset(memberIndexes)}
+                    >
+                      {groupIsSaving ? "Saving..." : "Save superset"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {Array.from({ length: maxSets }).map((_, setIndex) => (
+                      <div
+                        key={`${group.key}-set-${setIndex}`}
+                        className="space-y-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3"
+                      >
+                        <div className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                          Set {setIndex + 1}
+                        </div>
+                        <div className={`grid gap-2 ${group.members.length > 1 ? "md:grid-cols-2" : ""}`}>
+                          {group.members.map((member) => {
+                            const setItem = member.exercise.sets[setIndex];
+                            if (!setItem) {
+                              return (
+                                <div
+                                  key={`${member.exercise.name}-empty-${setIndex}`}
+                                  className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground"
+                                >
+                                  {member.exercise.name}: no set configured.
+                                </div>
+                              );
+                            }
+                            return (
+                              <div
+                                key={`${member.exercise.name}-${setIndex}`}
+                                className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[120px_1fr_1fr_1fr]"
+                              >
+                                <div className="text-xs font-semibold text-muted-foreground">
+                                  {member.exercise.name}
+                                </div>
+                                <input
+                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  type="number"
+                                  inputMode="numeric"
+                                  placeholder="Reps"
+                                  value={setItem.reps}
+                                  onChange={(event) =>
+                                    handleSetChange(
+                                      member.exerciseIndex,
+                                      setIndex,
+                                      "reps",
+                                      event.target.value
+                                    )
+                                  }
+                                  onBlur={() => saveSet(member.exerciseIndex, setIndex)}
+                                />
+                                <input
+                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  type="number"
+                                  inputMode="decimal"
+                                  placeholder="Weight"
+                                  value={setItem.weight}
+                                  onChange={(event) =>
+                                    handleSetChange(
+                                      member.exerciseIndex,
+                                      setIndex,
+                                      "weight",
+                                      event.target.value
+                                    )
+                                  }
+                                  onBlur={() => saveSet(member.exerciseIndex, setIndex)}
+                                />
+                                <input
+                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  type="number"
+                                  inputMode="decimal"
+                                  placeholder="RPE"
+                                  value={setItem.rpe}
+                                  onChange={(event) =>
+                                    handleSetChange(
+                                      member.exerciseIndex,
+                                      setIndex,
+                                      "rpe",
+                                      event.target.value
+                                    )
+                                  }
+                                  onBlur={() => saveSet(member.exerciseIndex, setIndex)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            const member = group.members[0];
+            const exercise = member.exercise;
+            const exerciseIndex = member.exerciseIndex;
+            return (
+              <Card key={group.key}>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-base">{exercise.name}</CardTitle>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={saveIndex === exerciseIndex}
+                    onClick={() => handleSaveExercise(exerciseIndex)}
                   >
-                    <div className="text-xs font-semibold text-muted-foreground">
-                      Set {setIndex + 1}
+                    {saveIndex === exerciseIndex ? "Saving..." : "Save sets"}
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {exercise.sets.map((setItem, setIndex) => (
+                    <div
+                      key={`${exercise.name}-${setIndex}`}
+                      className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[120px_1fr_1fr_1fr]"
+                    >
+                      <div className="text-xs font-semibold text-muted-foreground">
+                        Set {setIndex + 1}
+                      </div>
+                      <input
+                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="Reps"
+                        value={setItem.reps}
+                        onChange={(event) =>
+                          handleSetChange(exerciseIndex, setIndex, "reps", event.target.value)
+                        }
+                        onBlur={() => saveSet(exerciseIndex, setIndex)}
+                      />
+                      <input
+                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="Weight"
+                        value={setItem.weight}
+                        onChange={(event) =>
+                          handleSetChange(exerciseIndex, setIndex, "weight", event.target.value)
+                        }
+                        onBlur={() => saveSet(exerciseIndex, setIndex)}
+                      />
+                      <input
+                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="RPE"
+                        value={setItem.rpe}
+                        onChange={(event) =>
+                          handleSetChange(exerciseIndex, setIndex, "rpe", event.target.value)
+                        }
+                        onBlur={() => saveSet(exerciseIndex, setIndex)}
+                      />
                     </div>
-                    <input
-                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="Reps"
-                      value={setItem.reps}
-                      onChange={(event) =>
-                        handleSetChange(exerciseIndex, setIndex, "reps", event.target.value)
-                      }
-                      onBlur={() => saveSet(exerciseIndex, setIndex)}
-                    />
-                    <input
-                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="Weight"
-                      value={setItem.weight}
-                      onChange={(event) =>
-                        handleSetChange(
-                          exerciseIndex,
-                          setIndex,
-                          "weight",
-                          event.target.value
-                        )
-                      }
-                      onBlur={() => saveSet(exerciseIndex, setIndex)}
-                    />
-                    <input
-                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="RPE"
-                      value={setItem.rpe}
-                      onChange={(event) =>
-                        handleSetChange(exerciseIndex, setIndex, "rpe", event.target.value)
-                      }
-                      onBlur={() => saveSet(exerciseIndex, setIndex)}
-                    />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ))}
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })}
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleFinish}>Finish workout</Button>
             <Button variant="secondary" onClick={() => navigate("/app/home")}>

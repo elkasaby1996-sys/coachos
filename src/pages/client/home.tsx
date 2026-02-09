@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -11,7 +10,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
-import { computeStreak, getLatestLogDate } from "../../lib/habits";
+import { computeStreak } from "../../lib/habits";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -29,21 +28,6 @@ const formatDateKey = (date: Date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const getFriendlyErrorMessage = () => "Unable to load data right now. Please try again.";
-
-const getErrorDetails = (error: unknown) => {
-  if (!error) return { code: null, message: "Something went wrong." };
-  if (error instanceof Error) {
-    const err = error as Error & { code?: string | null };
-    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
-  }
-  if (typeof error === "object") {
-    const err = error as { code?: string | null; message?: string | null };
-    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
-  }
-  return { code: null, message: "Something went wrong." };
 };
 
 const readChecklist = (dateKey: string): ChecklistState => {
@@ -98,7 +82,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-primary/80 shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
+        <span className="h-3 w-3 rounded-full border-2 border-primary/85 bg-transparent shadow-[0_0_12px_rgba(56,189,248,0.45)]" />
         <CardTitle>{title}</CardTitle>
       </div>
       {subtitle ? <span className="text-xs text-muted-foreground">{subtitle}</span> : null}
@@ -135,10 +119,8 @@ function SummaryStat({
 
 export function ClientHomePage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { session } = useAuth();
   const today = useMemo(() => new Date(), []);
-  const isDev = import.meta.env.DEV;
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const weekStart = useMemo(() => {
     const date = new Date(today);
@@ -153,8 +135,6 @@ export function ClientHomePage() {
 
   const [checklist, setChecklist] = useState<ChecklistState>(() => readChecklist(todayKey));
   const [dayStatus, setDayStatus] = useState<DayStatus | null>(() => readDayStatus(todayKey));
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setChecklist(readChecklist(todayKey));
@@ -164,19 +144,6 @@ export function ClientHomePage() {
   useEffect(() => {
     writeChecklist(todayKey, checklist);
   }, [todayKey, checklist]);
-
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timeout = window.setTimeout(() => setToastMessage(null), 2400);
-    return () => window.clearTimeout(timeout);
-  }, [toastMessage]);
-
-  useEffect(() => {
-    const state = location.state as { toast?: string } | null;
-    if (!state?.toast) return;
-    setToastMessage(state.toast);
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [location.pathname, location.state, navigate]);
 
   const clientQuery = useQuery({
     queryKey: ["client", session?.user?.id],
@@ -204,11 +171,6 @@ export function ClientHomePage() {
     () => addDaysToDateString(todayStr, -29),
     [todayStr]
   );
-  const habitsWeekStart = useMemo(
-    () => addDaysToDateString(todayStr, -6),
-    [todayStr]
-  );
-
   const baselineSubmittedQuery = useQuery({
     queryKey: ["client-baseline-submitted-latest", clientId],
     enabled: !!clientId,
@@ -290,9 +252,6 @@ export function ClientHomePage() {
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
       const weeklyAssignments = data ?? [];
-      if (isDev) {
-        console.log("[WEEKLY_ASSIGNMENTS_ROW0]", weeklyAssignments?.[0]);
-      }
       return weeklyAssignments;
     },
   });
@@ -381,25 +340,6 @@ export function ClientHomePage() {
     habitLogDates,
     today,
   ]);
-  const lastLoggedDate = useMemo(
-    () => getLatestLogDate(habitLogDates),
-    [habitLogDates]
-  );
-  const stepsAdherence = useMemo(() => {
-    const weekLogs = (habitLogsQuery.data ?? []).filter(
-      (row) => row.log_date >= habitsWeekStart && row.log_date <= todayStr
-    );
-    const stepValues = weekLogs.filter(
-      (row) => typeof row.steps === "number"
-    );
-    if (stepValues.length === 0) {
-      return { percent: null };
-    }
-    const checked = stepValues.length;
-    const percent = Math.round((checked / 7) * 100);
-    return { percent };
-  }, [habitLogsQuery.data, habitsWeekStart, todayStr]);
-
   const workoutsCompletedThisWeek = workoutsWeek.length;
   const summaryTrainingStatus = isRestDay
     ? "Rest day"
@@ -433,9 +373,6 @@ export function ClientHomePage() {
       ? `${targets.protein_g}g protein target`
       : "Ask coach for targets";
   const summaryHabitHint = `${Object.values(checklist).filter(Boolean).length} of ${checklistKeys.length} complete`;
-  const summaryMomentumValue = `${workoutsCompletedThisWeek} workouts`;
-  const summaryMomentumHint =
-    consistencyStreak > 0 ? `${consistencyStreak} day streak` : "Start a streak";
 
   const defaultPlan = useMemo(
     () => ["30-45 min strength OR 20 min conditioning", "10 min mobility"],
@@ -461,12 +398,6 @@ export function ClientHomePage() {
     ? `Coach reviewed your plan ${formatRelativeTime(latestCoachActivity.created_at)}`
     : "Coach hasn’t reviewed your plan yet.";
 
-  const coachUpdatedText = useMemo(() => {
-    if (!latestCoachActivity?.created_at) {
-      return "Coach hasn’t reviewed your plan yet.";
-    }
-    return `Coach reviewed your plan ${formatRelativeTime(latestCoachActivity.created_at)}.`;
-  }, [latestCoachActivity]);
 
   const profileCompletion = useMemo(() => {
     if (!clientQuery.data) return null;
@@ -512,18 +443,6 @@ export function ClientHomePage() {
     return { completed, total: items.length };
   }, [clientQuery.data]);
 
-  const errors = [
-    clientQuery.error,
-    todayWorkoutQuery.error,
-    coachActivityQuery.error,
-    targetsQuery.error,
-    workoutsWeekQuery.error,
-    weeklyPlanQuery.error,
-    baselineSubmittedQuery.error,
-    habitLogsQuery.error,
-    actionError ? new Error(actionError) : null,
-  ].filter(Boolean);
-
   const weekRows = useMemo(() => {
     const rows = Array.from({ length: 7 }).map((_, idx) => {
       const date = new Date(today);
@@ -557,7 +476,6 @@ export function ClientHomePage() {
 
   const handleStartDefaultSession = async () => {
     if (!clientId) return;
-    setActionError(null);
     const { data, error } = await supabase
       .from("assigned_workouts")
       .insert({
@@ -569,7 +487,6 @@ export function ClientHomePage() {
       .select("id")
       .maybeSingle();
     if (error || !data?.id) {
-      setActionError("Unable to start a session right now.");
       return;
     }
     navigate(`/app/workout-run/${data.id}`);
@@ -597,6 +514,23 @@ export function ClientHomePage() {
           {coachBadgeLabel}
         </Badge>
       </section>
+
+      {!baselineSubmittedQuery.isLoading && !baselineSubmittedQuery.data ? (
+        <Card className={`border-dashed ${cardChrome}`}>
+          <CardHeader>
+            <CardTitle>Complete your baseline</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              This helps your coach personalize your plan.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Three quick steps: metrics, performance markers, and photos.
+            </p>
+            <Button onClick={() => navigate("/app/baseline")}>Start baseline</Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryStat
@@ -631,13 +565,6 @@ export function ClientHomePage() {
           statusVariant={checklistProgress === 100 ? "success" : "secondary"}
         />
         <SummaryStat
-          label="Momentum"
-          value={summaryMomentumValue}
-          hint={summaryMomentumHint}
-          status={workoutsCompletedThisWeek > 0 ? "moving" : "start"}
-          statusVariant={workoutsCompletedThisWeek > 0 ? "success" : "muted"}
-        />
-        <SummaryStat
           label="Streak"
           value={`${consistencyStreak} days`}
           hint="Days logged in a row"
@@ -646,51 +573,141 @@ export function ClientHomePage() {
         />
       </section>
 
-      {!baselineSubmittedQuery.isLoading && !baselineSubmittedQuery.data ? (
-        <Card className={`border-dashed ${cardChrome}`}>
-          <CardHeader>
-            <CardTitle>Complete your baseline</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              This helps your coach personalize your plan.
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Three quick steps: metrics, performance markers, and photos.
-            </p>
-            <Button onClick={() => navigate("/app/baseline")}>Start baseline</Button>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {toastMessage ? (
-        <Alert className="border-emerald-200">
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{toastMessage}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {errors.length > 0 ? (
-        <Alert className="border-danger/30">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {getFriendlyErrorMessage()}
-            {isDev ? (
-              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                {errors.map((error, index) => {
-                  const details = getErrorDetails(error);
-                  return (
-                    <div key={`${index}-${details.message}`}>
-                      {details.code ? `${details.code}: ` : ""}
-                      {details.message}
+      <Card className={`${cardChrome}`}>
+        <CardHeader className="space-y-2">
+          <SectionHeader title="Calendar" subtitle="Next 7 days" />
+          <p className="text-sm text-muted-foreground">
+            Training and recovery mapped out in calendar view.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {weeklyPlanQuery.isLoading ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+              {Array.from({ length: 7 }).map((_, index) => (
+                <Skeleton key={index} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : (
+            <>
+              {(() => {
+                const weeklyWorkouts = weekRows.filter(
+                  (row) => row.workout && row.workout.day_type !== "rest"
+                );
+                const weeklyCompleted = weeklyWorkouts.filter(
+                  (row) => row.workout?.status === "completed"
+                ).length;
+                const weeklySkipped = weeklyWorkouts.filter(
+                  (row) => row.workout?.status === "skipped"
+                ).length;
+                const weeklyPlanned = weeklyWorkouts.filter((row) => {
+                  const status = row.workout?.status;
+                  return status === "planned" || status === "pending" || !status;
+                }).length;
+                const weeklyRest = weekRows.filter(
+                  (row) => row.workout?.day_type === "rest" || !row.workout
+                ).length;
+                return (
+                  <>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+                        <div className="text-muted-foreground">Completed</div>
+                        <div className="text-sm font-semibold text-foreground">{weeklyCompleted}</div>
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+                        <div className="text-muted-foreground">Skipped</div>
+                        <div className="text-sm font-semibold text-foreground">{weeklySkipped}</div>
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+                        <div className="text-muted-foreground">Planned</div>
+                        <div className="text-sm font-semibold text-foreground">{weeklyPlanned}</div>
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+                        <div className="text-muted-foreground">Rest</div>
+                        <div className="text-sm font-semibold text-foreground">{weeklyRest}</div>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : null}
-          </AlertDescription>
-        </Alert>
-      ) : null}
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+                      {weekRows.map((row) => {
+                        const workout = row.workout;
+                        const isRestDay = workout?.day_type === "rest";
+                        const status = isRestDay
+                          ? "rest day"
+                          : workout?.status === "pending"
+                          ? "planned"
+                          : workout?.status ?? (workout ? "planned" : "rest day");
+                        const title = isRestDay
+                          ? "Rest day"
+                          : workout?.workout_template?.name ??
+                            (workout as { workout_template_name?: string })?.workout_template_name ??
+                            "Workout";
+                        const isTodayCard = row.key === todayKey;
+                        const statusVariant =
+                          status === "completed"
+                            ? "success"
+                            : status === "skipped"
+                            ? "danger"
+                            : status === "rest day"
+                            ? "warning"
+                            : "muted";
+
+                        return (
+                          <button
+                            key={row.key}
+                            type="button"
+                            onClick={() => {
+                              if (workout?.id && !isRestDay) navigate(`/app/workouts/${workout.id}`);
+                            }}
+                            disabled={!workout?.id || isRestDay}
+                            className={
+                              isTodayCard
+                                ? "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border shadow-[0_0_22px_rgba(56,189,248,0.2)]"
+                                : "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border"
+                            }
+                          >
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span className="uppercase tracking-[0.2em]">
+                                  {row.date.toLocaleDateString("en-US", {
+                                    weekday: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="line-clamp-2 text-base font-semibold text-foreground">
+                                  {title}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {isRestDay
+                                    ? "Planned rest day"
+                                    : workout?.workout_template?.workout_type_tag ?? "Workout"}
+                                </p>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant={statusVariant} className="uppercase">
+                                  {status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+              {weeklyPlan.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  No sessions scheduled yet. Focus on steps, hydration, and sleep.
+                </div>
+              ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {profileCompletion && profileCompletion.completed < profileCompletion.total ? (
         <Card className={`border-dashed ${cardChrome}`}>
@@ -901,57 +918,6 @@ export function ClientHomePage() {
             </CardContent>
           </Card>
 
-          <Card className={`${cardChrome}`}>
-            <CardHeader>
-              <SectionHeader title="Progress Snapshot" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {clientQuery.isLoading || workoutsWeekQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : clientQuery.data ? (
-                <div className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Day streak
-                      </p>
-                      {consistencyStreak > 0 ? (
-                        <p className="text-2xl font-semibold">{consistencyStreak}</p>
-                      ) : (
-                        <p className="text-sm font-semibold">Start your streak today.</p>
-                      )}
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Workouts completed this week
-                      </p>
-                      <p className="text-sm font-semibold">
-                        {workoutsCompletedThisWeek}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Steps adherence (7d)</p>
-                      <p className="text-sm font-semibold">
-                        {stepsAdherence.percent === null ? "--" : `${stepsAdherence.percent}%`}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {lastLoggedDate
-                      ? `Last habit log: ${lastLoggedDate}. Momentum is built by small wins.`
-                      : "Momentum is built by small wins."}
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                  Your progress starts today. Complete your checklist to build momentum.
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         <div className="space-y-6">
@@ -1004,106 +970,8 @@ export function ClientHomePage() {
             </CardContent>
           </Card>
 
-          <Card className={`${cardChrome}`}>
-            <CardHeader className="space-y-2">
-              <SectionHeader title="This Week" subtitle="Next 7 days" />
-              <p className="text-sm text-muted-foreground">
-                Training and recovery mapped out for you.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {weeklyPlanQuery.isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 7 }).map((_, index) => (
-                    <Skeleton key={index} className="h-10 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {weekRows.map((row) => {
-                    const isToday = row.key === todayKey;
-                    const workout = row.workout;
-                    const isRest = workout?.day_type === "rest";
-                    const label = workout?.id
-                      ? isRest
-                        ? "Rest day"
-                        : workout?.workout_template?.name ??
-                          (workout as { workout_template_name?: string })?.workout_template_name ??
-                          "Planned session"
-                      : "Rest day";
-                    return (
-                      <button
-                        key={row.key}
-                        type="button"
-                        className={
-                          isToday
-                            ? "flex w-full items-center justify-between rounded-lg border border-border bg-muted/50 px-3 py-2 text-left transition hover:border-border/80 hover:bg-muted/60"
-                            : "flex w-full items-center justify-between rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-left transition hover:border-border hover:bg-muted/40"
-                        }
-                        onClick={() => {
-                          if (workout?.id && !isRest) navigate(`/app/workouts/${workout.id}`);
-                        }}
-                        disabled={!workout?.id || isRest}
-                      >
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            {row.date.toLocaleDateString("en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </p>
-                          <p className="text-sm font-semibold">{label}</p>
-                        </div>
-                        {workout?.id ? (
-                          isRest ? (
-                            <Badge variant="warning">Rest day</Badge>
-                          ) : (
-                            <Badge
-                              variant={
-                                workout.status === "completed"
-                                  ? "success"
-                                  : workout.status === "skipped"
-                                  ? "danger"
-                                  : "muted"
-                              }
-                            >
-                              {workout.status ?? "planned"}
-                            </Badge>
-                          )
-                        ) : (
-                          <Badge variant="warning">Rest day</Badge>
-                        )}
-                      </button>
-                    );
-                  })}
-                  {weeklyPlan.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      No sessions scheduled yet. Focus on steps, hydration, and sleep.
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ClientReminders clientId={clientId} timezone={clientTimezone} />
 
-          <Card className={`${cardChrome}`}>
-            <CardHeader>
-              <SectionHeader title="Reminders" />
-            </CardHeader>
-            <CardContent>
-              <ClientReminders clientId={clientId} timezone={clientTimezone} />
-            </CardContent>
-          </Card>
-
-          <Card className={`${cardChrome}`}>
-            <CardHeader>
-              <SectionHeader title="Coach Awareness" />
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {coachUpdatedText}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

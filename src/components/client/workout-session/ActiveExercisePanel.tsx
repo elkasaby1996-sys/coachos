@@ -14,6 +14,7 @@ export type ActiveExercise = {
   id: string;
   exerciseId: string;
   name: string;
+  supersetGroup?: string | null;
   notes: string | null;
   videoUrl: string | null;
   previousLabel: string | null;
@@ -45,10 +46,16 @@ export function ActiveExercisePanel({
   ) => void;
   previousBySet: PreviousSetMap;
 }) {
+  const panelTitle = exercise.supersetGroup
+    ? `Superset ${exercise.supersetGroup} - ${exercise.name}`
+    : exercise.name;
+  const panelSubtitle = exercise.supersetGroup
+    ? `Superset ${exercise.supersetGroup}. ${exercise.notes ?? "No coach notes for this exercise."}`
+    : exercise.notes ?? "No coach notes for this exercise.";
   return (
     <DashboardCard
-      title={exercise.name}
-      subtitle={exercise.notes ?? "No coach notes for this exercise."}
+      title={panelTitle}
+      subtitle={panelSubtitle}
       action={
         exercise.videoUrl ? (
           <Button

@@ -22,6 +22,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const ROLE_LOOKUP_TIMEOUT_CODE = "ROLE_LOOKUP_TIMEOUT";
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -99,24 +100,29 @@ async function resolveRole(userId: string): Promise<{
   }
 
   let clientMember: { data: unknown; error: unknown } | null = null;
+  let clientLookupUnstable = false;
   const clientQuery = `clients.select("id, workspace_id").eq("user_id", "${userId}")`;
 
-  try {
-    clientMember = await withTimeout(
-      supabase
-        .from("clients")
-        .select("id, workspace_id")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      5000,
-      "Client lookup timed out (5s)."
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("timed out")) {
-      console.warn("Client lookup timed out", { userId, query: clientQuery });
-      clientMember = { data: null, error: null };
-    } else {
-      console.warn("Client lookup failed", { userId, query: clientQuery, error });
+  for (const timeoutMs of [5000, 10000]) {
+    try {
+      clientMember = await withTimeout(
+        supabase
+          .from("clients")
+          .select("id, workspace_id")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        timeoutMs,
+        `Client lookup timed out (${Math.round(timeoutMs / 1000)}s).`
+      );
+      clientLookupUnstable = false;
+      break;
+    } catch (error) {
+      clientLookupUnstable = true;
+      if (error instanceof Error && error.message.includes("timed out")) {
+        console.warn("Client lookup timed out", { userId, query: clientQuery, timeoutMs });
+      } else {
+        console.warn("Client lookup failed", { userId, query: clientQuery, error, timeoutMs });
+      }
       clientMember = { data: null, error: null };
     }
   }
@@ -135,6 +141,16 @@ async function resolveRole(userId: string): Promise<{
       workspaceMember: workspaceMember.data,
       clientMember: clientMember.data,
     };
+  }
+
+  if (clientLookupUnstable) {
+    console.warn("Client lookup remained unstable; keeping role unresolved this pass", {
+      userId,
+      query: clientQuery,
+    });
+    const timeoutError = new Error("Role resolution failed due to lookup timeout.");
+    timeoutError.name = ROLE_LOOKUP_TIMEOUT_CODE;
+    throw timeoutError;
   }
 
   console.warn("Client record not found or not accessible", { userId, query: clientQuery });
@@ -166,12 +182,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let skippedDemotion = false;
       try {
         const result = await resolveRole(userId);
-        console.log("ROLE ROUTE", {
-          userId,
-          pathname,
-          wmData: result.workspaceMember,
-          clientData: result.clientMember,
-        });
         setRole((prev) => {
           if (result.role === "none" && prev !== "none" && !options?.force) {
             skippedDemotion = true;
@@ -184,6 +194,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           resolved = true;
         }
       } catch (error) {
+        if (error instanceof Error && error.name === ROLE_LOOKUP_TIMEOUT_CODE) {
+          console.warn("Role resolution timed out; forcing re-login.");
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch {
+            // Local auth state is still cleared below to force login recovery.
+          }
+          setAuthError(new Error("Session check timed out. Please log in again."));
+          setSession(null);
+          setRole("none");
+          lastResolveKeyRef.current = "";
+          return;
+        }
         console.error("Failed to resolve role", error);
         setRole((prev) => (prev === "none" ? prev : prev));
       } finally {

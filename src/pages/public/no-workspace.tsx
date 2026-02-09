@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -12,7 +12,6 @@ import {
   DialogTrigger,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
-import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 
 export function NoWorkspacePage() {
@@ -22,49 +21,6 @@ export function NoWorkspacePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const didRouteRef = useRef(false);
-
-  useEffect(() => {
-    const loadRoutingInfo = async () => {
-      if (didRouteRef.current) return;
-      const userId = session?.user?.id ?? null;
-
-      if (userId) {
-        const wmResult = await supabase
-          .from("workspace_members")
-          .select("workspace_id, role")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (wmResult.data?.role && wmResult.data.role.startsWith("pt")) {
-          if (location.pathname !== "/pt/dashboard") {
-            navigate("/pt/dashboard", { replace: true });
-          }
-          didRouteRef.current = true;
-          return;
-        }
-
-        const clientResult = await supabase
-          .from("clients")
-          .select("id, workspace_id")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (clientResult.data) {
-          if (location.pathname !== "/app/home") {
-            navigate("/app/home", { replace: true });
-          }
-          didRouteRef.current = true;
-          return;
-        }
-      }
-    };
-
-    if (!loading && session?.user?.id) {
-      loadRoutingInfo();
-    }
-
-  }, [location.pathname, navigate, loading, session?.user?.id]);
 
   useEffect(() => {
     if (loading) return;
@@ -72,7 +28,6 @@ export function NoWorkspacePage() {
       if (location.pathname !== "/login") {
         navigate("/login", { replace: true });
       }
-      didRouteRef.current = true;
     }
   }, [loading, location.pathname, navigate, session]);
 

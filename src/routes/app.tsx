@@ -32,6 +32,7 @@ import { ClientMessagesPage } from "../pages/client/messages";
 import { ClientProfilePage } from "../pages/client/profile";
 import { ClientHabitsPage } from "../pages/client/habits";
 import { ClientBaselinePage } from "../pages/client/baseline";
+import { ClientProgressPage } from "../pages/client/progress";
 
 // ✅ assumes your AuthProvider exports this hook
 import { useAuth } from "../lib/auth";
@@ -202,6 +203,7 @@ export function App() {
         <Route path="messages" element={<ClientMessagesPage />} />
         <Route path="profile" element={<ClientProfilePage />} />
         <Route path="habits" element={<ClientHabitsPage />} />
+        <Route path="progress" element={<ClientProgressPage />} />
         <Route path="baseline" element={<ClientBaselinePage />} />
       </Route>
 

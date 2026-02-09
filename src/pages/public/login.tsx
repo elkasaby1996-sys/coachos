@@ -39,55 +39,9 @@ export function LoginPage() {
           return;
         }
 
-        try {
-          const workspaceMember = await supabase
-            .from("workspace_members")
-            .select("workspace_id, role")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-
-          if (workspaceMember.error) {
-            setErrorMsg(workspaceMember.error.message);
-            return;
-          }
-
-          const isPt =
-            workspaceMember.data?.role && workspaceMember.data.role.startsWith("pt");
-
-          if (workspaceMember.data && isPt) {
-            if (location.pathname !== "/pt/dashboard") {
-              navigate("/pt/dashboard", { replace: true });
-            }
-            return;
-          }
-
-          const clientMember = await supabase
-            .from("clients")
-            .select("id, workspace_id, status")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-
-          if (clientMember.error) {
-            setErrorMsg(clientMember.error.message);
-            return;
-          }
-
-          if (clientMember.data) {
-            if (location.pathname !== "/app/home") {
-              navigate("/app/home", { replace: true });
-            }
-            return;
-          }
-
-          if (location.pathname !== "/no-workspace") {
-            navigate("/no-workspace", { replace: true });
-          }
-          return;
-        } catch (err) {
-          console.error("ROLE ROUTE ERROR", err);
-          setErrorMsg(err instanceof Error ? err.message : "Failed to route after login.");
-          return;
-        }
+        // Global auth provider resolves role and redirects from "/".
+        navigate("/", { replace: true });
+        return;
       }
 
       setErrorMsg("Sign-in succeeded, but no session was created.");
@@ -121,6 +75,7 @@ export function LoginPage() {
                 id="email"
                 placeholder="you@coachos.com"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
@@ -132,8 +87,9 @@ export function LoginPage() {
               </label>
               <Input
                 id="password"
-                placeholder="••••••••"
+                placeholder="********"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
@@ -144,11 +100,7 @@ export function LoginPage() {
                 {errorMsg}
               </div>
             ) : null}
-            <Button
-              className="w-full"
-              type="submit"
-              disabled={loading}
-            >
+            <Button className="w-full" type="submit" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>
             <div className="text-center text-sm text-muted-foreground">

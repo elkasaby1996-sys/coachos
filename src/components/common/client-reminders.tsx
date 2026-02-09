@@ -30,6 +30,9 @@ type ReminderContext = {
   hasTodayLog: boolean;
   baselineExists: boolean;
   checkinDue: boolean;
+  checkinUpcomingSoon: boolean;
+  todayWorkoutId: string | null;
+  todayWorkoutNeedsAction: boolean;
 };
 
 type HabitLogRow = {
@@ -48,15 +51,16 @@ type DismissedReminderRow = {
   key: string;
 };
 
+type TodayWorkoutReminderRow = {
+  id: string;
+  status: string | null;
+  day_type: string | null;
+};
+
 type ClientRemindersProps = {
   clientId: string | null;
   timezone?: string | null;
 };
-
-const getAlertStyles = (severity: ReminderSeverity) =>
-  severity === "warn"
-    ? "border-warning/40 bg-warning/10"
-    : "border-border bg-muted/20";
 
 const getDismissError = (error: unknown) => {
   if (!error) return null;
@@ -156,87 +160,64 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     },
   });
 
+  const todayWorkoutReminderQuery = useQuery({
+    queryKey: ["client-reminder-workout-today", clientId, todayStr],
+    enabled: !!clientId && !!todayStr,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workouts")
+        .select("id, status, day_type")
+        .eq("client_id", clientId ?? "")
+        .eq("scheduled_date", todayStr)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as TodayWorkoutReminderRow | null;
+    },
+  });
+
   const reminderContext = useMemo(() => {
     const logs = habitLogsQuery.data ?? [];
     const hasTodayLog = logs.some((row) => row.log_date === todayStr);
     const baselineExists = Boolean(baselineExistsQuery.data);
     const weekday = getWeekdayFromDateString(todayStr);
     const isFridayOrSaturday = weekday === 5 || weekday === 6;
+    const isWednesdayOrThursday = weekday === 3 || weekday === 4;
     const checkinRow = checkinAlertQuery.data?.row ?? null;
     const checkinError = Boolean(checkinAlertQuery.data?.error);
     const checkinDue =
       !checkinError && isFridayOrSaturday && (!checkinRow || !checkinRow.submitted_at);
+    const checkinUpcomingSoon =
+      !checkinError &&
+      isWednesdayOrThursday &&
+      !checkinDue &&
+      (!checkinRow || !checkinRow.submitted_at);
+    const todayWorkout = todayWorkoutReminderQuery.data;
+    const todayWorkoutNeedsAction = Boolean(
+      todayWorkout &&
+        todayWorkout.day_type !== "rest" &&
+        todayWorkout.status !== "completed" &&
+        todayWorkout.status !== "skipped"
+    );
+    const todayWorkoutId = todayWorkoutNeedsAction ? todayWorkout?.id ?? null : null;
 
-    return { hasTodayLog, baselineExists, checkinDue };
+    return {
+      hasTodayLog,
+      baselineExists,
+      checkinDue,
+      checkinUpcomingSoon,
+      todayWorkoutId,
+      todayWorkoutNeedsAction,
+    };
   }, [
     habitLogsQuery.data,
     baselineExistsQuery.data,
     checkinAlertQuery.data,
+    todayWorkoutReminderQuery.data,
     todayStr,
     weekEndingSaturday,
   ]);
-
-  const alertItems = useMemo(() => {
-    const items: ReminderItem[] = [];
-    const result = checkinAlertQuery.data;
-    if (!result || result.error) return items;
-
-    const row = result.row;
-    const weekday = getWeekdayFromDateString(todayStr);
-    const isTodayFridayOrSaturday = weekday === 5 || weekday === 6;
-
-    let state: "due_today" | "in_progress" | "submitted_waiting" | "reviewed" | "no_alerts" = "no_alerts";
-
-    if (!row) {
-      state = isTodayFridayOrSaturday ? "due_today" : "no_alerts";
-    } else if (!row.submitted_at) {
-      state = isTodayFridayOrSaturday ? "in_progress" : "no_alerts";
-    } else if (!row.pt_feedback || row.pt_feedback.trim().length === 0) {
-      state = "submitted_waiting";
-    } else {
-      state = "reviewed";
-    }
-
-    if (state === "due_today") {
-      items.push({
-        key: "checkin_due_today",
-        title: "Weekly check-in due today",
-        description: "Complete your check-in to stay on track.",
-        ctaLabel: "Complete check-in",
-        ctaTo: "/app/checkin",
-        severity: "warn",
-      });
-    } else if (state === "in_progress") {
-      items.push({
-        key: "checkin_in_progress",
-        title: "Check-in started - finish it",
-        description: "Continue where you left off.",
-        ctaLabel: "Continue",
-        ctaTo: "/app/checkin",
-        severity: "info",
-      });
-    } else if (state === "submitted_waiting") {
-      items.push({
-        key: "checkin_submitted_waiting_review",
-        title: "Check-in submitted - waiting on coach review",
-        description: "Your coach will follow up with feedback soon.",
-        ctaLabel: "",
-        ctaTo: "",
-        severity: "info",
-      });
-    } else if (state === "reviewed") {
-      items.push({
-        key: "checkin_reviewed",
-        title: "Coach reviewed your check-in",
-        description: "Check your feedback to keep progressing.",
-        ctaLabel: "",
-        ctaTo: "",
-        severity: "info",
-      });
-    }
-
-    return items;
-  }, [checkinAlertQuery.data, todayStr, weekEndingSaturday]);
 
   const reminderItems = useMemo(() => {
     if (
@@ -274,11 +255,31 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
         severity: "warn",
         isRelevant: (context) => context.checkinDue,
       },
+      {
+        key: "checkin_upcoming_2d",
+        title: "Weekly check-in coming up",
+        description: "Your check-in is due in about 2 days. Prep your notes now.",
+        ctaLabel: "Open check-in",
+        ctaTo: "/app/checkin",
+        severity: "info",
+        isRelevant: (context) => context.checkinUpcomingSoon,
+      },
     ];
 
-    return definitions
+    const base = definitions
       .filter((definition) => definition.isRelevant(reminderContext))
       .map(({ isRelevant: _unused, ...item }) => item);
+    if (reminderContext.todayWorkoutNeedsAction && reminderContext.todayWorkoutId) {
+      base.unshift({
+        key: "workout_today_assigned",
+        title: "Today's workout is assigned",
+        description: "You have a workout assigned for today. Start it when ready.",
+        ctaLabel: "Start workout",
+        ctaTo: `/app/workout-run/${reminderContext.todayWorkoutId}`,
+        severity: "warn",
+      });
+    }
+    return base;
   }, [
     habitLogsQuery.isError,
     baselineExistsQuery.isError,
@@ -318,40 +319,10 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Alerts</CardTitle>
-          <p className="text-sm text-muted-foreground">Stay on track today.</p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {alertItems.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-              No alerts today.
-            </div>
-          ) : (
-            alertItems.map((item) => (
-              <div
-                key={item.key}
-                className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 ${getAlertStyles(
-                  item.severity
-                )}`}
-              >
-                <div>
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
-                </div>
-                {item.ctaLabel ? (
-                  <Button size="sm" onClick={() => navigate(item.ctaTo)}>
-                    {item.ctaLabel}
-                  </Button>
-                ) : null}
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Reminders</CardTitle>
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full border-2 border-primary/85 bg-transparent shadow-[0_0_12px_rgba(56,189,248,0.45)]" />
+            <CardTitle>Reminders</CardTitle>
+          </div>
           <p className="text-sm text-muted-foreground">Dismiss items you have handled.</p>
         </CardHeader>
         <CardContent className="space-y-3">

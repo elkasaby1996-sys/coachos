@@ -4,6 +4,7 @@ import { DashboardCard } from "../../pt/dashboard/DashboardCard";
 export type ExerciseNavItem = {
   exerciseId: string;
   name: string;
+  supersetGroup?: string | null;
   setsCompleted: number;
   totalSets: number;
 };
@@ -36,7 +37,10 @@ export function ExerciseNav({
                 } ${isDone ? "text-muted-foreground" : "text-foreground"}`}
               >
                 <div className="flex flex-col gap-1">
-                  <span className="font-medium">{exercise.name}</span>
+                  <span className="font-medium">
+                    {exercise.supersetGroup ? `S${exercise.supersetGroup}: ` : ""}
+                    {exercise.name}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     {exercise.setsCompleted}/{exercise.totalSets} sets completed
                   </span>
