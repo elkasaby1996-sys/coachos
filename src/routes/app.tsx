@@ -21,6 +21,8 @@ import { PtMessagesPage } from "../pages/pt/messages";
 import { PtSettingsPage } from "../pages/pt/settings";
 import { PtBaselineTemplatesPage } from "../pages/pt/settings-baseline";
 import { PtExerciseLibraryPage } from "../pages/pt/settings-exercises";
+import { PtNutritionPage } from "../pages/pt/nutrition";
+import { PtNutritionTemplateBuilderPage } from "../pages/pt/nutrition-template-builder";
 
 import { ClientHomePage } from "../pages/client/home";
 import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
@@ -33,6 +35,7 @@ import { ClientProfilePage } from "../pages/client/profile";
 import { ClientHabitsPage } from "../pages/client/habits";
 import { ClientBaselinePage } from "../pages/client/baseline";
 import { ClientProgressPage } from "../pages/client/progress";
+import { ClientNutritionDayPage } from "../pages/client/nutrition-day";
 
 // ✅ assumes your AuthProvider exports this hook
 import { useAuth } from "../lib/auth";
@@ -181,6 +184,11 @@ export function App() {
         <Route path="settings" element={<PtSettingsPage />} />
         <Route path="settings/baseline" element={<PtBaselineTemplatesPage />} />
         <Route path="settings/exercises" element={<PtExerciseLibraryPage />} />
+        <Route path="nutrition-programs" element={<PtNutritionPage />} />
+        <Route path="nutrition-templates" element={<Navigate to="/pt/nutrition-programs" replace />} />
+        <Route path="nutrition" element={<Navigate to="/pt/nutrition-programs" replace />} />
+        <Route path="nutrition/programs/:id" element={<PtNutritionTemplateBuilderPage />} />
+        <Route path="nutrition/templates/:id" element={<PtNutritionTemplateBuilderPage />} />
       </Route>
 
       {/* Client Side */}
@@ -205,6 +213,7 @@ export function App() {
         <Route path="habits" element={<ClientHabitsPage />} />
         <Route path="progress" element={<ClientProgressPage />} />
         <Route path="baseline" element={<ClientBaselinePage />} />
+        <Route path="nutrition/:assigned_nutrition_day_id" element={<ClientNutritionDayPage />} />
       </Route>
 
       {/* Fallback */}
@@ -212,3 +221,4 @@ export function App() {
     </Routes>
   );
 }
+

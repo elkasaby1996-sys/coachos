@@ -221,6 +221,57 @@ export function ClientHomePage() {
     },
   });
 
+  const todayNutritionQuery = useQuery({
+    queryKey: ["assigned-nutrition-today", clientId, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data: plans, error: planError } = await supabase
+        .from("assigned_nutrition_plans")
+        .select("id")
+        .eq("client_id", clientId ?? "");
+      if (planError) throw planError;
+
+      const planIds = (plans ?? []).map((row: { id: string }) => row.id);
+      if (!planIds.length) return null;
+
+      const { data, error } = await supabase
+        .from("assigned_nutrition_days")
+        .select(
+          "id, date, assigned_nutrition_plan:assigned_nutrition_plans(id, client_id, nutrition_template:nutrition_templates(id, name)), meals:assigned_nutrition_meals(id, assigned_nutrition_day_id, calories, protein_g, carbs_g, fat_g, logs:nutrition_meal_logs(id, is_completed, actual_calories, actual_protein_g, actual_carbs_g, actual_fat_g, consumed_at))"
+        )
+        .in("assigned_nutrition_plan_id", planIds)
+        .eq("date", todayKey)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+
+  const nutritionWeekQuery = useQuery({
+    queryKey: ["assigned-nutrition-week", clientId, todayKey, weekEnd],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data: plans, error: planError } = await supabase
+        .from("assigned_nutrition_plans")
+        .select("id")
+        .eq("client_id", clientId ?? "");
+      if (planError) throw planError;
+
+      const planIds = (plans ?? []).map((row: { id: string }) => row.id);
+      if (!planIds.length) return [];
+
+      const { data, error } = await supabase
+        .from("assigned_nutrition_days")
+        .select("id, date")
+        .in("assigned_nutrition_plan_id", planIds)
+        .gte("date", todayKey)
+        .lte("date", weekEnd)
+        .order("date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const workoutsWeekQuery = useQuery({
     queryKey: ["assigned-workouts-week", clientId, weekStart, todayKey],
     enabled: !!clientId,
@@ -291,6 +342,41 @@ export function ClientHomePage() {
     ? "planned"
     : todayWorkout?.status ?? null;
   const targets = targetsQuery.data ?? null;
+  const todayNutrition = todayNutritionQuery.data ?? null;
+  const todayNutritionPlan = Array.isArray((todayNutrition as any)?.assigned_nutrition_plan)
+    ? (todayNutrition as any).assigned_nutrition_plan[0]
+    : (todayNutrition as any)?.assigned_nutrition_plan ?? null;
+  const todayNutritionTemplate = Array.isArray(todayNutritionPlan?.nutrition_template)
+    ? todayNutritionPlan?.nutrition_template?.[0]
+    : todayNutritionPlan?.nutrition_template ?? null;
+  const todayNutritionTotals = useMemo(() => {
+    const meals = (todayNutrition?.meals ?? []) as Array<{
+      calories?: number | null;
+      protein_g?: number | null;
+      carbs_g?: number | null;
+      fat_g?: number | null;
+      logs?: Array<{
+        actual_calories?: number | null;
+        actual_protein_g?: number | null;
+        actual_carbs_g?: number | null;
+        actual_fat_g?: number | null;
+        consumed_at?: string | null;
+      }>;
+    }>;
+    return meals.reduce<{ calories: number; protein_g: number; carbs_g: number; fat_g: number }>(
+      (acc, meal) => {
+        const latest = (meal.logs ?? [])
+          .slice()
+          .sort((a, b) => (String(a.consumed_at ?? "") < String(b.consumed_at ?? "") ? 1 : -1))[0];
+        acc.calories += latest?.actual_calories ?? meal.calories ?? 0;
+        acc.protein_g += latest?.actual_protein_g ?? meal.protein_g ?? 0;
+        acc.carbs_g += latest?.actual_carbs_g ?? meal.carbs_g ?? 0;
+        acc.fat_g += latest?.actual_fat_g ?? meal.fat_g ?? 0;
+        return acc;
+      },
+      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+    );
+  }, [todayNutrition]);
   const workoutsWeek = workoutsWeekQuery.data ?? [];
   const weeklyPlan = weeklyPlanQuery.data ?? [];
   const hasTargets = Boolean(targets);
@@ -844,6 +930,81 @@ export function ClientHomePage() {
                   >
                     Message coach
                   </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className={`${cardChrome}`}>
+            <CardHeader>
+              <SectionHeader title="Today&apos;s Nutrition" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {todayNutritionQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : todayNutrition ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Assigned for today</p>
+                      <p className="text-sm font-semibold">
+                        {todayNutritionTemplate?.name ?? "Nutrition plan"}
+                      </p>
+                    </div>
+                    <Badge variant="muted">planned</Badge>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Cals</p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.calories)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">P</p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.protein_g)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">C</p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.carbs_g)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">F</p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.fat_g)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => navigate(`/app/nutrition/${todayNutrition.id}`)}
+                  >
+                    Open nutrition plan
+                  </Button>
+                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
+                    <p className="mb-2 font-semibold text-foreground">Upcoming 7 days</p>
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                      {Array.from({ length: 7 }).map((_, idx) => {
+                        const date = addDaysToDateString(todayKey, idx);
+                        const hasAssigned = (nutritionWeekQuery.data ?? []).some(
+                          (row: any) => row.date === date
+                        );
+                        return (
+                          <div
+                            key={date}
+                            className={`rounded-md border px-2 py-1 text-center ${
+                              hasAssigned ? "border-primary/60 bg-primary/10" : "border-border/60"
+                            }`}
+                          >
+                            {date.slice(5)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  No nutrition assigned for today yet.
                 </div>
               )}
             </CardContent>

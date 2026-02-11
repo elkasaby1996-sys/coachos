@@ -9,6 +9,7 @@ import { Skeleton } from "../../components/ui/coachos/skeleton";
 import { Input } from "../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
+  Apple,
   AlertTriangle,
   CalendarDays,
   CheckCircle2,
@@ -58,7 +59,8 @@ import { computeStreak, getLatestLogDate } from "../../lib/habits";
 
 const tabs = [
   "overview",
-  "plan",
+  "workout",
+  "nutrition",
   "logs",
   "progress",
   "checkins",
@@ -378,10 +380,11 @@ export function PtClientDetailPage() {
   const initialTab = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
+    if (tab === "plan") return "workout";
     if (tab && tabs.includes(tab as (typeof tabs)[number])) {
       return tab as (typeof tabs)[number];
     }
-    return "plan";
+    return "workout";
   }, [location.search]);
   const [active, setActive] = useState<(typeof tabs)[number]>(initialTab);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -393,7 +396,7 @@ export function PtClientDetailPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const current = params.get("tab") ?? "overview";
+    const current = params.get("tab") ?? "workout";
     if (current === active) return;
     params.set("tab", active);
     navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
@@ -712,7 +715,7 @@ export function PtClientDetailPage() {
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
-    enabled: !!workspaceQuery.data && active === "plan",
+    enabled: !!workspaceQuery.data && active === "workout",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
@@ -726,7 +729,7 @@ export function PtClientDetailPage() {
 
   const programTemplatesQuery = useQuery({
     queryKey: ["program-templates", workspaceQuery.data],
-    enabled: !!workspaceQuery.data && active === "plan",
+    enabled: !!workspaceQuery.data && active === "workout",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("program_templates")
@@ -741,7 +744,7 @@ export function PtClientDetailPage() {
 
   const activeProgramQuery = useQuery({
     queryKey: ["client-program-active", clientId],
-    enabled: !!clientId && active === "plan",
+    enabled: !!clientId && active === "workout",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_programs")
@@ -763,7 +766,7 @@ export function PtClientDetailPage() {
 
   const pausedProgramQuery = useQuery({
     queryKey: ["client-program-paused", clientId],
-    enabled: !!clientId && active === "plan",
+    enabled: !!clientId && active === "workout",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_programs")
@@ -784,7 +787,7 @@ export function PtClientDetailPage() {
 
   const programOverridesQuery = useQuery({
     queryKey: ["client-program-overrides", activeProgram?.id, todayKey, planEndKey],
-    enabled: !!activeProgram?.id && active === "plan",
+    enabled: !!activeProgram?.id && active === "workout",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_program_overrides")
@@ -812,7 +815,7 @@ export function PtClientDetailPage() {
 
   const upcomingQuery = useQuery({
     queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
-    enabled: !!clientId && (active === "plan" || active === "overview"),
+    enabled: !!clientId && (active === "workout" || active === "overview"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
@@ -894,7 +897,7 @@ export function PtClientDetailPage() {
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
-    enabled: !!selectedAssignedWorkoutId && active === "plan" && loadsOpen,
+    enabled: !!selectedAssignedWorkoutId && active === "workout" && loadsOpen,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
@@ -2430,7 +2433,7 @@ export function PtClientDetailPage() {
             onSaveOverride={handleSaveOverride}
             onAssign={(dateKey) => {
               setScheduledDate(dateKey);
-              setActiveTab("plan");
+              setActiveTab("workout");
             }}
             onReschedule={handleRescheduleWorkout}
             onDelete={handleOpenDeleteDialog}
@@ -2515,13 +2518,14 @@ export function PtClientDetailPage() {
         <div>
           <DashboardCard
             title="Client Workbench"
-            subtitle="Plan, habits, and progress organized by tab."
+            subtitle="Workout, nutrition, habits, and progress organized by tab."
             className="bg-card/90"
           >
             <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
               <div className="rounded-lg bg-card/80 p-2">
                 <TabsList className="flex h-auto w-full flex-wrap gap-2 rounded-lg bg-transparent p-0">
-                  <TabsTrigger value="plan">Plan</TabsTrigger>
+                  <TabsTrigger value="workout">Workout</TabsTrigger>
+                  <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
                   <TabsTrigger value="habits">Habits</TabsTrigger>
                   <TabsTrigger value="progress">Progress</TabsTrigger>
                   <TabsTrigger value="logs">Logs</TabsTrigger>
@@ -2530,7 +2534,7 @@ export function PtClientDetailPage() {
                   <TabsTrigger value="baseline">Baseline</TabsTrigger>
                 </TabsList>
               </div>
-              <TabsContent value="plan">
+              <TabsContent value="workout">
                   <PtClientPlanTab
                     templatesQuery={templatesQuery}
                     programTemplatesQuery={programTemplatesQuery}
@@ -2570,6 +2574,13 @@ export function PtClientDetailPage() {
                     }}
                     onStatusChange={handleStatusUpdate}
                   />
+              </TabsContent>
+              <TabsContent value="nutrition">
+                <PtClientNutritionTab
+                  clientId={clientId ?? null}
+                  workspaceId={workspaceQuery.data ?? null}
+                  todayKey={todayKey}
+                />
               </TabsContent>
               <TabsContent value="habits">
                 <PtClientHabitsTab
@@ -3251,11 +3262,30 @@ function PtClientScheduleCard({
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: "completed" | "skipped") => void;
 }) {
+  const queryClient = useQueryClient();
   const [selectedKey, setSelectedKey] = useState(scheduleStartKey);
   const [editOpen, setEditOpen] = useState(false);
   const [editDate, setEditDate] = useState(scheduleStartKey);
   const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
   const [dayNote, setDayNote] = useState("");
+  const [nutritionAssignOpen, setNutritionAssignOpen] = useState(false);
+  const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(null);
+  const [nutritionTemplateId, setNutritionTemplateId] = useState("");
+  const [nutritionAssignStatus, setNutritionAssignStatus] = useState<"idle" | "saving">("idle");
+  const [nutritionAssignError, setNutritionAssignError] = useState<string | null>(null);
+  const [nutritionDayOpen, setNutritionDayOpen] = useState(false);
+  const [nutritionDayDate, setNutritionDayDate] = useState<string | null>(null);
+  const [nutritionDayMeals, setNutritionDayMeals] = useState<
+    Array<{
+      id: string;
+      meal_name: string | null;
+      calories: number | null;
+      protein_g: number | null;
+      carbs_g: number | null;
+      fat_g: number | null;
+      logs?: Array<{ is_completed?: boolean }>;
+    }>
+  >([]);
 
   useEffect(() => {
     setSelectedKey(scheduleStartKey);
@@ -3295,6 +3325,47 @@ function PtClientScheduleCard({
     },
   });
 
+  const nutritionTemplatesQuery = useQuery({
+    queryKey: ["pt-client-nutrition-templates", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("nutrition_templates")
+        .select("id, name, duration_weeks")
+        .eq("workspace_id", workspaceId ?? "")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const nutritionDaysQuery = useQuery({
+    queryKey: ["pt-client-nutrition-week", clientId, scheduleStartKey, scheduleEndKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data: plans, error: planError } = await supabase
+        .from("assigned_nutrition_plans")
+        .select("id")
+        .eq("client_id", clientId ?? "");
+      if (planError) throw planError;
+
+      const planIds = (plans ?? []).map((row: { id: string }) => row.id);
+      if (!planIds.length) return [];
+
+      const { data, error } = await supabase
+        .from("assigned_nutrition_days")
+        .select(
+          "id, date, meals:assigned_nutrition_meals(id, meal_name, calories, protein_g, carbs_g, fat_g, logs:nutrition_meal_logs(id, is_completed))"
+        )
+        .in("assigned_nutrition_plan_id", planIds)
+        .gte("date", scheduleStartKey)
+        .lte("date", scheduleEndKey)
+        .order("date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const weekRows = useMemo(() => {
     const rows = Array.from({ length: 14 }).map((_, idx) => {
       const key = addDaysToDateString(scheduleStartKey, idx);
@@ -3302,12 +3373,18 @@ function PtClientScheduleCard({
         scheduleQuery.data?.find((item) => item.scheduled_date === key) ?? null;
       const checkin =
         checkinsQuery.data?.find((item) => item.week_ending_saturday === key) ?? null;
-      return { key, workout: match, checkin };
+      const nutrition =
+        nutritionDaysQuery.data?.find((item) => item.date === key) ?? null;
+      return { key, workout: match, checkin, nutrition };
     });
     return rows;
-  }, [scheduleQuery.data, checkinsQuery.data, scheduleStartKey]);
+  }, [scheduleQuery.data, checkinsQuery.data, nutritionDaysQuery.data, scheduleStartKey]);
 
   const selectedRow = weekRows.find((row) => row.key === selectedKey) ?? weekRows[0];
+  const nutritionPreviewKeys = useMemo(() => {
+    const base = nutritionAssignDate ?? selectedRow?.key ?? scheduleStartKey;
+    return Array.from({ length: 7 }).map((_, idx) => addDaysToDateString(base, idx));
+  }, [nutritionAssignDate, scheduleStartKey, selectedRow?.key]);
   const selectedWorkout = selectedRow?.workout ?? null;
   const selectedCheckin = selectedRow?.checkin ?? null;
   const selectedStatus =
@@ -3335,6 +3412,40 @@ function PtClientScheduleCard({
     (row) => (row.workout?.status ?? "planned") === "planned"
   ).length;
   const weeklyRest = weekRows.filter((row) => row.workout?.day_type === "rest" || !row.workout).length;
+  const nutritionMealStats = useMemo(() => {
+    const rows = (nutritionDaysQuery.data ?? []) as Array<{
+      meals?: Array<{ logs?: Array<{ is_completed?: boolean }> }>;
+    }>;
+    let total = 0;
+    let completed = 0;
+    rows.forEach((day) => {
+      const meals = day.meals ?? [];
+      total += meals.length;
+      meals.forEach((meal) => {
+        if ((meal.logs ?? []).some((log) => Boolean(log.is_completed))) {
+          completed += 1;
+        }
+      });
+    });
+    return {
+      total,
+      completed,
+      percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
+  }, [nutritionDaysQuery.data]);
+
+  const nutritionDayTotals = useMemo(() => {
+    return nutritionDayMeals.reduce(
+      (acc, meal) => {
+        acc.calories += Number(meal.calories ?? 0);
+        acc.protein += Number(meal.protein_g ?? 0);
+        acc.carbs += Number(meal.carbs_g ?? 0);
+        acc.fats += Number(meal.fat_g ?? 0);
+        return acc;
+      },
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+  }, [nutritionDayMeals]);
 
   const streakKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -3415,7 +3526,7 @@ const formatDayNumber = (key: string) => {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
               <div className="text-muted-foreground">Completed</div>
               <div className="text-sm font-semibold text-foreground">{weeklyCompleted}</div>
@@ -3436,11 +3547,25 @@ const formatDayNumber = (key: string) => {
               <div className="text-muted-foreground">Adherence</div>
               <div className="text-sm font-semibold text-foreground">{weeklyAdherence}%</div>
             </div>
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+              <div className="text-muted-foreground">Nutrition Adherence</div>
+              <div className="text-sm font-semibold text-foreground">{nutritionMealStats.percent}%</div>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               {weekRows.map((row) => {
                 const workout = row.workout;
                 const checkin = row.checkin;
+                const nutrition = row.nutrition;
+                const nutritionMeals = ((nutrition as { meals?: Array<{ logs?: Array<{ is_completed?: boolean }> }> } | null)?.meals ?? []);
+                const nutritionCompleted = nutritionMeals.filter((meal) =>
+                  (meal.logs ?? []).some((log) => Boolean(log.is_completed))
+                ).length;
+                const nutritionStatus = !nutrition
+                  ? null
+                  : nutritionMeals.length > 0 && nutritionCompleted === nutritionMeals.length
+                    ? "completed"
+                    : "planned";
                 const isRestDay = workout?.day_type === "rest";
                 const status = isRestDay
                   ? "rest day"
@@ -3507,6 +3632,33 @@ const formatDayNumber = (key: string) => {
                         {isSkipped ? <AlertTriangle className="h-4 w-4 text-amber-300" /> : null}
                         {isRestDay ? <Moon className="h-4 w-4 text-sky-200" /> : null}
                       </div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const meals =
+                            ((nutrition as {
+                              meals?: Array<{
+                                id: string;
+                                meal_name: string | null;
+                                calories: number | null;
+                                protein_g: number | null;
+                                carbs_g: number | null;
+                                fat_g: number | null;
+                                logs?: Array<{ is_completed?: boolean }>;
+                              }>;
+                            } | null)?.meals ?? []);
+                          setNutritionDayDate(row.key);
+                          setNutritionDayMeals(meals);
+                          setNutritionDayOpen(true);
+                        }}
+                        className="w-full rounded-md border border-border/60 bg-muted/20 px-2 py-1 text-xs text-left"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">Nutiotion</span>
+                          {nutritionStatus ? <StatusPill status={nutritionStatus} /> : null}
+                        </div>
+                      </button>
 
                       {checkin ? (
                         <div className="flex items-center gap-2">
@@ -3544,6 +3696,17 @@ const formatDayNumber = (key: string) => {
                           className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setNutritionAssignDate(row.key);
+                            setNutritionAssignOpen(true);
+                          }}
+                          className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
+                        >
+                          <Apple className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
@@ -3657,11 +3820,155 @@ const formatDayNumber = (key: string) => {
               <Button variant="ghost" onClick={handleSaveDayNote}>
                 Save note
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setNutritionAssignDate(selectedRow.key);
+                  setNutritionAssignOpen(true);
+                }}
+              >
+                Assign nutrition program
+              </Button>
               <Button variant="ghost" onClick={() => setDayDrawerOpen(false)}>
                 Close
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={nutritionAssignOpen} onOpenChange={setNutritionAssignOpen}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Assign nutrition program</DialogTitle>
+            <DialogDescription>Assign a nutrition program for {nutritionAssignDate ?? "selected date"}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input type="date" value={nutritionAssignDate ?? ""} onChange={(event) => setNutritionAssignDate(event.target.value)} />
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={nutritionTemplateId}
+              onChange={(event) => setNutritionTemplateId(event.target.value)}
+            >
+              <option value="">Select nutrition program</option>
+              {(nutritionTemplatesQuery.data ?? []).map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name ?? "Program"}
+                </option>
+              ))}
+            </select>
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
+              <p className="mb-2 font-semibold text-foreground">Next 7 days preview</p>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                {nutritionPreviewKeys.map((key) => {
+                  const hasPlan = (nutritionDaysQuery.data ?? []).some((row) => row.date === key);
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        "rounded-md border px-2 py-1 text-center",
+                        hasPlan ? "border-primary/60 bg-primary/10" : "border-border/60"
+                      )}
+                    >
+                      {key.slice(5)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {nutritionAssignError ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                {nutritionAssignError}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setNutritionAssignOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={nutritionAssignStatus === "saving"}
+              onClick={async () => {
+                if (!clientId || !nutritionAssignDate || !nutritionTemplateId) {
+                  setNutritionAssignError("Choose template and date.");
+                  return;
+                }
+                setNutritionAssignStatus("saving");
+                setNutritionAssignError(null);
+                const { error } = await supabase.rpc("assign_nutrition_template_to_client", {
+                  p_client_id: clientId,
+                  p_start_date: nutritionAssignDate,
+                  p_template_id: nutritionTemplateId,
+                });
+                if (error) {
+                  setNutritionAssignStatus("idle");
+                  setNutritionAssignError(error.message);
+                  return;
+                }
+                await queryClient.invalidateQueries({
+                  queryKey: ["pt-client-nutrition-week", clientId, scheduleStartKey, scheduleEndKey],
+                });
+                setNutritionAssignStatus("idle");
+                setNutritionAssignOpen(false);
+              }}
+            >
+              {nutritionAssignStatus === "saving" ? "Assigning..." : "Assign nutrition program"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={nutritionDayOpen} onOpenChange={setNutritionDayOpen}>
+        <DialogContent className="sm:max-w-[540px]">
+          <DialogHeader>
+            <DialogTitle>Nutiotion</DialogTitle>
+            <DialogDescription>
+              {nutritionDayDate ? formatLabel(nutritionDayDate) : "Selected day"}
+            </DialogDescription>
+          </DialogHeader>
+          {nutritionDayMeals.length === 0 ? (
+            <EmptyState
+              title="No meals assigned"
+              description="No nutrition meals are assigned for this day."
+            />
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
+                <p className="font-semibold text-foreground">Totals</p>
+                <p className="mt-1 text-muted-foreground">
+                  {Math.round(nutritionDayTotals.calories)} kcal | {Math.round(nutritionDayTotals.protein)} P |{" "}
+                  {Math.round(nutritionDayTotals.carbs)} C | {Math.round(nutritionDayTotals.fats)} F
+                </p>
+              </div>
+              <div className="space-y-2">
+                {nutritionDayMeals.map((meal) => (
+                  <div key={meal.id} className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground">
+                        {meal.meal_name ?? "Meal"}
+                      </p>
+                      <StatusPill
+                        status={
+                          (meal.logs ?? []).some((log) => Boolean(log.is_completed))
+                            ? "completed"
+                            : "planned"
+                        }
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {Math.round(Number(meal.calories ?? 0))} kcal | {Math.round(Number(meal.protein_g ?? 0))} P |{" "}
+                      {Math.round(Number(meal.carbs_g ?? 0))} C | {Math.round(Number(meal.fat_g ?? 0))} F
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setNutritionDayOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -4885,6 +5192,185 @@ function PtClientPlanTab({
           </div>
         )}
       </DashboardCard>
+    </div>
+  );
+}
+
+function PtClientNutritionTab({
+  clientId,
+  workspaceId,
+  todayKey,
+}: {
+  clientId: string | null;
+  workspaceId: string | null;
+  todayKey: string;
+}) {
+  const queryClient = useQueryClient();
+  const [selectedNutritionProgramId, setSelectedNutritionProgramId] = useState("");
+  const [nutritionProgramStartDate, setNutritionProgramStartDate] = useState(todayKey);
+  const [nutritionAssignStatus, setNutritionAssignStatus] = useState<"idle" | "saving">("idle");
+  const [nutritionAssignError, setNutritionAssignError] = useState<string | null>(null);
+
+  const nutritionProgramsQuery = useQuery({
+    queryKey: ["pt-client-nutrition-programs", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("nutrition_templates")
+        .select("id, name, duration_weeks")
+        .eq("workspace_id", workspaceId ?? "")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const nutritionNext7Query = useQuery({
+    queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data: plans, error: plansError } = await supabase
+        .from("assigned_nutrition_plans")
+        .select("id")
+        .eq("client_id", clientId ?? "");
+      if (plansError) throw plansError;
+
+      const planIds = (plans ?? []).map((row: { id: string }) => row.id);
+      if (!planIds.length) return [];
+
+      const end = addDaysToDateString(todayKey, 6);
+      const { data, error } = await supabase
+        .from("assigned_nutrition_days")
+        .select("id, date")
+        .in("assigned_nutrition_plan_id", planIds)
+        .gte("date", todayKey)
+        .lte("date", end);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const nutritionPreviewKeys = useMemo(
+    () => Array.from({ length: 7 }).map((_, idx) => addDaysToDateString(todayKey, idx)),
+    [todayKey]
+  );
+
+  return (
+    <div className="space-y-6 xl:col-start-1">
+      <Card className="border-border/70 bg-card/80">
+        <CardHeader>
+          <CardTitle>Assign nutrition program</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Assign a multi-week nutrition program to this client.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {nutritionProgramsQuery.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : nutritionProgramsQuery.error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              {getErrorDetails(nutritionProgramsQuery.error).code}:{" "}
+              {getErrorDetails(nutritionProgramsQuery.error).message}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Nutrition program
+                </label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={selectedNutritionProgramId}
+                  onChange={(event) => setSelectedNutritionProgramId(event.target.value)}
+                >
+                  <option value="">Select a nutrition program</option>
+                  {(nutritionProgramsQuery.data ?? []).map((program) => (
+                    <option key={program.id} value={program.id}>
+                      {program.name ?? "Nutrition Program"}{" "}
+                      {program.duration_weeks ? `- ${program.duration_weeks}w` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">Start date</label>
+                <input
+                  type="date"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={nutritionProgramStartDate}
+                  onChange={(event) => setNutritionProgramStartDate(event.target.value)}
+                />
+              </div>
+              <Button
+                className="w-full"
+                disabled={
+                  nutritionAssignStatus === "saving" ||
+                  !selectedNutritionProgramId ||
+                  !nutritionProgramStartDate ||
+                  !clientId
+                }
+                onClick={async () => {
+                  if (!clientId || !selectedNutritionProgramId || !nutritionProgramStartDate) {
+                    setNutritionAssignError("Select a nutrition program and start date.");
+                    return;
+                  }
+                  setNutritionAssignStatus("saving");
+                  setNutritionAssignError(null);
+                  const { error } = await supabase.rpc("assign_nutrition_template_to_client", {
+                    p_client_id: clientId,
+                    p_template_id: selectedNutritionProgramId,
+                    p_start_date: nutritionProgramStartDate,
+                  });
+                  if (error) {
+                    setNutritionAssignStatus("idle");
+                    setNutritionAssignError(error.message);
+                    return;
+                  }
+                  await Promise.all([
+                    queryClient.invalidateQueries({
+                      queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
+                    }),
+                    queryClient.invalidateQueries({
+                      queryKey: ["pt-client-nutrition-week", clientId],
+                    }),
+                  ]);
+                  setNutritionAssignStatus("idle");
+                }}
+              >
+                {nutritionAssignStatus === "saving" ? "Assigning..." : "Assign nutrition program"}
+              </Button>
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
+                <p className="mb-2 font-semibold text-foreground">Next 7 days preview</p>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                  {nutritionPreviewKeys.map((key) => {
+                    const hasProgram = (nutritionNext7Query.data ?? []).some((row) => row.date === key);
+                    return (
+                      <div
+                        key={key}
+                        className={cn(
+                          "rounded-md border px-2 py-1 text-center",
+                          hasProgram ? "border-primary/60 bg-primary/10" : "border-border/60"
+                        )}
+                      >
+                        {key.slice(5)}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {nutritionAssignError ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                  {nutritionAssignError}
+                </div>
+              ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   Settings,
   Sparkles,
   Users,
+  Apple,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/utils";
@@ -43,6 +44,7 @@ const navItems = [
   { label: "Calendar", to: "/pt/calendar", icon: CalendarDays },
   { label: "Messages", to: "/pt/messages", icon: MessageCircle },
   { label: "Workouts", to: "/pt/templates/workouts", icon: Dumbbell },
+  { label: "Nutrition Programs", to: "/pt/nutrition-programs", icon: Apple },
   { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
   { label: "Check-ins", to: "/pt/checkins", icon: ClipboardList },
   { label: "Settings", to: "/pt/settings", icon: Settings },
