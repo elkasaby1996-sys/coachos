@@ -10,14 +10,12 @@ import {
   Menu,
   Plus,
   Search,
-  Settings,
   Sparkles,
   Users,
   Apple,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
-import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -36,6 +34,8 @@ import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { useTheme } from "../common/theme-provider";
+import { ThemeModeSwitch } from "../common/theme-mode-switch";
 
 const navItems = [
   { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
@@ -47,7 +47,6 @@ const navItems = [
   { label: "Nutrition Programs", to: "/pt/nutrition-programs", icon: Apple },
   { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
   { label: "Check-ins", to: "/pt/checkins", icon: ClipboardList },
-  { label: "Settings", to: "/pt/settings", icon: Settings },
 ];
 
 type NotificationItem = {
@@ -68,11 +67,13 @@ export function PtLayout() {
   const navigate = useNavigate();
   const { workspaceId, loading, error } = useWorkspace();
   const { authError, user } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const errorMessage =
     error?.message ?? authError?.message ?? (workspaceId ? null : "Workspace not found.");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -281,6 +282,7 @@ export function PtLayout() {
   }, [workspaceId, user?.id]);
 
   const unreadCount = useMemo(() => notifications.length, [notifications]);
+  const userInitial = (user?.email?.charAt(0) || user?.phone?.charAt(0) || "U").toUpperCase();
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -555,7 +557,39 @@ export function PtLayout() {
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <ThemeToggle />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full border border-border/70 bg-card/70 text-sm font-semibold"
+                        aria-label="Profile menu"
+                      >
+                        {userInitial}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuLabel>Profile</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/pt/settings")}>
+                        Settings
+                      </DropdownMenuItem>
+                      <div className="px-2 py-1.5">
+                        <ThemeModeSwitch checked={resolvedTheme === "dark"} onToggle={toggleTheme} />
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        disabled={isSigningOut}
+                        onClick={async () => {
+                          setIsSigningOut(true);
+                          await supabase.auth.signOut();
+                          navigate("/login", { replace: true });
+                        }}
+                      >
+                        {isSigningOut ? "Logging out..." : "Log out"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </PageContainer>
             </header>

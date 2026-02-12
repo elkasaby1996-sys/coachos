@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { useAuth } from "../../lib/auth";
+import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
 export function NoWorkspacePage() {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ export function NoWorkspacePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <AuthBackdrop contentClassName="max-w-md">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Loading</CardTitle>
@@ -42,7 +43,7 @@ export function NoWorkspacePage() {
             Checking workspace membership...
           </CardContent>
         </Card>
-      </div>
+      </AuthBackdrop>
     );
   }
 
@@ -58,11 +59,11 @@ export function NoWorkspacePage() {
     setInviteError(null);
     setIsDialogOpen(false);
     setInviteCode("");
-    navigate(`/join/${trimmedCode}`);
+    navigate(`/invite/${trimmedCode}`);
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <AuthBackdrop contentClassName="max-w-md">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>No workspace found</CardTitle>
@@ -116,6 +117,6 @@ export function NoWorkspacePage() {
           </Dialog>
         </CardContent>
       </Card>
-    </div>
+    </AuthBackdrop>
   );
 }

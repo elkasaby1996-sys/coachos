@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -12,6 +12,7 @@ import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtSettingsPage() {
+  const navigate = useNavigate();
   const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
   const queryClient = useQueryClient();
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
@@ -27,6 +28,7 @@ export function PtSettingsPage() {
   } = useThemePreference();
   const [appearanceTheme, setAppearanceTheme] = useState(themePreference);
   const [appearanceCompactDensity, setAppearanceCompactDensity] = useState(compactDensity);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -119,6 +121,18 @@ export function PtSettingsPage() {
       compactDensity: appearanceCompactDensity,
       persist: true,
     });
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(error.message || "Unable to log out right now.");
+      setIsLoggingOut(false);
+      return;
+    }
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -334,7 +348,9 @@ export function PtSettingsPage() {
           <p className="text-sm text-muted-foreground">Log out of this workspace.</p>
         </CardHeader>
         <CardContent>
-          <Button variant="secondary">Logout</Button>
+          <Button variant="secondary" onClick={handleLogout} disabled={isLoggingOut}>
+            {isLoggingOut ? "Logging out..." : "Logout"}
+          </Button>
         </CardContent>
       </Card>
     </div>

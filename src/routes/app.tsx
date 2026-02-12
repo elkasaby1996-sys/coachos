@@ -1,10 +1,13 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { PtLayout } from "../components/layouts/pt-layout";
 import { ClientLayout } from "../components/layouts/client-layout";
 
 import { LoginPage } from "../pages/public/login";
-import { JoinPage } from "../pages/public/join";
 import { NoWorkspacePage } from "../pages/public/no-workspace";
+import { InvitePage } from "../pages/public/invite";
+import { PtSignupPage } from "../pages/public/pt-signup";
+import { WelcomePage } from "../pages/public/welcome";
+import { SignupRolePage } from "../pages/public/signup-role";
 
 import { PtDashboardPage } from "../pages/pt/dashboard";
 import { PtClientsPage } from "../pages/pt/clients";
@@ -23,6 +26,7 @@ import { PtBaselineTemplatesPage } from "../pages/pt/settings-baseline";
 import { PtExerciseLibraryPage } from "../pages/pt/settings-exercises";
 import { PtNutritionPage } from "../pages/pt/nutrition";
 import { PtNutritionTemplateBuilderPage } from "../pages/pt/nutrition-template-builder";
+import { PtWorkspaceOnboardingPage } from "../pages/pt/onboarding-workspace";
 
 import { ClientHomePage } from "../pages/client/home";
 import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
@@ -82,13 +86,14 @@ function RequireRole({
   children: React.ReactNode;
 }) {
   const { role, loading } = useAuth();
+  const wantsPt = allow.includes("pt");
 
   return (
     <BootstrapGate>
       {loading ? (
         <FullPageLoader />
       ) : !role || role === "none" ? (
-        <Navigate to="/no-workspace" replace />
+        wantsPt ? <Navigate to="/pt/onboarding/workspace" replace /> : <Navigate to="/no-workspace" replace />
       ) : !allow.includes(role as any) ? (
         role === "pt" ? (
           <Navigate to="/pt/dashboard" replace />
@@ -109,7 +114,14 @@ function IndexRedirect() {
 
   if (loading) return <FullPageLoader />;
 
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <WelcomePage />;
+
+  if (role === "none") {
+    if (window.localStorage.getItem("coachos_signup_intent") === "pt") {
+      return <Navigate to="/pt/onboarding/workspace" replace />;
+    }
+    return <Navigate to="/no-workspace" replace />;
+  }
 
   if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
   if (role === "client") return <Navigate to="/app/home" replace />;
@@ -122,7 +134,9 @@ function LoginGate() {
   const location = useLocation();
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const redirectTarget =
-    redirectParam && redirectParam.startsWith("/join/") ? redirectParam : null;
+    redirectParam && (redirectParam.startsWith("/join/") || redirectParam.startsWith("/invite/"))
+      ? redirectParam
+      : null;
 
   if (loading) return <FullPageLoader />;
 
@@ -131,11 +145,18 @@ function LoginGate() {
     if (redirectTarget) return <Navigate to={redirectTarget} replace />;
     if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
     if (role === "client") return <Navigate to="/app/home" replace />;
-    // Allow invite join flow to complete before enforcing workspace membership.
+    if (window.localStorage.getItem("coachos_signup_intent") === "pt") {
+      return <Navigate to="/pt/onboarding/workspace" replace />;
+    }
     return <Navigate to="/no-workspace" replace />;
   }
 
   return <LoginPage />;
+}
+
+function LegacyJoinRedirect() {
+  const { code } = useParams<{ code: string }>();
+  return <Navigate to={`/invite/${code ?? ""}`} replace />;
 }
 
 export function App() {
@@ -146,13 +167,24 @@ export function App() {
 
       {/* Public */}
       <Route path="/login" element={<LoginGate />} />
-      <Route path="/join/:code" element={<JoinPage />} />
+      <Route path="/signup" element={<SignupRolePage />} />
+      <Route path="/signup/pt" element={<PtSignupPage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
+      <Route path="/join/:code" element={<LegacyJoinRedirect />} />
 
       <Route
         path="/no-workspace"
         element={
           <RequireAuth>
             <NoWorkspacePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/pt/onboarding/workspace"
+        element={
+          <RequireAuth>
+            <PtWorkspaceOnboardingPage />
           </RequireAuth>
         }
       />

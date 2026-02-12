@@ -57,7 +57,7 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
 
   const inviteLink = useMemo(() => {
     if (!invite?.code) return "";
-    return `${window.location.origin}/join/${invite.code}`;
+    return `${window.location.origin}/invite/${invite.code}`;
   }, [invite]);
 
   const handleGenerate = async () => {

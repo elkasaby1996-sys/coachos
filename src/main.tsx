@@ -5,7 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./components/common/theme-provider";
 import { AuthProvider } from "./lib/auth";
 import { App } from "./routes/app";
+import { initializeThemePreference } from "./lib/theme";
 import "./styles/globals.css";
+
+initializeThemePreference("dark");
 
 const isHardFail = (error: any) => {
   const status = error?.status;

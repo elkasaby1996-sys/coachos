@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
@@ -12,6 +12,8 @@ import {
   Apple,
   AlertTriangle,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   Flame,
   MessageCircle,
@@ -68,6 +70,28 @@ const tabs = [
   "baseline",
   "habits",
 ] as const;
+
+const workbenchTabs: Array<{ value: Exclude<(typeof tabs)[number], "overview">; label: string }> = [
+  { value: "workout", label: "Workout" },
+  { value: "nutrition", label: "Nutrition" },
+  { value: "habits", label: "Habits" },
+  { value: "progress", label: "Progress" },
+  { value: "logs", label: "Logs" },
+  { value: "checkins", label: "Check-ins" },
+  { value: "notes", label: "Notes" },
+  { value: "baseline", label: "Baseline" },
+];
+
+const workbenchTabIcons: Record<Exclude<(typeof tabs)[number], "overview">, ComponentType<{ className?: string }>> = {
+  workout: Rocket,
+  nutrition: Apple,
+  habits: Flame,
+  progress: Sparkles,
+  logs: CalendarDays,
+  checkins: CheckCircle2,
+  notes: MessageCircle,
+  baseline: Moon,
+};
 
 const formatDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -415,8 +439,9 @@ export function PtClientDetailPage() {
   }, [active]);
 
 
-  const setActiveTab = (tab: (typeof tabs)[number]) => {
-    setActive(tab);
+  const setActiveTab = (tab: string) => {
+    if (!tabs.includes(tab as (typeof tabs)[number])) return;
+    setActive(tab as (typeof tabs)[number]);
   };
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [checkinTemplateId, setCheckinTemplateId] = useState("");
@@ -518,7 +543,9 @@ export function PtClientDetailPage() {
     { id: "client-task-program", label: "Adjust program", done: false },
   ]);
   const [todoInput, setTodoInput] = useState("");
+  const [isOverviewCollapsed, setIsOverviewCollapsed] = useState(true);
   const [sessionDetailOpen, setSessionDetailOpen] = useState(false);
+  const [isWorkbenchCollapsed, setIsWorkbenchCollapsed] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [checkinsPage, setCheckinsPage] = useState(0);
   const checkinsPageSize = 12;
@@ -2217,6 +2244,26 @@ export function PtClientDetailPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setIsOverviewCollapsed((prev) => !prev)}
+                  aria-expanded={!isOverviewCollapsed}
+                  aria-label={isOverviewCollapsed ? "Expand client overview" : "Collapse client overview"}
+                >
+                  {isOverviewCollapsed ? (
+                    <>
+                      <ChevronDown className="h-4 w-4" />
+                      Overview
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp className="h-4 w-4" />
+                      Overview
+                    </>
+                  )}
+                </Button>
+                <Button
                   className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
                   onClick={() => handleQuickAction("")}
                 >
@@ -2247,57 +2294,55 @@ export function PtClientDetailPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+
+              {!isOverviewCollapsed ? (
+                <div className="mt-4 w-full rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Status</span>
+                      <StatusPill status={clientSnapshot.status ?? "active"} />
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Goal</span>
+                      <span className="mt-0.5 block font-medium">{clientSnapshot.goal ?? "Not set"}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Training</span>
+                      <span className="mt-0.5 block font-medium">{clientSnapshot.training_type ?? "Not set"}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Timezone</span>
+                      <span className="mt-0.5 block font-medium">{clientSnapshot.timezone ?? "Not set"}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Joined</span>
+                      <span className="mt-0.5 block font-medium">{joinedLabel ?? "--"}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Active program</span>
+                      <span className="mt-0.5 block font-medium">{activeProgram?.program_template?.name ?? "None"}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Program start</span>
+                      <span className="mt-0.5 block font-medium">{activeProgram?.start_date ?? "--"}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Weekly check-in</span>
+                      <span className="mt-0.5 block font-medium">{checkinStatus ?? "--"}</span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">Last workout</span>
+                      <span className="mt-0.5 block font-medium">{lastWorkoutStatus ?? "--"}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <DashboardCard title="Client Overview" subtitle="Key details and profile status.">
-            {clientSnapshot ? (
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Status</span>
-                  <StatusPill status={clientSnapshot.status ?? "active"} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Goal</span>
-                  <span>{clientSnapshot.goal ?? "Not set"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Training</span>
-                  <span>{clientSnapshot.training_type ?? "Not set"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Timezone</span>
-                  <span>{clientSnapshot.timezone ?? "Not set"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Joined</span>
-                  <span>{joinedLabel ?? "--"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Active program</span>
-                  <span>{activeProgram?.program_template?.name ?? "None"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Program start</span>
-                  <span>{activeProgram?.start_date ?? "--"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Weekly check-in</span>
-                  <span>{checkinStatus ?? "--"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Last workout</span>
-                  <span>{lastWorkoutStatus ?? "--"}</span>
-                </div>
-              </div>
-            ) : (
-              <EmptyState title="No client data" description="Profile details are unavailable." />
-            )}
-          </DashboardCard>
-
-          <DashboardCard title="Todo List" subtitle="Create tasks for this client.">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <DashboardCard title="Todo List" subtitle="Create tasks for this client." className="lg:col-span-1">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Input
@@ -2349,55 +2394,55 @@ export function PtClientDetailPage() {
               </div>
             </div>
           </DashboardCard>
-        </div>
 
-        <DashboardCard title="Metrics" subtitle="Snapshot of recent progress.">
-          {statsLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Card key={index} className="border-border/70 bg-card/80">
-                  <CardHeader className="space-y-2">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-7 w-20" />
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : clientSnapshot ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="Adherence"
-                value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
-                helper="Last 7 days"
-                icon={Sparkles}
-                sparkline={<MiniSparkline />}
-              />
-              <StatCard
-                label="Consistency streak"
-                value={habitStreak > 0 ? `${habitStreak}d` : "--"}
-                helper="Habit streak"
-                icon={Rocket}
-                sparkline={<MiniSparkline />}
-              />
-              <StatCard
-                label="Check-in status"
-                value={checkinStatus ?? "--"}
-                helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
-                icon={CalendarDays}
-                sparkline={<MiniSparkline />}
-              />
-              <StatCard
-                label="Last workout"
-                value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
-                helper={lastWorkoutStatus ?? "No workouts"}
-                icon={Sparkles}
-                sparkline={<MiniSparkline />}
-              />
-            </div>
-          ) : (
-            <EmptyState title="No stats yet" description="Client activity will show here once sessions begin." />
-          )}
-        </DashboardCard>
+          <DashboardCard title="Metrics" subtitle="Snapshot of recent progress." className="lg:col-span-2">
+            {statsLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Card key={index} className="border-border/70 bg-card/80">
+                    <CardHeader className="space-y-2">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-7 w-20" />
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            ) : clientSnapshot ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  label="Adherence"
+                  value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
+                  helper="Last 7 days"
+                  icon={Sparkles}
+                  sparkline={<MiniSparkline />}
+                />
+                <StatCard
+                  label="Consistency streak"
+                  value={habitStreak > 0 ? `${habitStreak}d` : "--"}
+                  helper="Habit streak"
+                  icon={Rocket}
+                  sparkline={<MiniSparkline />}
+                />
+                <StatCard
+                  label="Check-in status"
+                  value={checkinStatus ?? "--"}
+                  helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
+                  icon={CalendarDays}
+                  sparkline={<MiniSparkline />}
+                />
+                <StatCard
+                  label="Last workout"
+                  value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
+                  helper={lastWorkoutStatus ?? "No workouts"}
+                  icon={Sparkles}
+                  sparkline={<MiniSparkline />}
+                />
+              </div>
+            ) : (
+              <EmptyState title="No stats yet" description="Client activity will show here once sessions begin." />
+            )}
+          </DashboardCard>
+        </div>
 
         {scheduleLoading ? (
           <DashboardCard title="Plan & Calendar" subtitle="Loading schedule...">
@@ -2518,20 +2563,46 @@ export function PtClientDetailPage() {
         <div>
           <DashboardCard
             title="Client Workbench"
-            subtitle="Workout, nutrition, habits, and progress organized by tab."
             className="bg-card/90"
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => setIsWorkbenchCollapsed((prev) => !prev)}
+                aria-expanded={!isWorkbenchCollapsed}
+                aria-label={isWorkbenchCollapsed ? "Expand client workbench" : "Collapse client workbench"}
+              >
+                {isWorkbenchCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </Button>
+            }
           >
+            {!isWorkbenchCollapsed ? (
             <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
-              <div className="rounded-lg bg-card/80 p-2">
-                <TabsList className="flex h-auto w-full flex-wrap gap-2 rounded-lg bg-transparent p-0">
-                  <TabsTrigger value="workout">Workout</TabsTrigger>
-                  <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
-                  <TabsTrigger value="habits">Habits</TabsTrigger>
-                  <TabsTrigger value="progress">Progress</TabsTrigger>
-                  <TabsTrigger value="logs">Logs</TabsTrigger>
-                  <TabsTrigger value="checkins">Check-ins</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
-                  <TabsTrigger value="baseline">Baseline</TabsTrigger>
+              <div className="rounded-2xl border border-border/70 bg-card/70 p-2">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-4">
+                  {workbenchTabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className={cn(
+                        "group h-auto rounded-xl border border-border/45 bg-background/35 px-3 py-2 text-left text-xs font-semibold tracking-wide text-muted-foreground transition-all",
+                        "hover:border-border hover:bg-background/60 hover:text-foreground",
+                        "data-[state=active]:border-primary/40 data-[state=active]:bg-primary/12 data-[state=active]:text-foreground",
+                        "data-[state=active]:shadow-[0_0_0_1px_oklch(var(--primary)/0.2),0_10px_30px_-20px_oklch(var(--primary)/0.7)]"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        {(() => {
+                          const Icon = workbenchTabIcons[tab.value];
+                          return (
+                            <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-data-[state=active]:text-primary" />
+                          );
+                        })()}
+                        <span>{tab.label}</span>
+                      </span>
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </div>
               <TabsContent value="workout">
@@ -2737,6 +2808,7 @@ export function PtClientDetailPage() {
                 />
               </TabsContent>
             </Tabs>
+            ) : null}
           </DashboardCard>
         </div>
       </div>
@@ -3405,34 +3477,10 @@ function PtClientScheduleCard({
   const weeklyMissed = weeklyWorkouts.filter(
     (row) => row.workout?.status === "skipped"
   ).length;
-  const weeklyAdherence = weeklyWorkouts.length > 0
-    ? Math.round((weeklyCompleted / weeklyWorkouts.length) * 100)
-    : 0;
   const weeklyPlanned = weeklyWorkouts.filter(
     (row) => (row.workout?.status ?? "planned") === "planned"
   ).length;
   const weeklyRest = weekRows.filter((row) => row.workout?.day_type === "rest" || !row.workout).length;
-  const nutritionMealStats = useMemo(() => {
-    const rows = (nutritionDaysQuery.data ?? []) as Array<{
-      meals?: Array<{ logs?: Array<{ is_completed?: boolean }> }>;
-    }>;
-    let total = 0;
-    let completed = 0;
-    rows.forEach((day) => {
-      const meals = day.meals ?? [];
-      total += meals.length;
-      meals.forEach((meal) => {
-        if ((meal.logs ?? []).some((log) => Boolean(log.is_completed))) {
-          completed += 1;
-        }
-      });
-    });
-    return {
-      total,
-      completed,
-      percent: total > 0 ? Math.round((completed / total) * 100) : 0,
-    };
-  }, [nutritionDaysQuery.data]);
 
   const nutritionDayTotals = useMemo(() => {
     return nutritionDayMeals.reduce(
@@ -3480,6 +3528,7 @@ function PtClientScheduleCard({
       : `coachos_pt_note_${selectedKey}`;
     window.localStorage.setItem(noteKey, dayNote.trim());
   };
+  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
 
   const formatLabel = (key: string) => {
     const [year, month, day] = key.split("-").map(Number);
@@ -3515,10 +3564,21 @@ const formatDayNumber = (key: string) => {
 
   return (
     <DashboardCard
-      title="Coach Calendar (14 days)"
-      subtitle="Day-by-day client status (completed, skipped, planned, rest)."
+      title="Clients Calendar"
+      action={
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2"
+          onClick={() => setIsCalendarCollapsed((prev) => !prev)}
+          aria-expanded={!isCalendarCollapsed}
+          aria-label={isCalendarCollapsed ? "Expand calendar" : "Collapse calendar"}
+        >
+          {isCalendarCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </Button>
+      }
     >
-      {scheduleQuery.isLoading || checkinsQuery.isLoading ? (
+      {isCalendarCollapsed ? null : scheduleQuery.isLoading || checkinsQuery.isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
@@ -3526,7 +3586,7 @@ const formatDayNumber = (key: string) => {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
               <div className="text-muted-foreground">Completed</div>
               <div className="text-sm font-semibold text-foreground">{weeklyCompleted}</div>
@@ -3542,14 +3602,6 @@ const formatDayNumber = (key: string) => {
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
               <div className="text-muted-foreground">Rest</div>
               <div className="text-sm font-semibold text-foreground">{weeklyRest}</div>
-            </div>
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-              <div className="text-muted-foreground">Adherence</div>
-              <div className="text-sm font-semibold text-foreground">{weeklyAdherence}%</div>
-            </div>
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-              <div className="text-muted-foreground">Nutrition Adherence</div>
-              <div className="text-sm font-semibold text-foreground">{nutritionMealStats.percent}%</div>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">

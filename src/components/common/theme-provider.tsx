@@ -1,7 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { safeSelect } from "../../lib/supabase-safe";
 import { supabase } from "../../lib/supabase";
-import { applyTheme, nextThemePreference, type ResolvedTheme, type ThemePreference } from "../../lib/theme";
+import {
+  applyTheme,
+  getStoredThemePreference,
+  nextThemePreference,
+  THEME_STORAGE_KEY,
+  type ResolvedTheme,
+  type ThemePreference,
+} from "../../lib/theme";
 
 interface ThemeContextValue {
   theme: ResolvedTheme;
@@ -24,7 +31,6 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const THEME_STORAGE_KEY = "coachos-theme-preference";
 const DENSITY_STORAGE_KEY = "coachos-compact-density";
 
 const toThemePreference = (value: unknown): ThemePreference | null => {
@@ -33,8 +39,8 @@ const toThemePreference = (value: unknown): ThemePreference | null => {
 };
 
 function getStoredPreference(): ThemePreference {
-  if (typeof window === "undefined") return "system";
-  return toThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY)) ?? "system";
+  const stored = getStoredThemePreference("dark");
+  return toThemePreference(stored) ?? "dark";
 }
 
 function getStoredCompactDensity(): boolean {
@@ -63,15 +69,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (themePreference !== "system") return;
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => {
-      const nextResolved = applyTheme("system");
-      setResolvedTheme(nextResolved);
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const onSystemThemeChange = () => {
+      setResolvedTheme(applyTheme("system"));
     };
-    media.addEventListener("change", handler);
-    return () => media.removeEventListener("change", handler);
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", onSystemThemeChange);
+    } else {
+      mediaQuery.addListener(onSystemThemeChange);
+    }
+    return () => {
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", onSystemThemeChange);
+      } else {
+        mediaQuery.removeListener(onSystemThemeChange);
+      }
+    };
   }, [themePreference]);
 
   const fetchAppearancePreference = useCallback(async () => {
@@ -101,7 +114,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const row = data?.[0];
     if (!row) return;
 
-    const dbThemePreference = toThemePreference(row.theme_preference) ?? "system";
+    const dbThemePreference = toThemePreference(row.theme_preference) ?? "dark";
     setThemePreferenceState(dbThemePreference);
     if (typeof row.compact_density === "boolean") {
       setCompactDensityState(row.compact_density);
