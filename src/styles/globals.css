@@ -11,36 +11,66 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
-    --background: 0.12 0.01 260;
-    --foreground: 0.95 0 0;
-    --card: 0.18 0.01 260;
-    --card-foreground: 0.95 0 0;
-    --popover: 0.2 0.01 260;
-    --popover-foreground: 0.95 0 0;
-    --primary: 0.75 0.18 195;
-    --primary-foreground: 0.12 0.01 260;
-    --secondary: 0.22 0.01 260;
-    --secondary-foreground: 0.95 0 0;
-    --accent: 0.75 0.18 195;
-    --accent-foreground: 0.12 0.01 260;
-    --muted: 0.2 0.01 260;
-    --muted-foreground: 0.6 0 0;
-    --border: 0.28 0.01 260;
-    --input: 0.24 0.01 260;
-    --ring: 0.75 0.18 195;
-    --success: 0.7 0.18 155;
-    --warning: 0.8 0.15 85;
-    --danger: 0.65 0.2 25;
-    --chart-1: 0.75 0.18 195;
-    --chart-2: 0.68 0.14 160;
-    --chart-3: 0.62 0.08 210;
-    --chart-4: 0.8 0.15 85;
-    --chart-5: 0.65 0.2 25;
+    color-scheme: light;
+    --background: 0.97 0.005 255;
+    --foreground: 0.22 0.02 255;
+    --card: 0.99 0.004 255;
+    --card-foreground: 0.22 0.02 255;
+    --popover: 1 0.003 255;
+    --popover-foreground: 0.22 0.02 255;
+    --primary: 0.58 0.14 205;
+    --primary-foreground: 0.98 0.005 255;
+    --secondary: 0.94 0.01 255;
+    --secondary-foreground: 0.28 0.02 255;
+    --accent: 0.62 0.14 202;
+    --accent-foreground: 0.98 0.005 255;
+    --muted: 0.95 0.008 255;
+    --muted-foreground: 0.46 0.018 255;
+    --border: 0.88 0.01 255;
+    --input: 0.92 0.01 255;
+    --ring: 0.62 0.14 202;
+    --success: 0.66 0.16 155;
+    --warning: 0.76 0.14 90;
+    --danger: 0.62 0.2 25;
+    --chart-1: 0.62 0.14 202;
+    --chart-2: 0.62 0.12 165;
+    --chart-3: 0.55 0.1 230;
+    --chart-4: 0.76 0.14 90;
+    --chart-5: 0.62 0.2 25;
     --radius: 0.75rem;
   }
 
+  .light {
+    color-scheme: light;
+    --background: 0.97 0.005 255;
+    --foreground: 0.22 0.02 255;
+    --card: 0.99 0.004 255;
+    --card-foreground: 0.22 0.02 255;
+    --popover: 1 0.003 255;
+    --popover-foreground: 0.22 0.02 255;
+    --primary: 0.58 0.14 205;
+    --primary-foreground: 0.98 0.005 255;
+    --secondary: 0.94 0.01 255;
+    --secondary-foreground: 0.28 0.02 255;
+    --accent: 0.62 0.14 202;
+    --accent-foreground: 0.98 0.005 255;
+    --muted: 0.95 0.008 255;
+    --muted-foreground: 0.46 0.018 255;
+    --border: 0.88 0.01 255;
+    --input: 0.92 0.01 255;
+    --ring: 0.62 0.14 202;
+    --success: 0.66 0.16 155;
+    --warning: 0.76 0.14 90;
+    --danger: 0.62 0.2 25;
+    --chart-1: 0.62 0.14 202;
+    --chart-2: 0.62 0.12 165;
+    --chart-3: 0.55 0.1 230;
+    --chart-4: 0.76 0.14 90;
+    --chart-5: 0.62 0.2 25;
+  }
+
   .dark {
+    color-scheme: dark;
     --background: 0.12 0.01 260;
     --foreground: 0.95 0 0;
     --card: 0.18 0.01 260;
@@ -75,10 +105,20 @@
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100dvh;
+  }
+
+  html.dark body {
     background-image:
       radial-gradient(circle at 15% 20%, oklch(0.75 0.18 195 / 0.12), transparent 55%),
       radial-gradient(circle at 85% 5%, oklch(0.7 0.18 155 / 0.1), transparent 50%),
       linear-gradient(160deg, oklch(0.12 0.01 260), oklch(0.14 0.02 250));
+  }
+
+  html.light body {
+    background-image:
+      radial-gradient(circle at 14% 18%, oklch(0.82 0.06 210 / 0.2), transparent 55%),
+      radial-gradient(circle at 88% 8%, oklch(0.86 0.05 185 / 0.18), transparent 50%),
+      linear-gradient(155deg, oklch(0.975 0.006 255), oklch(0.955 0.01 248));
   }
 }
 

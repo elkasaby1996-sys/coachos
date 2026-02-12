@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Bell,
   BookOpen,
@@ -15,7 +15,7 @@ import {
   Users,
   Apple,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
@@ -30,12 +30,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { LoadingScreen } from "../common/bootstrap-gate";
+import { formatRelativeTime } from "../../lib/relative-time";
 
 const navItems = [
   { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
@@ -50,12 +50,237 @@ const navItems = [
   { label: "Settings", to: "/pt/settings", icon: Settings },
 ];
 
+type NotificationItem = {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  to: string;
+};
+
+type ClientSummaryRow = {
+  id: string;
+  display_name: string | null;
+  status: string | null;
+};
+
 export function PtLayout() {
+  const navigate = useNavigate();
   const { workspaceId, loading, error } = useWorkspace();
-  const { authError } = useAuth();
+  const { authError, user } = useAuth();
   const errorMessage =
     error?.message ?? authError?.message ?? (workspaceId ? null : "Workspace not found.");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!workspaceId || !user?.id) {
+        setNotifications([]);
+        return;
+      }
+      setNotificationsLoading(true);
+      try {
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const twoDaysAgoIso = twoDaysAgo.toISOString();
+        const sevenDaysAheadIso = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const twoDaysAgoDateKey = twoDaysAgo.toISOString().slice(0, 10);
+
+        const clientsRes = await supabase
+          .from("clients")
+          .select("id, display_name, status")
+          .eq("workspace_id", workspaceId);
+        if (clientsRes.error) throw clientsRes.error;
+        const clientIds = ((clientsRes.data ?? []) as ClientSummaryRow[]).map((c) => c.id);
+
+        const [convRes, workoutsRes, habitsRes, checkinsRes, eventsRes] = await Promise.all([
+          supabase
+            .from("conversations")
+            .select("id, client_id, last_message_at, last_message_sender_name, last_message_preview, last_message_sender_role")
+            .eq("workspace_id", workspaceId)
+            .eq("last_message_sender_role", "client")
+            .gte("last_message_at", twoDaysAgoIso)
+            .order("last_message_at", { ascending: false })
+            .limit(8),
+          supabase
+            .from("assigned_workouts")
+            .select("id, client_id, completed_at, scheduled_date")
+            .eq("workspace_id", workspaceId)
+            .eq("status", "completed")
+            .gte("completed_at", twoDaysAgoIso)
+            .order("completed_at", { ascending: false })
+            .limit(12),
+          supabase
+            .from("habit_logs")
+            .select("id, client_id, log_date, created_at")
+            .in("client_id", clientIds.length ? clientIds : ["00000000-0000-0000-0000-000000000000"])
+            .gte("log_date", twoDaysAgoDateKey)
+            .order("log_date", { ascending: false })
+            .limit(12),
+          supabase
+            .from("checkins")
+            .select("id, client_id, submitted_at, week_ending_saturday")
+            .in("client_id", clientIds.length ? clientIds : ["00000000-0000-0000-0000-000000000000"])
+            .not("submitted_at", "is", null)
+            .gte("submitted_at", twoDaysAgoIso)
+            .order("submitted_at", { ascending: false })
+            .limit(12),
+          supabase
+            .from("coach_calendar_events")
+            .select("id, title, starts_at")
+            .eq("workspace_id", workspaceId)
+            .gte("starts_at", nowIso)
+            .lte("starts_at", sevenDaysAheadIso)
+            .order("starts_at", { ascending: true })
+            .limit(10),
+        ]);
+
+        if (convRes.error) throw convRes.error;
+        if (workoutsRes.error) throw workoutsRes.error;
+        if (habitsRes.error) throw habitsRes.error;
+        if (checkinsRes.error) throw checkinsRes.error;
+        if (eventsRes.error) throw eventsRes.error;
+
+        const clientMap = new Map<string, ClientSummaryRow>();
+        ((clientsRes.data ?? []) as ClientSummaryRow[]).forEach((client) => {
+          clientMap.set(client.id, client);
+        });
+
+        const items: NotificationItem[] = [];
+        const lastActivityByClient = new Map<string, number>();
+        const trackClientActivity = (clientId: string | null, iso: string | null) => {
+          if (!clientId || !iso) return;
+          const ts = new Date(iso).getTime();
+          if (!Number.isFinite(ts)) return;
+          const existing = lastActivityByClient.get(clientId) ?? 0;
+          if (ts > existing) lastActivityByClient.set(clientId, ts);
+        };
+
+        ((convRes.data ?? []) as Array<{
+          id: string;
+          client_id: string | null;
+          last_message_at: string | null;
+          last_message_sender_name: string | null;
+          last_message_preview: string | null;
+        }>).forEach((row) => {
+          if (!row.client_id || !row.last_message_at) return;
+          const clientName = clientMap.get(row.client_id)?.display_name ?? "Client";
+          items.push({
+            id: `msg-${row.id}`,
+            title: "New message",
+            description: `${clientName}: ${row.last_message_preview ?? "Sent a message"}`,
+            createdAt: row.last_message_at,
+            to: `/pt/messages?client=${row.client_id}`,
+          });
+          trackClientActivity(row.client_id, row.last_message_at);
+        });
+
+        ((workoutsRes.data ?? []) as Array<{
+          id: string;
+          client_id: string | null;
+          completed_at: string | null;
+        }>).forEach((row) => {
+          if (!row.client_id || !row.completed_at) return;
+          const clientName = clientMap.get(row.client_id)?.display_name ?? "Client";
+          items.push({
+            id: `workout-${row.id}`,
+            title: "Workout completed",
+            description: `${clientName} completed a workout`,
+            createdAt: row.completed_at,
+            to: `/pt/clients/${row.client_id}?tab=workout`,
+          });
+          trackClientActivity(row.client_id, row.completed_at);
+        });
+
+        ((habitsRes.data ?? []) as Array<{
+          id: string;
+          client_id: string | null;
+          log_date: string | null;
+          created_at: string | null;
+        }>).forEach((row) => {
+          if (!row.client_id || !row.log_date) return;
+          const clientName = clientMap.get(row.client_id)?.display_name ?? "Client";
+          const createdAt = row.created_at ?? `${row.log_date}T12:00:00.000Z`;
+          items.push({
+            id: `habit-${row.id}`,
+            title: "Habits completed",
+            description: `${clientName} logged habits for ${row.log_date}`,
+            createdAt,
+            to: `/pt/clients/${row.client_id}?tab=habits`,
+          });
+          trackClientActivity(row.client_id, createdAt);
+        });
+
+        ((checkinsRes.data ?? []) as Array<{
+          id: string;
+          client_id: string | null;
+          submitted_at: string | null;
+          week_ending_saturday: string | null;
+        }>).forEach((row) => {
+          if (!row.client_id || !row.submitted_at) return;
+          const clientName = clientMap.get(row.client_id)?.display_name ?? "Client";
+          items.push({
+            id: `checkin-${row.id}`,
+            title: "Check-in submitted",
+            description: `${clientName} submitted weekly check-in`,
+            createdAt: row.submitted_at,
+            to: `/pt/clients/${row.client_id}?tab=checkins`,
+          });
+          trackClientActivity(row.client_id, row.submitted_at);
+        });
+
+        ((eventsRes.data ?? []) as Array<{ id: string; title: string | null; starts_at: string | null }>).forEach(
+          (row) => {
+            if (!row.starts_at) return;
+            items.push({
+              id: `event-${row.id}`,
+              title: "Upcoming calendar event",
+              description: row.title ?? "Scheduled event",
+              createdAt: row.starts_at,
+              to: "/pt/calendar",
+            });
+          }
+        );
+
+        const inactiveCutoffTs = twoDaysAgo.getTime();
+        ((clientsRes.data ?? []) as ClientSummaryRow[]).forEach((client) => {
+          const status = (client.status ?? "active").toLowerCase();
+          if (status !== "active") return;
+          const lastTs = lastActivityByClient.get(client.id) ?? 0;
+          if (!lastTs || lastTs < inactiveCutoffTs) {
+            items.push({
+              id: `inactive-${client.id}`,
+              title: "Client inactive for 2+ days",
+              description: `${client.display_name ?? "Client"} has no recent activity`,
+              createdAt: twoDaysAgoIso,
+              to: `/pt/clients/${client.id}?tab=overview`,
+            });
+          }
+        });
+
+        const deduped = Array.from(
+          new Map(items.map((item) => [item.id, item])).values()
+        )
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 30);
+
+        setNotifications(deduped);
+      } catch {
+        setNotifications([]);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+
+    loadNotifications();
+    const interval = window.setInterval(loadNotifications, 60_000);
+    return () => window.clearInterval(interval);
+  }, [workspaceId, user?.id]);
+
+  const unreadCount = useMemo(() => notifications.length, [notifications]);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -92,7 +317,6 @@ export function PtLayout() {
   }
 
   return (
-    <TooltipProvider>
       <div className="min-h-screen bg-background">
         <div className="flex min-h-screen">
           <aside className="hidden w-72 flex-col border-r border-border bg-card px-4 py-6 md:flex">
@@ -291,15 +515,46 @@ export function PtLayout() {
                       <DropdownMenuItem>Assign workout</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="relative">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
                         <Bell className="h-4 w-4" />
-                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" />
+                        {unreadCount > 0 ? (
+                          <>
+                            <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-accent" />
+                            <span className="absolute -right-1 -top-1 min-w-[1.1rem] rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">
+                              {unreadCount > 99 ? "99+" : unreadCount}
+                            </span>
+                          </>
+                        ) : null}
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>3 new alerts</TooltipContent>
-                  </Tooltip>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[360px] max-w-[90vw]">
+                      <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {notificationsLoading ? (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">Loading...</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">No new notifications.</div>
+                      ) : (
+                        notifications.slice(0, 12).map((item) => (
+                          <DropdownMenuItem
+                            key={item.id}
+                            className="cursor-pointer items-start py-2"
+                            onClick={() => navigate(item.to)}
+                          >
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-medium leading-tight">{item.title}</p>
+                              <p className="text-xs text-muted-foreground leading-snug">{item.description}</p>
+                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
+                                {formatRelativeTime(item.createdAt)}
+                              </p>
+                            </div>
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <ThemeToggle />
                 </div>
               </PageContainer>
@@ -312,6 +567,5 @@ export function PtLayout() {
           </div>
         </div>
       </div>
-    </TooltipProvider>
   );
 }

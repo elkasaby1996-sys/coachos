@@ -8,6 +8,7 @@ import { Input } from "../../components/ui/input";
 import { EmptyState, Skeleton } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
+import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtSettingsPage() {
@@ -17,6 +18,15 @@ export function PtSettingsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const {
+    themePreference,
+    compactDensity,
+    updateAppearance,
+    isSaving: appearanceSaving,
+    saveError: appearanceSaveError,
+  } = useThemePreference();
+  const [appearanceTheme, setAppearanceTheme] = useState(themePreference);
+  const [appearanceCompactDensity, setAppearanceCompactDensity] = useState(compactDensity);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -75,6 +85,14 @@ export function PtSettingsPage() {
     setDefaultTemplateId(workspaceQuery.data.default_checkin_template_id ?? "");
   }, [workspaceQuery.data]);
 
+  useEffect(() => {
+    setAppearanceTheme(themePreference);
+  }, [themePreference]);
+
+  useEffect(() => {
+    setAppearanceCompactDensity(compactDensity);
+  }, [compactDensity]);
+
   const handleSaveDefaultTemplate = async () => {
     if (!workspaceId) return;
     setSaveStatus("saving");
@@ -93,6 +111,14 @@ export function PtSettingsPage() {
     setToastVariant("success");
     setToastMessage("Default check-in template updated.");
     await queryClient.invalidateQueries({ queryKey: ["pt-settings-workspace", workspaceId] });
+  };
+
+  const handleSaveAppearance = async () => {
+    await updateAppearance({
+      themePreference: appearanceTheme,
+      compactDensity: appearanceCompactDensity,
+      persist: true,
+    });
   };
 
   return (
@@ -155,6 +181,67 @@ export function PtSettingsPage() {
           <p className="text-sm text-muted-foreground">
             Subscription management will be available in a future update.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Select your default color theme and density preference.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Theme</p>
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-1">
+              <Button
+                size="sm"
+                variant={appearanceTheme === "system" ? "default" : "ghost"}
+                onClick={() => setAppearanceTheme("system")}
+              >
+                System
+              </Button>
+              <Button
+                size="sm"
+                variant={appearanceTheme === "dark" ? "default" : "ghost"}
+                onClick={() => setAppearanceTheme("dark")}
+              >
+                Dark
+              </Button>
+              <Button
+                size="sm"
+                variant={appearanceTheme === "light" ? "default" : "ghost"}
+                onClick={() => setAppearanceTheme("light")}
+              >
+                Light
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+            <div>
+              <p className="text-sm font-medium">Compact density</p>
+              <p className="text-xs text-muted-foreground">Store reduced spacing preference.</p>
+            </div>
+            <Button
+              size="sm"
+              variant={appearanceCompactDensity ? "default" : "secondary"}
+              onClick={() => setAppearanceCompactDensity((prev) => !prev)}
+            >
+              {appearanceCompactDensity ? "On" : "Off"}
+            </Button>
+          </div>
+
+          {appearanceSaveError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              {appearanceSaveError}
+            </div>
+          ) : null}
+
+          <Button size="sm" onClick={handleSaveAppearance} disabled={appearanceSaving}>
+            {appearanceSaving ? "Saving..." : "Save appearance"}
+          </Button>
         </CardContent>
       </Card>
 

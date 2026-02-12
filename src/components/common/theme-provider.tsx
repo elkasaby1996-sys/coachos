@@ -1,39 +1,217 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-type Theme = "light" | "dark";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { safeSelect } from "../../lib/supabase-safe";
+import { supabase } from "../../lib/supabase";
+import { applyTheme, nextThemePreference, type ResolvedTheme, type ThemePreference } from "../../lib/theme";
 
 interface ThemeContextValue {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
+  theme: ResolvedTheme;
+  themePreference: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  compactDensity: boolean;
+  isSaving: boolean;
+  saveError: string | null;
+  setTheme: (theme: ResolvedTheme) => Promise<void>;
+  toggleTheme: () => Promise<void>;
+  setThemePreference: (themePreference: ThemePreference, options?: { persist?: boolean }) => Promise<void>;
+  setCompactDensity: (compactDensity: boolean, options?: { persist?: boolean }) => Promise<void>;
+  updateAppearance: (payload: {
+    themePreference?: ThemePreference;
+    compactDensity?: boolean;
+    persist?: boolean;
+  }) => Promise<void>;
+  cycleThemePreference: () => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-function getStoredTheme(): Theme {
-  const stored = window.localStorage.getItem("coachos-theme");
-  return stored === "dark" ? "dark" : "light";
+const THEME_STORAGE_KEY = "coachos-theme-preference";
+const DENSITY_STORAGE_KEY = "coachos-compact-density";
+
+const toThemePreference = (value: unknown): ThemePreference | null => {
+  if (value === "system" || value === "dark" || value === "light") return value;
+  return null;
+};
+
+function getStoredPreference(): ThemePreference {
+  if (typeof window === "undefined") return "system";
+  return toThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY)) ?? "system";
+}
+
+function getStoredCompactDensity(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(DENSITY_STORAGE_KEY) === "1";
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "light";
-    return getStoredTheme();
-  });
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() => getStoredPreference());
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => applyTheme(getStoredPreference()));
+  const [compactDensity, setCompactDensityState] = useState<boolean>(() => getStoredCompactDensity());
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
-    window.localStorage.setItem("coachos-theme", theme);
-  }, [theme]);
+    root.classList.toggle("density-compact", compactDensity);
+    window.localStorage.setItem(DENSITY_STORAGE_KEY, compactDensity ? "1" : "0");
+  }, [compactDensity]);
 
-  const value = useMemo(
+  useEffect(() => {
+    const nextResolved = applyTheme(themePreference);
+    setResolvedTheme(nextResolved);
+    window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+  }, [themePreference]);
+
+  useEffect(() => {
+    if (themePreference !== "system") return;
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      const nextResolved = applyTheme("system");
+      setResolvedTheme(nextResolved);
+    };
+    media.addEventListener("change", handler);
+    return () => media.removeEventListener("change", handler);
+  }, [themePreference]);
+
+  const fetchAppearancePreference = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) return;
+
+    const { data, error } = await safeSelect<{
+      user_id: string;
+      role: string | null;
+      theme_preference?: string | null;
+      compact_density?: boolean | null;
+    }>({
+      table: "workspace_members",
+      columns: "user_id, role, theme_preference, compact_density",
+      fallbackColumns: "user_id, role",
+      filter: (query) =>
+        query
+          .eq("user_id", user.id)
+          .like("role", "pt_%")
+          .order("role", { ascending: true })
+          .limit(1),
+    });
+
+    if (error) return;
+    const row = data?.[0];
+    if (!row) return;
+
+    const dbThemePreference = toThemePreference(row.theme_preference) ?? "system";
+    setThemePreferenceState(dbThemePreference);
+    if (typeof row.compact_density === "boolean") {
+      setCompactDensityState(row.compact_density);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAppearancePreference();
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      fetchAppearancePreference();
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, [fetchAppearancePreference]);
+
+  const persistAppearance = useCallback(async (nextTheme: ThemePreference, nextCompact: boolean) => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const { error } = await supabase.rpc("set_my_appearance_preferences", {
+        p_theme_preference: nextTheme,
+        p_compact_density: nextCompact,
+      });
+      if (error) {
+        setSaveError(error.message ?? "Failed to save appearance preference.");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  const updateAppearance = useCallback(
+    async (payload: {
+      themePreference?: ThemePreference;
+      compactDensity?: boolean;
+      persist?: boolean;
+    }) => {
+      const nextTheme = payload.themePreference ?? themePreference;
+      const nextCompact = typeof payload.compactDensity === "boolean" ? payload.compactDensity : compactDensity;
+      const persist = payload.persist ?? true;
+
+      setThemePreferenceState(nextTheme);
+      setCompactDensityState(nextCompact);
+
+      if (persist) {
+        await persistAppearance(nextTheme, nextCompact);
+      }
+    },
+    [compactDensity, persistAppearance, themePreference]
+  );
+
+  const setThemePreference = useCallback(
+    async (nextThemePreference: ThemePreference, options?: { persist?: boolean }) => {
+      await updateAppearance({ themePreference: nextThemePreference, persist: options?.persist });
+    },
+    [updateAppearance]
+  );
+
+  const setCompactDensity = useCallback(
+    async (nextCompactDensity: boolean, options?: { persist?: boolean }) => {
+      await updateAppearance({ compactDensity: nextCompactDensity, persist: options?.persist });
+    },
+    [updateAppearance]
+  );
+
+  const cycleThemePreference = useCallback(async () => {
+    await setThemePreference(nextThemePreference(themePreference));
+  }, [setThemePreference, themePreference]);
+
+  const setTheme = useCallback(
+    async (nextTheme: ResolvedTheme) => {
+      await setThemePreference(nextTheme);
+    },
+    [setThemePreference]
+  );
+
+  const toggleTheme = useCallback(async () => {
+    await setThemePreference(resolvedTheme === "dark" ? "light" : "dark");
+  }, [resolvedTheme, setThemePreference]);
+
+  const value = useMemo<ThemeContextValue>(
     () => ({
-      theme,
-      setTheme: setThemeState,
-      toggleTheme: () => setThemeState((prev) => (prev === "dark" ? "light" : "dark")),
+      theme: resolvedTheme,
+      themePreference,
+      resolvedTheme,
+      compactDensity,
+      isSaving,
+      saveError,
+      setTheme,
+      toggleTheme,
+      setThemePreference,
+      setCompactDensity,
+      updateAppearance,
+      cycleThemePreference,
     }),
-    [theme]
+    [
+      compactDensity,
+      cycleThemePreference,
+      isSaving,
+      resolvedTheme,
+      saveError,
+      setCompactDensity,
+      setTheme,
+      setThemePreference,
+      toggleTheme,
+      themePreference,
+      updateAppearance,
+    ]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
