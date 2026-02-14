@@ -15,6 +15,7 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getProfileCompletion } from "../../lib/profile-completion";
@@ -571,191 +572,210 @@ export function ClientProfilePage() {
       )}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-[640px]">
+        <DialogContent className="w-[95vw] max-w-3xl overflow-hidden p-0 sm:max-h-[88vh]">
           <DialogHeader>
-            <DialogTitle>Edit profile</DialogTitle>
-            <DialogDescription>
+            <div className="px-6 pt-6">
+              <DialogTitle>Edit profile</DialogTitle>
+              <DialogDescription>
               Update your details so your coach can tailor your plan.
-            </DialogDescription>
+              </DialogDescription>
+            </div>
           </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Profile photo</label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Upload support is in progress. If it fails, we&apos;ll keep your current photo.
-              </p>
+          <Tabs defaultValue="identity" className="px-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="identity">Identity</TabsTrigger>
+              <TabsTrigger value="training">Training</TabsTrigger>
+              <TabsTrigger value="health">Health</TabsTrigger>
+            </TabsList>
+
+            <div className="mt-4 max-h-[56vh] overflow-y-auto pr-1">
+              <TabsContent value="identity" className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Profile photo</label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Upload support is in progress. If it fails, we&apos;ll keep your current photo.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Display name</label>
+                  <Input
+                    value={formState.display_name}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, display_name: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Email</label>
+                  <Input value={session?.user?.email ?? ""} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Phone</label>
+                  <Input
+                    value={formState.phone}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, phone: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Country</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={formState.location}
+                    onChange={(event) => handleCountryChange(event.target.value)}
+                  >
+                    <option value="">Select country</option>
+                    {locationOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Timezone</label>
+                  <Input value={formState.timezone} readOnly />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Units</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={formState.unit_preference}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, unit_preference: event.target.value }))
+                    }
+                  >
+                    <option value="">Select units</option>
+                    {unitOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Birthdate</label>
+                  <Input
+                    type="date"
+                    value={formState.dob}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, dob: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Gender</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={formState.gender}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, gender: event.target.value }))
+                    }
+                  >
+                    <option value="">Select gender</option>
+                    {genderOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="training" className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Gym name</label>
+                  <Input
+                    value={formState.gym_name}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, gym_name: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Days per week</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formState.days_per_week}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, days_per_week: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Goal</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={formState.goal}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, goal: event.target.value }))
+                    }
+                  >
+                    <option value="">Select goal</option>
+                    {goalOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="health" className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Height (cm)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formState.height_cm}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, height_cm: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Current weight</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formState.current_weight}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, current_weight: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Injuries</label>
+                  <textarea
+                    className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={formState.injuries}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, injuries: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Limitations</label>
+                  <textarea
+                    className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={formState.limitations}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, limitations: event.target.value }))
+                    }
+                  />
+                </div>
+              </TabsContent>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Display name</label>
-              <Input
-                value={formState.display_name}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, display_name: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Email</label>
-              <Input value={session?.user?.email ?? ""} readOnly />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Phone</label>
-              <Input
-                value={formState.phone}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, phone: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Country</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={formState.location}
-                onChange={(event) => handleCountryChange(event.target.value)}
-              >
-                <option value="">Select country</option>
-                {locationOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Timezone</label>
-              <Input value={formState.timezone} readOnly />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Units</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={formState.unit_preference}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, unit_preference: event.target.value }))
-                }
-              >
-                <option value="">Select units</option>
-                {unitOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Birthdate</label>
-              <Input
-                type="date"
-                value={formState.dob}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, dob: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Gender</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={formState.gender}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, gender: event.target.value }))
-                }
-              >
-                <option value="">Select gender</option>
-                {genderOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Gym name</label>
-              <Input
-                value={formState.gym_name}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, gym_name: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Days per week</label>
-              <Input
-                type="number"
-                min="0"
-                value={formState.days_per_week}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, days_per_week: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Goal</label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={formState.goal}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, goal: event.target.value }))
-                }
-              >
-                <option value="">Select goal</option>
-                {goalOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Height (cm)</label>
-              <Input
-                type="number"
-                min="0"
-                value={formState.height_cm}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, height_cm: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Current weight</label>
-              <Input
-                type="number"
-                min="0"
-                value={formState.current_weight}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, current_weight: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Injuries</label>
-              <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={formState.injuries}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, injuries: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Limitations</label>
-              <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={formState.limitations}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, limitations: event.target.value }))
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
+          </Tabs>
+
+          <DialogFooter className="border-t border-border px-6 py-4">
             <Button variant="secondary" onClick={() => setEditOpen(false)}>
               Cancel
             </Button>

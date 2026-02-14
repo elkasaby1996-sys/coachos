@@ -628,8 +628,6 @@ export function ClientBaselinePage() {
     actionError ? new Error(actionError) : null,
   ].filter(Boolean);
 
-  const showDebugPanel = import.meta.env.DEV;
-
   if (baselineLoading || clientQuery.isLoading) {
     return (
       <div className="space-y-4 pb-16 md:pb-0">
@@ -673,9 +671,6 @@ export function ClientBaselinePage() {
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-        BASELINE WIZARD ACTIVE (v2)
-      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Baseline</h1>
@@ -716,21 +711,6 @@ export function ClientBaselinePage() {
           </Badge>
         ))}
       </div>
-
-      {showDebugPanel ? (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-sm">Debug</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-xs text-muted-foreground">
-            <div>clientId: {clientId}</div>
-            <div>clientWorkspaceId: {clientWorkspaceId ?? "null"}</div>
-            <div>templates count: {templates.length}</div>
-            <div>last error: {actionError ?? baselineError ?? "none"}</div>
-            <div>upload path: {lastUploadPath ?? "n/a"}</div>
-          </CardContent>
-        </Card>
-      ) : null}
 
       {activeStep === 0 ? (
         <Card>

@@ -126,6 +126,7 @@ export function InvitePage() {
 
   const isRateLimited = (message: string) => message.toLowerCase().includes("rate limit");
   const tabDisabled = (tab: InviteTab) => rateLimitedTab === tab;
+  const rateLimitHint = error && isRateLimited(error) ? "Try again in a few minutes." : null;
 
   const handleOAuth = async (provider: "google" | "apple" | "facebook") => {
     setBusyAction(`oauth_${provider}`);
@@ -244,7 +245,7 @@ export function InvitePage() {
               Choose one method to continue. Your invite token is already attached.
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5 rounded-2xl border border-border/50 bg-card/60 p-5 shadow-[0_0_0_1px_oklch(var(--primary)/0.08),0_16px_48px_-28px_oklch(var(--primary)/0.6)] focus-within:shadow-[0_0_0_1px_oklch(var(--primary)/0.25),0_20px_56px_-26px_oklch(var(--primary)/0.75)]">
             {inviteLoading || loading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-1/2" />
@@ -262,7 +263,7 @@ export function InvitePage() {
                 </AlertTitle>
                 <AlertDescription className="text-danger">
                   {error}
-                  {isRateLimited(error) ? " Try again in a few minutes." : ""}
+                  {rateLimitHint ? ` ${rateLimitHint}` : ""}
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -283,9 +284,9 @@ export function InvitePage() {
               <Tabs
                 value={activeTab}
                 onValueChange={(value) => setActiveTab(value as InviteTab)}
-                className="space-y-3"
+                className="space-y-4"
               >
-                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 md:grid-cols-4">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/35 p-1 md:grid-cols-4">
                   <TabsTrigger value="social">Social</TabsTrigger>
                   <TabsTrigger value="email_link">Email Link</TabsTrigger>
                   <TabsTrigger value="phone_code">Phone Code</TabsTrigger>
@@ -331,7 +332,7 @@ export function InvitePage() {
                 <TabsContent value="email_link" className="space-y-3">
                   <form className="space-y-3" onSubmit={handleEmailOtp}>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium" htmlFor="invite-email-link">
+                      <label htmlFor="invite-email-link" className="text-sm font-medium text-foreground">
                         Email
                       </label>
                       <Input
@@ -348,13 +349,16 @@ export function InvitePage() {
                       Send magic link
                     </Button>
                   </form>
+                  {tabDisabled("email_link") ? (
+                    <p className="text-xs text-amber-300">Email link is temporarily rate-limited. {rateLimitHint ?? ""}</p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">We will send a sign-in link to your email.</p>
                 </TabsContent>
 
                 <TabsContent value="phone_code" className="space-y-3">
                   <form className="space-y-3" onSubmit={handlePhoneOtp}>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium" htmlFor="invite-phone">
+                      <label htmlFor="invite-phone" className="text-sm font-medium text-foreground">
                         Phone
                       </label>
                       <Input
@@ -368,7 +372,7 @@ export function InvitePage() {
                     </div>
                     {phoneStep === "verify" ? (
                       <div className="space-y-2">
-                        <label className="text-sm font-medium" htmlFor="invite-phone-code">
+                        <label htmlFor="invite-phone-code" className="text-sm font-medium text-foreground">
                           Verification code
                         </label>
                         <Input
@@ -385,13 +389,16 @@ export function InvitePage() {
                       {phoneStep === "send" ? "Send code" : "Verify code"}
                     </Button>
                   </form>
+                  {tabDisabled("phone_code") ? (
+                    <p className="text-xs text-amber-300">Phone code is temporarily rate-limited. {rateLimitHint ?? ""}</p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">We will text a one-time verification code.</p>
                 </TabsContent>
 
                 <TabsContent value="email_password" className="space-y-3">
                   <form className="space-y-3" onSubmit={handleEmailPassword}>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium" htmlFor="invite-email-password">
+                      <label htmlFor="invite-email-password" className="text-sm font-medium text-foreground">
                         Email
                       </label>
                       <Input
@@ -404,7 +411,7 @@ export function InvitePage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium" htmlFor="invite-password">
+                      <label htmlFor="invite-password" className="text-sm font-medium text-foreground">
                         Password
                       </label>
                       <Input
@@ -425,6 +432,9 @@ export function InvitePage() {
                       Create account
                     </Button>
                   </form>
+                  {tabDisabled("email_password") ? (
+                    <p className="text-xs text-amber-300">Email/password signup is temporarily rate-limited. {rateLimitHint ?? ""}</p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     Use this if you prefer a password instead of magic links.
                   </p>
@@ -436,7 +446,8 @@ export function InvitePage() {
               </div>
             ) : null}
 
-            <div className="border-t border-border/60 pt-3 text-center text-xs text-muted-foreground">
+            <div className="h-px bg-border/60" />
+            <div className="pt-0 text-center text-xs text-muted-foreground">
               By continuing, you agree to Terms &amp; Privacy.
             </div>
           </CardContent>
