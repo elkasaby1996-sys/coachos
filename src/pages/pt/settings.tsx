@@ -10,13 +10,17 @@ import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useAuth } from "../../lib/auth";
 
 export function PtSettingsPage() {
   const navigate = useNavigate();
   const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const { session } = useAuth();
   const queryClient = useQueryClient();
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [brandingSaveStatus, setBrandingSaveStatus] = useState<"idle" | "saving" | "error">("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
   const {
@@ -24,11 +28,13 @@ export function PtSettingsPage() {
     compactDensity,
     updateAppearance,
     isSaving: appearanceSaving,
-    saveError: appearanceSaveError,
   } = useThemePreference();
   const [appearanceTheme, setAppearanceTheme] = useState(themePreference);
   const [appearanceCompactDensity, setAppearanceCompactDensity] = useState(compactDensity);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaveStatus, setPasswordSaveStatus] = useState<"idle" | "saving" | "error">("idle");
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -42,11 +48,11 @@ export function PtSettingsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspaces")
-        .select("id, default_checkin_template_id")
+        .select("id, name, default_checkin_template_id")
         .eq("id", workspaceId ?? "")
         .maybeSingle();
       if (error) throw error;
-      return data as { id: string; default_checkin_template_id: string | null } | null;
+      return data as { id: string; name: string | null; default_checkin_template_id: string | null } | null;
     },
   });
 
@@ -85,6 +91,7 @@ export function PtSettingsPage() {
   useEffect(() => {
     if (!workspaceQuery.data) return;
     setDefaultTemplateId(workspaceQuery.data.default_checkin_template_id ?? "");
+    setWorkspaceName(workspaceQuery.data.name ?? "");
   }, [workspaceQuery.data]);
 
   useEffect(() => {
@@ -115,6 +122,28 @@ export function PtSettingsPage() {
     await queryClient.invalidateQueries({ queryKey: ["pt-settings-workspace", workspaceId] });
   };
 
+  const handleSaveWorkspaceName = async () => {
+    if (!workspaceId) return;
+    const nextName = workspaceName.trim();
+    if (!nextName) {
+      setToastVariant("error");
+      setToastMessage("Workspace name is required.");
+      return;
+    }
+    setBrandingSaveStatus("saving");
+    const { error } = await supabase.from("workspaces").update({ name: nextName }).eq("id", workspaceId);
+    if (error) {
+      setBrandingSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage("Unable to update workspace name.");
+      return;
+    }
+    setBrandingSaveStatus("idle");
+    setToastVariant("success");
+    setToastMessage("Workspace name updated.");
+    await queryClient.invalidateQueries({ queryKey: ["pt-settings-workspace", workspaceId] });
+  };
+
   const handleSaveAppearance = async () => {
     await updateAppearance({
       themePreference: appearanceTheme,
@@ -135,6 +164,36 @@ export function PtSettingsPage() {
     navigate("/login", { replace: true });
   };
 
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) {
+      setPasswordSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage("Passwords do not match.");
+      return;
+    }
+
+    setPasswordSaveStatus("saving");
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPasswordSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage(error.message || "Unable to change password.");
+      return;
+    }
+
+    setPasswordSaveStatus("idle");
+    setNewPassword("");
+    setConfirmPassword("");
+    setToastVariant("success");
+    setToastMessage("Password updated.");
+  };
+
   return (
     <div className="space-y-8">
       {toastMessage ? (
@@ -148,41 +207,70 @@ export function PtSettingsPage() {
 
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Settings</h2>
-        <p className="text-sm text-muted-foreground">Manage workspace branding and account access.</p>
+        <p className="text-sm text-muted-foreground">Manage workspace name and account access.</p>
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <CardHeader>
           <div>
             <CardTitle>Workspace branding</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Customize the workspace name and logo shown to clients.
-            </p>
+            <p className="text-sm text-muted-foreground">Set the workspace name shown to clients.</p>
           </div>
-          <Button variant="secondary" size="sm">
-            Upload logo
-          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input defaultValue="Velocity PT Lab" />
-          <div className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-center text-xs text-muted-foreground">
-            Logo placeholder
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground">Workspace name</label>
+            <Input
+              value={workspaceName}
+              onChange={(event) => setWorkspaceName(event.target.value)}
+              placeholder="Workspace name"
+            />
           </div>
+          <Button size="sm" onClick={handleSaveWorkspaceName} disabled={brandingSaveStatus === "saving"}>
+            {brandingSaveStatus === "saving" ? "Saving..." : "Save workspace name"}
+          </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>
-          <p className="text-sm text-muted-foreground">Signed in as coach@velocitylab.com</p>
+          <p className="text-sm text-muted-foreground">
+            Signed in as {session?.user?.email ?? session?.user?.phone ?? "Unknown account"}
+          </p>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <CardContent className="space-y-4">
           <div>
             <p className="text-sm font-medium">Email</p>
-            <p className="text-xs text-muted-foreground">coach@velocitylab.com</p>
+            <p className="text-xs text-muted-foreground">{session?.user?.email ?? "No email available"}</p>
           </div>
-          <Button variant="secondary" size="sm">
-            Change password
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">New password</label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder="At least 8 characters"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Confirm password</label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Re-enter password"
+              />
+            </div>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleChangePassword}
+            disabled={passwordSaveStatus === "saving"}
+          >
+            {passwordSaveStatus === "saving" ? "Updating..." : "Change password"}
           </Button>
         </CardContent>
       </Card>
@@ -246,12 +334,6 @@ export function PtSettingsPage() {
               {appearanceCompactDensity ? "On" : "Off"}
             </Button>
           </div>
-
-          {appearanceSaveError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              {appearanceSaveError}
-            </div>
-          ) : null}
 
           <Button size="sm" onClick={handleSaveAppearance} disabled={appearanceSaving}>
             {appearanceSaving ? "Saving..." : "Save appearance"}

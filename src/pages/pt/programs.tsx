@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Pencil, Archive } from "lucide-react";
+import { Copy, Pencil, Archive, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -50,7 +50,7 @@ export function PtProgramsPage() {
   const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
-  const [actionMode, setActionMode] = useState<"duplicate" | "archive" | null>(null);
+  const [actionMode, setActionMode] = useState<"duplicate" | "archive" | "delete" | null>(null);
 
   const programsQuery = useQuery({
     queryKey: ["program-templates", workspaceId],
@@ -151,6 +151,48 @@ export function PtProgramsPage() {
     setActionMode(null);
   };
 
+  const handleDelete = async (program: ProgramTemplateRow) => {
+    if (!workspaceId) return;
+    const confirmed = window.confirm(
+      `Delete "${program.name ?? "Program"}"? This will permanently remove the program and its scheduled template days.`
+    );
+    if (!confirmed) return;
+
+    setActionId(program.id);
+    setActionMode("delete");
+    setActionError(null);
+
+    const { error: deleteDaysError } = await supabase
+      .from("program_template_days")
+      .delete()
+      .eq("program_template_id", program.id);
+
+    if (deleteDaysError) {
+      const details = getErrorDetails(deleteDaysError);
+      setActionError(`${details.code}: ${details.message}`);
+      setActionId(null);
+      setActionMode(null);
+      return;
+    }
+
+    const { error: deleteProgramError } = await supabase
+      .from("program_templates")
+      .delete()
+      .eq("id", program.id);
+
+    if (deleteProgramError) {
+      const details = getErrorDetails(deleteProgramError);
+      setActionError(`${details.code}: ${details.message}`);
+      setActionId(null);
+      setActionMode(null);
+      return;
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ["program-templates", workspaceId] });
+    setActionId(null);
+    setActionMode(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -234,6 +276,16 @@ export function PtProgramsPage() {
                     >
                       <Archive className="mr-1 h-3.5 w-3.5" />
                       {isBusy && actionMode === "archive" ? "Archiving..." : "Archive"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="flex-1 text-destructive hover:text-destructive"
+                      disabled={isBusy && actionMode === "delete"}
+                      onClick={() => handleDelete(program)}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      {isBusy && actionMode === "delete" ? "Deleting..." : "Delete"}
                     </Button>
                   </div>
                 </div>
