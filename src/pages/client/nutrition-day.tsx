@@ -4,12 +4,21 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
-import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  Skeleton,
+  StatusPill,
+} from "../../components/ui/coachos";
 import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
-import { useAssignedNutritionDay, useAssignedNutritionMeals } from "../../lib/nutrition";
+import {
+  useAssignedNutritionDay,
+  useAssignedNutritionMeals,
+} from "../../lib/nutrition";
 
-const n = (value: number | null | undefined) => (typeof value === "number" ? value : 0);
+const n = (value: number | null | undefined) =>
+  typeof value === "number" ? value : 0;
 
 export function ClientNutritionDayPage() {
   const { assigned_nutrition_day_id } = useParams();
@@ -39,7 +48,7 @@ export function ClientNutritionDayPage() {
 
   const selectedMeal = useMemo(
     () => meals.find((meal) => meal.id === selectedMealId) ?? null,
-    [meals, selectedMealId]
+    [meals, selectedMealId],
   );
 
   useEffect(() => {
@@ -51,10 +60,34 @@ export function ClientNutritionDayPage() {
       setCompleted(false);
       return;
     }
-    setActualCalories((selectedMeal.latest_log?.actual_calories ?? selectedMeal.calories ?? "").toString());
-    setActualProtein((selectedMeal.latest_log?.actual_protein_g ?? selectedMeal.protein_g ?? "").toString());
-    setActualCarbs((selectedMeal.latest_log?.actual_carbs_g ?? selectedMeal.carbs_g ?? "").toString());
-    setActualFat((selectedMeal.latest_log?.actual_fat_g ?? selectedMeal.fat_g ?? "").toString());
+    setActualCalories(
+      (
+        selectedMeal.latest_log?.actual_calories ??
+        selectedMeal.calories ??
+        ""
+      ).toString(),
+    );
+    setActualProtein(
+      (
+        selectedMeal.latest_log?.actual_protein_g ??
+        selectedMeal.protein_g ??
+        ""
+      ).toString(),
+    );
+    setActualCarbs(
+      (
+        selectedMeal.latest_log?.actual_carbs_g ??
+        selectedMeal.carbs_g ??
+        ""
+      ).toString(),
+    );
+    setActualFat(
+      (
+        selectedMeal.latest_log?.actual_fat_g ??
+        selectedMeal.fat_g ??
+        ""
+      ).toString(),
+    );
     setCompleted(Boolean(selectedMeal.latest_log?.is_completed));
   }, [selectedMeal]);
 
@@ -67,7 +100,7 @@ export function ClientNutritionDayPage() {
         acc.fat_g += n(meal.fat_g);
         return acc;
       },
-      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
     );
 
     const actual = meals.reduce(
@@ -78,7 +111,7 @@ export function ClientNutritionDayPage() {
         acc.fat_g += n(meal.latest_log?.actual_fat_g ?? meal.fat_g);
         return acc;
       },
-      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
     );
 
     return { planned, actual };
@@ -112,7 +145,10 @@ export function ClientNutritionDayPage() {
 
     const existingLogId = selectedMeal.latest_log?.id ?? null;
     const query = existingLogId
-      ? supabase.from("nutrition_meal_logs").update(payload).eq("id", existingLogId)
+      ? supabase
+          .from("nutrition_meal_logs")
+          .update(payload)
+          .eq("id", existingLogId)
       : supabase.from("nutrition_meal_logs").insert(payload);
 
     const { error } = await query;
@@ -122,7 +158,9 @@ export function ClientNutritionDayPage() {
       return;
     }
 
-    await queryClient.invalidateQueries({ queryKey: ["assigned-nutrition-meals-v1", assignedDayId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-nutrition-meals-v1", assignedDayId],
+    });
     setSaving(false);
   };
 
@@ -142,7 +180,10 @@ export function ClientNutritionDayPage() {
   if (!dayQuery.data) {
     return (
       <PageContainer className="max-w-screen-2xl">
-        <EmptyState title="Nutrition day not found" description="No assigned nutrition was found for this day." />
+        <EmptyState
+          title="Nutrition day not found"
+          description="No assigned nutrition was found for this day."
+        />
       </PageContainer>
     );
   }
@@ -151,18 +192,34 @@ export function ClientNutritionDayPage() {
     <PageContainer className="max-w-screen-2xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Client Portal</div>
-          <h2 className="text-2xl font-semibold tracking-tight">Nutrition Day</h2>
+          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            Client Portal
+          </div>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Nutrition Day
+          </h2>
           <p className="text-sm text-muted-foreground">{dayQuery.data.date}</p>
         </div>
         <div className="flex items-center gap-2">
-          <StatusPill status={mealsQuery.completion.percent === 100 && mealsQuery.completion.total > 0 ? "completed" : "planned"} />
-          <Button variant="secondary" onClick={() => navigate("/app/home")}>Back</Button>
+          <StatusPill
+            status={
+              mealsQuery.completion.percent === 100 &&
+              mealsQuery.completion.total > 0
+                ? "completed"
+                : "planned"
+            }
+          />
+          <Button variant="secondary" onClick={() => navigate("/app/home")}>
+            Back
+          </Button>
         </div>
       </div>
 
       {meals.length === 0 ? (
-        <EmptyState title="No meals assigned" description="Your coach has not assigned meals for this day yet." />
+        <EmptyState
+          title="No meals assigned"
+          description="Your coach has not assigned meals for this day yet."
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <DashboardCard title="Meals" subtitle="Tap to edit completion">
@@ -179,9 +236,13 @@ export function ClientNutritionDayPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium">{meal.meal_name}</p>
-                      <Badge variant={done ? "success" : "muted"}>{done ? "Done" : "Pending"}</Badge>
+                      <Badge variant={done ? "success" : "muted"}>
+                        {done ? "Done" : "Pending"}
+                      </Badge>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Order #{meal.meal_order}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Order #{meal.meal_order}
+                    </p>
                   </button>
                 );
               })}
@@ -190,24 +251,49 @@ export function ClientNutritionDayPage() {
 
           <DashboardCard title="Meal Detail" subtitle="Update actual intake">
             {!selectedMeal ? (
-              <EmptyState title="Select a meal" description="Choose a meal from the left rail." />
+              <EmptyState
+                title="Select a meal"
+                description="Choose a meal from the left rail."
+              />
             ) : (
               <div className="space-y-3">
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                   <p className="font-semibold">{selectedMeal.meal_name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedMeal.recipe_text ?? "No recipe text"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedMeal.recipe_text ?? "No recipe text"}
+                  </p>
                 </div>
 
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={completed} onChange={(e) => setCompleted(e.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={completed}
+                    onChange={(e) => setCompleted(e.target.checked)}
+                  />
                   Mark complete
                 </label>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="Actual calories" value={actualCalories} onChange={(e) => setActualCalories(e.target.value)} />
-                  <Input placeholder="Actual protein" value={actualProtein} onChange={(e) => setActualProtein(e.target.value)} />
-                  <Input placeholder="Actual carbs" value={actualCarbs} onChange={(e) => setActualCarbs(e.target.value)} />
-                  <Input placeholder="Actual fat" value={actualFat} onChange={(e) => setActualFat(e.target.value)} />
+                  <Input
+                    placeholder="Actual calories"
+                    value={actualCalories}
+                    onChange={(e) => setActualCalories(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Actual protein"
+                    value={actualProtein}
+                    onChange={(e) => setActualProtein(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Actual carbs"
+                    value={actualCarbs}
+                    onChange={(e) => setActualCarbs(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Actual fat"
+                    value={actualFat}
+                    onChange={(e) => setActualFat(e.target.value)}
+                  />
                 </div>
 
                 {saveError ? (
@@ -228,20 +314,34 @@ export function ClientNutritionDayPage() {
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                 <p className="text-xs text-muted-foreground">Completion</p>
                 <p className="font-semibold">
-                  {mealsQuery.completion.completed}/{mealsQuery.completion.total} meals ({mealsQuery.completion.percent}%)
+                  {mealsQuery.completion.completed}/
+                  {mealsQuery.completion.total} meals (
+                  {mealsQuery.completion.percent}%)
                 </p>
               </div>
 
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <p className="mb-2 text-xs text-muted-foreground">Planned totals</p>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Planned totals
+                </p>
                 <p>{Math.round(totals.planned.calories)} cals</p>
-                <p>{Math.round(totals.planned.protein_g)}p / {Math.round(totals.planned.carbs_g)}c / {Math.round(totals.planned.fat_g)}f</p>
+                <p>
+                  {Math.round(totals.planned.protein_g)}p /{" "}
+                  {Math.round(totals.planned.carbs_g)}c /{" "}
+                  {Math.round(totals.planned.fat_g)}f
+                </p>
               </div>
 
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <p className="mb-2 text-xs text-muted-foreground">Actual totals</p>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Actual totals
+                </p>
                 <p>{Math.round(totals.actual.calories)} cals</p>
-                <p>{Math.round(totals.actual.protein_g)}p / {Math.round(totals.actual.carbs_g)}c / {Math.round(totals.actual.fat_g)}f</p>
+                <p>
+                  {Math.round(totals.actual.protein_g)}p /{" "}
+                  {Math.round(totals.actual.carbs_g)}c /{" "}
+                  {Math.round(totals.actual.fat_g)}f
+                </p>
               </div>
             </div>
           </DashboardCard>

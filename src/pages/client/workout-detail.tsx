@@ -4,7 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorDetails } from "../../lib/supabase-errors";
@@ -36,13 +41,22 @@ type TemplateExerciseRow = {
   rpe?: number | null;
   video_url?: string | null;
   notes?: string | null;
-  exercise: {
-    id: string;
-    name: string | null;
-    muscle_group: string | null;
-    equipment: string | null;
-    video_url?: string | null;
-  } | null;
+  exercise:
+    | {
+        id: string;
+        name: string | null;
+        muscle_group: string | null;
+        equipment: string | null;
+        video_url?: string | null;
+      }
+    | Array<{
+        id: string;
+        name: string | null;
+        muscle_group: string | null;
+        equipment: string | null;
+        video_url?: string | null;
+      }>
+    | null;
 };
 
 type WorkoutSetLog = {
@@ -63,6 +77,10 @@ type WorkoutSessionRow = {
 };
 
 const getErrorDetails = (error: unknown) => getSupabaseErrorDetails(error);
+const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+const getWorkoutTemplate = (value: any) =>
+  getSingleRelation(value?.workout_template);
 
 export function ClientWorkoutDetailPage() {
   const { assignedWorkoutId } = useParams();
@@ -95,7 +113,7 @@ export function ClientWorkoutDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, completed_at, workout_template:workout_templates(id, name, description, workout_type_tag)"
+          "id, status, completed_at, workout_template:workout_templates(id, name, description, workout_type_tag)",
         )
         .eq("id", assignedWorkoutId ?? "")
         .eq("client_id", clientId ?? "")
@@ -113,39 +131,48 @@ export function ClientWorkoutDetailPage() {
         supabase
           .from("assigned_workout_exercises")
           .select(
-            "id, assigned_workout_id, exercise_id, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+            "id, assigned_workout_id, exercise_id, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, exercise:exercises(id, name, muscle_group, equipment, video_url)",
           )
           .eq("assigned_workout_id", assignedWorkoutId ?? "");
-      const ordered = await baseQuery().order("created_at", { ascending: true });
-      if (!ordered.error) return (ordered.data ?? []) as TemplateExerciseRow[];
+      const ordered = await baseQuery().order("created_at", {
+        ascending: true,
+      });
+      if (!ordered.error)
+        return (ordered.data ?? []) as unknown as TemplateExerciseRow[];
       if (ordered.error.code === "42703") {
         const fallback = await baseQuery();
         if (fallback.error) throw fallback.error;
-        return (fallback.data ?? []) as TemplateExerciseRow[];
+        return (fallback.data ?? []) as unknown as TemplateExerciseRow[];
       }
       throw ordered.error;
     },
   });
 
+  const workoutTemplate = getWorkoutTemplate(assignedQuery.data);
+  const workoutTemplateId = workoutTemplate?.id ?? null;
+
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", assignedQuery.data?.workout_template?.id],
-    enabled: !!assignedQuery.data?.workout_template?.id,
+    queryKey: ["workout-template-exercises", workoutTemplateId],
+    enabled: !!workoutTemplateId,
     queryFn: async () => {
-      const templateId = assignedQuery.data?.workout_template?.id ?? null;
+      const templateId = workoutTemplateId;
       if (!templateId) return [];
       const baseQuery = () =>
         supabase
           .from("workout_template_exercises")
           .select(
-            "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)"
+            "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id, name, muscle_group, equipment, video_url)",
           )
           .eq("workout_template_id", templateId);
-      const ordered = await baseQuery().order("sort_order", { ascending: true });
-      if (!ordered.error) return (ordered.data ?? []) as TemplateExerciseRow[];
+      const ordered = await baseQuery().order("sort_order", {
+        ascending: true,
+      });
+      if (!ordered.error)
+        return (ordered.data ?? []) as unknown as TemplateExerciseRow[];
       if (ordered.error.code === "42703") {
         const fallback = await baseQuery();
         if (fallback.error) throw fallback.error;
-        return (fallback.data ?? []) as TemplateExerciseRow[];
+        return (fallback.data ?? []) as unknown as TemplateExerciseRow[];
       }
       throw ordered.error;
     },
@@ -163,7 +190,8 @@ export function ClientWorkoutDetailPage() {
           .order(orderColumn, { ascending: false })
           .maybeSingle();
 
-      const { data: existing, error: existingError } = await selectSession("created_at");
+      const { data: existing, error: existingError } =
+        await selectSession("created_at");
       if (existingError?.code === "42703") {
         const fallback = await selectSession("started_at");
         if (fallback.error) throw fallback.error;
@@ -194,7 +222,7 @@ export function ClientWorkoutDetailPage() {
       const { data, error } = await supabase
         .from("workout_set_logs")
         .select(
-          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, created_at"
+          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, created_at",
         )
         .eq("workout_session_id", workoutSession?.id ?? "")
         .order("created_at", { ascending: false });
@@ -220,7 +248,9 @@ export function ClientWorkoutDetailPage() {
       const existingTime = existing?.created_at
         ? new Date(existing.created_at).getTime()
         : 0;
-      const nextTime = item.created_at ? new Date(item.created_at).getTime() : 0;
+      const nextTime = item.created_at
+        ? new Date(item.created_at).getTime()
+        : 0;
       if (nextTime > existingTime) {
         latestByKey.set(key, item);
       }
@@ -228,13 +258,14 @@ export function ClientWorkoutDetailPage() {
     const templateExercises =
       assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
         ? assignedExercisesQuery.data
-        : templateExercisesQuery.data ?? [];
+        : (templateExercisesQuery.data ?? []);
     const next = templateExercises.map((row) => {
-      const name = row.exercise?.name ?? "Exercise";
+      const exerciseInfo = getSingleRelation(row.exercise);
+      const name = exerciseInfo?.name ?? "Exercise";
       const count = row.sets && row.sets > 0 ? row.sets : 3;
       const sets = Array.from({ length: count }).map((_, index) => {
         const setNumber = index + 1;
-        const key = `${row.exercise?.id ?? ""}-${setNumber}`;
+        const key = `${exerciseInfo?.id ?? ""}-${setNumber}`;
         const item = latestByKey.get(key);
         return {
           id: item?.id,
@@ -272,7 +303,7 @@ export function ClientWorkoutDetailPage() {
   const templateExercises =
     assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
       ? assignedExercisesQuery.data
-      : templateExercisesQuery.data ?? [];
+      : (templateExercisesQuery.data ?? []);
   const setLogsByExercise = useMemo(() => {
     const map = new Map<string, WorkoutSetLog[]>();
     (workoutSetLogsQuery.data ?? []).forEach((item) => {
@@ -295,7 +326,9 @@ export function ClientWorkoutDetailPage() {
   const exerciseNameById = useMemo(() => {
     const map = new Map<string, string>();
     templateExercises.forEach((row) => {
-      if (row.exercise?.id) map.set(row.exercise.id, row.exercise?.name ?? "Exercise");
+      const exerciseInfo = getSingleRelation(row.exercise);
+      if (exerciseInfo?.id)
+        map.set(exerciseInfo.id, exerciseInfo.name ?? "Exercise");
     });
     return map;
   }, [templateExercises]);
@@ -327,7 +360,7 @@ export function ClientWorkoutDetailPage() {
     exerciseIndex: number,
     setIndex: number,
     field: keyof SetState,
-    value: string
+    value: string,
   ) => {
     setExercises((prev) =>
       prev.map((exercise, exIdx) => {
@@ -335,10 +368,10 @@ export function ClientWorkoutDetailPage() {
         return {
           ...exercise,
           sets: exercise.sets.map((setItem, setIdx) =>
-            setIdx === setIndex ? { ...setItem, [field]: value } : setItem
+            setIdx === setIndex ? { ...setItem, [field]: value } : setItem,
           ),
         };
-      })
+      }),
     );
   };
 
@@ -350,7 +383,7 @@ export function ClientWorkoutDetailPage() {
     const weightValue = setItem.weight.trim() ? Number(setItem.weight) : null;
     const rpeValue = setItem.rpe.trim() ? Number(setItem.rpe) : null;
     const hasValues = Boolean(repsValue || weightValue || rpeValue);
-    const exerciseId = exercise.detail?.exercise?.id;
+    const exerciseId = getSingleRelation(exercise.detail?.exercise)?.id;
     if (!exerciseId) return;
     const isCompleted = Boolean(repsValue || weightValue || rpeValue);
 
@@ -395,10 +428,10 @@ export function ClientWorkoutDetailPage() {
           return {
             ...ex,
             sets: ex.sets.map((set, sIdx) =>
-              sIdx === setIndex ? { ...set, id: data.id } : set
+              sIdx === setIndex ? { ...set, id: data.id } : set,
             ),
           };
-        })
+        }),
       );
     }
   };
@@ -420,7 +453,11 @@ export function ClientWorkoutDetailPage() {
     if (!workoutSession?.id || exerciseIndexes.length === 0) return;
     setSaveIndex(-1);
     for (const exerciseIndex of exerciseIndexes) {
-      for (let setIndex = 0; setIndex < exercises[exerciseIndex].sets.length; setIndex += 1) {
+      for (
+        let setIndex = 0;
+        setIndex < exercises[exerciseIndex].sets.length;
+        setIndex += 1
+      ) {
         // eslint-disable-next-line no-await-in-loop
         await saveSet(exerciseIndex, setIndex);
       }
@@ -438,7 +475,9 @@ export function ClientWorkoutDetailPage() {
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", assignedWorkoutId ?? "");
     setShowSummary(true);
-    await queryClient.invalidateQueries({ queryKey: ["assigned-workout", assignedWorkoutId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout", assignedWorkoutId],
+    });
   };
 
   const summaryGroups = useMemo(() => {
@@ -465,18 +504,17 @@ export function ClientWorkoutDetailPage() {
 
     const groups: ExerciseLogGroup[] = [];
     exercises.forEach((exercise, exerciseIndex) => {
-      const supersetGroup = templateExercises[exerciseIndex]?.superset_group?.trim() || null;
+      const supersetGroup =
+        templateExercises[exerciseIndex]?.superset_group?.trim() || null;
       const last = groups[groups.length - 1];
-      if (
-        supersetGroup &&
-        last &&
-        last.supersetGroup === supersetGroup
-      ) {
+      if (supersetGroup && last && last.supersetGroup === supersetGroup) {
         last.members.push({ exercise, exerciseIndex });
         return;
       }
       groups.push({
-        key: supersetGroup ? `log-superset-${supersetGroup}-${exerciseIndex}` : `log-single-${exerciseIndex}`,
+        key: supersetGroup
+          ? `log-superset-${supersetGroup}-${exerciseIndex}`
+          : `log-single-${exerciseIndex}`,
         supersetGroup,
         members: [{ exercise, exerciseIndex }],
       });
@@ -490,15 +528,20 @@ export function ClientWorkoutDetailPage() {
         <div>
           <p className="text-sm text-muted-foreground">Assigned workout</p>
           <h2 className="text-xl font-semibold tracking-tight">
-            {assignedQuery.data?.workout_template?.name ?? "Workout"}
+            {workoutTemplate?.name ?? "Workout"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {assignedQuery.data?.workout_template?.description ??
-              "In-progress workout log."}
+            {workoutTemplate?.description ?? "In-progress workout log."}
           </p>
         </div>
-        <Badge variant={assignedQuery.data?.status === "completed" ? "success" : "muted"}>
-          {assignedQuery.data?.status === "completed" ? "Completed" : "In progress"}
+        <Badge
+          variant={
+            assignedQuery.data?.status === "completed" ? "success" : "muted"
+          }
+        >
+          {assignedQuery.data?.status === "completed"
+            ? "Completed"
+            : "In progress"}
         </Badge>
       </div>
 
@@ -507,7 +550,10 @@ export function ClientWorkoutDetailPage() {
           {errors.map((error, index) => {
             const details = getErrorDetails(error);
             return (
-              <Alert key={`${index}-${details.message}`} className="border-danger/30">
+              <Alert
+                key={`${index}-${details.message}`}
+                className="border-danger/30"
+              >
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>
                   {details.code}: {details.message}
@@ -549,14 +595,19 @@ export function ClientWorkoutDetailPage() {
           <CardContent className="space-y-4 text-sm">
             {Object.keys(summaryGroups).length > 0 ? (
               Object.entries(summaryGroups).map(([exercise, items]) => (
-                <div key={exercise} className="rounded-lg border border-border p-3">
+                <div
+                  key={exercise}
+                  className="rounded-lg border border-border p-3"
+                >
                   <p className="text-sm font-semibold">{exercise}</p>
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {items.map((item, index) => (
                       <div key={item.id}>
-                        Set {item.set_number ?? index + 1}: {item.reps ?? "-"} reps @{" "}
-                        {item.weight ?? "-"}
-                        {typeof item.rpe === "number" ? ` Â· RPE ${item.rpe}` : ""}
+                        Set {item.set_number ?? index + 1}: {item.reps ?? "-"}{" "}
+                        reps @ {item.weight ?? "-"}
+                        {typeof item.rpe === "number"
+                          ? ` Â· RPE ${item.rpe}`
+                          : ""}
                       </div>
                     ))}
                   </div>
@@ -576,7 +627,7 @@ export function ClientWorkoutDetailPage() {
             <CardHeader>
               <CardTitle>Exercises</CardTitle>
               <p className="text-sm text-muted-foreground">
-                {assignedQuery.data?.workout_template?.description ??
+                {workoutTemplate?.description ??
                   "Coach-programmed exercises for this session."}
               </p>
             </CardHeader>
@@ -587,7 +638,8 @@ export function ClientWorkoutDetailPage() {
                 </div>
               ) : (
                 exerciseGroups.map((group) => {
-                  const groupIsSuperset = Boolean(group.supersetGroup) && group.rows.length > 1;
+                  const groupIsSuperset =
+                    Boolean(group.supersetGroup) && group.rows.length > 1;
                   return (
                     <div
                       key={group.key}
@@ -604,63 +656,89 @@ export function ClientWorkoutDetailPage() {
                       ) : null}
                       <div className="space-y-2">
                         {group.rows.map((exercise) => {
-                  const name = exercise.exercise?.name ?? "Exercise";
-                  const sets = exercise.sets ? `${exercise.sets} sets` : "";
-                  const reps = exercise.reps ? `${exercise.reps} reps` : "";
-                  const repLine = [sets, reps].filter(Boolean).join(" x ");
-                  const lastLog = setLogsByExercise.get(exercise.exercise?.id ?? "")?.[0];
-                  const lastWeight =
-                    typeof lastLog?.weight === "number"
-                      ? `Last ${lastLog.weight}`
-                      : null;
-                  const lastReps =
-                    typeof lastLog?.reps === "number" ? `Last reps ${lastLog.reps}` : null;
-                  const details = [
-                    repLine,
-                    exercise.superset_group ? `Superset ${exercise.superset_group} (no rest)` : null,
-                    lastWeight ?? "No sets logged yet",
-                    lastReps,
-                    exercise.rest_seconds ? `Rest ${exercise.rest_seconds}s` : null,
-                    exercise.tempo ? `Tempo ${exercise.tempo}` : null,
-                    typeof exercise.rpe === "number" ? `RPE ${exercise.rpe}` : null,
-                  ].filter(Boolean);
-                  const video =
-                    exercise.video_url || exercise.exercise?.video_url || null;
+                          const exerciseInfo = getSingleRelation(
+                            exercise.exercise,
+                          );
+                          const name = exerciseInfo?.name ?? "Exercise";
+                          const sets = exercise.sets
+                            ? `${exercise.sets} sets`
+                            : "";
+                          const reps = exercise.reps
+                            ? `${exercise.reps} reps`
+                            : "";
+                          const repLine = [sets, reps]
+                            .filter(Boolean)
+                            .join(" x ");
+                          const lastLog = setLogsByExercise.get(
+                            exerciseInfo?.id ?? "",
+                          )?.[0];
+                          const lastWeight =
+                            typeof lastLog?.weight === "number"
+                              ? `Last ${lastLog.weight}`
+                              : null;
+                          const lastReps =
+                            typeof lastLog?.reps === "number"
+                              ? `Last reps ${lastLog.reps}`
+                              : null;
+                          const details = [
+                            repLine,
+                            exercise.superset_group
+                              ? `Superset ${exercise.superset_group} (no rest)`
+                              : null,
+                            lastWeight ?? "No sets logged yet",
+                            lastReps,
+                            exercise.rest_seconds
+                              ? `Rest ${exercise.rest_seconds}s`
+                              : null,
+                            exercise.tempo ? `Tempo ${exercise.tempo}` : null,
+                            typeof exercise.rpe === "number"
+                              ? `RPE ${exercise.rpe}`
+                              : null,
+                          ].filter(Boolean);
+                          const video =
+                            exercise.video_url ||
+                            exerciseInfo?.video_url ||
+                            null;
 
-                  return (
-                    <div key={exercise.id} className="rounded-lg border border-border/60 bg-background/30 p-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-semibold">{name}</p>
-                          {details.length > 0 ? (
-                            <p className="text-xs text-muted-foreground">
-                              {details.join(" - ")}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              No parameters set yet.
-                            </p>
-                          )}
-                        </div>
-                        {video ? (
-                          <a
-                            className="text-xs font-semibold text-accent"
-                            href={video}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Watch video
-                          </a>
-                        ) : null}
-                      </div>
-                      {exercise.notes ? (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Notes: {exercise.notes}
-                        </p>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                          return (
+                            <div
+                              key={exercise.id}
+                              className="rounded-lg border border-border/60 bg-background/30 p-3"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold">
+                                    {name}
+                                  </p>
+                                  {details.length > 0 ? (
+                                    <p className="text-xs text-muted-foreground">
+                                      {details.join(" - ")}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">
+                                      No parameters set yet.
+                                    </p>
+                                  )}
+                                </div>
+                                {video ? (
+                                  <a
+                                    className="text-xs font-semibold text-accent"
+                                    href={video}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Watch video
+                                  </a>
+                                ) : null}
+                              </div>
+                              {exercise.notes ? (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  Notes: {exercise.notes}
+                                </p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -670,21 +748,29 @@ export function ClientWorkoutDetailPage() {
           </Card>
 
           {exerciseLogGroups.map((group) => {
-            const isSuperset = Boolean(group.supersetGroup) && group.members.length > 1;
+            const isSuperset =
+              Boolean(group.supersetGroup) && group.members.length > 1;
             if (isSuperset) {
-              const memberIndexes = group.members.map((member) => member.exerciseIndex);
+              const memberIndexes = group.members.map(
+                (member) => member.exerciseIndex,
+              );
               const maxSets = group.members.reduce(
                 (max, member) => Math.max(max, member.exercise.sets.length),
-                0
+                0,
               );
               const groupIsSaving =
-                saveIndex === -1 || group.members.some((member) => saveIndex === member.exerciseIndex);
+                saveIndex === -1 ||
+                group.members.some(
+                  (member) => saveIndex === member.exerciseIndex,
+                );
               return (
                 <Card key={group.key}>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-base">
                       Superset {group.supersetGroup}:{" "}
-                      {group.members.map((member) => member.exercise.name).join(" + ")}
+                      {group.members
+                        .map((member) => member.exercise.name)
+                        .join(" + ")}
                     </CardTitle>
                     <Button
                       size="sm"
@@ -704,7 +790,9 @@ export function ClientWorkoutDetailPage() {
                         <div className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
                           Set {setIndex + 1}
                         </div>
-                        <div className={`grid gap-2 ${group.members.length > 1 ? "md:grid-cols-2" : ""}`}>
+                        <div
+                          className={`grid gap-2 ${group.members.length > 1 ? "md:grid-cols-2" : ""}`}
+                        >
                           {group.members.map((member) => {
                             const setItem = member.exercise.sets[setIndex];
                             if (!setItem) {
@@ -736,10 +824,12 @@ export function ClientWorkoutDetailPage() {
                                       member.exerciseIndex,
                                       setIndex,
                                       "reps",
-                                      event.target.value
+                                      event.target.value,
                                     )
                                   }
-                                  onBlur={() => saveSet(member.exerciseIndex, setIndex)}
+                                  onBlur={() =>
+                                    saveSet(member.exerciseIndex, setIndex)
+                                  }
                                 />
                                 <input
                                   className="h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -752,10 +842,12 @@ export function ClientWorkoutDetailPage() {
                                       member.exerciseIndex,
                                       setIndex,
                                       "weight",
-                                      event.target.value
+                                      event.target.value,
                                     )
                                   }
-                                  onBlur={() => saveSet(member.exerciseIndex, setIndex)}
+                                  onBlur={() =>
+                                    saveSet(member.exerciseIndex, setIndex)
+                                  }
                                 />
                                 <input
                                   className="h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -768,10 +860,12 @@ export function ClientWorkoutDetailPage() {
                                       member.exerciseIndex,
                                       setIndex,
                                       "rpe",
-                                      event.target.value
+                                      event.target.value,
                                     )
                                   }
-                                  onBlur={() => saveSet(member.exerciseIndex, setIndex)}
+                                  onBlur={() =>
+                                    saveSet(member.exerciseIndex, setIndex)
+                                  }
                                 />
                               </div>
                             );
@@ -816,7 +910,12 @@ export function ClientWorkoutDetailPage() {
                         placeholder="Reps"
                         value={setItem.reps}
                         onChange={(event) =>
-                          handleSetChange(exerciseIndex, setIndex, "reps", event.target.value)
+                          handleSetChange(
+                            exerciseIndex,
+                            setIndex,
+                            "reps",
+                            event.target.value,
+                          )
                         }
                         onBlur={() => saveSet(exerciseIndex, setIndex)}
                       />
@@ -827,7 +926,12 @@ export function ClientWorkoutDetailPage() {
                         placeholder="Weight"
                         value={setItem.weight}
                         onChange={(event) =>
-                          handleSetChange(exerciseIndex, setIndex, "weight", event.target.value)
+                          handleSetChange(
+                            exerciseIndex,
+                            setIndex,
+                            "weight",
+                            event.target.value,
+                          )
                         }
                         onBlur={() => saveSet(exerciseIndex, setIndex)}
                       />
@@ -838,7 +942,12 @@ export function ClientWorkoutDetailPage() {
                         placeholder="RPE"
                         value={setItem.rpe}
                         onChange={(event) =>
-                          handleSetChange(exerciseIndex, setIndex, "rpe", event.target.value)
+                          handleSetChange(
+                            exerciseIndex,
+                            setIndex,
+                            "rpe",
+                            event.target.value,
+                          )
                         }
                         onBlur={() => saveSet(exerciseIndex, setIndex)}
                       />
@@ -859,5 +968,3 @@ export function ClientWorkoutDetailPage() {
     </div>
   );
 }
-
-

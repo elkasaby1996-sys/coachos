@@ -3,7 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 
@@ -25,9 +30,9 @@ const formatWorkoutTypeTag = (value: string | null | undefined) =>
 const isUuid = (value: string | undefined | null) =>
   Boolean(
     value &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        value
-      )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    ),
   );
 
 type TemplateRow = {
@@ -58,6 +63,11 @@ type TemplateExerciseRow = {
   exercise: ExerciseRow | null;
 };
 
+const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+};
+
 export function PtWorkoutTemplatePreviewPage() {
   const { id } = useParams();
   const templateId = isUuid(id) ? id : null;
@@ -84,12 +94,20 @@ export function PtWorkoutTemplatePreviewPage() {
       const { data, error } = await supabase
         .from("workout_template_exercises")
         .select(
-          "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,video_url)"
+          "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,video_url)",
         )
         .eq("workout_template_id", templateId ?? "")
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as TemplateExerciseRow[];
+      const rows = (data ?? []) as Array<
+        Omit<TemplateExerciseRow, "exercise"> & {
+          exercise: ExerciseRow | ExerciseRow[] | null;
+        }
+      >;
+      return rows.map((row) => ({
+        ...row,
+        exercise: getSingleRelation(row.exercise),
+      }));
     },
   });
 
@@ -111,7 +129,12 @@ export function PtWorkoutTemplatePreviewPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>Template id: {id ?? "missing"}</p>
-          <Button variant="secondary" onClick={() => navigate("/pt/templates/workouts")}>Back to templates</Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/pt/templates/workouts")}
+          >
+            Back to templates
+          </Button>
         </CardContent>
       </Card>
     );
@@ -121,13 +144,22 @@ export function PtWorkoutTemplatePreviewPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{template?.name ?? "Workout template"}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            {template?.name ?? "Workout template"}
+          </h2>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant="muted">{formatWorkoutTypeTag(template?.workout_type_tag)}</Badge>
+            <Badge variant="muted">
+              {formatWorkoutTypeTag(template?.workout_type_tag)}
+            </Badge>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/pt/templates/workouts/${templateId}/edit`)}>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              navigate(`/pt/templates/workouts/${templateId}/edit`)
+            }
+          >
             Edit
           </Button>
           <Button>Assign</Button>
@@ -150,7 +182,8 @@ export function PtWorkoutTemplatePreviewPage() {
             <CardTitle>Template error</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {getErrorDetails(templateQuery.error).code}: {getErrorDetails(templateQuery.error).message}
+            {getErrorDetails(templateQuery.error).code}:{" "}
+            {getErrorDetails(templateQuery.error).message}
           </CardContent>
         </Card>
       ) : !template ? (
@@ -176,7 +209,9 @@ export function PtWorkoutTemplatePreviewPage() {
       <Card className="border-border/70 bg-card/80">
         <CardHeader>
           <CardTitle>Exercises</CardTitle>
-          <p className="text-sm text-muted-foreground">Ordered list of movements and cues.</p>
+          <p className="text-sm text-muted-foreground">
+            Ordered list of movements and cues.
+          </p>
         </CardHeader>
         <CardContent>
           {templateExercisesQuery.isLoading ? (
@@ -186,19 +221,28 @@ export function PtWorkoutTemplatePreviewPage() {
             </div>
           ) : templateExercisesQuery.error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              {getErrorDetails(templateExercisesQuery.error).code}: {getErrorDetails(templateExercisesQuery.error).message}
+              {getErrorDetails(templateExercisesQuery.error).code}:{" "}
+              {getErrorDetails(templateExercisesQuery.error).message}
             </div>
           ) : orderedExercises.length > 0 ? (
             <ol className="space-y-3">
               {orderedExercises.map((row, index) => {
-                const videoUrl = row.video_url ?? row.exercise?.video_url ?? null;
+                const videoUrl =
+                  row.video_url ?? row.exercise?.video_url ?? null;
                 return (
-                  <li key={row.id} className="rounded-xl border border-border/70 bg-background/40 p-4">
+                  <li
+                    key={row.id}
+                    className="rounded-xl border border-border/70 bg-background/40 p-4"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{index + 1}.</span>
-                          <h3 className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</h3>
+                          <span className="text-xs text-muted-foreground">
+                            {index + 1}.
+                          </span>
+                          <h3 className="text-sm font-semibold">
+                            {row.exercise?.name ?? "Exercise"}
+                          </h3>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{row.sets ?? "--"} sets</span>
@@ -212,7 +256,9 @@ export function PtWorkoutTemplatePreviewPage() {
                           <span>RPE {row.rpe ?? "--"}</span>
                         </div>
                         {row.notes ? (
-                          <p className="text-xs text-muted-foreground">{row.notes}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {row.notes}
+                          </p>
                         ) : null}
                       </div>
                       <div className="flex items-center gap-2">
@@ -220,7 +266,13 @@ export function PtWorkoutTemplatePreviewPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => window.open(videoUrl, "_blank", "noopener,noreferrer")}
+                            onClick={() =>
+                              window.open(
+                                videoUrl,
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                            }
                           >
                             Video
                           </Button>

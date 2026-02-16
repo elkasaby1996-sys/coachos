@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +21,12 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
-import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  Skeleton,
+  StatusPill,
+} from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -38,20 +52,26 @@ type CheckinQuestionRow = {
 const requiredStatusMap = {
   required: { label: "Required", variant: "warning" },
   optional: { label: "Optional", variant: "muted" },
-};
+} as const;
 
 export function PtCheckinTemplatesPage() {
-  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const {
+    workspaceId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const [questionDrafts, setQuestionDrafts] = useState<Record<string, { text: string; required: boolean }>>(
-    {}
-  );
+  const [questionDrafts, setQuestionDrafts] = useState<
+    Record<string, { text: string; required: boolean }>
+  >({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
   const templatesPageSize = 20;
@@ -88,12 +108,12 @@ export function PtCheckinTemplatesPage() {
 
   const templateRows = useMemo(
     () => (templatesQuery.data?.pages ?? []).flat(),
-    [templatesQuery.data]
+    [templatesQuery.data],
   );
 
   const activeTemplates = useMemo(
     () => templateRows.filter((row) => row.is_active !== false),
-    [templateRows]
+    [templateRows],
   );
 
   const questionsQuery = useQuery({
@@ -102,7 +122,8 @@ export function PtCheckinTemplatesPage() {
     queryFn: async () => {
       const { data, error } = await safeSelect<CheckinQuestionRow>({
         table: "checkin_questions",
-        columns: "id, template_id, question_text, prompt, is_required, sort_order, position",
+        columns:
+          "id, template_id, question_text, prompt, is_required, sort_order, position",
         fallbackColumns: "id, template_id, question_text, prompt, is_required",
         filter: (query) => query.eq("template_id", activeTemplateId ?? ""),
       });
@@ -157,10 +178,12 @@ export function PtCheckinTemplatesPage() {
             ...pages.slice(1),
           ];
           return { ...prev, pages: nextPages };
-        }
+        },
       );
       setActiveTemplateId(newTemplate.id);
-      await queryClient.invalidateQueries({ queryKey: ["pt-checkin-templates", workspaceId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-checkin-templates", workspaceId],
+      });
     }
 
     setTemplateName("");
@@ -195,19 +218,32 @@ export function PtCheckinTemplatesPage() {
       return;
     }
 
-    setQuestionDrafts((prev) => ({ ...prev, [templateId]: { text: "", required: false } }));
+    setQuestionDrafts((prev) => ({
+      ...prev,
+      [templateId]: { text: "", required: false },
+    }));
     setSavingQuestion(false);
     setToastVariant("success");
     setToastMessage("Question added.");
-    await queryClient.invalidateQueries({ queryKey: ["pt-checkin-questions", templateId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-checkin-questions", templateId],
+    });
   };
 
   return (
     <div className="space-y-8">
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
-            <AlertTitle>{toastVariant === "error" ? "Error" : "Success"}</AlertTitle>
+          <Alert
+            className={
+              toastVariant === "error"
+                ? "border-danger/30"
+                : "border-emerald-200"
+            }
+          >
+            <AlertTitle>
+              {toastVariant === "error" ? "Error" : "Success"}
+            </AlertTitle>
             <AlertDescription>{toastMessage}</AlertDescription>
           </Alert>
         </div>
@@ -215,13 +251,20 @@ export function PtCheckinTemplatesPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Check-in templates</h2>
-          <p className="text-sm text-muted-foreground">Create weekly check-in questions.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Check-in templates
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Create weekly check-in questions.
+          </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>Create template</Button>
       </div>
 
-      <DashboardCard title="Templates" subtitle="Manage weekly check-in templates.">
+      <DashboardCard
+        title="Templates"
+        subtitle="Manage weekly check-in templates."
+      >
         {workspaceLoading || templatesQuery.isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-12 w-full" />
@@ -242,22 +285,35 @@ export function PtCheckinTemplatesPage() {
           <div className="grid gap-4">
             {activeTemplates.map((template) => {
               const isActive = activeTemplateId === template.id;
-              const draft = questionDrafts[template.id] ?? { text: "", required: false };
+              const draft = questionDrafts[template.id] ?? {
+                text: "",
+                required: false,
+              };
               return (
                 <Card key={template.id} className="border-border/70 bg-card/80">
                   <CardHeader className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <CardTitle>{template.name ?? "Untitled template"}</CardTitle>
+                      <CardTitle>
+                        {template.name ?? "Untitled template"}
+                      </CardTitle>
                       {template.description ? (
-                        <p className="text-sm text-muted-foreground">{template.description}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {template.description}
+                        </p>
                       ) : null}
                     </div>
                     <div className="flex items-center gap-2">
-                      <StatusPill status={template.is_active === false ? "inactive" : "active"} />
+                      <StatusPill
+                        status={
+                          template.is_active === false ? "inactive" : "active"
+                        }
+                      />
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => setActiveTemplateId(isActive ? null : template.id)}
+                        onClick={() =>
+                          setActiveTemplateId(isActive ? null : template.id)
+                        }
                       >
                         {isActive ? "Hide questions" : "View questions"}
                       </Button>
@@ -284,15 +340,22 @@ export function PtCheckinTemplatesPage() {
                         <div className="space-y-2">
                           {sortedQuestions.map((question) => {
                             const label =
-                              question.question_text ?? question.prompt ?? "Question";
-                            const status = question.is_required ? "required" : "optional";
+                              question.question_text ??
+                              question.prompt ??
+                              "Question";
+                            const status = question.is_required
+                              ? "required"
+                              : "optional";
                             return (
                               <div
                                 key={question.id}
                                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
                               >
                                 <span className="font-medium">{label}</span>
-                                <StatusPill status={status} statusMap={requiredStatusMap} />
+                                <StatusPill
+                                  status={status}
+                                  statusMap={requiredStatusMap}
+                                />
                               </div>
                             );
                           })}
@@ -302,9 +365,12 @@ export function PtCheckinTemplatesPage() {
                       <div className="rounded-xl border border-dashed border-border bg-muted/40 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <p className="text-sm font-semibold">Add a new question</p>
+                            <p className="text-sm font-semibold">
+                              Add a new question
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                              Collect custom metrics like HRV, soreness, or nutrition.
+                              Collect custom metrics like HRV, soreness, or
+                              nutrition.
                             </p>
                           </div>
                           <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -314,7 +380,10 @@ export function PtCheckinTemplatesPage() {
                               onChange={(event) =>
                                 setQuestionDrafts((prev) => ({
                                   ...prev,
-                                  [template.id]: { ...draft, required: event.target.checked },
+                                  [template.id]: {
+                                    ...draft,
+                                    required: event.target.checked,
+                                  },
                                 }))
                               }
                             />
@@ -328,7 +397,10 @@ export function PtCheckinTemplatesPage() {
                             onChange={(event) =>
                               setQuestionDrafts((prev) => ({
                                 ...prev,
-                                [template.id]: { ...draft, text: event.target.value },
+                                [template.id]: {
+                                  ...draft,
+                                  text: event.target.value,
+                                },
                               }))
                             }
                           />
@@ -354,7 +426,9 @@ export function PtCheckinTemplatesPage() {
                   onClick={() => templatesQuery.fetchNextPage()}
                   disabled={templatesQuery.isFetchingNextPage}
                 >
-                  {templatesQuery.isFetchingNextPage ? "Loading..." : "Load more"}
+                  {templatesQuery.isFetchingNextPage
+                    ? "Loading..."
+                    : "Load more"}
                 </Button>
               </div>
             ) : null}
@@ -372,7 +446,9 @@ export function PtCheckinTemplatesPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Template name</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Template name
+              </label>
               <Input
                 value={templateName}
                 onChange={(event) => setTemplateName(event.target.value)}
@@ -395,7 +471,10 @@ export function PtCheckinTemplatesPage() {
             <Button variant="secondary" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateTemplate} disabled={savingTemplate || !templateName.trim()}>
+            <Button
+              onClick={handleCreateTemplate}
+              disabled={savingTemplate || !templateName.trim()}
+            >
               {savingTemplate ? "Creating..." : "Create template"}
             </Button>
           </DialogFooter>

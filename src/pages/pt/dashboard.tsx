@@ -18,13 +18,22 @@ import { StatCard } from "../../components/pt/dashboard/StatCard";
 import { ClientRow } from "../../components/pt/dashboard/ClientRow";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
 import { MiniSparkline } from "../../components/pt/dashboard/MiniSparkline";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
-import { addDaysToDateString, getLastSaturday, getTodayInTimezone } from "../../lib/date-utils";
+import {
+  addDaysToDateString,
+  getLastSaturday,
+  getTodayInTimezone,
+} from "../../lib/date-utils";
 
 type ClientRecord = {
   id: string;
@@ -76,12 +85,18 @@ export function PtDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const messagesEnabled = Boolean(import.meta.env.VITE_MESSAGES_ENABLED);
-  const { workspaceId: cachedWorkspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const {
+    workspaceId: cachedWorkspaceId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientRecord[]>([]);
-  const [assignedWorkouts, setAssignedWorkouts] = useState<AssignedWorkoutRow[]>([]);
+  const [assignedWorkouts, setAssignedWorkouts] = useState<
+    AssignedWorkoutRow[]
+  >([]);
   const [checkins, setCheckins] = useState<CheckinRow[]>([]);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -134,8 +149,8 @@ export function PtDashboardPage() {
         setClients(summary?.clients ?? []);
         setAssignedWorkouts(summary?.assignedWorkouts ?? []);
         setCheckins(summary?.checkins ?? []);
-        setMessages(messagesEnabled ? summary?.messages ?? [] : []);
-        setUnreadCount(messagesEnabled ? summary?.unreadCount ?? 0 : 0);
+        setMessages(messagesEnabled ? (summary?.messages ?? []) : []);
+        setUnreadCount(messagesEnabled ? (summary?.unreadCount ?? 0) : 0);
         setCoachTodos(summary?.coachTodos ?? []);
       } catch (error: any) {
         setLoadError(error?.message ?? "Failed to load dashboard.");
@@ -177,7 +192,7 @@ export function PtDashboardPage() {
       .single();
     if (!error && data) {
       setCoachTodos((prev) =>
-        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row))
+        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row)),
       );
     }
     setTodoBusyId(null);
@@ -198,7 +213,7 @@ export function PtDashboardPage() {
       .single();
     if (!error && data) {
       setCoachTodos((prev) =>
-        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row))
+        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row)),
       );
     }
     setTodoBusyId(null);
@@ -206,7 +221,10 @@ export function PtDashboardPage() {
 
   const deleteTodo = async (todo: CoachTodo) => {
     setTodoBusyId(todo.id);
-    const { error } = await supabase.from("coach_todos").delete().eq("id", todo.id);
+    const { error } = await supabase
+      .from("coach_todos")
+      .delete()
+      .eq("id", todo.id);
     if (!error) {
       setCoachTodos((prev) => prev.filter((row) => row.id !== todo.id));
     }
@@ -214,14 +232,19 @@ export function PtDashboardPage() {
   };
 
   const activeClientsCount = useMemo(
-    () => clients.filter((client) => (client.status ?? "active").toLowerCase() === "active").length,
-    [clients]
+    () =>
+      clients.filter(
+        (client) => (client.status ?? "active").toLowerCase() === "active",
+      ).length,
+    [clients],
   );
 
   const adherencePercent = useMemo(() => {
     if (assignedWorkouts.length === 0) return 0;
     const planned = assignedWorkouts.length;
-    const completed = assignedWorkouts.filter((row) => row.status === "completed").length;
+    const completed = assignedWorkouts.filter(
+      (row) => row.status === "completed",
+    ).length;
     return planned === 0 ? 0 : Math.round((completed / planned) * 100);
   }, [assignedWorkouts]);
 
@@ -257,16 +280,20 @@ export function PtDashboardPage() {
           id: client.id,
           name,
           status: client.status ?? "active",
-          joined: client.created_at ? formatRelativeTime(client.created_at) : "Recently",
+          joined: client.created_at
+            ? formatRelativeTime(client.created_at)
+            : "Recently",
           adherence: adherencePercent ? `${adherencePercent}%` : "—",
         };
       }),
-    [clients, adherencePercent]
+    [clients, adherencePercent],
   );
 
   const toggleTask = (taskId: string) => {
     setTasks((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, done: !task.done } : task))
+      prev.map((task) =>
+        task.id === taskId ? { ...task, done: !task.done } : task,
+      ),
     );
   };
 
@@ -280,13 +307,14 @@ export function PtDashboardPage() {
           <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
             CoachOS Pro
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Coach Dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Coach Dashboard
+          </h1>
           <p className="text-sm text-muted-foreground">
             Here's what's happening with your clients today.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-        </div>
+        <div className="flex items-center gap-2"></div>
       </div>
 
       {loadError ? (
@@ -294,7 +322,9 @@ export function PtDashboardPage() {
           <CardHeader>
             <CardTitle>Dashboard error</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{loadError}</CardContent>
+          <CardContent className="text-sm text-muted-foreground">
+            {loadError}
+          </CardContent>
         </Card>
       ) : null}
 
@@ -343,7 +373,11 @@ export function PtDashboardPage() {
             title="Client Overview"
             subtitle="Recent activity and adherence"
             action={
-              <Button variant="ghost" size="sm" onClick={() => navigate("/pt/clients")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/pt/clients")}
+              >
                 View all
               </Button>
             }
@@ -398,7 +432,9 @@ export function PtDashboardPage() {
             ) : upcomingCheckins.length > 0 ? (
               <div className="space-y-2">
                 {upcomingCheckins.map((row) => {
-                  const client = clients.find((item) => item.id === row.client_id);
+                  const client = clients.find(
+                    (item) => item.id === row.client_id,
+                  );
                   const name = client?.display_name?.trim()
                     ? client.display_name
                     : "Client";
@@ -416,7 +452,9 @@ export function PtDashboardPage() {
                     >
                       <div>
                         <p className="text-sm font-medium">{name}</p>
-                        <p className="text-xs text-muted-foreground">Check-in due</p>
+                        <p className="text-xs text-muted-foreground">
+                          Check-in due
+                        </p>
                       </div>
                       <StatusPill status="pending" />
                       <Badge variant="secondary" className="text-[10px]">
@@ -440,7 +478,11 @@ export function PtDashboardPage() {
                   key={task.id}
                   className="flex items-center justify-between rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm"
                 >
-                  <span className={task.done ? "line-through text-muted-foreground" : ""}>
+                  <span
+                    className={
+                      task.done ? "line-through text-muted-foreground" : ""
+                    }
+                  >
                     {task.label}
                   </span>
                   <input
@@ -471,12 +513,16 @@ export function PtDashboardPage() {
                   className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium">{message.sender_name ?? "Client"}</p>
+                    <p className="text-sm font-medium">
+                      {message.sender_name ?? "Client"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {message.preview ?? "No preview available"}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
-                      {message.created_at ? formatRelativeTime(message.created_at) : "Recently"}
+                      {message.created_at
+                        ? formatRelativeTime(message.created_at)
+                        : "Recently"}
                     </p>
                   </div>
                 </div>
@@ -543,7 +589,10 @@ export function PtDashboardPage() {
                 }}
                 placeholder="Add a new task"
               />
-              <Button onClick={() => void addTodo()} disabled={!todoDraft.trim()}>
+              <Button
+                onClick={() => void addTodo()}
+                disabled={!todoDraft.trim()}
+              >
                 Add
               </Button>
             </div>
@@ -587,7 +636,9 @@ export function PtDashboardPage() {
                           }
                         }}
                         className={`w-full bg-transparent text-sm outline-none ${
-                          todo.is_done ? "text-muted-foreground line-through" : "text-foreground"
+                          todo.is_done
+                            ? "text-muted-foreground line-through"
+                            : "text-foreground"
                         }`}
                         disabled={todoBusyId === todo.id}
                       />

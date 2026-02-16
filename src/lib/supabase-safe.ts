@@ -1,13 +1,15 @@
-import type { PostgrestError, PostgrestFilterBuilder } from "@supabase/supabase-js";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
-type FilterFn = (query: PostgrestFilterBuilder<any, any, any>) => PostgrestFilterBuilder<any, any, any>;
+type FilterFn = (query: any) => any;
 
 const isMissingColumnError = (error?: PostgrestError | null) => {
   if (!error) return false;
   if (error.code === "42703") return true;
   const message = error.message ?? "";
-  return /column .* does not exist/i.test(message) || /schema cache/i.test(message);
+  return (
+    /column .* does not exist/i.test(message) || /schema cache/i.test(message)
+  );
 };
 
 export async function safeSelect<T>(params: {
@@ -22,7 +24,11 @@ export async function safeSelect<T>(params: {
     query = filter(query);
   }
   const result = await query;
-  if (!result.error || !isMissingColumnError(result.error) || !fallbackColumns) {
+  if (
+    !result.error ||
+    !isMissingColumnError(result.error) ||
+    !fallbackColumns
+  ) {
     return result as { data: T[] | null; error: PostgrestError | null };
   }
   let fallback = supabase.from(table).select(fallbackColumns);

@@ -1,6 +1,9 @@
 type SupabaseErrorLike = { code?: string | null; message?: string | null };
 
-export const getSupabaseErrorMessage = (error: unknown, fallback = "Something went wrong.") => {
+export const getSupabaseErrorMessage = (
+  error: unknown,
+  fallback = "Something went wrong.",
+) => {
   if (!error) return fallback;
   const err = error as SupabaseErrorLike;
   const code = err.code ?? null;

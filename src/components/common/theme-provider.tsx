@@ -1,4 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { safeSelect } from "../../lib/supabase-safe";
 import { supabase } from "../../lib/supabase";
 import {
@@ -19,8 +26,14 @@ interface ThemeContextValue {
   saveError: string | null;
   setTheme: (theme: ResolvedTheme) => Promise<void>;
   toggleTheme: () => Promise<void>;
-  setThemePreference: (themePreference: ThemePreference, options?: { persist?: boolean }) => Promise<void>;
-  setCompactDensity: (compactDensity: boolean, options?: { persist?: boolean }) => Promise<void>;
+  setThemePreference: (
+    themePreference: ThemePreference,
+    options?: { persist?: boolean },
+  ) => Promise<void>;
+  setCompactDensity: (
+    compactDensity: boolean,
+    options?: { persist?: boolean },
+  ) => Promise<void>;
   updateAppearance: (payload: {
     themePreference?: ThemePreference;
     compactDensity?: boolean;
@@ -49,16 +62,25 @@ function getStoredCompactDensity(): boolean {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() => getStoredPreference());
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => applyTheme(getStoredPreference()));
-  const [compactDensity, setCompactDensityState] = useState<boolean>(() => getStoredCompactDensity());
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>(
+    () => getStoredPreference(),
+  );
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    applyTheme(getStoredPreference()),
+  );
+  const [compactDensity, setCompactDensityState] = useState<boolean>(() =>
+    getStoredCompactDensity(),
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.toggle("density-compact", compactDensity);
-    window.localStorage.setItem(DENSITY_STORAGE_KEY, compactDensity ? "1" : "0");
+    window.localStorage.setItem(
+      DENSITY_STORAGE_KEY,
+      compactDensity ? "1" : "0",
+    );
   }, [compactDensity]);
 
   useEffect(() => {
@@ -132,21 +154,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchAppearancePreference]);
 
-  const persistAppearance = useCallback(async (nextTheme: ThemePreference, nextCompact: boolean) => {
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      const { error } = await supabase.rpc("set_my_appearance_preferences", {
-        p_theme_preference: nextTheme,
-        p_compact_density: nextCompact,
-      });
-      if (error) {
-        setSaveError(error.message ?? "Failed to save appearance preference.");
+  const persistAppearance = useCallback(
+    async (nextTheme: ThemePreference, nextCompact: boolean) => {
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+        const { error } = await supabase.rpc("set_my_appearance_preferences", {
+          p_theme_preference: nextTheme,
+          p_compact_density: nextCompact,
+        });
+        if (error) {
+          setSaveError(
+            error.message ?? "Failed to save appearance preference.",
+          );
+        }
+      } finally {
+        setIsSaving(false);
       }
-    } finally {
-      setIsSaving(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const updateAppearance = useCallback(
     async (payload: {
@@ -155,7 +182,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       persist?: boolean;
     }) => {
       const nextTheme = payload.themePreference ?? themePreference;
-      const nextCompact = typeof payload.compactDensity === "boolean" ? payload.compactDensity : compactDensity;
+      const nextCompact =
+        typeof payload.compactDensity === "boolean"
+          ? payload.compactDensity
+          : compactDensity;
       const persist = payload.persist ?? true;
 
       setThemePreferenceState(nextTheme);
@@ -165,21 +195,30 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         await persistAppearance(nextTheme, nextCompact);
       }
     },
-    [compactDensity, persistAppearance, themePreference]
+    [compactDensity, persistAppearance, themePreference],
   );
 
   const setThemePreference = useCallback(
-    async (nextThemePreference: ThemePreference, options?: { persist?: boolean }) => {
-      await updateAppearance({ themePreference: nextThemePreference, persist: options?.persist });
+    async (
+      nextThemePreference: ThemePreference,
+      options?: { persist?: boolean },
+    ) => {
+      await updateAppearance({
+        themePreference: nextThemePreference,
+        persist: options?.persist,
+      });
     },
-    [updateAppearance]
+    [updateAppearance],
   );
 
   const setCompactDensity = useCallback(
     async (nextCompactDensity: boolean, options?: { persist?: boolean }) => {
-      await updateAppearance({ compactDensity: nextCompactDensity, persist: options?.persist });
+      await updateAppearance({
+        compactDensity: nextCompactDensity,
+        persist: options?.persist,
+      });
     },
-    [updateAppearance]
+    [updateAppearance],
   );
 
   const cycleThemePreference = useCallback(async () => {
@@ -190,7 +229,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     async (nextTheme: ResolvedTheme) => {
       await setThemePreference(nextTheme);
     },
-    [setThemePreference]
+    [setThemePreference],
   );
 
   const toggleTheme = useCallback(async () => {
@@ -224,10 +263,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       toggleTheme,
       themePreference,
       updateAppearance,
-    ]
+    ],
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

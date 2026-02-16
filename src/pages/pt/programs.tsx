@@ -47,10 +47,16 @@ const getErrorDetails = (error: unknown) => {
 export function PtProgramsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const {
+    workspaceId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
-  const [actionMode, setActionMode] = useState<"duplicate" | "archive" | "delete" | null>(null);
+  const [actionMode, setActionMode] = useState<
+    "duplicate" | "archive" | "delete" | null
+  >(null);
 
   const programsQuery = useQuery({
     queryKey: ["program-templates", workspaceId],
@@ -58,7 +64,9 @@ export function PtProgramsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("program_templates")
-        .select("id, name, description, weeks_count, is_active, updated_at, created_at")
+        .select(
+          "id, name, description, weeks_count, is_active, updated_at, created_at",
+        )
         .eq("workspace_id", workspaceId ?? "")
         .order("updated_at", { ascending: false })
         .order("created_at", { ascending: false });
@@ -74,9 +82,11 @@ export function PtProgramsPage() {
       updatedLabel: program.updated_at
         ? formatRelativeTime(program.updated_at)
         : program.created_at
-        ? formatRelativeTime(program.created_at)
-        : "Recently",
-      weeksLabel: program.weeks_count ? `${program.weeks_count} weeks` : "Weeks TBD",
+          ? formatRelativeTime(program.created_at)
+          : "Recently",
+      weeksLabel: program.weeks_count
+        ? `${program.weeks_count} weeks`
+        : "Weeks TBD",
     }));
   }, [programsQuery.data]);
 
@@ -94,7 +104,9 @@ export function PtProgramsPage() {
       const details = getErrorDetails(error);
       setActionError(`${details.code}: ${details.message}`);
     } else {
-      await queryClient.invalidateQueries({ queryKey: ["program-templates", workspaceId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["program-templates", workspaceId],
+      });
     }
 
     setActionId(null);
@@ -129,7 +141,9 @@ export function PtProgramsPage() {
 
     const { data: dayRows, error: daysError } = await supabase
       .from("program_template_days")
-      .select("week_number, day_of_week, workout_template_id, is_rest, notes, sort_order")
+      .select(
+        "week_number, day_of_week, workout_template_id, is_rest, notes, sort_order",
+      )
       .eq("program_template_id", program.id);
 
     if (!daysError && dayRows && dayRows.length > 0) {
@@ -145,7 +159,9 @@ export function PtProgramsPage() {
       await supabase.from("program_template_days").insert(payload);
     }
 
-    await queryClient.invalidateQueries({ queryKey: ["program-templates", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["program-templates", workspaceId],
+    });
     navigate(`/pt/programs/${newProgram.id}/edit`);
     setActionId(null);
     setActionMode(null);
@@ -154,7 +170,7 @@ export function PtProgramsPage() {
   const handleDelete = async (program: ProgramTemplateRow) => {
     if (!workspaceId) return;
     const confirmed = window.confirm(
-      `Delete "${program.name ?? "Program"}"? This will permanently remove the program and its scheduled template days.`
+      `Delete "${program.name ?? "Program"}"? This will permanently remove the program and its scheduled template days.`,
     );
     if (!confirmed) return;
 
@@ -188,7 +204,9 @@ export function PtProgramsPage() {
       return;
     }
 
-    await queryClient.invalidateQueries({ queryKey: ["program-templates", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["program-templates", workspaceId],
+    });
     setActionId(null);
     setActionMode(null);
   };
@@ -197,13 +215,17 @@ export function PtProgramsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">CoachOS Pro</div>
+          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            CoachOS Pro
+          </div>
           <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
           <p className="text-sm text-muted-foreground">
             Design multi-week training programs for your clients.
           </p>
         </div>
-        <Button onClick={() => navigate("/pt/programs/new")}>New Program</Button>
+        <Button onClick={() => navigate("/pt/programs/new")}>
+          New Program
+        </Button>
       </div>
 
       {actionError ? (
@@ -220,11 +242,13 @@ export function PtProgramsPage() {
         </div>
       ) : workspaceError ? (
         <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
-          {getErrorDetails(workspaceError).code}: {getErrorDetails(workspaceError).message}
+          {getErrorDetails(workspaceError).code}:{" "}
+          {getErrorDetails(workspaceError).message}
         </Card>
       ) : programsQuery.error ? (
         <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
-          {getErrorDetails(programsQuery.error).code}: {getErrorDetails(programsQuery.error).message}
+          {getErrorDetails(programsQuery.error).code}:{" "}
+          {getErrorDetails(programsQuery.error).message}
         </Card>
       ) : formattedPrograms.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -235,12 +259,19 @@ export function PtProgramsPage() {
                 key={program.id}
                 title={program.name}
                 subtitle={program.description ?? "Multi-week program"}
-                action={<StatusPill status={program.is_active ? "active" : "inactive"} />}
+                action={
+                  <StatusPill
+                    status={program.is_active ? "active" : "inactive"}
+                  />
+                }
                 className="bg-card/90"
               >
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="secondary" className="text-[10px] uppercase">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] uppercase"
+                    >
                       {program.weeksLabel}
                     </Badge>
                     <Badge variant="muted" className="text-[10px] uppercase">
@@ -252,7 +283,9 @@ export function PtProgramsPage() {
                       size="sm"
                       variant="secondary"
                       className="flex-1"
-                      onClick={() => navigate(`/pt/programs/${program.id}/edit`)}
+                      onClick={() =>
+                        navigate(`/pt/programs/${program.id}/edit`)
+                      }
                     >
                       <Pencil className="mr-1 h-3.5 w-3.5" />
                       Edit
@@ -265,7 +298,9 @@ export function PtProgramsPage() {
                       onClick={() => handleDuplicate(program)}
                     >
                       <Copy className="mr-1 h-3.5 w-3.5" />
-                      {isBusy && actionMode === "duplicate" ? "Duplicating..." : "Duplicate"}
+                      {isBusy && actionMode === "duplicate"
+                        ? "Duplicating..."
+                        : "Duplicate"}
                     </Button>
                     <Button
                       size="sm"
@@ -275,7 +310,9 @@ export function PtProgramsPage() {
                       onClick={() => handleArchive(program.id)}
                     >
                       <Archive className="mr-1 h-3.5 w-3.5" />
-                      {isBusy && actionMode === "archive" ? "Archiving..." : "Archive"}
+                      {isBusy && actionMode === "archive"
+                        ? "Archiving..."
+                        : "Archive"}
                     </Button>
                     <Button
                       size="sm"
@@ -285,7 +322,9 @@ export function PtProgramsPage() {
                       onClick={() => handleDelete(program)}
                     >
                       <Trash2 className="mr-1 h-3.5 w-3.5" />
-                      {isBusy && actionMode === "delete" ? "Deleting..." : "Delete"}
+                      {isBusy && actionMode === "delete"
+                        ? "Deleting..."
+                        : "Delete"}
                     </Button>
                   </div>
                 </div>

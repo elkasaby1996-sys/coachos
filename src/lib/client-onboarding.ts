@@ -11,12 +11,15 @@ export type ClientOnboardingProfile = {
   current_weight?: number | null;
 };
 
-const hasText = (value: string | null | undefined) => Boolean(value && value.trim().length > 0);
+const hasText = (value: string | null | undefined) =>
+  Boolean(value && value.trim().length > 0);
 
 const hasPositiveNumber = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) && value > 0;
 
-export function hasCompletedClientOnboarding(profile: ClientOnboardingProfile | null | undefined): boolean {
+export function hasCompletedClientOnboarding(
+  profile: ClientOnboardingProfile | null | undefined,
+): boolean {
   if (!profile) return false;
 
   return (

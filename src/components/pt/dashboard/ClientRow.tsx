@@ -1,4 +1,3 @@
-import { Badge } from "../../ui/badge";
 import { MiniSparkline } from "./MiniSparkline";
 import { StatusPill } from "./StatusPill";
 

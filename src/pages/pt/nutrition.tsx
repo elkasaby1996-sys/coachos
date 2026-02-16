@@ -5,7 +5,13 @@ import { Copy, Plus, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { PageContainer } from "../../components/common/page-container";
-import { DashboardCard, EmptyState, Skeleton, StatCard, StatusPill } from "../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  Skeleton,
+  StatCard,
+  StatusPill,
+} from "../../components/ui/coachos";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +22,10 @@ import {
 import { SaveActions } from "../../components/common/save-actions";
 import { useWorkspace } from "../../lib/use-workspace";
 import { supabase } from "../../lib/supabase";
-import { type NutritionTemplate, useNutritionTemplates } from "../../lib/nutrition";
+import {
+  type NutritionTemplate,
+  useNutritionTemplates,
+} from "../../lib/nutrition";
 
 export function PtNutritionPage() {
   const navigate = useNavigate();
@@ -27,7 +36,9 @@ export function PtNutritionPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [templateActionError, setTemplateActionError] = useState<string | null>(null);
+  const [templateActionError, setTemplateActionError] = useState<string | null>(
+    null,
+  );
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [weeks, setWeeks] = useState("1");
@@ -36,11 +47,15 @@ export function PtNutritionPage() {
   const filteredTemplates = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return templates;
-    return templates.filter((t) => `${t.name} ${t.description ?? ""}`.toLowerCase().includes(q));
+    return templates.filter((t) =>
+      `${t.name} ${t.description ?? ""}`.toLowerCase().includes(q),
+    );
   }, [templates, search]);
 
   const invalidateTemplates = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["nutrition-templates-v1", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["nutrition-templates-v1", workspaceId],
+    });
   };
 
   const createTemplate = async () => {
@@ -150,7 +165,7 @@ export function PtNutritionPage() {
 
   const deleteTemplate = async (template: NutritionTemplate) => {
     const confirmed = window.confirm(
-      `Delete nutrition program "${template.name}"? This cannot be undone.`
+      `Delete nutrition program "${template.name}"? This cannot be undone.`,
     );
     if (!confirmed) return;
 
@@ -164,7 +179,7 @@ export function PtNutritionPage() {
       setTemplateActionError(
         error.message.includes("violates foreign key constraint")
           ? "This nutrition program is already assigned to a client and cannot be deleted."
-          : error.message
+          : error.message,
       );
       return;
     }
@@ -177,18 +192,39 @@ export function PtNutritionPage() {
   return (
     <PageContainer className="max-w-screen-2xl space-y-6">
       <div className="space-y-1">
-        <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">CoachOS Pro</div>
-        <h2 className="text-2xl font-semibold tracking-tight">Nutrition Programs</h2>
-        <p className="text-sm text-muted-foreground">Create multi-day programs and open the dedicated builder to configure meals.</p>
+        <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+          CoachOS Pro
+        </div>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Nutrition Programs
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Create multi-day programs and open the dedicated builder to configure
+          meals.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <StatCard label="Programs" value={templates.length} helper="Workspace" />
+        <StatCard
+          label="Programs"
+          value={templates.length}
+          helper="Workspace"
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Input className="w-full sm:w-72" placeholder="Search templates" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <Button onClick={() => { setCreateError(null); setCreateOpen(true); }}>
+        <Input
+          className="w-full sm:w-72"
+          placeholder="Search templates"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button
+          onClick={() => {
+            setCreateError(null);
+            setCreateOpen(true);
+          }}
+        >
           <Plus className="mr-1 h-4 w-4" />
           New template
         </Button>
@@ -220,23 +256,66 @@ export function PtNutritionPage() {
               key={template.id}
               title={template.name}
               subtitle={template.description ?? "No description"}
-              action={<StatusPill status={template.is_active ? "active" : "inactive"} />}
+              action={
+                <StatusPill
+                  status={template.is_active ? "active" : "inactive"}
+                />
+              }
             >
               <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">{template.duration_weeks} week{template.duration_weeks > 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground">
+                  {template.duration_weeks} week
+                  {template.duration_weeks > 1 ? "s" : ""}
+                </p>
                 <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
-                  <div><p className="text-muted-foreground">Cals</p><p className="font-semibold">{Math.round(template.totals.calories)}</p></div>
-                  <div><p className="text-muted-foreground">P</p><p className="font-semibold">{Math.round(template.totals.protein_g)}</p></div>
-                  <div><p className="text-muted-foreground">C</p><p className="font-semibold">{Math.round(template.totals.carbs_g)}</p></div>
-                  <div><p className="text-muted-foreground">F</p><p className="font-semibold">{Math.round(template.totals.fat_g)}</p></div>
+                  <div>
+                    <p className="text-muted-foreground">Cals</p>
+                    <p className="font-semibold">
+                      {Math.round(template.totals.calories)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">P</p>
+                    <p className="font-semibold">
+                      {Math.round(template.totals.protein_g)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">C</p>
+                    <p className="font-semibold">
+                      {Math.round(template.totals.carbs_g)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">F</p>
+                    <p className="font-semibold">
+                      {Math.round(template.totals.fat_g)}
+                    </p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => navigate(`/pt/nutrition/programs/${template.id}`)}>Open builder</Button>
-                  <Button size="sm" variant="ghost" onClick={() => duplicateTemplate(template)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() =>
+                      navigate(`/pt/nutrition/programs/${template.id}`)
+                    }
+                  >
+                    Open builder
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => duplicateTemplate(template)}
+                  >
                     <Copy className="mr-1 h-3.5 w-3.5" />
                     Duplicate
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => deleteTemplate(template)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => deleteTemplate(template)}
+                  >
                     <Trash2 className="mr-1 h-3.5 w-3.5" />
                     Delete
                   </Button>
@@ -251,13 +330,34 @@ export function PtNutritionPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create nutrition program</DialogTitle>
-            <DialogDescription>After creation, you will be taken to the program builder page.</DialogDescription>
+            <DialogDescription>
+              After creation, you will be taken to the program builder page.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Input placeholder="Program name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-            <Input type="number" min={1} max={4} placeholder="Duration weeks" value={weeks} onChange={(e) => setWeeks(e.target.value)} />
-            {createError ? <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">{createError}</div> : null}
+            <Input
+              placeholder="Program name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              placeholder="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <Input
+              type="number"
+              min={1}
+              max={4}
+              placeholder="Duration weeks"
+              value={weeks}
+              onChange={(e) => setWeeks(e.target.value)}
+            />
+            {createError ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                {createError}
+              </div>
+            ) : null}
           </div>
           <SaveActions
             onCancel={() => setCreateOpen(false)}

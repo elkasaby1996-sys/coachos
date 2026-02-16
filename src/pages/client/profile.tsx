@@ -4,7 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +20,12 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getProfileCompletion } from "../../lib/profile-completion";
@@ -130,17 +140,29 @@ type ProfileFormState = {
 const toInput = (value: string | number | null | undefined) =>
   value === null || value === undefined ? "" : String(value);
 
-const formatDisplayValue = (value: string | null | undefined, fallback: string) =>
-  value && value.trim().length > 0 ? value : fallback;
+const formatDisplayValue = (
+  value: string | null | undefined,
+  fallback: string,
+) => (value && value.trim().length > 0 ? value : fallback);
 
-const formatNumberValue = (value: number | null | undefined, fallback: string) =>
+const formatNumberValue = (
+  value: number | null | undefined,
+  fallback: string,
+) =>
   typeof value === "number" && !Number.isNaN(value) ? String(value) : fallback;
 
-const formatDateValue = (value: string | null | undefined, fallback: string) => {
+const formatDateValue = (
+  value: string | null | undefined,
+  fallback: string,
+) => {
   if (!value) return fallback;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return fallback;
-  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
 const getInitials = (name: string | null | undefined) => {
@@ -158,7 +180,9 @@ const getTimezoneForCountry = (country: string) => {
 };
 
 const stripUndefined = (payload: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+  Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  );
 
 const toNumberOrNull = (value: string) => {
   if (!value.trim()) return null;
@@ -191,7 +215,9 @@ export function ClientProfilePage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
   const [inlineError, setInlineError] = useState<string | null>(null);
 
   const clientQuery = useQuery({
@@ -201,7 +227,7 @@ export function ClientProfilePage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, user_id, status, display_name, goal, injuries, limitations, height_cm, current_weight, days_per_week, dob, created_at, phone, location, timezone, unit_preference, gender, training_type, gym_name, photo_url, updated_at, tags"
+          "id, workspace_id, user_id, status, display_name, goal, injuries, limitations, height_cm, current_weight, days_per_week, dob, created_at, phone, location, timezone, unit_preference, gender, training_type, gym_name, photo_url, updated_at, tags",
         )
         .eq("user_id", session?.user?.id ?? "")
         .maybeSingle();
@@ -220,7 +246,9 @@ export function ClientProfilePage() {
       display_name: toInput(profile.display_name),
       phone: toInput(profile.phone),
       location: toInput(profile.location),
-      timezone: toInput(profile.timezone || getTimezoneForCountry(profile.location ?? "")),
+      timezone: toInput(
+        profile.timezone || getTimezoneForCountry(profile.location ?? ""),
+      ),
       unit_preference: toInput(profile.unit_preference),
       dob: toInput(profile.dob),
       gender: toInput(profile.gender),
@@ -250,8 +278,7 @@ export function ClientProfilePage() {
     const fileExt = photoFile.name.split(".").pop() || "jpg";
     const filePath = `clients/${clientId}/${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase
-      .storage
+    const { error: uploadError } = await supabase.storage
       .from("client-photos")
       .upload(filePath, photoFile, { upsert: true });
 
@@ -259,7 +286,9 @@ export function ClientProfilePage() {
       return { url: null, error: uploadError };
     }
 
-    const { data } = supabase.storage.from("client-photos").getPublicUrl(filePath);
+    const { data } = supabase.storage
+      .from("client-photos")
+      .getPublicUrl(filePath);
     return { url: data.publicUrl, error: null };
   };
 
@@ -335,11 +364,17 @@ export function ClientProfilePage() {
     () => [
       {
         label: "Display name",
-        value: formatDisplayValue(profile?.display_name ?? null, fallbackText.display_name),
+        value: formatDisplayValue(
+          profile?.display_name ?? null,
+          fallbackText.display_name,
+        ),
       },
       {
         label: "Email",
-        value: formatDisplayValue(session?.user?.email ?? null, fallbackText.email),
+        value: formatDisplayValue(
+          session?.user?.email ?? null,
+          fallbackText.email,
+        ),
       },
       {
         label: "Phone",
@@ -347,15 +382,24 @@ export function ClientProfilePage() {
       },
       {
         label: "Country",
-        value: formatDisplayValue(profile?.location ?? null, fallbackText.location),
+        value: formatDisplayValue(
+          profile?.location ?? null,
+          fallbackText.location,
+        ),
       },
       {
         label: "Timezone",
-        value: formatDisplayValue(profile?.timezone ?? null, fallbackText.timezone),
+        value: formatDisplayValue(
+          profile?.timezone ?? null,
+          fallbackText.timezone,
+        ),
       },
       {
         label: "Units",
-        value: formatDisplayValue(profile?.unit_preference ?? null, fallbackText.unit_preference),
+        value: formatDisplayValue(
+          profile?.unit_preference ?? null,
+          fallbackText.unit_preference,
+        ),
       },
       {
         label: "Birthdate",
@@ -366,25 +410,34 @@ export function ClientProfilePage() {
         value: formatDisplayValue(profile?.gender ?? null, fallbackText.gender),
       },
     ],
-    [profile, session?.user?.email]
+    [profile, session?.user?.email],
   );
 
   const trainingFields = useMemo(
     () => [
       {
         label: "Training type",
-        value: formatDisplayValue(profile?.training_type ?? null, fallbackText.training_type),
+        value: formatDisplayValue(
+          profile?.training_type ?? null,
+          fallbackText.training_type,
+        ),
       },
       {
         label: "Gym",
-        value: formatDisplayValue(profile?.gym_name ?? null, fallbackText.gym_name),
+        value: formatDisplayValue(
+          profile?.gym_name ?? null,
+          fallbackText.gym_name,
+        ),
       },
       {
         label: "Days per week",
-        value: formatNumberValue(profile?.days_per_week ?? null, fallbackText.days_per_week),
+        value: formatNumberValue(
+          profile?.days_per_week ?? null,
+          fallbackText.days_per_week,
+        ),
       },
     ],
-    [profile]
+    [profile],
   );
 
   const healthFields = useMemo(
@@ -395,22 +448,34 @@ export function ClientProfilePage() {
       },
       {
         label: "Injuries",
-        value: formatDisplayValue(profile?.injuries ?? null, fallbackText.injuries),
+        value: formatDisplayValue(
+          profile?.injuries ?? null,
+          fallbackText.injuries,
+        ),
       },
       {
         label: "Limitations",
-        value: formatDisplayValue(profile?.limitations ?? null, fallbackText.limitations),
+        value: formatDisplayValue(
+          profile?.limitations ?? null,
+          fallbackText.limitations,
+        ),
       },
       {
         label: "Height (cm)",
-        value: formatNumberValue(profile?.height_cm ?? null, fallbackText.height_cm),
+        value: formatNumberValue(
+          profile?.height_cm ?? null,
+          fallbackText.height_cm,
+        ),
       },
       {
         label: "Current weight",
-        value: formatNumberValue(profile?.current_weight ?? null, fallbackText.current_weight),
+        value: formatNumberValue(
+          profile?.current_weight ?? null,
+          fallbackText.current_weight,
+        ),
       },
     ],
-    [profile]
+    [profile],
   );
 
   const completion = useMemo(() => getProfileCompletion(profile), [profile]);
@@ -425,14 +490,24 @@ export function ClientProfilePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate("/app/messages")}>Message coach</Button>
-          <Button onClick={() => setEditOpen(true)} disabled={!profile}>Edit Profile</Button>
+          <Button variant="secondary" onClick={() => navigate("/app/messages")}>
+            Message coach
+          </Button>
+          <Button onClick={() => setEditOpen(true)} disabled={!profile}>
+            Edit Profile
+          </Button>
         </div>
       </div>
 
       {toastMessage ? (
-        <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
-          <AlertTitle>{toastVariant === "error" ? "Update failed" : "Saved"}</AlertTitle>
+        <Alert
+          className={
+            toastVariant === "error" ? "border-danger/30" : "border-emerald-200"
+          }
+        >
+          <AlertTitle>
+            {toastVariant === "error" ? "Update failed" : "Saved"}
+          </AlertTitle>
           <AlertDescription>{toastMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -472,10 +547,12 @@ export function ClientProfilePage() {
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
                 <div>
                   <CardTitle>
-                    Complete your profile ({completion.completed}/{completion.total})
+                    Complete your profile ({completion.completed}/
+                    {completion.total})
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Finish your missing fields so your coach can tailor your plan.
+                    Finish your missing fields so your coach can tailor your
+                    plan.
                   </p>
                 </div>
                 <Button size="sm" onClick={() => setEditOpen(true)}>
@@ -512,7 +589,9 @@ export function ClientProfilePage() {
                     getInitials(profile.display_name)
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground">Profile photo</div>
+                <div className="text-xs text-muted-foreground">
+                  Profile photo
+                </div>
               </div>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -577,7 +656,7 @@ export function ClientProfilePage() {
             <div className="px-6 pt-6">
               <DialogTitle>Edit profile</DialogTitle>
               <DialogDescription>
-              Update your details so your coach can tailor your plan.
+                Update your details so your coach can tailor your plan.
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -589,46 +668,70 @@ export function ClientProfilePage() {
             </TabsList>
 
             <div className="mt-4 max-h-[56vh] overflow-y-auto pr-1">
-              <TabsContent value="identity" className="grid gap-4 sm:grid-cols-2">
+              <TabsContent
+                value="identity"
+                className="grid gap-4 sm:grid-cols-2"
+              >
                 <div className="space-y-2 sm:col-span-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Profile photo</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Profile photo
+                  </label>
                   <Input
                     type="file"
                     accept="image/*"
-                    onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) =>
+                      setPhotoFile(event.target.files?.[0] ?? null)
+                    }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Upload support is in progress. If it fails, we&apos;ll keep your current photo.
+                    Upload support is in progress. If it fails, we&apos;ll keep
+                    your current photo.
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Display name</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Display name
+                  </label>
                   <Input
                     value={formState.display_name}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, display_name: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        display_name: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Email</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Email
+                  </label>
                   <Input value={session?.user?.email ?? ""} readOnly />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Phone</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Phone
+                  </label>
                   <Input
                     value={formState.phone}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, phone: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        phone: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Country</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Country
+                  </label>
                   <select
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={formState.location}
-                    onChange={(event) => handleCountryChange(event.target.value)}
+                    onChange={(event) =>
+                      handleCountryChange(event.target.value)
+                    }
                   >
                     <option value="">Select country</option>
                     {locationOptions.map((option) => (
@@ -639,16 +742,23 @@ export function ClientProfilePage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Timezone</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Timezone
+                  </label>
                   <Input value={formState.timezone} readOnly />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Units</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Units
+                  </label>
                   <select
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={formState.unit_preference}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, unit_preference: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        unit_preference: event.target.value,
+                      }))
                     }
                   >
                     <option value="">Select units</option>
@@ -660,22 +770,32 @@ export function ClientProfilePage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Birthdate</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Birthdate
+                  </label>
                   <Input
                     type="date"
                     value={formState.dob}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, dob: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        dob: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Gender</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Gender
+                  </label>
                   <select
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={formState.gender}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, gender: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        gender: event.target.value,
+                      }))
                     }
                   >
                     <option value="">Select gender</option>
@@ -688,34 +808,52 @@ export function ClientProfilePage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="training" className="grid gap-4 sm:grid-cols-2">
+              <TabsContent
+                value="training"
+                className="grid gap-4 sm:grid-cols-2"
+              >
                 <div className="space-y-2 sm:col-span-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Gym name</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Gym name
+                  </label>
                   <Input
                     value={formState.gym_name}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, gym_name: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        gym_name: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Days per week</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Days per week
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.days_per_week}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, days_per_week: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        days_per_week: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Goal</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Goal
+                  </label>
                   <select
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={formState.goal}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, goal: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        goal: event.target.value,
+                      }))
                     }
                   >
                     <option value="">Select goal</option>
@@ -730,44 +868,64 @@ export function ClientProfilePage() {
 
               <TabsContent value="health" className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Height (cm)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Height (cm)
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.height_cm}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, height_cm: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        height_cm: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Current weight</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Current weight
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.current_weight}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, current_weight: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        current_weight: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Injuries</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Injuries
+                  </label>
                   <textarea
                     className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={formState.injuries}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, injuries: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        injuries: event.target.value,
+                      }))
                     }
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Limitations</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Limitations
+                  </label>
                   <textarea
                     className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={formState.limitations}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, limitations: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        limitations: event.target.value,
+                      }))
                     }
                   />
                 </div>

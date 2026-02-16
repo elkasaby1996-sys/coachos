@@ -80,7 +80,9 @@ export function RestTimer({
           <div className="text-3xl font-semibold tabular-nums text-foreground">
             {formatTime(remaining)}
           </div>
-          <div className="text-xs text-muted-foreground">{duration}s default</div>
+          <div className="text-xs text-muted-foreground">
+            {duration}s default
+          </div>
         </div>
         <div className="h-2 w-full rounded-full bg-muted/40">
           <div

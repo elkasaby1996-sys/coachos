@@ -24,10 +24,14 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const ROLE_LOOKUP_TIMEOUT_CODE = "ROLE_LOOKUP_TIMEOUT";
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms: number,
+  message: string,
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => reject(new Error(message)), ms);
-    promise
+    Promise.resolve(promise)
       .then((value) => {
         window.clearTimeout(timer);
         resolve(value);
@@ -39,7 +43,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-async function ensureFreshSession(session: Session | null): Promise<Session | null> {
+async function ensureFreshSession(
+  session: Session | null,
+): Promise<Session | null> {
   if (!session) return null;
   const expiresAtMs = (session.expires_at ?? 0) * 1000;
   const now = Date.now();
@@ -51,7 +57,7 @@ async function ensureFreshSession(session: Session | null): Promise<Session | nu
     const { data, error } = await withTimeout(
       supabase.auth.refreshSession(),
       10000,
-      "Session refresh timed out (10s)."
+      "Session refresh timed out (10s).",
     );
     if (error || !data.session) {
       await supabase.auth.signOut();
@@ -69,7 +75,10 @@ async function resolveRole(userId: string): Promise<{
   workspaceMember: unknown;
   clientMember: unknown;
 }> {
-  let workspaceMember: { data: unknown; error: unknown } | null = null;
+  let workspaceMember: { data: unknown; error: unknown } = {
+    data: null,
+    error: null,
+  };
 
   try {
     workspaceMember = await withTimeout(
@@ -79,7 +88,7 @@ async function resolveRole(userId: string): Promise<{
         .eq("user_id", userId)
         .maybeSingle(),
       5000,
-      "Workspace membership lookup timed out (5s)."
+      "Workspace membership lookup timed out (5s).",
     );
   } catch (error) {
     if (error instanceof Error && error.message.includes("timed out")) {
@@ -89,8 +98,9 @@ async function resolveRole(userId: string): Promise<{
     }
   }
 
-  if (workspaceMember?.error) throw workspaceMember.error;
-  const workspaceRole = (workspaceMember?.data as { role?: string } | null)?.role ?? null;
+  if (workspaceMember.error) throw workspaceMember.error;
+  const workspaceRole =
+    (workspaceMember.data as { role?: string } | null)?.role ?? null;
   if (workspaceRole && workspaceRole.startsWith("pt")) {
     return {
       role: "pt",
@@ -99,7 +109,10 @@ async function resolveRole(userId: string): Promise<{
     };
   }
 
-  let clientMember: { data: unknown; error: unknown } | null = null;
+  let clientMember: { data: unknown; error: unknown } = {
+    data: null,
+    error: null,
+  };
   let clientLookupUnstable = false;
   const clientQuery = `clients.select("id, workspace_id").eq("user_id", "${userId}")`;
 
@@ -112,30 +125,43 @@ async function resolveRole(userId: string): Promise<{
           .eq("user_id", userId)
           .maybeSingle(),
         timeoutMs,
-        `Client lookup timed out (${Math.round(timeoutMs / 1000)}s).`
+        `Client lookup timed out (${Math.round(timeoutMs / 1000)}s).`,
       );
       clientLookupUnstable = false;
       break;
     } catch (error) {
       clientLookupUnstable = true;
       if (error instanceof Error && error.message.includes("timed out")) {
-        console.warn("Client lookup timed out", { userId, query: clientQuery, timeoutMs });
+        console.warn("Client lookup timed out", {
+          userId,
+          query: clientQuery,
+          timeoutMs,
+        });
       } else {
-        console.warn("Client lookup failed", { userId, query: clientQuery, error, timeoutMs });
+        console.warn("Client lookup failed", {
+          userId,
+          query: clientQuery,
+          error,
+          timeoutMs,
+        });
       }
       clientMember = { data: null, error: null };
     }
   }
 
-  if (clientMember?.error) {
-    console.warn("Client lookup error", { userId, query: clientQuery, error: clientMember.error });
+  if (clientMember.error) {
+    console.warn("Client lookup error", {
+      userId,
+      query: clientQuery,
+      error: clientMember.error,
+    });
     return {
       role: "none",
       workspaceMember: workspaceMember.data,
       clientMember: clientMember.data,
     };
   }
-  if (clientMember?.data) {
+  if (clientMember.data) {
     return {
       role: "client",
       workspaceMember: workspaceMember.data,
@@ -144,16 +170,24 @@ async function resolveRole(userId: string): Promise<{
   }
 
   if (clientLookupUnstable) {
-    console.warn("Client lookup remained unstable; keeping role unresolved this pass", {
-      userId,
-      query: clientQuery,
-    });
-    const timeoutError = new Error("Role resolution failed due to lookup timeout.");
+    console.warn(
+      "Client lookup remained unstable; keeping role unresolved this pass",
+      {
+        userId,
+        query: clientQuery,
+      },
+    );
+    const timeoutError = new Error(
+      "Role resolution failed due to lookup timeout.",
+    );
     timeoutError.name = ROLE_LOOKUP_TIMEOUT_CODE;
     throw timeoutError;
   }
 
-  console.warn("Client record not found or not accessible", { userId, query: clientQuery });
+  console.warn("Client record not found or not accessible", {
+    userId,
+    query: clientQuery,
+  });
 
   return {
     role: "none",
@@ -172,7 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resolveRoleOnce = useCallback(
     async (userId: string, options?: { force?: boolean }) => {
-      const pathname = window.location.pathname;
       const key = `${userId ?? "none"}`;
       if (!options?.force) {
         if (resolvingRef.current || lastResolveKeyRef.current === key) return;
@@ -201,7 +234,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch {
             // Local auth state is still cleared below to force login recovery.
           }
-          setAuthError(new Error("Session check timed out. Please log in again."));
+          setAuthError(
+            new Error("Session check timed out. Please log in again."),
+          );
           setSession(null);
           setRole("none");
           lastResolveKeyRef.current = "";
@@ -216,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resolvingRef.current = false;
       }
     },
-    []
+    [],
   );
 
   const refreshRole = useCallback(async () => {
@@ -226,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await withTimeout(
         supabase.auth.getSession(),
         15000,
-        "Session load timed out (15s)."
+        "Session load timed out (15s).",
       );
       if (error) {
         setAuthError(new Error(error.message));
@@ -261,13 +296,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthError(null);
 
         if (!supabaseConfigured) {
-          throw new Error("Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+          throw new Error(
+            "Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+          );
         }
 
         const { data, error } = await withTimeout(
           supabase.auth.getSession(),
           15000,
-          "Session load timed out (15s)."
+          "Session load timed out (15s).",
         );
 
         if (!alive) return;
@@ -325,7 +362,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } finally {
           if (alive) setLoading(false);
         }
-      }
+      },
     );
 
     return () => {
@@ -343,7 +380,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       refreshRole,
     }),
-    [session, loading, authError, role, refreshRole]
+    [session, loading, authError, role, refreshRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

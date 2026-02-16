@@ -6,7 +6,9 @@ export function resolveTheme(preference: ThemePreference): ResolvedTheme {
   if (preference === "dark") return "dark";
   if (preference === "light") return "light";
   if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 export function applyTheme(preference: ThemePreference): ResolvedTheme {
@@ -29,14 +31,18 @@ export function nextThemePreference(current: ThemePreference): ThemePreference {
   return "system";
 }
 
-export function getStoredThemePreference(defaultPreference: ThemePreference = "dark"): ThemePreference {
+export function getStoredThemePreference(
+  defaultPreference: ThemePreference = "dark",
+): ThemePreference {
   if (typeof window === "undefined") return defaultPreference;
   const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (raw === "system" || raw === "dark" || raw === "light") return raw;
   return defaultPreference;
 }
 
-export function initializeThemePreference(defaultPreference: ThemePreference = "dark"): ThemePreference {
+export function initializeThemePreference(
+  defaultPreference: ThemePreference = "dark",
+): ThemePreference {
   const preference = getStoredThemePreference(defaultPreference);
   if (typeof window !== "undefined") {
     window.localStorage.setItem(THEME_STORAGE_KEY, preference);

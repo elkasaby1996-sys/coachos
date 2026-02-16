@@ -10,7 +10,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Badge } from "../../components/ui/badge";
 import { supabase } from "../../lib/supabase";
@@ -30,10 +35,7 @@ type SetLogPoint = {
   weight: number | null;
   created_at: string | null;
   exercise_id: string | null;
-  exercise:
-    | { name: string | null }
-    | { name: string | null }[]
-    | null;
+  exercise: { name: string | null } | { name: string | null }[] | null;
 };
 
 type BaselineWeightPoint = {
@@ -66,10 +68,15 @@ function MetricCard({
 }) {
   const axisColor = "oklch(0.98 0 0 / 0.92)";
 
-  const latest = [...series].reverse().find((point) => typeof point.value === "number")?.value ?? null;
-  const first = series.find((point) => typeof point.value === "number")?.value ?? null;
+  const latest =
+    [...series].reverse().find((point) => typeof point.value === "number")
+      ?.value ?? null;
+  const first =
+    series.find((point) => typeof point.value === "number")?.value ?? null;
   const delta =
-    typeof latest === "number" && typeof first === "number" ? latest - first : null;
+    typeof latest === "number" && typeof first === "number"
+      ? latest - first
+      : null;
 
   return (
     <Card>
@@ -77,7 +84,9 @@ function MetricCard({
         <div className="flex items-center justify-between gap-2">
           <CardTitle>{title}</CardTitle>
           <Badge variant="muted">
-            {typeof latest === "number" ? `${latest}${unit ? ` ${unit}` : ""}` : "--"}
+            {typeof latest === "number"
+              ? `${latest}${unit ? ` ${unit}` : ""}`
+              : "--"}
           </Badge>
         </div>
       </CardHeader>
@@ -85,7 +94,10 @@ function MetricCard({
         <div className="h-[220px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={series}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="oklch(0.35 0.02 260 / 0.35)"
+              />
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 11, fill: axisColor }}
@@ -99,7 +111,9 @@ function MetricCard({
               />
               <Tooltip
                 formatter={(value: number | string) =>
-                  typeof value === "number" ? `${value}${unit ? ` ${unit}` : ""}` : value
+                  typeof value === "number"
+                    ? `${value}${unit ? ` ${unit}` : ""}`
+                    : value
                 }
               />
               <Line
@@ -138,16 +152,23 @@ export function ClientProgressPage() {
         .eq("user_id", session?.user?.id ?? "")
         .maybeSingle();
       if (error) throw error;
-      return data as { id: string; timezone: string | null; unit_preference: string | null } | null;
+      return data as {
+        id: string;
+        timezone: string | null;
+        unit_preference: string | null;
+      } | null;
     },
   });
 
   const clientId = clientQuery.data?.id ?? null;
   const todayKey = useMemo(
     () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
-    [clientQuery.data?.timezone]
+    [clientQuery.data?.timezone],
   );
-  const startKey = useMemo(() => addDaysToDateString(todayKey, -55), [todayKey]);
+  const startKey = useMemo(
+    () => addDaysToDateString(todayKey, -55),
+    [todayKey],
+  );
 
   const habitsQuery = useQuery({
     queryKey: ["client-progress-habits", clientId, startKey, todayKey],
@@ -171,7 +192,9 @@ export function ClientProgressPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_set_logs")
-        .select("reps, weight, created_at, exercise_id, exercise:exercises(name), workout_session:workout_sessions!inner(client_id)")
+        .select(
+          "reps, weight, created_at, exercise_id, exercise:exercises(name), workout_session:workout_sessions!inner(client_id)",
+        )
         .eq("workout_session.client_id", clientId ?? "")
         .gte("created_at", `${startKey}T00:00:00.000Z`)
         .order("created_at", { ascending: true });
@@ -203,7 +226,11 @@ export function ClientProgressPage() {
         .maybeSingle();
       if (metricsError) throw metricsError;
 
-      const dateKey = (baselineEntry.submitted_at ?? baselineEntry.created_at ?? "").slice(0, 10);
+      const dateKey = (
+        baselineEntry.submitted_at ??
+        baselineEntry.created_at ??
+        ""
+      ).slice(0, 10);
       if (!dateKey) return null;
 
       return {
@@ -220,9 +247,13 @@ export function ClientProgressPage() {
     baselineWeightQuery.isLoading;
 
   const weightUnit = useMemo(() => {
-    const fromLogs = (habitsQuery.data ?? []).find((row) => row.weight_unit)?.weight_unit;
+    const fromLogs = (habitsQuery.data ?? []).find(
+      (row) => row.weight_unit,
+    )?.weight_unit;
     if (fromLogs) return fromLogs;
-    return clientQuery.data?.unit_preference?.toLowerCase() === "imperial" ? "lb" : "kg";
+    return clientQuery.data?.unit_preference?.toLowerCase() === "imperial"
+      ? "lb"
+      : "kg";
   }, [habitsQuery.data, clientQuery.data?.unit_preference]);
 
   const habitSeries = useMemo(() => {
@@ -270,10 +301,19 @@ export function ClientProgressPage() {
 
   const exerciseTrends = useMemo(() => {
     const rows = setLogsQuery.data ?? [];
-    const byDate = new Map<string, { volume: number; weightSum: number; weightCount: number }>();
+    const byDate = new Map<
+      string,
+      { volume: number; weightSum: number; weightCount: number }
+    >();
     const byExercise = new Map<
       string,
-      { name: string; firstWeight: number | null; latestWeight: number | null; firstVolume: number | null; latestVolume: number | null }
+      {
+        name: string;
+        firstWeight: number | null;
+        latestWeight: number | null;
+        firstVolume: number | null;
+        latestVolume: number | null;
+      }
     >();
 
     rows.forEach((row) => {
@@ -283,7 +323,11 @@ export function ClientProgressPage() {
       const volume = reps !== null && weight !== null ? reps * weight : null;
 
       if (dateKey) {
-        const curr = byDate.get(dateKey) ?? { volume: 0, weightSum: 0, weightCount: 0 };
+        const curr = byDate.get(dateKey) ?? {
+          volume: 0,
+          weightSum: 0,
+          weightCount: 0,
+        };
         if (typeof volume === "number" && volume > 0) curr.volume += volume;
         if (typeof weight === "number" && weight > 0) {
           curr.weightSum += weight;
@@ -294,23 +338,30 @@ export function ClientProgressPage() {
 
       if (!row.exercise_id) return;
       const exerciseName = Array.isArray(row.exercise)
-        ? row.exercise[0]?.name ?? "Exercise"
-        : row.exercise?.name ?? "Exercise";
-      const existing =
-        byExercise.get(row.exercise_id) ?? {
-          name: exerciseName,
-          firstWeight: null,
-          latestWeight: null,
-          firstVolume: null,
-          latestVolume: null,
-        };
-      if (existing.firstWeight === null && typeof weight === "number" && weight > 0) {
+        ? (row.exercise[0]?.name ?? "Exercise")
+        : (row.exercise?.name ?? "Exercise");
+      const existing = byExercise.get(row.exercise_id) ?? {
+        name: exerciseName,
+        firstWeight: null,
+        latestWeight: null,
+        firstVolume: null,
+        latestVolume: null,
+      };
+      if (
+        existing.firstWeight === null &&
+        typeof weight === "number" &&
+        weight > 0
+      ) {
         existing.firstWeight = weight;
       }
       if (typeof weight === "number" && weight > 0) {
         existing.latestWeight = weight;
       }
-      if (existing.firstVolume === null && typeof volume === "number" && volume > 0) {
+      if (
+        existing.firstVolume === null &&
+        typeof volume === "number" &&
+        volume > 0
+      ) {
         existing.firstVolume = volume;
       }
       if (typeof volume === "number" && volume > 0) {
@@ -326,7 +377,9 @@ export function ClientProgressPage() {
         label: toShortDate(dateKey),
         volume: Number(value.volume.toFixed(1)),
         avgWeight:
-          value.weightCount > 0 ? Number((value.weightSum / value.weightCount).toFixed(1)) : null,
+          value.weightCount > 0
+            ? Number((value.weightSum / value.weightCount).toFixed(1))
+            : null,
       }));
 
     const changes = [...byExercise.values()]
@@ -361,7 +414,7 @@ export function ClientProgressPage() {
       .sort(
         (a, b) =>
           Math.abs((b.weightDelta ?? 0) + (b.volumeDelta ?? 0) / 10) -
-          Math.abs((a.weightDelta ?? 0) + (a.volumeDelta ?? 0) / 10)
+          Math.abs((a.weightDelta ?? 0) + (a.volumeDelta ?? 0) / 10),
       )
       .slice(0, 8);
 
@@ -382,11 +435,46 @@ export function ClientProgressPage() {
 
       {loading ? (
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent><Skeleton className="h-[220px] w-full" /></CardContent></Card>
-          <Card><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent><Skeleton className="h-[220px] w-full" /></CardContent></Card>
-          <Card><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent><Skeleton className="h-[220px] w-full" /></CardContent></Card>
-          <Card><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent><Skeleton className="h-[220px] w-full" /></CardContent></Card>
-          <Card><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent><Skeleton className="h-[220px] w-full" /></CardContent></Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[220px] w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[220px] w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[220px] w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[220px] w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[220px] w-full" />
+            </CardContent>
+          </Card>
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -416,7 +504,10 @@ export function ClientProgressPage() {
               <div className="h-[220px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={exerciseTrends.loadSeries}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="oklch(0.35 0.02 260 / 0.35)"
+                    />
                     <XAxis
                       dataKey="label"
                       tick={{ fontSize: 11, fill: axisColor }}
@@ -453,7 +544,11 @@ export function ClientProgressPage() {
                   {exerciseTrends.changes.map((item) => {
                     const trendBase = item.volumeDelta ?? item.weightDelta ?? 0;
                     const TrendIcon =
-                      trendBase > 0 ? ArrowUpRight : trendBase < 0 ? ArrowDownRight : Minus;
+                      trendBase > 0
+                        ? ArrowUpRight
+                        : trendBase < 0
+                          ? ArrowDownRight
+                          : Minus;
 
                     return (
                       <div

@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
@@ -74,7 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!nextSession?.user) {
       setRole(null);
-      if (location.pathname !== "/login" && !location.pathname.startsWith("/join")) {
+      if (
+        location.pathname !== "/login" &&
+        !location.pathname.startsWith("/join")
+      ) {
         navigate("/login", { replace: true });
       }
       didRouteRef.current = true;
@@ -125,10 +135,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     bootstrap();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      resolveAndRedirect(nextSession);
-    });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        setSession(nextSession);
+        resolveAndRedirect(nextSession);
+      },
+    );
 
     return () => {
       mounted = false;
@@ -144,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       roleError,
     }),
-    [session, role, isLoading, roleError]
+    [session, role, isLoading, roleError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -20,11 +20,16 @@ export function ExerciseNav({
 }) {
   return (
     <div className="hidden xl:block">
-      <DashboardCard title="Exercises" subtitle="Tap to jump between movements.">
+      <DashboardCard
+        title="Exercises"
+        subtitle="Tap to jump between movements."
+      >
         <div className="space-y-2">
           {exercises.map((exercise, index) => {
             const isActive = exercise.exerciseId === activeExerciseId;
-            const isDone = exercise.totalSets > 0 && exercise.setsCompleted === exercise.totalSets;
+            const isDone =
+              exercise.totalSets > 0 &&
+              exercise.setsCompleted === exercise.totalSets;
             return (
               <button
                 key={`${exercise.exerciseId}-${index}`}
@@ -38,7 +43,9 @@ export function ExerciseNav({
               >
                 <div className="flex flex-col gap-1">
                   <span className="font-medium">
-                    {exercise.supersetGroup ? `S${exercise.supersetGroup}: ` : ""}
+                    {exercise.supersetGroup
+                      ? `S${exercise.supersetGroup}: `
+                      : ""}
                     {exercise.name}
                   </span>
                   <span className="text-xs text-muted-foreground">

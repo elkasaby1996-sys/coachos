@@ -20,7 +20,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import {
   Dialog,
@@ -82,6 +87,11 @@ type TemplateExerciseRow = {
   exercise: ExerciseRow | null;
 };
 
+const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+};
+
 type TemplateExerciseForm = {
   sets: string;
   reps: string;
@@ -123,16 +133,16 @@ const emptyBulkExerciseForm: BulkTemplateExerciseForm = {
 const isUuid = (value: string | undefined | null) =>
   Boolean(
     value &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        value
-      )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    ),
   );
 
 const nextSupersetGroup = (rows: TemplateExerciseRow[]) => {
   const used = new Set(
     rows
       .map((row) => row.superset_group?.trim())
-      .filter((group): group is string => Boolean(group))
+      .filter((group): group is string => Boolean(group)),
   );
   for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
     if (!used.has(letter)) return letter;
@@ -163,7 +173,14 @@ function SortableExerciseRow({
   onEdit,
   onDelete,
 }: SortableExerciseRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: row.id,
   });
   const style = {
@@ -209,7 +226,9 @@ function SortableExerciseRow({
             <GripVertical className="h-4 w-4" />
           </button>
           <div>
-            <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
+            <p className="text-sm font-semibold">
+              {row.exercise?.name ?? "Exercise"}
+            </p>
             <p className="text-xs text-muted-foreground">
               {row.sets ?? "--"} sets - {row.reps ?? "--"} reps
               {row.superset_group ? " - Superset" : ""}
@@ -245,15 +264,23 @@ export function PtWorkoutTemplateBuilderPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
-  const [deleteTemplateStatus, setDeleteTemplateStatus] = useState<"idle" | "deleting">("idle");
-  const [deleteTemplateError, setDeleteTemplateError] = useState<string | null>(null);
+  const [deleteTemplateStatus, setDeleteTemplateStatus] = useState<
+    "idle" | "deleting"
+  >("idle");
+  const [deleteTemplateError, setDeleteTemplateError] = useState<string | null>(
+    null,
+  );
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedRow, setSelectedRow] = useState<TemplateExerciseRow | null>(null);
+  const [selectedRow, setSelectedRow] = useState<TemplateExerciseRow | null>(
+    null,
+  );
   const [form, setForm] = useState<TemplateExerciseForm>(emptyExerciseForm);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkExerciseIds, setBulkExerciseIds] = useState<string[]>([]);
-  const [bulkForm, setBulkForm] = useState<BulkTemplateExerciseForm>(emptyBulkExerciseForm);
+  const [bulkForm, setBulkForm] = useState<BulkTemplateExerciseForm>(
+    emptyBulkExerciseForm,
+  );
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<"idle" | "saving">("idle");
   const [exerciseRows, setExerciseRows] = useState<TemplateExerciseRow[]>([]);
@@ -261,7 +288,7 @@ export function PtWorkoutTemplateBuilderPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
   const templateQuery = useQuery({
@@ -284,7 +311,9 @@ export function PtWorkoutTemplateBuilderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercises")
-        .select("id, name, muscle_group, primary_muscle, equipment, video_url, tags")
+        .select(
+          "id, name, muscle_group, primary_muscle, equipment, video_url, tags",
+        )
         .eq("workspace_id", workspaceId ?? "")
         .order("name");
       if (error) throw error;
@@ -299,12 +328,20 @@ export function PtWorkoutTemplateBuilderPage() {
       const { data, error } = await supabase
         .from("workout_template_exercises")
         .select(
-          "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,muscle_group,equipment,video_url)"
+          "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,muscle_group,equipment,video_url)",
         )
         .eq("workout_template_id", templateId ?? "")
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as TemplateExerciseRow[];
+      const rows = (data ?? []) as Array<
+        Omit<TemplateExerciseRow, "exercise"> & {
+          exercise: ExerciseRow | ExerciseRow[] | null;
+        }
+      >;
+      return rows.map((row) => ({
+        ...row,
+        exercise: getSingleRelation(row.exercise),
+      }));
     },
   });
 
@@ -316,13 +353,17 @@ export function PtWorkoutTemplateBuilderPage() {
         index,
         order: row.sort_order ?? Number.MAX_SAFE_INTEGER,
       }))
-      .sort((a, b) => (a.order === b.order ? a.index - b.index : a.order - b.order))
+      .sort((a, b) =>
+        a.order === b.order ? a.index - b.index : a.order - b.order,
+      )
       .map((item) => item.row);
     setExerciseRows(normalized);
   }, [templateExercisesQuery.data]);
 
   useEffect(() => {
-    setBulkExerciseIds((prev) => prev.filter((id) => exerciseRows.some((row) => row.id === id)));
+    setBulkExerciseIds((prev) =>
+      prev.filter((id) => exerciseRows.some((row) => row.id === id)),
+    );
   }, [exerciseRows]);
 
   const exercises = exercisesQuery.data ?? [];
@@ -330,7 +371,7 @@ export function PtWorkoutTemplateBuilderPage() {
     const term = search.trim().toLowerCase();
     if (!term) return exercises;
     return exercises.filter((exercise) =>
-      (exercise.name ?? "").toLowerCase().includes(term)
+      (exercise.name ?? "").toLowerCase().includes(term),
     );
   }, [exercises, search]);
 
@@ -339,15 +380,23 @@ export function PtWorkoutTemplateBuilderPage() {
     setActionStatus("saving");
     setActionError(null);
 
-    const rows = exerciseRows.length > 0 ? exerciseRows : templateExercisesQuery.data ?? [];
-    const maxSort = rows.reduce((acc, row) => Math.max(acc, row.sort_order ?? 0), 0);
+    const rows =
+      exerciseRows.length > 0
+        ? exerciseRows
+        : (templateExercisesQuery.data ?? []);
+    const maxSort = rows.reduce(
+      (acc, row) => Math.max(acc, row.sort_order ?? 0),
+      0,
+    );
     const payload = selectedExerciseIds.map((exerciseId, index) => ({
       workout_template_id: templateId,
       exercise_id: exerciseId,
       sort_order: maxSort + (index + 1) * 10,
     }));
 
-    const { error } = await supabase.from("workout_template_exercises").insert(payload);
+    const { error } = await supabase
+      .from("workout_template_exercises")
+      .insert(payload);
 
     if (error) {
       const details = getErrorDetails(error);
@@ -359,7 +408,9 @@ export function PtWorkoutTemplateBuilderPage() {
     setActionStatus("idle");
     setAddOpen(false);
     setSelectedExerciseIds([]);
-    await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-template-exercises", templateId],
+    });
   };
 
   const openEdit = (row: TemplateExerciseRow) => {
@@ -387,7 +438,11 @@ export function PtWorkoutTemplateBuilderPage() {
       sets: form.sets.trim() ? Number(form.sets) : null,
       reps: form.reps.trim() || null,
       superset_group: form.superset_group.trim() || null,
-      rest_seconds: form.superset_group.trim() ? 0 : form.rest_seconds.trim() ? Number(form.rest_seconds) : null,
+      rest_seconds: form.superset_group.trim()
+        ? 0
+        : form.rest_seconds.trim()
+          ? Number(form.rest_seconds)
+          : null,
       tempo: form.tempo.trim() || null,
       rpe: form.rpe.trim() ? Number(form.rpe) : null,
       video_url: form.video_url.trim() || null,
@@ -409,7 +464,9 @@ export function PtWorkoutTemplateBuilderPage() {
     setActionStatus("idle");
     setEditOpen(false);
     setSelectedRow(null);
-    await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-template-exercises", templateId],
+    });
   };
 
   const handleBulkEditSave = async () => {
@@ -437,10 +494,15 @@ export function PtWorkoutTemplateBuilderPage() {
           if (bulkForm.tempo.trim()) payload.tempo = bulkForm.tempo.trim();
           if (bulkForm.rpe.trim()) payload.rpe = Number(bulkForm.rpe);
           if (bulkForm.rest_seconds.trim()) {
-            payload.rest_seconds = row?.superset_group ? 0 : Number(bulkForm.rest_seconds);
+            payload.rest_seconds = row?.superset_group
+              ? 0
+              : Number(bulkForm.rest_seconds);
           }
-          return supabase.from("workout_template_exercises").update(payload).eq("id", id);
-        })
+          return supabase
+            .from("workout_template_exercises")
+            .update(payload)
+            .eq("id", id);
+        }),
       );
       const firstError = results.find((result) => result.error)?.error;
       if (firstError) {
@@ -454,7 +516,9 @@ export function PtWorkoutTemplateBuilderPage() {
       setBulkEditOpen(false);
       setBulkForm(emptyBulkExerciseForm);
       setBulkExerciseIds([]);
-      await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["workout-template-exercises", templateId],
+      });
     } catch (error) {
       const details = getErrorDetails(error);
       setActionError(`${details.code}: ${details.message}`);
@@ -482,7 +546,9 @@ export function PtWorkoutTemplateBuilderPage() {
     setActionStatus("idle");
     setDeleteOpen(false);
     setSelectedRow(null);
-    await queryClient.invalidateQueries({ queryKey: ["workout-template-exercises", templateId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-template-exercises", templateId],
+    });
   };
 
   const handleTemplateDelete = async () => {
@@ -490,7 +556,10 @@ export function PtWorkoutTemplateBuilderPage() {
     setDeleteTemplateStatus("deleting");
     setDeleteTemplateError(null);
 
-    const { error } = await supabase.from("workout_templates").delete().eq("id", templateId);
+    const { error } = await supabase
+      .from("workout_templates")
+      .delete()
+      .eq("id", templateId);
     if (error) {
       const details = getErrorDetails(error);
       setDeleteTemplateError(`${details.code}: ${details.message}`);
@@ -500,7 +569,9 @@ export function PtWorkoutTemplateBuilderPage() {
 
     setDeleteTemplateStatus("idle");
     setDeleteTemplateOpen(false);
-    await queryClient.invalidateQueries({ queryKey: ["workout-templates", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-templates", workspaceId],
+    });
     navigate("/pt/templates/workouts");
   };
 
@@ -518,22 +589,33 @@ export function PtWorkoutTemplateBuilderPage() {
     const movedRows = arrayMove(exerciseRows, oldIndex, newIndex);
     const draggedRow = movedRows.find((row) => row.id === active.id) ?? null;
     const targetRow = movedRows.find((row) => row.id === over.id) ?? null;
-    const draggedPrevRow = exerciseRows.find((row) => row.id === active.id) ?? null;
-    const targetPrevRow = exerciseRows.find((row) => row.id === over.id) ?? null;
+    const draggedPrevRow =
+      exerciseRows.find((row) => row.id === active.id) ?? null;
+    const targetPrevRow =
+      exerciseRows.find((row) => row.id === over.id) ?? null;
     if (!draggedRow || !targetRow || !draggedPrevRow || !targetPrevRow) return;
 
     const draggedGroup = draggedPrevRow.superset_group?.trim() ?? "";
     const targetGroup = targetPrevRow.superset_group?.trim() ?? "";
-    const shouldCreateSuperset = draggedGroup.length === 0 && targetGroup.length === 0;
+    const shouldCreateSuperset =
+      draggedGroup.length === 0 && targetGroup.length === 0;
     const shouldSplitDraggedSuperset =
       draggedGroup.length > 0 && targetGroup !== draggedGroup;
-    const sharedSupersetGroup = shouldCreateSuperset ? nextSupersetGroup(movedRows) : null;
+    const sharedSupersetGroup = shouldCreateSuperset
+      ? nextSupersetGroup(movedRows)
+      : null;
 
     const updatedRows = movedRows.map((row) => {
-      if (shouldCreateSuperset && (row.id === draggedRow.id || row.id === targetRow.id)) {
+      if (
+        shouldCreateSuperset &&
+        (row.id === draggedRow.id || row.id === targetRow.id)
+      ) {
         return { ...row, superset_group: sharedSupersetGroup, rest_seconds: 0 };
       }
-      if (shouldSplitDraggedSuperset && row.superset_group?.trim() === draggedGroup) {
+      if (
+        shouldSplitDraggedSuperset &&
+        row.superset_group?.trim() === draggedGroup
+      ) {
         return {
           ...row,
           superset_group: null,
@@ -595,8 +677,8 @@ export function PtWorkoutTemplateBuilderPage() {
           supabase
             .from("workout_template_exercises")
             .update(payload)
-            .eq("id", id)
-        )
+            .eq("id", id),
+        ),
       );
       const firstError = results.find((result) => result.error)?.error;
       if (firstError) {
@@ -635,7 +717,10 @@ export function PtWorkoutTemplateBuilderPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>Template id: {id ?? "missing"}</p>
-          <Button variant="secondary" onClick={() => navigate("/pt/templates/workouts")}>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/pt/templates/workouts")}
+          >
             Back to templates
           </Button>
         </CardContent>
@@ -647,12 +732,21 @@ export function PtWorkoutTemplateBuilderPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Template builder</h2>
-          <p className="text-sm text-muted-foreground">Configure structured exercises.</p>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Template builder
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Configure structured exercises.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="muted">{formatWorkoutTypeTag(template?.workout_type_tag)}</Badge>
-          <Button variant="secondary" onClick={() => navigate("/pt/templates/workouts")}>
+          <Badge variant="muted">
+            {formatWorkoutTypeTag(template?.workout_type_tag)}
+          </Badge>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/pt/templates/workouts")}
+          >
             Back to templates
           </Button>
           <Button variant="ghost" onClick={() => setDeleteTemplateOpen(true)}>
@@ -677,7 +771,8 @@ export function PtWorkoutTemplateBuilderPage() {
             <CardTitle>Template error</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {getErrorDetails(templateQuery.error).code}: {getErrorDetails(templateQuery.error).message}
+            {getErrorDetails(templateQuery.error).code}:{" "}
+            {getErrorDetails(templateQuery.error).message}
           </CardContent>
         </Card>
       ) : !template ? (
@@ -701,7 +796,10 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Workout type</label>
-              <Input value={formatWorkoutTypeTag(template.workout_type_tag)} readOnly />
+              <Input
+                value={formatWorkoutTypeTag(template.workout_type_tag)}
+                readOnly
+              />
             </div>
           </CardContent>
         </Card>
@@ -712,19 +810,25 @@ export function PtWorkoutTemplateBuilderPage() {
           <div>
             <CardTitle>Exercises</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Add exercises with sets, reps, RPE, tempo, and notes. Drag one exercise onto
-              another to create a superset pair.
+              Add exercises with sets, reps, RPE, tempo, and notes. Drag one
+              exercise onto another to create a superset pair.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setAddOpen(true)}
+            >
               Add exercise
             </Button>
             <Button
               variant="ghost"
               size="sm"
               disabled={exerciseRows.length === 0}
-              onClick={() => setBulkExerciseIds(exerciseRows.map((row) => row.id))}
+              onClick={() =>
+                setBulkExerciseIds(exerciseRows.map((row) => row.id))
+              }
             >
               Select all
             </Button>
@@ -762,7 +866,8 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
           ) : templateExercisesQuery.error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              {getErrorDetails(templateExercisesQuery.error).code}: {getErrorDetails(templateExercisesQuery.error).message}
+              {getErrorDetails(templateExercisesQuery.error).code}:{" "}
+              {getErrorDetails(templateExercisesQuery.error).message}
             </div>
           ) : exerciseRows.length > 0 ? (
             <DndContext
@@ -781,7 +886,7 @@ export function PtWorkoutTemplateBuilderPage() {
                 strategy={verticalListSortingStrategy}
               >
                 <div className="flex flex-col">
-                  {exerciseRows.map((row, index) => (
+                  {exerciseRows.map((row, index) =>
                     (() => {
                       const prev = exerciseRows[index - 1] ?? null;
                       const next = exerciseRows[index + 1] ?? null;
@@ -791,49 +896,62 @@ export function PtWorkoutTemplateBuilderPage() {
                       const sameAsNext =
                         Boolean(row.superset_group) &&
                         next?.superset_group === row.superset_group;
-                      const groupPosition: "single" | "top" | "middle" | "bottom" = sameAsPrev
+                      const groupPosition:
+                        | "single"
+                        | "top"
+                        | "middle"
+                        | "bottom" = sameAsPrev
                         ? sameAsNext
                           ? "middle"
                           : "bottom"
                         : sameAsNext
                           ? "top"
                           : "single";
-                      const isSupersetDropTarget =
-                        (() => {
-                          if (!dragActiveId || dragActiveId === row.id || dragOverId !== row.id) {
-                            return false;
-                          }
-                          const activeRow =
-                            exerciseRows.find((item) => item.id === dragActiveId) ?? null;
-                          if (!activeRow) return false;
-                          const activeHasGroup = Boolean(activeRow.superset_group?.trim());
-                          const targetHasGroup = Boolean(row.superset_group?.trim());
-                          return !activeHasGroup && !targetHasGroup;
-                        })();
+                      const isSupersetDropTarget = (() => {
+                        if (
+                          !dragActiveId ||
+                          dragActiveId === row.id ||
+                          dragOverId !== row.id
+                        ) {
+                          return false;
+                        }
+                        const activeRow =
+                          exerciseRows.find(
+                            (item) => item.id === dragActiveId,
+                          ) ?? null;
+                        if (!activeRow) return false;
+                        const activeHasGroup = Boolean(
+                          activeRow.superset_group?.trim(),
+                        );
+                        const targetHasGroup = Boolean(
+                          row.superset_group?.trim(),
+                        );
+                        return !activeHasGroup && !targetHasGroup;
+                      })();
                       return (
-                    <SortableExerciseRow
-                      key={row.id}
-                      row={row}
-                      groupPosition={groupPosition}
-                      compactWithPrevious={sameAsPrev}
-                      isSupersetDropTarget={isSupersetDropTarget}
-                      isSelected={bulkExerciseIds.includes(row.id)}
-                      onToggleSelect={(rowId) =>
-                        setBulkExerciseIds((prev) =>
-                          prev.includes(rowId)
-                            ? prev.filter((id) => id !== rowId)
-                            : [...prev, rowId]
-                        )
-                      }
-                      onEdit={openEdit}
-                      onDelete={(target) => {
-                        setSelectedRow(target);
-                        setDeleteOpen(true);
-                      }}
-                    />
+                        <SortableExerciseRow
+                          key={row.id}
+                          row={row}
+                          groupPosition={groupPosition}
+                          compactWithPrevious={sameAsPrev}
+                          isSupersetDropTarget={isSupersetDropTarget}
+                          isSelected={bulkExerciseIds.includes(row.id)}
+                          onToggleSelect={(rowId) =>
+                            setBulkExerciseIds((prev) =>
+                              prev.includes(rowId)
+                                ? prev.filter((id) => id !== rowId)
+                                : [...prev, rowId],
+                            )
+                          }
+                          onEdit={openEdit}
+                          onDelete={(target) => {
+                            setSelectedRow(target);
+                            setDeleteOpen(true);
+                          }}
+                        />
                       );
-                    })()
-                  ))}
+                    })(),
+                  )}
                 </div>
               </SortableContext>
             </DndContext>
@@ -860,49 +978,74 @@ export function PtWorkoutTemplateBuilderPage() {
             <DialogTitle>Bulk edit exercises</DialogTitle>
             <DialogDescription>
               Apply values to {bulkExerciseIds.length} selected exercise
-              {bulkExerciseIds.length === 1 ? "" : "s"}. Leave a field blank to keep current values.
+              {bulkExerciseIds.length === 1 ? "" : "s"}. Leave a field blank to
+              keep current values.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Sets</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Sets
+              </label>
               <Input
                 type="number"
                 value={bulkForm.sets}
-                onChange={(event) => setBulkForm((prev) => ({ ...prev, sets: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Reps</label>
-              <Input
-                value={bulkForm.reps}
-                onChange={(event) => setBulkForm((prev) => ({ ...prev, reps: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Rest (sec)</label>
-              <Input
-                type="number"
-                value={bulkForm.rest_seconds}
                 onChange={(event) =>
-                  setBulkForm((prev) => ({ ...prev, rest_seconds: event.target.value }))
+                  setBulkForm((prev) => ({ ...prev, sets: event.target.value }))
                 }
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Tempo</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Reps
+              </label>
               <Input
-                value={bulkForm.tempo}
-                onChange={(event) => setBulkForm((prev) => ({ ...prev, tempo: event.target.value }))}
+                value={bulkForm.reps}
+                onChange={(event) =>
+                  setBulkForm((prev) => ({ ...prev, reps: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">RPE</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Rest (sec)
+              </label>
+              <Input
+                type="number"
+                value={bulkForm.rest_seconds}
+                onChange={(event) =>
+                  setBulkForm((prev) => ({
+                    ...prev,
+                    rest_seconds: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Tempo
+              </label>
+              <Input
+                value={bulkForm.tempo}
+                onChange={(event) =>
+                  setBulkForm((prev) => ({
+                    ...prev,
+                    tempo: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                RPE
+              </label>
               <Input
                 type="number"
                 step="0.1"
                 value={bulkForm.rpe}
-                onChange={(event) => setBulkForm((prev) => ({ ...prev, rpe: event.target.value }))}
+                onChange={(event) =>
+                  setBulkForm((prev) => ({ ...prev, rpe: event.target.value }))
+                }
               />
             </div>
           </div>
@@ -915,7 +1058,10 @@ export function PtWorkoutTemplateBuilderPage() {
             <Button variant="secondary" onClick={() => setBulkEditOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={actionStatus === "saving"} onClick={handleBulkEditSave}>
+            <Button
+              disabled={actionStatus === "saving"}
+              onClick={handleBulkEditSave}
+            >
               {actionStatus === "saving" ? "Applying..." : "Apply to selected"}
             </Button>
           </DialogFooter>
@@ -936,7 +1082,9 @@ export function PtWorkoutTemplateBuilderPage() {
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Add exercise</DialogTitle>
-            <DialogDescription>Select an exercise from your library.</DialogDescription>
+            <DialogDescription>
+              Select an exercise from your library.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Input
@@ -958,10 +1106,13 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
             <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border bg-background p-2">
               {exercisesQuery.isLoading ? (
-                <div className="text-xs text-muted-foreground">Loading exercises...</div>
+                <div className="text-xs text-muted-foreground">
+                  Loading exercises...
+                </div>
               ) : exercisesQuery.error ? (
                 <div className="text-xs text-destructive">
-                  {getErrorDetails(exercisesQuery.error).code}: {getErrorDetails(exercisesQuery.error).message}
+                  {getErrorDetails(exercisesQuery.error).code}:{" "}
+                  {getErrorDetails(exercisesQuery.error).message}
                 </div>
               ) : filteredExercises.length > 0 ? (
                 filteredExercises.map((exercise) => (
@@ -972,7 +1123,7 @@ export function PtWorkoutTemplateBuilderPage() {
                       setSelectedExerciseIds((prev) =>
                         prev.includes(exercise.id)
                           ? prev.filter((id) => id !== exercise.id)
-                          : [...prev, exercise.id]
+                          : [...prev, exercise.id],
                       )
                     }
                     className={
@@ -983,7 +1134,9 @@ export function PtWorkoutTemplateBuilderPage() {
                   >
                     <div className="font-medium">{exercise.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {exercise.primary_muscle ?? exercise.muscle_group ?? "Other"}
+                      {exercise.primary_muscle ??
+                        exercise.muscle_group ??
+                        "Other"}
                       {exercise.equipment ? ` - ${exercise.equipment}` : ""}
                     </div>
                     {exercise.tags && exercise.tags.length > 0 ? (
@@ -1001,7 +1154,9 @@ export function PtWorkoutTemplateBuilderPage() {
                   </button>
                 ))
               ) : (
-                <div className="text-xs text-muted-foreground">No matching exercises.</div>
+                <div className="text-xs text-muted-foreground">
+                  No matching exercises.
+                </div>
               )}
             </div>
             {actionError ? (
@@ -1015,7 +1170,9 @@ export function PtWorkoutTemplateBuilderPage() {
               Cancel
             </Button>
             <Button
-              disabled={selectedExerciseIds.length === 0 || actionStatus === "saving"}
+              disabled={
+                selectedExerciseIds.length === 0 || actionStatus === "saving"
+              }
               onClick={handleAddExercise}
             >
               {actionStatus === "saving"
@@ -1042,31 +1199,46 @@ export function PtWorkoutTemplateBuilderPage() {
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Edit exercise</DialogTitle>
-            <DialogDescription>Update sets, reps, and coaching cues.</DialogDescription>
+            <DialogDescription>
+              Update sets, reps, and coaching cues.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Sets</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Sets
+              </label>
               <Input
                 type="number"
                 value={form.sets}
-                onChange={(event) => setForm((prev) => ({ ...prev, sets: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, sets: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Reps</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Reps
+              </label>
               <Input
                 value={form.reps}
-                onChange={(event) => setForm((prev) => ({ ...prev, reps: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, reps: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Superset group</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Superset group
+              </label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={form.superset_group}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, superset_group: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    superset_group: event.target.value,
+                  }))
                 }
               >
                 <option value="">None</option>
@@ -1077,12 +1249,17 @@ export function PtWorkoutTemplateBuilderPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Rest (sec)</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Rest (sec)
+              </label>
               <Input
                 type="number"
                 value={form.rest_seconds}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, rest_seconds: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    rest_seconds: event.target.value,
+                  }))
                 }
                 disabled={Boolean(form.superset_group)}
               />
@@ -1093,36 +1270,53 @@ export function PtWorkoutTemplateBuilderPage() {
               ) : null}
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Tempo</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Tempo
+              </label>
               <Input
                 value={form.tempo}
-                onChange={(event) => setForm((prev) => ({ ...prev, tempo: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, tempo: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">RPE</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                RPE
+              </label>
               <Input
                 type="number"
                 step="0.1"
                 value={form.rpe}
-                onChange={(event) => setForm((prev) => ({ ...prev, rpe: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, rpe: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Video URL</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Video URL
+              </label>
               <Input
                 value={form.video_url}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, video_url: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    video_url: event.target.value,
+                  }))
                 }
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Notes</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Notes
+              </label>
               <textarea
                 className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.notes}
-                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, notes: event.target.value }))
+                }
               />
             </div>
           </div>
@@ -1135,7 +1329,10 @@ export function PtWorkoutTemplateBuilderPage() {
             <Button variant="secondary" onClick={() => setEditOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={actionStatus === "saving"} onClick={handleEditSave}>
+            <Button
+              disabled={actionStatus === "saving"}
+              onClick={handleEditSave}
+            >
               {actionStatus === "saving" ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
@@ -1159,7 +1356,11 @@ export function PtWorkoutTemplateBuilderPage() {
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" disabled={actionStatus === "saving"} onClick={handleDelete}>
+            <Button
+              variant="secondary"
+              disabled={actionStatus === "saving"}
+              onClick={handleDelete}
+            >
               {actionStatus === "saving" ? "Removing..." : "Remove"}
             </Button>
           </DialogFooter>
@@ -1180,7 +1381,8 @@ export function PtWorkoutTemplateBuilderPage() {
           <DialogHeader>
             <DialogTitle>Delete template</DialogTitle>
             <DialogDescription>
-              This will delete the template and all dependent workouts and exercises.
+              This will delete the template and all dependent workouts and
+              exercises.
             </DialogDescription>
           </DialogHeader>
           {deleteTemplateError ? (
@@ -1189,11 +1391,14 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
           ) : null}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleteTemplateOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteTemplateOpen(false)}
+            >
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="secondary"
               disabled={deleteTemplateStatus === "deleting"}
               onClick={handleTemplateDelete}
             >

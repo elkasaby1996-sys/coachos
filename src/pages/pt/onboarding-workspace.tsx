@@ -1,7 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
@@ -54,7 +59,9 @@ export function PtWorkspaceOnboardingPage() {
       await refreshRole?.();
       navigate("/pt/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create workspace.");
+      setError(
+        err instanceof Error ? err.message : "Failed to create workspace.",
+      );
     } finally {
       setSaving(false);
     }
@@ -81,7 +88,10 @@ export function PtWorkspaceOnboardingPage() {
                 onChange={(event) => {
                   const value = event.target.value;
                   setWorkspaceName(value);
-                  window.localStorage.setItem("coachos_pt_workspace_name", value);
+                  window.localStorage.setItem(
+                    "coachos_pt_workspace_name",
+                    value,
+                  );
                 }}
                 placeholder="Velocity PT Lab"
                 required

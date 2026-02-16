@@ -4,7 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
@@ -101,7 +106,9 @@ export function ClientBaselinePage() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const [baselineEntry, setBaselineEntry] = useState<BaselineEntry | null>(null);
+  const [baselineEntry, setBaselineEntry] = useState<BaselineEntry | null>(
+    null,
+  );
   const [baselineLoading, setBaselineLoading] = useState(false);
   const [baselineError, setBaselineError] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
@@ -117,9 +124,9 @@ export function ClientBaselinePage() {
     resting_hr: "",
     vo2max: "",
   });
-  const [metricsStatus, setMetricsStatus] = useState<"idle" | "saving" | "error">(
-    "idle"
-  );
+  const [metricsStatus, setMetricsStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [metricsError, setMetricsError] = useState<{
     code?: string | null;
     message?: string | null;
@@ -127,22 +134,26 @@ export function ClientBaselinePage() {
     hint?: string | null;
   } | null>(null);
   const [markerStatus, setMarkerStatus] = useState<"idle" | "saving" | "error">(
-    "idle"
+    "idle",
   );
   const [photoStatus, setPhotoStatus] = useState<"idle" | "saving" | "error">(
-    "idle"
+    "idle",
   );
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "saving" | "success" | "error">(
-    "idle"
-  );
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "saving" | "success" | "error"
+  >("idle");
   const [actionError, setActionError] = useState<string | null>(null);
   const [lastSupabaseError, setLastSupabaseError] = useState<{
     code?: string | null;
     message?: string | null;
   } | null>(null);
-  const [lastUploadPath, setLastUploadPath] = useState<string | null>(null);
   const [markerValues, setMarkerValues] = useState<Record<string, string>>({});
-  const [photoMap, setPhotoMap] = useState<Record<PhotoType, { url: string | null; error: string | null; uploading: boolean }>>({
+  const [photoMap, setPhotoMap] = useState<
+    Record<
+      PhotoType,
+      { url: string | null; error: string | null; uploading: boolean }
+    >
+  >({
     front: { url: null, error: null, uploading: false },
     side: { url: null, error: null, uploading: false },
     back: { url: null, error: null, uploading: false },
@@ -238,7 +249,7 @@ export function ClientBaselinePage() {
       const { data, error } = await supabase
         .from("baseline_metrics")
         .select(
-          "weight_kg, height_cm, body_fat_pct, waist_cm, chest_cm, hips_cm, thigh_cm, arm_cm, resting_hr, vo2max"
+          "weight_kg, height_cm, body_fat_pct, waist_cm, chest_cm, hips_cm, thigh_cm, arm_cm, resting_hr, vo2max",
         )
         .eq("baseline_id", baselineId ?? "")
         .maybeSingle();
@@ -279,7 +290,7 @@ export function ClientBaselinePage() {
           queryClient.invalidateQueries({
             queryKey: ["baseline-marker-templates", clientWorkspaceId],
           });
-        }
+        },
       )
       .subscribe();
 
@@ -337,10 +348,21 @@ export function ClientBaselinePage() {
       vo2max: formatNumberInput(metrics?.vo2max, 1),
     });
     metricsInitRef.current = true;
-  }, [baselineId, metricsQuery.isLoading, metricsQuery.data, clientQuery.data, showImperial]);
+  }, [
+    baselineId,
+    metricsQuery.isLoading,
+    metricsQuery.data,
+    clientQuery.data,
+    showImperial,
+  ]);
 
   useEffect(() => {
-    if (markerInitRef.current || templatesQuery.isLoading || markerValuesQuery.isLoading) return;
+    if (
+      markerInitRef.current ||
+      templatesQuery.isLoading ||
+      markerValuesQuery.isLoading
+    )
+      return;
     const templates = templatesQuery.data ?? [];
     const values = markerValuesQuery.data ?? [];
     const initial: Record<string, string> = {};
@@ -389,7 +411,9 @@ export function ClientBaselinePage() {
       return value.trim().length > 0;
     });
 
-  const photosComplete = photoTypes.every((type) => Boolean(photoMap[type]?.url));
+  const photosComplete = photoTypes.every((type) =>
+    Boolean(photoMap[type]?.url),
+  );
 
   const handleMetricsSave = async () => {
     if (!baselineId) return;
@@ -421,7 +445,7 @@ export function ClientBaselinePage() {
       vo2max: toNumberOrNull(metricsState.vo2max),
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("baseline_metrics")
       .upsert(payload, { onConflict: "baseline_id" });
 
@@ -434,7 +458,10 @@ export function ClientBaselinePage() {
         details: (error as { details?: string | null }).details ?? null,
         hint: (error as { hint?: string | null }).hint ?? null,
       });
-      setLastSupabaseError({ code: error.code ?? null, message: error.message ?? null });
+      setLastSupabaseError({
+        code: error.code ?? null,
+        message: error.message ?? null,
+      });
       console.error("BASELINE_STEP1_ERROR", error);
       return;
     }
@@ -462,7 +489,7 @@ export function ClientBaselinePage() {
         value_number:
           template.value_type === "number" ? Number(rawValue) : null,
         value_text:
-          template.value_type === "number" ? null : rawValue?.trim() ?? "",
+          template.value_type === "number" ? null : (rawValue?.trim() ?? ""),
       };
     });
 
@@ -473,7 +500,10 @@ export function ClientBaselinePage() {
     if (error) {
       setMarkerStatus("error");
       setActionError(formatSupabaseError(error));
-      setLastSupabaseError({ code: error.code ?? null, message: error.message ?? null });
+      setLastSupabaseError({
+        code: error.code ?? null,
+        message: error.message ?? null,
+      });
       return;
     }
 
@@ -485,7 +515,7 @@ export function ClientBaselinePage() {
     baselineIdValue: string,
     photoType: PhotoType,
     url: string,
-    storagePath: string
+    storagePath: string,
   ) => {
     const payload = {
       baseline_id: baselineIdValue,
@@ -508,7 +538,9 @@ export function ClientBaselinePage() {
 
     if (deleteError) return deleteError;
 
-    const { error: insertError } = await supabase.from("baseline_photos").insert(payload);
+    const { error: insertError } = await supabase
+      .from("baseline_photos")
+      .insert(payload);
     return insertError ?? null;
   };
 
@@ -524,20 +556,26 @@ export function ClientBaselinePage() {
 
     const fileExt = file.name.split(".").pop() || "jpg";
     const filePath = `${clientId}/${baselineId}/${photoType}.${fileExt}`;
-    setLastUploadPath(filePath);
     const { error: uploadError } = await supabase.storage
       .from("baseline_photos")
-      .upload(filePath, file, { upsert: true, contentType: file.type || "image/jpeg" });
+      .upload(filePath, file, {
+        upsert: true,
+        contentType: file.type || "image/jpeg",
+      });
 
     if (uploadError) {
       setPhotoMap((prev) => ({
         ...prev,
-        [photoType]: { ...prev[photoType], uploading: false, error: uploadError.message },
+        [photoType]: {
+          ...prev[photoType],
+          uploading: false,
+          error: uploadError.message,
+        },
       }));
       setPhotoStatus("error");
       setActionError(formatSupabaseError(uploadError));
       setLastSupabaseError({
-        code: uploadError.code ?? null,
+        code: (uploadError as { code?: string | null }).code ?? null,
         message: uploadError.message ?? null,
       });
       return;
@@ -553,26 +591,44 @@ export function ClientBaselinePage() {
     }
 
     if (!url) {
-      const { data } = supabase.storage.from("baseline_photos").getPublicUrl(filePath);
+      const { data } = supabase.storage
+        .from("baseline_photos")
+        .getPublicUrl(filePath);
       url = data.publicUrl ?? null;
     }
 
     if (!url) {
       setPhotoMap((prev) => ({
         ...prev,
-        [photoType]: { ...prev[photoType], uploading: false, error: "Failed to load photo URL." },
+        [photoType]: {
+          ...prev[photoType],
+          uploading: false,
+          error: "Failed to load photo URL.",
+        },
       }));
       setPhotoStatus("error");
       setActionError("Failed to load photo URL.");
-      setLastSupabaseError({ code: null, message: "Failed to load photo URL." });
+      setLastSupabaseError({
+        code: null,
+        message: "Failed to load photo URL.",
+      });
       return;
     }
 
-    const saveError = await upsertPhotoRow(baselineId, photoType, url, filePath);
+    const saveError = await upsertPhotoRow(
+      baselineId,
+      photoType,
+      url,
+      filePath,
+    );
     if (saveError) {
       setPhotoMap((prev) => ({
         ...prev,
-        [photoType]: { ...prev[photoType], uploading: false, error: saveError.message },
+        [photoType]: {
+          ...prev[photoType],
+          uploading: false,
+          error: saveError.message,
+        },
       }));
       setPhotoStatus("error");
       setActionError(formatSupabaseError(saveError));
@@ -607,7 +663,10 @@ export function ClientBaselinePage() {
     if (error) {
       setSubmitStatus("error");
       setActionError(formatSupabaseError(error));
-      setLastSupabaseError({ code: error.code ?? null, message: error.message ?? null });
+      setLastSupabaseError({
+        code: error.code ?? null,
+        message: error.message ?? null,
+      });
       return;
     }
 
@@ -661,8 +720,12 @@ export function ClientBaselinePage() {
             <CardTitle>Baseline submitted</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Your coach has received your baseline. Redirecting you to home.</p>
-            <Button onClick={() => navigate("/app/home")}>Go to home now</Button>
+            <p>
+              Your coach has received your baseline. Redirecting you to home.
+            </p>
+            <Button onClick={() => navigate("/app/home")}>
+              Go to home now
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -684,7 +747,10 @@ export function ClientBaselinePage() {
       {errors.length > 0 ? (
         <div className="space-y-2">
           {errors.map((error, index) => (
-            <Alert key={`${index}-${formatSupabaseError(error)}`} className="border-danger/30">
+            <Alert
+              key={`${index}-${formatSupabaseError(error)}`}
+              className="border-danger/30"
+            >
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{formatSupabaseError(error)}</AlertDescription>
             </Alert>
@@ -705,11 +771,16 @@ export function ClientBaselinePage() {
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        {["Body metrics", "Performance markers", "Photos"].map((label, index) => (
-          <Badge key={label} variant={activeStep === index ? "success" : "muted"}>
-            {index + 1}. {label}
-          </Badge>
-        ))}
+        {["Body metrics", "Performance markers", "Photos"].map(
+          (label, index) => (
+            <Badge
+              key={label}
+              variant={activeStep === index ? "success" : "muted"}
+            >
+              {index + 1}. {label}
+            </Badge>
+          ),
+        )}
       </div>
 
       {activeStep === 0 ? (
@@ -744,7 +815,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.weight}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, weight: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    weight: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -758,7 +832,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.height_cm}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, height_cm: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    height_cm: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -772,7 +849,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.body_fat_pct}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, body_fat_pct: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    body_fat_pct: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -786,7 +866,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.waist_cm}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, waist_cm: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    waist_cm: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -800,7 +883,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.chest_cm}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, chest_cm: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    chest_cm: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -814,7 +900,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.hips_cm}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, hips_cm: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    hips_cm: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -828,7 +917,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.thigh_cm}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, thigh_cm: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    thigh_cm: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -842,7 +934,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.arm_cm}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, arm_cm: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    arm_cm: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -856,7 +951,10 @@ export function ClientBaselinePage() {
                 step="1"
                 value={metricsState.resting_hr}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, resting_hr: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    resting_hr: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -870,7 +968,10 @@ export function ClientBaselinePage() {
                 step="0.1"
                 value={metricsState.vo2max}
                 onChange={(event) =>
-                  setMetricsState((prev) => ({ ...prev, vo2max: event.target.value }))
+                  setMetricsState((prev) => ({
+                    ...prev,
+                    vo2max: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -916,8 +1017,12 @@ export function ClientBaselinePage() {
                       {template.unit_label ? ` (${template.unit_label})` : ""}
                     </label>
                     <Input
-                      type={template.value_type === "number" ? "number" : "text"}
-                      step={template.value_type === "number" ? "0.1" : undefined}
+                      type={
+                        template.value_type === "number" ? "number" : "text"
+                      }
+                      step={
+                        template.value_type === "number" ? "0.1" : undefined
+                      }
                       value={markerValues[template.id] ?? ""}
                       onChange={(event) =>
                         setMarkerValues((prev) => ({
@@ -956,7 +1061,10 @@ export function ClientBaselinePage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               {photoTypes.map((type) => (
-                <div key={type} className="space-y-2 rounded-lg border border-border p-3">
+                <div
+                  key={type}
+                  className="space-y-2 rounded-lg border border-border p-3"
+                >
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
                     {type}
                   </p>
@@ -968,16 +1076,22 @@ export function ClientBaselinePage() {
                         className="h-full w-full rounded-md object-cover"
                       />
                     ) : (
-                      <span className="text-xs text-muted-foreground">No photo</span>
+                      <span className="text-xs text-muted-foreground">
+                        No photo
+                      </span>
                     )}
                   </div>
                   <Input
                     type="file"
                     accept="image/*"
-                    onChange={(event) => handlePhotoUpload(type, event.target.files?.[0] ?? null)}
+                    onChange={(event) =>
+                      handlePhotoUpload(type, event.target.files?.[0] ?? null)
+                    }
                   />
                   {photoMap[type]?.error ? (
-                    <p className="text-xs text-danger">{photoMap[type]?.error}</p>
+                    <p className="text-xs text-danger">
+                      {photoMap[type]?.error}
+                    </p>
                   ) : null}
                 </div>
               ))}
@@ -988,9 +1102,15 @@ export function ClientBaselinePage() {
               </Button>
               <Button
                 onClick={handleSubmitBaseline}
-                disabled={!photosComplete || submitStatus === "saving" || photoStatus === "saving"}
+                disabled={
+                  !photosComplete ||
+                  submitStatus === "saving" ||
+                  photoStatus === "saving"
+                }
               >
-                {submitStatus === "saving" ? "Submitting..." : "Submit baseline"}
+                {submitStatus === "saving"
+                  ? "Submitting..."
+                  : "Submit baseline"}
               </Button>
             </div>
           </CardContent>

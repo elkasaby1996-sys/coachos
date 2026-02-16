@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { useAuth } from "../providers/AuthProvider";
 
 export function NoWorkspacePage() {
@@ -39,7 +44,11 @@ export function NoWorkspacePage() {
           <Button asChild>
             <Link to="/join/sample">Join with Invite Code</Link>
           </Button>
-          <Button variant="ghost" onClick={handleSignOut} disabled={isSigningOut}>
+          <Button
+            variant="ghost"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+          >
             {isSigningOut ? "Signing out..." : "Logout"}
           </Button>
         </CardContent>

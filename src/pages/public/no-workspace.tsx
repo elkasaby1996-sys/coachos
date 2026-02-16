@@ -1,7 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -68,7 +73,8 @@ export function NoWorkspacePage() {
         <CardHeader>
           <CardTitle>No workspace found</CardTitle>
           <p className="text-sm text-muted-foreground">
-            We couldn't match your account to a workspace. Please ask your coach for an invite.
+            We couldn't match your account to a workspace. Please ask your coach
+            for an invite.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -107,7 +113,11 @@ export function NoWorkspacePage() {
                   </div>
                 ) : null}
                 <DialogFooter className="gap-2 sm:gap-0">
-                  <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit">Continue</Button>

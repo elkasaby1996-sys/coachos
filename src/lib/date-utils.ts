@@ -9,7 +9,9 @@ export const getTodayInTimezone = (timezone?: string | null) => {
     day: "2-digit",
   }).formatToParts(new Date());
 
-  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const lookup = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
   const year = Number(lookup.year);
   const month = Number(lookup.month);
   const day = Number(lookup.day);
@@ -55,7 +57,10 @@ export const getLastSaturday = (dateStr: string) => {
   return addDaysToDateString(dateStr, -delta);
 };
 
-export const formatDateInTimezone = (timestamp: string, timezone?: string | null) => {
+export const formatDateInTimezone = (
+  timestamp: string,
+  timezone?: string | null,
+) => {
   const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
@@ -63,7 +68,9 @@ export const formatDateInTimezone = (timestamp: string, timezone?: string | null
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(new Date(timestamp));
-  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const lookup = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
   const year = Number(lookup.year);
   const month = Number(lookup.month);
   const day = Number(lookup.day);

@@ -1,7 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Dumbbell } from "lucide-react";
 import { AuthComponent } from "../../components/ui/sign-up";
-import { signInWithEmailPassword, signInWithOAuth } from "../../lib/auth-helpers";
+import {
+  signInWithEmailPassword,
+  signInWithOAuth,
+} from "../../lib/auth-helpers";
 import { supabaseConfigured } from "../../lib/supabase";
 
 export function LoginPage() {
@@ -10,7 +13,10 @@ export function LoginPage() {
 
   const from = (location.state as { from?: unknown } | null)?.from;
   const redirectTarget =
-    typeof from === "string" && (from.startsWith("/join/") || from.startsWith("/invite/") || from.startsWith("/pt/onboarding/"))
+    typeof from === "string" &&
+    (from.startsWith("/join/") ||
+      from.startsWith("/invite/") ||
+      from.startsWith("/pt/onboarding/"))
       ? from
       : "/";
 
@@ -31,7 +37,8 @@ export function LoginPage() {
       onEmailPasswordSubmit={async ({ email, password }) => {
         if (!supabaseConfigured) {
           return {
-            error: "Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+            error:
+              "Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
           };
         }
 
@@ -50,7 +57,8 @@ export function LoginPage() {
       onGoogle={async () => {
         if (!supabaseConfigured) {
           return {
-            error: "Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+            error:
+              "Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
           };
         }
 

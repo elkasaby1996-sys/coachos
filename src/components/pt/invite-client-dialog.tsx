@@ -32,7 +32,8 @@ type ExpirySelection = "1h" | "24h" | "7d" | "never";
 function buildInviteCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
-  for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 8; i++)
+    out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 }
 
@@ -48,7 +49,8 @@ function getExpiryTimestamp(selection: ExpirySelection): string | null {
 export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [expirySelection, setExpirySelection] = useState<ExpirySelection>("24h");
+  const [expirySelection, setExpirySelection] =
+    useState<ExpirySelection>("24h");
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +142,8 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
         <DialogHeader>
           <DialogTitle>Invite a client</DialogTitle>
           <DialogDescription>
-            Generate a single-use invite link for a client to join your workspace.
+            Generate a single-use invite link for a client to join your
+            workspace.
           </DialogDescription>
         </DialogHeader>
 
@@ -155,21 +158,26 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-medium">Expiry</div>
               <div className="flex gap-2">
-                {(["1h", "24h", "7d", "never"] as ExpirySelection[]).map((opt) => (
-                  <Button
-                    key={opt}
-                    type="button"
-                    variant={expirySelection === opt ? "default" : "secondary"}
-                    size="sm"
-                    onClick={() => setExpirySelection(opt)}
-                  >
-                    {opt === "never" ? "Never" : opt}
-                  </Button>
-                ))}
+                {(["1h", "24h", "7d", "never"] as ExpirySelection[]).map(
+                  (opt) => (
+                    <Button
+                      key={opt}
+                      type="button"
+                      variant={
+                        expirySelection === opt ? "default" : "secondary"
+                      }
+                      size="sm"
+                      onClick={() => setExpirySelection(opt)}
+                    >
+                      {opt === "never" ? "Never" : opt}
+                    </Button>
+                  ),
+                )}
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Single-use invite (max uses = 1). You can generate another any time.
+              Single-use invite (max uses = 1). You can generate another any
+              time.
             </p>
           </div>
 
@@ -177,8 +185,12 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
             <div className="rounded-xl border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-muted-foreground">Invite code</div>
-                  <div className="text-xl font-semibold tracking-tight">{invite.code}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Invite code
+                  </div>
+                  <div className="text-xl font-semibold tracking-tight">
+                    {invite.code}
+                  </div>
                 </div>
                 <Badge variant="secondary">Single-use</Badge>
               </div>
@@ -188,11 +200,21 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
               </div>
 
               <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={handleCopy} className="gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCopy}
+                  className="gap-2"
+                >
                   <Copy className="h-4 w-4" />
                   {copied ? "Copied" : "Copy link"}
                 </Button>
-                <Button type="button" variant="secondary" onClick={handleOpen} className="gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleOpen}
+                  className="gap-2"
+                >
                   <Link2 className="h-4 w-4" />
                   Open
                 </Button>
@@ -208,7 +230,11 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setOpen(false)}
+          >
             Close
           </Button>
           <Button type="button" onClick={handleGenerate} disabled={isSaving}>
@@ -219,4 +245,3 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
     </Dialog>
   );
 }
-

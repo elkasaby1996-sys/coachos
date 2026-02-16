@@ -22,7 +22,10 @@ export type ActiveExercise = {
   sets: SetState[];
 };
 
-export type PreviousSetMap = Map<number, { weight: number | null; reps: number | null }>;
+export type PreviousSetMap = Map<
+  number,
+  { weight: number | null; reps: number | null }
+>;
 
 export function ActiveExercisePanel({
   exercise,
@@ -42,7 +45,7 @@ export function ActiveExercisePanel({
     exerciseIndex: number,
     setIndex: number,
     field: keyof SetState,
-    value: string | boolean
+    value: string | boolean,
   ) => void;
   previousBySet: PreviousSetMap;
 }) {
@@ -51,7 +54,7 @@ export function ActiveExercisePanel({
     : exercise.name;
   const panelSubtitle = exercise.supersetGroup
     ? `Superset ${exercise.supersetGroup}. ${exercise.notes ?? "No coach notes for this exercise."}`
-    : exercise.notes ?? "No coach notes for this exercise.";
+    : (exercise.notes ?? "No coach notes for this exercise.");
   return (
     <DashboardCard
       title={panelTitle}
@@ -77,7 +80,12 @@ export function ActiveExercisePanel({
           onSetChange={onSetChange}
           previousBySet={previousBySet}
         />
-        <Button size="sm" variant="secondary" disabled={!canEdit || isSaving} onClick={onSave}>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={!canEdit || isSaving}
+          onClick={onSave}
+        >
           {isSaving ? "Saving..." : "Save sets"}
         </Button>
       </div>
@@ -99,7 +107,7 @@ function ExerciseSetTable({
     exerciseIndex: number,
     setIndex: number,
     field: keyof SetState,
-    value: string | boolean
+    value: string | boolean,
   ) => void;
   previousBySet: PreviousSetMap;
 }) {
@@ -118,7 +126,9 @@ function ExerciseSetTable({
         const isDone = setItem.is_completed;
         const previous = previousBySet.get(setIndex + 1);
         const previousLabel =
-          previous && typeof previous.weight === "number" && typeof previous.reps === "number"
+          previous &&
+          typeof previous.weight === "number" &&
+          typeof previous.reps === "number"
             ? `${previous.weight}${unitLabel ? ` ${unitLabel}` : ""} x ${previous.reps}`
             : "--";
         return (
@@ -128,8 +138,12 @@ function ExerciseSetTable({
               isDone ? "opacity-60" : ""
             }`}
           >
-            <span className="text-xs font-semibold text-muted-foreground">{setIndex + 1}</span>
-            <span className={`text-xs text-muted-foreground ${isDone ? "line-through" : ""}`}>
+            <span className="text-xs font-semibold text-muted-foreground">
+              {setIndex + 1}
+            </span>
+            <span
+              className={`text-xs text-muted-foreground ${isDone ? "line-through" : ""}`}
+            >
               {previousLabel}
             </span>
             <div className="flex items-center gap-2">
@@ -140,7 +154,12 @@ function ExerciseSetTable({
                 placeholder="0"
                 value={setItem.weight}
                 onChange={(event) =>
-                  onSetChange(exerciseIndex, setIndex, "weight", event.target.value)
+                  onSetChange(
+                    exerciseIndex,
+                    setIndex,
+                    "weight",
+                    event.target.value,
+                  )
                 }
                 disabled={!canEdit}
               />
@@ -176,7 +195,12 @@ function ExerciseSetTable({
                 type="checkbox"
                 checked={setItem.is_completed}
                 onChange={(event) =>
-                  onSetChange(exerciseIndex, setIndex, "is_completed", event.target.checked)
+                  onSetChange(
+                    exerciseIndex,
+                    setIndex,
+                    "is_completed",
+                    event.target.checked,
+                  )
                 }
                 disabled={!canEdit}
               />

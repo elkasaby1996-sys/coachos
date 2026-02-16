@@ -4,7 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -59,10 +64,17 @@ const getSupabaseErrorDetails = (error: unknown): ErrorDetails => {
   if (typeof error === "string") return { code: null, message: error };
   if (error instanceof Error) {
     const err = error as Error & { code?: string | null };
-    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
+    return {
+      code: err.code ?? null,
+      message: err.message ?? "Something went wrong.",
+    };
   }
   if (typeof error === "object") {
-    const err = error as { code?: string | null; message?: string | null; details?: string | null };
+    const err = error as {
+      code?: string | null;
+      message?: string | null;
+      details?: string | null;
+    };
     return {
       code: err.code ?? null,
       message: err.message ?? err.details ?? "Something went wrong.",
@@ -86,7 +98,9 @@ export function PtBaselineTemplatesPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [inlineError, setInlineError] = useState<ErrorDetails | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [statusVariant, setStatusVariant] = useState<"success" | "error">("success");
+  const [statusVariant, setStatusVariant] = useState<"success" | "error">(
+    "success",
+  );
 
   useEffect(() => {
     if (!statusMessage) return;
@@ -112,7 +126,9 @@ export function PtBaselineTemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_templates")
-        .select("id, workspace_id, name, value_type, unit_label, help_text, sort_order, is_active, created_at")
+        .select(
+          "id, workspace_id, name, value_type, unit_label, help_text, sort_order, is_active, created_at",
+        )
         .eq("workspace_id", workspaceId ?? "")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
@@ -125,7 +141,10 @@ export function PtBaselineTemplatesPage() {
 
   const maxSortOrder = useMemo(() => {
     if (!templates.length) return 0;
-    return templates.reduce((max, item) => Math.max(max, item.sort_order ?? 0), 0);
+    return templates.reduce(
+      (max, item) => Math.max(max, item.sort_order ?? 0),
+      0,
+    );
   }, [templates]);
 
   const invalidateTemplates = async () => {
@@ -194,11 +213,13 @@ export function PtBaselineTemplatesPage() {
       setStatusVariant("success");
       setStatusMessage("Template updated.");
     } else {
-      const { error } = await supabase.from("baseline_marker_templates").insert({
-        workspace_id: workspaceId,
-        ...payload,
-        created_by_user_id: user.id,
-      });
+      const { error } = await supabase
+        .from("baseline_marker_templates")
+        .insert({
+          workspace_id: workspaceId,
+          ...payload,
+          created_by_user_id: user.id,
+        });
       if (error) {
         setInlineError(getSupabaseErrorDetails(error));
         setSaveStatus("idle");
@@ -238,7 +259,10 @@ export function PtBaselineTemplatesPage() {
       const orderA = a.sort_order ?? 0;
       const orderB = b.sort_order ?? 0;
       if (orderA !== orderB) return orderA - orderB;
-      return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
+      return (
+        new Date(a.created_at ?? 0).getTime() -
+        new Date(b.created_at ?? 0).getTime()
+      );
     });
     const updates = ordered.map((item, index) => ({
       id: item.id,
@@ -258,7 +282,10 @@ export function PtBaselineTemplatesPage() {
     await invalidateTemplates();
   };
 
-  const handleMove = async (template: MarkerTemplate, direction: "up" | "down") => {
+  const handleMove = async (
+    template: MarkerTemplate,
+    direction: "up" | "down",
+  ) => {
     if (!workspaceId) return;
     const ordered = [...templates];
     const index = ordered.findIndex((item) => item.id === template.id);
@@ -302,7 +329,7 @@ export function PtBaselineTemplatesPage() {
   const handleDelete = async (template: MarkerTemplate) => {
     if (!workspaceId) return;
     const confirmed = window.confirm(
-      `Delete "${template.name ?? "template"}"? This cannot be undone.`
+      `Delete "${template.name ?? "template"}"? This cannot be undone.`,
     );
     if (!confirmed) return;
     const { error } = await supabase
@@ -323,7 +350,9 @@ export function PtBaselineTemplatesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Baseline templates</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Baseline templates
+          </h2>
           <p className="text-sm text-muted-foreground">
             Create the performance markers clients will log during baseline.
           </p>
@@ -339,8 +368,16 @@ export function PtBaselineTemplatesPage() {
       </div>
 
       {statusMessage ? (
-        <Alert className={statusVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
-          <AlertTitle>{statusVariant === "error" ? "Error" : "Saved"}</AlertTitle>
+        <Alert
+          className={
+            statusVariant === "error"
+              ? "border-danger/30"
+              : "border-emerald-200"
+          }
+        >
+          <AlertTitle>
+            {statusVariant === "error" ? "Error" : "Saved"}
+          </AlertTitle>
           <AlertDescription>{statusMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -373,16 +410,23 @@ export function PtBaselineTemplatesPage() {
               <AlertTitle>Supabase error</AlertTitle>
               <AlertDescription>
                 <div className="space-y-1 text-xs text-muted-foreground">
-                  <div>code: {getSupabaseErrorDetails(templatesQuery.error).code ?? "n/a"}</div>
                   <div>
-                    message: {getSupabaseErrorDetails(templatesQuery.error).message ?? "n/a"}
+                    code:{" "}
+                    {getSupabaseErrorDetails(templatesQuery.error).code ??
+                      "n/a"}
+                  </div>
+                  <div>
+                    message:{" "}
+                    {getSupabaseErrorDetails(templatesQuery.error).message ??
+                      "n/a"}
                   </div>
                 </div>
               </AlertDescription>
             </Alert>
           ) : templates.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-              No templates yet. Add your first baseline marker (e.g., Bench 1RM, Pull-ups reps).
+              No templates yet. Add your first baseline marker (e.g., Bench 1RM,
+              Pull-ups reps).
             </div>
           ) : (
             <div className="space-y-3">
@@ -393,17 +437,24 @@ export function PtBaselineTemplatesPage() {
                 >
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold">{template.name ?? "Template"}</p>
+                      <p className="text-sm font-semibold">
+                        {template.name ?? "Template"}
+                      </p>
                       <Badge variant="muted">
-                        {(template.value_type ?? "number") === "number" ? "Number" : "Text"}
+                        {(template.value_type ?? "number") === "number"
+                          ? "Number"
+                          : "Text"}
                       </Badge>
                       {template.unit_label ? (
                         <Badge variant="default">{template.unit_label}</Badge>
                       ) : null}
-                      {!template.is_active ? <Badge variant="warning">Inactive</Badge> : null}
+                      {!template.is_active ? (
+                        <Badge variant="warning">Inactive</Badge>
+                      ) : null}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Unit: {template.unit_label ?? "—"} · Order: {template.sort_order ?? "—"}
+                      Unit: {template.unit_label ?? "—"} · Order:{" "}
+                      {template.sort_order ?? "—"}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -433,10 +484,18 @@ export function PtBaselineTemplatesPage() {
                     >
                       Move down
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => openEditDialog(template)}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => openEditDialog(template)}
+                    >
                       Edit
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => handleDelete(template)}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleDelete(template)}
+                    >
                       Delete
                     </Button>
                   </div>
@@ -450,24 +509,33 @@ export function PtBaselineTemplatesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
-            <DialogTitle>{editId ? "Edit template" : "New template"}</DialogTitle>
+            <DialogTitle>
+              {editId ? "Edit template" : "New template"}
+            </DialogTitle>
             <DialogDescription>
               Configure the baseline marker clients will log.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Name *</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Name *
+              </label>
               <Input
                 value={formState.name}
                 onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, name: event.target.value }))
+                  setFormState((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
                 }
                 placeholder="Bench Press 1RM"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Value type</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Value type
+              </label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={formState.value_type}
@@ -483,34 +551,49 @@ export function PtBaselineTemplatesPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Unit label</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Unit label
+              </label>
               <Input
                 value={formState.unit_label}
                 onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, unit_label: event.target.value }))
+                  setFormState((prev) => ({
+                    ...prev,
+                    unit_label: event.target.value,
+                  }))
                 }
                 placeholder="kg, reps, min"
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Help text</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Help text
+              </label>
               <textarea
                 className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={formState.help_text}
                 onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, help_text: event.target.value }))
+                  setFormState((prev) => ({
+                    ...prev,
+                    help_text: event.target.value,
+                  }))
                 }
                 placeholder="Instructions for clients"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Sort order</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Sort order
+              </label>
               <Input
                 type="number"
                 min="0"
                 value={formState.sort_order}
                 onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, sort_order: event.target.value }))
+                  setFormState((prev) => ({
+                    ...prev,
+                    sort_order: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -521,10 +604,16 @@ export function PtBaselineTemplatesPage() {
                 className="h-4 w-4 rounded border-border"
                 checked={formState.is_active}
                 onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, is_active: event.target.checked }))
+                  setFormState((prev) => ({
+                    ...prev,
+                    is_active: event.target.checked,
+                  }))
                 }
               />
-              <label htmlFor="template-active" className="text-sm text-muted-foreground">
+              <label
+                htmlFor="template-active"
+                className="text-sm text-muted-foreground"
+              >
                 Active
               </label>
             </div>
@@ -544,7 +633,10 @@ export function PtBaselineTemplatesPage() {
             <Button variant="secondary" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveTemplate} disabled={saveStatus === "saving"}>
+            <Button
+              onClick={handleSaveTemplate}
+              disabled={saveStatus === "saving"}
+            >
               {saveStatus === "saving" ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

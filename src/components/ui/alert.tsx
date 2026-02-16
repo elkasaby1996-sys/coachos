@@ -10,7 +10,7 @@ export function Alert({
       role="alert"
       className={cn(
         "rounded-xl border border-border/70 bg-card/80 px-4 py-3 text-sm text-foreground shadow-card",
-        className
+        className,
       )}
       {...props}
     />
@@ -31,6 +31,9 @@ export function AlertDescription({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <div className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <div
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
   );
 }

@@ -24,7 +24,7 @@ export function StatCard({
       className={cn(
         "border-border/70 bg-card/80",
         accent && "border-primary/40 bg-card/90 shadow-glow",
-        className
+        className,
       )}
     >
       <CardHeader className="space-y-2">
@@ -34,10 +34,16 @@ export function StatCard({
         </div>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <CardTitle className="text-2xl font-semibold tracking-tight">{value}</CardTitle>
-            {helper ? <p className="text-xs text-muted-foreground">{helper}</p> : null}
+            <CardTitle className="text-2xl font-semibold tracking-tight">
+              {value}
+            </CardTitle>
+            {helper ? (
+              <p className="text-xs text-muted-foreground">{helper}</p>
+            ) : null}
           </div>
-          {sparkline ? <div className="hidden sm:block">{sparkline}</div> : null}
+          {sparkline ? (
+            <div className="hidden sm:block">{sparkline}</div>
+          ) : null}
         </div>
       </CardHeader>
     </Card>

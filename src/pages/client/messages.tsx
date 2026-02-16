@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { DashboardCard, EmptyState, Skeleton } from "../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  Skeleton,
+} from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 
@@ -44,7 +53,7 @@ export function ClientMessagesPage() {
   const queryClient = useQueryClient();
   const draft = useMemo(
     () => new URLSearchParams(location.search).get("draft") ?? "",
-    [location.search]
+    [location.search],
   );
   const [messageInput, setMessageInput] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -85,7 +94,7 @@ export function ClientMessagesPage() {
             workspace_id: clientQuery.data.workspace_id,
             client_id: clientQuery.data.id,
           },
-          { onConflict: "workspace_id,client_id" }
+          { onConflict: "workspace_id,client_id" },
         )
         .select("id, client_id, workspace_id, last_message_at")
         .maybeSingle();
@@ -114,7 +123,9 @@ export function ClientMessagesPage() {
       const to = from + messagePageSize - 1;
       const { data, error } = await supabase
         .from("messages")
-        .select("id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at")
+        .select(
+          "id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at",
+        )
         .eq("conversation_id", conversationId ?? "")
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -149,8 +160,10 @@ export function ClientMessagesPage() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["client-messages", conversationId] });
-        }
+          queryClient.invalidateQueries({
+            queryKey: ["client-messages", conversationId],
+          });
+        },
       )
       .subscribe();
     return () => {
@@ -174,14 +187,17 @@ export function ClientMessagesPage() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          const next = payload.new as { role?: string | null; is_typing?: boolean | null };
+          const next = payload.new as {
+            role?: string | null;
+            is_typing?: boolean | null;
+          };
           if (!next) return;
           if (next.role === "pt" && next.is_typing) {
             setTypingUsers(["Coach"]);
           } else {
             setTypingUsers([]);
           }
-        }
+        },
       )
       .subscribe();
     return () => {
@@ -198,7 +214,7 @@ export function ClientMessagesPage() {
         role: "client",
         is_typing: isTyping,
       },
-      { onConflict: "conversation_id,user_id" }
+      { onConflict: "conversation_id,user_id" },
     );
   };
 
@@ -222,7 +238,9 @@ export function ClientMessagesPage() {
     onSuccess: async () => {
       setMessageInput("");
       updateTyping(false);
-      await queryClient.invalidateQueries({ queryKey: ["client-messages", conversationId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["client-messages", conversationId],
+      });
     },
   });
 
@@ -267,35 +285,39 @@ export function ClientMessagesPage() {
                         onClick={() => messagesQuery.fetchNextPage()}
                         disabled={messagesQuery.isFetchingNextPage}
                       >
-                        {messagesQuery.isFetchingNextPage ? "Loading..." : "Load older"}
+                        {messagesQuery.isFetchingNextPage
+                          ? "Loading..."
+                          : "Load older"}
                       </Button>
                     </div>
                   ) : null}
                   {messageRows.map((message) => {
-                  const isClient = message.sender_role === "client";
-                  return (
-                    <div
-                      key={message.id}
-                      className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-                        isClient
-                          ? "ml-auto bg-accent/20 text-foreground"
-                          : "bg-muted text-foreground"
-                      }`}
-                    >
-                      <div className="text-[10px] uppercase text-muted-foreground">
-                        {isClient ? "You" : message.sender_name ?? "Coach"}
+                    const isClient = message.sender_role === "client";
+                    return (
+                      <div
+                        key={message.id}
+                        className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                          isClient
+                            ? "ml-auto bg-accent/20 text-foreground"
+                            : "bg-muted text-foreground"
+                        }`}
+                      >
+                        <div className="text-[10px] uppercase text-muted-foreground">
+                          {isClient ? "You" : (message.sender_name ?? "Coach")}
+                        </div>
+                        <div>{message.body ?? ""}</div>
+                        <div className="mt-1 text-[10px] text-muted-foreground">
+                          {formatTime(message.created_at)}
+                        </div>
                       </div>
-                      <div>{message.body ?? ""}</div>
-                      <div className="mt-1 text-[10px] text-muted-foreground">
-                        {formatTime(message.created_at)}
-                      </div>
-                    </div>
-                  );
+                    );
                   })}
                 </>
               )}
               {typingUsers.length > 0 ? (
-                <div className="text-xs text-muted-foreground">Coach is typing...</div>
+                <div className="text-xs text-muted-foreground">
+                  Coach is typing...
+                </div>
               ) : null}
               <div ref={scrollRef} />
             </div>

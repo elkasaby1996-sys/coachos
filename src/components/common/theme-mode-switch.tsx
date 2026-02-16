@@ -8,7 +8,11 @@ interface ThemeModeSwitchProps {
   className?: string;
 }
 
-export function ThemeModeSwitch({ checked, onToggle, className }: ThemeModeSwitchProps) {
+export function ThemeModeSwitch({
+  checked,
+  onToggle,
+  className,
+}: ThemeModeSwitchProps) {
   return (
     <button
       type="button"
@@ -17,14 +21,21 @@ export function ThemeModeSwitch({ checked, onToggle, className }: ThemeModeSwitc
       aria-pressed={checked}
       className={cn(
         "relative flex h-9 w-full max-w-[92px] items-center justify-between rounded-lg border border-border/70 bg-card/70 px-2 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border",
-        className
+        className,
       )}
     >
-      <Moon className={cn("z-10 h-3.5 w-3.5 transition-colors duration-300", checked ? "text-foreground/45" : "text-foreground")} />
+      <Moon
+        className={cn(
+          "z-10 h-3.5 w-3.5 transition-colors duration-300",
+          checked ? "text-foreground/45" : "text-foreground",
+        )}
+      />
       <Sun
         className={cn(
           "z-10 h-3.5 w-3.5 transition-colors duration-300",
-          checked ? "text-primary [filter:drop-shadow(0_0_5px_oklch(var(--primary)/0.45))]" : "text-foreground/45"
+          checked
+            ? "text-primary [filter:drop-shadow(0_0_5px_oklch(var(--primary)/0.45))]"
+            : "text-foreground/45",
         )}
       />
 
@@ -32,7 +43,9 @@ export function ThemeModeSwitch({ checked, onToggle, className }: ThemeModeSwitc
         className="pointer-events-none absolute left-1/2 top-1/2 h-5 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-inner"
         initial={false}
         animate={{
-          backgroundColor: checked ? "oklch(var(--primary) / 0.28)" : "oklch(var(--muted) / 0.8)",
+          backgroundColor: checked
+            ? "oklch(var(--primary) / 0.28)"
+            : "oklch(var(--muted) / 0.8)",
         }}
         transition={{ duration: 0.25 }}
       >
@@ -41,7 +54,9 @@ export function ThemeModeSwitch({ checked, onToggle, className }: ThemeModeSwitc
           initial={false}
           animate={{
             x: checked ? 20 : 0,
-            backgroundColor: checked ? "oklch(var(--primary))" : "oklch(var(--muted-foreground) / 0.5)",
+            backgroundColor: checked
+              ? "oklch(var(--primary))"
+              : "oklch(var(--muted-foreground) / 0.5)",
           }}
           transition={{ type: "spring", stiffness: 520, damping: 32 }}
           whileTap={{ scale: 0.9 }}

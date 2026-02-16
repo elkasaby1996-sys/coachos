@@ -3,7 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { EmptyState, Skeleton } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
@@ -14,15 +19,25 @@ import { useAuth } from "../../lib/auth";
 
 export function PtSettingsPage() {
   const navigate = useNavigate();
-  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const {
+    workspaceId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">("idle");
-  const [brandingSaveStatus, setBrandingSaveStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">(
+    "idle",
+  );
+  const [brandingSaveStatus, setBrandingSaveStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
   const {
     themePreference,
     compactDensity,
@@ -30,11 +45,14 @@ export function PtSettingsPage() {
     isSaving: appearanceSaving,
   } = useThemePreference();
   const [appearanceTheme, setAppearanceTheme] = useState(themePreference);
-  const [appearanceCompactDensity, setAppearanceCompactDensity] = useState(compactDensity);
+  const [appearanceCompactDensity, setAppearanceCompactDensity] =
+    useState(compactDensity);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordSaveStatus, setPasswordSaveStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [passwordSaveStatus, setPasswordSaveStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -52,7 +70,11 @@ export function PtSettingsPage() {
         .eq("id", workspaceId ?? "")
         .maybeSingle();
       if (error) throw error;
-      return data as { id: string; name: string | null; default_checkin_template_id: string | null } | null;
+      return data as {
+        id: string;
+        name: string | null;
+        default_checkin_template_id: string | null;
+      } | null;
     },
   });
 
@@ -119,7 +141,9 @@ export function PtSettingsPage() {
     setSaveStatus("idle");
     setToastVariant("success");
     setToastMessage("Default check-in template updated.");
-    await queryClient.invalidateQueries({ queryKey: ["pt-settings-workspace", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-settings-workspace", workspaceId],
+    });
   };
 
   const handleSaveWorkspaceName = async () => {
@@ -131,7 +155,10 @@ export function PtSettingsPage() {
       return;
     }
     setBrandingSaveStatus("saving");
-    const { error } = await supabase.from("workspaces").update({ name: nextName }).eq("id", workspaceId);
+    const { error } = await supabase
+      .from("workspaces")
+      .update({ name: nextName })
+      .eq("id", workspaceId);
     if (error) {
       setBrandingSaveStatus("error");
       setToastVariant("error");
@@ -141,7 +168,9 @@ export function PtSettingsPage() {
     setBrandingSaveStatus("idle");
     setToastVariant("success");
     setToastMessage("Workspace name updated.");
-    await queryClient.invalidateQueries({ queryKey: ["pt-settings-workspace", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-settings-workspace", workspaceId],
+    });
   };
 
   const handleSaveAppearance = async () => {
@@ -198,8 +227,16 @@ export function PtSettingsPage() {
     <div className="space-y-8">
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
-            <AlertTitle>{toastVariant === "error" ? "Error" : "Success"}</AlertTitle>
+          <Alert
+            className={
+              toastVariant === "error"
+                ? "border-danger/30"
+                : "border-emerald-200"
+            }
+          >
+            <AlertTitle>
+              {toastVariant === "error" ? "Error" : "Success"}
+            </AlertTitle>
             <AlertDescription>{toastMessage}</AlertDescription>
           </Alert>
         </div>
@@ -207,27 +244,39 @@ export function PtSettingsPage() {
 
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Settings</h2>
-        <p className="text-sm text-muted-foreground">Manage workspace name and account access.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage workspace name and account access.
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <div>
             <CardTitle>Workspace branding</CardTitle>
-            <p className="text-sm text-muted-foreground">Set the workspace name shown to clients.</p>
+            <p className="text-sm text-muted-foreground">
+              Set the workspace name shown to clients.
+            </p>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground">Workspace name</label>
+            <label className="text-xs font-semibold text-muted-foreground">
+              Workspace name
+            </label>
             <Input
               value={workspaceName}
               onChange={(event) => setWorkspaceName(event.target.value)}
               placeholder="Workspace name"
             />
           </div>
-          <Button size="sm" onClick={handleSaveWorkspaceName} disabled={brandingSaveStatus === "saving"}>
-            {brandingSaveStatus === "saving" ? "Saving..." : "Save workspace name"}
+          <Button
+            size="sm"
+            onClick={handleSaveWorkspaceName}
+            disabled={brandingSaveStatus === "saving"}
+          >
+            {brandingSaveStatus === "saving"
+              ? "Saving..."
+              : "Save workspace name"}
           </Button>
         </CardContent>
       </Card>
@@ -236,17 +285,22 @@ export function PtSettingsPage() {
         <CardHeader>
           <CardTitle>Account</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Signed in as {session?.user?.email ?? session?.user?.phone ?? "Unknown account"}
+            Signed in as{" "}
+            {session?.user?.email ?? session?.user?.phone ?? "Unknown account"}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <p className="text-sm font-medium">Email</p>
-            <p className="text-xs text-muted-foreground">{session?.user?.email ?? "No email available"}</p>
+            <p className="text-xs text-muted-foreground">
+              {session?.user?.email ?? "No email available"}
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">New password</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                New password
+              </label>
               <Input
                 type="password"
                 value={newPassword}
@@ -255,7 +309,9 @@ export function PtSettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Confirm password</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Confirm password
+              </label>
               <Input
                 type="password"
                 value={confirmPassword}
@@ -270,7 +326,9 @@ export function PtSettingsPage() {
             onClick={handleChangePassword}
             disabled={passwordSaveStatus === "saving"}
           >
-            {passwordSaveStatus === "saving" ? "Updating..." : "Change password"}
+            {passwordSaveStatus === "saving"
+              ? "Updating..."
+              : "Change password"}
           </Button>
         </CardContent>
       </Card>
@@ -324,7 +382,9 @@ export function PtSettingsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
             <div>
               <p className="text-sm font-medium">Compact density</p>
-              <p className="text-xs text-muted-foreground">Store reduced spacing preference.</p>
+              <p className="text-xs text-muted-foreground">
+                Store reduced spacing preference.
+              </p>
             </div>
             <Button
               size="sm"
@@ -335,7 +395,11 @@ export function PtSettingsPage() {
             </Button>
           </div>
 
-          <Button size="sm" onClick={handleSaveAppearance} disabled={appearanceSaving}>
+          <Button
+            size="sm"
+            onClick={handleSaveAppearance}
+            disabled={appearanceSaving}
+          >
             {appearanceSaving ? "Saving..." : "Save appearance"}
           </Button>
         </CardContent>
@@ -365,7 +429,9 @@ export function PtSettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {workspaceLoading || templatesQuery.isLoading || workspaceQuery.isLoading ? (
+          {workspaceLoading ||
+          templatesQuery.isLoading ||
+          workspaceQuery.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-40" />
@@ -427,10 +493,16 @@ export function PtSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Danger zone</CardTitle>
-          <p className="text-sm text-muted-foreground">Log out of this workspace.</p>
+          <p className="text-sm text-muted-foreground">
+            Log out of this workspace.
+          </p>
         </CardHeader>
         <CardContent>
-          <Button variant="secondary" onClick={handleLogout} disabled={isLoggingOut}>
+          <Button
+            variant="secondary"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
             {isLoggingOut ? "Logging out..." : "Logout"}
           </Button>
         </CardContent>

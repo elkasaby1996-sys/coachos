@@ -9,10 +9,14 @@ export function useWorkspace() {
   const [error, setError] = useState<Error | null>(null);
   const [hasCached, setHasCached] = useState(false);
 
-  const withTimeout = async <T>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
+  const withTimeout = async <T>(
+    promise: PromiseLike<T>,
+    ms: number,
+    message: string,
+  ): Promise<T> => {
     return new Promise((resolve, reject) => {
       const timer = window.setTimeout(() => reject(new Error(message)), ms);
-      promise
+      Promise.resolve(promise)
         .then((value) => {
           window.clearTimeout(timer);
           resolve(value);
@@ -58,14 +62,17 @@ export function useWorkspace() {
             .limit(1)
             .maybeSingle(),
           8000,
-          "Workspace lookup timed out (8s)."
+          "Workspace lookup timed out (8s).",
         );
 
         if (memberError) throw memberError;
         if (memberData?.workspace_id) {
           if (mounted) setWorkspaceId(memberData.workspace_id);
           if (typeof window !== "undefined") {
-            window.localStorage.setItem("coachos_workspace_id", memberData.workspace_id);
+            window.localStorage.setItem(
+              "coachos_workspace_id",
+              memberData.workspace_id,
+            );
           }
           return;
         }
@@ -77,7 +84,7 @@ export function useWorkspace() {
             .eq("user_id", user.id)
             .maybeSingle(),
           8000,
-          "Client workspace lookup timed out (8s)."
+          "Client workspace lookup timed out (8s).",
         );
 
         if (clientError) throw clientError;
@@ -86,7 +93,10 @@ export function useWorkspace() {
         }
         if (mounted) setWorkspaceId(clientData.workspace_id);
         if (typeof window !== "undefined") {
-          window.localStorage.setItem("coachos_workspace_id", clientData.workspace_id);
+          window.localStorage.setItem(
+            "coachos_workspace_id",
+            clientData.workspace_id,
+          );
         }
       } catch (err) {
         console.error("Workspace bootstrap failed", err);
@@ -95,7 +105,11 @@ export function useWorkspace() {
           if (typeof window !== "undefined") {
             window.localStorage.removeItem("coachos_workspace_id");
           }
-          setError(err instanceof Error ? err : new Error("Workspace bootstrap failed"));
+          setError(
+            err instanceof Error
+              ? err
+              : new Error("Workspace bootstrap failed"),
+          );
         }
       } finally {
         if (mounted) setLoading(false);

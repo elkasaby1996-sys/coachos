@@ -4,7 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
@@ -59,7 +64,8 @@ export function ClientWorkoutTodayPage() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "completed" | "skipped") => {
-      if (!workoutQuery.data?.id) throw new Error("No workout found for today.");
+      if (!workoutQuery.data?.id)
+        throw new Error("No workout found for today.");
       const payload =
         status === "completed"
           ? { status, completed_at: new Date().toISOString() }
@@ -76,14 +82,22 @@ export function ClientWorkoutTodayPage() {
     },
   });
 
-  const errors = [clientQuery.error, workoutQuery.error, updateStatus.error].filter(Boolean);
+  const errors = [
+    clientQuery.error,
+    workoutQuery.error,
+    updateStatus.error,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Today&apos;s workout</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Workout for {todayKey}</h1>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Today&apos;s workout
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Workout for {todayKey}
+          </h1>
         </div>
         <Button variant="secondary" onClick={() => navigate("/app/home")}>
           Back to home
@@ -93,7 +107,10 @@ export function ClientWorkoutTodayPage() {
       {errors.length > 0 ? (
         <div className="space-y-2">
           {errors.map((error, index) => (
-            <Alert key={`${index}-${getErrorMessage(error)}`} className="border-danger/30">
+            <Alert
+              key={`${index}-${getErrorMessage(error)}`}
+              className="border-danger/30"
+            >
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{getErrorMessage(error)}</AlertDescription>
             </Alert>
@@ -117,7 +134,9 @@ export function ClientWorkoutTodayPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground">Assigned</p>
-                  <p className="text-lg font-semibold">{workoutQuery.data.workout_name}</p>
+                  <p className="text-lg font-semibold">
+                    {workoutQuery.data.workout_name}
+                  </p>
                 </div>
                 <Badge
                   variant={
@@ -133,14 +152,17 @@ export function ClientWorkoutTodayPage() {
               </div>
               <Button
                 variant="secondary"
-                onClick={() => navigate(`/app/workout-run/${workoutQuery.data?.id}`)}
+                onClick={() =>
+                  navigate(`/app/workout-run/${workoutQuery.data?.id}`)
+                }
               >
                 Open workout
               </Button>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button
                   disabled={
-                    updateStatus.isPending || workoutQuery.data.status === "completed"
+                    updateStatus.isPending ||
+                    workoutQuery.data.status === "completed"
                   }
                   onClick={() => updateStatus.mutate("completed")}
                 >
@@ -150,10 +172,15 @@ export function ClientWorkoutTodayPage() {
                 </Button>
                 <Button
                   variant="secondary"
-                  disabled={updateStatus.isPending || workoutQuery.data.status === "skipped"}
+                  disabled={
+                    updateStatus.isPending ||
+                    workoutQuery.data.status === "skipped"
+                  }
                   onClick={() => updateStatus.mutate("skipped")}
                 >
-                  {workoutQuery.data.status === "skipped" ? "Skipped" : "Skip workout"}
+                  {workoutQuery.data.status === "skipped"
+                    ? "Skipped"
+                    : "Skip workout"}
                 </Button>
               </div>
             </div>
@@ -161,8 +188,8 @@ export function ClientWorkoutTodayPage() {
             <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
               <p className="text-sm font-semibold">No workout assigned yet</p>
               <p className="text-sm text-muted-foreground">
-                Your coach has not scheduled a session for today. Check back later or
-                message your coach from the home screen.
+                Your coach has not scheduled a session for today. Check back
+                later or message your coach from the home screen.
               </p>
               <Button variant="secondary" onClick={() => navigate("/app/home")}>
                 Return to home

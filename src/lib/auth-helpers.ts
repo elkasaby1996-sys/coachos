@@ -2,7 +2,10 @@ import { supabase } from "./supabase";
 
 export type AuthOAuthProvider = "google" | "apple" | "facebook";
 
-export async function signInWithOAuth(provider: AuthOAuthProvider, redirectTo: string) {
+export async function signInWithOAuth(
+  provider: AuthOAuthProvider,
+  redirectTo: string,
+) {
   return supabase.auth.signInWithOAuth({
     provider,
     options: { redirectTo },
@@ -28,7 +31,11 @@ export async function verifyPhoneOtp(phone: string, token: string) {
   });
 }
 
-export async function signUpWithEmailPassword(email: string, password: string, redirectTo?: string) {
+export async function signUpWithEmailPassword(
+  email: string,
+  password: string,
+  redirectTo?: string,
+) {
   return supabase.auth.signUp({
     email,
     password,

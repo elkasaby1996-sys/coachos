@@ -3,7 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  Skeleton,
+  StatusPill,
+} from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useAuth } from "../../lib/auth";
@@ -54,6 +59,7 @@ type CheckinRow = {
   week_ending_saturday: string;
   submitted_at: string | null;
   template_id?: string | null;
+  pt_feedback?: string | null;
 };
 
 type CheckinAnswerRow = {
@@ -92,14 +98,18 @@ const statusMap = {
   active: { label: "In progress", variant: "warning" },
   submitted: { label: "Submitted", variant: "success" },
   due: { label: "Due", variant: "warning" },
-};
+} as const;
 
 const requiredStatusMap = {
   active: { label: "Required", variant: "warning" },
   required: { label: "Required", variant: "warning" },
-};
+} as const;
 
-const photoSlots: Array<{ type: PhotoType; label: string; required?: boolean }> = [
+const photoSlots: Array<{
+  type: PhotoType;
+  label: string;
+  required?: boolean;
+}> = [
   { type: "front", label: "Front", required: true },
   { type: "side", label: "Side", required: true },
   { type: "back", label: "Back", required: true },
@@ -118,8 +128,10 @@ const normalizeQuestionType = (question: CheckinQuestionRow) => {
     "text";
   const normalized = String(raw).toLowerCase();
   if (["scale", "rating", "slider"].includes(normalized)) return "scale";
-  if (["boolean", "yes_no", "yes-no", "yesno"].includes(normalized)) return "yes_no";
-  if (["number", "numeric", "int", "float"].includes(normalized)) return "number";
+  if (["boolean", "yes_no", "yes-no", "yesno"].includes(normalized))
+    return "yes_no";
+  if (["number", "numeric", "int", "float"].includes(normalized))
+    return "number";
   return "text";
 };
 
@@ -136,7 +148,7 @@ const formatWeekEnding = (dateStr: string) => {
 const computeNextCheckinDate = (
   startDate: string | null | undefined,
   frequency: string | null | undefined,
-  fromDate: string
+  fromDate: string,
 ) => {
   if (!startDate) return null;
   const start = new Date(`${startDate}T00:00:00Z`);
@@ -167,9 +179,13 @@ export function ClientCheckinPage() {
     optional: { file: null, previewUrl: null, existingUrl: null },
   });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
   const [submitting, setSubmitting] = useState(false);
-  const [hydratedCheckinId, setHydratedCheckinId] = useState<string | null>(null);
+  const [hydratedCheckinId, setHydratedCheckinId] = useState<string | null>(
+    null,
+  );
 
   const clientQuery = useQuery({
     queryKey: ["client-checkin-profile", user?.id],
@@ -177,7 +193,9 @@ export function ClientCheckinPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, timezone")
+        .select(
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, timezone",
+        )
         .eq("user_id", user?.id ?? "")
         .maybeSingle();
       if (error) throw error;
@@ -187,9 +205,12 @@ export function ClientCheckinPage() {
 
   const todayStr = useMemo(
     () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
-    [clientQuery.data?.timezone]
+    [clientQuery.data?.timezone],
   );
-  const weekEndingSaturday = useMemo(() => getWeekEndSaturday(todayStr), [todayStr]);
+  const weekEndingSaturday = useMemo(
+    () => getWeekEndSaturday(todayStr),
+    [todayStr],
+  );
 
   const workspaceQuery = useQuery({
     queryKey: ["client-checkin-workspace", clientQuery.data?.workspace_id],
@@ -210,7 +231,10 @@ export function ClientCheckinPage() {
     workspaceQuery.data?.default_checkin_template_id ?? null;
 
   const latestTemplateQuery = useQuery({
-    queryKey: ["client-checkin-latest-template", clientQuery.data?.workspace_id],
+    queryKey: [
+      "client-checkin-latest-template",
+      clientQuery.data?.workspace_id,
+    ],
     enabled:
       !!clientQuery.data?.workspace_id &&
       workspaceQuery.isFetched &&
@@ -233,7 +257,10 @@ export function ClientCheckinPage() {
   });
 
   const templateId =
-    assignedTemplateId ?? workspaceDefaultTemplateId ?? latestTemplateQuery.data?.id ?? null;
+    assignedTemplateId ??
+    workspaceDefaultTemplateId ??
+    latestTemplateQuery.data?.id ??
+    null;
 
   const templateQuery = useQuery({
     queryKey: ["client-checkin-template", templateId],
@@ -308,7 +335,8 @@ export function ClientCheckinPage() {
     templateQuery.isLoading ||
     checkinQuery.isLoading;
   const hasTemplate = Boolean(templateQuery.data);
-  const missingTemplate = !isLoading && !hasTemplate && !!clientQuery.data?.workspace_id;
+  const missingTemplate =
+    !isLoading && !hasTemplate && !!clientQuery.data?.workspace_id;
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -336,7 +364,12 @@ export function ClientCheckinPage() {
       hydratedAnswers[row.question_id] = {
         text: row.value_text ?? "",
         number: typeof row.value_number === "number" ? row.value_number : null,
-        boolean: row.value_text === "Yes" ? true : row.value_text === "No" ? false : null,
+        boolean:
+          row.value_text === "Yes"
+            ? true
+            : row.value_text === "No"
+              ? false
+              : null,
       };
     });
     setAnswers(hydratedAnswers);
@@ -358,7 +391,12 @@ export function ClientCheckinPage() {
     });
     setPhotos(nextPhotos);
     setHydratedCheckinId(checkinId);
-  }, [checkinQuery.data?.id, answersQuery.data, photosQuery.data, hydratedCheckinId]);
+  }, [
+    checkinQuery.data?.id,
+    answersQuery.data,
+    photosQuery.data,
+    hydratedCheckinId,
+  ]);
 
   const handleAnswerChange = (questionId: string, value: QuestionValue) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -374,7 +412,9 @@ export function ClientCheckinPage() {
         ...prev,
         [type]: {
           file,
-          previewUrl: file ? URL.createObjectURL(file) : current.existingUrl ?? null,
+          previewUrl: file
+            ? URL.createObjectURL(file)
+            : (current.existingUrl ?? null),
           existingUrl: current.existingUrl ?? null,
         },
       };
@@ -395,7 +435,8 @@ export function ClientCheckinPage() {
   };
 
   const handleSubmit = async () => {
-    if (!clientQuery.data?.id || !weekEndingSaturday || !templateQuery.data?.id) return;
+    if (!clientQuery.data?.id || !weekEndingSaturday || !templateQuery.data?.id)
+      return;
     setSubmitting(true);
     setToastMessage(null);
     try {
@@ -407,7 +448,7 @@ export function ClientCheckinPage() {
             week_ending_saturday: weekEndingSaturday,
             template_id: templateQuery.data.id,
           },
-          { onConflict: "client_id,week_ending_saturday" }
+          { onConflict: "client_id,week_ending_saturday" },
         )
         .select("*")
         .maybeSingle();
@@ -432,11 +473,12 @@ export function ClientCheckinPage() {
               typeof value.text === "string"
                 ? value.text.trim()
                 : typeof value.boolean === "boolean"
-                ? value.boolean
-                  ? "Yes"
-                  : "No"
-                : null,
-            value_number: typeof value.number === "number" ? value.number : null,
+                  ? value.boolean
+                    ? "Yes"
+                    : "No"
+                  : null,
+            value_number:
+              typeof value.number === "number" ? value.number : null,
           };
         })
         .filter(Boolean) as Array<{
@@ -498,7 +540,7 @@ export function ClientCheckinPage() {
       const nextDate = computeNextCheckinDate(
         clientQuery.data?.checkin_start_date ?? null,
         clientQuery.data?.checkin_frequency ?? "weekly",
-        weekEndingSaturday
+        weekEndingSaturday,
       );
       if (nextDate && templateQuery.data?.id) {
         await supabase.from("checkins").upsert(
@@ -507,7 +549,7 @@ export function ClientCheckinPage() {
             week_ending_saturday: nextDate,
             template_id: templateQuery.data.id,
           },
-          { onConflict: "client_id,week_ending_saturday" }
+          { onConflict: "client_id,week_ending_saturday" },
         );
       }
 
@@ -528,7 +570,11 @@ export function ClientCheckinPage() {
 
   const canProceed = hasTemplate && !isLoading;
   const weekEndingLabel = formatWeekEnding(weekEndingSaturday);
-  const statusKey = isSubmitted ? "submitted" : checkinQuery.data ? "active" : "due";
+  const statusKey = isSubmitted
+    ? "submitted"
+    : checkinQuery.data
+      ? "active"
+      : "due";
   const pageError =
     clientQuery.error ||
     workspaceQuery.error ||
@@ -542,29 +588,43 @@ export function ClientCheckinPage() {
     <div className="space-y-6 pb-16 md:pb-0">
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
-            <AlertTitle>{toastVariant === "error" ? "Error" : "Success"}</AlertTitle>
+          <Alert
+            className={
+              toastVariant === "error"
+                ? "border-danger/30"
+                : "border-emerald-200"
+            }
+          >
+            <AlertTitle>
+              {toastVariant === "error" ? "Error" : "Success"}
+            </AlertTitle>
             <AlertDescription>{toastMessage}</AlertDescription>
           </Alert>
         </div>
       ) : null}
 
-      <DashboardCard title="Weekly check-in" subtitle="Stay aligned with your coach each week.">
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-          ) : clientQuery.data ? (
-            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <StatusPill status={statusKey} statusMap={statusMap} />
-              <span>Due Saturday</span>
-              <span className="text-muted-foreground">|</span>
-              <span>Week ending: {weekEndingLabel}</span>
-            </div>
-          ) : (
-            <EmptyState title="No client profile found" description="Please finish onboarding first." />
-          )}
+      <DashboardCard
+        title="Weekly check-in"
+        subtitle="Stay aligned with your coach each week."
+      >
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        ) : clientQuery.data ? (
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <StatusPill status={statusKey} statusMap={statusMap} />
+            <span>Due Saturday</span>
+            <span className="text-muted-foreground">|</span>
+            <span>Week ending: {weekEndingLabel}</span>
+          </div>
+        ) : (
+          <EmptyState
+            title="No client profile found"
+            description="Please finish onboarding first."
+          />
+        )}
       </DashboardCard>
 
       {missingTemplate ? (
@@ -585,13 +645,19 @@ export function ClientCheckinPage() {
 
       {isSubmitted ? (
         <div className="rounded-lg border border-emerald-200/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          Your check-in for the week ending {weekEndingLabel} is submitted and locked.
+          Your check-in for the week ending {weekEndingLabel} is submitted and
+          locked.
         </div>
       ) : null}
 
       {isSubmitted && checkinQuery.data?.pt_feedback ? (
-        <DashboardCard title="Coach feedback" subtitle="Your coach reviewed this check-in.">
-          <p className="text-sm text-foreground">{checkinQuery.data.pt_feedback}</p>
+        <DashboardCard
+          title="Coach feedback"
+          subtitle="Your coach reviewed this check-in."
+        >
+          <p className="text-sm text-foreground">
+            {checkinQuery.data.pt_feedback}
+          </p>
         </DashboardCard>
       ) : null}
 
@@ -605,7 +671,7 @@ export function ClientCheckinPage() {
               "rounded-xl border border-border px-4 py-3 text-left text-sm transition",
               step === index
                 ? "border-accent/50 bg-accent/10 text-foreground"
-                : "bg-card/80 text-muted-foreground hover:border-border/80"
+                : "bg-card/80 text-muted-foreground hover:border-border/80",
             )}
           >
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -658,11 +724,16 @@ export function ClientCheckinPage() {
                           {getQuestionLabel(question)}
                         </p>
                         {question.prompt ? (
-                          <p className="text-xs text-muted-foreground">{question.prompt}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {question.prompt}
+                          </p>
                         ) : null}
                       </div>
                       {question.is_required ? (
-                        <StatusPill status="required" statusMap={requiredStatusMap} />
+                        <StatusPill
+                          status="required"
+                          statusMap={requiredStatusMap}
+                        />
                       ) : null}
                     </div>
 
@@ -670,10 +741,14 @@ export function ClientCheckinPage() {
                       {type === "number" ? (
                         <Input
                           type="number"
-                          value={typeof value.number === "number" ? value.number : ""}
+                          value={
+                            typeof value.number === "number" ? value.number : ""
+                          }
                           onChange={(event) =>
                             handleAnswerChange(question.id, {
-                              number: event.target.value ? Number(event.target.value) : null,
+                              number: event.target.value
+                                ? Number(event.target.value)
+                                : null,
                             })
                           }
                           disabled={isSubmitted}
@@ -682,16 +757,26 @@ export function ClientCheckinPage() {
                         <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"
-                            variant={value.boolean === true ? "default" : "secondary"}
-                            onClick={() => handleAnswerChange(question.id, { boolean: true })}
+                            variant={
+                              value.boolean === true ? "default" : "secondary"
+                            }
+                            onClick={() =>
+                              handleAnswerChange(question.id, { boolean: true })
+                            }
                             disabled={isSubmitted}
                           >
                             Yes
                           </Button>
                           <Button
                             type="button"
-                            variant={value.boolean === false ? "default" : "secondary"}
-                            onClick={() => handleAnswerChange(question.id, { boolean: false })}
+                            variant={
+                              value.boolean === false ? "default" : "secondary"
+                            }
+                            onClick={() =>
+                              handleAnswerChange(question.id, {
+                                boolean: false,
+                              })
+                            }
                             disabled={isSubmitted}
                           >
                             No
@@ -699,15 +784,26 @@ export function ClientCheckinPage() {
                         </div>
                       ) : type === "scale" ? (
                         <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-                          {Array.from({ length: (question.max ?? 10) - (question.min ?? 1) + 1 })
+                          {Array.from({
+                            length:
+                              (question.max ?? 10) - (question.min ?? 1) + 1,
+                          })
                             .map((_, idx) => (question.min ?? 1) + idx)
                             .map((score) => (
                               <Button
                                 key={score}
                                 type="button"
                                 size="sm"
-                                variant={value.number === score ? "default" : "secondary"}
-                                onClick={() => handleAnswerChange(question.id, { number: score })}
+                                variant={
+                                  value.number === score
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                onClick={() =>
+                                  handleAnswerChange(question.id, {
+                                    number: score,
+                                  })
+                                }
                                 disabled={isSubmitted}
                               >
                                 {score}
@@ -720,7 +816,9 @@ export function ClientCheckinPage() {
                           placeholder="Share details..."
                           value={value.text ?? ""}
                           onChange={(event) =>
-                            handleAnswerChange(question.id, { text: event.target.value })
+                            handleAnswerChange(question.id, {
+                              text: event.target.value,
+                            })
                           }
                           disabled={isSubmitted}
                         />
@@ -746,7 +844,10 @@ export function ClientCheckinPage() {
               ))}
             </div>
           ) : !clientQuery.data ? (
-            <EmptyState title="No profile found" description="Please finish onboarding first." />
+            <EmptyState
+              title="No profile found"
+              description="Please finish onboarding first."
+            />
           ) : missingTemplate ? (
             <EmptyState
               title="Your coach hasn’t assigned a check-in yet."
@@ -763,7 +864,9 @@ export function ClientCheckinPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">{slot.label}</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {slot.label}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {slot.required ? "Required" : "Optional"}
                         </p>
@@ -793,10 +896,18 @@ export function ClientCheckinPage() {
                           className="hidden"
                           disabled={isSubmitted}
                           onChange={(event) =>
-                            handleFileChange(slot.type, event.target.files?.[0] ?? null)
+                            handleFileChange(
+                              slot.type,
+                              event.target.files?.[0] ?? null,
+                            )
                           }
                         />
-                        <Button asChild variant="secondary" size="sm" disabled={isSubmitted}>
+                        <Button
+                          asChild
+                          variant="secondary"
+                          size="sm"
+                          disabled={isSubmitted}
+                        >
                           <span>{state.previewUrl ? "Replace" : "Upload"}</span>
                         </Button>
                       </label>
@@ -820,7 +931,10 @@ export function ClientCheckinPage() {
       ) : null}
 
       {step === 2 ? (
-        <DashboardCard title="Review & submit" subtitle="Make sure everything looks right.">
+        <DashboardCard
+          title="Review & submit"
+          subtitle="Make sure everything looks right."
+        >
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-8 w-full" />
@@ -834,7 +948,9 @@ export function ClientCheckinPage() {
           ) : (
             <div className="space-y-6">
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">Responses</p>
+                <p className="text-sm font-semibold text-foreground">
+                  Responses
+                </p>
                 {questions.length === 0 ? (
                   <EmptyState
                     title="No questions to review"
@@ -847,12 +963,12 @@ export function ClientCheckinPage() {
                       typeof value.number === "number"
                         ? value.number
                         : typeof value.boolean === "boolean"
-                        ? value.boolean
-                          ? "Yes"
-                          : "No"
-                        : value.text && value.text.trim().length > 0
-                        ? value.text
-                        : "--";
+                          ? value.boolean
+                            ? "Yes"
+                            : "No"
+                          : value.text && value.text.trim().length > 0
+                            ? value.text
+                            : "--";
                     return (
                       <div
                         key={question.id}
@@ -888,7 +1004,9 @@ export function ClientCheckinPage() {
                             className="mt-2 h-32 w-full rounded-md border border-border object-cover"
                           />
                         ) : (
-                          <p className="mt-2 text-xs text-muted-foreground">No photo</p>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            No photo
+                          </p>
                         )}
                       </div>
                     );
@@ -911,7 +1029,9 @@ export function ClientCheckinPage() {
         <div className="flex flex-wrap items-center gap-2">
           {step < steps.length - 1 ? (
             <Button
-              onClick={() => setStep((prev) => Math.min(steps.length - 1, prev + 1))}
+              onClick={() =>
+                setStep((prev) => Math.min(steps.length - 1, prev + 1))
+              }
               disabled={!canProceed}
             >
               Continue

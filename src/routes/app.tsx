@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import { PtLayout } from "../components/layouts/pt-layout";
 import { ClientLayout } from "../components/layouts/client-layout";
 
@@ -97,7 +103,11 @@ function RequireRole({
       {loading ? (
         <FullPageLoader />
       ) : !role || role === "none" ? (
-        wantsPt ? <Navigate to="/pt/onboarding/workspace" replace /> : <Navigate to="/no-workspace" replace />
+        wantsPt ? (
+          <Navigate to="/pt/onboarding/workspace" replace />
+        ) : (
+          <Navigate to="/no-workspace" replace />
+        )
       ) : !allow.includes(role as any) ? (
         role === "pt" ? (
           <Navigate to="/pt/dashboard" replace />
@@ -138,7 +148,8 @@ function LoginGate() {
   const location = useLocation();
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const redirectTarget =
-    redirectParam && (redirectParam.startsWith("/join/") || redirectParam.startsWith("/invite/"))
+    redirectParam &&
+    (redirectParam.startsWith("/join/") || redirectParam.startsWith("/invite/"))
       ? redirectParam
       : null;
 
@@ -184,7 +195,7 @@ function RequireClientOnboarding({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "display_name, dob, location, timezone, gender, gym_name, days_per_week, goal, height_cm, current_weight"
+          "display_name, dob, location, timezone, gender, gym_name, days_per_week, goal, height_cm, current_weight",
         )
         .eq("user_id", session.user.id)
         .maybeSingle();
@@ -272,8 +283,14 @@ export function App() {
         <Route path="programs/new" element={<PtProgramBuilderPage />} />
         <Route path="programs/:id/edit" element={<PtProgramBuilderPage />} />
         <Route path="templates/workouts" element={<PtWorkoutTemplatesPage />} />
-        <Route path="templates/workouts/:id" element={<PtWorkoutTemplatePreviewPage />} />
-        <Route path="templates/workouts/:id/edit" element={<PtWorkoutTemplateBuilderPage />} />
+        <Route
+          path="templates/workouts/:id"
+          element={<PtWorkoutTemplatePreviewPage />}
+        />
+        <Route
+          path="templates/workouts/:id/edit"
+          element={<PtWorkoutTemplateBuilderPage />}
+        />
         <Route path="calendar" element={<PtCalendarPage />} />
         <Route path="checkins" element={<PtCheckinsQueuePage />} />
         <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />
@@ -282,10 +299,22 @@ export function App() {
         <Route path="settings/baseline" element={<PtBaselineTemplatesPage />} />
         <Route path="settings/exercises" element={<PtExerciseLibraryPage />} />
         <Route path="nutrition-programs" element={<PtNutritionPage />} />
-        <Route path="nutrition-templates" element={<Navigate to="/pt/nutrition-programs" replace />} />
-        <Route path="nutrition" element={<Navigate to="/pt/nutrition-programs" replace />} />
-        <Route path="nutrition/programs/:id" element={<PtNutritionTemplateBuilderPage />} />
-        <Route path="nutrition/templates/:id" element={<PtNutritionTemplateBuilderPage />} />
+        <Route
+          path="nutrition-templates"
+          element={<Navigate to="/pt/nutrition-programs" replace />}
+        />
+        <Route
+          path="nutrition"
+          element={<Navigate to="/pt/nutrition-programs" replace />}
+        />
+        <Route
+          path="nutrition/programs/:id"
+          element={<PtNutritionTemplateBuilderPage />}
+        />
+        <Route
+          path="nutrition/templates/:id"
+          element={<PtNutritionTemplateBuilderPage />}
+        />
       </Route>
 
       {/* Client Side */}
@@ -304,16 +333,28 @@ export function App() {
         <Route path="onboarding" element={<ClientOnboardingPage />} />
         <Route path="home" element={<ClientHomePage />} />
         <Route path="workouts/today" element={<ClientWorkoutTodayPage />} />
-        <Route path="workouts/:assignedWorkoutId" element={<ClientWorkoutDetailPage />} />
-        <Route path="workout-run/:assignedWorkoutId" element={<ClientWorkoutRunPage />} />
-        <Route path="workout-summary/:assignedWorkoutId" element={<ClientWorkoutSummaryPage />} />
+        <Route
+          path="workouts/:assignedWorkoutId"
+          element={<ClientWorkoutDetailPage />}
+        />
+        <Route
+          path="workout-run/:assignedWorkoutId"
+          element={<ClientWorkoutRunPage />}
+        />
+        <Route
+          path="workout-summary/:assignedWorkoutId"
+          element={<ClientWorkoutSummaryPage />}
+        />
         <Route path="checkin" element={<ClientCheckinPage />} />
         <Route path="messages" element={<ClientMessagesPage />} />
         <Route path="profile" element={<ClientProfilePage />} />
         <Route path="habits" element={<ClientHabitsPage />} />
         <Route path="progress" element={<ClientProgressPage />} />
         <Route path="baseline" element={<ClientBaselinePage />} />
-        <Route path="nutrition/:assigned_nutrition_day_id" element={<ClientNutritionDayPage />} />
+        <Route
+          path="nutrition/:assigned_nutrition_day_id"
+          element={<ClientNutritionDayPage />}
+        />
       </Route>
 
       {/* Fallback */}
@@ -321,4 +362,3 @@ export function App() {
     </Routes>
   );
 }
-

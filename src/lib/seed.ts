@@ -13,7 +13,14 @@ export const seedTemplates = [
     name: "Upper Power",
     workout_type: "bodybuilding",
     items: [
-      { exercise: "Bench Press", sets: 4, reps: 6, rest: "120s", rpe: 8, tempo: "3-1-1" },
+      {
+        exercise: "Bench Press",
+        sets: 4,
+        reps: 6,
+        rest: "120s",
+        rpe: 8,
+        tempo: "3-1-1",
+      },
     ],
   },
   {
@@ -33,6 +40,14 @@ export const seedTemplates = [
 ];
 
 export const seedAssignedWorkouts = [
-  { client_email: "avery@coachos.dev", template_name: "Upper Power", date: "2024-04-08" },
-  { client_email: "morgan@coachos.dev", template_name: "AMRAP 16", date: "2024-04-09" },
+  {
+    client_email: "avery@coachos.dev",
+    template_name: "Upper Power",
+    date: "2024-04-08",
+  },
+  {
+    client_email: "morgan@coachos.dev",
+    template_name: "AMRAP 16",
+    date: "2024-04-09",
+  },
 ];

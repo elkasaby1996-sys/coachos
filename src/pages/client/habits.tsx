@@ -3,13 +3,22 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ClientReminders } from "../../components/common/client-reminders";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
-import { addDaysToDateString, diffDays, getTodayInTimezone } from "../../lib/date-utils";
+import {
+  addDaysToDateString,
+  diffDays,
+  getTodayInTimezone,
+} from "../../lib/date-utils";
 
 type ClientProfile = {
   id: string;
@@ -77,11 +86,17 @@ const getErrorDetails = (error: unknown) => {
   if (!error) return { code: null, message: "Something went wrong." };
   if (error instanceof Error) {
     const err = error as Error & { code?: string | null };
-    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
+    return {
+      code: err.code ?? null,
+      message: err.message ?? "Something went wrong.",
+    };
   }
   if (typeof error === "object") {
     const err = error as { code?: string | null; message?: string | null };
-    return { code: err.code ?? null, message: err.message ?? "Something went wrong." };
+    return {
+      code: err.code ?? null,
+      message: err.message ?? "Something went wrong.",
+    };
   }
   return { code: null, message: "Something went wrong." };
 };
@@ -90,12 +105,18 @@ export function ClientHabitsPage() {
   const { session } = useAuth();
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [formState, setFormState] = useState<HabitFormState>(emptyForm);
-  const [initialFormState, setInitialFormState] = useState<HabitFormState>(emptyForm);
+  const [initialFormState, setInitialFormState] =
+    useState<HabitFormState>(emptyForm);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<{ code?: string | null; message?: string | null } | null>(null);
+  const [saveError, setSaveError] = useState<{
+    code?: string | null;
+    message?: string | null;
+  } | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,7 +141,10 @@ export function ClientHabitsPage() {
 
   const clientId = clientQuery.data?.id ?? null;
   const clientTimezone = clientQuery.data?.timezone ?? null;
-  const todayStr = useMemo(() => getTodayInTimezone(clientTimezone), [clientTimezone]);
+  const todayStr = useMemo(
+    () => getTodayInTimezone(clientTimezone),
+    [clientTimezone],
+  );
 
   useEffect(() => {
     if (!selectedDate && todayStr) {
@@ -164,8 +188,9 @@ export function ClientHabitsPage() {
     if (habitLogQuery.isLoading) return;
     const log = habitLogQuery.data;
     if (!log) {
-      const unitPreference = clientQuery.data?.unit_preference?.toLowerCase() === "imperial";
-      const nextState = {
+      const unitPreference =
+        clientQuery.data?.unit_preference?.toLowerCase() === "imperial";
+      const nextState: HabitFormState = {
         ...emptyForm,
         weight_unit: unitPreference ? "lb" : "kg",
       };
@@ -176,13 +201,13 @@ export function ClientHabitsPage() {
       return;
     }
 
-    const nextState = {
+    const nextState: HabitFormState = {
       calories: log.calories ? String(log.calories) : "",
       protein_g: log.protein_g ? String(log.protein_g) : "",
       carbs_g: log.carbs_g ? String(log.carbs_g) : "",
       fats_g: log.fats_g ? String(log.fats_g) : "",
       weight_value: log.weight_value ? String(log.weight_value) : "",
-      weight_unit: (log.weight_unit as "kg" | "lb") || "kg",
+      weight_unit: log.weight_unit === "lb" ? "lb" : "kg",
       sleep_hours: log.sleep_hours ? String(log.sleep_hours) : "",
       steps: log.steps ? String(log.steps) : "",
       energy: log.energy ? String(log.energy) : "5",
@@ -194,7 +219,11 @@ export function ClientHabitsPage() {
     setInitialFormState(nextState);
     setLastSavedAt(log.updated_at ?? log.created_at ?? null);
     setSaveError(null);
-  }, [habitLogQuery.data, habitLogQuery.isLoading, clientQuery.data?.unit_preference]);
+  }, [
+    habitLogQuery.data,
+    habitLogQuery.isLoading,
+    clientQuery.data?.unit_preference,
+  ]);
 
   const daysAgo = useMemo(() => {
     if (!selectedDate || !todayStr) return 0;
@@ -217,14 +246,19 @@ export function ClientHabitsPage() {
     notes: state.notes.trim(),
   });
   const isDirty = useMemo(() => {
-    return JSON.stringify(normalizeForm(formState)) !== JSON.stringify(normalizeForm(initialFormState));
+    return (
+      JSON.stringify(normalizeForm(formState)) !==
+      JSON.stringify(normalizeForm(initialFormState))
+    );
   }, [formState, initialFormState]);
 
   const trends = useMemo(() => {
     const logs = trendsQuery.data ?? [];
     const daysLogged = logs.length;
     const avg = (values: Array<number | null | undefined>) => {
-      const filtered = values.filter((value) => typeof value === "number") as number[];
+      const filtered = values.filter(
+        (value) => typeof value === "number",
+      ) as number[];
       if (filtered.length === 0) return null;
       const sum = filtered.reduce((acc, value) => acc + value, 0);
       return Math.round(sum / filtered.length);
@@ -234,15 +268,25 @@ export function ClientHabitsPage() {
     const avgSleep = avg(logs.map((log) => log.sleep_hours ?? null));
     const avgProtein = avg(logs.map((log) => log.protein_g ?? null));
 
-    const weightLogs = logs.filter((log) => typeof log.weight_value === "number");
-    const weightUnit = weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
+    const weightLogs = logs.filter(
+      (log) => typeof log.weight_value === "number",
+    );
+    const weightUnit =
+      weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
     const weightChange =
       weightLogs.length >= 2
         ? (weightLogs[weightLogs.length - 1].weight_value ?? 0) -
           (weightLogs[0].weight_value ?? 0)
         : null;
 
-    return { daysLogged, avgSteps, avgSleep, avgProtein, weightChange, weightUnit };
+    return {
+      daysLogged,
+      avgSteps,
+      avgSleep,
+      avgProtein,
+      weightChange,
+      weightUnit,
+    };
   }, [trendsQuery.data]);
 
   const handleSave = async () => {
@@ -284,7 +328,10 @@ export function ClientHabitsPage() {
       console.log("HABIT_LOG_SAVE_ERROR", error);
       setToastVariant("error");
       setToastMessage(error.message ?? "Failed to save habits.");
-      setSaveError({ code: error.code ?? null, message: error.message ?? null });
+      setSaveError({
+        code: error.code ?? null,
+        message: error.message ?? null,
+      });
       setSaveStatus("idle");
       return;
     }
@@ -298,7 +345,8 @@ export function ClientHabitsPage() {
     await trendsQuery.refetch();
   };
 
-  const weightUnitLabel = formState.weight_unit === "lb" ? "Weight (lb)" : "Weight (kg)";
+  const weightUnitLabel =
+    formState.weight_unit === "lb" ? "Weight (lb)" : "Weight (kg)";
   const queryError = habitLogQuery.error ?? trendsQuery.error;
   const queryErrorDetails = queryError ? getErrorDetails(queryError) : null;
   const lastSavedLabel = lastSavedAt
@@ -324,10 +372,15 @@ export function ClientHabitsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/60 px-4 py-3">
         <div className="text-sm text-muted-foreground">
-          Editing date: <span className="font-medium text-foreground">{selectedDate || todayStr}</span>
+          Editing date:{" "}
+          <span className="font-medium text-foreground">
+            {selectedDate || todayStr}
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-muted-foreground">Date</label>
+          <label className="text-xs font-semibold text-muted-foreground">
+            Date
+          </label>
           <Input
             type="date"
             value={selectedDate}
@@ -339,8 +392,14 @@ export function ClientHabitsPage() {
       <ClientReminders clientId={clientId} timezone={clientTimezone} />
 
       {toastMessage ? (
-        <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
-          <AlertTitle>{toastVariant === "error" ? "Error" : "Saved"}</AlertTitle>
+        <Alert
+          className={
+            toastVariant === "error" ? "border-danger/30" : "border-emerald-200"
+          }
+        >
+          <AlertTitle>
+            {toastVariant === "error" ? "Error" : "Saved"}
+          </AlertTitle>
           <AlertDescription>{toastMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -392,7 +451,8 @@ export function ClientHabitsPage() {
           <div>
             <CardTitle>Daily log</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Select a date to edit. You can change logs from today or the previous 6 days.
+              Select a date to edit. You can change logs from today or the
+              previous 6 days.
             </p>
           </div>
         </CardHeader>
@@ -416,56 +476,77 @@ export function ClientHabitsPage() {
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Calories</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Calories
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.calories}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, calories: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        calories: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Protein (g)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Protein (g)
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.protein_g}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, protein_g: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        protein_g: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Carbs (g)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Carbs (g)
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.carbs_g}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, carbs_g: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        carbs_g: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Fats (g)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Fats (g)
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.fats_g}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, fats_g: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        fats_g: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Recommended today: prioritize calories + protein before fine-tuning carbs/fats.
+                Recommended today: prioritize calories + protein before
+                fine-tuning carbs/fats.
               </p>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -478,13 +559,18 @@ export function ClientHabitsPage() {
                     min="0"
                     value={formState.weight_value}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, weight_value: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        weight_value: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Weight unit</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Weight unit
+                  </label>
                   <select
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={formState.weight_unit}
@@ -510,19 +596,27 @@ export function ClientHabitsPage() {
                     step="0.1"
                     value={formState.sleep_hours}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, sleep_hours: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        sleep_hours: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Steps</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Steps
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formState.steps}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, steps: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        steps: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
@@ -531,40 +625,55 @@ export function ClientHabitsPage() {
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Energy (1-10)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Energy (1-10)
+                  </label>
                   <Input
                     type="number"
                     min="1"
                     max="10"
                     value={formState.energy}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, energy: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        energy: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Hunger (1-10)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Hunger (1-10)
+                  </label>
                   <Input
                     type="number"
                     min="1"
                     max="10"
                     value={formState.hunger}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, hunger: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        hunger: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">Stress (1-10)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Stress (1-10)
+                  </label>
                   <Input
                     type="number"
                     min="1"
                     max="10"
                     value={formState.stress}
                     onChange={(event) =>
-                      setFormState((prev) => ({ ...prev, stress: event.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        stress: event.target.value,
+                      }))
                     }
                     disabled={!isEditable}
                   />
@@ -572,12 +681,17 @@ export function ClientHabitsPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">Notes</label>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Notes
+                </label>
                 <textarea
                   className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={formState.notes}
                   onChange={(event) =>
-                    setFormState((prev) => ({ ...prev, notes: event.target.value }))
+                    setFormState((prev) => ({
+                      ...prev,
+                      notes: event.target.value,
+                    }))
                   }
                   disabled={!isEditable}
                 />
@@ -585,7 +699,9 @@ export function ClientHabitsPage() {
 
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-muted-foreground">
-                  {lastSavedLabel ? `Last saved at ${lastSavedLabel}` : "Not saved yet"}
+                  {lastSavedLabel
+                    ? `Last saved at ${lastSavedLabel}`
+                    : "Not saved yet"}
                 </div>
                 <Button
                   onClick={handleSave}
@@ -607,7 +723,9 @@ export function ClientHabitsPage() {
       <Card>
         <CardHeader>
           <CardTitle>7-day trends</CardTitle>
-          <p className="text-sm text-muted-foreground">Quick snapshot of the last week.</p>
+          <p className="text-sm text-muted-foreground">
+            Quick snapshot of the last week.
+          </p>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {trendsQuery.isLoading ? (
@@ -627,7 +745,9 @@ export function ClientHabitsPage() {
               <div className="rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Avg steps</p>
                 <p className="text-lg font-semibold">
-                  {trends.avgSteps !== null ? trends.avgSteps.toLocaleString() : "—"}
+                  {trends.avgSteps !== null
+                    ? trends.avgSteps.toLocaleString()
+                    : "—"}
                 </p>
               </div>
               <div className="rounded-lg border border-border p-3">

@@ -1,13 +1,29 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/coachos/skeleton";
 import { Input } from "../../components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import {
   Apple,
   AlertTriangle,
@@ -49,12 +65,18 @@ import {
   StatusPill,
 } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
-import { getSupabaseErrorDetails, getSupabaseErrorMessage } from "../../lib/supabase-errors";
+import {
+  getSupabaseErrorDetails,
+  getSupabaseErrorMessage,
+} from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 import { cn } from "../../lib/utils";
 import { getProfileCompletion } from "../../lib/profile-completion";
-import { getCoachActionLabel, logCoachActivity } from "../../lib/coach-activity";
+import {
+  getCoachActionLabel,
+  logCoachActivity,
+} from "../../lib/coach-activity";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
@@ -71,7 +93,10 @@ const tabs = [
   "habits",
 ] as const;
 
-const workbenchTabs: Array<{ value: Exclude<(typeof tabs)[number], "overview">; label: string }> = [
+const workbenchTabs: Array<{
+  value: Exclude<(typeof tabs)[number], "overview">;
+  label: string;
+}> = [
   { value: "workout", label: "Workout" },
   { value: "nutrition", label: "Nutrition" },
   { value: "habits", label: "Habits" },
@@ -82,7 +107,10 @@ const workbenchTabs: Array<{ value: Exclude<(typeof tabs)[number], "overview">; 
   { value: "baseline", label: "Baseline" },
 ];
 
-const workbenchTabIcons: Record<Exclude<(typeof tabs)[number], "overview">, ComponentType<{ className?: string }>> = {
+const workbenchTabIcons: Record<
+  Exclude<(typeof tabs)[number], "overview">,
+  ComponentType<{ className?: string }>
+> = {
   workout: Rocket,
   nutrition: Apple,
   habits: Flame,
@@ -103,7 +131,7 @@ const formatDateKey = (date: Date) => {
 const computeNextCheckinDate = (
   startDate: string | null | undefined,
   frequency: string | null | undefined,
-  fromDate: string
+  fromDate: string,
 ) => {
   if (!startDate) return null;
   const start = new Date(`${startDate}T00:00:00Z`);
@@ -132,13 +160,18 @@ const diffDays = (start: string, end: string) => {
 
 const getErrorMessage = (error: unknown) => getSupabaseErrorMessage(error);
 
-const getFriendlyErrorMessage = () => "Unable to load data right now. Please try again.";
+const getFriendlyErrorMessage = () =>
+  "Unable to load data right now. Please try again.";
 
 const getErrorDetails = (error: unknown) => getSupabaseErrorDetails(error);
 
-const formatListValue = (value: string[] | string | null | undefined, fallback: string) => {
+const formatListValue = (
+  value: string[] | string | null | undefined,
+  fallback: string,
+) => {
   if (!value) return fallback;
-  if (Array.isArray(value)) return value.length > 0 ? value.join(", ") : fallback;
+  if (Array.isArray(value))
+    return value.length > 0 ? value.join(", ") : fallback;
   return value;
 };
 
@@ -167,6 +200,11 @@ const checkinFrequencyOptions = [
 const checkinTemplateStatusMap = {
   default: { label: "Default", variant: "muted" },
   override: { label: "Override", variant: "warning" },
+} as const;
+
+const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
 };
 
 type PtClientProfile = {
@@ -359,7 +397,11 @@ type ClientProgramRow = {
   program_template_id: string | null;
   is_active?: boolean | null;
   updated_at?: string | null;
-  program_template: { id: string; name: string | null; weeks_count: number | null } | null;
+  program_template: {
+    id: string;
+    name: string | null;
+    weeks_count: number | null;
+  } | null;
 };
 
 type ProgramOverrideRow = {
@@ -376,6 +418,21 @@ type CheckinAnswerRow = {
   value_text: string | null;
   value_number: number | null;
   question: { question_text: string | null; prompt: string | null } | null;
+};
+
+type UpcomingWorkoutRow = {
+  id: string;
+  status: string | null;
+  day_type?: string | null;
+  scheduled_date: string | null;
+  completed_at: string | null;
+  workout_template_id: string | null;
+  workout_template: {
+    id: string | null;
+    name: string | null;
+    workout_type_tag?: string | null;
+  } | null;
+  assigned_workout_exercises?: AssignedWorkoutExerciseRow[];
 };
 
 type HabitTrends = {
@@ -412,7 +469,9 @@ export function PtClientDetailPage() {
   }, [location.search]);
   const [active, setActive] = useState<(typeof tabs)[number]>(initialTab);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
 
   useEffect(() => {
     setActive(initialTab);
@@ -423,7 +482,10 @@ export function PtClientDetailPage() {
     const current = params.get("tab") ?? "workout";
     if (current === active) return;
     params.set("tab", active);
-    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    navigate(
+      { pathname: location.pathname, search: params.toString() },
+      { replace: true },
+    );
   }, [active, location.pathname, location.search, navigate]);
 
   useEffect(() => {
@@ -438,7 +500,6 @@ export function PtClientDetailPage() {
     }
   }, [active]);
 
-
   const setActiveTab = (tab: string) => {
     if (!tabs.includes(tab as (typeof tabs)[number])) return;
     setActive(tab as (typeof tabs)[number]);
@@ -450,46 +511,68 @@ export function PtClientDetailPage() {
   >("idle");
   const [checkinFrequency, setCheckinFrequency] = useState("weekly");
   const [checkinStartDate, setCheckinStartDate] = useState("");
-  const [scheduledDate, setScheduledDate] = useState(() => formatDateKey(new Date()));
-  const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [scheduledDate, setScheduledDate] = useState(() =>
+    formatDateKey(new Date()),
+  );
+  const [assignStatus, setAssignStatus] = useState<"idle" | "saving" | "error">(
+    "idle",
+  );
   const [assignMessage, setAssignMessage] = useState<string | null>(null);
   const [selectedProgramId, setSelectedProgramId] = useState("");
-  const [programStartDate, setProgramStartDate] = useState(() => formatDateKey(new Date()));
-  const [programStatus, setProgramStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [programStartDate, setProgramStartDate] = useState(() =>
+    formatDateKey(new Date()),
+  );
+  const [programStatus, setProgramStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [programMessage, setProgramMessage] = useState<string | null>(null);
-  const [unassignStatus, setUnassignStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [unassignStatus, setUnassignStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
   const [overrideTemplateId, setOverrideTemplateId] = useState("");
   const [overrideIsRest, setOverrideIsRest] = useState(false);
   const [overrideNotes, setOverrideNotes] = useState("");
-  const [overrideStatus, setOverrideStatus] = useState<"idle" | "saving">("idle");
+  const [overrideStatus, setOverrideStatus] = useState<"idle" | "saving">(
+    "idle",
+  );
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editWorkoutId, setEditWorkoutId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState(() => formatDateKey(new Date()));
   const [editTemplateId, setEditTemplateId] = useState("");
-  const [editStatus, setEditStatus] = useState<"planned" | "completed" | "skipped">("planned");
-  const [clientProfile, setClientProfile] = useState<PtClientProfile | null>(null);
+  const [editStatus, setEditStatus] = useState<
+    "planned" | "completed" | "skipped"
+  >("planned");
+  const [clientProfile, setClientProfile] = useState<PtClientProfile | null>(
+    null,
+  );
   const [adminTrainingType, setAdminTrainingType] = useState("");
   const [adminTags, setAdminTags] = useState("");
   const [adminStatus, setAdminStatus] = useState<"idle" | "saving">("idle");
   const [baselineNotes, setBaselineNotes] = useState("");
-  const [baselineNotesStatus, setBaselineNotesStatus] = useState<"idle" | "saving" | "error">(
-    "idle"
-  );
-  const [baselineNotesMessage, setBaselineNotesMessage] = useState<string | null>(null);
+  const [baselineNotesStatus, setBaselineNotesStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
+  const [baselineNotesMessage, setBaselineNotesMessage] = useState<
+    string | null
+  >(null);
   const baselineReviewLoggedRef = useRef<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [selectedCheckin, setSelectedCheckin] = useState<CheckinRow | null>(null);
-  const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "saving" | "error">(
-    "idle"
+  const [selectedCheckin, setSelectedCheckin] = useState<CheckinRow | null>(
+    null,
   );
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
-  const [profileEditStatus, setProfileEditStatus] = useState<"idle" | "saving">("idle");
+  const [profileEditStatus, setProfileEditStatus] = useState<"idle" | "saving">(
+    "idle",
+  );
   const [profileEditForm, setProfileEditForm] = useState({
     display_name: "",
     goal: "",
@@ -504,11 +587,22 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("checkin_answers")
         .select(
-          "id, value_text, value_number, question:checkin_questions(question_text, prompt)"
+          "id, value_text, value_number, question:checkin_questions(question_text, prompt)",
         )
         .eq("checkin_id", selectedCheckin?.id ?? "");
       if (error) throw error;
-      return (data ?? []) as CheckinAnswerRow[];
+      const rows = (data ?? []) as Array<
+        Omit<CheckinAnswerRow, "question"> & {
+          question:
+            | CheckinAnswerRow["question"]
+            | CheckinAnswerRow["question"][]
+            | null;
+        }
+      >;
+      return rows.map((row) => ({
+        ...row,
+        question: getSingleRelation(row.question),
+      }));
     },
   });
   const selectedCheckinPhotosQuery = useQuery({
@@ -526,9 +620,9 @@ export function PtClientDetailPage() {
   const [loadsOpen, setLoadsOpen] = useState(false);
   const [loadsError, setLoadsError] = useState<string | null>(null);
   const [loadsStatus, setLoadsStatus] = useState<"idle" | "saving">("idle");
-  const [selectedAssignedWorkoutId, setSelectedAssignedWorkoutId] = useState<string | null>(
-    null
-  );
+  const [selectedAssignedWorkoutId, setSelectedAssignedWorkoutId] = useState<
+    string | null
+  >(null);
   const [assignedExercises, setAssignedExercises] = useState<
     Array<
       AssignedWorkoutExerciseRow & {
@@ -546,7 +640,9 @@ export function PtClientDetailPage() {
   const [isOverviewCollapsed, setIsOverviewCollapsed] = useState(true);
   const [sessionDetailOpen, setSessionDetailOpen] = useState(false);
   const [isWorkbenchCollapsed, setIsWorkbenchCollapsed] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    null,
+  );
   const [checkinsPage, setCheckinsPage] = useState(0);
   const checkinsPageSize = 12;
   const [checkinsList, setCheckinsList] = useState<CheckinRow[]>([]);
@@ -554,8 +650,14 @@ export function PtClientDetailPage() {
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
   const todayKey = useMemo(() => formatDateKey(today), [today]);
-  const scheduleStartKey = useMemo(() => addDaysToDateString(todayKey, -6), [todayKey]);
-  const scheduleEndKey = useMemo(() => addDaysToDateString(todayKey, 7), [todayKey]);
+  const scheduleStartKey = useMemo(
+    () => addDaysToDateString(todayKey, -6),
+    [todayKey],
+  );
+  const scheduleEndKey = useMemo(
+    () => addDaysToDateString(todayKey, 7),
+    [todayKey],
+  );
   const planEndKey = useMemo(() => {
     const date = new Date(today);
     date.setDate(date.getDate() + 14);
@@ -583,7 +685,10 @@ export function PtClientDetailPage() {
         .eq("id", workspaceQuery.data ?? "")
         .maybeSingle();
       if (error) throw error;
-      return data as { id: string; default_checkin_template_id: string | null } | null;
+      return data as {
+        id: string;
+        default_checkin_template_id: string | null;
+      } | null;
     },
   });
 
@@ -608,7 +713,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at"
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
         )
         .eq("id", clientId ?? "")
         .eq("workspace_id", workspaceQuery.data ?? "")
@@ -626,19 +731,72 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("workout_sessions")
         .select(
-          "id, assigned_workout_id, started_at, completed_at, created_at, client_notes, assigned_workout:assigned_workouts(id, status, workout_template:workout_templates(id, name))"
+          "id, assigned_workout_id, started_at, completed_at, created_at, client_notes, assigned_workout:assigned_workouts(id, status, workout_template:workout_templates(id, name))",
         )
         .eq("client_id", clientId ?? "")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
-      return (data ?? []) as PtWorkoutSessionRow[];
+      const rows = (data ?? []) as Array<
+        Omit<PtWorkoutSessionRow, "assigned_workout"> & {
+          assigned_workout:
+            | (Omit<
+                NonNullable<PtWorkoutSessionRow["assigned_workout"]>,
+                "workout_template"
+              > & {
+                workout_template:
+                  | NonNullable<
+                      NonNullable<
+                        PtWorkoutSessionRow["assigned_workout"]
+                      >["workout_template"]
+                    >
+                  | NonNullable<
+                      NonNullable<
+                        PtWorkoutSessionRow["assigned_workout"]
+                      >["workout_template"]
+                    >[]
+                  | null;
+              })
+            | (Omit<
+                NonNullable<PtWorkoutSessionRow["assigned_workout"]>,
+                "workout_template"
+              > & {
+                workout_template:
+                  | NonNullable<
+                      NonNullable<
+                        PtWorkoutSessionRow["assigned_workout"]
+                      >["workout_template"]
+                    >
+                  | NonNullable<
+                      NonNullable<
+                        PtWorkoutSessionRow["assigned_workout"]
+                      >["workout_template"]
+                    >[]
+                  | null;
+              })[]
+            | null;
+        }
+      >;
+      return rows.map((row) => {
+        const assignedWorkout = getSingleRelation(row.assigned_workout);
+        return {
+          ...row,
+          assigned_workout: assignedWorkout
+            ? {
+                ...assignedWorkout,
+                workout_template: getSingleRelation(
+                  assignedWorkout.workout_template,
+                ),
+              }
+            : null,
+        };
+      });
     },
   });
 
   const ptSessionIds = useMemo(
     () => (ptSessionsQuery.data ?? []).map((row) => row.id),
-    [ptSessionsQuery.data]
+    [ptSessionsQuery.data],
   );
 
   const ptSessionVolumeLogsQuery = useQuery({
@@ -662,14 +820,20 @@ export function PtClientDetailPage() {
       const reps = typeof log.reps === "number" ? log.reps : null;
       const weight = typeof log.weight === "number" ? log.weight : null;
       if (!reps || !weight) return;
-      map.set(log.workout_session_id, (map.get(log.workout_session_id) ?? 0) + reps * weight);
+      map.set(
+        log.workout_session_id,
+        (map.get(log.workout_session_id) ?? 0) + reps * weight,
+      );
     });
     return map;
   }, [ptSessionVolumeLogsQuery.data]);
 
   const selectedSession = useMemo(
-    () => (ptSessionsQuery.data ?? []).find((session) => session.id === selectedSessionId) ?? null,
-    [ptSessionsQuery.data, selectedSessionId]
+    () =>
+      (ptSessionsQuery.data ?? []).find(
+        (session) => session.id === selectedSessionId,
+      ) ?? null,
+    [ptSessionsQuery.data, selectedSessionId],
   );
 
   const sessionDetailQuery = useQuery({
@@ -679,18 +843,32 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("workout_set_logs")
         .select(
-          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, exercise:exercises(id, name)"
+          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, exercise:exercises(id, name)",
         )
         .eq("workout_session_id", selectedSessionId ?? "")
         .order("exercise_id", { ascending: true })
         .order("set_number", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as PtWorkoutSessionLogRow[];
+      const rows = (data ?? []) as Array<
+        Omit<PtWorkoutSessionLogRow, "exercise"> & {
+          exercise:
+            | PtWorkoutSessionLogRow["exercise"]
+            | PtWorkoutSessionLogRow["exercise"][]
+            | null;
+        }
+      >;
+      return rows.map((row) => ({
+        ...row,
+        exercise: getSingleRelation(row.exercise),
+      }));
     },
   });
 
   const sessionDetailByExercise = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; rows: PtWorkoutSessionLogRow[] }>();
+    const map = new Map<
+      string,
+      { id: string; name: string; rows: PtWorkoutSessionLogRow[] }
+    >();
     (sessionDetailQuery.data ?? []).forEach((log) => {
       const exerciseId = log.exercise_id ?? "unknown";
       const name = log.exercise?.name ?? "Exercise";
@@ -704,15 +882,15 @@ export function PtClientDetailPage() {
 
   const habitsToday = useMemo(
     () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
-    [clientQuery.data?.timezone]
+    [clientQuery.data?.timezone],
   );
   const habitsStart = useMemo(
     () => addDaysToDateString(habitsToday, -6),
-    [habitsToday]
+    [habitsToday],
   );
   const habitsWeekStart = useMemo(
     () => addDaysToDateString(habitsToday, -6),
-    [habitsToday]
+    [habitsToday],
   );
 
   useEffect(() => {
@@ -732,12 +910,16 @@ export function PtClientDetailPage() {
   }, [checkinTemplatesQuery.data]);
 
   const assignedCheckinTemplate =
-    availableCheckinTemplates.find((template) => template.id === checkinTemplateId) ?? null;
+    availableCheckinTemplates.find(
+      (template) => template.id === checkinTemplateId,
+    ) ?? null;
   const defaultCheckinTemplate =
     availableCheckinTemplates.find(
-      (template) => template.id === workspaceDetailsQuery.data?.default_checkin_template_id
+      (template) =>
+        template.id === workspaceDetailsQuery.data?.default_checkin_template_id,
     ) ?? null;
-  const effectiveCheckinTemplate = assignedCheckinTemplate ?? defaultCheckinTemplate ?? null;
+  const effectiveCheckinTemplate =
+    assignedCheckinTemplate ?? defaultCheckinTemplate ?? null;
   const checkinTemplateStatusKey = checkinTemplateId ? "override" : "default";
 
   const templatesQuery = useQuery({
@@ -776,7 +958,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("client_programs")
         .select(
-          "id, start_date, program_template_id, is_active, program_template:program_templates(id, name, weeks_count)"
+          "id, start_date, program_template_id, is_active, program_template:program_templates(id, name, weeks_count)",
         )
         .eq("client_id", clientId ?? "")
         .eq("is_active", true)
@@ -798,7 +980,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("client_programs")
         .select(
-          "id, start_date, program_template_id, is_active, updated_at, program_template:program_templates(id, name, weeks_count)"
+          "id, start_date, program_template_id, is_active, updated_at, program_template:program_templates(id, name, weeks_count)",
         )
         .eq("client_id", clientId ?? "")
         .eq("is_active", false)
@@ -813,20 +995,36 @@ export function PtClientDetailPage() {
   const pausedProgram = pausedProgramQuery.data ?? null;
 
   const programOverridesQuery = useQuery({
-    queryKey: ["client-program-overrides", activeProgram?.id, todayKey, planEndKey],
+    queryKey: [
+      "client-program-overrides",
+      activeProgram?.id,
+      todayKey,
+      planEndKey,
+    ],
     enabled: !!activeProgram?.id && active === "workout",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_program_overrides")
         .select(
-          "id, override_date, workout_template_id, is_rest, notes, workout_template:workout_templates(id, name)"
+          "id, override_date, workout_template_id, is_rest, notes, workout_template:workout_templates(id, name)",
         )
         .eq("client_program_id", activeProgram?.id ?? "")
         .gte("override_date", todayKey)
         .lte("override_date", planEndKey)
         .order("override_date", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as ProgramOverrideRow[];
+      const rows = (data ?? []) as Array<
+        Omit<ProgramOverrideRow, "workout_template"> & {
+          workout_template:
+            | ProgramOverrideRow["workout_template"]
+            | ProgramOverrideRow["workout_template"][]
+            | null;
+        }
+      >;
+      return rows.map((row) => ({
+        ...row,
+        workout_template: getSingleRelation(row.workout_template),
+      }));
     },
   });
 
@@ -847,20 +1045,31 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag)"
+          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag)",
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
         .lte("scheduled_date", planEndKey)
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      const rows = (data ?? []) as Array<
+        Omit<UpcomingWorkoutRow, "workout_template"> & {
+          workout_template:
+            | UpcomingWorkoutRow["workout_template"]
+            | UpcomingWorkoutRow["workout_template"][]
+            | null;
+        }
+      >;
+      return rows.map((row) => ({
+        ...row,
+        workout_template: getSingleRelation(row.workout_template),
+      }));
     },
   });
 
   const upcomingAssignedWorkoutIds = useMemo(
     () => (upcomingQuery.data ?? []).map((workout) => workout.id),
-    [upcomingQuery.data]
+    [upcomingQuery.data],
   );
 
   const workoutSessionsQuery = useQuery({
@@ -878,7 +1087,7 @@ export function PtClientDetailPage() {
 
   const workoutSessionIds = useMemo(
     () => (workoutSessionsQuery.data ?? []).map((row) => row.id),
-    [workoutSessionsQuery.data]
+    [workoutSessionsQuery.data],
   );
 
   const workoutSessionIdMap = useMemo(() => {
@@ -898,7 +1107,9 @@ export function PtClientDetailPage() {
       if (workoutSessionIds.length === 0) return [];
       const { data, error } = await supabase
         .from("workout_set_logs")
-        .select("id, workout_session_id, exercise_id, set_number, reps, weight, rpe, created_at")
+        .select(
+          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, created_at",
+        )
         .in("workout_session_id", workoutSessionIds)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -929,12 +1140,23 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
         .select(
-          "id, assigned_workout_id, load_notes, is_completed, sets, reps, rest_seconds, tempo, rpe, notes, exercise:exercises(id, name)"
+          "id, assigned_workout_id, load_notes, is_completed, sets, reps, rest_seconds, tempo, rpe, notes, exercise:exercises(id, name)",
         )
         .eq("assigned_workout_id", selectedAssignedWorkoutId ?? "")
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as AssignedWorkoutExerciseRow[];
+      const rows = (data ?? []) as Array<
+        Omit<AssignedWorkoutExerciseRow, "exercise"> & {
+          exercise:
+            | AssignedWorkoutExerciseRow["exercise"]
+            | AssignedWorkoutExerciseRow["exercise"][]
+            | null;
+        }
+      >;
+      return rows.map((row) => ({
+        ...row,
+        exercise: getSingleRelation(row.exercise),
+      }));
     },
   });
 
@@ -972,7 +1194,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("baseline_metrics")
         .select(
-          "weight_kg, height_cm, body_fat_pct, waist_cm, chest_cm, hips_cm, thigh_cm, arm_cm, resting_hr, vo2max"
+          "weight_kg, height_cm, body_fat_pct, waist_cm, chest_cm, hips_cm, thigh_cm, arm_cm, resting_hr, vo2max",
         )
         .eq("baseline_id", baselineId ?? "")
         .maybeSingle();
@@ -987,7 +1209,9 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_values")
-        .select("value_number, value_text, template:baseline_marker_templates(name, unit_label)")
+        .select(
+          "value_number, value_text, template:baseline_marker_templates(name, unit_label)",
+        )
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       const rows = (data ?? []) as Array<{
@@ -1002,8 +1226,8 @@ export function PtClientDetailPage() {
         value_number: row.value_number ?? null,
         value_text: row.value_text ?? null,
         template: Array.isArray(row.template)
-          ? row.template[0] ?? null
-          : row.template ?? null,
+          ? (row.template[0] ?? null)
+          : (row.template ?? null),
       })) as BaselineMarkerRow[];
     },
   });
@@ -1027,7 +1251,9 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const base = supabase
         .from("checkins")
-        .select("id, week_ending_saturday, submitted_at, pt_feedback, created_at")
+        .select(
+          "id, week_ending_saturday, submitted_at, pt_feedback, created_at",
+        )
         .eq("client_id", clientId ?? "")
         .order("week_ending_saturday", { ascending: false });
       if (active === "overview") {
@@ -1037,7 +1263,7 @@ export function PtClientDetailPage() {
       }
       const { data, error } = await base.range(
         checkinsPage * checkinsPageSize,
-        checkinsPage * checkinsPageSize + checkinsPageSize - 1
+        checkinsPage * checkinsPageSize + checkinsPageSize - 1,
       );
       if (error) throw error;
       return (data ?? []) as CheckinRow[];
@@ -1066,18 +1292,23 @@ export function PtClientDetailPage() {
     });
   }, [checkinsPage, checkinsQuery.data, active]);
 
-  const checkinsRows = active === "checkins" ? checkinsList : checkinsQuery.data ?? [];
+  const checkinsRows =
+    active === "checkins" ? checkinsList : (checkinsQuery.data ?? []);
   const checkinsCanLoadMore =
-    active === "checkins" && (checkinsQuery.data?.length ?? 0) === checkinsPageSize;
+    active === "checkins" &&
+    (checkinsQuery.data?.length ?? 0) === checkinsPageSize;
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
-    enabled: !!clientId && !!habitsToday && (active === "habits" || active === "overview"),
+    enabled:
+      !!clientId &&
+      !!habitsToday &&
+      (active === "habits" || active === "overview"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
         .select(
-          "id, log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, sleep_hours, steps, energy, hunger, stress, notes"
+          "id, log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, sleep_hours, steps, energy, hunger, stress, notes",
         )
         .eq("client_id", clientId ?? "")
         .gte("log_date", habitsStart)
@@ -1104,7 +1335,10 @@ export function PtClientDetailPage() {
 
   const habitsStreakQuery = useQuery({
     queryKey: ["pt-client-habits-streak", clientId, habitsToday],
-    enabled: !!clientId && !!habitsToday && (active === "habits" || active === "overview"),
+    enabled:
+      !!clientId &&
+      !!habitsToday &&
+      (active === "habits" || active === "overview"),
     queryFn: async () => {
       const streakStart = addDaysToDateString(habitsToday, -29);
       const { data, error } = await supabase
@@ -1134,7 +1368,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("habit_logs")
         .select(
-          "id, log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, sleep_hours, steps, energy, hunger, stress, notes"
+          "id, log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, sleep_hours, steps, energy, hunger, stress, notes",
         )
         .eq("client_id", clientId ?? "")
         .eq("log_date", selectedHabitDate)
@@ -1171,7 +1405,7 @@ export function PtClientDetailPage() {
         p_client_id: clientId,
         p_scheduled_date: scheduledDate,
         p_workout_template_id: selectedTemplateId,
-      }
+      },
     );
 
     if (error) {
@@ -1206,7 +1440,13 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
-      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceQuery.data ?? null,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -1247,8 +1487,12 @@ export function PtClientDetailPage() {
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
-    await queryClient.invalidateQueries({ queryKey: ["client-program-active", clientId] });
-    await queryClient.invalidateQueries({ queryKey: ["client-program-paused", clientId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-active", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-paused", clientId],
+    });
     await queryClient.invalidateQueries({
       queryKey: [
         "pt-client-schedule-week",
@@ -1260,7 +1504,12 @@ export function PtClientDetailPage() {
     });
     await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
     await queryClient.invalidateQueries({
-      queryKey: ["client-program-overrides", activeProgram?.id, todayKey, planEndKey],
+      queryKey: [
+        "client-program-overrides",
+        activeProgram?.id,
+        todayKey,
+        planEndKey,
+      ],
     });
   };
 
@@ -1268,8 +1517,12 @@ export function PtClientDetailPage() {
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
-    await queryClient.invalidateQueries({ queryKey: ["client-program-active", clientId] });
-    await queryClient.invalidateQueries({ queryKey: ["client-program-paused", clientId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-active", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-paused", clientId],
+    });
     await queryClient.invalidateQueries({
       queryKey: [
         "pt-client-schedule-week",
@@ -1321,7 +1574,8 @@ export function PtClientDetailPage() {
   };
 
   const handleResumeProgram = async () => {
-    if (!clientId || !pausedProgram?.id || !pausedProgram.program_template_id) return;
+    if (!clientId || !pausedProgram?.id || !pausedProgram.program_template_id)
+      return;
     setProgramStatus("saving");
     setProgramMessage(null);
     try {
@@ -1343,7 +1597,10 @@ export function PtClientDetailPage() {
         .update({ is_active: false })
         .eq("client_id", clientId)
         .eq("is_active", true);
-      if (deactivateAssignmentsError && deactivateAssignmentsError.code !== "42P01") {
+      if (
+        deactivateAssignmentsError &&
+        deactivateAssignmentsError.code !== "42P01"
+      ) {
         throw deactivateAssignmentsError;
       }
 
@@ -1394,7 +1651,7 @@ export function PtClientDetailPage() {
     setProgramMessage(
       updatedCount
         ? `Program switched. ${updatedCount} day${updatedCount === 1 ? "" : "s"} updated.`
-        : "Program switched."
+        : "Program switched.",
     );
     setToastVariant("success");
     setToastMessage("Program switched from today");
@@ -1457,13 +1714,29 @@ export function PtClientDetailPage() {
         queryKey: ["client-program-paused", clientId],
       });
       await queryClient.invalidateQueries({
-        queryKey: ["client-program-overrides", targetProgram.id, todayKey, planEndKey],
+        queryKey: [
+          "client-program-overrides",
+          targetProgram.id,
+          todayKey,
+          planEndKey,
+        ],
       });
       await queryClient.invalidateQueries({
-        queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+        queryKey: [
+          "assigned-workouts-upcoming",
+          clientId,
+          todayKey,
+          planEndKey,
+        ],
       });
       await queryClient.invalidateQueries({
-        queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+        queryKey: [
+          "pt-client-schedule-week",
+          clientId,
+          workspaceQuery.data ?? null,
+          scheduleStartKey,
+          scheduleEndKey,
+        ],
       });
       await queryClient.invalidateQueries({
         queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -1478,7 +1751,7 @@ export function PtClientDetailPage() {
 
   const handleOpenOverride = (date: string) => {
     const override = (programOverridesQuery.data ?? []).find(
-      (row) => row.override_date === date
+      (row) => row.override_date === date,
     );
     setOverrideDate(date);
     setOverrideTemplateId(override?.workout_template_id ?? "");
@@ -1510,7 +1783,7 @@ export function PtClientDetailPage() {
         is_rest: overrideIsRest,
         notes: overrideNotes.trim() || null,
       },
-      { onConflict: "client_program_id,override_date" }
+      { onConflict: "client_program_id,override_date" },
     );
 
     if (error) {
@@ -1520,14 +1793,18 @@ export function PtClientDetailPage() {
       return;
     }
 
-    const anchorStart = activeProgram.start_date ?? programStartDate ?? todayKey;
+    const anchorStart =
+      activeProgram.start_date ?? programStartDate ?? todayKey;
     const horizonDays = Math.max(14, diffDays(anchorStart, todayKey) + 14);
-    const { error: applyError } = await supabase.rpc("apply_program_to_client", {
-      p_client_id: clientId,
-      p_program_template_id: activeProgram.program_template_id,
-      p_start_date: anchorStart,
-      p_horizon_days: horizonDays,
-    });
+    const { error: applyError } = await supabase.rpc(
+      "apply_program_to_client",
+      {
+        p_client_id: clientId,
+        p_program_template_id: activeProgram.program_template_id,
+        p_start_date: anchorStart,
+        p_horizon_days: horizonDays,
+      },
+    );
     if (applyError) {
       const details = getErrorDetails(applyError);
       setOverrideError(`${details.code}: ${details.message}`);
@@ -1536,7 +1813,12 @@ export function PtClientDetailPage() {
     }
 
     await queryClient.invalidateQueries({
-      queryKey: ["client-program-overrides", activeProgram.id, todayKey, planEndKey],
+      queryKey: [
+        "client-program-overrides",
+        activeProgram.id,
+        todayKey,
+        planEndKey,
+      ],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
@@ -1546,12 +1828,18 @@ export function PtClientDetailPage() {
     setOverrideOpen(false);
   };
 
-  const handleStatusUpdate = async (id: string, status: "completed" | "skipped") => {
+  const handleStatusUpdate = async (
+    id: string,
+    status: "completed" | "skipped",
+  ) => {
     const payload =
       status === "completed"
         ? { status, completed_at: new Date().toISOString() }
         : { status };
-    const { error } = await supabase.from("assigned_workouts").update(payload).eq("id", id);
+    const { error } = await supabase
+      .from("assigned_workouts")
+      .update(payload)
+      .eq("id", id);
     if (error) {
       setAssignStatus("error");
       setAssignMessage(getErrorMessage(error));
@@ -1561,7 +1849,13 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
-      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceQuery.data ?? null,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -1578,7 +1872,9 @@ export function PtClientDetailPage() {
     setEditWorkoutId(workout.id);
     setEditDate(workout.scheduled_date ?? todayKey);
     setEditTemplateId(workout.workout_template_id ?? "");
-    setEditStatus((workout.status as "planned" | "completed" | "skipped") ?? "planned");
+    setEditStatus(
+      (workout.status as "planned" | "completed" | "skipped") ?? "planned",
+    );
     setEditOpen(true);
   };
 
@@ -1618,7 +1914,13 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
-      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceQuery.data ?? null,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -1630,7 +1932,10 @@ export function PtClientDetailPage() {
     if (!editWorkoutId) return;
     setAssignStatus("saving");
     setAssignMessage(null);
-    const { error } = await supabase.from("assigned_workouts").delete().eq("id", editWorkoutId);
+    const { error } = await supabase
+      .from("assigned_workouts")
+      .delete()
+      .eq("id", editWorkoutId);
     if (error) {
       setAssignStatus("error");
       setAssignMessage(getErrorMessage(error));
@@ -1643,7 +1948,13 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
-      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceQuery.data ?? null,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -1671,7 +1982,13 @@ export function PtClientDetailPage() {
       queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
     });
     await queryClient.invalidateQueries({
-      queryKey: ["pt-client-schedule-week", clientId, workspaceQuery.data ?? null, scheduleStartKey, scheduleEndKey],
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceQuery.data ?? null,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
     });
     await queryClient.invalidateQueries({
       queryKey: ["assigned-workout-today", clientId, todayKey],
@@ -1681,12 +1998,18 @@ export function PtClientDetailPage() {
     setAssignMessage("Workout rescheduled");
   };
 
-  const clientSnapshot = clientProfile ?? (clientQuery.data as PtClientProfile | null);
-  const completion = useMemo(() => getProfileCompletion(clientSnapshot), [clientSnapshot]);
+  const clientSnapshot =
+    clientProfile ?? (clientQuery.data as PtClientProfile | null);
+  const completion = useMemo(
+    () => getProfileCompletion(clientSnapshot),
+    [clientSnapshot],
+  );
   const missingFields = useMemo(() => {
     if (!clientSnapshot) return [];
     const missing: string[] = [];
-    const hasPhotoOrName = Boolean(clientSnapshot.photo_url || clientSnapshot.display_name);
+    const hasPhotoOrName = Boolean(
+      clientSnapshot.photo_url || clientSnapshot.display_name,
+    );
     if (!hasPhotoOrName) missing.push("Photo/name");
     if (!clientSnapshot.phone) missing.push("Phone");
     if (!clientSnapshot.location) missing.push("Country");
@@ -1706,21 +2029,23 @@ export function PtClientDetailPage() {
 
   const habitLogDates = useMemo(
     () => (habitsQuery.data ?? []).map((log) => log.log_date),
-    [habitsQuery.data]
+    [habitsQuery.data],
   );
   const habitStreakDates = useMemo(
     () => (habitsStreakQuery.data ?? []).map((log) => log.log_date),
-    [habitsStreakQuery.data]
+    [habitsStreakQuery.data],
   );
 
   const habitTrends = useMemo(() => {
     const logs = habitsQuery.data ?? [];
     const last7Logs = logs.filter(
-      (log) => log.log_date >= habitsWeekStart && log.log_date <= habitsToday
+      (log) => log.log_date >= habitsWeekStart && log.log_date <= habitsToday,
     );
     const daysLogged = last7Logs.length;
     const avg = (values: Array<number | null | undefined>) => {
-      const filtered = values.filter((value) => typeof value === "number") as number[];
+      const filtered = values.filter(
+        (value) => typeof value === "number",
+      ) as number[];
       if (filtered.length === 0) return null;
       const sum = filtered.reduce((acc, value) => acc + value, 0);
       return Math.round(sum / filtered.length);
@@ -1733,23 +2058,31 @@ export function PtClientDetailPage() {
     const weightLogs = [...last7Logs]
       .filter((log) => typeof log.weight_value === "number")
       .sort((a, b) => a.log_date.localeCompare(b.log_date));
-    const weightUnit = weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
+    const weightUnit =
+      weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
     const weightChange =
       weightLogs.length >= 2
         ? (weightLogs[weightLogs.length - 1].weight_value ?? 0) -
           (weightLogs[0].weight_value ?? 0)
         : null;
 
-    return { daysLogged, avgSteps, avgSleep, avgProtein, weightChange, weightUnit };
+    return {
+      daysLogged,
+      avgSteps,
+      avgSleep,
+      avgProtein,
+      weightChange,
+      weightUnit,
+    };
   }, [habitsQuery.data, habitsToday, habitsWeekStart]);
 
   const habitStreak = useMemo(
     () => computeStreak(habitStreakDates, habitsToday, 30),
-    [habitStreakDates, habitsToday]
+    [habitStreakDates, habitsToday],
   );
   const lastHabitLogDate = useMemo(
     () => getLatestLogDate(habitLogDates),
-    [habitLogDates]
+    [habitLogDates],
   );
 
   const adherenceStat = useMemo(() => {
@@ -1775,26 +2108,33 @@ export function PtClientDetailPage() {
     if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) {
       return workoutSetLogsQuery.data[0].created_at ?? null;
     }
-    const completed = (upcomingQuery.data ?? []).find((row) => row.status === "completed");
+    const completed = (upcomingQuery.data ?? []).find(
+      (row) => row.status === "completed",
+    );
     return completed?.completed_at ?? completed?.scheduled_date ?? null;
   }, [workoutSetLogsQuery.data, upcomingQuery.data]);
 
   const lastWorkoutStatus = useMemo(() => {
-    if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) return "Completed";
-    const completed = (upcomingQuery.data ?? []).find((row) => row.status === "completed");
+    if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0)
+      return "Completed";
+    const completed = (upcomingQuery.data ?? []).find(
+      (row) => row.status === "completed",
+    );
     if (completed) return "Completed";
     const planned = (upcomingQuery.data ?? [])[0];
     return planned ? "Planned" : null;
   }, [workoutSetLogsQuery.data, upcomingQuery.data]);
 
   const lastSeen = useMemo(() => {
-    if (clientSnapshot?.updated_at) return formatRelativeTime(clientSnapshot.updated_at);
+    if (clientSnapshot?.updated_at)
+      return formatRelativeTime(clientSnapshot.updated_at);
     if (lastHabitLogDate) return formatRelativeTime(lastHabitLogDate);
     return null;
   }, [clientSnapshot?.updated_at, lastHabitLogDate]);
 
   const joinedLabel = useMemo(() => {
-    const joinedAt = clientSnapshot?.created_at ?? clientSnapshot?.updated_at ?? null;
+    const joinedAt =
+      clientSnapshot?.created_at ?? clientSnapshot?.updated_at ?? null;
     return joinedAt ? formatRelativeTime(joinedAt) : null;
   }, [clientSnapshot?.created_at, clientSnapshot?.updated_at]);
 
@@ -1808,16 +2148,22 @@ export function PtClientDetailPage() {
           checkin.week_ending_saturday &&
           checkin.week_ending_saturday >= start &&
           checkin.week_ending_saturday <= end &&
-          !checkin.submitted_at
+          !checkin.submitted_at,
       )
       .sort((a, b) =>
-        (a.week_ending_saturday ?? "").localeCompare(b.week_ending_saturday ?? "")
+        (a.week_ending_saturday ?? "").localeCompare(
+          b.week_ending_saturday ?? "",
+        ),
       )
       .slice(0, 5);
   }, [checkinsRows, habitsToday, todayKey]);
 
   const todaySession = useMemo(() => {
-    return (upcomingQuery.data ?? []).find((workout) => workout.scheduled_date === todayKey) ?? null;
+    return (
+      (upcomingQuery.data ?? []).find(
+        (workout) => workout.scheduled_date === todayKey,
+      ) ?? null
+    );
   }, [upcomingQuery.data, todayKey]);
 
   const todaySessionStatus = todaySession?.status ?? "planned";
@@ -1825,11 +2171,14 @@ export function PtClientDetailPage() {
     todaySession?.workout_template?.name ??
     (todaySession?.day_type === "rest" ? "Rest day" : "Workout");
   const pendingCheckin = upcomingCheckins[0] ?? null;
-  const lastNoteSummary = baselineNotes.trim() ? baselineNotes.trim() : "No recent PT notes.";
+  const lastNoteSummary = baselineNotes.trim()
+    ? baselineNotes.trim()
+    : "No recent PT notes.";
 
   const renderCheckinAnswerValue = (answer: CheckinAnswerRow) => {
     if (answer.value_text) return answer.value_text;
-    if (typeof answer.value_number === "number") return `${answer.value_number}`;
+    if (typeof answer.value_number === "number")
+      return `${answer.value_number}`;
     return "--";
   };
 
@@ -1871,7 +2220,9 @@ export function PtClientDetailPage() {
     setProfileEditOpen(true);
   };
 
-  const updateClientStatus = async (status: "active" | "paused" | "terminated") => {
+  const updateClientStatus = async (
+    status: "active" | "paused" | "terminated",
+  ) => {
     if (!clientSnapshot?.id) return;
     const { data, error } = await supabase
       .from("clients")
@@ -1885,11 +2236,13 @@ export function PtClientDetailPage() {
       return;
     }
     if (data?.status) {
-      setClientProfile((prev) => (prev ? { ...prev, status: data.status } : prev));
+      setClientProfile((prev) =>
+        prev ? { ...prev, status: data.status } : prev,
+      );
       queryClient.setQueryData(
         ["pt-client", clientId, workspaceQuery.data],
         (prev: PtClientProfile | undefined) =>
-          prev ? { ...prev, status: data.status } : prev
+          prev ? { ...prev, status: data.status } : prev,
       );
     }
     setToastVariant("success");
@@ -1912,7 +2265,7 @@ export function PtClientDetailPage() {
       .update(payload)
       .eq("id", clientSnapshot.id)
       .select(
-        "id, display_name, goal, training_type, timezone, status, updated_at"
+        "id, display_name, goal, training_type, timezone, status, updated_at",
       )
       .maybeSingle();
     if (error) {
@@ -1925,7 +2278,8 @@ export function PtClientDetailPage() {
       setClientProfile((prev) => (prev ? { ...prev, ...data } : prev));
       queryClient.setQueryData(
         ["pt-client", clientId, workspaceQuery.data],
-        (prev: PtClientProfile | undefined) => (prev ? { ...prev, ...data } : prev)
+        (prev: PtClientProfile | undefined) =>
+          prev ? { ...prev, ...data } : prev,
       );
     }
     setProfileEditStatus("idle");
@@ -1934,7 +2288,10 @@ export function PtClientDetailPage() {
     setToastMessage("Client profile updated.");
   };
 
-  const updateAdminFields = async (nextTrainingType: string, nextTags: string) => {
+  const updateAdminFields = async (
+    nextTrainingType: string,
+    nextTags: string,
+  ) => {
     if (!clientSnapshot) return;
     setAdminStatus("saving");
     const parsedTags = parseTags(nextTags);
@@ -1943,7 +2300,10 @@ export function PtClientDetailPage() {
       p_training_type: nextTrainingType || null,
       p_tags: parsedTags.length > 0 ? parsedTags : null,
     };
-    const { data, error } = await supabase.rpc("pt_update_client_admin_fields", payload);
+    const { data, error } = await supabase.rpc(
+      "pt_update_client_admin_fields",
+      payload,
+    );
     if (error) {
       setAssignStatus("error");
       setAssignMessage(getErrorMessage(error));
@@ -1955,7 +2315,7 @@ export function PtClientDetailPage() {
       setClientProfile(updated as PtClientProfile);
       queryClient.setQueryData(
         ["pt-client", clientId, workspaceQuery.data],
-        updated
+        updated,
       );
     }
     setAdminStatus("idle");
@@ -1994,33 +2354,37 @@ export function PtClientDetailPage() {
           checkin_template_id: clientUpdate.data?.checkin_template_id ?? null,
           checkin_frequency: clientUpdate.data?.checkin_frequency ?? "weekly",
           checkin_start_date: clientUpdate.data?.checkin_start_date ?? null,
-        })
+        }),
       );
       setClientProfile((prev) =>
         prev
           ? {
               ...prev,
-              checkin_template_id: clientUpdate.data?.checkin_template_id ?? null,
-              checkin_frequency: clientUpdate.data?.checkin_frequency ?? "weekly",
+              checkin_template_id:
+                clientUpdate.data?.checkin_template_id ?? null,
+              checkin_frequency:
+                clientUpdate.data?.checkin_frequency ?? "weekly",
               checkin_start_date: clientUpdate.data?.checkin_start_date ?? null,
             }
-          : prev
+          : prev,
       );
     }
 
     if (nextId && nextStartDate) {
-      const nextDate = computeNextCheckinDate(nextStartDate, nextFrequency, todayKey);
+      const nextDate = computeNextCheckinDate(
+        nextStartDate,
+        nextFrequency,
+        todayKey,
+      );
       if (nextDate) {
-        const { error: scheduleError } = await supabase
-          .from("checkins")
-          .upsert(
-            {
-              client_id: clientQuery.data.id,
-              template_id: nextId,
-              week_ending_saturday: nextDate,
-            },
-            { onConflict: "client_id,week_ending_saturday" }
-          );
+        const { error: scheduleError } = await supabase.from("checkins").upsert(
+          {
+            client_id: clientQuery.data.id,
+            template_id: nextId,
+            week_ending_saturday: nextDate,
+          },
+          { onConflict: "client_id,week_ending_saturday" },
+        );
         if (scheduleError && isDev) {
           console.warn("CHECKIN_SCHEDULE_ERROR", scheduleError);
         }
@@ -2047,7 +2411,9 @@ export function PtClientDetailPage() {
     }
     setBaselineNotesStatus("idle");
     setBaselineNotesMessage("Baseline notes saved.");
-    await queryClient.invalidateQueries({ queryKey: ["pt-client-baseline-entry", clientId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-baseline-entry", clientId],
+    });
   };
 
   useEffect(() => {
@@ -2065,13 +2431,13 @@ export function PtClientDetailPage() {
 
   const handleLoadNotesChange = (id: string, value: string) => {
     setAssignedExercises((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, loadNotes: value } : row))
+      prev.map((row) => (row.id === id ? { ...row, loadNotes: value } : row)),
     );
   };
 
   const handleLoadCompletedChange = (id: string, value: boolean) => {
     setAssignedExercises((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, isCompleted: value } : row))
+      prev.map((row) => (row.id === id ? { ...row, isCompleted: value } : row)),
     );
   };
 
@@ -2092,8 +2458,8 @@ export function PtClientDetailPage() {
             load_notes: row.load_notes,
             is_completed: row.is_completed,
           })
-          .eq("id", row.id)
-      )
+          .eq("id", row.id),
+      ),
     );
     const errorResult = results.find((result) => result.error);
     if (errorResult?.error) {
@@ -2123,12 +2489,16 @@ export function PtClientDetailPage() {
     setFeedbackMessage(null);
     const nextFeedback = feedbackText.trim() || null;
     const queryKey = ["pt-client-checkins", clientId];
-    const previous = queryClient.getQueryData(queryKey) as CheckinRow[] | undefined;
+    const previous = queryClient.getQueryData(queryKey) as
+      | CheckinRow[]
+      | undefined;
 
     queryClient.setQueryData(queryKey, (old) => {
       const rows = (old ?? []) as CheckinRow[];
       return rows.map((row) =>
-        row.id === selectedCheckin.id ? { ...row, pt_feedback: nextFeedback } : row
+        row.id === selectedCheckin.id
+          ? { ...row, pt_feedback: nextFeedback }
+          : row,
       );
     });
 
@@ -2158,7 +2528,8 @@ export function PtClientDetailPage() {
 
   useEffect(() => {
     if (active !== "baseline") return;
-    if (!clientId || !workspaceQuery.data || !baselineEntryQuery.data?.id) return;
+    if (!clientId || !workspaceQuery.data || !baselineEntryQuery.data?.id)
+      return;
     if (baselineReviewLoggedRef.current === baselineEntryQuery.data.id) return;
     baselineReviewLoggedRef.current = baselineEntryQuery.data.id;
     void logCoachActivity({
@@ -2171,7 +2542,9 @@ export function PtClientDetailPage() {
 
   const toggleTask = (taskId: string) => {
     setClientTodos((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, done: !task.done } : task))
+      prev.map((task) =>
+        task.id === taskId ? { ...task, done: !task.done } : task,
+      ),
     );
   };
 
@@ -2189,15 +2562,29 @@ export function PtClientDetailPage() {
 
   const identityLoading = clientQuery.isLoading;
   const scheduleLoading = templatesQuery.isLoading || upcomingQuery.isLoading;
-  const statsLoading = coachActivityQuery.isLoading || habitsQuery.isLoading || checkinsQuery.isLoading;
-  const focusLoading = upcomingQuery.isLoading || checkinsQuery.isLoading || coachActivityQuery.isLoading;
+  const statsLoading =
+    coachActivityQuery.isLoading ||
+    habitsQuery.isLoading ||
+    checkinsQuery.isLoading;
+  const focusLoading =
+    upcomingQuery.isLoading ||
+    checkinsQuery.isLoading ||
+    coachActivityQuery.isLoading;
 
   return (
     <DashboardShell>
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert className={toastVariant === "error" ? "border-danger/30" : "border-emerald-200"}>
-            <AlertTitle>{toastVariant === "error" ? "Error" : "Success"}</AlertTitle>
+          <Alert
+            className={
+              toastVariant === "error"
+                ? "border-danger/30"
+                : "border-emerald-200"
+            }
+          >
+            <AlertTitle>
+              {toastVariant === "error" ? "Error" : "Success"}
+            </AlertTitle>
             <AlertDescription>{toastMessage}</AlertDescription>
           </Alert>
         </div>
@@ -2231,11 +2618,17 @@ export function PtClientDetailPage() {
                     </h2>
                     <StatusPill status={clientSnapshot?.status ?? "active"} />
                     {lastSeen ? (
-                      <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Last seen {lastSeen}
+                      </span>
                     ) : null}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {[clientSnapshot?.goal, clientSnapshot?.training_type, clientSnapshot?.timezone]
+                    {[
+                      clientSnapshot?.goal,
+                      clientSnapshot?.training_type,
+                      clientSnapshot?.timezone,
+                    ]
                       .filter(Boolean)
                       .join("  -  ") || "Training plan overview"}
                     {joinedLabel ? `  -  Joined ${joinedLabel}` : ""}
@@ -2249,7 +2642,11 @@ export function PtClientDetailPage() {
                   className="gap-1.5"
                   onClick={() => setIsOverviewCollapsed((prev) => !prev)}
                   aria-expanded={!isOverviewCollapsed}
-                  aria-label={isOverviewCollapsed ? "Expand client overview" : "Collapse client overview"}
+                  aria-label={
+                    isOverviewCollapsed
+                      ? "Expand client overview"
+                      : "Collapse client overview"
+                  }
                 >
                   {isOverviewCollapsed ? (
                     <>
@@ -2271,7 +2668,11 @@ export function PtClientDetailPage() {
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label="More actions">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="More actions"
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -2282,13 +2683,19 @@ export function PtClientDetailPage() {
                       Edit profile
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => updateClientStatus("active")}>
+                    <DropdownMenuItem
+                      onClick={() => updateClientStatus("active")}
+                    >
                       Mark active
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateClientStatus("paused")}>
+                    <DropdownMenuItem
+                      onClick={() => updateClientStatus("paused")}
+                    >
                       Mark paused
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateClientStatus("terminated")}>
+                    <DropdownMenuItem
+                      onClick={() => updateClientStatus("terminated")}
+                    >
                       Mark terminated
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -2299,40 +2706,74 @@ export function PtClientDetailPage() {
                 <div className="mt-4 w-full rounded-xl border border-border/70 bg-muted/20 p-4">
                   <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Status</span>
-                      <StatusPill status={clientSnapshot.status ?? "active"} />
+                      <span className="block text-xs text-muted-foreground">
+                        Status
+                      </span>
+                      <StatusPill status={clientSnapshot?.status ?? "active"} />
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Goal</span>
-                      <span className="mt-0.5 block font-medium">{clientSnapshot.goal ?? "Not set"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Goal
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {clientSnapshot?.goal ?? "Not set"}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Training</span>
-                      <span className="mt-0.5 block font-medium">{clientSnapshot.training_type ?? "Not set"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Training
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {clientSnapshot?.training_type ?? "Not set"}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Timezone</span>
-                      <span className="mt-0.5 block font-medium">{clientSnapshot.timezone ?? "Not set"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Timezone
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {clientSnapshot?.timezone ?? "Not set"}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Joined</span>
-                      <span className="mt-0.5 block font-medium">{joinedLabel ?? "--"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Joined
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {joinedLabel ?? "--"}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Active program</span>
-                      <span className="mt-0.5 block font-medium">{activeProgram?.program_template?.name ?? "None"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Active program
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {activeProgram?.program_template?.name ?? "None"}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Program start</span>
-                      <span className="mt-0.5 block font-medium">{activeProgram?.start_date ?? "--"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Program start
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {activeProgram?.start_date ?? "--"}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Weekly check-in</span>
-                      <span className="mt-0.5 block font-medium">{checkinStatus ?? "--"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Weekly check-in
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {checkinStatus ?? "--"}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
-                      <span className="block text-xs text-muted-foreground">Last workout</span>
-                      <span className="mt-0.5 block font-medium">{lastWorkoutStatus ?? "--"}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Last workout
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {lastWorkoutStatus ?? "--"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2342,7 +2783,11 @@ export function PtClientDetailPage() {
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <DashboardCard title="Todo List" subtitle="Create tasks for this client." className="lg:col-span-1">
+          <DashboardCard
+            title="Todo List"
+            subtitle="Create tasks for this client."
+            className="lg:col-span-1"
+          >
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Input
@@ -2375,7 +2820,9 @@ export function PtClientDetailPage() {
                         <span
                           className={cn(
                             "font-medium",
-                            task.done ? "text-muted-foreground line-through" : "text-foreground"
+                            task.done
+                              ? "text-muted-foreground line-through"
+                              : "text-foreground",
                           )}
                         >
                           {task.label}
@@ -2395,7 +2842,11 @@ export function PtClientDetailPage() {
             </div>
           </DashboardCard>
 
-          <DashboardCard title="Metrics" subtitle="Snapshot of recent progress." className="lg:col-span-2">
+          <DashboardCard
+            title="Metrics"
+            subtitle="Snapshot of recent progress."
+            className="lg:col-span-2"
+          >
             {statsLoading ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, index) => (
@@ -2426,7 +2877,11 @@ export function PtClientDetailPage() {
                 <StatCard
                   label="Check-in status"
                   value={checkinStatus ?? "--"}
-                  helper={lastCheckin ? formatRelativeTime(lastCheckin) : "No check-ins"}
+                  helper={
+                    lastCheckin
+                      ? formatRelativeTime(lastCheckin)
+                      : "No check-ins"
+                  }
                   icon={CalendarDays}
                   sparkline={<MiniSparkline />}
                 />
@@ -2439,7 +2894,10 @@ export function PtClientDetailPage() {
                 />
               </div>
             ) : (
-              <EmptyState title="No stats yet" description="Client activity will show here once sessions begin." />
+              <EmptyState
+                title="No stats yet"
+                description="Client activity will show here once sessions begin."
+              />
             )}
           </DashboardCard>
         </div>
@@ -2485,79 +2943,82 @@ export function PtClientDetailPage() {
             onStatusChange={handleStatusUpdate}
           />
         ) : (
-          <EmptyState title="No plan yet" description="Assign a workout or program to get started." />
+          <EmptyState
+            title="No plan yet"
+            description="Assign a workout or program to get started."
+          />
         )}
 
         <div className="space-y-6">
-            {(workspaceQuery.error ||
-              programTemplatesQuery.error ||
-              activeProgramQuery.error ||
-              pausedProgramQuery.error ||
-              programOverridesQuery.error ||
-              templatesQuery.error ||
-              upcomingQuery.error ||
-              ptSessionsQuery.error ||
-              coachActivityQuery.error ||
-              habitsQuery.error ||
-              habitLogByDateQuery.error ||
-              baselineEntryQuery.error ||
-              baselineMetricsQuery.error ||
-              baselineMarkersQuery.error ||
-              baselinePhotosQuery.error ||
-              checkinsQuery.error ||
-              clientQuery.error ||
-              assignStatus === "error") && (
-              <Alert className="border-destructive/30">
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>
-                  {assignStatus === "error" && assignMessage
-                    ? assignMessage
-                    : getFriendlyErrorMessage()}
-                  {isDev ? (
-                    <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                      {[
-                        workspaceQuery.error,
-                        programTemplatesQuery.error,
-                        activeProgramQuery.error,
-                        pausedProgramQuery.error,
-                        programOverridesQuery.error,
-                        templatesQuery.error,
-                        upcomingQuery.error,
-                        ptSessionsQuery.error,
-                        workoutSessionsQuery.error,
-                        workoutSetLogsQuery.error,
-                        coachActivityQuery.error,
-                        habitsQuery.error,
-                        habitLogByDateQuery.error,
-                        baselineEntryQuery.error,
-                        baselineMetricsQuery.error,
-                        baselineMarkersQuery.error,
-                        baselinePhotosQuery.error,
-                        checkinsQuery.error,
-                        clientQuery.error,
-                      ]
-                        .filter(Boolean)
-                        .map((error, index) => {
-                          const details = getErrorDetails(error);
-                          return (
-                            <div key={`${index}-${details.message}`}>
-                              {details.code ? `${details.code}: ` : ""}
-                              {details.message}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
-            )}
+          {(workspaceQuery.error ||
+            programTemplatesQuery.error ||
+            activeProgramQuery.error ||
+            pausedProgramQuery.error ||
+            programOverridesQuery.error ||
+            templatesQuery.error ||
+            upcomingQuery.error ||
+            ptSessionsQuery.error ||
+            coachActivityQuery.error ||
+            habitsQuery.error ||
+            habitLogByDateQuery.error ||
+            baselineEntryQuery.error ||
+            baselineMetricsQuery.error ||
+            baselineMarkersQuery.error ||
+            baselinePhotosQuery.error ||
+            checkinsQuery.error ||
+            clientQuery.error ||
+            assignStatus === "error") && (
+            <Alert className="border-destructive/30">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {assignStatus === "error" && assignMessage
+                  ? assignMessage
+                  : getFriendlyErrorMessage()}
+                {isDev ? (
+                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    {[
+                      workspaceQuery.error,
+                      programTemplatesQuery.error,
+                      activeProgramQuery.error,
+                      pausedProgramQuery.error,
+                      programOverridesQuery.error,
+                      templatesQuery.error,
+                      upcomingQuery.error,
+                      ptSessionsQuery.error,
+                      workoutSessionsQuery.error,
+                      workoutSetLogsQuery.error,
+                      coachActivityQuery.error,
+                      habitsQuery.error,
+                      habitLogByDateQuery.error,
+                      baselineEntryQuery.error,
+                      baselineMetricsQuery.error,
+                      baselineMarkersQuery.error,
+                      baselinePhotosQuery.error,
+                      checkinsQuery.error,
+                      clientQuery.error,
+                    ]
+                      .filter(Boolean)
+                      .map((error, index) => {
+                        const details = getErrorDetails(error);
+                        return (
+                          <div key={`${index}-${details.message}`}>
+                            {details.code ? `${details.code}: ` : ""}
+                            {details.message}
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          )}
 
-            {assignStatus !== "error" && assignMessage ? (
-              <Alert className="border-border">
-                <AlertTitle>Update</AlertTitle>
-                <AlertDescription>{assignMessage}</AlertDescription>
-              </Alert>
-            ) : null}
+          {assignStatus !== "error" && assignMessage ? (
+            <Alert className="border-border">
+              <AlertTitle>Update</AlertTitle>
+              <AlertDescription>{assignMessage}</AlertDescription>
+            </Alert>
+          ) : null}
         </div>
 
         <div>
@@ -2571,41 +3032,53 @@ export function PtClientDetailPage() {
                 className="h-8 px-2"
                 onClick={() => setIsWorkbenchCollapsed((prev) => !prev)}
                 aria-expanded={!isWorkbenchCollapsed}
-                aria-label={isWorkbenchCollapsed ? "Expand client workbench" : "Collapse client workbench"}
+                aria-label={
+                  isWorkbenchCollapsed
+                    ? "Expand client workbench"
+                    : "Collapse client workbench"
+                }
               >
-                {isWorkbenchCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                {isWorkbenchCollapsed ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronUp className="h-4 w-4" />
+                )}
               </Button>
             }
           >
             {!isWorkbenchCollapsed ? (
-            <Tabs value={active} onValueChange={setActiveTab} className="space-y-4">
-              <div className="rounded-2xl border border-border/70 bg-card/70 p-2">
-                <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-4">
-                  {workbenchTabs.map((tab) => (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
-                      className={cn(
-                        "group h-auto rounded-xl border border-border/45 bg-background/35 px-3 py-2 text-left text-xs font-semibold tracking-wide text-muted-foreground transition-all",
-                        "hover:border-border hover:bg-background/60 hover:text-foreground",
-                        "data-[state=active]:border-primary/40 data-[state=active]:bg-primary/12 data-[state=active]:text-foreground",
-                        "data-[state=active]:shadow-[0_0_0_1px_oklch(var(--primary)/0.2),0_10px_30px_-20px_oklch(var(--primary)/0.7)]"
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        {(() => {
-                          const Icon = workbenchTabIcons[tab.value];
-                          return (
-                            <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-data-[state=active]:text-primary" />
-                          );
-                        })()}
-                        <span>{tab.label}</span>
-                      </span>
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
-              <TabsContent value="workout">
+              <Tabs
+                value={active}
+                onValueChange={setActiveTab}
+                className="space-y-4"
+              >
+                <div className="rounded-2xl border border-border/70 bg-card/70 p-2">
+                  <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-4">
+                    {workbenchTabs.map((tab) => (
+                      <TabsTrigger
+                        key={tab.value}
+                        value={tab.value}
+                        className={cn(
+                          "group h-auto rounded-xl border border-border/45 bg-background/35 px-3 py-2 text-left text-xs font-semibold tracking-wide text-muted-foreground transition-all",
+                          "hover:border-border hover:bg-background/60 hover:text-foreground",
+                          "data-[state=active]:border-primary/40 data-[state=active]:bg-primary/12 data-[state=active]:text-foreground",
+                          "data-[state=active]:shadow-[0_0_0_1px_oklch(var(--primary)/0.2),0_10px_30px_-20px_oklch(var(--primary)/0.7)]",
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          {(() => {
+                            const Icon = workbenchTabIcons[tab.value];
+                            return (
+                              <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-data-[state=active]:text-primary" />
+                            );
+                          })()}
+                          <span>{tab.label}</span>
+                        </span>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+                <TabsContent value="workout">
                   <PtClientPlanTab
                     templatesQuery={templatesQuery}
                     programTemplatesQuery={programTemplatesQuery}
@@ -2645,169 +3118,186 @@ export function PtClientDetailPage() {
                     }}
                     onStatusChange={handleStatusUpdate}
                   />
-              </TabsContent>
-              <TabsContent value="nutrition">
-                <PtClientNutritionTab
-                  clientId={clientId ?? null}
-                  workspaceId={workspaceQuery.data ?? null}
-                  todayKey={todayKey}
-                />
-              </TabsContent>
-              <TabsContent value="habits">
-                <PtClientHabitsTab
-                  habitsQuery={habitsQuery}
-                  hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
-                  habitsToday={habitsToday}
-                  habitStreak={habitStreak}
-                />
-              </TabsContent>
-              <TabsContent value="progress">
-                <PtClientProgressTab clientSnapshot={clientSnapshot} />
-              </TabsContent>
-              <TabsContent value="logs">
-                <PtClientLogsTab
-                  ptSessionsQuery={ptSessionsQuery}
-                  sessionVolumeById={sessionVolumeById}
-                  onOpenSession={(id) => {
-                    setSelectedSessionId(id);
-                    setSessionDetailOpen(true);
-                  }}
-                />
-              </TabsContent>
-              <TabsContent value="checkins">
-                <div className="space-y-6">
-                  <DashboardCard
-                    title="Check-in template"
-                    subtitle="Assign a template for this client."
-                    action={
-                      <StatusPill
-                        status={checkinTemplateStatusKey}
-                        statusMap={checkinTemplateStatusMap}
-                      />
-                    }
-                  >
-                    {checkinTemplatesQuery.isLoading ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-40" />
-                      </div>
-                    ) : checkinTemplatesQuery.error || availableCheckinTemplates.length === 0 ? (
-                      <EmptyState
-                        title="No check-in templates created yet"
-                        description="Create a template to assign it to clients."
-                        actionLabel="Create template"
-                        onAction={() => navigate("/pt/checkins/templates")}
-                      />
-                    ) : (
-                      <div className="space-y-3">
+                </TabsContent>
+                <TabsContent value="nutrition">
+                  <PtClientNutritionTab
+                    clientId={clientId ?? null}
+                    workspaceId={workspaceQuery.data ?? null}
+                    todayKey={todayKey}
+                  />
+                </TabsContent>
+                <TabsContent value="habits">
+                  <PtClientHabitsTab
+                    habitsQuery={habitsQuery}
+                    hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
+                    habitsToday={habitsToday}
+                    habitStreak={habitStreak}
+                  />
+                </TabsContent>
+                <TabsContent value="progress">
+                  <PtClientProgressTab clientSnapshot={clientSnapshot} />
+                </TabsContent>
+                <TabsContent value="logs">
+                  <PtClientLogsTab
+                    ptSessionsQuery={ptSessionsQuery}
+                    sessionVolumeById={sessionVolumeById}
+                    onOpenSession={(id) => {
+                      setSelectedSessionId(id);
+                      setSessionDetailOpen(true);
+                    }}
+                  />
+                </TabsContent>
+                <TabsContent value="checkins">
+                  <div className="space-y-6">
+                    <DashboardCard
+                      title="Check-in template"
+                      subtitle="Assign a template for this client."
+                      action={
+                        <StatusPill
+                          status={checkinTemplateStatusKey}
+                          statusMap={checkinTemplateStatusMap}
+                        />
+                      }
+                    >
+                      {checkinTemplatesQuery.isLoading ? (
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-muted-foreground">
-                            Template
-                          </label>
-                          <select
-                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            value={checkinTemplateId}
-                            onChange={(event) => setCheckinTemplateId(event.target.value)}
-                            disabled={
-                              checkinTemplatesQuery.isLoading ||
-                              checkinTemplateStatus === "saving"
-                            }
-                          >
-                            <option value="">Use workspace default</option>
-                            {availableCheckinTemplates.map((template) => (
-                              <option key={template.id} value={template.id}>
-                                {template.name ?? "Untitled template"}
-                              </option>
-                            ))}
-                          </select>
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-40" />
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                      ) : checkinTemplatesQuery.error ||
+                        availableCheckinTemplates.length === 0 ? (
+                        <EmptyState
+                          title="No check-in templates created yet"
+                          description="Create a template to assign it to clients."
+                          actionLabel="Create template"
+                          onAction={() => navigate("/pt/checkins/templates")}
+                        />
+                      ) : (
+                        <div className="space-y-3">
                           <div className="space-y-2">
                             <label className="text-xs font-semibold text-muted-foreground">
-                              Frequency
+                              Template
                             </label>
                             <select
                               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                              value={checkinFrequency}
-                              onChange={(event) => setCheckinFrequency(event.target.value)}
+                              value={checkinTemplateId}
+                              onChange={(event) =>
+                                setCheckinTemplateId(event.target.value)
+                              }
+                              disabled={
+                                checkinTemplatesQuery.isLoading ||
+                                checkinTemplateStatus === "saving"
+                              }
                             >
-                              {checkinFrequencyOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
+                              <option value="">Use workspace default</option>
+                              {availableCheckinTemplates.map((template) => (
+                                <option key={template.id} value={template.id}>
+                                  {template.name ?? "Untitled template"}
                                 </option>
                               ))}
                             </select>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-semibold text-muted-foreground">
-                              First check-in
-                            </label>
-                            <Input
-                              type="date"
-                              value={checkinStartDate}
-                              onChange={(event) => setCheckinStartDate(event.target.value)}
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-2">
+                              <label className="text-xs font-semibold text-muted-foreground">
+                                Frequency
+                              </label>
+                              <select
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={checkinFrequency}
+                                onChange={(event) =>
+                                  setCheckinFrequency(event.target.value)
+                                }
+                              >
+                                {checkinFrequencyOptions.map((option) => (
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-semibold text-muted-foreground">
+                                First check-in
+                              </label>
+                              <Input
+                                type="date"
+                                value={checkinStartDate}
+                                onChange={(event) =>
+                                  setCheckinStartDate(event.target.value)
+                                }
+                              />
+                            </div>
+                          </div>
+                          {checkinStartDate ? (
+                            <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                              <span className="font-semibold text-foreground">
+                                Next:
+                              </span>{" "}
+                              {computeNextCheckinDate(
+                                checkinStartDate,
+                                checkinFrequency,
+                                todayKey,
+                              ) ?? "--"}
+                            </div>
+                          ) : null}
+                          {!effectiveCheckinTemplate ? (
+                            <EmptyState
+                              title="No template assigned"
+                              description="Assign a template to start weekly check-ins."
                             />
-                          </div>
-                        </div>
-                        {checkinStartDate ? (
+                          ) : null}
                           <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">Next:</span>{" "}
-                            {computeNextCheckinDate(
-                              checkinStartDate,
-                              checkinFrequency,
-                              todayKey
-                            ) ?? "--"}
+                            <span className="font-semibold text-foreground">
+                              Using:
+                            </span>{" "}
+                            {effectiveCheckinTemplate?.name ??
+                              "No template selected"}
                           </div>
-                        ) : null}
-                        {!effectiveCheckinTemplate ? (
-                          <EmptyState
-                            title="No template assigned"
-                            description="Assign a template to start weekly check-ins."
-                          />
-                        ) : null}
-                        <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                          <span className="font-semibold text-foreground">Using:</span>{" "}
-                          {effectiveCheckinTemplate?.name ?? "No template selected"}
+                          <Button
+                            size="sm"
+                            onClick={handleSaveCheckinTemplate}
+                            disabled={checkinTemplateStatus === "saving"}
+                          >
+                            {checkinTemplateStatus === "saving"
+                              ? "Saving..."
+                              : "Assign template"}
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={handleSaveCheckinTemplate}
-                          disabled={checkinTemplateStatus === "saving"}
-                        >
-                          {checkinTemplateStatus === "saving" ? "Saving..." : "Assign template"}
-                        </Button>
-                      </div>
-                    )}
-                  </DashboardCard>
+                      )}
+                    </DashboardCard>
 
-                  <PtClientCheckinsTab
-                    rows={checkinsRows}
-                    isLoading={checkinsQuery.isLoading}
-                    error={checkinsQuery.error}
-                    canLoadMore={checkinsCanLoadMore}
-                    onLoadMore={() => setCheckinsPage((prev) => prev + 1)}
-                    onReview={openCheckinReview}
+                    <PtClientCheckinsTab
+                      rows={checkinsRows}
+                      isLoading={checkinsQuery.isLoading}
+                      error={checkinsQuery.error}
+                      canLoadMore={checkinsCanLoadMore}
+                      onLoadMore={() => setCheckinsPage((prev) => prev + 1)}
+                      onReview={openCheckinReview}
+                    />
+                  </div>
+                </TabsContent>
+                <TabsContent value="notes">
+                  <PtClientNotesTab />
+                </TabsContent>
+                <TabsContent value="baseline">
+                  <PtClientBaselineTab
+                    baselineEntryQuery={baselineEntryQuery}
+                    baselineMetricsQuery={baselineMetricsQuery}
+                    baselineMarkersQuery={baselineMarkersQuery}
+                    baselinePhotosQuery={baselinePhotosQuery}
+                    baselineNotes={baselineNotes}
+                    baselineNotesStatus={baselineNotesStatus}
+                    baselineNotesMessage={baselineNotesMessage}
+                    baselinePhotoMap={baselinePhotoMap}
+                    onNotesChange={setBaselineNotes}
+                    onNotesSave={handleBaselineNotesSave}
                   />
-                </div>
-              </TabsContent>
-              <TabsContent value="notes">
-                <PtClientNotesTab />
-              </TabsContent>
-              <TabsContent value="baseline">
-                <PtClientBaselineTab
-                  baselineEntryQuery={baselineEntryQuery}
-                  baselineMetricsQuery={baselineMetricsQuery}
-                  baselineMarkersQuery={baselineMarkersQuery}
-                  baselinePhotosQuery={baselinePhotosQuery}
-                  baselineNotes={baselineNotes}
-                  baselineNotesStatus={baselineNotesStatus}
-                  baselineNotesMessage={baselineNotesMessage}
-                  baselinePhotoMap={baselinePhotoMap}
-                  onNotesChange={setBaselineNotes}
-                  onNotesSave={handleBaselineNotesSave}
-                />
-              </TabsContent>
-            </Tabs>
+                </TabsContent>
+              </Tabs>
             ) : null}
           </DashboardCard>
         </div>
@@ -2826,22 +3316,30 @@ export function PtClientDetailPage() {
           <DialogHeader>
             <DialogTitle>Session details</DialogTitle>
             <DialogDescription>
-              {selectedSession?.assigned_workout?.workout_template?.name ?? "Workout"}  - {" "}
+              {selectedSession?.assigned_workout?.workout_template?.name ??
+                "Workout"}{" "}
+              -{" "}
               {selectedSession?.completed_at
-                ? new Date(selectedSession.completed_at).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
+                ? new Date(selectedSession.completed_at).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    },
+                  )
                 : selectedSession?.started_at
-                ? new Date(selectedSession.started_at).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
-                : "In progress"}
+                  ? new Date(selectedSession.started_at).toLocaleString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      },
+                    )
+                  : "In progress"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -2860,7 +3358,8 @@ export function PtClientDetailPage() {
               </div>
             ) : sessionDetailQuery.error ? (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                {getErrorDetails(sessionDetailQuery.error).code}: {getErrorDetails(sessionDetailQuery.error).message}
+                {getErrorDetails(sessionDetailQuery.error).code}:{" "}
+                {getErrorDetails(sessionDetailQuery.error).message}
               </div>
             ) : sessionDetailByExercise.length > 0 ? (
               <div className="space-y-4">
@@ -2869,7 +3368,9 @@ export function PtClientDetailPage() {
                     key={group.id}
                     className="rounded-lg border border-border bg-background/40 p-3"
                   >
-                    <div className="text-sm font-semibold text-foreground">{group.name}</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {group.name}
+                    </div>
                     <div className="mt-2 grid grid-cols-[60px_120px_80px_80px_80px] gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
                       <span>Set</span>
                       <span>Weight</span>
@@ -2882,10 +3383,18 @@ export function PtClientDetailPage() {
                         key={row.id}
                         className="mt-2 grid grid-cols-[60px_120px_80px_80px_80px] items-center gap-2 text-sm"
                       >
-                        <span className="text-xs text-muted-foreground">{row.set_number ?? "--"}</span>
-                        <span>{typeof row.weight === "number" ? row.weight : "--"}</span>
-                        <span>{typeof row.reps === "number" ? row.reps : "--"}</span>
-                        <span>{typeof row.rpe === "number" ? row.rpe : "--"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {row.set_number ?? "--"}
+                        </span>
+                        <span>
+                          {typeof row.weight === "number" ? row.weight : "--"}
+                        </span>
+                        <span>
+                          {typeof row.reps === "number" ? row.reps : "--"}
+                        </span>
+                        <span>
+                          {typeof row.rpe === "number" ? row.rpe : "--"}
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           {row.is_completed ? "Yes" : "No"}
                         </span>
@@ -2907,11 +3416,15 @@ export function PtClientDetailPage() {
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Edit workout</DialogTitle>
-            <DialogDescription>Update schedule, template, or status.</DialogDescription>
+            <DialogDescription>
+              Update schedule, template, or status.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Date</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Date
+              </label>
               <input
                 type="date"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -2932,18 +3445,24 @@ export function PtClientDetailPage() {
                 {templatesQuery.data?.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.name}{" "}
-                    {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
+                    {template.workout_type_tag
+                      ? ` - ${template.workout_type_tag}`
+                      : ""}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Status</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Status
+              </label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={editStatus}
                 onChange={(event) =>
-                  setEditStatus(event.target.value as "planned" | "completed" | "skipped")
+                  setEditStatus(
+                    event.target.value as "planned" | "completed" | "skipped",
+                  )
                 }
               >
                 <option value="planned">Planned</option>
@@ -2958,7 +3477,9 @@ export function PtClientDetailPage() {
             </Button>
             <Button
               onClick={handleEditSave}
-              disabled={assignStatus === "saving" || !editTemplateId || !editDate}
+              disabled={
+                assignStatus === "saving" || !editTemplateId || !editDate
+              }
             >
               {assignStatus === "saving" ? "Saving..." : "Save"}
             </Button>
@@ -2989,7 +3510,9 @@ export function PtClientDetailPage() {
           </DialogHeader>
           <div className="space-y-5">
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Responses</p>
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Responses
+              </p>
               {selectedCheckinAnswersQuery.isLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-6 w-1/2" />
@@ -2999,9 +3522,12 @@ export function PtClientDetailPage() {
               ) : selectedCheckinAnswersQuery.error ? (
                 <Alert className="border-destructive/30">
                   <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>{getFriendlyErrorMessage()}</AlertDescription>
+                  <AlertDescription>
+                    {getFriendlyErrorMessage()}
+                  </AlertDescription>
                 </Alert>
-              ) : selectedCheckinAnswersQuery.data && selectedCheckinAnswersQuery.data.length > 0 ? (
+              ) : selectedCheckinAnswersQuery.data &&
+                selectedCheckinAnswersQuery.data.length > 0 ? (
                 <div className="space-y-2">
                   {selectedCheckinAnswersQuery.data.map((answer) => (
                     <div
@@ -3009,19 +3535,27 @@ export function PtClientDetailPage() {
                       className="rounded-lg border border-border bg-muted/30 p-3"
                     >
                       <p className="text-xs text-muted-foreground">
-                        {answer.question?.question_text ?? answer.question?.prompt ?? "Question"}
+                        {answer.question?.question_text ??
+                          answer.question?.prompt ??
+                          "Question"}
                       </p>
-                      <p className="text-sm font-semibold">{renderCheckinAnswerValue(answer)}</p>
+                      <p className="text-sm font-semibold">
+                        {renderCheckinAnswerValue(answer)}
+                      </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No responses recorded.</p>
+                <p className="text-sm text-muted-foreground">
+                  No responses recorded.
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Photos</p>
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Photos
+              </p>
               {selectedCheckinPhotosQuery.isLoading ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Skeleton className="h-32 w-full" />
@@ -3047,7 +3581,9 @@ export function PtClientDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No photos uploaded.</p>
+                <p className="text-sm text-muted-foreground">
+                  No photos uploaded.
+                </p>
               )}
             </div>
 
@@ -3062,7 +3598,9 @@ export function PtClientDetailPage() {
                 placeholder="Write notes for the client..."
               />
               {feedbackMessage ? (
-                <div className="text-xs text-muted-foreground">{feedbackMessage}</div>
+                <div className="text-xs text-muted-foreground">
+                  {feedbackMessage}
+                </div>
               ) : null}
             </div>
           </div>
@@ -3094,7 +3632,9 @@ export function PtClientDetailPage() {
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Edit loads</DialogTitle>
-            <DialogDescription>Set per-client loads for this assignment.</DialogDescription>
+            <DialogDescription>
+              Set per-client loads for this assignment.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {assignedExercisesQuery.isLoading ? (
@@ -3114,12 +3654,18 @@ export function PtClientDetailPage() {
                   className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[1.4fr_1fr_auto]"
                 >
                   <div>
-                    <p className="text-sm font-semibold">{row.exercise?.name ?? "Exercise"}</p>
-                    <p className="text-xs text-muted-foreground">Client load and notes</p>
+                    <p className="text-sm font-semibold">
+                      {row.exercise?.name ?? "Exercise"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Client load and notes
+                    </p>
                   </div>
                   <Input
                     value={row.loadNotes}
-                    onChange={(event) => handleLoadNotesChange(row.id, event.target.value)}
+                    onChange={(event) =>
+                      handleLoadNotesChange(row.id, event.target.value)
+                    }
                     placeholder="Load notes"
                   />
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -3149,7 +3695,10 @@ export function PtClientDetailPage() {
             <Button variant="secondary" onClick={() => setLoadsOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveLoads} disabled={loadsStatus === "saving"}>
+            <Button
+              onClick={handleSaveLoads}
+              disabled={loadsStatus === "saving"}
+            >
               {loadsStatus === "saving" ? "Saving..." : "Save loads"}
             </Button>
           </DialogFooter>
@@ -3169,7 +3718,7 @@ export function PtClientDetailPage() {
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="secondary"
               onClick={handleDeleteWorkout}
               disabled={assignStatus === "saving"}
             >
@@ -3183,11 +3732,15 @@ export function PtClientDetailPage() {
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Edit client profile</DialogTitle>
-            <DialogDescription>Update client status and profile details.</DialogDescription>
+            <DialogDescription>
+              Update client status and profile details.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Display name</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Display name
+              </label>
               <Input
                 value={profileEditForm.display_name}
                 onChange={(event) =>
@@ -3200,17 +3753,24 @@ export function PtClientDetailPage() {
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Goal</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Goal
+              </label>
               <Input
                 value={profileEditForm.goal}
                 onChange={(event) =>
-                  setProfileEditForm((prev) => ({ ...prev, goal: event.target.value }))
+                  setProfileEditForm((prev) => ({
+                    ...prev,
+                    goal: event.target.value,
+                  }))
                 }
                 placeholder="Client goal"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Training type</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Training type
+              </label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={profileEditForm.training_type}
@@ -3230,7 +3790,9 @@ export function PtClientDetailPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Status</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Status
+              </label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={profileEditForm.status}
@@ -3247,7 +3809,9 @@ export function PtClientDetailPage() {
               </select>
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Timezone</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Timezone
+              </label>
               <Input
                 value={profileEditForm.timezone}
                 onChange={(event) =>
@@ -3261,10 +3825,16 @@ export function PtClientDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setProfileEditOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setProfileEditOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={handleProfileSave} disabled={profileEditStatus === "saving"}>
+            <Button
+              onClick={handleProfileSave}
+              disabled={profileEditStatus === "saving"}
+            >
               {profileEditStatus === "saving" ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
@@ -3273,11 +3843,6 @@ export function PtClientDetailPage() {
     </DashboardShell>
   );
 }
-
-
-
-
-
 
 function PtClientScheduleCard({
   clientId,
@@ -3313,7 +3878,9 @@ function PtClientScheduleCard({
   todayKey: string;
   scheduleStartKey: string;
   scheduleEndKey: string;
-  templatesQuery: QueryResult<Array<{ id: string; name: string | null; workout_type_tag: string | null }>>;
+  templatesQuery: QueryResult<
+    Array<{ id: string; name: string | null; workout_type_tag: string | null }>
+  >;
   overrideOpen: boolean;
   setOverrideOpen: (open: boolean) => void;
   overrideDate: string | null;
@@ -3341,10 +3908,16 @@ function PtClientScheduleCard({
   const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
   const [dayNote, setDayNote] = useState("");
   const [nutritionAssignOpen, setNutritionAssignOpen] = useState(false);
-  const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(null);
+  const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(
+    null,
+  );
   const [nutritionTemplateId, setNutritionTemplateId] = useState("");
-  const [nutritionAssignStatus, setNutritionAssignStatus] = useState<"idle" | "saving">("idle");
-  const [nutritionAssignError, setNutritionAssignError] = useState<string | null>(null);
+  const [nutritionAssignStatus, setNutritionAssignStatus] = useState<
+    "idle" | "saving"
+  >("idle");
+  const [nutritionAssignError, setNutritionAssignError] = useState<
+    string | null
+  >(null);
   const [nutritionDayOpen, setNutritionDayOpen] = useState(false);
   const [nutritionDayDate, setNutritionDayDate] = useState<string | null>(null);
   const [nutritionDayMeals, setNutritionDayMeals] = useState<
@@ -3364,25 +3937,59 @@ function PtClientScheduleCard({
   }, [scheduleStartKey]);
 
   const scheduleQuery = useQuery({
-    queryKey: ["pt-client-schedule-week", clientId, workspaceId, scheduleStartKey, scheduleEndKey],
+    queryKey: [
+      "pt-client-schedule-week",
+      clientId,
+      workspaceId,
+      scheduleStartKey,
+      scheduleEndKey,
+    ],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, scheduled_date, status, day_type, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)"
+          "id, scheduled_date, status, day_type, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", scheduleStartKey)
         .lte("scheduled_date", scheduleEndKey)
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      const rows = (data ?? []) as Array<{
+        id: string;
+        scheduled_date: string | null;
+        status: string | null;
+        day_type?: string | null;
+        workout_template:
+          | {
+              id: string | null;
+              name: string | null;
+              workout_type_tag: string | null;
+              description: string | null;
+            }
+          | {
+              id: string | null;
+              name: string | null;
+              workout_type_tag: string | null;
+              description: string | null;
+            }[]
+          | null;
+      }>;
+      return rows.map((row) => ({
+        ...row,
+        workout_template: getSingleRelation(row.workout_template),
+      }));
     },
   });
 
   const checkinsQuery = useQuery({
-    queryKey: ["pt-client-checkins-week", clientId, scheduleStartKey, scheduleEndKey],
+    queryKey: [
+      "pt-client-checkins-week",
+      clientId,
+      scheduleStartKey,
+      scheduleEndKey,
+    ],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -3412,7 +4019,12 @@ function PtClientScheduleCard({
   });
 
   const nutritionDaysQuery = useQuery({
-    queryKey: ["pt-client-nutrition-week", clientId, scheduleStartKey, scheduleEndKey],
+    queryKey: [
+      "pt-client-nutrition-week",
+      clientId,
+      scheduleStartKey,
+      scheduleEndKey,
+    ],
     enabled: !!clientId,
     queryFn: async () => {
       const { data: plans, error: planError } = await supabase
@@ -3427,7 +4039,7 @@ function PtClientScheduleCard({
       const { data, error } = await supabase
         .from("assigned_nutrition_days")
         .select(
-          "id, date, meals:assigned_nutrition_meals(id, meal_name, calories, protein_g, carbs_g, fat_g, logs:nutrition_meal_logs(id, is_completed))"
+          "id, date, meals:assigned_nutrition_meals(id, meal_name, calories, protein_g, carbs_g, fat_g, logs:nutrition_meal_logs(id, is_completed))",
         )
         .in("assigned_nutrition_plan_id", planIds)
         .gte("date", scheduleStartKey)
@@ -3444,43 +4056,54 @@ function PtClientScheduleCard({
       const match =
         scheduleQuery.data?.find((item) => item.scheduled_date === key) ?? null;
       const checkin =
-        checkinsQuery.data?.find((item) => item.week_ending_saturday === key) ?? null;
+        checkinsQuery.data?.find((item) => item.week_ending_saturday === key) ??
+        null;
       const nutrition =
         nutritionDaysQuery.data?.find((item) => item.date === key) ?? null;
       return { key, workout: match, checkin, nutrition };
     });
     return rows;
-  }, [scheduleQuery.data, checkinsQuery.data, nutritionDaysQuery.data, scheduleStartKey]);
+  }, [
+    scheduleQuery.data,
+    checkinsQuery.data,
+    nutritionDaysQuery.data,
+    scheduleStartKey,
+  ]);
 
-  const selectedRow = weekRows.find((row) => row.key === selectedKey) ?? weekRows[0];
+  const selectedRow =
+    weekRows.find((row) => row.key === selectedKey) ?? weekRows[0];
   const nutritionPreviewKeys = useMemo(() => {
     const base = nutritionAssignDate ?? selectedRow?.key ?? scheduleStartKey;
-    return Array.from({ length: 7 }).map((_, idx) => addDaysToDateString(base, idx));
+    return Array.from({ length: 7 }).map((_, idx) =>
+      addDaysToDateString(base, idx),
+    );
   }, [nutritionAssignDate, scheduleStartKey, selectedRow?.key]);
   const selectedWorkout = selectedRow?.workout ?? null;
   const selectedCheckin = selectedRow?.checkin ?? null;
   const selectedStatus =
     selectedWorkout?.day_type === "rest"
       ? "rest day"
-      : selectedWorkout?.status ?? (selectedWorkout ? "planned" : "rest day");
+      : (selectedWorkout?.status ?? (selectedWorkout ? "planned" : "rest day"));
   const selectedTitle =
     selectedWorkout?.day_type === "rest"
       ? "Rest day"
-      : selectedWorkout?.workout_template?.name ?? "Workout";
+      : (selectedWorkout?.workout_template?.name ?? "Workout");
 
   const weeklyWorkouts = weekRows.filter(
-    (row) => row.workout && row.workout.day_type !== "rest"
+    (row) => row.workout && row.workout.day_type !== "rest",
   );
   const weeklyCompleted = weeklyWorkouts.filter(
-    (row) => row.workout?.status === "completed"
+    (row) => row.workout?.status === "completed",
   ).length;
   const weeklyMissed = weeklyWorkouts.filter(
-    (row) => row.workout?.status === "skipped"
+    (row) => row.workout?.status === "skipped",
   ).length;
   const weeklyPlanned = weeklyWorkouts.filter(
-    (row) => (row.workout?.status ?? "planned") === "planned"
+    (row) => (row.workout?.status ?? "planned") === "planned",
   ).length;
-  const weeklyRest = weekRows.filter((row) => row.workout?.day_type === "rest" || !row.workout).length;
+  const weeklyRest = weekRows.filter(
+    (row) => row.workout?.day_type === "rest" || !row.workout,
+  ).length;
 
   const nutritionDayTotals = useMemo(() => {
     return nutritionDayMeals.reduce(
@@ -3491,7 +4114,7 @@ function PtClientScheduleCard({
         acc.fats += Number(meal.fat_g ?? 0);
         return acc;
       },
-      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+      { calories: 0, protein: 0, carbs: 0, fats: 0 },
     );
   }, [nutritionDayMeals]);
 
@@ -3552,15 +4175,15 @@ function PtClientScheduleCard({
     });
   };
 
-const formatDayNumber = (key: string) => {
-  const [year, month, day] = key.split("-").map(Number);
-  if (!year || !month || !day) return "";
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.toLocaleDateString("en-US", {
-    day: "numeric",
-    timeZone: timezone ?? undefined,
-  });
-};
+  const formatDayNumber = (key: string) => {
+    const [year, month, day] = key.split("-").map(Number);
+    if (!year || !month || !day) return "";
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("en-US", {
+      day: "numeric",
+      timeZone: timezone ?? undefined,
+    });
+  };
 
   return (
     <DashboardCard
@@ -3572,13 +4195,20 @@ const formatDayNumber = (key: string) => {
           className="h-8 px-2"
           onClick={() => setIsCalendarCollapsed((prev) => !prev)}
           aria-expanded={!isCalendarCollapsed}
-          aria-label={isCalendarCollapsed ? "Expand calendar" : "Collapse calendar"}
+          aria-label={
+            isCalendarCollapsed ? "Expand calendar" : "Collapse calendar"
+          }
         >
-          {isCalendarCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          {isCalendarCollapsed ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronUp className="h-4 w-4" />
+          )}
         </Button>
       }
     >
-      {isCalendarCollapsed ? null : scheduleQuery.isLoading || checkinsQuery.isLoading ? (
+      {isCalendarCollapsed ? null : scheduleQuery.isLoading ||
+        checkinsQuery.isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
@@ -3589,107 +4219,129 @@ const formatDayNumber = (key: string) => {
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
               <div className="text-muted-foreground">Completed</div>
-              <div className="text-sm font-semibold text-foreground">{weeklyCompleted}</div>
+              <div className="text-sm font-semibold text-foreground">
+                {weeklyCompleted}
+              </div>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
               <div className="text-muted-foreground">Skipped</div>
-              <div className="text-sm font-semibold text-foreground">{weeklyMissed}</div>
+              <div className="text-sm font-semibold text-foreground">
+                {weeklyMissed}
+              </div>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
               <div className="text-muted-foreground">Planned</div>
-              <div className="text-sm font-semibold text-foreground">{weeklyPlanned}</div>
+              <div className="text-sm font-semibold text-foreground">
+                {weeklyPlanned}
+              </div>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
               <div className="text-muted-foreground">Rest</div>
-              <div className="text-sm font-semibold text-foreground">{weeklyRest}</div>
+              <div className="text-sm font-semibold text-foreground">
+                {weeklyRest}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-              {weekRows.map((row) => {
-                const workout = row.workout;
-                const checkin = row.checkin;
-                const nutrition = row.nutrition;
-                const nutritionMeals = ((nutrition as { meals?: Array<{ logs?: Array<{ is_completed?: boolean }> }> } | null)?.meals ?? []);
-                const nutritionCompleted = nutritionMeals.filter((meal) =>
-                  (meal.logs ?? []).some((log) => Boolean(log.is_completed))
-                ).length;
-                const nutritionStatus = !nutrition
-                  ? null
-                  : nutritionMeals.length > 0 && nutritionCompleted === nutritionMeals.length
-                    ? "completed"
-                    : "planned";
-                const isRestDay = workout?.day_type === "rest";
-                const status = isRestDay
-                  ? "rest day"
-                  : workout?.status ?? (workout ? "planned" : "rest day");
-                const title = isRestDay
-                  ? "Rest day"
-                  : workout?.workout_template?.name ?? "Workout";
-                const isSelected = row.key === selectedKey;
-                const isToday = row.key === todayKey;
-                const isPast = row.key < todayKey;
-                const isFuture = row.key > todayKey;
-                const isCompleted = workout?.status === "completed";
-                const isSkipped = workout?.status === "skipped";
-                const isStreak = streakKeys.has(row.key);
-                return (
-                  <div
-                    key={row.key}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
+            {weekRows.map((row) => {
+              const workout = row.workout;
+              const checkin = row.checkin;
+              const nutrition = row.nutrition;
+              const nutritionMeals =
+                (
+                  nutrition as {
+                    meals?: Array<{ logs?: Array<{ is_completed?: boolean }> }>;
+                  } | null
+                )?.meals ?? [];
+              const nutritionCompleted = nutritionMeals.filter((meal) =>
+                (meal.logs ?? []).some((log) => Boolean(log.is_completed)),
+              ).length;
+              const nutritionStatus = !nutrition
+                ? null
+                : nutritionMeals.length > 0 &&
+                    nutritionCompleted === nutritionMeals.length
+                  ? "completed"
+                  : "planned";
+              const isRestDay = workout?.day_type === "rest";
+              const status = isRestDay
+                ? "rest day"
+                : (workout?.status ?? (workout ? "planned" : "rest day"));
+              const title = isRestDay
+                ? "Rest day"
+                : (workout?.workout_template?.name ?? "Workout");
+              const isSelected = row.key === selectedKey;
+              const isToday = row.key === todayKey;
+              const isPast = row.key < todayKey;
+              const isFuture = row.key > todayKey;
+              const isCompleted = workout?.status === "completed";
+              const isSkipped = workout?.status === "skipped";
+              const isStreak = streakKeys.has(row.key);
+              return (
+                <div
+                  key={row.key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    setSelectedKey(row.key);
+                    setDayDrawerOpen(true);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
                       setSelectedKey(row.key);
                       setDayDrawerOpen(true);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setSelectedKey(row.key);
-                        setDayDrawerOpen(true);
-                      }
-                    }}
-                    className={cn(
-                      "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border",
-                      isSelected
-                        ? "bg-primary/10"
-                        : "bg-background/30 hover:bg-muted/40",
-                      isToday
-                        ? "min-h-[190px] shadow-[0_0_22px_rgba(56,189,248,0.2)]"
-                        : "",
-                      isPast && !isSelected ? "opacity-70" : "",
-                      isFuture && !isSelected ? "opacity-90" : ""
-                    )}
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="uppercase tracking-[0.2em]">
-                          {formatWeekday(row.key)} {formatDayNumber(row.key)}
-                        </span>
-                        {isStreak ? <Flame className="h-4 w-4 text-amber-300" /> : null}
-                      </div>
+                    }
+                  }}
+                  className={cn(
+                    "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border",
+                    isSelected
+                      ? "bg-primary/10"
+                      : "bg-background/30 hover:bg-muted/40",
+                    isToday
+                      ? "min-h-[190px] shadow-[0_0_22px_rgba(56,189,248,0.2)]"
+                      : "",
+                    isPast && !isSelected ? "opacity-70" : "",
+                    isFuture && !isSelected ? "opacity-90" : "",
+                  )}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="uppercase tracking-[0.2em]">
+                        {formatWeekday(row.key)} {formatDayNumber(row.key)}
+                      </span>
+                      {isStreak ? (
+                        <Flame className="h-4 w-4 text-amber-300" />
+                      ) : null}
+                    </div>
 
-                      <div className="space-y-1">
-                        <p className="text-base font-semibold text-foreground">
-                          {workout ? title : "Rest day"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {isRestDay
-                            ? "Planned rest day"
-                            : workout?.workout_template?.workout_type_tag ?? "Workout"}
-                        </p>
-                      </div>
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-foreground">
+                        {workout ? title : "Rest day"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {isRestDay
+                          ? "Planned rest day"
+                          : (workout?.workout_template?.workout_type_tag ??
+                            "Workout")}
+                      </p>
+                    </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusPill status={status} />
-                        {isSkipped ? <AlertTriangle className="h-4 w-4 text-amber-300" /> : null}
-                        {isRestDay ? <Moon className="h-4 w-4 text-sky-200" /> : null}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const meals =
-                            ((nutrition as {
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill status={status} />
+                      {isSkipped ? (
+                        <AlertTriangle className="h-4 w-4 text-amber-300" />
+                      ) : null}
+                      {isRestDay ? (
+                        <Moon className="h-4 w-4 text-sky-200" />
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const meals =
+                          (
+                            nutrition as {
                               meals?: Array<{
                                 id: string;
                                 meal_name: string | null;
@@ -3699,73 +4351,78 @@ const formatDayNumber = (key: string) => {
                                 fat_g: number | null;
                                 logs?: Array<{ is_completed?: boolean }>;
                               }>;
-                            } | null)?.meals ?? []);
-                          setNutritionDayDate(row.key);
-                          setNutritionDayMeals(meals);
-                          setNutritionDayOpen(true);
-                        }}
-                        className="w-full rounded-md border border-border/60 bg-muted/20 px-2 py-1 text-xs text-left"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">Nutiotion</span>
-                          {nutritionStatus ? <StatusPill status={nutritionStatus} /> : null}
-                        </div>
-                      </button>
-
-                      {checkin ? (
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={checkin.submitted_at ? "success" : "warning"}
-                            className="text-[10px] uppercase"
-                          >
-                            {checkin.submitted_at ? "Check-in submitted" : "Check-in due"}
-                          </Badge>
-                        </div>
-                      ) : null}
-
-                      <div className="flex items-center gap-2 text-muted-foreground opacity-0 transition group-hover:opacity-100">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (workout?.id) {
-                              setEditDate(row.key);
-                              setEditOpen(true);
-                            } else {
-                              onAssign(row.key);
-                            }
-                          }}
-                          className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setDayDrawerOpen(true);
-                          }}
-                          className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setNutritionAssignDate(row.key);
-                            setNutritionAssignOpen(true);
-                          }}
-                          className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
-                        >
-                          <Apple className="h-3.5 w-3.5" />
-                        </button>
+                            } | null
+                          )?.meals ?? [];
+                        setNutritionDayDate(row.key);
+                        setNutritionDayMeals(meals);
+                        setNutritionDayOpen(true);
+                      }}
+                      className="w-full rounded-md border border-border/60 bg-muted/20 px-2 py-1 text-xs text-left"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">Nutiotion</span>
+                        {nutritionStatus ? (
+                          <StatusPill status={nutritionStatus} />
+                        ) : null}
                       </div>
+                    </button>
+
+                    {checkin ? (
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={checkin.submitted_at ? "success" : "warning"}
+                          className="text-[10px] uppercase"
+                        >
+                          {checkin.submitted_at
+                            ? "Check-in submitted"
+                            : "Check-in due"}
+                        </Badge>
+                      </div>
+                    ) : null}
+
+                    <div className="flex items-center gap-2 text-muted-foreground opacity-0 transition group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (workout?.id) {
+                            setEditDate(row.key);
+                            setEditOpen(true);
+                          } else {
+                            onAssign(row.key);
+                          }
+                        }}
+                        className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDayDrawerOpen(true);
+                        }}
+                        className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setNutritionAssignDate(row.key);
+                          setNutritionAssignOpen(true);
+                        }}
+                        className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
+                      >
+                        <Apple className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -3773,10 +4430,14 @@ const formatDayNumber = (key: string) => {
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>Edit scheduled date</DialogTitle>
-            <DialogDescription>Reschedule this workout for a different day.</DialogDescription>
+            <DialogDescription>
+              Reschedule this workout for a different day.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground">Date</label>
+            <label className="text-xs font-semibold text-muted-foreground">
+              Date
+            </label>
             <Input
               type="date"
               value={editDate}
@@ -3825,7 +4486,10 @@ const formatDayNumber = (key: string) => {
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="secondary"
-                onClick={() => selectedWorkout && onStatusChange(selectedWorkout.id, "completed")}
+                onClick={() =>
+                  selectedWorkout &&
+                  onStatusChange(selectedWorkout.id, "completed")
+                }
                 disabled={!selectedWorkout}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -3833,7 +4497,10 @@ const formatDayNumber = (key: string) => {
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => selectedWorkout && onStatusChange(selectedWorkout.id, "skipped")}
+                onClick={() =>
+                  selectedWorkout &&
+                  onStatusChange(selectedWorkout.id, "skipped")
+                }
                 disabled={!selectedWorkout}
               >
                 <XCircle className="mr-2 h-4 w-4" />
@@ -3842,7 +4509,9 @@ const formatDayNumber = (key: string) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">PT notes</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                PT notes
+              </label>
               <textarea
                 className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={dayNote}
@@ -3893,10 +4562,17 @@ const formatDayNumber = (key: string) => {
         <DialogContent className="sm:max-w-[460px]">
           <DialogHeader>
             <DialogTitle>Assign nutrition program</DialogTitle>
-            <DialogDescription>Assign a nutrition program for {nutritionAssignDate ?? "selected date"}.</DialogDescription>
+            <DialogDescription>
+              Assign a nutrition program for{" "}
+              {nutritionAssignDate ?? "selected date"}.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input type="date" value={nutritionAssignDate ?? ""} onChange={(event) => setNutritionAssignDate(event.target.value)} />
+            <Input
+              type="date"
+              value={nutritionAssignDate ?? ""}
+              onChange={(event) => setNutritionAssignDate(event.target.value)}
+            />
             <select
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               value={nutritionTemplateId}
@@ -3910,16 +4586,22 @@ const formatDayNumber = (key: string) => {
               ))}
             </select>
             <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
-              <p className="mb-2 font-semibold text-foreground">Next 7 days preview</p>
+              <p className="mb-2 font-semibold text-foreground">
+                Next 7 days preview
+              </p>
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
                 {nutritionPreviewKeys.map((key) => {
-                  const hasPlan = (nutritionDaysQuery.data ?? []).some((row) => row.date === key);
+                  const hasPlan = (nutritionDaysQuery.data ?? []).some(
+                    (row) => row.date === key,
+                  );
                   return (
                     <div
                       key={key}
                       className={cn(
                         "rounded-md border px-2 py-1 text-center",
-                        hasPlan ? "border-primary/60 bg-primary/10" : "border-border/60"
+                        hasPlan
+                          ? "border-primary/60 bg-primary/10"
+                          : "border-border/60",
                       )}
                     >
                       {key.slice(5)}
@@ -3935,7 +4617,10 @@ const formatDayNumber = (key: string) => {
             ) : null}
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setNutritionAssignOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setNutritionAssignOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -3947,24 +4632,34 @@ const formatDayNumber = (key: string) => {
                 }
                 setNutritionAssignStatus("saving");
                 setNutritionAssignError(null);
-                const { error } = await supabase.rpc("assign_nutrition_template_to_client", {
-                  p_client_id: clientId,
-                  p_start_date: nutritionAssignDate,
-                  p_template_id: nutritionTemplateId,
-                });
+                const { error } = await supabase.rpc(
+                  "assign_nutrition_template_to_client",
+                  {
+                    p_client_id: clientId,
+                    p_start_date: nutritionAssignDate,
+                    p_template_id: nutritionTemplateId,
+                  },
+                );
                 if (error) {
                   setNutritionAssignStatus("idle");
                   setNutritionAssignError(error.message);
                   return;
                 }
                 await queryClient.invalidateQueries({
-                  queryKey: ["pt-client-nutrition-week", clientId, scheduleStartKey, scheduleEndKey],
+                  queryKey: [
+                    "pt-client-nutrition-week",
+                    clientId,
+                    scheduleStartKey,
+                    scheduleEndKey,
+                  ],
                 });
                 setNutritionAssignStatus("idle");
                 setNutritionAssignOpen(false);
               }}
             >
-              {nutritionAssignStatus === "saving" ? "Assigning..." : "Assign nutrition program"}
+              {nutritionAssignStatus === "saving"
+                ? "Assigning..."
+                : "Assign nutrition program"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3975,7 +4670,9 @@ const formatDayNumber = (key: string) => {
           <DialogHeader>
             <DialogTitle>Nutiotion</DialogTitle>
             <DialogDescription>
-              {nutritionDayDate ? formatLabel(nutritionDayDate) : "Selected day"}
+              {nutritionDayDate
+                ? formatLabel(nutritionDayDate)
+                : "Selected day"}
             </DialogDescription>
           </DialogHeader>
           {nutritionDayMeals.length === 0 ? (
@@ -3988,28 +4685,37 @@ const formatDayNumber = (key: string) => {
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
                 <p className="font-semibold text-foreground">Totals</p>
                 <p className="mt-1 text-muted-foreground">
-                  {Math.round(nutritionDayTotals.calories)} kcal | {Math.round(nutritionDayTotals.protein)} P |{" "}
-                  {Math.round(nutritionDayTotals.carbs)} C | {Math.round(nutritionDayTotals.fats)} F
+                  {Math.round(nutritionDayTotals.calories)} kcal |{" "}
+                  {Math.round(nutritionDayTotals.protein)} P |{" "}
+                  {Math.round(nutritionDayTotals.carbs)} C |{" "}
+                  {Math.round(nutritionDayTotals.fats)} F
                 </p>
               </div>
               <div className="space-y-2">
                 {nutritionDayMeals.map((meal) => (
-                  <div key={meal.id} className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <div
+                    key={meal.id}
+                    className="rounded-lg border border-border/60 bg-muted/20 p-3"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-foreground">
                         {meal.meal_name ?? "Meal"}
                       </p>
                       <StatusPill
                         status={
-                          (meal.logs ?? []).some((log) => Boolean(log.is_completed))
+                          (meal.logs ?? []).some((log) =>
+                            Boolean(log.is_completed),
+                          )
                             ? "completed"
                             : "planned"
                         }
                       />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {Math.round(Number(meal.calories ?? 0))} kcal | {Math.round(Number(meal.protein_g ?? 0))} P |{" "}
-                      {Math.round(Number(meal.carbs_g ?? 0))} C | {Math.round(Number(meal.fat_g ?? 0))} F
+                      {Math.round(Number(meal.calories ?? 0))} kcal |{" "}
+                      {Math.round(Number(meal.protein_g ?? 0))} P |{" "}
+                      {Math.round(Number(meal.carbs_g ?? 0))} C |{" "}
+                      {Math.round(Number(meal.fat_g ?? 0))} F
                     </p>
                   </div>
                 ))}
@@ -4017,7 +4723,10 @@ const formatDayNumber = (key: string) => {
             </div>
           )}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setNutritionDayOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setNutritionDayOpen(false)}
+            >
               Close
             </Button>
           </DialogFooter>
@@ -4047,7 +4756,9 @@ const formatDayNumber = (key: string) => {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Date</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Date
+              </label>
               <Input type="date" value={overrideDate ?? ""} readOnly />
             </div>
             <div className="space-y-2">
@@ -4069,7 +4780,9 @@ const formatDayNumber = (key: string) => {
                 {templatesQuery.data?.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.name}{" "}
-                    {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
+                    {template.workout_type_tag
+                      ? ` - ${template.workout_type_tag}`
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -4088,7 +4801,9 @@ const formatDayNumber = (key: string) => {
               Mark as rest day
             </label>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Notes</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Notes
+              </label>
               <textarea
                 className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={overrideNotes}
@@ -4106,7 +4821,10 @@ const formatDayNumber = (key: string) => {
             <Button variant="secondary" onClick={() => setOverrideOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={overrideStatus === "saving"} onClick={onSaveOverride}>
+            <Button
+              disabled={overrideStatus === "saving"}
+              onClick={onSaveOverride}
+            >
               {overrideStatus === "saving" ? "Saving..." : "Save override"}
             </Button>
           </DialogFooter>
@@ -4143,7 +4861,9 @@ function PtClientBaselineTab({
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
       <CardHeader>
         <CardTitle>Baseline</CardTitle>
-        <p className="text-sm text-muted-foreground">Latest submitted baseline details.</p>
+        <p className="text-sm text-muted-foreground">
+          Latest submitted baseline details.
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {baselineEntryQuery.isLoading ||
@@ -4162,7 +4882,9 @@ function PtClientBaselineTab({
                 <p className="text-xs text-muted-foreground">Submitted at</p>
                 <p className="text-sm font-semibold">
                   {baselineEntryQuery.data.submitted_at
-                    ? new Date(baselineEntryQuery.data.submitted_at).toLocaleString("en-US", {
+                    ? new Date(
+                        baselineEntryQuery.data.submitted_at,
+                      ).toLocaleString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
@@ -4177,14 +4899,46 @@ function PtClientBaselineTab({
 
             <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { label: "Weight", value: baselineMetricsQuery.data?.weight_kg, unit: "kg" },
-                { label: "Height", value: baselineMetricsQuery.data?.height_cm, unit: "cm" },
-                { label: "Body fat", value: baselineMetricsQuery.data?.body_fat_pct, unit: "%" },
-                { label: "Waist", value: baselineMetricsQuery.data?.waist_cm, unit: "cm" },
-                { label: "Chest", value: baselineMetricsQuery.data?.chest_cm, unit: "cm" },
-                { label: "Hips", value: baselineMetricsQuery.data?.hips_cm, unit: "cm" },
-                { label: "Thigh", value: baselineMetricsQuery.data?.thigh_cm, unit: "cm" },
-                { label: "Arm", value: baselineMetricsQuery.data?.arm_cm, unit: "cm" },
+                {
+                  label: "Weight",
+                  value: baselineMetricsQuery.data?.weight_kg,
+                  unit: "kg",
+                },
+                {
+                  label: "Height",
+                  value: baselineMetricsQuery.data?.height_cm,
+                  unit: "cm",
+                },
+                {
+                  label: "Body fat",
+                  value: baselineMetricsQuery.data?.body_fat_pct,
+                  unit: "%",
+                },
+                {
+                  label: "Waist",
+                  value: baselineMetricsQuery.data?.waist_cm,
+                  unit: "cm",
+                },
+                {
+                  label: "Chest",
+                  value: baselineMetricsQuery.data?.chest_cm,
+                  unit: "cm",
+                },
+                {
+                  label: "Hips",
+                  value: baselineMetricsQuery.data?.hips_cm,
+                  unit: "cm",
+                },
+                {
+                  label: "Thigh",
+                  value: baselineMetricsQuery.data?.thigh_cm,
+                  unit: "cm",
+                },
+                {
+                  label: "Arm",
+                  value: baselineMetricsQuery.data?.arm_cm,
+                  unit: "cm",
+                },
                 {
                   label: "Resting HR",
                   value: baselineMetricsQuery.data?.resting_hr,
@@ -4196,8 +4950,13 @@ function PtClientBaselineTab({
                   unit: "ml/kg/min",
                 },
               ].map((metric) => (
-                <div key={metric.label} className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">{metric.label}</p>
+                <div
+                  key={metric.label}
+                  className="rounded-lg border border-border p-3"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    {metric.label}
+                  </p>
                   <p className="text-sm font-semibold">
                     {typeof metric.value === "number"
                       ? `${metric.value} ${metric.unit}`
@@ -4211,7 +4970,8 @@ function PtClientBaselineTab({
               <p className="text-xs font-semibold uppercase text-muted-foreground">
                 Performance markers
               </p>
-              {baselineMarkersQuery.data && baselineMarkersQuery.data.length > 0 ? (
+              {baselineMarkersQuery.data &&
+              baselineMarkersQuery.data.length > 0 ? (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {baselineMarkersQuery.data.map((marker, index) => (
                     <div
@@ -4222,21 +4982,28 @@ function PtClientBaselineTab({
                         {marker.template?.name ?? "Marker"}
                       </p>
                       <p className="font-semibold">
-                        {marker.value_number !== null && marker.value_number !== undefined
+                        {marker.value_number !== null &&
+                        marker.value_number !== undefined
                           ? marker.value_number
-                          : marker.value_text ?? "Not provided"}
-                        {marker.template?.unit_label ? ` ${marker.template.unit_label}` : ""}
+                          : (marker.value_text ?? "Not provided")}
+                        {marker.template?.unit_label
+                          ? ` ${marker.template.unit_label}`
+                          : ""}
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No markers submitted.</p>
+                <p className="text-sm text-muted-foreground">
+                  No markers submitted.
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Photos</p>
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Photos
+              </p>
               <div className="grid gap-3 sm:grid-cols-3">
                 {baselinePhotoTypes.map((type) => (
                   <div key={type} className="space-y-2">
@@ -4251,7 +5018,9 @@ function PtClientBaselineTab({
                           className="h-full w-full rounded-md object-cover"
                         />
                       ) : (
-                        <span className="text-xs text-muted-foreground">Missing</span>
+                        <span className="text-xs text-muted-foreground">
+                          Missing
+                        </span>
                       )}
                     </div>
                   </div>
@@ -4275,16 +5044,22 @@ function PtClientBaselineTab({
                   disabled={baselineNotesStatus === "saving"}
                   onClick={onNotesSave}
                 >
-                  {baselineNotesStatus === "saving" ? "Saving..." : "Save notes"}
+                  {baselineNotesStatus === "saving"
+                    ? "Saving..."
+                    : "Save notes"}
                 </Button>
                 {baselineNotesMessage ? (
-                  <span className="text-xs text-muted-foreground">{baselineNotesMessage}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {baselineNotesMessage}
+                  </span>
                 ) : null}
               </div>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No submitted baseline yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No submitted baseline yet.
+          </p>
         )}
       </CardContent>
     </Card>
@@ -4311,7 +5086,9 @@ function PtClientCheckinsTab({
       <Card className="border-border/70 bg-card/80 xl:col-start-1">
         <CardHeader>
           <CardTitle>Check-ins</CardTitle>
-          <p className="text-sm text-muted-foreground">Weekly check-ins and coach feedback.</p>
+          <p className="text-sm text-muted-foreground">
+            Weekly check-ins and coach feedback.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (
@@ -4330,10 +5107,14 @@ function PtClientCheckinsTab({
                 const status = !checkin.submitted_at
                   ? "Due"
                   : checkin.pt_feedback
-                  ? "Reviewed"
-                  : "Submitted";
+                    ? "Reviewed"
+                    : "Submitted";
                 const variant =
-                  status === "Reviewed" ? "success" : status === "Submitted" ? "secondary" : "warning";
+                  status === "Reviewed"
+                    ? "success"
+                    : status === "Submitted"
+                      ? "secondary"
+                      : "warning";
                 return (
                   <div
                     key={checkin.id}
@@ -4412,7 +5193,9 @@ function PtClientHabitsTab({
   } | null>(null);
 
   const weeklyDates = useMemo(() => {
-    return Array.from({ length: 7 }, (_, idx) => addDaysToDateString(habitsToday, -(6 - idx)));
+    return Array.from({ length: 7 }, (_, idx) =>
+      addDaysToDateString(habitsToday, -(6 - idx)),
+    );
   }, [habitsToday]);
   const weeklyLogMap = useMemo(() => {
     const map = new Map<string, HabitLog>();
@@ -4427,12 +5210,14 @@ function PtClientHabitsTab({
         dateKey,
         log: weeklyLogMap.get(dateKey) ?? null,
       })),
-    [weeklyDates, weeklyLogMap]
+    [weeklyDates, weeklyLogMap],
   );
   const loggedDays = weeklyRows.filter((row) => row.log).length;
   const adherencePct = Math.round((loggedDays / 7) * 100);
   const average = (values: Array<number | null | undefined>) => {
-    const nums = values.filter((value) => typeof value === "number") as number[];
+    const nums = values.filter(
+      (value) => typeof value === "number",
+    ) as number[];
     if (nums.length === 0) return null;
     return nums.reduce((sum, value) => sum + value, 0) / nums.length;
   };
@@ -4449,12 +5234,14 @@ function PtClientHabitsTab({
   > = {
     calories: {
       label: "Calories",
-      extract: (log) => (typeof log.calories === "number" ? log.calories : null),
+      extract: (log) =>
+        typeof log.calories === "number" ? log.calories : null,
       format: (value) => Math.round(value).toString(),
     },
     protein_g: {
       label: "Protein",
-      extract: (log) => (typeof log.protein_g === "number" ? log.protein_g : null),
+      extract: (log) =>
+        typeof log.protein_g === "number" ? log.protein_g : null,
       format: (value) => `${Math.round(value)} g`,
     },
     carbs_g: {
@@ -4469,8 +5256,10 @@ function PtClientHabitsTab({
     },
     weight_value: {
       label: "Weight",
-      extract: (log) => (typeof log.weight_value === "number" ? log.weight_value : null),
-      format: (value, weightUnit) => `${value.toFixed(1)} ${weightUnit ?? ""}`.trim(),
+      extract: (log) =>
+        typeof log.weight_value === "number" ? log.weight_value : null,
+      format: (value, weightUnit) =>
+        `${value.toFixed(1)} ${weightUnit ?? ""}`.trim(),
     },
     steps: {
       label: "Steps",
@@ -4479,7 +5268,8 @@ function PtClientHabitsTab({
     },
     sleep_hours: {
       label: "Sleep",
-      extract: (log) => (typeof log.sleep_hours === "number" ? log.sleep_hours : null),
+      extract: (log) =>
+        typeof log.sleep_hours === "number" ? log.sleep_hours : null,
       format: (value) => `${value.toFixed(1)} hrs`,
     },
     energy: {
@@ -4504,7 +5294,8 @@ function PtClientHabitsTab({
     const config = habitMetricConfig[selectedHabitMetric.metric];
     const weightUnit =
       selectedHabitMetric.metric === "weight_value"
-        ? weeklyRows.find((row) => row.log?.weight_unit)?.log?.weight_unit ?? null
+        ? (weeklyRows.find((row) => row.log?.weight_unit)?.log?.weight_unit ??
+          null)
         : null;
 
     const points = weeklyRows
@@ -4512,14 +5303,22 @@ function PtClientHabitsTab({
         date: row.dateKey,
         value: row.log ? config.extract(row.log) : null,
       }))
-      .filter((point): point is { date: string; value: number } => typeof point.value === "number");
+      .filter(
+        (point): point is { date: string; value: number } =>
+          typeof point.value === "number",
+      );
 
-    const selectedPoint = points.find((point) => point.date === selectedHabitMetric.dateKey) ?? null;
+    const selectedPoint =
+      points.find((point) => point.date === selectedHabitMetric.dateKey) ??
+      null;
     const latest = points.length > 0 ? points[points.length - 1].value : null;
     const earliest = points.length > 0 ? points[0].value : null;
     const averageValue =
-      points.length > 0 ? points.reduce((sum, point) => sum + point.value, 0) / points.length : null;
-    const delta = latest !== null && earliest !== null ? latest - earliest : null;
+      points.length > 0
+        ? points.reduce((sum, point) => sum + point.value, 0) / points.length
+        : null;
+    const delta =
+      latest !== null && earliest !== null ? latest - earliest : null;
     const coveragePct = Math.round((points.length / 7) * 100);
 
     return {
@@ -4563,7 +5362,9 @@ function PtClientHabitsTab({
                 value={
                   avgSteps !== null || avgProtein !== null
                     ? `${avgSteps !== null ? Math.round(avgSteps).toLocaleString() : "--"} / ${
-                        avgProtein !== null ? `${Math.round(avgProtein)}g` : "--"
+                        avgProtein !== null
+                          ? `${Math.round(avgProtein)}g`
+                          : "--"
                       }`
                     : "--"
                 }
@@ -4584,7 +5385,10 @@ function PtClientHabitsTab({
         ) : (
           <>
             {!hasAnyHabits ? (
-              <EmptyState title="No habit logs yet" description="Logs will appear as the client checks in." />
+              <EmptyState
+                title="No habit logs yet"
+                description="Logs will appear as the client checks in."
+              />
             ) : null}
             <div className="overflow-hidden rounded-lg border border-border">
               <div className="grid grid-cols-11 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
@@ -4608,18 +5412,25 @@ function PtClientHabitsTab({
                     key={row.dateKey}
                     className={cn(
                       "grid grid-cols-11 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0",
-                      muted && "text-muted-foreground"
+                      muted && "text-muted-foreground",
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{row.dateKey}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.dateKey}
+                      </span>
                     </div>
                     <span>
                       {typeof log?.calories === "number" ? (
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "calories", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "calories",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.calories}
                         </button>
@@ -4632,7 +5443,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "protein_g", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "protein_g",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.protein_g} g
                         </button>
@@ -4645,7 +5461,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "carbs_g", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "carbs_g",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.carbs_g} g
                         </button>
@@ -4658,7 +5479,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "fats_g", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "fats_g",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.fats_g} g
                         </button>
@@ -4672,7 +5498,10 @@ function PtClientHabitsTab({
                           type="button"
                           className="font-medium hover:text-foreground/80"
                           onClick={() =>
-                            setSelectedHabitMetric({ metric: "weight_value", dateKey: row.dateKey })
+                            setSelectedHabitMetric({
+                              metric: "weight_value",
+                              dateKey: row.dateKey,
+                            })
                           }
                         >
                           {log.weight_value} {log.weight_unit ?? ""}
@@ -4686,7 +5515,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "steps", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "steps",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.steps.toLocaleString()}
                         </button>
@@ -4699,7 +5533,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "sleep_hours", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "sleep_hours",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.sleep_hours} hrs
                         </button>
@@ -4712,7 +5551,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "energy", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "energy",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.energy}
                         </button>
@@ -4725,7 +5569,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "hunger", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "hunger",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.hunger}
                         </button>
@@ -4738,7 +5587,12 @@ function PtClientHabitsTab({
                         <button
                           type="button"
                           className="font-medium hover:text-foreground/80"
-                          onClick={() => setSelectedHabitMetric({ metric: "stress", dateKey: row.dateKey })}
+                          onClick={() =>
+                            setSelectedHabitMetric({
+                              metric: "stress",
+                              dateKey: row.dateKey,
+                            })
+                          }
                         >
                           {log.stress}
                         </button>
@@ -4760,7 +5614,11 @@ function PtClientHabitsTab({
       >
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
-            <DialogTitle>{habitMetricTrend ? `${habitMetricTrend.label} trend` : "Habit trend"}</DialogTitle>
+            <DialogTitle>
+              {habitMetricTrend
+                ? `${habitMetricTrend.label} trend`
+                : "Habit trend"}
+            </DialogTitle>
             <DialogDescription>
               {selectedHabitMetric
                 ? `Clicked ${selectedHabitMetric.dateKey}. Showing last 7 days for this metric.`
@@ -4774,7 +5632,10 @@ function PtClientHabitsTab({
                   <p className="text-xs text-muted-foreground">Selected day</p>
                   <p className="text-base font-semibold">
                     {habitMetricTrend.selectedPoint
-                      ? habitMetricTrend.format(habitMetricTrend.selectedPoint.value, habitMetricTrend.weightUnit)
+                      ? habitMetricTrend.format(
+                          habitMetricTrend.selectedPoint.value,
+                          habitMetricTrend.weightUnit,
+                        )
                       : "No data"}
                   </p>
                 </div>
@@ -4782,7 +5643,10 @@ function PtClientHabitsTab({
                   <p className="text-xs text-muted-foreground">Latest</p>
                   <p className="text-base font-semibold">
                     {habitMetricTrend.latest !== null
-                      ? habitMetricTrend.format(habitMetricTrend.latest, habitMetricTrend.weightUnit)
+                      ? habitMetricTrend.format(
+                          habitMetricTrend.latest,
+                          habitMetricTrend.weightUnit,
+                        )
                       : "No data"}
                   </p>
                 </div>
@@ -4790,17 +5654,22 @@ function PtClientHabitsTab({
                   <p className="text-xs text-muted-foreground">7-day average</p>
                   <p className="text-base font-semibold">
                     {habitMetricTrend.averageValue !== null
-                      ? habitMetricTrend.format(habitMetricTrend.averageValue, habitMetricTrend.weightUnit)
+                      ? habitMetricTrend.format(
+                          habitMetricTrend.averageValue,
+                          habitMetricTrend.weightUnit,
+                        )
                       : "No data"}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">Change (first to latest)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Change (first to latest)
+                  </p>
                   <p className="text-base font-semibold">
                     {habitMetricTrend.delta !== null
                       ? `${habitMetricTrend.delta > 0 ? "+" : ""}${habitMetricTrend.format(
                           habitMetricTrend.delta,
-                          habitMetricTrend.weightUnit
+                          habitMetricTrend.weightUnit,
                         )}`
                       : "No data"}
                   </p>
@@ -4808,19 +5677,33 @@ function PtClientHabitsTab({
               </div>
               <div className="rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Coverage</p>
-                <p className="text-base font-semibold">{habitMetricTrend.coveragePct}% of days</p>
+                <p className="text-base font-semibold">
+                  {habitMetricTrend.coveragePct}% of days
+                </p>
               </div>
               <div className="space-y-2 rounded-lg border border-border p-3">
-                <p className="text-xs font-semibold text-muted-foreground">Day-by-day</p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Day-by-day
+                </p>
                 {habitMetricTrend.points.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No entries in the last 7 days.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No entries in the last 7 days.
+                  </p>
                 ) : (
                   <div className="space-y-1">
                     {habitMetricTrend.points.map((point) => (
-                      <div key={point.date} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{point.date}</span>
+                      <div
+                        key={point.date}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="text-muted-foreground">
+                          {point.date}
+                        </span>
                         <span className="font-medium">
-                          {habitMetricTrend.format(point.value, habitMetricTrend.weightUnit)}
+                          {habitMetricTrend.format(
+                            point.value,
+                            habitMetricTrend.weightUnit,
+                          )}
                         </span>
                       </div>
                     ))}
@@ -4867,23 +5750,14 @@ function PtClientPlanTab({
   onEditLoads,
   onStatusChange,
 }: {
-  templatesQuery: QueryResult<Array<{ id: string; name: string | null; workout_type_tag: string | null }>>;
+  templatesQuery: QueryResult<
+    Array<{ id: string; name: string | null; workout_type_tag: string | null }>
+  >;
   programTemplatesQuery: QueryResult<ProgramTemplateRow[]>;
   activeProgram: ClientProgramRow | null;
   pausedProgram: ClientProgramRow | null;
   programOverrides: ProgramOverrideRow[];
-  upcomingQuery: QueryResult<
-    Array<{
-      id: string;
-      status: string | null;
-      day_type?: string | null;
-      scheduled_date: string | null;
-      completed_at: string | null;
-      workout_template_id: string | null;
-      workout_template: { name: string | null } | null;
-      assigned_workout_exercises?: AssignedWorkoutExerciseRow[];
-    }>
-  >;
+  upcomingQuery: QueryResult<UpcomingWorkoutRow[]>;
   selectedTemplateId: string;
   scheduledDate: string;
   assignStatus: "idle" | "saving" | "error";
@@ -4945,7 +5819,8 @@ function PtClientPlanTab({
                   {getErrorDetails(programTemplatesQuery.error).code}:{" "}
                   {getErrorDetails(programTemplatesQuery.error).message}
                 </div>
-              ) : programTemplatesQuery.data && programTemplatesQuery.data.length === 0 ? (
+              ) : programTemplatesQuery.data &&
+                programTemplatesQuery.data.length === 0 ? (
                 <EmptyState
                   title="No program templates yet."
                   description="Create a program template to start scheduling multi-week blocks."
@@ -4953,7 +5828,9 @@ function PtClientPlanTab({
               ) : (
                 <>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">Program</label>
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Program
+                    </label>
                     <select
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                       value={selectedProgramId}
@@ -4962,23 +5839,34 @@ function PtClientPlanTab({
                       <option value="">Select a program</option>
                       {programTemplatesQuery.data?.map((program) => (
                         <option key={program.id} value={program.id}>
-                          {program.name ?? "Program"} {program.weeks_count ? `- ${program.weeks_count}w` : ""}
+                          {program.name ?? "Program"}{" "}
+                          {program.weeks_count
+                            ? `- ${program.weeks_count}w`
+                            : ""}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">Start date</label>
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Start date
+                    </label>
                     <input
                       type="date"
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                       value={programStartDate}
-                      onChange={(event) => onProgramDateChange(event.target.value)}
+                      onChange={(event) =>
+                        onProgramDateChange(event.target.value)
+                      }
                     />
                   </div>
                   <Button
                     className="w-full"
-                    disabled={programStatus === "saving" || !selectedProgramId || !programStartDate}
+                    disabled={
+                      programStatus === "saving" ||
+                      !selectedProgramId ||
+                      !programStartDate
+                    }
                     onClick={onApplyProgram}
                   >
                     {programStatus === "saving"
@@ -5006,18 +5894,28 @@ function PtClientPlanTab({
                         <Button
                           className="w-full"
                           variant="secondary"
-                          disabled={unassignStatus === "saving" || programStatus === "saving"}
+                          disabled={
+                            unassignStatus === "saving" ||
+                            programStatus === "saving"
+                          }
                           onClick={onPauseProgram}
                         >
-                          {programStatus === "saving" ? "Updating..." : "Pause program"}
+                          {programStatus === "saving"
+                            ? "Updating..."
+                            : "Pause program"}
                         </Button>
                         <Button
                           className="w-full"
                           variant="ghost"
-                          disabled={unassignStatus === "saving" || programStatus === "saving"}
+                          disabled={
+                            unassignStatus === "saving" ||
+                            programStatus === "saving"
+                          }
                           onClick={onUnassignProgram}
                         >
-                          {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
+                          {unassignStatus === "saving"
+                            ? "Unassigning..."
+                            : "Unassign program"}
                         </Button>
                       </div>
                     </div>
@@ -5030,7 +5928,9 @@ function PtClientPlanTab({
                       <div className="mt-2 text-sm text-foreground">
                         {pausedProgram.program_template?.name ?? "Program"}
                       </div>
-                      <div className="mt-1">Start date {pausedProgram.start_date ?? "--"}</div>
+                      <div className="mt-1">
+                        Start date {pausedProgram.start_date ?? "--"}
+                      </div>
                       <div className="mt-3 grid gap-2">
                         <Button
                           className="w-full"
@@ -5038,27 +5938,38 @@ function PtClientPlanTab({
                           disabled={programStatus === "saving"}
                           onClick={onResumeProgram}
                         >
-                          {programStatus === "saving" ? "Updating..." : "Resume program"}
+                          {programStatus === "saving"
+                            ? "Updating..."
+                            : "Resume program"}
                         </Button>
                         <Button
                           className="w-full"
                           variant="ghost"
-                          disabled={unassignStatus === "saving" || programStatus === "saving"}
+                          disabled={
+                            unassignStatus === "saving" ||
+                            programStatus === "saving"
+                          }
                           onClick={onUnassignProgram}
                         >
-                          {unassignStatus === "saving" ? "Unassigning..." : "Unassign program"}
+                          {unassignStatus === "saving"
+                            ? "Unassigning..."
+                            : "Unassign program"}
                         </Button>
                       </div>
                     </div>
                   ) : null}
-                  {activeProgram && selectedProgramId && selectedProgramId !== activeProgram.program_template_id ? (
+                  {activeProgram &&
+                  selectedProgramId &&
+                  selectedProgramId !== activeProgram.program_template_id ? (
                     <Button
                       className="w-full"
                       variant="secondary"
                       disabled={programStatus === "saving"}
                       onClick={onSwitchProgramMidCycle}
                     >
-                      {programStatus === "saving" ? "Switching..." : "Switch program from today"}
+                      {programStatus === "saving"
+                        ? "Switching..."
+                        : "Switch program from today"}
                     </Button>
                   ) : null}
                 </>
@@ -5097,13 +6008,17 @@ function PtClientPlanTab({
                       {templatesQuery.data?.map((template) => (
                         <option key={template.id} value={template.id}>
                           {template.name}{" "}
-                          {template.workout_type_tag ? ` - ${template.workout_type_tag}` : ""}
+                          {template.workout_type_tag
+                            ? ` - ${template.workout_type_tag}`
+                            : ""}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Date
+                    </label>
                     <input
                       type="date"
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -5113,10 +6028,16 @@ function PtClientPlanTab({
                   </div>
                   <Button
                     className="w-full"
-                    disabled={assignStatus === "saving" || !selectedTemplateId || !scheduledDate}
+                    disabled={
+                      assignStatus === "saving" ||
+                      !selectedTemplateId ||
+                      !scheduledDate
+                    }
                     onClick={onAssign}
                   >
-                    {assignStatus === "saving" ? "Assigning..." : "Assign workout"}
+                    {assignStatus === "saving"
+                      ? "Assigning..."
+                      : "Assign workout"}
                   </Button>
                 </>
               )}
@@ -5140,7 +6061,9 @@ function PtClientPlanTab({
               const dateKey = workout.scheduled_date ?? "";
               const override = overrideByDate.get(dateKey);
               const isRestDay = workout.day_type === "rest";
-              const title = isRestDay ? "Rest day" : workout.workout_template?.name ?? "Workout";
+              const title = isRestDay
+                ? "Rest day"
+                : (workout.workout_template?.name ?? "Workout");
               const dateLabel = workout.scheduled_date
                 ? new Date(workout.scheduled_date).toLocaleDateString("en-US", {
                     weekday: "short",
@@ -5157,13 +6080,22 @@ function PtClientPlanTab({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold">{title}</div>
-                      <div className="text-xs text-muted-foreground">{dateLabel}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {dateLabel}
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={override ? "secondary" : "muted"} className="text-[10px] uppercase">
+                      <Badge
+                        variant={override ? "secondary" : "muted"}
+                        className="text-[10px] uppercase"
+                      >
                         {override ? "Override" : "Scheduled"}
                       </Badge>
-                      <StatusPill status={isRestDay ? "rest day" : workout.status ?? "planned"} />
+                      <StatusPill
+                        status={
+                          isRestDay ? "rest day" : (workout.status ?? "planned")
+                        }
+                      />
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -5171,17 +6103,31 @@ function PtClientPlanTab({
                       size="sm"
                       variant="secondary"
                       disabled={!canOverride}
-                      onClick={() => onOpenOverride(workout.scheduled_date ?? "")}
+                      onClick={() =>
+                        onOpenOverride(workout.scheduled_date ?? "")
+                      }
                     >
                       Override
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onEditLoads(workout.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onEditLoads(workout.id)}
+                    >
                       Edit loads
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onEdit(workout)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onEdit(workout)}
+                    >
                       Edit
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onDelete(workout.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onDelete(workout.id)}
+                    >
                       Delete
                     </Button>
                     <Button
@@ -5200,18 +6146,21 @@ function PtClientPlanTab({
                     </Button>
                   </div>
                   {isRestDay ? (
-                    <div className="mt-3 text-xs text-muted-foreground">Rest day.</div>
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      Rest day.
+                    </div>
                   ) : workout.assigned_workout_exercises &&
                     workout.assigned_workout_exercises.length > 0 ? (
                     <div className="mt-3 space-y-2 text-xs text-muted-foreground">
                       {workout.assigned_workout_exercises.map((row) => {
                         const exerciseId = row.exercise?.id ?? "";
                         const lastSet = lastSetByWorkoutExercise.get(
-                          `${workout.id}-${exerciseId}`
+                          `${workout.id}-${exerciseId}`,
                         );
                         const performed =
                           lastSet &&
-                          (typeof lastSet.reps === "number" || typeof lastSet.weight === "number")
+                          (typeof lastSet.reps === "number" ||
+                            typeof lastSet.weight === "number")
                             ? `${lastSet.reps ?? "-"} reps @ ${lastSet.weight ?? "-"}`
                             : "No sets logged";
                         const label = row.exercise?.name ?? "Exercise";
@@ -5219,8 +6168,13 @@ function PtClientPlanTab({
                         const reps = row.reps ?? "";
                         const repLine = sets || reps ? `${sets}${reps}` : "";
                         return (
-                          <div key={row.id} className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold text-foreground">{label}</span>
+                          <div
+                            key={row.id}
+                            className="flex flex-wrap items-center gap-2"
+                          >
+                            <span className="font-semibold text-foreground">
+                              {label}
+                            </span>
                             <span>
                               {repLine ? `${repLine} - ` : ""}
                               {performed}
@@ -5258,10 +6212,16 @@ function PtClientNutritionTab({
   todayKey: string;
 }) {
   const queryClient = useQueryClient();
-  const [selectedNutritionProgramId, setSelectedNutritionProgramId] = useState("");
-  const [nutritionProgramStartDate, setNutritionProgramStartDate] = useState(todayKey);
-  const [nutritionAssignStatus, setNutritionAssignStatus] = useState<"idle" | "saving">("idle");
-  const [nutritionAssignError, setNutritionAssignError] = useState<string | null>(null);
+  const [selectedNutritionProgramId, setSelectedNutritionProgramId] =
+    useState("");
+  const [nutritionProgramStartDate, setNutritionProgramStartDate] =
+    useState(todayKey);
+  const [nutritionAssignStatus, setNutritionAssignStatus] = useState<
+    "idle" | "saving"
+  >("idle");
+  const [nutritionAssignError, setNutritionAssignError] = useState<
+    string | null
+  >(null);
 
   const nutritionProgramsQuery = useQuery({
     queryKey: ["pt-client-nutrition-programs", workspaceId],
@@ -5303,8 +6263,11 @@ function PtClientNutritionTab({
   });
 
   const nutritionPreviewKeys = useMemo(
-    () => Array.from({ length: 7 }).map((_, idx) => addDaysToDateString(todayKey, idx)),
-    [todayKey]
+    () =>
+      Array.from({ length: 7 }).map((_, idx) =>
+        addDaysToDateString(todayKey, idx),
+      ),
+    [todayKey],
   );
 
   return (
@@ -5337,24 +6300,32 @@ function PtClientNutritionTab({
                 <select
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={selectedNutritionProgramId}
-                  onChange={(event) => setSelectedNutritionProgramId(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedNutritionProgramId(event.target.value)
+                  }
                 >
                   <option value="">Select a nutrition program</option>
                   {(nutritionProgramsQuery.data ?? []).map((program) => (
                     <option key={program.id} value={program.id}>
                       {program.name ?? "Nutrition Program"}{" "}
-                      {program.duration_weeks ? `- ${program.duration_weeks}w` : ""}
+                      {program.duration_weeks
+                        ? `- ${program.duration_weeks}w`
+                        : ""}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">Start date</label>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Start date
+                </label>
                 <input
                   type="date"
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={nutritionProgramStartDate}
-                  onChange={(event) => setNutritionProgramStartDate(event.target.value)}
+                  onChange={(event) =>
+                    setNutritionProgramStartDate(event.target.value)
+                  }
                 />
               </div>
               <Button
@@ -5366,17 +6337,26 @@ function PtClientNutritionTab({
                   !clientId
                 }
                 onClick={async () => {
-                  if (!clientId || !selectedNutritionProgramId || !nutritionProgramStartDate) {
-                    setNutritionAssignError("Select a nutrition program and start date.");
+                  if (
+                    !clientId ||
+                    !selectedNutritionProgramId ||
+                    !nutritionProgramStartDate
+                  ) {
+                    setNutritionAssignError(
+                      "Select a nutrition program and start date.",
+                    );
                     return;
                   }
                   setNutritionAssignStatus("saving");
                   setNutritionAssignError(null);
-                  const { error } = await supabase.rpc("assign_nutrition_template_to_client", {
-                    p_client_id: clientId,
-                    p_template_id: selectedNutritionProgramId,
-                    p_start_date: nutritionProgramStartDate,
-                  });
+                  const { error } = await supabase.rpc(
+                    "assign_nutrition_template_to_client",
+                    {
+                      p_client_id: clientId,
+                      p_template_id: selectedNutritionProgramId,
+                      p_start_date: nutritionProgramStartDate,
+                    },
+                  );
                   if (error) {
                     setNutritionAssignStatus("idle");
                     setNutritionAssignError(error.message);
@@ -5384,7 +6364,11 @@ function PtClientNutritionTab({
                   }
                   await Promise.all([
                     queryClient.invalidateQueries({
-                      queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
+                      queryKey: [
+                        "pt-client-nutrition-next-7",
+                        clientId,
+                        todayKey,
+                      ],
                     }),
                     queryClient.invalidateQueries({
                       queryKey: ["pt-client-nutrition-week", clientId],
@@ -5393,19 +6377,27 @@ function PtClientNutritionTab({
                   setNutritionAssignStatus("idle");
                 }}
               >
-                {nutritionAssignStatus === "saving" ? "Assigning..." : "Assign nutrition program"}
+                {nutritionAssignStatus === "saving"
+                  ? "Assigning..."
+                  : "Assign nutrition program"}
               </Button>
               <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
-                <p className="mb-2 font-semibold text-foreground">Next 7 days preview</p>
+                <p className="mb-2 font-semibold text-foreground">
+                  Next 7 days preview
+                </p>
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
                   {nutritionPreviewKeys.map((key) => {
-                    const hasProgram = (nutritionNext7Query.data ?? []).some((row) => row.date === key);
+                    const hasProgram = (nutritionNext7Query.data ?? []).some(
+                      (row) => row.date === key,
+                    );
                     return (
                       <div
                         key={key}
                         className={cn(
                           "rounded-md border px-2 py-1 text-center",
-                          hasProgram ? "border-primary/60 bg-primary/10" : "border-border/60"
+                          hasProgram
+                            ? "border-primary/60 bg-primary/10"
+                            : "border-border/60",
                         )}
                       >
                         {key.slice(5)}
@@ -5440,7 +6432,9 @@ function PtClientLogsTab({
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
       <CardHeader>
         <CardTitle>Session logs</CardTitle>
-        <p className="text-sm text-muted-foreground">Last 10 workout sessions.</p>
+        <p className="text-sm text-muted-foreground">
+          Last 10 workout sessions.
+        </p>
       </CardHeader>
       <CardContent>
         {ptSessionsQuery.isLoading ? (
@@ -5476,8 +6470,9 @@ function PtClientLogsTab({
                 : "--";
               const workoutName =
                 session.assigned_workout?.workout_template?.name ?? "Workout";
-              const statusLabel =
-                session.completed_at ? "completed" : session.assigned_workout?.status ?? "active";
+              const statusLabel = session.completed_at
+                ? "completed"
+                : (session.assigned_workout?.status ?? "active");
               const volume = sessionVolumeById.get(session.id);
               const notesIndicator = session.client_notes ? "Yes" : "--";
               return (
@@ -5487,8 +6482,12 @@ function PtClientLogsTab({
                   onClick={() => onOpenSession(session.id)}
                   className="grid w-full grid-cols-[110px_1fr_90px_90px_70px] items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-left transition hover:bg-muted/50"
                 >
-                  <span className="text-xs text-muted-foreground">{dateLabel}</span>
-                  <span className="font-medium text-foreground">{workoutName}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {dateLabel}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {workoutName}
+                  </span>
                   <Badge
                     variant={statusLabel === "completed" ? "success" : "muted"}
                     className="text-[10px] uppercase"
@@ -5498,20 +6497,29 @@ function PtClientLogsTab({
                   <span className="text-xs text-muted-foreground">
                     {typeof volume === "number" ? volume.toFixed(0) : "--"}
                   </span>
-                  <span className="text-xs text-muted-foreground">{notesIndicator}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {notesIndicator}
+                  </span>
                 </button>
               );
             })}
           </div>
         ) : (
-          <EmptyState title="No sessions yet" description="No workout sessions recorded." />
+          <EmptyState
+            title="No sessions yet"
+            description="No workout sessions recorded."
+          />
         )}
       </CardContent>
     </Card>
   );
 }
 
-function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfile | null }) {
+function PtClientProgressTab({
+  clientSnapshot,
+}: {
+  clientSnapshot: PtClientProfile | null;
+}) {
   const { clientId } = useParams();
   const todayKey = formatDateKey(new Date());
   const habitsStart = addDaysToDateString(todayKey, -55);
@@ -5525,7 +6533,7 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
       const { data, error } = await supabase
         .from("habit_logs")
         .select(
-          "log_date, weight_value, weight_unit, steps, sleep_hours, protein_g, calories, energy, hunger, stress"
+          "log_date, weight_value, weight_unit, steps, sleep_hours, protein_g, calories, energy, hunger, stress",
         )
         .eq("client_id", clientId ?? "")
         .gte("log_date", habitsStart)
@@ -5537,7 +6545,12 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
   });
 
   const progressSessionsQuery = useQuery({
-    queryKey: ["pt-client-progress-sessions", clientId, sessionsStart, todayKey],
+    queryKey: [
+      "pt-client-progress-sessions",
+      clientId,
+      sessionsStart,
+      todayKey,
+    ],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -5547,13 +6560,17 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
         .gte("created_at", `${sessionsStart}T00:00:00.000Z`)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as Array<{ id: string; completed_at: string | null; created_at: string | null }>;
+      return (data ?? []) as Array<{
+        id: string;
+        completed_at: string | null;
+        created_at: string | null;
+      }>;
     },
   });
 
   const progressSessionIds = useMemo(
     () => (progressSessionsQuery.data ?? []).map((row) => row.id),
-    [progressSessionsQuery.data]
+    [progressSessionsQuery.data],
   );
 
   const progressSetLogsQuery = useQuery({
@@ -5562,7 +6579,9 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_set_logs")
-        .select("exercise_id, reps, weight, created_at, exercise:exercises(name), workout_session_id")
+        .select(
+          "exercise_id, reps, weight, created_at, exercise:exercises(name), workout_session_id",
+        )
         .in("workout_session_id", progressSessionIds)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -5578,13 +6597,18 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
   });
 
   const progressCheckinAnswersQuery = useQuery({
-    queryKey: ["pt-client-progress-checkin-answers", clientId, checkinsStart, todayKey],
+    queryKey: [
+      "pt-client-progress-checkin-answers",
+      clientId,
+      checkinsStart,
+      todayKey,
+    ],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("checkin_answers")
         .select(
-          "value_number, value_text, question:checkin_questions(question_text, prompt), checkin:checkins!inner(client_id, week_ending_saturday, submitted_at)"
+          "value_number, value_text, question:checkin_questions(question_text, prompt), checkin:checkins!inner(client_id, week_ending_saturday, submitted_at)",
         )
         .eq("checkin.client_id", clientId ?? "")
         .gte("checkin.week_ending_saturday", checkinsStart)
@@ -5598,8 +6622,16 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
           | { question_text: string | null; prompt: string | null }[]
           | null;
         checkin:
-          | { client_id: string | null; week_ending_saturday: string | null; submitted_at: string | null }
-          | { client_id: string | null; week_ending_saturday: string | null; submitted_at: string | null }[]
+          | {
+              client_id: string | null;
+              week_ending_saturday: string | null;
+              submitted_at: string | null;
+            }
+          | {
+              client_id: string | null;
+              week_ending_saturday: string | null;
+              submitted_at: string | null;
+            }[]
           | null;
       }>;
     },
@@ -5609,22 +6641,31 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
     const logs = progressHabitsQuery.data ?? [];
     if (logs.length === 0) return null;
 
-    const weightLogs = logs.filter((log) => typeof log.weight_value === "number");
+    const weightLogs = logs.filter(
+      (log) => typeof log.weight_value === "number",
+    );
     const stepsLogs = logs.filter((log) => typeof log.steps === "number");
     const midpoint = Math.floor(logs.length / 2);
     const firstHalf = logs.slice(0, midpoint);
     const secondHalf = logs.slice(midpoint);
 
     const avg = (values: Array<number | null | undefined>) => {
-      const nums = values.filter((value) => typeof value === "number") as number[];
+      const nums = values.filter(
+        (value) => typeof value === "number",
+      ) as number[];
       if (nums.length === 0) return null;
       return nums.reduce((sum, value) => sum + value, 0) / nums.length;
     };
 
     const firstWeight = weightLogs[0]?.weight_value ?? null;
-    const latestWeight = weightLogs[weightLogs.length - 1]?.weight_value ?? null;
-    const weightChange = firstWeight !== null && latestWeight !== null ? latestWeight - firstWeight : null;
-    const weightUnit = weightLogs.find((log) => log.weight_unit)?.weight_unit ?? "kg";
+    const latestWeight =
+      weightLogs[weightLogs.length - 1]?.weight_value ?? null;
+    const weightChange =
+      firstWeight !== null && latestWeight !== null
+        ? latestWeight - firstWeight
+        : null;
+    const weightUnit =
+      weightLogs.find((log) => log.weight_unit)?.weight_unit ?? "kg";
 
     return {
       logsCount: logs.length,
@@ -5639,7 +6680,8 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
       avgProteinSecond: avg(secondHalf.map((log) => log.protein_g)),
       avgCaloriesFirst: avg(firstHalf.map((log) => log.calories)),
       avgCaloriesSecond: avg(secondHalf.map((log) => log.calories)),
-      latestSteps: stepsLogs.length > 0 ? stepsLogs[stepsLogs.length - 1].steps : null,
+      latestSteps:
+        stepsLogs.length > 0 ? stepsLogs[stepsLogs.length - 1].steps : null,
       firstSteps: stepsLogs.length > 0 ? stepsLogs[0].steps : null,
     };
   }, [progressHabitsQuery.data]);
@@ -5648,13 +6690,18 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
     const logs = progressSetLogsQuery.data ?? [];
     const byExercise = new Map<
       string,
-      Array<{ created_at: string | null; reps: number | null; weight: number | null; name: string }>
+      Array<{
+        created_at: string | null;
+        reps: number | null;
+        weight: number | null;
+        name: string;
+      }>
     >();
     logs.forEach((row) => {
       if (!row.exercise_id) return;
       const name = Array.isArray(row.exercise)
-        ? row.exercise[0]?.name ?? "Exercise"
-        : row.exercise?.name ?? "Exercise";
+        ? (row.exercise[0]?.name ?? "Exercise")
+        : (row.exercise?.name ?? "Exercise");
       if (!byExercise.has(row.exercise_id)) byExercise.set(row.exercise_id, []);
       byExercise.get(row.exercise_id)?.push({
         created_at: row.created_at ?? null,
@@ -5673,9 +6720,9 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
     }> = [];
 
     byExercise.forEach((rows, exerciseId) => {
-      const weighted = rows.filter((row) => typeof row.weight === "number") as Array<
-        typeof rows[number] & { weight: number }
-      >;
+      const weighted = rows.filter(
+        (row) => typeof row.weight === "number",
+      ) as Array<(typeof rows)[number] & { weight: number }>;
       if (weighted.length < 2) return;
       const startWeight = weighted[0].weight;
       const latestWeight = weighted[weighted.length - 1].weight;
@@ -5696,12 +6743,20 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
     const rows = progressCheckinAnswersQuery.data ?? [];
     const byQuestion = new Map<
       string,
-      Array<{ value_number: number | null; value_text: string | null; date: string | null }>
+      Array<{
+        value_number: number | null;
+        value_text: string | null;
+        date: string | null;
+      }>
     >();
 
     rows.forEach((row) => {
-      const question = Array.isArray(row.question) ? row.question[0] ?? null : row.question;
-      const checkin = Array.isArray(row.checkin) ? row.checkin[0] ?? null : row.checkin;
+      const question = Array.isArray(row.question)
+        ? (row.question[0] ?? null)
+        : row.question;
+      const checkin = Array.isArray(row.checkin)
+        ? (row.checkin[0] ?? null)
+        : row.checkin;
       const key = question?.question_text ?? question?.prompt ?? "Question";
       if (!byQuestion.has(key)) byQuestion.set(key, []);
       byQuestion.get(key)?.push({
@@ -5711,18 +6766,30 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
       });
     });
 
-    const numericChanges: Array<{ question: string; from: number; to: number; delta: number }> = [];
-    const textChanges: Array<{ question: string; previous: string; latest: string }> = [];
+    const numericChanges: Array<{
+      question: string;
+      from: number;
+      to: number;
+      delta: number;
+    }> = [];
+    const textChanges: Array<{
+      question: string;
+      previous: string;
+      latest: string;
+    }> = [];
 
     byQuestion.forEach((entries, question) => {
-      const ordered = [...entries].sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")));
-      const numeric = ordered.filter((entry) => typeof entry.value_number === "number") as Array<
-        typeof ordered[number] & { value_number: number }
-      >;
+      const ordered = [...entries].sort((a, b) =>
+        String(a.date ?? "").localeCompare(String(b.date ?? "")),
+      );
+      const numeric = ordered.filter(
+        (entry) => typeof entry.value_number === "number",
+      ) as Array<(typeof ordered)[number] & { value_number: number }>;
       if (numeric.length >= 2) {
         const from = numeric[0].value_number;
         const to = numeric[numeric.length - 1].value_number;
-        if (from !== to) numericChanges.push({ question, from, to, delta: to - from });
+        if (from !== to)
+          numericChanges.push({ question, from, to, delta: to - from });
       }
 
       const texts = ordered
@@ -5731,12 +6798,15 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
       if (texts.length >= 2) {
         const previous = texts[texts.length - 2];
         const latest = texts[texts.length - 1];
-        if (previous !== latest) textChanges.push({ question, previous, latest });
+        if (previous !== latest)
+          textChanges.push({ question, previous, latest });
       }
     });
 
     return {
-      numeric: numericChanges.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 6),
+      numeric: numericChanges
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+        .slice(0, 6),
       text: textChanges.slice(0, 4),
     };
   }, [progressCheckinAnswersQuery.data]);
@@ -5763,7 +6833,8 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
             <StatCard
               label="Weight change"
               value={
-                habitsAnalysis?.weightChange !== null && habitsAnalysis?.weightChange !== undefined
+                habitsAnalysis?.weightChange !== null &&
+                habitsAnalysis?.weightChange !== undefined
                   ? `${habitsAnalysis.weightChange > 0 ? "+" : ""}${habitsAnalysis.weightChange.toFixed(1)} ${
                       habitsAnalysis.weightUnit
                     }`
@@ -5775,8 +6846,9 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
             <StatCard
               label="Steps change"
               value={
-                typeof habitsAnalysis?.latestSteps === "number" && typeof habitsAnalysis?.firstSteps === "number"
-                  ? `${(habitsAnalysis.latestSteps - habitsAnalysis.firstSteps) > 0 ? "+" : ""}${(
+                typeof habitsAnalysis?.latestSteps === "number" &&
+                typeof habitsAnalysis?.firstSteps === "number"
+                  ? `${habitsAnalysis.latestSteps - habitsAnalysis.firstSteps > 0 ? "+" : ""}${(
                       habitsAnalysis.latestSteps - habitsAnalysis.firstSteps
                     ).toLocaleString()}`
                   : "--"
@@ -5800,7 +6872,10 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
         )}
       </DashboardCard>
 
-      <DashboardCard title="Habit changes" subtitle="Comparing earlier vs later logs in the selected window.">
+      <DashboardCard
+        title="Habit changes"
+        subtitle="Comparing earlier vs later logs in the selected window."
+      >
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : habitsAnalysis ? (
@@ -5808,39 +6883,66 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
             <div className="rounded-lg border border-border p-3">
               <p className="text-xs text-muted-foreground">Steps avg</p>
               <p className="text-sm font-semibold">
-                {habitsAnalysis.avgStepsFirst !== null ? Math.round(habitsAnalysis.avgStepsFirst).toLocaleString() : "--"}{" "}
+                {habitsAnalysis.avgStepsFirst !== null
+                  ? Math.round(habitsAnalysis.avgStepsFirst).toLocaleString()
+                  : "--"}{" "}
                 to{" "}
-                {habitsAnalysis.avgStepsSecond !== null ? Math.round(habitsAnalysis.avgStepsSecond).toLocaleString() : "--"}
+                {habitsAnalysis.avgStepsSecond !== null
+                  ? Math.round(habitsAnalysis.avgStepsSecond).toLocaleString()
+                  : "--"}
               </p>
             </div>
             <div className="rounded-lg border border-border p-3">
               <p className="text-xs text-muted-foreground">Sleep avg</p>
               <p className="text-sm font-semibold">
-                {habitsAnalysis.avgSleepFirst !== null ? habitsAnalysis.avgSleepFirst.toFixed(1) : "--"} hrs to{" "}
-                {habitsAnalysis.avgSleepSecond !== null ? habitsAnalysis.avgSleepSecond.toFixed(1) : "--"} hrs
+                {habitsAnalysis.avgSleepFirst !== null
+                  ? habitsAnalysis.avgSleepFirst.toFixed(1)
+                  : "--"}{" "}
+                hrs to{" "}
+                {habitsAnalysis.avgSleepSecond !== null
+                  ? habitsAnalysis.avgSleepSecond.toFixed(1)
+                  : "--"}{" "}
+                hrs
               </p>
             </div>
             <div className="rounded-lg border border-border p-3">
               <p className="text-xs text-muted-foreground">Protein avg</p>
               <p className="text-sm font-semibold">
-                {habitsAnalysis.avgProteinFirst !== null ? Math.round(habitsAnalysis.avgProteinFirst) : "--"} g to{" "}
-                {habitsAnalysis.avgProteinSecond !== null ? Math.round(habitsAnalysis.avgProteinSecond) : "--"} g
+                {habitsAnalysis.avgProteinFirst !== null
+                  ? Math.round(habitsAnalysis.avgProteinFirst)
+                  : "--"}{" "}
+                g to{" "}
+                {habitsAnalysis.avgProteinSecond !== null
+                  ? Math.round(habitsAnalysis.avgProteinSecond)
+                  : "--"}{" "}
+                g
               </p>
             </div>
             <div className="rounded-lg border border-border p-3">
               <p className="text-xs text-muted-foreground">Calories avg</p>
               <p className="text-sm font-semibold">
-                {habitsAnalysis.avgCaloriesFirst !== null ? Math.round(habitsAnalysis.avgCaloriesFirst) : "--"} to{" "}
-                {habitsAnalysis.avgCaloriesSecond !== null ? Math.round(habitsAnalysis.avgCaloriesSecond) : "--"}
+                {habitsAnalysis.avgCaloriesFirst !== null
+                  ? Math.round(habitsAnalysis.avgCaloriesFirst)
+                  : "--"}{" "}
+                to{" "}
+                {habitsAnalysis.avgCaloriesSecond !== null
+                  ? Math.round(habitsAnalysis.avgCaloriesSecond)
+                  : "--"}
               </p>
             </div>
           </div>
         ) : (
-          <EmptyState title="No habit logs yet" description="Progress analysis appears once logs are available." />
+          <EmptyState
+            title="No habit logs yet"
+            description="Progress analysis appears once logs are available."
+          />
         )}
       </DashboardCard>
 
-      <DashboardCard title="Exercise load improvements" subtitle="Where logged weights increased.">
+      <DashboardCard
+        title="Exercise load improvements"
+        subtitle="Where logged weights increased."
+      >
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : exerciseImprovements.length > 0 ? (
@@ -5852,7 +6954,8 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
               >
                 <span className="font-medium">{item.exerciseName}</span>
                 <span className="text-muted-foreground">
-                  {item.startWeight} to {item.latestWeight} ({item.change > 0 ? "+" : ""}
+                  {item.startWeight} to {item.latestWeight} (
+                  {item.change > 0 ? "+" : ""}
                   {item.change})
                 </span>
               </div>
@@ -5865,13 +6968,18 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
         )}
       </DashboardCard>
 
-      <DashboardCard title="Check-in question changes" subtitle="Numeric deltas and latest text shifts.">
+      <DashboardCard
+        title="Check-in question changes"
+        subtitle="Numeric deltas and latest text shifts."
+      >
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Numeric question trends</p>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Numeric question trends
+              </p>
               {checkinQuestionTrends.numeric.length > 0 ? (
                 checkinQuestionTrends.numeric.map((row) => (
                   <div
@@ -5886,28 +6994,40 @@ function PtClientProgressTab({ clientSnapshot }: { clientSnapshot: PtClientProfi
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">No numeric answer changes detected.</p>
+                <p className="text-sm text-muted-foreground">
+                  No numeric answer changes detected.
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Text response shifts</p>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Text response shifts
+              </p>
               {checkinQuestionTrends.text.length > 0 ? (
                 checkinQuestionTrends.text.map((row) => (
-                  <div key={row.question} className="rounded-lg border border-border px-3 py-2 text-sm">
+                  <div
+                    key={row.question}
+                    className="rounded-lg border border-border px-3 py-2 text-sm"
+                  >
                     <p className="font-medium">{row.question}</p>
-                    <p className="text-xs text-muted-foreground">Prev: {row.previous}</p>
-                    <p className="text-xs text-muted-foreground">Latest: {row.latest}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Prev: {row.previous}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Latest: {row.latest}
+                    </p>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">No text response changes detected.</p>
+                <p className="text-sm text-muted-foreground">
+                  No text response changes detected.
+                </p>
               )}
             </div>
           </div>
         )}
       </DashboardCard>
-
     </div>
   );
 }
@@ -5921,12 +7041,15 @@ function PtClientPlaceholderTab({ title }: { title: string }) {
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
       <CardHeader>
         <CardTitle className="capitalize">{title}</CardTitle>
-        <p className="text-sm text-muted-foreground">Section details coming soon.</p>
+        <p className="text-sm text-muted-foreground">
+          Section details coming soon.
+        </p>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">No data yet for this tab.</p>
+        <p className="text-sm text-muted-foreground">
+          No data yet for this tab.
+        </p>
       </CardContent>
     </Card>
   );
 }
-

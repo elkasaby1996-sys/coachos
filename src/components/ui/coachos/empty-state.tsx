@@ -21,11 +21,13 @@ export function EmptyState({
     <div
       className={cn(
         "rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground",
-        className
+        className,
       )}
     >
       <p className="font-medium text-foreground">{title}</p>
-      {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
+      {description ? (
+        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+      ) : null}
       {action ? <div className="mt-3">{action}</div> : null}
       {!action && actionLabel && onAction ? (
         <div className="mt-3">

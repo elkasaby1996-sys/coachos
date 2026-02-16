@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  Skeleton,
+  StatusPill,
+} from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -51,10 +61,14 @@ export function PtMessagesPage() {
   const queryClient = useQueryClient();
   const initialClientId = useMemo(
     () => new URLSearchParams(location.search).get("client"),
-    [location.search]
+    [location.search],
   );
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(
+    initialClientId,
+  );
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | null
+  >(null);
   const [messageDraft, setMessageDraft] = useState("");
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -88,7 +102,7 @@ export function PtMessagesPage() {
       const { data, error } = await supabase
         .from("conversations")
         .select(
-          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role"
+          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role",
         )
         .eq("workspace_id", workspaceId ?? "")
         .order("last_message_at", { ascending: false });
@@ -99,7 +113,9 @@ export function PtMessagesPage() {
 
   const conversationMap = useMemo(() => {
     const map = new Map<string, ConversationRow>();
-    (conversationsQuery.data ?? []).forEach((row) => map.set(row.client_id, row));
+    (conversationsQuery.data ?? []).forEach((row) =>
+      map.set(row.client_id, row),
+    );
     return map;
   }, [conversationsQuery.data]);
 
@@ -130,7 +146,7 @@ export function PtMessagesPage() {
           queryClient.invalidateQueries({
             queryKey: ["pt-messages-conversations", workspaceId],
           });
-        }
+        },
       )
       .subscribe();
     return () => {
@@ -148,10 +164,10 @@ export function PtMessagesPage() {
             workspace_id: workspaceId,
             client_id: clientId,
           },
-          { onConflict: "workspace_id,client_id" }
+          { onConflict: "workspace_id,client_id" },
         )
         .select(
-          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role"
+          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role",
         )
         .maybeSingle();
       if (error) throw error;
@@ -184,7 +200,9 @@ export function PtMessagesPage() {
       const to = from + messagePageSize - 1;
       const { data, error } = await supabase
         .from("messages")
-        .select("id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at")
+        .select(
+          "id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at",
+        )
         .eq("conversation_id", activeConversationId ?? "")
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -205,7 +223,9 @@ export function PtMessagesPage() {
     queryKey: ["pt-messages-unread", conversationsQuery.data],
     enabled: (conversationsQuery.data ?? []).length > 0,
     queryFn: async () => {
-      const conversationIds = (conversationsQuery.data ?? []).map((row) => row.id);
+      const conversationIds = (conversationsQuery.data ?? []).map(
+        (row) => row.id,
+      );
       const { data, error } = await supabase
         .from("messages")
         .select("conversation_id")
@@ -251,7 +271,7 @@ export function PtMessagesPage() {
           queryClient.invalidateQueries({
             queryKey: ["pt-messages-unread", conversationsQuery.data],
           });
-        }
+        },
       )
       .subscribe();
     return () => {
@@ -275,14 +295,17 @@ export function PtMessagesPage() {
           filter: `conversation_id=eq.${activeConversationId}`,
         },
         (payload) => {
-          const next = payload.new as { role?: string | null; is_typing?: boolean | null };
+          const next = payload.new as {
+            role?: string | null;
+            is_typing?: boolean | null;
+          };
           if (!next) return;
           if (next.role === "client" && next.is_typing) {
             setTypingUsers(["Client"]);
           } else {
             setTypingUsers([]);
           }
-        }
+        },
       )
       .subscribe();
     return () => {
@@ -299,7 +322,7 @@ export function PtMessagesPage() {
         role: "pt",
         is_typing: isTyping,
       },
-      { onConflict: "conversation_id,user_id" }
+      { onConflict: "conversation_id,user_id" },
     );
   };
 
@@ -315,14 +338,21 @@ export function PtMessagesPage() {
           queryKey: ["pt-messages-unread", conversationsQuery.data],
         });
       });
-  }, [activeConversationId, conversationsQuery.data, messageRows.length, queryClient]);
+  }, [
+    activeConversationId,
+    conversationsQuery.data,
+    messageRows.length,
+    queryClient,
+  ]);
 
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!activeConversationId) throw new Error("No conversation selected.");
       if (!messageDraft.trim()) return;
       const senderName =
-        (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? "Coach";
+        (user?.user_metadata?.full_name as string | undefined) ??
+        user?.email ??
+        "Coach";
       const body = messageDraft.trim();
       const { error } = await supabase.from("messages").insert({
         conversation_id: activeConversationId,
@@ -360,13 +390,16 @@ export function PtMessagesPage() {
   }, []);
 
   const clients = clientsQuery.data ?? [];
-  const selectedClient = clients.find((client) => client.id === selectedClientId) ?? null;
+  const selectedClient =
+    clients.find((client) => client.id === selectedClientId) ?? null;
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Messages</h2>
-        <p className="text-sm text-muted-foreground">Chat with clients in real time.</p>
+        <p className="text-sm text-muted-foreground">
+          Chat with clients in real time.
+        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -392,7 +425,9 @@ export function PtMessagesPage() {
                     ? `Client ${client.user_id.slice(0, 6)}`
                     : "Client";
                 const conversation = conversationMap.get(client.id);
-                const unreadCount = conversation ? unreadMap.get(conversation.id) ?? 0 : 0;
+                const unreadCount = conversation
+                  ? (unreadMap.get(conversation.id) ?? 0)
+                  : 0;
                 return (
                   <button
                     key={client.id}
@@ -402,11 +437,13 @@ export function PtMessagesPage() {
                       "flex w-full items-center justify-between rounded-xl border border-border/60 px-3 py-2 text-left text-sm transition",
                       isActive
                         ? "border-accent/60 bg-accent/10"
-                        : "bg-background/40 hover:border-border"
+                        : "bg-background/40 hover:border-border",
                     )}
                   >
                     <div>
-                      <div className="font-semibold text-foreground">{name}</div>
+                      <div className="font-semibold text-foreground">
+                        {name}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {conversation?.last_message_preview ??
                           client.status ??
@@ -434,7 +471,11 @@ export function PtMessagesPage() {
         </DashboardCard>
 
         <DashboardCard
-          title={selectedClient ? `Chat with ${selectedClient.display_name ?? "Client"}` : "Chat"}
+          title={
+            selectedClient
+              ? `Chat with ${selectedClient.display_name ?? "Client"}`
+              : "Chat"
+          }
           subtitle={selectedClient ? "" : "Select a client to view messages."}
         >
           {!selectedClient ? (
@@ -466,36 +507,42 @@ export function PtMessagesPage() {
                           onClick={() => messagesQuery.fetchNextPage()}
                           disabled={messagesQuery.isFetchingNextPage}
                         >
-                          {messagesQuery.isFetchingNextPage ? "Loading..." : "Load older"}
+                          {messagesQuery.isFetchingNextPage
+                            ? "Loading..."
+                            : "Load older"}
                         </Button>
                       </div>
                     ) : null}
                     {messageRows.map((message) => {
-                    const isCoach = message.sender_role === "pt";
-                    return (
-                      <div
-                        key={message.id}
-                        className={cn(
-                          "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                          isCoach
-                            ? "ml-auto bg-accent/20 text-foreground"
-                            : "bg-muted text-foreground"
-                        )}
-                      >
-                        <div className="text-[10px] uppercase text-muted-foreground">
-                          {isCoach ? "Coach" : message.sender_name ?? "Client"}
+                      const isCoach = message.sender_role === "pt";
+                      return (
+                        <div
+                          key={message.id}
+                          className={cn(
+                            "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                            isCoach
+                              ? "ml-auto bg-accent/20 text-foreground"
+                              : "bg-muted text-foreground",
+                          )}
+                        >
+                          <div className="text-[10px] uppercase text-muted-foreground">
+                            {isCoach
+                              ? "Coach"
+                              : (message.sender_name ?? "Client")}
+                          </div>
+                          <div>{message.body ?? ""}</div>
+                          <div className="mt-1 text-[10px] text-muted-foreground">
+                            {formatTime(message.created_at)}
+                          </div>
                         </div>
-                        <div>{message.body ?? ""}</div>
-                        <div className="mt-1 text-[10px] text-muted-foreground">
-                          {formatTime(message.created_at)}
-                        </div>
-                      </div>
-                    );
+                      );
                     })}
                   </>
                 )}
                 {typingUsers.length > 0 ? (
-                  <div className="text-xs text-muted-foreground">Client is typing...</div>
+                  <div className="text-xs text-muted-foreground">
+                    Client is typing...
+                  </div>
                 ) : null}
                 <div ref={scrollRef} />
               </div>

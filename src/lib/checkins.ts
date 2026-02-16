@@ -37,8 +37,12 @@ const normalizeDate = (value: unknown, timezone?: string | null) => {
 
 const getCheckinDate = (row: CheckinRow, timezone?: string | null) =>
   normalizeDate(
-    row.checkin_date ?? row.week_start ?? row.period_start ?? row.created_at ?? row.submitted_at,
-    timezone
+    row.checkin_date ??
+      row.week_start ??
+      row.period_start ??
+      row.created_at ??
+      row.submitted_at,
+    timezone,
   );
 
 const getCheckinTimestamp = (row: CheckinRow) => {
@@ -67,7 +71,8 @@ const isSubmittedRow = (row: CheckinRow) => {
   if (row.submitted === true) return true;
   if (row.submitted_at) return true;
   const status = typeof row.status === "string" ? row.status.toLowerCase() : "";
-  if (["submitted", "complete", "completed", "done"].includes(status)) return true;
+  if (["submitted", "complete", "completed", "done"].includes(status))
+    return true;
   if (row.created_at) return true;
   return false;
 };
@@ -95,7 +100,7 @@ const logCheckinErrorOnce = (error: unknown) => {
 export const getClientCheckinStatus = async (
   clientId: string,
   todayStr: string,
-  timezone?: string | null
+  timezone?: string | null,
 ): Promise<CheckinStatus> => {
   try {
     const { data, error } = await supabase
@@ -108,7 +113,9 @@ export const getClientCheckinStatus = async (
     }
 
     const rows = (data ?? []) as CheckinRow[];
-    const hasCheckinToday = rows.some((row) => getCheckinDate(row, timezone) === todayStr);
+    const hasCheckinToday = rows.some(
+      (row) => getCheckinDate(row, timezone) === todayStr,
+    );
 
     let latestRow: CheckinRow | null = null;
     let latestTs: number | null = null;
@@ -130,7 +137,8 @@ export const getClientCheckinStatus = async (
 
     const submitted = latestRow ? isSubmittedRow(latestRow) : false;
     const reviewSupported = latestRow ? hasReviewFields(latestRow) : false;
-    const reviewed = latestRow && reviewSupported ? isReviewedRow(latestRow) : false;
+    const reviewed =
+      latestRow && reviewSupported ? isReviewedRow(latestRow) : false;
 
     return {
       due,
@@ -147,7 +155,7 @@ export const getClientCheckinStatus = async (
 
 export const getLatestCheckinDate = (
   rows: CheckinRow[],
-  timezone?: string | null
+  timezone?: string | null,
 ): string | null => {
   let latestDate: string | null = null;
   let latestTs: number | null = null;

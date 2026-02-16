@@ -29,7 +29,10 @@ const formatStatus = (value: string | null) =>
   value
     ? value
         .replace(/_/g, " ")
-        .replace(/(^|\s)([a-z])/g, (_match, prefix, char) => `${prefix}${char.toUpperCase()}`)
+        .replace(
+          /(^|\s)([a-z])/g,
+          (_match, prefix, char) => `${prefix}${char.toUpperCase()}`,
+        )
     : "Active";
 
 const makeAdherence = (seed: string) => {
@@ -55,7 +58,11 @@ const makeTrend = (seed: string) => {
 
 export function PtClientsPage() {
   const { user } = useAuth();
-  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const {
+    workspaceId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,11 +89,14 @@ export function PtClientsPage() {
         setIsLoading(true);
         if (!workspaceId) throw new Error("Workspace not found.");
 
-        const { data, error: clientsError } = await supabase.rpc("pt_clients_summary", {
-          p_workspace_id: workspaceId,
-          p_limit: pageSize,
-          p_offset: page * pageSize,
-        });
+        const { data, error: clientsError } = await supabase.rpc(
+          "pt_clients_summary",
+          {
+            p_workspace_id: workspaceId,
+            p_limit: pageSize,
+            p_offset: page * pageSize,
+          },
+        );
 
         if (clientsError) throw clientsError;
         if (!isMounted) return;
@@ -97,7 +107,9 @@ export function PtClientsPage() {
         setError(null);
       } catch (err) {
         if (isMounted) {
-          setError(err instanceof Error ? err.message : "Failed to load clients.");
+          setError(
+            err instanceof Error ? err.message : "Failed to load clients.",
+          );
         }
       } finally {
         if (isMounted) setIsLoading(false);
@@ -125,7 +137,10 @@ export function PtClientsPage() {
       const week = client.tags?.[1] ?? "Week —";
       const adherenceValue = makeAdherence(client.id);
       const lastActivityRaw =
-        client.last_session_at ?? client.last_checkin_at ?? client.created_at ?? null;
+        client.last_session_at ??
+        client.last_checkin_at ??
+        client.created_at ??
+        null;
       return {
         ...client,
         name,
@@ -134,7 +149,9 @@ export function PtClientsPage() {
         week,
         adherence: `${adherenceValue}%`,
         trend: makeTrend(client.id),
-        lastActivity: lastActivityRaw ? formatRelativeTime(lastActivityRaw) : "Never",
+        lastActivity: lastActivityRaw
+          ? formatRelativeTime(lastActivityRaw)
+          : "Never",
       };
     });
   }, [clients]);
@@ -146,9 +163,15 @@ export function PtClientsPage() {
 
   const stats = useMemo(() => {
     const total = formattedClients.length;
-    const active = formattedClients.filter((client) => client.status === "Active").length;
-    const onboarding = formattedClients.filter((client) => client.status === "Onboarding").length;
-    const atRisk = formattedClients.filter((client) => client.status === "At Risk").length;
+    const active = formattedClients.filter(
+      (client) => client.status === "Active",
+    ).length;
+    const onboarding = formattedClients.filter(
+      (client) => client.status === "Onboarding",
+    ).length;
+    const atRisk = formattedClients.filter(
+      (client) => client.status === "At Risk",
+    ).length;
     return [
       { label: "Total Clients", value: total },
       { label: "Active", value: active, tone: "text-success" },
@@ -173,13 +196,7 @@ export function PtClientsPage() {
             Manage your client roster and track their progress.
           </p>
         </div>
-        <InviteClientDialog
-          trigger={
-            <Button>
-              + Add Client
-            </Button>
-          }
-        />
+        <InviteClientDialog trigger={<Button>+ Add Client</Button>} />
       </div>
 
       <ClientsKpiRow stats={stats} />
@@ -235,7 +252,9 @@ export function PtClientsPage() {
           </>
         ) : (
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/40 p-8 text-center">
-            <p className="text-sm font-semibold">No clients in this view yet.</p>
+            <p className="text-sm font-semibold">
+              No clients in this view yet.
+            </p>
             <p className="mt-2 text-xs text-muted-foreground">
               Invite a new client or adjust their status.
             </p>

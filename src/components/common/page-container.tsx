@@ -18,7 +18,7 @@ export function PageContainer<T extends ElementType = "div">({
     <Component
       className={cn(
         "mx-auto w-full max-w-[1800px] 2xl:max-w-[2000px] px-4 sm:px-6 lg:px-8",
-        className
+        className,
       )}
       {...props}
     >

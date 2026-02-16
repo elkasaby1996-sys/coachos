@@ -4,8 +4,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
@@ -52,6 +63,7 @@ type AssignedWorkoutExerciseRow = {
 
 type TemplateWorkoutExerciseRow = {
   id: string;
+  exercise_id?: string | null;
   workout_template_id?: string | null;
   sort_order?: number | null;
   superset_group?: string | null;
@@ -62,13 +74,29 @@ type TemplateWorkoutExerciseRow = {
   notes: string | null;
   video_url?: string | null;
   rest_seconds?: number | null;
-  exercise: {
-    id: string;
-    name: string | null;
-    video_url?: string | null;
-    category?: string | null;
-    equipment?: string | null;
-  } | null;
+  default_weight_value?: number | null;
+  default_weight_unit?: string | null;
+  weight_value?: number | null;
+  weight_unit?: string | null;
+  actual_weight_value?: number | null;
+  actual_weight_unit?: string | null;
+  is_completed?: boolean | null;
+  exercise:
+    | {
+        id: string;
+        name: string | null;
+        video_url?: string | null;
+        category?: string | null;
+        equipment?: string | null;
+      }
+    | Array<{
+        id: string;
+        name: string | null;
+        video_url?: string | null;
+        category?: string | null;
+        equipment?: string | null;
+      }>
+    | null;
 };
 
 type ExerciseRow = {
@@ -109,9 +137,9 @@ const getErrorMessage = (error: unknown) => getSupabaseErrorMessage(error);
 const isUuid = (value: string | undefined | null) =>
   Boolean(
     value &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        value
-      )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    ),
   );
 
 const parseOptionalNumber = (value: string) => {
@@ -120,6 +148,9 @@ const parseOptionalNumber = (value: string) => {
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : null;
 };
+
+const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 export function ClientWorkoutRunPage() {
   const navigate = useNavigate();
@@ -132,7 +163,9 @@ export function ClientWorkoutRunPage() {
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
   const [finishNotes, setFinishNotes] = useState("");
-  const [finishStatus, setFinishStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [finishStatus, setFinishStatus] = useState<"idle" | "saving" | "error">(
+    "idle",
+  );
   const [finishError, setFinishError] = useState<string | null>(null);
   const [restTimerEnabled, setRestTimerEnabled] = useState(true);
   const [restAutoStart, setRestAutoStart] = useState(true);
@@ -161,7 +194,7 @@ export function ClientWorkoutRunPage() {
       const { data: assignedWorkout, error: assignedError } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, workout_template:workout_templates(id, name, workout_type_tag, description)"
+          "id, status, workout_template:workout_templates(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId)
         .eq("id", workoutId)
@@ -179,13 +212,16 @@ export function ClientWorkoutRunPage() {
       const selectSession = async (orderColumn: "created_at" | "started_at") =>
         supabase
           .from("workout_sessions")
-          .select("id, assigned_workout_id, started_at, completed_at, created_at")
+          .select(
+            "id, assigned_workout_id, started_at, completed_at, created_at",
+          )
           .eq("assigned_workout_id", workoutId)
           .order(orderColumn, { ascending: false })
           .limit(1)
           .maybeSingle();
 
-      const { data: existing, error: existingError } = await selectSession("created_at");
+      const { data: existing, error: existingError } =
+        await selectSession("created_at");
       if (existingError?.code === "42703") {
         const fallback = await selectSession("started_at");
         if (fallback.error) throw fallback.error;
@@ -197,7 +233,10 @@ export function ClientWorkoutRunPage() {
   });
 
   const workoutSession = workoutSessionQuery.data ?? null;
-  const workoutTemplateId = assignedWorkoutQuery.data?.workout_template?.id ?? null;
+  const workoutTemplate = getSingleRelation(
+    assignedWorkoutQuery.data?.workout_template as any,
+  );
+  const workoutTemplateId = workoutTemplate?.id ?? null;
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", workoutId],
@@ -206,7 +245,7 @@ export function ClientWorkoutRunPage() {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
         .select(
-          "id, assigned_workout_id, exercise_id, sort_order, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, video_url, default_weight_unit, default_weight_value, weight_unit, weight_value, actual_weight_value, actual_weight_unit, is_completed"
+          "id, assigned_workout_id, exercise_id, sort_order, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, video_url, default_weight_unit, default_weight_value, weight_unit, weight_value, actual_weight_value, actual_weight_unit, is_completed",
         )
         .eq("assigned_workout_id", workoutId ?? "")
         .order("sort_order", { ascending: true });
@@ -221,10 +260,10 @@ export function ClientWorkoutRunPage() {
         new Set(
           (assignedExercisesQuery.data ?? [])
             .map((row) => row.exercise_id)
-            .filter((id): id is string => Boolean(id))
-        )
+            .filter((id): id is string => Boolean(id)),
+        ),
       ),
-    [assignedExercisesQuery.data]
+    [assignedExercisesQuery.data],
   );
 
   const exercisesQuery = useQuery({
@@ -241,24 +280,27 @@ export function ClientWorkoutRunPage() {
   });
 
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", assignedWorkoutQuery.data?.workout_template?.id],
-    enabled: !!assignedWorkoutQuery.data?.workout_template?.id,
+    queryKey: ["workout-template-exercises", workoutTemplateId],
+    enabled: !!workoutTemplateId,
     queryFn: async () => {
-      const templateId = assignedWorkoutQuery.data?.workout_template?.id ?? null;
+      const templateId = workoutTemplateId;
       if (!templateId) return [];
       const baseQuery = () =>
         supabase
           .from("workout_template_exercises")
           .select(
-            "id, workout_template_id, sort_order, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, video_url, exercise:exercises(id, name, category, equipment, video_url)"
+            "id, workout_template_id, sort_order, sets, reps, superset_group, rpe, tempo, notes, rest_seconds, video_url, exercise:exercises(id, name, category, equipment, video_url)",
           )
           .eq("workout_template_id", templateId);
-      const ordered = await baseQuery().order("sort_order", { ascending: true });
-      if (!ordered.error) return (ordered.data ?? []) as TemplateWorkoutExerciseRow[];
+      const ordered = await baseQuery().order("sort_order", {
+        ascending: true,
+      });
+      if (!ordered.error)
+        return (ordered.data ?? []) as unknown as TemplateWorkoutExerciseRow[];
       if (ordered.error.code === "42703") {
         const fallback = await baseQuery();
         if (fallback.error) throw fallback.error;
-        return (fallback.data ?? []) as TemplateWorkoutExerciseRow[];
+        return (fallback.data ?? []) as unknown as TemplateWorkoutExerciseRow[];
       }
       throw ordered.error;
     },
@@ -271,7 +313,7 @@ export function ClientWorkoutRunPage() {
       const { data, error } = await supabase
         .from("workout_set_logs")
         .select(
-          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, created_at"
+          "id, workout_session_id, exercise_id, set_number, reps, weight, rpe, is_completed, created_at",
         )
         .eq("workout_session_id", workoutSession?.id ?? "")
         .order("created_at", { ascending: false });
@@ -281,7 +323,12 @@ export function ClientWorkoutRunPage() {
   });
 
   const previousSessionQuery = useQuery({
-    queryKey: ["workout-session-prev", clientId, workoutTemplateId, workoutSession?.id],
+    queryKey: [
+      "workout-session-prev",
+      clientId,
+      workoutTemplateId,
+      workoutSession?.id,
+    ],
     enabled: !!clientId,
     queryFn: async () => {
       const { data: sessions, error: sessionError } = await supabase
@@ -294,7 +341,7 @@ export function ClientWorkoutRunPage() {
 
       if (sessionError) throw sessionError;
       const filtered = (sessions ?? []).filter(
-        (row) => row.id && row.id !== workoutSession?.id
+        (row) => row.id && row.id !== workoutSession?.id,
       );
       if (filtered.length === 0) return null;
 
@@ -314,11 +361,13 @@ export function ClientWorkoutRunPage() {
       if (assignedError) throw assignedError;
 
       const templateMap = new Map(
-        (assignments ?? []).map((row) => [row.id, row.workout_template_id])
+        (assignments ?? []).map((row) => [row.id, row.workout_template_id]),
       );
 
       const match = filtered.find(
-        (row) => row.assigned_workout_id && templateMap.get(row.assigned_workout_id) === workoutTemplateId
+        (row) =>
+          row.assigned_workout_id &&
+          templateMap.get(row.assigned_workout_id) === workoutTemplateId,
       );
       return (match as { id: string } | null) ?? null;
     },
@@ -344,7 +393,9 @@ export function ClientWorkoutRunPage() {
     queryFn: async () => {
       let query = supabase
         .from("workout_set_logs")
-        .select("exercise_id, weight, reps, workout_session:workout_sessions!inner(id, completed_at)")
+        .select(
+          "exercise_id, weight, reps, workout_session:workout_sessions!inner(id, completed_at)",
+        )
         .eq("workout_session.client_id", clientId ?? "")
         .not("workout_session.completed_at", "is", null)
         .eq("is_completed", true);
@@ -383,7 +434,9 @@ export function ClientWorkoutRunPage() {
       const existingTime = existing?.created_at
         ? new Date(existing.created_at).getTime()
         : 0;
-      const nextTime = item.created_at ? new Date(item.created_at).getTime() : 0;
+      const nextTime = item.created_at
+        ? new Date(item.created_at).getTime()
+        : 0;
       if (nextTime > existingTime) {
         latestByKey.set(key, item);
       }
@@ -391,15 +444,22 @@ export function ClientWorkoutRunPage() {
     const sourceRows =
       assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
         ? assignedExercisesQuery.data
-        : templateExercisesQuery.data ?? [];
+        : (templateExercisesQuery.data ?? []);
     const next = sourceRows.map((row, index) => {
-      const exercise = "exercise" in row ? row.exercise : exerciseById.get(row.exercise_id ?? "");
-      const exerciseId = exercise?.id ?? row.exercise_id ?? row.id ?? `exercise-${index}`;
-      const name = exercise?.name ?? "Exercise (missing details)";
+      const exerciseRelation =
+        "exercise" in row
+          ? getSingleRelation(row.exercise as any)
+          : exerciseById.get(row.exercise_id ?? "");
+      const exerciseId =
+        exerciseRelation?.id ??
+        row.exercise_id ??
+        row.id ??
+        `exercise-${index}`;
+      const name = exerciseRelation?.name ?? "Exercise (missing details)";
       const count = row.sets && row.sets > 0 ? row.sets : 3;
       const sets = Array.from({ length: count }).map((_, index) => {
         const setNumber = index + 1;
-        const key = `${exercise?.id ?? ""}-${setNumber}`;
+        const key = `${exerciseRelation?.id ?? ""}-${setNumber}`;
         const item = latestByKey.get(key);
         return {
           id: item?.id,
@@ -430,7 +490,7 @@ export function ClientWorkoutRunPage() {
         name,
         supersetGroup: row.superset_group ?? null,
         notes: row.notes ?? null,
-        videoUrl: row.video_url ?? exercise?.video_url ?? null,
+        videoUrl: row.video_url ?? exerciseRelation?.video_url ?? null,
         previousLabel,
         weightUnit: unit,
         sets,
@@ -459,7 +519,9 @@ export function ClientWorkoutRunPage() {
         return;
       }
       blocks.push({
-        blockId: group ? `superset-${group}-${exerciseIndex}` : `exercise-${exercise.exerciseId}`,
+        blockId: group
+          ? `superset-${group}-${exerciseIndex}`
+          : `exercise-${exercise.exerciseId}`,
         supersetGroup: group,
         items: [{ exercise, exerciseIndex }],
       });
@@ -494,7 +556,7 @@ export function ClientWorkoutRunPage() {
     exerciseIndex: number,
     setIndex: number,
     field: keyof SetState,
-    value: string | boolean
+    value: string | boolean,
   ) => {
     setExercises((prev) =>
       prev.map((exercise, exIdx) => {
@@ -502,32 +564,39 @@ export function ClientWorkoutRunPage() {
         return {
           ...exercise,
           sets: exercise.sets.map((setItem, setIdx) =>
-            setIdx === setIndex ? { ...setItem, [field]: value } : setItem
+            setIdx === setIndex ? { ...setItem, [field]: value } : setItem,
           ),
         };
-      })
+      }),
     );
   };
 
   const handleStartWorkout = async () => {
     if (!workoutId || !clientId) return;
     setSaveError(null);
-    const { error: createError } = await supabase.from("workout_sessions").upsert(
-      {
-        assigned_workout_id: workoutId,
-        client_id: clientId,
-        started_at: new Date().toISOString(),
-      },
-      { onConflict: "assigned_workout_id", ignoreDuplicates: true }
-    );
+    const { error: createError } = await supabase
+      .from("workout_sessions")
+      .upsert(
+        {
+          assigned_workout_id: workoutId,
+          client_id: clientId,
+          started_at: new Date().toISOString(),
+        },
+        { onConflict: "assigned_workout_id", ignoreDuplicates: true },
+      );
     if (createError) {
       setSaveError(getErrorMessage(createError));
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: ["workout-session", workoutId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-session", workoutId],
+    });
   };
 
-  const saveExerciseSets = async (exercise: ExerciseState, sessionId: string) => {
+  const saveExerciseSets = async (
+    exercise: ExerciseState,
+    sessionId: string,
+  ) => {
     for (let idx = 0; idx < exercise.sets.length; idx += 1) {
       const setItem = exercise.sets[idx];
       const repsValue = parseOptionalNumber(setItem.reps);
@@ -551,7 +620,7 @@ export function ClientWorkoutRunPage() {
             rpe: rpeValue,
             is_completed: isCompleted,
           },
-          { onConflict: "workout_session_id,exercise_id,set_number" }
+          { onConflict: "workout_session_id,exercise_id,set_number" },
         );
         if (error) throw error;
       } else {
@@ -569,7 +638,11 @@ export function ClientWorkoutRunPage() {
   const saveAllExercises = async () => {
     if (!workoutSession?.id) return;
     try {
-      for (let exerciseIndex = 0; exerciseIndex < exercises.length; exerciseIndex += 1) {
+      for (
+        let exerciseIndex = 0;
+        exerciseIndex < exercises.length;
+        exerciseIndex += 1
+      ) {
         setSaveIndex(exerciseIndex);
         // eslint-disable-next-line no-await-in-loop
         await saveExerciseSets(exercises[exerciseIndex], workoutSession.id);
@@ -630,7 +703,10 @@ export function ClientWorkoutRunPage() {
 
       const { error: sessionError } = await supabase
         .from("workout_sessions")
-        .update({ completed_at: completedAt, client_notes: finishNotes.trim() || null })
+        .update({
+          completed_at: completedAt,
+          client_notes: finishNotes.trim() || null,
+        })
         .eq("id", workoutSession.id);
       if (sessionError) throw sessionError;
 
@@ -659,49 +735,56 @@ export function ClientWorkoutRunPage() {
     navigate("/app/home");
   };
 
-  const workoutTitle =
-    assignedWorkoutQuery.data?.workout_template?.name ?? "Workout";
-  const sessionNotes =
-    assignedWorkoutQuery.data?.workout_template?.description ?? null;
+  const workoutTitle = workoutTemplate?.name ?? "Workout";
+  const sessionNotes = workoutTemplate?.description ?? null;
   const activeBlock = useMemo(
-    () => exerciseBlocks.find((block) => block.blockId === activeBlockId) ?? null,
-    [activeBlockId, exerciseBlocks]
+    () =>
+      exerciseBlocks.find((block) => block.blockId === activeBlockId) ?? null,
+    [activeBlockId, exerciseBlocks],
   );
-  const activeSingle = activeBlock && activeBlock.items.length === 1 ? activeBlock.items[0] : null;
+  const activeSingle =
+    activeBlock && activeBlock.items.length === 1 ? activeBlock.items[0] : null;
   const activeBlockIsSaving = useMemo(
     () =>
       Boolean(
         activeBlock &&
-          (saveIndex === -1 ||
-            activeBlock.items.some((item) => saveIndex === item.exerciseIndex))
+        (saveIndex === -1 ||
+          activeBlock.items.some((item) => saveIndex === item.exerciseIndex)),
       ),
-    [activeBlock, saveIndex]
+    [activeBlock, saveIndex],
   );
   const totalSets = useMemo(
     () => exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0),
-    [exercises]
+    [exercises],
   );
   const completedSets = useMemo(
     () =>
       exercises.reduce(
-        (sum, exercise) => sum + exercise.sets.filter((setItem) => setItem.is_completed).length,
-        0
+        (sum, exercise) =>
+          sum + exercise.sets.filter((setItem) => setItem.is_completed).length,
+        0,
       ),
-    [exercises]
+    [exercises],
   );
-  const progressPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+  const progressPct =
+    totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
   const completedExercises = useMemo(
     () =>
       exercises.filter(
         (exercise) =>
           exercise.sets.length > 0 &&
-          exercise.sets.every((setItem) => setItem.is_completed)
+          exercise.sets.every((setItem) => setItem.is_completed),
       ).length,
-    [exercises]
+    [exercises],
   );
   const completedSetCount = useMemo(
-    () => exercises.reduce((sum, exercise) => sum + exercise.sets.filter((s) => s.is_completed).length, 0),
-    [exercises]
+    () =>
+      exercises.reduce(
+        (sum, exercise) =>
+          sum + exercise.sets.filter((s) => s.is_completed).length,
+        0,
+      ),
+    [exercises],
   );
   const totalVolume = useMemo(
     () =>
@@ -711,13 +794,14 @@ export function ClientWorkoutRunPage() {
           exercise.sets.reduce((setSum, setItem) => {
             const weight = Number(setItem.weight);
             const reps = Number(setItem.reps);
-            if (!Number.isFinite(weight) || !Number.isFinite(reps)) return setSum;
+            if (!Number.isFinite(weight) || !Number.isFinite(reps))
+              return setSum;
             if (weight <= 0 || reps <= 0) return setSum;
             return setSum + weight * reps;
           }, 0)
         );
       }, 0),
-    [exercises]
+    [exercises],
   );
   const historicalBestByExercise = useMemo(() => {
     const map = new Map<string, { bestWeight: number; bestVolume: number }>();
@@ -726,7 +810,10 @@ export function ClientWorkoutRunPage() {
       const weight = typeof log.weight === "number" ? log.weight : 0;
       const reps = typeof log.reps === "number" ? log.reps : 0;
       const volume = weight > 0 && reps > 0 ? weight * reps : 0;
-      const current = map.get(log.exercise_id) ?? { bestWeight: 0, bestVolume: 0 };
+      const current = map.get(log.exercise_id) ?? {
+        bestWeight: 0,
+        bestVolume: 0,
+      };
       map.set(log.exercise_id, {
         bestWeight: Math.max(current.bestWeight, weight),
         bestVolume: Math.max(current.bestVolume, volume),
@@ -749,14 +836,18 @@ export function ClientWorkoutRunPage() {
           const volume = weight * reps;
           return Math.max(max, volume);
         }, 0);
-        const previousBest = historicalBestByExercise.get(exercise.exerciseId) ?? {
+        const previousBest = historicalBestByExercise.get(
+          exercise.exerciseId,
+        ) ?? {
           bestWeight: 0,
           bestVolume: 0,
         };
         const newWeightPr =
-          bestWeightThisSession > 0 && bestWeightThisSession > previousBest.bestWeight;
+          bestWeightThisSession > 0 &&
+          bestWeightThisSession > previousBest.bestWeight;
         const newVolumePr =
-          bestVolumeThisSession > 0 && bestVolumeThisSession > previousBest.bestVolume;
+          bestVolumeThisSession > 0 &&
+          bestVolumeThisSession > previousBest.bestVolume;
         return {
           exerciseId: exercise.exerciseId,
           exerciseName: exercise.name,
@@ -769,31 +860,38 @@ export function ClientWorkoutRunPage() {
   const totalPrCount = useMemo(
     () =>
       prSummary.reduce(
-        (sum, row) => sum + (row.newWeightPr ? 1 : 0) + (row.newVolumePr ? 1 : 0),
-        0
+        (sum, row) =>
+          sum + (row.newWeightPr ? 1 : 0) + (row.newVolumePr ? 1 : 0),
+        0,
       ),
-    [prSummary]
+    [prSummary],
   );
   const navItems = useMemo<ExerciseNavItem[]>(
     () =>
       exerciseBlocks.map((block) => {
-        const isSuperset = Boolean(block.supersetGroup) && block.items.length > 1;
+        const isSuperset =
+          Boolean(block.supersetGroup) && block.items.length > 1;
         const setsCompleted = block.items.reduce(
-          (sum, item) => sum + item.exercise.sets.filter((setItem) => setItem.is_completed).length,
-          0
+          (sum, item) =>
+            sum +
+            item.exercise.sets.filter((setItem) => setItem.is_completed).length,
+          0,
         );
-        const totalSets = block.items.reduce((sum, item) => sum + item.exercise.sets.length, 0);
+        const totalSets = block.items.reduce(
+          (sum, item) => sum + item.exercise.sets.length,
+          0,
+        );
         return {
           exerciseId: block.blockId,
           name: isSuperset
             ? block.items.map((item) => item.exercise.name).join(" + ")
-            : block.items[0]?.exercise.name ?? "Exercise",
+            : (block.items[0]?.exercise.name ?? "Exercise"),
           supersetGroup: block.supersetGroup ?? null,
           setsCompleted,
           totalSets,
         };
       }),
-    [exerciseBlocks]
+    [exerciseBlocks],
   );
   const previousMap = useMemo(() => {
     const map = new Map<string, PreviousSetMap>();
@@ -834,8 +932,12 @@ export function ClientWorkoutRunPage() {
     <div className="w-full space-y-6 pb-16 md:pb-0">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Workout run</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{workoutTitle}</h1>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Workout run
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {workoutTitle}
+          </h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Badge variant="muted">In progress</Badge>
             <span>Log your sets as you go.</span>
@@ -851,7 +953,10 @@ export function ClientWorkoutRunPage() {
       {errors.length > 0 ? (
         <div className="space-y-2">
           {errors.map((error, index) => (
-            <Alert key={`${index}-${getErrorMessage(error)}`} className="border-danger/30">
+            <Alert
+              key={`${index}-${getErrorMessage(error)}`}
+              className="border-danger/30"
+            >
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{getErrorMessage(error)}</AlertDescription>
             </Alert>
@@ -865,7 +970,9 @@ export function ClientWorkoutRunPage() {
         </Alert>
       ) : null}
 
-      {assignedWorkoutQuery.isLoading || workoutSessionQuery.isLoading || setLogsQuery.isLoading ? (
+      {assignedWorkoutQuery.isLoading ||
+      workoutSessionQuery.isLoading ||
+      setLogsQuery.isLoading ? (
         <Card>
           <CardHeader>
             <CardTitle>Session</CardTitle>
@@ -891,14 +998,18 @@ export function ClientWorkoutRunPage() {
                 <p>Ready to start this workout?</p>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleStartWorkout}>Start workout</Button>
-                  <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate("/app/home")}
+                  >
                     Return home
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
-          {assignedExercisesQuery.isLoading || templateExercisesQuery.isLoading ? null : exercises.length === 0 ? (
+          {assignedExercisesQuery.isLoading ||
+          templateExercisesQuery.isLoading ? null : exercises.length === 0 ? (
             <Card className="rounded-xl border-border/70 bg-card/80">
               <CardHeader>
                 <CardTitle>Workout</CardTitle>
@@ -927,8 +1038,13 @@ export function ClientWorkoutRunPage() {
                     <CardContent className="space-y-2 text-sm text-muted-foreground">
                       <p>Start the session to begin logging sets.</p>
                       <div className="flex flex-wrap gap-2">
-                        <Button onClick={handleStartWorkout}>Start workout</Button>
-                        <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                        <Button onClick={handleStartWorkout}>
+                          Start workout
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => navigate("/app/home")}
+                        >
                           Return home
                         </Button>
                       </div>
@@ -936,7 +1052,9 @@ export function ClientWorkoutRunPage() {
                   </Card>
                 ) : null}
                 <div className="xl:hidden">
-                  <label className="text-xs font-semibold text-muted-foreground">Exercise / Superset</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Exercise / Superset
+                  </label>
                   <select
                     className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
                     value={activeBlockId ?? ""}
@@ -948,7 +1066,7 @@ export function ClientWorkoutRunPage() {
                           ? `Superset ${block.supersetGroup}: ${block.items
                               .map((item) => item.exercise.name)
                               .join(" + ")}`
-                          : block.items[0]?.exercise.name ?? "Exercise"}
+                          : (block.items[0]?.exercise.name ?? "Exercise")}
                       </option>
                     ))}
                   </select>
@@ -959,10 +1077,13 @@ export function ClientWorkoutRunPage() {
                     exerciseIndex={activeSingle.exerciseIndex}
                     canEdit={Boolean(workoutSession)}
                     isSaving={saveIndex === activeSingle.exerciseIndex}
-                    onSave={() => handleSaveExercise(activeSingle.exerciseIndex)}
+                    onSave={() =>
+                      handleSaveExercise(activeSingle.exerciseIndex)
+                    }
                     onSetChange={handleSetChange}
                     previousBySet={
-                      previousMap.get(activeSingle.exercise.exerciseId) ?? new Map()
+                      previousMap.get(activeSingle.exercise.exerciseId) ??
+                      new Map()
                     }
                   />
                 ) : activeBlock && activeBlock.items.length > 1 ? (
@@ -970,14 +1091,18 @@ export function ClientWorkoutRunPage() {
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle>
                         Superset {activeBlock.supersetGroup}:{" "}
-                        {activeBlock.items.map((item) => item.exercise.name).join(" + ")}
+                        {activeBlock.items
+                          .map((item) => item.exercise.name)
+                          .join(" + ")}
                       </CardTitle>
                       <Button
                         size="sm"
                         variant="secondary"
                         disabled={!workoutSession || activeBlockIsSaving}
                         onClick={() =>
-                          handleSaveBlock(activeBlock.items.map((item) => item.exerciseIndex))
+                          handleSaveBlock(
+                            activeBlock.items.map((item) => item.exerciseIndex),
+                          )
                         }
                       >
                         {activeBlockIsSaving ? "Saving..." : "Save superset"}
@@ -990,12 +1115,19 @@ export function ClientWorkoutRunPage() {
                           className="space-y-2 rounded-lg border border-border/70 bg-background/50 p-3"
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold">{item.exercise.name}</p>
+                            <p className="text-sm font-semibold">
+                              {item.exercise.name}
+                            </p>
                             {item.exercise.videoUrl ? (
                               <Button
                                 variant="secondary"
                                 size="sm"
-                                onClick={() => window.open(item.exercise.videoUrl ?? "", "_blank")}
+                                onClick={() =>
+                                  window.open(
+                                    item.exercise.videoUrl ?? "",
+                                    "_blank",
+                                  )
+                                }
                               >
                                 Watch demo
                               </Button>
@@ -1007,7 +1139,9 @@ export function ClientWorkoutRunPage() {
                                 .get(item.exercise.exerciseId)
                                 ?.get(setIndex + 1);
                               const previousLabel =
-                                previous && typeof previous.weight === "number" && typeof previous.reps === "number"
+                                previous &&
+                                typeof previous.weight === "number" &&
+                                typeof previous.reps === "number"
                                   ? `${previous.weight}${item.exercise.weightUnit ? ` ${item.exercise.weightUnit}` : ""} x ${previous.reps}`
                                   : "--";
                               return (
@@ -1018,7 +1152,9 @@ export function ClientWorkoutRunPage() {
                                   <div className="text-xs font-semibold text-muted-foreground">
                                     Set {setIndex + 1}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">{previousLabel}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {previousLabel}
+                                  </div>
                                   <input
                                     className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                                     type="number"
@@ -1030,7 +1166,7 @@ export function ClientWorkoutRunPage() {
                                         item.exerciseIndex,
                                         setIndex,
                                         "weight",
-                                        event.target.value
+                                        event.target.value,
                                       )
                                     }
                                     disabled={!workoutSession}
@@ -1046,7 +1182,7 @@ export function ClientWorkoutRunPage() {
                                         item.exerciseIndex,
                                         setIndex,
                                         "reps",
-                                        event.target.value
+                                        event.target.value,
                                       )
                                     }
                                     disabled={!workoutSession}
@@ -1062,7 +1198,7 @@ export function ClientWorkoutRunPage() {
                                         item.exerciseIndex,
                                         setIndex,
                                         "rpe",
-                                        event.target.value
+                                        event.target.value,
                                       )
                                     }
                                     disabled={!workoutSession}
@@ -1076,7 +1212,7 @@ export function ClientWorkoutRunPage() {
                                           item.exerciseIndex,
                                           setIndex,
                                           "is_completed",
-                                          event.target.checked
+                                          event.target.checked,
                                         )
                                       }
                                       disabled={!workoutSession}
@@ -1092,14 +1228,16 @@ export function ClientWorkoutRunPage() {
                     </CardContent>
                   </Card>
                 ) : null}
-          {workoutSession ? (
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => setFinishOpen(true)}>Finish workout</Button>
-              <Button variant="secondary" onClick={handleSkipWorkout}>
-                Skip workout
-              </Button>
-            </div>
-          ) : null}
+                {workoutSession ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => setFinishOpen(true)}>
+                      Finish workout
+                    </Button>
+                    <Button variant="secondary" onClick={handleSkipWorkout}>
+                      Skip workout
+                    </Button>
+                  </div>
+                ) : null}
               </div>
               <div className="xl:col-span-3">
                 <CoachRail
@@ -1123,13 +1261,16 @@ export function ClientWorkoutRunPage() {
           <DialogHeader>
             <DialogTitle>Finish workout</DialogTitle>
             <DialogDescription>
-              Review your session summary and add optional notes before submitting.
+              Review your session summary and add optional notes before
+              submitting.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 text-sm text-muted-foreground">
             <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-4">
               <div>
-                <p className="text-xs uppercase text-muted-foreground">Exercises</p>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Exercises
+                </p>
                 <p className="text-lg font-semibold text-foreground">
                   {completedExercises}/{exercises.length}
                 </p>
@@ -1141,14 +1282,18 @@ export function ClientWorkoutRunPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase text-muted-foreground">Volume</p>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Volume
+                </p>
                 <p className="text-lg font-semibold text-foreground">
                   {totalVolume > 0 ? totalVolume.toFixed(0) : "--"}
                 </p>
               </div>
               <div>
                 <p className="text-xs uppercase text-muted-foreground">PRs</p>
-                <p className="text-lg font-semibold text-foreground">{totalPrCount}</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {totalPrCount}
+                </p>
               </div>
             </div>
             <div className="space-y-2">
@@ -1209,7 +1354,9 @@ export function ClientWorkoutRunPage() {
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 bg-background/80 backdrop-blur md:static md:border-none md:bg-transparent md:backdrop-blur-0">
         <PageContainer className="flex items-center justify-between py-3">
           <div className="text-xs text-muted-foreground">
-            {workoutSession ? "Ready to finish? Save and log your session." : "Start the workout to log sets."}
+            {workoutSession
+              ? "Ready to finish? Save and log your session."
+              : "Start the workout to log sets."}
           </div>
           <Button
             onClick={() => setFinishOpen(true)}
@@ -1222,4 +1369,3 @@ export function ClientWorkoutRunPage() {
     </div>
   );
 }
-

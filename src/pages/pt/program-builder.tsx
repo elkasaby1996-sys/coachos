@@ -2,9 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
@@ -55,22 +65,22 @@ const getErrorDetails = (error: unknown) => {
 const isUuid = (value: string | undefined | null) =>
   Boolean(
     value &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        value
-      )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    ),
   );
 
 const getDayKey = (week: number, day: number) => `week-${week}-day-${day}`;
 
 const buildDaysMap = (
   weeksCount: number,
-  rows: ProgramTemplateDayRow[]
+  rows: ProgramTemplateDayRow[],
 ): Record<string, ProgramDayState> => {
   const map: Record<string, ProgramDayState> = {};
   for (let week = 1; week <= weeksCount; week += 1) {
     for (let day = 1; day <= 7; day += 1) {
       const row = rows.find(
-        (item) => item.week_number === week && item.day_of_week === day
+        (item) => item.week_number === week && item.day_of_week === day,
       );
       map[getDayKey(week, day)] = {
         workout_template_id: row?.workout_template_id ?? null,
@@ -97,12 +107,16 @@ export function PtProgramBuilderPage() {
   });
   const [activeWeek, setActiveWeek] = useState("week-1");
   const [daysMap, setDaysMap] = useState<Record<string, ProgramDayState>>(
-    buildDaysMap(4, [])
+    buildDaysMap(4, []),
   );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [draggingTemplateId, setDraggingTemplateId] = useState<string | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [draggingTemplateId, setDraggingTemplateId] = useState<string | null>(
+    null,
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
 
   const templateQuery = useQuery({
     queryKey: ["program-template", templateId],
@@ -124,7 +138,9 @@ export function PtProgramBuilderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("program_template_days")
-        .select("id, week_number, day_of_week, workout_template_id, is_rest, notes")
+        .select(
+          "id, week_number, day_of_week, workout_template_id, is_rest, notes",
+        )
         .eq("program_template_id", templateId ?? "");
       if (error) throw error;
       return (data ?? []) as ProgramTemplateDayRow[];
@@ -166,7 +182,11 @@ export function PtProgramBuilderPage() {
         for (let day = 1; day <= 7; day += 1) {
           const key = getDayKey(week, day);
           if (!next[key]) {
-            next[key] = { workout_template_id: null, is_rest: false, notes: "" };
+            next[key] = {
+              workout_template_id: null,
+              is_rest: false,
+              notes: "",
+            };
           }
         }
       }
@@ -184,11 +204,19 @@ export function PtProgramBuilderPage() {
 
   const workoutTemplates = workoutTemplatesQuery.data ?? [];
   const weekOptions = useMemo(
-    () => Array.from({ length: Math.max(form.weeksCount, 1) }, (_, index) => index + 1),
-    [form.weeksCount]
+    () =>
+      Array.from(
+        { length: Math.max(form.weeksCount, 1) },
+        (_, index) => index + 1,
+      ),
+    [form.weeksCount],
   );
 
-  const updateDay = (week: number, day: number, payload: Partial<ProgramDayState>) => {
+  const updateDay = (
+    week: number,
+    day: number,
+    payload: Partial<ProgramDayState>,
+  ) => {
     const key = getDayKey(week, day);
     setDaysMap((prev) => ({
       ...prev,
@@ -199,7 +227,11 @@ export function PtProgramBuilderPage() {
     }));
   };
 
-  const handleDropTemplate = (week: number, day: number, templateId: string) => {
+  const handleDropTemplate = (
+    week: number,
+    day: number,
+    templateId: string,
+  ) => {
     if (!templateId) return;
     updateDay(week, day, { workout_template_id: templateId, is_rest: false });
   };
@@ -276,7 +308,8 @@ export function PtProgramBuilderPage() {
       return dayLabels.map((_, idx) => {
         const day = idx + 1;
         const state = daysMap[getDayKey(week, day)];
-        if (!state || (!state.is_rest && !state.workout_template_id)) return null;
+        if (!state || (!state.is_rest && !state.workout_template_id))
+          return null;
         return {
           program_template_id: programId,
           week_number: week,
@@ -289,7 +322,9 @@ export function PtProgramBuilderPage() {
       });
     });
 
-    const filteredPayload = payload.filter(Boolean) as Array<Record<string, unknown>>;
+    const filteredPayload = payload.filter(Boolean) as Array<
+      Record<string, unknown>
+    >;
     if (filteredPayload.length > 0) {
       const { error: insertError } = await supabase
         .from("program_template_days")
@@ -302,7 +337,9 @@ export function PtProgramBuilderPage() {
       }
     }
 
-    await queryClient.invalidateQueries({ queryKey: ["program-templates", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["program-templates", workspaceId],
+    });
     if (isNew) {
       navigate(`/pt/programs/${programId}/edit`);
     }
@@ -325,7 +362,12 @@ export function PtProgramBuilderPage() {
     );
   }
 
-  if (!isNew && !templateQuery.isLoading && !templateQuery.error && !templateQuery.data) {
+  if (
+    !isNew &&
+    !templateQuery.isLoading &&
+    !templateQuery.error &&
+    !templateQuery.data
+  ) {
     return (
       <Card>
         <CardHeader>
@@ -378,7 +420,8 @@ export function PtProgramBuilderPage() {
             <CardTitle>Program error</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {getErrorDetails(templateQuery.error).code}: {getErrorDetails(templateQuery.error).message}
+            {getErrorDetails(templateQuery.error).code}:{" "}
+            {getErrorDetails(templateQuery.error).message}
           </CardContent>
         </Card>
       ) : (
@@ -391,15 +434,21 @@ export function PtProgramBuilderPage() {
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2 md:col-span-2">
-              <label className="text-xs font-semibold text-muted-foreground">Name</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Name
+              </label>
               <Input
                 value={form.name}
-                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, name: event.target.value }))
+                }
                 placeholder="e.g., 8-Week Strength Block"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Weeks</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Weeks
+              </label>
               <Input
                 type="number"
                 min={1}
@@ -413,12 +462,17 @@ export function PtProgramBuilderPage() {
               />
             </div>
             <div className="space-y-2 md:col-span-3">
-              <label className="text-xs font-semibold text-muted-foreground">Description</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Description
+              </label>
               <textarea
                 className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, description: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -473,14 +527,15 @@ export function PtProgramBuilderPage() {
                         ghost.style.top = "-9999px";
                         ghost.style.left = "-9999px";
                         ghost.style.transform = "scale(1.03)";
-                        ghost.style.boxShadow = "0 0 24px rgba(56,189,248,0.45)";
+                        ghost.style.boxShadow =
+                          "0 0 24px rgba(56,189,248,0.45)";
                         ghost.style.borderColor = "rgba(56,189,248,0.65)";
                         ghost.style.background = "rgba(30,41,59,0.85)";
                         document.body.appendChild(ghost);
                         event.dataTransfer.setDragImage(
                           ghost,
                           ghost.offsetWidth / 2,
-                          ghost.offsetHeight / 2
+                          ghost.offsetHeight / 2,
                         );
                         window.requestAnimationFrame(() => {
                           ghost.remove();
@@ -489,7 +544,7 @@ export function PtProgramBuilderPage() {
                       onDragEnd={() => setDraggingTemplateId(null)}
                       onClick={() =>
                         setSelectedTemplateId((prev) =>
-                          prev === template.id ? null : template.id
+                          prev === template.id ? null : template.id,
                         )
                       }
                       className={`shrink-0 rounded-xl border px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition ${
@@ -513,8 +568,8 @@ export function PtProgramBuilderPage() {
               <div className="mt-2 text-xs text-muted-foreground">
                 Selected:{" "}
                 <span className="font-semibold text-foreground">
-                  {workoutTemplates.find((t) => t.id === selectedTemplateId)?.name ??
-                    "Workout template"}
+                  {workoutTemplates.find((t) => t.id === selectedTemplateId)
+                    ?.name ?? "Workout template"}
                 </span>
               </div>
             ) : null}
@@ -539,7 +594,7 @@ export function PtProgramBuilderPage() {
                     const day = index + 1;
                     const state = daysMap[getDayKey(week, day)];
                     const selectedTemplate = workoutTemplates.find(
-                      (template) => template.id === state?.workout_template_id
+                      (template) => template.id === state?.workout_template_id,
                     );
                     return (
                       <div
@@ -549,7 +604,8 @@ export function PtProgramBuilderPage() {
                         }}
                         onDrop={(event) => {
                           event.preventDefault();
-                          const templateId = event.dataTransfer.getData("text/plain");
+                          const templateId =
+                            event.dataTransfer.getData("text/plain");
                           handleDropTemplate(week, day, templateId);
                         }}
                         onClick={() => {
@@ -569,7 +625,10 @@ export function PtProgramBuilderPage() {
                               {dayLabel}
                             </p>
                             {state?.is_rest ? (
-                              <Badge variant="muted" className="text-[10px] uppercase">
+                              <Badge
+                                variant="muted"
+                                className="text-[10px] uppercase"
+                              >
                                 Rest day
                               </Badge>
                             ) : null}
@@ -577,7 +636,7 @@ export function PtProgramBuilderPage() {
                           <div className="space-y-2">
                             <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                               {state?.workout_template_id
-                                ? selectedTemplate?.name ?? "Workout assigned"
+                                ? (selectedTemplate?.name ?? "Workout assigned")
                                 : "Drop a template here"}
                             </div>
                             <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -589,7 +648,7 @@ export function PtProgramBuilderPage() {
                                     is_rest: event.target.checked,
                                     workout_template_id: event.target.checked
                                       ? null
-                                      : state?.workout_template_id ?? null,
+                                      : (state?.workout_template_id ?? null),
                                   })
                                 }
                               />
@@ -600,7 +659,9 @@ export function PtProgramBuilderPage() {
                               placeholder="Notes"
                               value={state?.notes ?? ""}
                               onChange={(event) =>
-                                updateDay(week, day, { notes: event.target.value })
+                                updateDay(week, day, {
+                                  notes: event.target.value,
+                                })
                               }
                             />
                           </div>
@@ -608,7 +669,7 @@ export function PtProgramBuilderPage() {
                         <div className="mt-3 text-[11px] text-muted-foreground">
                           {state?.is_rest
                             ? "Recovery focus"
-                            : selectedTemplate?.name ?? "No workout selected"}
+                            : (selectedTemplate?.name ?? "No workout selected")}
                         </div>
                       </div>
                     );

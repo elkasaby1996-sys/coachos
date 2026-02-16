@@ -1,7 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { Dumbbell } from "lucide-react";
 import { AuthComponent } from "../../components/ui/sign-up";
-import { signInWithOAuth, signUpWithEmailPassword } from "../../lib/auth-helpers";
+import {
+  signInWithOAuth,
+  signUpWithEmailPassword,
+} from "../../lib/auth-helpers";
 
 export function PtSignupPage() {
   const navigate = useNavigate();
@@ -22,7 +25,11 @@ export function PtSignupPage() {
       secondaryLinkLabel="Already have an account? Sign in"
       onEmailPasswordSubmit={async ({ email, password }) => {
         const redirectTo = `${window.location.origin}/pt/onboarding/workspace`;
-        const { data, error } = await signUpWithEmailPassword(email, password, redirectTo);
+        const { data, error } = await signUpWithEmailPassword(
+          email,
+          password,
+          redirectTo,
+        );
 
         if (error) {
           return { error: error.message };
@@ -36,7 +43,8 @@ export function PtSignupPage() {
         }
 
         return {
-          notice: "Account created. Verify your email, then sign in to continue onboarding.",
+          notice:
+            "Account created. Verify your email, then sign in to continue onboarding.",
           success: false,
         };
       }}

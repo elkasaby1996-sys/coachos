@@ -92,7 +92,10 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
   const [dismissingKey, setDismissingKey] = useState<string | null>(null);
 
   const todayStr = useMemo(() => getTodayInTimezone(timezone), [timezone]);
-  const weekEndingSaturday = useMemo(() => getWeekEndSaturday(todayStr), [todayStr]);
+  const weekEndingSaturday = useMemo(
+    () => getWeekEndSaturday(todayStr),
+    [todayStr],
+  );
   const isDev = import.meta.env.DEV;
 
   const habitLogsQuery = useQuery({
@@ -187,7 +190,9 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     const checkinRow = checkinAlertQuery.data?.row ?? null;
     const checkinError = Boolean(checkinAlertQuery.data?.error);
     const checkinDue =
-      !checkinError && isFridayOrSaturday && (!checkinRow || !checkinRow.submitted_at);
+      !checkinError &&
+      isFridayOrSaturday &&
+      (!checkinRow || !checkinRow.submitted_at);
     const checkinUpcomingSoon =
       !checkinError &&
       isWednesdayOrThursday &&
@@ -196,11 +201,13 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     const todayWorkout = todayWorkoutReminderQuery.data;
     const todayWorkoutNeedsAction = Boolean(
       todayWorkout &&
-        todayWorkout.day_type !== "rest" &&
-        todayWorkout.status !== "completed" &&
-        todayWorkout.status !== "skipped"
+      todayWorkout.day_type !== "rest" &&
+      todayWorkout.status !== "completed" &&
+      todayWorkout.status !== "skipped",
     );
-    const todayWorkoutId = todayWorkoutNeedsAction ? todayWorkout?.id ?? null : null;
+    const todayWorkoutId = todayWorkoutNeedsAction
+      ? (todayWorkout?.id ?? null)
+      : null;
 
     return {
       hasTodayLog,
@@ -258,7 +265,8 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
       {
         key: "checkin_upcoming_2d",
         title: "Weekly check-in coming up",
-        description: "Your check-in is due in about 2 days. Prep your notes now.",
+        description:
+          "Your check-in is due in about 2 days. Prep your notes now.",
         ctaLabel: "Open check-in",
         ctaTo: "/app/checkin",
         severity: "info",
@@ -269,11 +277,15 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     const base = definitions
       .filter((definition) => definition.isRelevant(reminderContext))
       .map(({ isRelevant: _unused, ...item }) => item);
-    if (reminderContext.todayWorkoutNeedsAction && reminderContext.todayWorkoutId) {
+    if (
+      reminderContext.todayWorkoutNeedsAction &&
+      reminderContext.todayWorkoutId
+    ) {
       base.unshift({
         key: "workout_today_assigned",
         title: "Today's workout is assigned",
-        description: "You have a workout assigned for today. Start it when ready.",
+        description:
+          "You have a workout assigned for today. Start it when ready.",
         ctaLabel: "Start workout",
         ctaTo: `/app/workout-run/${reminderContext.todayWorkoutId}`,
         severity: "warn",
@@ -292,7 +304,9 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     return new Set(rows.map((row) => row.key));
   }, [dismissedQuery.data]);
 
-  const reminders = reminderItems.filter((item) => !dismissedKeys.has(item.key));
+  const reminders = reminderItems.filter(
+    (item) => !dismissedKeys.has(item.key),
+  );
 
   const handleDismiss = async (key: string) => {
     if (!clientId || !todayStr) return;
@@ -323,7 +337,9 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
             <span className="h-3 w-3 rounded-full border-2 border-primary/85 bg-transparent shadow-[0_0_12px_rgba(56,189,248,0.45)]" />
             <CardTitle>Reminders</CardTitle>
           </div>
-          <p className="text-sm text-muted-foreground">Dismiss items you have handled.</p>
+          <p className="text-sm text-muted-foreground">
+            Dismiss items you have handled.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {dismissError ? (
@@ -353,10 +369,16 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
               >
                 <div>
                   <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.description}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => navigate(item.ctaTo)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => navigate(item.ctaTo)}
+                  >
                     {item.ctaLabel}
                   </Button>
                   <Button

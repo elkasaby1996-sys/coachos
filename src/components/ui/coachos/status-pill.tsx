@@ -3,7 +3,10 @@ import { cn } from "../../../lib/utils";
 
 const defaultStatusMap: Record<
   string,
-  { label: string; variant: "success" | "warning" | "danger" | "muted" | "secondary" }
+  {
+    label: string;
+    variant: "success" | "warning" | "danger" | "muted" | "secondary";
+  }
 > = {
   active: { label: "Active", variant: "success" },
   inactive: { label: "Inactive", variant: "muted" },
@@ -35,7 +38,10 @@ export function StatusPill({
   const pill = map[normalized] ?? map.active;
 
   return (
-    <Badge variant={pill.variant} className={cn("text-[10px] uppercase tracking-wide", className)}>
+    <Badge
+      variant={pill.variant}
+      className={cn("text-[10px] uppercase tracking-wide", className)}
+    >
       {pill.label}
     </Badge>
   );

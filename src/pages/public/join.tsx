@@ -1,7 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -39,9 +44,9 @@ export function JoinPage() {
   const contactHref = useMemo(
     () =>
       `mailto:?subject=${encodeURIComponent(
-        "Invite issue"
+        "Invite issue",
       )}&body=${encodeURIComponent(`Invite code: ${inviteCode}`)}`,
-    [inviteCode]
+    [inviteCode],
   );
 
   useEffect(() => {
@@ -61,14 +66,14 @@ export function JoinPage() {
       try {
         const { data: inviteData, error: inviteError } = await supabase.rpc(
           "get_invite_by_code",
-          { p_code: inviteCode }
+          { p_code: inviteCode },
         );
 
         if (inviteError) {
           console.error("Invite lookup failed", inviteError);
           setStatus("error");
           setMessage(
-            `Invite lookup failed: ${inviteError.message} (code: ${inviteError.code ?? "unknown"})`
+            `Invite lookup failed: ${inviteError.message} (code: ${inviteError.code ?? "unknown"})`,
           );
           return;
         }
@@ -76,13 +81,20 @@ export function JoinPage() {
         const inviteRow = Array.isArray(inviteData) ? inviteData[0] : null;
         if (!inviteRow) {
           setStatus("invalid");
-          setMessage(`Invite ${inviteCode} is invalid. Please contact your coach.`);
+          setMessage(
+            `Invite ${inviteCode} is invalid. Please contact your coach.`,
+          );
           return;
         }
 
-        if (inviteRow.expires_at && new Date(inviteRow.expires_at) <= new Date()) {
+        if (
+          inviteRow.expires_at &&
+          new Date(inviteRow.expires_at) <= new Date()
+        ) {
           setStatus("invalid");
-          setMessage(`Invite ${inviteCode} has expired. Please contact your coach.`);
+          setMessage(
+            `Invite ${inviteCode} has expired. Please contact your coach.`,
+          );
           return;
         }
 
@@ -90,7 +102,9 @@ export function JoinPage() {
         const currentUses = inviteRow.uses ?? 0;
         if (maxUses !== null && currentUses >= maxUses) {
           setStatus("invalid");
-          setMessage(`Invite ${inviteCode} has already been used. Please contact your coach.`);
+          setMessage(
+            `Invite ${inviteCode} has already been used. Please contact your coach.`,
+          );
           return;
         }
 
@@ -115,7 +129,9 @@ export function JoinPage() {
       } catch (err) {
         console.error("Invite lookup failed", err);
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "Failed to load invite.");
+        setMessage(
+          err instanceof Error ? err.message : "Failed to load invite.",
+        );
       }
     };
 
@@ -124,7 +140,10 @@ export function JoinPage() {
 
   useEffect(() => {
     if (status === "success") {
-      const timeout = setTimeout(() => navigate("/app/home", { replace: true }), 1200);
+      const timeout = setTimeout(
+        () => navigate("/app/home", { replace: true }),
+        1200,
+      );
       return () => clearTimeout(timeout);
     }
     return;
@@ -146,14 +165,14 @@ export function JoinPage() {
     try {
       const { data: inviteData, error: inviteError } = await supabase.rpc(
         "get_invite_by_code",
-        { p_code: inviteCode }
+        { p_code: inviteCode },
       );
 
       if (inviteError) {
         console.error("Invite lookup failed", inviteError);
         setStatus("error");
         setMessage(
-          `Invite lookup failed: ${inviteError.message} (code: ${inviteError.code ?? "unknown"})`
+          `Invite lookup failed: ${inviteError.message} (code: ${inviteError.code ?? "unknown"})`,
         );
         return;
       }
@@ -161,13 +180,20 @@ export function JoinPage() {
       const inviteRow = Array.isArray(inviteData) ? inviteData[0] : null;
       if (!inviteRow) {
         setStatus("invalid");
-        setMessage(`Invite ${inviteCode} is invalid. Please contact your coach.`);
+        setMessage(
+          `Invite ${inviteCode} is invalid. Please contact your coach.`,
+        );
         return;
       }
 
-      if (inviteRow.expires_at && new Date(inviteRow.expires_at) <= new Date()) {
+      if (
+        inviteRow.expires_at &&
+        new Date(inviteRow.expires_at) <= new Date()
+      ) {
         setStatus("invalid");
-        setMessage(`Invite ${inviteCode} has expired. Please contact your coach.`);
+        setMessage(
+          `Invite ${inviteCode} has expired. Please contact your coach.`,
+        );
         return;
       }
 
@@ -175,7 +201,9 @@ export function JoinPage() {
       const currentUses = inviteRow.uses ?? 0;
       if (maxUses !== null && currentUses >= maxUses) {
         setStatus("invalid");
-        setMessage(`Invite ${inviteCode} has already been used. Please contact your coach.`);
+        setMessage(
+          `Invite ${inviteCode} has already been used. Please contact your coach.`,
+        );
         return;
       }
 
@@ -205,10 +233,14 @@ export function JoinPage() {
 
         const { data: updatedInvite, error: updateError } = await supabase.rpc(
           "consume_invite",
-          { p_code: inviteCode }
+          { p_code: inviteCode },
         );
 
-        if (updateError || !updatedInvite || (Array.isArray(updatedInvite) && updatedInvite.length === 0)) {
+        if (
+          updateError ||
+          !updatedInvite ||
+          (Array.isArray(updatedInvite) && updatedInvite.length === 0)
+        ) {
           throw updateError ?? new Error("Invite could not be consumed.");
         }
       }
@@ -219,7 +251,9 @@ export function JoinPage() {
     } catch (err) {
       console.error("Invite join failed", err);
       setStatus("error");
-      setMessage(err instanceof Error ? err.message : "Failed to join workspace.");
+      setMessage(
+        err instanceof Error ? err.message : "Failed to join workspace.",
+      );
     }
   };
 
@@ -235,7 +269,9 @@ export function JoinPage() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2 text-sm">
             <span>Invite code</span>
-            <Badge variant={isMissingCode ? "danger" : "success"}>{inviteCode || "Missing"}</Badge>
+            <Badge variant={isMissingCode ? "danger" : "success"}>
+              {inviteCode || "Missing"}
+            </Badge>
           </div>
           {message ? (
             <Alert
@@ -246,9 +282,15 @@ export function JoinPage() {
               }
             >
               <AlertTitle>
-                {status === "success" ? "Success" : status === "error" ? "Error" : "Notice"}
+                {status === "success"
+                  ? "Success"
+                  : status === "error"
+                    ? "Error"
+                    : "Notice"}
               </AlertTitle>
-              <AlertDescription className="text-current">{message}</AlertDescription>
+              <AlertDescription className="text-current">
+                {message}
+              </AlertDescription>
             </Alert>
           ) : null}
 
@@ -256,7 +298,8 @@ export function JoinPage() {
             <Alert className="border-danger/30 bg-danger/10 text-danger">
               <AlertTitle>Missing invite code</AlertTitle>
               <AlertDescription className="text-current">
-                This invite link is missing a code. Please request a new link from your coach.
+                This invite link is missing a code. Please request a new link
+                from your coach.
               </AlertDescription>
             </Alert>
           ) : loading ? (
@@ -268,7 +311,8 @@ export function JoinPage() {
           ) : !session?.user ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Sign in to accept this invite and join your coach&apos;s workspace.
+                Sign in to accept this invite and join your coach&apos;s
+                workspace.
               </p>
               <Button
                 className="w-full"
@@ -282,7 +326,8 @@ export function JoinPage() {
           ) : status === "invalid" ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                This invite can&apos;t be used. Please ask your coach for a new link.
+                This invite can&apos;t be used. Please ask your coach for a new
+                link.
               </p>
               <Button className="w-full" variant="secondary" asChild>
                 <a href={contactHref}>Contact coach</a>
@@ -300,12 +345,16 @@ export function JoinPage() {
             </div>
           ) : status === "error" && !invite ? (
             <div className="space-y-3 text-sm text-muted-foreground">
-              We couldn&apos;t load this invite. Please contact your coach for a new link.
+              We couldn&apos;t load this invite. Please contact your coach for a
+              new link.
             </div>
           ) : (
             <form className="space-y-4" onSubmit={handleJoin}>
               <p className="text-sm text-muted-foreground">
-                Signed in as <span className="font-semibold text-foreground">{session.user.email}</span>
+                Signed in as{" "}
+                <span className="font-semibold text-foreground">
+                  {session.user.email}
+                </span>
               </p>
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="display-name">
@@ -331,7 +380,11 @@ export function JoinPage() {
                   onChange={(event) => setGoal(event.target.value)}
                 />
               </div>
-              <Button className="w-full" type="submit" disabled={status === "joining"}>
+              <Button
+                className="w-full"
+                type="submit"
+                disabled={status === "joining"}
+              >
                 {status === "joining" ? "Joining..." : "Join workspace"}
               </Button>
             </form>

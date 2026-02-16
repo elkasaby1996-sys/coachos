@@ -1,5 +1,4 @@
 import { StatusPill } from "./StatusPill";
-import { Button } from "../../ui/button";
 
 export function DashboardHeader({
   title,
@@ -22,10 +21,14 @@ export function DashboardHeader({
             <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
             <StatusPill status={status} />
             {lastSeen ? (
-              <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>
+              <span className="text-xs text-muted-foreground">
+                Last seen {lastSeen}
+              </span>
             ) : null}
           </div>
-          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
+          {subtitle ? (
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">{actions}</div>
       </div>

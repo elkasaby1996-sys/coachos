@@ -1,5 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { CalendarDays, Home, LineChart, MessageCircle, UserCircle } from "lucide-react";
+import {
+  CalendarDays,
+  Home,
+  LineChart,
+  MessageCircle,
+  UserCircle,
+} from "lucide-react";
 import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
@@ -22,7 +28,9 @@ export function ClientLayout() {
   const { workspaceId, loading, error } = useWorkspace();
   const { authError } = useAuth();
   const errorMessage =
-    error?.message ?? authError?.message ?? (workspaceId ? null : "Workspace not found.");
+    error?.message ??
+    authError?.message ??
+    (workspaceId ? null : "Workspace not found.");
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -63,7 +71,9 @@ export function ClientLayout() {
       <div className="flex min-h-screen w-full">
         <aside className="hidden w-64 flex-col border-r border-border bg-card px-4 py-6 md:flex">
           <div className="mb-8 flex items-center justify-between">
-            <span className="text-lg font-semibold tracking-tight">CoachOS</span>
+            <span className="text-lg font-semibold tracking-tight">
+              CoachOS
+            </span>
             <ThemeToggle />
           </div>
           <nav className="flex flex-1 flex-col gap-2">
@@ -74,7 +84,7 @@ export function ClientLayout() {
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted",
-                    isActive && "bg-muted text-foreground"
+                    isActive && "bg-muted text-foreground",
                   )
                 }
               >
@@ -108,7 +118,7 @@ export function ClientLayout() {
                   className={({ isActive }) =>
                     cn(
                       "flex flex-col items-center gap-1 text-xs text-muted-foreground",
-                      isActive && "text-foreground"
+                      isActive && "text-foreground",
                     )
                   }
                 >

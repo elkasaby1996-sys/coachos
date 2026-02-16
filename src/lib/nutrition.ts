@@ -145,7 +145,8 @@ export type AssignedNutritionDay = {
   plan?: AssignedNutritionPlan | null;
 };
 
-const n = (value: number | null | undefined) => (typeof value === "number" ? value : 0);
+const n = (value: number | null | undefined) =>
+  typeof value === "number" ? value : 0;
 
 export const sumMacros = (
   rows: Array<{
@@ -153,7 +154,7 @@ export const sumMacros = (
     protein_g?: number | null;
     carbs_g?: number | null;
     fat_g?: number | null;
-  }>
+  }>,
 ): MacroTotals => {
   return rows.reduce<MacroTotals>(
     (acc, row) => {
@@ -163,15 +164,17 @@ export const sumMacros = (
       acc.fat_g += n(row.fat_g);
       return acc;
     },
-    { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+    { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
   );
 };
 
 const hydrateTemplate = (
-  templateRows: Array<Omit<NutritionTemplate, "days" | "totals" | "meal_count">>,
+  templateRows: Array<
+    Omit<NutritionTemplate, "days" | "totals" | "meal_count">
+  >,
   dayRows: Array<Omit<NutritionTemplateDay, "meals">>,
   mealRows: Array<Omit<NutritionTemplateMeal, "components">>,
-  componentRows: NutritionTemplateMealComponent[]
+  componentRows: NutritionTemplateMealComponent[],
 ): NutritionTemplate[] => {
   return templateRows.map((template) => {
     const templateDays: NutritionTemplateDay[] = dayRows
@@ -183,7 +186,9 @@ const hydrateTemplate = (
           .map((meal) => ({
             ...meal,
             components: componentRows
-              .filter((component) => component.nutrition_template_meal_id === meal.id)
+              .filter(
+                (component) => component.nutrition_template_meal_id === meal.id,
+              )
               .sort((a, b) => a.sort_order - b.sort_order),
           }));
 
@@ -193,9 +198,14 @@ const hydrateTemplate = (
         };
       });
 
-    const allComponents = templateDays.flatMap((day) => day.meals.flatMap((meal) => meal.components));
+    const allComponents = templateDays.flatMap((day) =>
+      day.meals.flatMap((meal) => meal.components),
+    );
     const fallbackMeals = templateDays.flatMap((day) => day.meals);
-    const totals = allComponents.length > 0 ? sumMacros(allComponents) : sumMacros(fallbackMeals);
+    const totals =
+      allComponents.length > 0
+        ? sumMacros(allComponents)
+        : sumMacros(fallbackMeals);
 
     return {
       ...template,
@@ -213,48 +223,63 @@ export function useNutritionTemplates(workspaceId: string | null) {
     queryFn: async () => {
       const { data: templates, error: templateError } = await supabase
         .from("nutrition_templates")
-        .select("id, workspace_id, name, description, duration_weeks, is_active, created_at, updated_at")
+        .select(
+          "id, workspace_id, name, description, duration_weeks, is_active, created_at, updated_at",
+        )
         .eq("workspace_id", workspaceId ?? "")
         .order("created_at", { ascending: false });
       if (templateError) throw templateError;
 
-      const templateRows = (templates ?? []) as Array<Omit<NutritionTemplate, "days" | "totals" | "meal_count">>;
+      const templateRows = (templates ?? []) as Array<
+        Omit<NutritionTemplate, "days" | "totals" | "meal_count">
+      >;
       const templateIds = templateRows.map((row) => row.id);
       if (!templateIds.length) return [] as NutritionTemplate[];
 
       const { data: days, error: daysError } = await supabase
         .from("nutrition_template_days")
-        .select("id, nutrition_template_id, week_index, day_of_week, title, notes, created_at, updated_at")
+        .select(
+          "id, nutrition_template_id, week_index, day_of_week, title, notes, created_at, updated_at",
+        )
         .in("nutrition_template_id", templateIds)
         .order("week_index", { ascending: true })
         .order("day_of_week", { ascending: true });
       if (daysError) throw daysError;
 
-      const dayRows = (days ?? []) as Array<Omit<NutritionTemplateDay, "meals">>;
+      const dayRows = (days ?? []) as Array<
+        Omit<NutritionTemplateDay, "meals">
+      >;
       const dayIds = dayRows.map((row) => row.id);
 
       const { data: meals, error: mealsError } = dayIds.length
         ? await supabase
             .from("nutrition_template_meals")
-            .select("id, nutrition_template_day_id, meal_order, meal_name, recipe_text, calories, protein_g, carbs_g, fat_g, notes, created_at, updated_at")
+            .select(
+              "id, nutrition_template_day_id, meal_order, meal_name, recipe_text, calories, protein_g, carbs_g, fat_g, notes, created_at, updated_at",
+            )
             .in("nutrition_template_day_id", dayIds)
             .order("meal_order", { ascending: true })
         : { data: [], error: null };
       if (mealsError) throw mealsError;
 
-      const mealRows = (meals ?? []) as Array<Omit<NutritionTemplateMeal, "components">>;
+      const mealRows = (meals ?? []) as Array<
+        Omit<NutritionTemplateMeal, "components">
+      >;
       const mealIds = mealRows.map((row) => row.id);
 
       const { data: components, error: componentError } = mealIds.length
         ? await supabase
             .from("nutrition_template_meal_components")
-            .select("id, nutrition_template_meal_id, sort_order, component_name, quantity, unit, calories, protein_g, carbs_g, fat_g, recipe_text, notes, created_at, updated_at")
+            .select(
+              "id, nutrition_template_meal_id, sort_order, component_name, quantity, unit, calories, protein_g, carbs_g, fat_g, recipe_text, notes, created_at, updated_at",
+            )
             .in("nutrition_template_meal_id", mealIds)
             .order("sort_order", { ascending: true })
         : { data: [], error: null };
       if (componentError) throw componentError;
 
-      const componentRows = (components ?? []) as NutritionTemplateMealComponent[];
+      const componentRows = (components ??
+        []) as NutritionTemplateMealComponent[];
 
       return hydrateTemplate(templateRows, dayRows, mealRows, componentRows);
     },
@@ -268,48 +293,66 @@ export function useNutritionTemplate(templateId: string | null) {
     queryFn: async () => {
       const { data: template, error: templateError } = await supabase
         .from("nutrition_templates")
-        .select("id, workspace_id, name, description, duration_weeks, is_active, created_at, updated_at")
+        .select(
+          "id, workspace_id, name, description, duration_weeks, is_active, created_at, updated_at",
+        )
         .eq("id", templateId ?? "")
         .maybeSingle();
       if (templateError) throw templateError;
       if (!template) return null;
 
-      const templateRows = [template as Omit<NutritionTemplate, "days" | "totals" | "meal_count">];
+      const templateRows = [
+        template as Omit<NutritionTemplate, "days" | "totals" | "meal_count">,
+      ];
 
       const { data: days, error: daysError } = await supabase
         .from("nutrition_template_days")
-        .select("id, nutrition_template_id, week_index, day_of_week, title, notes, created_at, updated_at")
+        .select(
+          "id, nutrition_template_id, week_index, day_of_week, title, notes, created_at, updated_at",
+        )
         .eq("nutrition_template_id", template.id)
         .order("week_index", { ascending: true })
         .order("day_of_week", { ascending: true });
       if (daysError) throw daysError;
 
-      const dayRows = (days ?? []) as Array<Omit<NutritionTemplateDay, "meals">>;
+      const dayRows = (days ?? []) as Array<
+        Omit<NutritionTemplateDay, "meals">
+      >;
       const dayIds = dayRows.map((row) => row.id);
 
       const { data: meals, error: mealsError } = dayIds.length
         ? await supabase
             .from("nutrition_template_meals")
-            .select("id, nutrition_template_day_id, meal_order, meal_name, recipe_text, calories, protein_g, carbs_g, fat_g, notes, created_at, updated_at")
+            .select(
+              "id, nutrition_template_day_id, meal_order, meal_name, recipe_text, calories, protein_g, carbs_g, fat_g, notes, created_at, updated_at",
+            )
             .in("nutrition_template_day_id", dayIds)
             .order("meal_order", { ascending: true })
         : { data: [], error: null };
       if (mealsError) throw mealsError;
 
-      const mealRows = (meals ?? []) as Array<Omit<NutritionTemplateMeal, "components">>;
+      const mealRows = (meals ?? []) as Array<
+        Omit<NutritionTemplateMeal, "components">
+      >;
       const mealIds = mealRows.map((row) => row.id);
 
       const { data: components, error: componentError } = mealIds.length
         ? await supabase
             .from("nutrition_template_meal_components")
-            .select("id, nutrition_template_meal_id, sort_order, component_name, quantity, unit, calories, protein_g, carbs_g, fat_g, recipe_text, notes, created_at, updated_at")
+            .select(
+              "id, nutrition_template_meal_id, sort_order, component_name, quantity, unit, calories, protein_g, carbs_g, fat_g, recipe_text, notes, created_at, updated_at",
+            )
             .in("nutrition_template_meal_id", mealIds)
             .order("sort_order", { ascending: true })
         : { data: [], error: null };
       if (componentError) throw componentError;
 
-      const componentRows = (components ?? []) as NutritionTemplateMealComponent[];
-      return hydrateTemplate(templateRows, dayRows, mealRows, componentRows)[0] ?? null;
+      const componentRows = (components ??
+        []) as NutritionTemplateMealComponent[];
+      return (
+        hydrateTemplate(templateRows, dayRows, mealRows, componentRows)[0] ??
+        null
+      );
     },
   });
 }
@@ -322,7 +365,7 @@ export function useAssignedNutritionDay(assignedDayId: string | null) {
       const { data, error } = await supabase
         .from("assigned_nutrition_days")
         .select(
-          "id, assigned_nutrition_plan_id, date, week_index, day_of_week, notes, created_at, updated_at, plan:assigned_nutrition_plans(id, client_id, nutrition_template_id, start_date, end_date, status, created_at, updated_at, nutrition_template:nutrition_templates(id, name, duration_weeks))"
+          "id, assigned_nutrition_plan_id, date, week_index, day_of_week, notes, created_at, updated_at, plan:assigned_nutrition_plans(id, client_id, nutrition_template_id, start_date, end_date, status, created_at, updated_at, nutrition_template:nutrition_templates(id, name, duration_weeks))",
         )
         .eq("id", assignedDayId ?? "")
         .maybeSingle();
@@ -340,35 +383,44 @@ export function useAssignedNutritionMeals(assignedDayId: string | null) {
       const { data, error } = await supabase
         .from("assigned_nutrition_meals")
         .select(
-          "id, assigned_nutrition_day_id, template_meal_id, meal_order, meal_name, recipe_text, calories, protein_g, carbs_g, fat_g, notes, created_at, updated_at, logs:nutrition_meal_logs(id, assigned_nutrition_meal_id, consumed_at, is_completed, actual_calories, actual_protein_g, actual_carbs_g, actual_fat_g, created_at, updated_at)"
+          "id, assigned_nutrition_day_id, template_meal_id, meal_order, meal_name, recipe_text, calories, protein_g, carbs_g, fat_g, notes, created_at, updated_at, logs:nutrition_meal_logs(id, assigned_nutrition_meal_id, consumed_at, is_completed, actual_calories, actual_protein_g, actual_carbs_g, actual_fat_g, created_at, updated_at)",
         )
         .eq("assigned_nutrition_day_id", assignedDayId ?? "")
         .order("meal_order", { ascending: true });
       if (error) throw error;
 
-      const rows = (data ?? []) as Array<AssignedNutritionMeal & { logs?: NutritionMealLog[] }>;
+      const rows = (data ?? []) as Array<
+        AssignedNutritionMeal & { logs?: NutritionMealLog[] }
+      >;
       const mealIds = rows.map((row) => row.id);
 
       const { data: components, error: componentError } = mealIds.length
         ? await supabase
             .from("assigned_nutrition_meal_components")
-            .select("id, assigned_nutrition_meal_id, template_component_id, sort_order, component_name, quantity, unit, calories, protein_g, carbs_g, fat_g, recipe_text, notes, created_at, updated_at")
+            .select(
+              "id, assigned_nutrition_meal_id, template_component_id, sort_order, component_name, quantity, unit, calories, protein_g, carbs_g, fat_g, recipe_text, notes, created_at, updated_at",
+            )
             .in("assigned_nutrition_meal_id", mealIds)
             .order("sort_order", { ascending: true })
         : { data: [], error: null };
       if (componentError) throw componentError;
 
-      const componentRows = (components ?? []) as AssignedNutritionMealComponent[];
+      const componentRows = (components ??
+        []) as AssignedNutritionMealComponent[];
 
       return rows.map((row) => {
-        const logs = (row.logs ?? []).slice().sort((a, b) => (a.consumed_at < b.consumed_at ? 1 : -1));
+        const logs = (row.logs ?? [])
+          .slice()
+          .sort((a, b) => (a.consumed_at < b.consumed_at ? 1 : -1));
         const latest_log = logs[0] ?? null;
         const { logs: _logs, ...rest } = row;
         return {
           ...rest,
           latest_log,
           components: componentRows
-            .filter((component) => component.assigned_nutrition_meal_id === row.id)
+            .filter(
+              (component) => component.assigned_nutrition_meal_id === row.id,
+            )
             .sort((a, b) => a.sort_order - b.sort_order),
         } as AssignedNutritionMeal;
       });
@@ -384,7 +436,7 @@ export function useAssignedNutritionMeals(assignedDayId: string | null) {
           return c;
         }
         return meal;
-      })
+      }),
     );
   }, [query.data]);
 
@@ -406,7 +458,11 @@ export function useAssignedNutritionMeals(assignedDayId: string | null) {
   };
 }
 
-export function useAssignedNutritionByDate(clientId: string | null, fromDate: string, toDate: string) {
+export function useAssignedNutritionByDate(
+  clientId: string | null,
+  fromDate: string,
+  toDate: string,
+) {
   return useQuery({
     queryKey: ["assigned-nutrition-days-range-v1", clientId, fromDate, toDate],
     enabled: !!clientId,
@@ -422,7 +478,9 @@ export function useAssignedNutritionByDate(clientId: string | null, fromDate: st
 
       const { data, error } = await supabase
         .from("assigned_nutrition_days")
-        .select("id, assigned_nutrition_plan_id, date, week_index, day_of_week, notes, created_at, updated_at")
+        .select(
+          "id, assigned_nutrition_plan_id, date, week_index, day_of_week, notes, created_at, updated_at",
+        )
         .in("assigned_nutrition_plan_id", planIds)
         .gte("date", fromDate)
         .lte("date", toDate)

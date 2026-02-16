@@ -10,7 +10,7 @@ const toDateKey = (date: Date) => {
 export const computeStreak = (
   logDates: string[],
   today: string | Date,
-  maxDays = 30
+  maxDays = 30,
 ): number => {
   const todayStr = typeof today === "string" ? today : toDateKey(today);
   if (!todayStr) return 0;
@@ -26,5 +26,8 @@ export const computeStreak = (
 
 export const getLatestLogDate = (logDates: string[]): string | null => {
   if (logDates.length === 0) return null;
-  return logDates.reduce((latest, date) => (date > latest ? date : latest), logDates[0]);
+  return logDates.reduce(
+    (latest, date) => (date > latest ? date : latest),
+    logDates[0],
+  );
 };

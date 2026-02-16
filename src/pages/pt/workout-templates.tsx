@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
@@ -46,7 +51,11 @@ export function PtWorkoutTemplatesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { workspaceId, loading: workspaceLoading, error: workspaceError } = useWorkspace();
+  const {
+    workspaceId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<"idle" | "saving">("idle");
   const [createError, setCreateError] = useState<string | null>(null);
@@ -60,7 +69,9 @@ export function PtWorkoutTemplatesPage() {
     description: "",
   });
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
-  const [typeFilter, setTypeFilter] = useState(searchParams.get("type") ?? "all");
+  const [typeFilter, setTypeFilter] = useState(
+    searchParams.get("type") ?? "all",
+  );
   const [sortBy, setSortBy] = useState(searchParams.get("sort") ?? "newest");
 
   useEffect(() => {
@@ -79,7 +90,9 @@ export function PtWorkoutTemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
-        .select("id, name, description, workout_type, workout_type_tag, created_at")
+        .select(
+          "id, name, description, workout_type, workout_type_tag, created_at",
+        )
         .eq("workspace_id", workspaceId ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -118,7 +131,9 @@ export function PtWorkoutTemplatesPage() {
     setCreateStatus("idle");
     setCreateOpen(false);
     setForm({ name: "", workout_type_tag: "", description: "" });
-    await queryClient.invalidateQueries({ queryKey: ["workout-templates", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-templates", workspaceId],
+    });
     if (data?.id) {
       navigate(`/pt/templates/workouts/${data.id}`);
     }
@@ -129,7 +144,10 @@ export function PtWorkoutTemplatesPage() {
     setDeleteStatus("deleting");
     setDeleteError(null);
 
-    const { error } = await supabase.from("workout_templates").delete().eq("id", deleteTarget.id);
+    const { error } = await supabase
+      .from("workout_templates")
+      .delete()
+      .eq("id", deleteTarget.id);
     if (error) {
       const details = getErrorDetails(error);
       setDeleteError(`${details.code}: ${details.message}`);
@@ -140,7 +158,9 @@ export function PtWorkoutTemplatesPage() {
     setDeleteStatus("idle");
     setDeleteOpen(false);
     setDeleteTarget(null);
-    await queryClient.invalidateQueries({ queryKey: ["workout-templates", workspaceId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workout-templates", workspaceId],
+    });
   };
 
   const templates = templatesQuery.data ?? [];
@@ -157,12 +177,13 @@ export function PtWorkoutTemplatesPage() {
           : "Recently",
         workoutTypeLabel: formatWorkoutTypeTag(template.workout_type_tag),
       })),
-    [templates]
+    [templates],
   );
   const workoutTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
     templates.forEach((template) => {
-      const value = template.workout_type_tag?.trim() || template.workout_type?.trim();
+      const value =
+        template.workout_type_tag?.trim() || template.workout_type?.trim();
       if (!value) return;
       const key = value.toLowerCase();
       if (!seen.has(key)) {
@@ -204,18 +225,25 @@ export function PtWorkoutTemplatesPage() {
     const typeKey = typeFilter.toLowerCase();
     const matches = formattedTemplates.filter((template) => {
       const typeValue =
-        template.workout_type_tag?.trim() || template.workout_type?.trim() || "";
-      if (typeFilter !== "all" && typeValue.toLowerCase() !== typeKey) return false;
+        template.workout_type_tag?.trim() ||
+        template.workout_type?.trim() ||
+        "";
+      if (typeFilter !== "all" && typeValue.toLowerCase() !== typeKey)
+        return false;
       if (!query) return true;
       const name = template.name?.toLowerCase() ?? "";
       const desc = template.description?.toLowerCase() ?? "";
       const type = typeValue.toLowerCase();
-      return name.includes(query) || desc.includes(query) || type.includes(query);
+      return (
+        name.includes(query) || desc.includes(query) || type.includes(query)
+      );
     });
 
     if (sortBy === "name") {
       return matches.sort((a, b) =>
-        (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+        (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+          sensitivity: "base",
+        }),
       );
     }
 
@@ -230,8 +258,12 @@ export function PtWorkoutTemplatesPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">CoachOS Pro</div>
-          <h2 className="text-2xl font-semibold tracking-tight">Templates Library</h2>
+          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            CoachOS Pro
+          </div>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Templates Library
+          </h2>
           <p className="text-sm text-muted-foreground">
             Manage your workout templates, programs, and exercise library.
           </p>
@@ -240,167 +272,181 @@ export function PtWorkoutTemplatesPage() {
       </div>
 
       <Card className="border-border/70 bg-card/80">
-            <CardHeader className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                <Badge variant="secondary" className="text-[10px]">Workouts</Badge>
-                <Badge variant="muted" className="text-[10px]">Programs</Badge>
-                <Badge variant="muted" className="text-[10px]">Exercises</Badge>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full sm:w-56">
-                  <Input
-                    placeholder="Search templates..."
-                    className="h-9 rounded-full bg-secondary/40 pl-10"
-                    value={searchQuery}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setSearchQuery(next);
-                      updateParams({ q: next });
-                    }}
-                  />
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                    ⌕
-                  </span>
-                </div>
-                <select
-                  className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
-                  value={typeFilter}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    setTypeFilter(next);
-                    updateParams({ type: next });
-                  }}
+        <CardHeader className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <Badge variant="secondary" className="text-[10px]">
+              Workouts
+            </Badge>
+            <Badge variant="muted" className="text-[10px]">
+              Programs
+            </Badge>
+            <Badge variant="muted" className="text-[10px]">
+              Exercises
+            </Badge>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-56">
+              <Input
+                placeholder="Search templates..."
+                className="h-9 rounded-full bg-secondary/40 pl-10"
+                value={searchQuery}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSearchQuery(next);
+                  updateParams({ q: next });
+                }}
+              />
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                ⌕
+              </span>
+            </div>
+            <select
+              className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
+              value={typeFilter}
+              onChange={(event) => {
+                const next = event.target.value;
+                setTypeFilter(next);
+                updateParams({ type: next });
+              }}
+            >
+              <option value="all">All workout types</option>
+              {workoutTypeOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
+              value={sortBy}
+              onChange={(event) => {
+                const next = event.target.value;
+                setSortBy(next);
+                updateParams({ sort: next });
+              }}
+            >
+              <option value="newest">Sort by newest</option>
+              <option value="name">Sort by name</option>
+            </select>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {workspaceLoading || templatesQuery.isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-20 w-full" />
+              ))}
+            </div>
+          ) : workspaceError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              {getErrorDetails(workspaceError).code}:{" "}
+              {getErrorDetails(workspaceError).message}
+            </div>
+          ) : templatesQuery.error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              {getErrorDetails(templatesQuery.error).code}:{" "}
+              {getErrorDetails(templatesQuery.error).message}
+            </div>
+          ) : filteredTemplates.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredTemplates.map((template, index) => (
+                <DashboardCard
+                  key={template.id}
+                  title={template.name ?? "Workout template"}
+                  subtitle={template.workoutTypeLabel}
+                  className="h-full border-border/70 bg-background/40"
+                  action={
+                    <Button asChild size="sm" variant="secondary">
+                      <Link to={`/pt/templates/workouts/${template.id}/edit`}>
+                        Edit
+                      </Link>
+                    </Button>
+                  }
                 >
-                  <option value="all">All workout types</option>
-                  {workoutTypeOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
-                  value={sortBy}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    setSortBy(next);
-                    updateParams({ sort: next });
-                  }}
-                >
-                  <option value="newest">Sort by newest</option>
-                  <option value="name">Sort by name</option>
-                </select>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {workspaceLoading || templatesQuery.isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={index} className="h-20 w-full" />
-                  ))}
-                </div>
-              ) : workspaceError ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                  {getErrorDetails(workspaceError).code}: {getErrorDetails(workspaceError).message}
-                </div>
-              ) : templatesQuery.error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                  {getErrorDetails(templatesQuery.error).code}: {getErrorDetails(templatesQuery.error).message}
-                </div>
-              ) : filteredTemplates.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {filteredTemplates.map((template, index) => (
-                    <DashboardCard
-                      key={template.id}
-                      title={template.name ?? "Workout template"}
-                      subtitle={template.workoutTypeLabel}
-                      className="h-full border-border/70 bg-background/40"
-                      action={
-                        <Button asChild size="sm" variant="secondary">
-                          <Link to={`/pt/templates/workouts/${template.id}/edit`}>Edit</Link>
-                        </Button>
-                      }
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/70 text-xs font-semibold text-foreground">
-                            {template.name?.trim()?.[0]?.toUpperCase() ?? "W"}
-                          </div>
-                          <span className="text-xs text-warning">★</span>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            {template.description ?? "No description"}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="muted" className="text-[10px] uppercase">
-                            {template.workoutTypeLabel}
-                          </Badge>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {index + 4} exercises
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between border-t border-border/70 pt-3 text-xs text-muted-foreground">
-                          <span>Used {index + 8} times</span>
-                          <span>{template.updated}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="ghost" className="flex-1">
-                            Assign
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="flex-1"
-                            onClick={() => {
-                              setDeleteTarget(template);
-                              setDeleteError(null);
-                              setDeleteOpen(true);
-                            }}
-                          >
-                            Delete
-                          </Button>
-                        </div>
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/70 text-xs font-semibold text-foreground">
+                        {template.name?.trim()?.[0]?.toUpperCase() ?? "W"}
                       </div>
-                    </DashboardCard>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
-                  <p className="text-sm font-semibold">No templates found.</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Try adjusting filters or create a new template.
-                  </p>
-                  <Button className="mt-4" size="sm" onClick={() => setCreateOpen(true)}>
-                    Create template
-                  </Button>
-                </div>
-              )}
-            </CardContent>
+                      <span className="text-xs text-warning">★</span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {template.description ?? "No description"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="muted" className="text-[10px] uppercase">
+                        {template.workoutTypeLabel}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {index + 4} exercises
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-border/70 pt-3 text-xs text-muted-foreground">
+                      <span>Used {index + 8} times</span>
+                      <span>{template.updated}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="ghost" className="flex-1">
+                        Assign
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="flex-1"
+                        onClick={() => {
+                          setDeleteTarget(template);
+                          setDeleteError(null);
+                          setDeleteOpen(true);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </DashboardCard>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
+              <p className="text-sm font-semibold">No templates found.</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Try adjusting filters or create a new template.
+              </p>
+              <Button
+                className="mt-4"
+                size="sm"
+                onClick={() => setCreateOpen(true)}
+              >
+                Create template
+              </Button>
+            </div>
+          )}
+        </CardContent>
       </Card>
       <Card className="mt-6 border-border/70 bg-card/80">
-            <CardHeader>
-              <CardTitle>Shared template packs</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Import curated templates or build your own pack.
+        <CardHeader>
+          <CardTitle>Shared template packs</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Import curated templates or build your own pack.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {sharedTemplates.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
+              <p className="text-sm font-semibold">No shared templates yet.</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Create a new pack to streamline programming.
               </p>
-            </CardHeader>
-            <CardContent>
-              {sharedTemplates.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
-                  <p className="text-sm font-semibold">No shared templates yet.</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Create a new pack to streamline programming.
-                  </p>
-                  <Button className="mt-4" size="sm">
-                    Create pack
-                  </Button>
-                </div>
-              ) : (
-                <div>Template packs</div>
-              )}
-            </CardContent>
+              <Button className="mt-4" size="sm">
+                Create pack
+              </Button>
+            </div>
+          ) : (
+            <div>Template packs</div>
+          )}
+        </CardContent>
       </Card>
 
       <Dialog
@@ -416,34 +462,50 @@ export function PtWorkoutTemplatesPage() {
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Create template</DialogTitle>
-            <DialogDescription>Start a new workout template for your workspace.</DialogDescription>
+            <DialogDescription>
+              Start a new workout template for your workspace.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Name</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Name
+              </label>
               <Input
                 value={form.name}
-                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, name: event.target.value }))
+                }
                 placeholder="e.g., Upper Power"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Workout type</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Workout type
+              </label>
               <Input
                 value={form.workout_type_tag}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, workout_type_tag: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    workout_type_tag: event.target.value,
+                  }))
                 }
                 placeholder="Hypertrophy, Strength, Powerbuilding..."
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Description</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Description
+              </label>
               <textarea
                 className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, description: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -479,7 +541,8 @@ export function PtWorkoutTemplatesPage() {
           <DialogHeader>
             <DialogTitle>Delete template</DialogTitle>
             <DialogDescription>
-              This will delete the template and all dependent workouts and exercises.
+              This will delete the template and all dependent workouts and
+              exercises.
             </DialogDescription>
           </DialogHeader>
           {deleteError ? (
@@ -491,7 +554,11 @@ export function PtWorkoutTemplatesPage() {
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" disabled={deleteStatus === "deleting"} onClick={handleDelete}>
+            <Button
+              variant="secondary"
+              disabled={deleteStatus === "deleting"}
+              onClick={handleDelete}
+            >
               {deleteStatus === "deleting" ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>

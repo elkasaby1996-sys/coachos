@@ -12,8 +12,11 @@ function extractInviteToken(input: string): string {
     try {
       const url = new URL(value);
       const parts = url.pathname.split("/").filter(Boolean);
-      const inviteIndex = parts.findIndex((p) => p === "invite" || p === "join");
-      if (inviteIndex >= 0 && parts[inviteIndex + 1]) return parts[inviteIndex + 1];
+      const inviteIndex = parts.findIndex(
+        (p) => p === "invite" || p === "join",
+      );
+      if (inviteIndex >= 0 && parts[inviteIndex + 1])
+        return parts[inviteIndex + 1];
       return "";
     } catch {
       return "";
@@ -43,13 +46,19 @@ export function SignupRolePage() {
     <AuthBackdrop contentClassName="max-w-2xl">
       <div className="relative z-10 w-full max-w-2xl rounded-2xl border border-border/70 bg-card/85 p-6 shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl">
         <div className="space-y-2 text-center">
-          <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">Create your account</h1>
-          <p className="text-sm text-muted-foreground">Select your role to continue.</p>
+          <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
+            Create your account
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Select your role to continue.
+          </p>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-border/70 bg-background/55 p-4">
-            <h3 className="text-base font-semibold text-foreground">I am a PT</h3>
+            <h3 className="text-base font-semibold text-foreground">
+              I am a PT
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Coaches can create a new account and set up their workspace.
             </p>
@@ -58,10 +67,16 @@ export function SignupRolePage() {
             </Button>
           </div>
 
-          <form className="rounded-xl border border-border/70 bg-background/55 p-4" onSubmit={onContinueClient}>
-            <h3 className="text-base font-semibold text-foreground">I am a client</h3>
+          <form
+            className="rounded-xl border border-border/70 bg-background/55 p-4"
+            onSubmit={onContinueClient}
+          >
+            <h3 className="text-base font-semibold text-foreground">
+              I am a client
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Clients must join using an invite code or invite link from their PT.
+              Clients must join using an invite code or invite link from their
+              PT.
             </p>
             <Input
               className="mt-4 h-11 border-border/70 bg-background/80"

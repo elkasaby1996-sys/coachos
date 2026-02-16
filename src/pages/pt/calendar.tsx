@@ -12,10 +12,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { DashboardCard, EmptyState, Skeleton, StatusPill } from "../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  Skeleton,
+  StatusPill,
+} from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
-import { addDaysToDateString, formatDateInTimezone, getWeekStartSunday } from "../../lib/date-utils";
+import {
+  addDaysToDateString,
+  formatDateInTimezone,
+  getWeekStartSunday,
+} from "../../lib/date-utils";
 import { cn } from "../../lib/utils";
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -71,7 +80,7 @@ type CoachEventRow = {
 
 const statusMap = {
   due: { label: "Due", variant: "warning" },
-};
+} as const;
 
 export function PtCalendarPage() {
   const { workspaceId } = useWorkspace();
@@ -79,10 +88,14 @@ export function PtCalendarPage() {
   const navigate = useNavigate();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
-  const [monthCursor, setMonthCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [monthCursor, setMonthCursor] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1),
+  );
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<CoachEventRow | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CoachEventRow | null>(
+    null,
+  );
   const [eventMode, setEventMode] = useState<"create" | "edit">("create");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [eventDate, setEventDate] = useState(todayKey);
@@ -93,7 +106,7 @@ export function PtCalendarPage() {
 
   const { days, gridStartKey, gridEndKey, monthStartKey } = useMemo(
     () => buildCalendarDays(monthCursor),
-    [monthCursor]
+    [monthCursor],
   );
 
   const clientsQuery = useQuery({
@@ -111,7 +124,13 @@ export function PtCalendarPage() {
   });
 
   const checkinsQuery = useQuery({
-    queryKey: ["pt-calendar-checkins", workspaceId, gridStartKey, gridEndKey, clientsQuery.data],
+    queryKey: [
+      "pt-calendar-checkins",
+      workspaceId,
+      gridStartKey,
+      gridEndKey,
+      clientsQuery.data,
+    ],
     enabled: !!workspaceId && (clientsQuery.data?.length ?? 0) > 0,
     queryFn: async () => {
       const clientIds = (clientsQuery.data ?? []).map((row) => row.id);
@@ -169,11 +188,15 @@ export function PtCalendarPage() {
         if (error) throw error;
         return;
       }
-      const { error } = await supabase.from("coach_calendar_events").insert(payload);
+      const { error } = await supabase
+        .from("coach_calendar_events")
+        .insert(payload);
       if (error) throw error;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["pt-calendar-events", workspaceId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-calendar-events", workspaceId],
+      });
       setEventDialogOpen(false);
       setEventTitle("");
       setEventDescription("");
@@ -192,7 +215,9 @@ export function PtCalendarPage() {
       if (error) throw error;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["pt-calendar-events", workspaceId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-calendar-events", workspaceId],
+      });
       setEventDetailsOpen(false);
       setSelectedEvent(null);
     },
@@ -229,13 +254,16 @@ export function PtCalendarPage() {
     return map;
   }, [eventsQuery.data]);
 
-  const isLoading = clientsQuery.isLoading || checkinsQuery.isLoading || eventsQuery.isLoading;
+  const isLoading =
+    clientsQuery.isLoading || checkinsQuery.isLoading || eventsQuery.isLoading;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Coach calendar</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Coach calendar
+          </h2>
           <p className="text-sm text-muted-foreground">
             Track check-ins due today and upcoming events.
           </p>
@@ -259,14 +287,17 @@ export function PtCalendarPage() {
           subtitle="All check-ins and coaching events in one place."
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="text-lg font-semibold text-foreground">{monthLabel}</div>
+            <div className="text-lg font-semibold text-foreground">
+              {monthLabel}
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 size="icon"
                 variant="secondary"
                 onClick={() =>
                   setMonthCursor(
-                    (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                    (prev) =>
+                      new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
                   )
                 }
               >
@@ -277,7 +308,8 @@ export function PtCalendarPage() {
                 variant="secondary"
                 onClick={() =>
                   setMonthCursor(
-                    (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+                    (prev) =>
+                      new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
                   )
                 }
               >
@@ -327,7 +359,7 @@ export function PtCalendarPage() {
                     className={cn(
                       "min-h-[160px] rounded-2xl border border-border/70 bg-background/40 p-3 text-left transition hover:border-border",
                       !day.inMonth && "opacity-50",
-                      isToday && "border-accent/60 bg-accent/10"
+                      isToday && "border-accent/60 bg-accent/10",
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -341,7 +373,9 @@ export function PtCalendarPage() {
 
                     <div className="mt-3 space-y-2">
                       {checkins.slice(0, 2).map((row) => {
-                        const client = row.client_id ? clientMap.get(row.client_id) : null;
+                        const client = row.client_id
+                          ? clientMap.get(row.client_id)
+                          : null;
                         const label = client?.display_name?.trim()
                           ? client.display_name
                           : "Client";
@@ -349,17 +383,23 @@ export function PtCalendarPage() {
                           <button
                             key={row.id}
                             type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (row.client_id) {
-                              navigate(`/pt/clients/${row.client_id}?tab=checkins`);
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (row.client_id) {
+                                navigate(
+                                  `/pt/clients/${row.client_id}?tab=checkins`,
+                                );
                               }
                             }}
                             className="w-full rounded-lg border border-border/60 bg-muted/30 px-2 py-1 text-left text-xs transition hover:border-border"
                           >
-                            <div className="font-semibold text-foreground">{label}</div>
+                            <div className="font-semibold text-foreground">
+                              {label}
+                            </div>
                             <div className="text-muted-foreground">
-                              {row.submitted_at ? "Check-in submitted" : "Check-in due"}
+                              {row.submitted_at
+                                ? "Check-in submitted"
+                                : "Check-in due"}
                             </div>
                           </button>
                         );
@@ -376,7 +416,9 @@ export function PtCalendarPage() {
                           }}
                           className="w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-left text-xs transition hover:border-border"
                         >
-                          <div className="font-semibold text-foreground">{row.title}</div>
+                          <div className="font-semibold text-foreground">
+                            {row.title}
+                          </div>
                           {row.description ? (
                             <div className="text-muted-foreground line-clamp-1">
                               {row.description}
@@ -386,7 +428,9 @@ export function PtCalendarPage() {
                       ))}
 
                       {checkins.length + events.length === 0 ? (
-                        <div className="text-xs text-muted-foreground">No items</div>
+                        <div className="text-xs text-muted-foreground">
+                          No items
+                        </div>
                       ) : null}
                     </div>
                   </div>
@@ -417,7 +461,9 @@ export function PtCalendarPage() {
                     }}
                     className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-left transition hover:border-border"
                   >
-                    <div className="text-sm font-semibold text-foreground">{row.title}</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {row.title}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {new Date(row.starts_at).toLocaleString()}
                     </div>
@@ -432,12 +478,18 @@ export function PtCalendarPage() {
       <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
-            <DialogTitle>{eventMode === "edit" ? "Edit event" : "Create event"}</DialogTitle>
-            <DialogDescription>Block time for check-in reviews or coaching calls.</DialogDescription>
+            <DialogTitle>
+              {eventMode === "edit" ? "Edit event" : "Create event"}
+            </DialogTitle>
+            <DialogDescription>
+              Block time for check-in reviews or coaching calls.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Title</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Title
+              </label>
               <Input
                 value={eventTitle}
                 onChange={(event) => setEventTitle(event.target.value)}
@@ -446,7 +498,9 @@ export function PtCalendarPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Date</label>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Date
+                </label>
                 <Input
                   type="date"
                   value={eventDate}
@@ -454,7 +508,9 @@ export function PtCalendarPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Start time</label>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Start time
+                </label>
                 <Input
                   type="time"
                   value={eventStartTime}
@@ -464,7 +520,9 @@ export function PtCalendarPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">End time</label>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  End time
+                </label>
                 <Input
                   type="time"
                   value={eventEndTime}
@@ -473,7 +531,9 @@ export function PtCalendarPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Notes</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Notes
+              </label>
               <textarea
                 className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={eventDescription}
@@ -520,14 +580,18 @@ export function PtCalendarPage() {
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Title
                 </div>
-                <div className="text-base font-semibold text-foreground">{selectedEvent.title}</div>
+                <div className="text-base font-semibold text-foreground">
+                  {selectedEvent.title}
+                </div>
               </div>
               {selectedEvent.description ? (
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Notes
                   </div>
-                  <div className="text-sm text-foreground">{selectedEvent.description}</div>
+                  <div className="text-sm text-foreground">
+                    {selectedEvent.description}
+                  </div>
                 </div>
               ) : null}
               {selectedEvent.ends_at ? (
@@ -537,7 +601,9 @@ export function PtCalendarPage() {
               ) : null}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">No event selected.</div>
+            <div className="text-sm text-muted-foreground">
+              No event selected.
+            </div>
           )}
           <DialogFooter>
             {selectedEvent ? (
@@ -550,13 +616,24 @@ export function PtCalendarPage() {
                     setEditingEventId(selectedEvent.id);
                     setEventTitle(selectedEvent.title ?? "");
                     setEventDescription(selectedEvent.description ?? "");
-                    const dateKey = formatDateInTimezone(selectedEvent.starts_at, null);
+                    const dateKey = formatDateInTimezone(
+                      selectedEvent.starts_at,
+                      null,
+                    );
                     const startTime = new Date(selectedEvent.starts_at)
-                      .toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })
+                      .toLocaleTimeString("en-US", {
+                        hour12: false,
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                       .slice(0, 5);
                     const endTime = selectedEvent.ends_at
                       ? new Date(selectedEvent.ends_at)
-                          .toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })
+                          .toLocaleTimeString("en-US", {
+                            hour12: false,
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                           .slice(0, 5)
                       : "";
                     setEventDate(dateKey);
@@ -569,7 +646,7 @@ export function PtCalendarPage() {
                   Edit
                 </Button>
                 <Button
-                  variant="destructive"
+                  variant="secondary"
                   onClick={() => {
                     if (!selectedEvent) return;
                     const confirmed = window.confirm("Delete this event?");
@@ -582,7 +659,10 @@ export function PtCalendarPage() {
                 </Button>
               </div>
             ) : null}
-            <Button variant="secondary" onClick={() => setEventDetailsOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setEventDetailsOpen(false)}
+            >
               Close
             </Button>
           </DialogFooter>
