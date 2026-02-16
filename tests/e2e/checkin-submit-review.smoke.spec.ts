@@ -92,7 +92,9 @@ test.describe("Smoke: check-in submit and PT review", () => {
         process.env.E2E_PT_EMAIL!,
         process.env.E2E_PT_PASSWORD!,
       );
-      await ptPage.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=checkins`);
+      await ptPage.goto(
+        `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=checkins`,
+      );
     }
 
     const reviewButton = ptPage
