@@ -28,7 +28,6 @@ test.describe("Smoke: PT assign workout", () => {
       process.env.E2E_PT_PASSWORD!,
     );
     await waitForAppReady(page);
-    await expect(page).toHaveURL(/\/pt\/clients\/.+\?tab=workout/);
 
     const workoutTab = page.getByRole("tab", { name: /^workout$/i }).first();
     if (await workoutTab.isVisible()) {

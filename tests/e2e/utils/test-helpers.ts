@@ -23,6 +23,17 @@ function isOnTarget(url: string, targetPath: string) {
   return current === targetPath || current.startsWith(`${targetPath}&`);
 }
 
+async function isRouteStable(page: Page, targetPath: string) {
+  for (let i = 0; i < 8; i += 1) {
+    const url = page.url();
+    if (isLoginPath(url) || !isOnTarget(url, targetPath)) {
+      return false;
+    }
+    await page.waitForTimeout(250);
+  }
+  return true;
+}
+
 export async function signInWithEmail(
   page: Page,
   email: string,
@@ -66,12 +77,22 @@ export async function ensureAuthenticatedNavigation(
 ) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     await page.goto(targetPath);
-    if (isOnTarget(page.url(), targetPath)) return;
+    if (
+      isOnTarget(page.url(), targetPath) &&
+      (await isRouteStable(page, targetPath))
+    ) {
+      return;
+    }
 
     if (isLoginPath(page.url())) {
       await signInWithEmail(page, email, password);
       await page.goto(targetPath);
-      if (isOnTarget(page.url(), targetPath)) return;
+      if (
+        isOnTarget(page.url(), targetPath) &&
+        (await isRouteStable(page, targetPath))
+      ) {
+        return;
+      }
     }
 
     if (attempt < 3) {

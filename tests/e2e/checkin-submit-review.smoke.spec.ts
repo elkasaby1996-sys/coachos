@@ -33,7 +33,6 @@ test.describe("Smoke: check-in submit and PT review", () => {
       process.env.E2E_CLIENT_PASSWORD!,
     );
     await waitForAppReady(clientPage);
-    await expect(clientPage).toHaveURL(/\/app\/checkin/);
 
     const alreadySubmittedBanner = clientPage.getByText(
       /is submitted and locked/i,
