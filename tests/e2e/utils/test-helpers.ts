@@ -1,5 +1,14 @@
 import { expect, type Page } from "@playwright/test";
 
+function isLoginPath(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    return pathname === "/login" || pathname === "/login/";
+  } catch {
+    return url.includes("/login");
+  }
+}
+
 export async function signInWithEmail(
   page: Page,
   email: string,
@@ -16,17 +25,47 @@ export async function signInWithEmail(
     await page.getByRole("button", { name: /^sign in$/i }).click();
 
     try {
-      await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 20_000 });
+      await page.waitForFunction(
+        () =>
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/login/",
+        undefined,
+        { timeout: 20_000 },
+      );
       return;
-    } catch (error) {
+    } catch {
       if (attempt === 0) {
         // Supabase may throttle repeated sign-ins in quick succession.
         await page.waitForTimeout(65_000);
         continue;
       }
-      throw error;
+      throw new Error("Sign-in did not leave login page.");
     }
   }
+}
+
+export async function ensureAuthenticatedNavigation(
+  page: Page,
+  targetPath: string,
+  email: string,
+  password: string,
+) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(targetPath);
+    if (!isLoginPath(page.url())) return;
+
+    await signInWithEmail(page, email, password);
+    await page.goto(targetPath);
+    if (!isLoginPath(page.url())) return;
+
+    if (attempt < 2) {
+      await page.waitForTimeout(20_000);
+    }
+  }
+
+  throw new Error(
+    `Unable to access protected route after auth retry: ${targetPath} (current: ${page.url()})`,
+  );
 }
 
 export function requireEnvVars(names: string[]) {

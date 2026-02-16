@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { requireEnvVars, signInWithEmail } from "./utils/test-helpers";
+import {
+  ensureAuthenticatedNavigation,
+  requireEnvVars,
+  signInWithEmail,
+} from "./utils/test-helpers";
 
 test.describe("Smoke: PT assign workout", () => {
   test("PT can assign workout to a client", async ({ page }) => {
@@ -16,29 +20,17 @@ test.describe("Smoke: PT assign workout", () => {
       process.env.E2E_PT_EMAIL!,
       process.env.E2E_PT_PASSWORD!,
     );
-    await page.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`);
-    if (page.url().includes("/login")) {
-      await signInWithEmail(
-        page,
-        process.env.E2E_PT_EMAIL!,
-        process.env.E2E_PT_PASSWORD!,
-      );
-      await page.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`);
-    }
+    await ensureAuthenticatedNavigation(
+      page,
+      `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`,
+      process.env.E2E_PT_EMAIL!,
+      process.env.E2E_PT_PASSWORD!,
+    );
     await expect(page).toHaveURL(/\/pt\/clients\/.+\?tab=workout/);
 
     const workoutTab = page.getByRole("tab", { name: /^workout$/i }).first();
     if (await workoutTab.isVisible()) {
       await workoutTab.click();
-    }
-
-    if (page.url().includes("/login")) {
-      await signInWithEmail(
-        page,
-        process.env.E2E_PT_EMAIL!,
-        process.env.E2E_PT_PASSWORD!,
-      );
-      await page.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`);
     }
 
     await expect(
