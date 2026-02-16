@@ -47,6 +47,7 @@ A lightweight seed helper script is included in `src/lib/seed.ts` with example d
 - `npm run lint` - run ESLint (flat config)
 - `npm run format` - check Prettier formatting
 - `npm run format:write` - apply Prettier formatting
+- `npm run verify:release` - full release gate check
 - `npm run test:e2e:smoke` - run Playwright smoke E2E tests
 
 ## E2E Smoke Setup
@@ -75,3 +76,10 @@ Set these repository secrets in GitHub Actions:
 - `E2E_CLIENT_PASSWORD`
 - `E2E_CLIENT_ID`
 - `E2E_WORKOUT_TEMPLATE_ID`
+
+## Release Process Docs
+
+- Go/No-Go checklist: `docs/release-go-no-go.md`
+- Migration runbook: `docs/migration-runbook.md`
+- Ops/monitoring checklist: `docs/ops-monitoring-checklist.md`
+- Lint warnings triage: `docs-lint-triage.md`
