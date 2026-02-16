@@ -228,17 +228,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         if (error instanceof Error && error.name === ROLE_LOOKUP_TIMEOUT_CODE) {
-          console.warn("Role resolution timed out; forcing re-login.");
-          try {
-            await supabase.auth.signOut({ scope: "local" });
-          } catch {
-            // Local auth state is still cleared below to force login recovery.
-          }
+          console.warn("Role resolution timed out; keeping current session.");
           setAuthError(
-            new Error("Session check timed out. Please log in again."),
+            new Error("Session check timed out. Retrying role resolution."),
           );
-          setSession(null);
-          setRole("none");
           lastResolveKeyRef.current = "";
           return;
         }
