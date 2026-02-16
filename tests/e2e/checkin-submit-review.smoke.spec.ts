@@ -25,8 +25,9 @@ test.describe("Smoke: check-in submit and PT review", () => {
       process.env.E2E_CLIENT_PASSWORD!,
     );
     await clientPage.goto("/app/checkin");
+    await expect(clientPage).toHaveURL(/\/app\/checkin/);
     await expect(
-      clientPage.getByRole("heading", { name: /weekly check-in/i }),
+      clientPage.getByRole("button", { name: /submit check-in/i }),
     ).toBeVisible();
 
     const submitButton = clientPage.getByRole("button", {

@@ -17,9 +17,9 @@ test.describe("Smoke: PT assign workout", () => {
       process.env.E2E_PT_PASSWORD!,
     );
     await page.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`);
-
+    await expect(page).toHaveURL(/\/pt\/clients\/.+\?tab=workout/);
     await expect(
-      page.getByRole("heading", { name: /client workbench/i }),
+      page.locator("label", { hasText: "Workout template" }),
     ).toBeVisible();
 
     const templateSelect = page
