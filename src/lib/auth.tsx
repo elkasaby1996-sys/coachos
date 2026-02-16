@@ -60,13 +60,17 @@ async function ensureFreshSession(
       "Session refresh timed out (10s).",
     );
     if (error || !data.session) {
-      await supabase.auth.signOut();
-      return null;
+      // Keep the current session when refresh transiently fails.
+      // Forced sign-out here can bounce users to /login during active flows.
+      console.warn("Session refresh failed; retaining current session.", error);
+      return session;
     }
     return data.session;
   } catch (error) {
-    await supabase.auth.signOut();
-    return null;
+    console.warn(
+      "Session refresh timed out/failed; retaining current session.",
+    );
+    return session;
   }
 }
 
