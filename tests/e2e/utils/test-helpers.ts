@@ -5,14 +5,28 @@ export async function signInWithEmail(
   email: string,
   password: string,
 ) {
-  await page.goto("/login");
-  await expect(
-    page.getByRole("heading", { name: /welcome back/i }),
-  ).toBeVisible();
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.goto("/login");
+    await expect(
+      page.getByRole("heading", { name: /welcome back/i }),
+    ).toBeVisible();
 
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: /^sign in$/i }).click();
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(password);
+    await page.getByRole("button", { name: /^sign in$/i }).click();
+
+    try {
+      await expect(page).not.toHaveURL(/\/login$/, { timeout: 20_000 });
+      return;
+    } catch (error) {
+      if (attempt === 0) {
+        // Supabase may throttle repeated sign-ins in quick succession.
+        await page.waitForTimeout(65_000);
+        continue;
+      }
+      throw error;
+    }
+  }
 }
 
 export function requireEnvVars(names: string[]) {
