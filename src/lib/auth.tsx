@@ -232,10 +232,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         if (error instanceof Error && error.name === ROLE_LOOKUP_TIMEOUT_CODE) {
-          console.warn("Role resolution timed out; keeping current session.");
-          setAuthError(
-            new Error("Session check timed out. Retrying role resolution."),
+          // Keep the current role/session and silently retry on next pass.
+          // Showing a blocking auth error here interrupts otherwise valid sessions.
+          console.warn(
+            "Role resolution timed out; keeping current auth state.",
           );
+          setAuthError(null);
           lastResolveKeyRef.current = "";
           return;
         }
