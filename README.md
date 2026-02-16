@@ -63,3 +63,15 @@ npx playwright install
 ```bash
 npm run test:e2e:smoke
 ```
+
+## CI Secrets For Smoke E2E
+
+Set these repository secrets in GitHub Actions:
+
+- `E2E_BASE_URL` (optional if your app is already hosted for smoke runs)
+- `E2E_PT_EMAIL`
+- `E2E_PT_PASSWORD`
+- `E2E_CLIENT_EMAIL`
+- `E2E_CLIENT_PASSWORD`
+- `E2E_CLIENT_ID`
+- `E2E_WORKOUT_TEMPLATE_ID`
