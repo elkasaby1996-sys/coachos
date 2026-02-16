@@ -36,7 +36,7 @@ foreach ($key in $required) {
 }
 
 if ($missing.Count -gt 0) {
-  Write-Error "Missing required values in $EnvFile: $($missing -join ', ')"
+  Write-Error ("Missing required values in {0}: {1}" -f $EnvFile, ($missing -join ", "))
   exit 1
 }
 
