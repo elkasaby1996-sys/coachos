@@ -42,27 +42,14 @@ test.describe("Smoke: check-in submit and PT review", () => {
       return;
     }
 
-    const continueButton = clientPage.getByRole("button", {
-      name: /^continue$/i,
-    });
-    for (let index = 0; index < 2; index += 1) {
-      if (await continueButton.isVisible()) {
-        await continueButton.click();
-      }
-    }
-
     const submitButton = clientPage.getByRole("button", {
       name: /submit check-in/i,
     });
+    const continueButton = clientPage.getByRole("button", {
+      name: /^continue$/i,
+    });
     let submitVisible = false;
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      await ensureAuthenticatedNavigation(
-        clientPage,
-        "/app/checkin",
-        process.env.E2E_CLIENT_EMAIL!,
-        process.env.E2E_CLIENT_PASSWORD!,
-      );
-
+    for (let attempt = 0; attempt < 8; attempt += 1) {
       const noTemplateBanner = clientPage.getByText(
         /hasn[’']t assigned a check-in yet/i,
       );
@@ -72,12 +59,25 @@ test.describe("Smoke: check-in submit and PT review", () => {
         return;
       }
 
+      if (!clientPage.url().includes("/app/checkin")) {
+        await ensureAuthenticatedNavigation(
+          clientPage,
+          "/app/checkin",
+          process.env.E2E_CLIENT_EMAIL!,
+          process.env.E2E_CLIENT_PASSWORD!,
+        );
+      }
+
       if (await submitButton.isVisible()) {
         submitVisible = true;
         break;
       }
 
-      await clientPage.waitForTimeout(2_000);
+      if (await continueButton.isVisible()) {
+        await continueButton.click();
+      } else {
+        await clientPage.waitForTimeout(1_000);
+      }
     }
     expect(submitVisible).toBeTruthy();
     if (await submitButton.isDisabled()) {

@@ -37,18 +37,25 @@ test.describe("Smoke: PT assign workout", () => {
       hasText: "Workout template",
     });
     let templateVisible = false;
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      await ensureAuthenticatedNavigation(
-        page,
-        `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`,
-        process.env.E2E_PT_EMAIL!,
-        process.env.E2E_PT_PASSWORD!,
-      );
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      if (!page.url().includes(`/pt/clients/${process.env.E2E_CLIENT_ID}`)) {
+        await ensureAuthenticatedNavigation(
+          page,
+          `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`,
+          process.env.E2E_PT_EMAIL!,
+          process.env.E2E_PT_PASSWORD!,
+        );
+      }
+
+      if (await workoutTab.isVisible()) {
+        await workoutTab.click();
+      }
+
       if (await workoutTemplateLabel.isVisible()) {
         templateVisible = true;
         break;
       }
-      await page.waitForTimeout(2_000);
+      await page.waitForTimeout(1_000);
     }
     expect(templateVisible).toBeTruthy();
 
