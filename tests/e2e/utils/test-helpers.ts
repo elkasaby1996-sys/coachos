@@ -9,6 +9,20 @@ function isLoginPath(url: string) {
   }
 }
 
+function normalizePathAndSearch(url: string) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
+function isOnTarget(url: string, targetPath: string) {
+  const current = normalizePathAndSearch(url);
+  return current === targetPath || current.startsWith(`${targetPath}&`);
+}
+
 export async function signInWithEmail(
   page: Page,
   email: string,
@@ -50,21 +64,23 @@ export async function ensureAuthenticatedNavigation(
   email: string,
   password: string,
 ) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     await page.goto(targetPath);
-    if (!isLoginPath(page.url())) return;
+    if (isOnTarget(page.url(), targetPath)) return;
 
-    await signInWithEmail(page, email, password);
-    await page.goto(targetPath);
-    if (!isLoginPath(page.url())) return;
+    if (isLoginPath(page.url())) {
+      await signInWithEmail(page, email, password);
+      await page.goto(targetPath);
+      if (isOnTarget(page.url(), targetPath)) return;
+    }
 
-    if (attempt < 2) {
-      await page.waitForTimeout(20_000);
+    if (attempt < 3) {
+      await page.waitForTimeout(8_000);
     }
   }
 
   throw new Error(
-    `Unable to access protected route after auth retry: ${targetPath} (current: ${page.url()})`,
+    `Unable to reach route: ${targetPath} (current: ${page.url()})`,
   );
 }
 

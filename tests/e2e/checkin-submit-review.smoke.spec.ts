@@ -54,12 +54,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const submitButton = clientPage.getByRole("button", {
       name: /submit check-in/i,
     });
-    await ensureAuthenticatedNavigation(
-      clientPage,
-      "/app/checkin",
-      process.env.E2E_CLIENT_EMAIL!,
-      process.env.E2E_CLIENT_PASSWORD!,
-    );
+    await expect(clientPage).toHaveURL(/\/app\/checkin/, { timeout: 15_000 });
     await expect(submitButton).toBeVisible({ timeout: 30_000 });
     if (await submitButton.isDisabled()) {
       await clientContext.close();
