@@ -4,6 +4,7 @@ import {
   requireEnvVars,
   signInWithEmail,
   tinyPngFile,
+  waitForAppReady,
 } from "./utils/test-helpers";
 
 test.describe("Smoke: check-in submit and PT review", () => {
@@ -31,6 +32,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
       process.env.E2E_CLIENT_EMAIL!,
       process.env.E2E_CLIENT_PASSWORD!,
     );
+    await waitForAppReady(clientPage);
     await expect(clientPage).toHaveURL(/\/app\/checkin/);
 
     const alreadySubmittedBanner = clientPage.getByText(
@@ -67,6 +69,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
           process.env.E2E_CLIENT_PASSWORD!,
         );
       }
+      await waitForAppReady(clientPage, 15_000);
 
       if (await submitButton.isVisible()) {
         submitVisible = true;
@@ -114,6 +117,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
       process.env.E2E_PT_EMAIL!,
       process.env.E2E_PT_PASSWORD!,
     );
+    await waitForAppReady(ptPage);
 
     const reviewButton = ptPage
       .getByRole("button", { name: /review|edit feedback/i })

@@ -84,6 +84,12 @@ export async function ensureAuthenticatedNavigation(
   );
 }
 
+export async function waitForAppReady(page: Page, timeoutMs = 45_000) {
+  await expect(page.getByText(/^Loading\.\.\.$/).first()).not.toBeVisible({
+    timeout: timeoutMs,
+  });
+}
+
 export function requireEnvVars(names: string[]) {
   const missing = names.filter(
     (name) => !process.env[name] || !process.env[name]?.trim(),
