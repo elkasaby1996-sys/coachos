@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:4173";
-const useWebServer = process.env.E2E_BASE_URL ? false : true;
+const configuredBaseUrl = process.env.E2E_BASE_URL?.trim();
+const baseURL = configuredBaseUrl || "http://127.0.0.1:4173";
+const useWebServer = !configuredBaseUrl;
 
 export default defineConfig({
   testDir: "tests/e2e",
