@@ -26,14 +26,11 @@ test.describe("Smoke: check-in submit and PT review", () => {
     );
     await clientPage.goto("/app/checkin");
     await expect(clientPage).toHaveURL(/\/app\/checkin/);
-    await expect(
-      clientPage.getByRole("button", { name: /submit check-in/i }),
-    ).toBeVisible();
 
-    const submitButton = clientPage.getByRole("button", {
-      name: /submit check-in/i,
-    });
-    if (await submitButton.isDisabled()) {
+    const alreadySubmittedBanner = clientPage.getByText(
+      /is submitted and locked/i,
+    );
+    if (await alreadySubmittedBanner.isVisible()) {
       await clientContext.close();
       test.skip(true, "Current check-in already submitted for this client.");
       return;
@@ -42,8 +39,20 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const continueButton = clientPage.getByRole("button", {
       name: /^continue$/i,
     });
-    if (await continueButton.isVisible()) {
-      await continueButton.click();
+    for (let index = 0; index < 2; index += 1) {
+      if (await continueButton.isVisible()) {
+        await continueButton.click();
+      }
+    }
+
+    const submitButton = clientPage.getByRole("button", {
+      name: /submit check-in/i,
+    });
+    await expect(submitButton).toBeVisible({ timeout: 30_000 });
+    if (await submitButton.isDisabled()) {
+      await clientContext.close();
+      test.skip(true, "Current check-in already submitted for this client.");
+      return;
     }
 
     const fileInputs = clientPage.locator('input[type="file"]');
@@ -52,13 +61,6 @@ test.describe("Smoke: check-in submit and PT review", () => {
       await fileInputs
         .nth(index)
         .setInputFiles(tinyPngFile(`smoke-${index}.png`));
-    }
-
-    const continueToReview = clientPage.getByRole("button", {
-      name: /^continue$/i,
-    });
-    if (await continueToReview.isVisible()) {
-      await continueToReview.click();
     }
 
     await submitButton.click();

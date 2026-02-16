@@ -18,9 +18,15 @@ test.describe("Smoke: PT assign workout", () => {
     );
     await page.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`);
     await expect(page).toHaveURL(/\/pt\/clients\/.+\?tab=workout/);
+
+    const workoutTab = page.getByRole("tab", { name: /^workout$/i }).first();
+    if (await workoutTab.isVisible()) {
+      await workoutTab.click();
+    }
+
     await expect(
       page.locator("label", { hasText: "Workout template" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 30_000 });
 
     const templateSelect = page
       .locator("label", { hasText: "Workout template" })
