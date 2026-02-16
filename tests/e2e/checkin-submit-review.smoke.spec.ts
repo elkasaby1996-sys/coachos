@@ -25,6 +25,14 @@ test.describe("Smoke: check-in submit and PT review", () => {
       process.env.E2E_CLIENT_PASSWORD!,
     );
     await clientPage.goto("/app/checkin");
+    if (clientPage.url().includes("/login")) {
+      await signInWithEmail(
+        clientPage,
+        process.env.E2E_CLIENT_EMAIL!,
+        process.env.E2E_CLIENT_PASSWORD!,
+      );
+      await clientPage.goto("/app/checkin");
+    }
     await expect(clientPage).toHaveURL(/\/app\/checkin/);
 
     const alreadySubmittedBanner = clientPage.getByText(
@@ -78,6 +86,14 @@ test.describe("Smoke: check-in submit and PT review", () => {
       process.env.E2E_PT_PASSWORD!,
     );
     await ptPage.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=checkins`);
+    if (ptPage.url().includes("/login")) {
+      await signInWithEmail(
+        ptPage,
+        process.env.E2E_PT_EMAIL!,
+        process.env.E2E_PT_PASSWORD!,
+      );
+      await ptPage.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=checkins`);
+    }
 
     const reviewButton = ptPage
       .getByRole("button", { name: /review|edit feedback/i })

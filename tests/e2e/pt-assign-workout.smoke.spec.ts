@@ -17,6 +17,14 @@ test.describe("Smoke: PT assign workout", () => {
       process.env.E2E_PT_PASSWORD!,
     );
     await page.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`);
+    if (page.url().includes("/login")) {
+      await signInWithEmail(
+        page,
+        process.env.E2E_PT_EMAIL!,
+        process.env.E2E_PT_PASSWORD!,
+      );
+      await page.goto(`/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`);
+    }
     await expect(page).toHaveURL(/\/pt\/clients\/.+\?tab=workout/);
 
     const workoutTab = page.getByRole("tab", { name: /^workout$/i }).first();
