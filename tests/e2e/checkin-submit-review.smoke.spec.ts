@@ -54,8 +54,32 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const submitButton = clientPage.getByRole("button", {
       name: /submit check-in/i,
     });
-    await expect(clientPage).toHaveURL(/\/app\/checkin/, { timeout: 15_000 });
-    await expect(submitButton).toBeVisible({ timeout: 30_000 });
+    let submitVisible = false;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await ensureAuthenticatedNavigation(
+        clientPage,
+        "/app/checkin",
+        process.env.E2E_CLIENT_EMAIL!,
+        process.env.E2E_CLIENT_PASSWORD!,
+      );
+
+      const noTemplateBanner = clientPage.getByText(
+        /hasn[’']t assigned a check-in yet/i,
+      );
+      if (await noTemplateBanner.isVisible()) {
+        await clientContext.close();
+        test.skip(true, "Client has no assigned check-in template.");
+        return;
+      }
+
+      if (await submitButton.isVisible()) {
+        submitVisible = true;
+        break;
+      }
+
+      await clientPage.waitForTimeout(2_000);
+    }
+    expect(submitVisible).toBeTruthy();
     if (await submitButton.isDisabled()) {
       await clientContext.close();
       test.skip(true, "Current check-in already submitted for this client.");

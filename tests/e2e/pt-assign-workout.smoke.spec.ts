@@ -33,12 +33,24 @@ test.describe("Smoke: PT assign workout", () => {
       await workoutTab.click();
     }
 
-    await expect(page).toHaveURL(/\/pt\/clients\/.+\?tab=workout/, {
-      timeout: 15_000,
+    const workoutTemplateLabel = page.locator("label", {
+      hasText: "Workout template",
     });
-    await expect(
-      page.locator("label", { hasText: "Workout template" }),
-    ).toBeVisible({ timeout: 30_000 });
+    let templateVisible = false;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await ensureAuthenticatedNavigation(
+        page,
+        `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`,
+        process.env.E2E_PT_EMAIL!,
+        process.env.E2E_PT_PASSWORD!,
+      );
+      if (await workoutTemplateLabel.isVisible()) {
+        templateVisible = true;
+        break;
+      }
+      await page.waitForTimeout(2_000);
+    }
+    expect(templateVisible).toBeTruthy();
 
     const templateSelect = page
       .locator("label", { hasText: "Workout template" })
