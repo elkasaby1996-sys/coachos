@@ -56,6 +56,14 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const submitButton = clientPage.getByRole("button", {
       name: /submit check-in/i,
     });
+    if (clientPage.url().includes("/login")) {
+      await signInWithEmail(
+        clientPage,
+        process.env.E2E_CLIENT_EMAIL!,
+        process.env.E2E_CLIENT_PASSWORD!,
+      );
+      await clientPage.goto("/app/checkin");
+    }
     await expect(submitButton).toBeVisible({ timeout: 30_000 });
     if (await submitButton.isDisabled()) {
       await clientContext.close();

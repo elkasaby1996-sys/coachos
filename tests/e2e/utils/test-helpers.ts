@@ -16,7 +16,7 @@ export async function signInWithEmail(
     await page.getByRole("button", { name: /^sign in$/i }).click();
 
     try {
-      await expect(page).not.toHaveURL(/\/login$/, { timeout: 20_000 });
+      await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 20_000 });
       return;
     } catch (error) {
       if (attempt === 0) {
