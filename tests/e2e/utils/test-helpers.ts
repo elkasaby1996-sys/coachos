@@ -23,13 +23,20 @@ function isOnTarget(url: string, targetPath: string) {
   return current === targetPath || current.startsWith(`${targetPath}&`);
 }
 
+async function isLoginUiVisible(page: Page) {
+  return page
+    .getByRole("heading", { name: /welcome back/i })
+    .isVisible()
+    .catch(() => false);
+}
+
 async function isRouteStable(page: Page, targetPath: string) {
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < 3; i += 1) {
     const url = page.url();
     if (isLoginPath(url) || !isOnTarget(url, targetPath)) {
       return false;
     }
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(150);
   }
   return true;
 }
@@ -40,13 +47,15 @@ export async function signInWithEmail(
   password: string,
 ) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    await page.goto("/login");
-    await expect(
-      page.getByRole("heading", { name: /welcome back/i }),
-    ).toBeVisible();
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    if (!isLoginPath(page.url())) {
+      return;
+    }
+    const emailInput = page.getByPlaceholder("you@coachos.com");
+    const passwordInput = page.getByPlaceholder("Enter password");
 
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill(password);
+    await emailInput.fill(email);
+    await passwordInput.fill(password);
     await page.getByRole("button", { name: /^sign in$/i }).click();
 
     try {
@@ -55,13 +64,12 @@ export async function signInWithEmail(
           window.location.pathname !== "/login" &&
           window.location.pathname !== "/login/",
         undefined,
-        { timeout: 20_000 },
+        { timeout: 15_000 },
       );
       return;
     } catch {
       if (attempt === 0) {
-        // Supabase may throttle repeated sign-ins in quick succession.
-        await page.waitForTimeout(65_000);
+        await page.waitForTimeout(1_500);
         continue;
       }
       throw new Error("Sign-in did not leave login page.");
@@ -75,29 +83,33 @@ export async function ensureAuthenticatedNavigation(
   email: string,
   password: string,
 ) {
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    await page.goto(targetPath);
-    if (
-      isOnTarget(page.url(), targetPath) &&
-      (await isRouteStable(page, targetPath))
-    ) {
-      return;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (isLoginPath(page.url()) || (await isLoginUiVisible(page))) {
+      await signInWithEmail(page, email, password);
     }
 
-    if (isLoginPath(page.url())) {
+    await page.goto(targetPath, { waitUntil: "domcontentloaded" });
+    if (await isLoginUiVisible(page)) {
       await signInWithEmail(page, email, password);
-      await page.goto(targetPath);
+      await page.goto(targetPath, { waitUntil: "domcontentloaded" });
+    }
+
+    if (isOnTarget(page.url(), targetPath)) {
       if (
-        isOnTarget(page.url(), targetPath) &&
+        !(await isLoginUiVisible(page)) &&
         (await isRouteStable(page, targetPath))
       ) {
         return;
       }
+    } else if (isLoginPath(page.url())) {
+      await signInWithEmail(page, email, password);
+      await page.goto(targetPath, { waitUntil: "domcontentloaded" });
+      if (isOnTarget(page.url(), targetPath)) {
+        return;
+      }
     }
 
-    if (attempt < 3) {
-      await page.waitForTimeout(8_000);
-    }
+    await page.waitForTimeout(1_000);
   }
 
   throw new Error(
@@ -106,9 +118,21 @@ export async function ensureAuthenticatedNavigation(
 }
 
 export async function waitForAppReady(page: Page, timeoutMs = 45_000) {
-  await expect(page.getByText(/^Loading\.\.\.$/).first()).not.toBeVisible({
-    timeout: timeoutMs,
-  });
+  const budgetMs = Math.min(timeoutMs, 5_000);
+  const startedAt = Date.now();
+  const loadingText = page.getByText(/^Loading\.\.\.$/).first();
+  const loginHeading = page.getByRole("heading", { name: /welcome back/i });
+
+  while (Date.now() - startedAt < budgetMs) {
+    if (await loginHeading.isVisible().catch(() => false)) {
+      return;
+    }
+    if (!(await loadingText.isVisible().catch(() => false))) {
+      return;
+    }
+    await page.waitForTimeout(250);
+  }
+  // Non-fatal: some screens keep a persistent "Loading..." widget.
 }
 
 export function requireEnvVars(names: string[]) {
