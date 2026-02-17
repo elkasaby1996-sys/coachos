@@ -45,6 +45,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const DENSITY_STORAGE_KEY = "coachos-compact-density";
+const PT_ROLES = ["pt_owner", "pt_coach"] as const;
 
 const toThemePreference = (value: unknown): ThemePreference | null => {
   if (value === "system" || value === "dark" || value === "light") return value;
@@ -127,7 +128,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       filter: (query) =>
         query
           .eq("user_id", user.id)
-          .like("role", "pt_%")
+          .in("role", [...PT_ROLES])
           .order("role", { ascending: true })
           .limit(1),
     });

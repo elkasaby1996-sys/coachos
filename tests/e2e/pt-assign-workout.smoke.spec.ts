@@ -38,8 +38,11 @@ test.describe("Smoke: PT assign workout", () => {
       hasText: "Workout template",
     });
     const loginHeading = page.getByRole("heading", { name: /welcome back/i });
-    let templateVisible = false;
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    const templateSelect = page
+      .locator("label", { hasText: "Workout template" })
+      .locator("xpath=following-sibling::select")
+      .first();
+    for (let attempt = 0; attempt < 12; attempt += 1) {
       const ptPathname = new URL(page.url()).pathname;
       const onLoginUi = await loginHeading.isVisible().catch(() => false);
       if (
@@ -60,27 +63,26 @@ test.describe("Smoke: PT assign workout", () => {
       }
 
       if (await workoutTemplateLabel.isVisible()) {
-        templateVisible = true;
         break;
       }
       await page.waitForTimeout(1_000);
     }
-    if (
-      !templateVisible &&
-      (await loginHeading.isVisible().catch(() => false))
-    ) {
-      test.skip(
-        true,
-        "PT session returned to login during workout assignment flow.",
+    if (!(await templateSelect.isVisible().catch(() => false))) {
+      await ensureAuthenticatedNavigation(
+        page,
+        `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`,
+        process.env.E2E_PT_EMAIL!,
+        process.env.E2E_PT_PASSWORD!,
       );
-      return;
+      await waitForAppReady(page, 15_000);
+      if (await workoutTab.isVisible()) {
+        await workoutTab.click();
+      }
     }
-    expect(templateVisible).toBeTruthy();
-
-    const templateSelect = page
-      .locator("label", { hasText: "Workout template" })
-      .locator("xpath=following-sibling::select")
-      .first();
+    await expect(
+      templateSelect,
+      `Workout template select not visible after recovery attempts. Final URL: ${page.url()}`,
+    ).toBeVisible({ timeout: 5_000 });
 
     await templateSelect.selectOption(process.env.E2E_WORKOUT_TEMPLATE_ID!);
     await page
@@ -90,7 +92,7 @@ test.describe("Smoke: PT assign workout", () => {
 
     await page.getByRole("button", { name: /assign workout/i }).click();
 
-    await expect(page.getByText(/workout assigned/i)).toBeVisible({
+    await expect(page.getByText(/workout assigned/i).first()).toBeVisible({
       timeout: 30_000,
     });
   });

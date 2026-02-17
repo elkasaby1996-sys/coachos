@@ -23,6 +23,16 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const ROLE_LOOKUP_TIMEOUT_CODE = "ROLE_LOOKUP_TIMEOUT";
+const ROLE_STORAGE_KEY = "coachos_cached_role";
+const WORKSPACE_LOOKUP_TIMEOUT_MS = 2_500;
+const CLIENT_LOOKUP_TIMEOUT_STEPS_MS = [1_500, 3_000] as const;
+const SESSION_LOAD_TIMEOUT_MS = 30_000;
+
+function getCachedRole(): AppRole {
+  if (typeof window === "undefined") return "none";
+  const value = window.localStorage.getItem(ROLE_STORAGE_KEY);
+  return value === "pt" || value === "client" ? value : "none";
+}
 
 function withTimeout<T>(
   promise: PromiseLike<T>,
@@ -79,6 +89,7 @@ async function resolveRole(userId: string): Promise<{
   workspaceMember: unknown;
   clientMember: unknown;
 }> {
+  let workspaceLookupTimedOut = false;
   let workspaceMember: { data: unknown; error: unknown } = {
     data: null,
     error: null,
@@ -91,15 +102,24 @@ async function resolveRole(userId: string): Promise<{
         .select("workspace_id, role")
         .eq("user_id", userId)
         .maybeSingle(),
-      5000,
-      "Workspace membership lookup timed out (5s).",
+      WORKSPACE_LOOKUP_TIMEOUT_MS,
+      `Workspace membership lookup timed out (${Math.round(WORKSPACE_LOOKUP_TIMEOUT_MS / 1000)}s).`,
     );
   } catch (error) {
     if (error instanceof Error && error.message.includes("timed out")) {
+      workspaceLookupTimedOut = true;
       workspaceMember = { data: null, error: null };
     } else {
       throw error;
     }
+  }
+
+  if (workspaceLookupTimedOut) {
+    const timeoutError = new Error(
+      "Role resolution failed due to workspace lookup timeout.",
+    );
+    timeoutError.name = ROLE_LOOKUP_TIMEOUT_CODE;
+    throw timeoutError;
   }
 
   if (workspaceMember.error) throw workspaceMember.error;
@@ -120,7 +140,7 @@ async function resolveRole(userId: string): Promise<{
   let clientLookupUnstable = false;
   const clientQuery = `clients.select("id, workspace_id").eq("user_id", "${userId}")`;
 
-  for (const timeoutMs of [5000, 10000]) {
+  for (const timeoutMs of CLIENT_LOOKUP_TIMEOUT_STEPS_MS) {
     try {
       clientMember = await withTimeout(
         supabase
@@ -204,9 +224,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<Error | null>(null);
-  const [role, setRole] = useState<AppRole>("none");
+  const [role, setRole] = useState<AppRole>(() => getCachedRole());
   const resolvingRef = useRef(false);
   const lastResolveKeyRef = useRef("");
+  const roleRetryTimerRef = useRef<number | null>(null);
 
   const resolveRoleOnce = useCallback(
     async (userId: string, options?: { force?: boolean }) => {
@@ -239,6 +260,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           );
           setAuthError(null);
           lastResolveKeyRef.current = "";
+          if (roleRetryTimerRef.current === null) {
+            roleRetryTimerRef.current = window.setTimeout(() => {
+              roleRetryTimerRef.current = null;
+              void resolveRoleOnce(userId, { force: true });
+            }, 1_500);
+          }
           return;
         }
         console.error("Failed to resolve role", error);
@@ -259,8 +286,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthError(null);
       const { data, error } = await withTimeout(
         supabase.auth.getSession(),
-        15000,
-        "Session load timed out (15s).",
+        SESSION_LOAD_TIMEOUT_MS,
+        `Session load timed out (${Math.round(SESSION_LOAD_TIMEOUT_MS / 1000)}s).`,
       );
       if (error) {
         setAuthError(new Error(error.message));
@@ -287,6 +314,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [resolveRoleOnce]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (role === "pt" || role === "client") {
+      window.localStorage.setItem(ROLE_STORAGE_KEY, role);
+      return;
+    }
+    window.localStorage.removeItem(ROLE_STORAGE_KEY);
+  }, [role]);
+
+  useEffect(() => {
     let alive = true;
 
     const init = async () => {
@@ -302,8 +338,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { data, error } = await withTimeout(
           supabase.auth.getSession(),
-          15000,
-          "Session load timed out (15s).",
+          SESSION_LOAD_TIMEOUT_MS,
+          `Session load timed out (${Math.round(SESSION_LOAD_TIMEOUT_MS / 1000)}s).`,
         );
 
         if (!alive) return;
@@ -366,6 +402,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       alive = false;
+      if (roleRetryTimerRef.current !== null) {
+        window.clearTimeout(roleRetryTimerRef.current);
+        roleRetryTimerRef.current = null;
+      }
       sub.subscription.unsubscribe();
     };
   }, []);
