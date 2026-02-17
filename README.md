@@ -70,12 +70,21 @@ npm run test:e2e:smoke
 Set these repository secrets in GitHub Actions:
 
 - `E2E_BASE_URL` (optional if your app is already hosted for smoke runs)
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 - `E2E_PT_EMAIL`
 - `E2E_PT_PASSWORD`
 - `E2E_CLIENT_EMAIL`
 - `E2E_CLIENT_PASSWORD`
 - `E2E_CLIENT_ID`
 - `E2E_WORKOUT_TEMPLATE_ID`
+
+## Public Routes For Launch
+
+- `/privacy`
+- `/terms`
+- `/support`
+- `/health` (uptime probe target)
 
 ## Release Process Docs
 

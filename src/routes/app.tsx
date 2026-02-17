@@ -15,6 +15,10 @@ import { InvitePage } from "../pages/public/invite";
 import { PtSignupPage } from "../pages/public/pt-signup";
 import { WelcomePage } from "../pages/public/welcome";
 import { SignupRolePage } from "../pages/public/signup-role";
+import { PrivacyPage } from "../pages/public/privacy";
+import { TermsPage } from "../pages/public/terms";
+import { SupportPage } from "../pages/public/support";
+import { HealthPage } from "../pages/public/health";
 
 import { PtDashboardPage } from "../pages/pt/dashboard";
 import { PtClientsPage } from "../pages/pt/clients";
@@ -247,6 +251,10 @@ export function App() {
       <Route path="/signup/pt" element={<PtSignupPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/join/:code" element={<LegacyJoinRedirect />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/support" element={<SupportPage />} />
+      <Route path="/health" element={<HealthPage />} />
 
       <Route
         path="/no-workspace"

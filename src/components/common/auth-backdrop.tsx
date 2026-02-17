@@ -1,4 +1,5 @@
 import { cn } from "../../lib/utils";
+import { Link } from "react-router-dom";
 
 interface AuthBackdropProps {
   children: React.ReactNode;
@@ -19,6 +20,18 @@ export function AuthBackdrop({
       <div className={cn("relative z-10 w-full", contentClassName)}>
         {children}
       </div>
+
+      <nav className="pointer-events-auto absolute bottom-4 z-20 flex items-center gap-4 text-xs text-muted-foreground">
+        <Link className="hover:text-foreground" to="/privacy">
+          Privacy
+        </Link>
+        <Link className="hover:text-foreground" to="/terms">
+          Terms
+        </Link>
+        <Link className="hover:text-foreground" to="/support">
+          Support
+        </Link>
+      </nav>
     </div>
   );
 }
