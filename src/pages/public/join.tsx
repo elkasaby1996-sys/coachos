@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import {
@@ -36,11 +36,11 @@ export function JoinPage() {
   const [goal, setGoal] = useState("");
   const inviteCode = useMemo(() => code ?? "", [code]);
   const isMissingCode = inviteCode.length === 0;
-  const safeRefreshRole = async () => {
+  const safeRefreshRole = useCallback(async () => {
     if (typeof refreshRole === "function") {
       await refreshRole();
     }
-  };
+  }, [refreshRole]);
   const contactHref = useMemo(
     () =>
       `mailto:?subject=${encodeURIComponent(
@@ -136,7 +136,7 @@ export function JoinPage() {
     };
 
     loadInvite();
-  }, [inviteCode, refreshRole, session]);
+  }, [inviteCode, safeRefreshRole, session]);
 
   useEffect(() => {
     if (status === "success") {

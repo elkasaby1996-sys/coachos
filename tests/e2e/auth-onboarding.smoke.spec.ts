@@ -2,6 +2,21 @@ import { expect, test } from "@playwright/test";
 import { requireEnvVars, signInWithEmail } from "./utils/test-helpers";
 
 test.describe("Smoke: auth and onboarding", () => {
+  test("Invalid credentials keep user on login", async ({ page }) => {
+    await page.goto("/login");
+
+    await page
+      .getByPlaceholder("you@coachos.com")
+      .fill(`invalid-${Date.now()}@example.com`);
+    await page.getByPlaceholder("Enter password").fill("wrong-password");
+    await page.getByRole("button", { name: /^sign in$/i }).click();
+
+    await expect(page).toHaveURL(/\/login/);
+    await expect(
+      page.getByRole("heading", { name: /welcome back/i }),
+    ).toBeVisible();
+  });
+
   test("PT can sign in and reach dashboard or workspace onboarding", async ({
     page,
   }) => {
