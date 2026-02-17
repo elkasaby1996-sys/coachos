@@ -86,6 +86,10 @@ Set these repository secrets in GitHub Actions:
 - `/support`
 - `/health` (uptime probe target)
 
+## Internal Ops Route
+
+- `/pt/ops/status` (PT-only runtime checks for support troubleshooting)
+
 ## Release Process Docs
 
 - Go/No-Go checklist: `docs/release-go-no-go.md`
@@ -93,3 +97,8 @@ Set these repository secrets in GitHub Actions:
 - Ops/monitoring checklist: `docs/ops-monitoring-checklist.md`
 - Ops incident runbook: `docs/ops-runbook.md`
 - Lint warnings triage: `docs-lint-triage.md`
+
+## Manual Ops Workflows
+
+- `Release Readiness` (`.github/workflows/release-readiness.yml`)
+- `Security Audit` (`.github/workflows/security-audit.yml`)

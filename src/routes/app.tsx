@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
+import type { ComponentType } from "react";
 import {
   Navigate,
   Route,
@@ -9,56 +10,184 @@ import {
 import { PtLayout } from "../components/layouts/pt-layout";
 import { ClientLayout } from "../components/layouts/client-layout";
 
-import { LoginPage } from "../pages/public/login";
-import { NoWorkspacePage } from "../pages/public/no-workspace";
-import { InvitePage } from "../pages/public/invite";
-import { PtSignupPage } from "../pages/public/pt-signup";
-import { WelcomePage } from "../pages/public/welcome";
-import { SignupRolePage } from "../pages/public/signup-role";
-import { PrivacyPage } from "../pages/public/privacy";
-import { TermsPage } from "../pages/public/terms";
-import { SupportPage } from "../pages/public/support";
-import { HealthPage } from "../pages/public/health";
-
-import { PtDashboardPage } from "../pages/pt/dashboard";
-import { PtClientsPage } from "../pages/pt/clients";
-import { PtClientDetailPage } from "../pages/pt/client-detail";
-import { PtProgramsPage } from "../pages/pt/programs";
-import { PtProgramBuilderPage } from "../pages/pt/program-builder";
-import { PtWorkoutTemplatesPage } from "../pages/pt/workout-templates";
-import { PtWorkoutTemplateBuilderPage } from "../pages/pt/workout-template-builder";
-import { PtWorkoutTemplatePreviewPage } from "../pages/pt/workout-template-preview";
-import { PtCheckinsQueuePage } from "../pages/pt/checkins";
-import { PtCheckinTemplatesPage } from "../pages/pt/checkin-templates";
-import { PtCalendarPage } from "../pages/pt/calendar";
-import { PtMessagesPage } from "../pages/pt/messages";
-import { PtSettingsPage } from "../pages/pt/settings";
-import { PtBaselineTemplatesPage } from "../pages/pt/settings-baseline";
-import { PtExerciseLibraryPage } from "../pages/pt/settings-exercises";
-import { PtNutritionPage } from "../pages/pt/nutrition";
-import { PtNutritionTemplateBuilderPage } from "../pages/pt/nutrition-template-builder";
-import { PtWorkspaceOnboardingPage } from "../pages/pt/onboarding-workspace";
-
-import { ClientHomePage } from "../pages/client/home";
-import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
-import { ClientWorkoutTodayPage } from "../pages/client/workout-today";
-import { ClientWorkoutRunPage } from "../pages/client/workout-run";
-import { ClientWorkoutSummaryPage } from "../pages/client/workout-summary";
-import { ClientCheckinPage } from "../pages/client/checkin";
-import { ClientMessagesPage } from "../pages/client/messages";
-import { ClientProfilePage } from "../pages/client/profile";
-import { ClientHabitsPage } from "../pages/client/habits";
-import { ClientBaselinePage } from "../pages/client/baseline";
-import { ClientProgressPage } from "../pages/client/progress";
-import { ClientNutritionDayPage } from "../pages/client/nutrition-day";
-import { ClientOnboardingPage } from "../pages/client/onboarding";
-
 // ✅ assumes your AuthProvider exports this hook
 import { useAuth } from "../lib/auth";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { supabase } from "../lib/supabase";
 import { hasCompletedClientOnboarding } from "../lib/client-onboarding";
 
+const lazyPage = <T extends Record<string, ComponentType<any>>>(
+  loader: () => Promise<T>,
+  exportName: keyof T,
+) =>
+  lazy(async () => ({
+    default: (await loader())[exportName],
+  }));
+
+const LoginPage = lazyPage(() => import("../pages/public/login"), "LoginPage");
+const NoWorkspacePage = lazyPage(
+  () => import("../pages/public/no-workspace"),
+  "NoWorkspacePage",
+);
+const InvitePage = lazyPage(
+  () => import("../pages/public/invite"),
+  "InvitePage",
+);
+const PtSignupPage = lazyPage(
+  () => import("../pages/public/pt-signup"),
+  "PtSignupPage",
+);
+const WelcomePage = lazyPage(
+  () => import("../pages/public/welcome"),
+  "WelcomePage",
+);
+const SignupRolePage = lazyPage(
+  () => import("../pages/public/signup-role"),
+  "SignupRolePage",
+);
+const PrivacyPage = lazyPage(
+  () => import("../pages/public/privacy"),
+  "PrivacyPage",
+);
+const TermsPage = lazyPage(() => import("../pages/public/terms"), "TermsPage");
+const SupportPage = lazyPage(
+  () => import("../pages/public/support"),
+  "SupportPage",
+);
+const HealthPage = lazyPage(
+  () => import("../pages/public/health"),
+  "HealthPage",
+);
+
+const PtDashboardPage = lazyPage(
+  () => import("../pages/pt/dashboard"),
+  "PtDashboardPage",
+);
+const PtClientsPage = lazyPage(
+  () => import("../pages/pt/clients"),
+  "PtClientsPage",
+);
+const PtClientDetailPage = lazyPage(
+  () => import("../pages/pt/client-detail"),
+  "PtClientDetailPage",
+);
+const PtProgramsPage = lazyPage(
+  () => import("../pages/pt/programs"),
+  "PtProgramsPage",
+);
+const PtProgramBuilderPage = lazyPage(
+  () => import("../pages/pt/program-builder"),
+  "PtProgramBuilderPage",
+);
+const PtWorkoutTemplatesPage = lazyPage(
+  () => import("../pages/pt/workout-templates"),
+  "PtWorkoutTemplatesPage",
+);
+const PtWorkoutTemplateBuilderPage = lazyPage(
+  () => import("../pages/pt/workout-template-builder"),
+  "PtWorkoutTemplateBuilderPage",
+);
+const PtWorkoutTemplatePreviewPage = lazyPage(
+  () => import("../pages/pt/workout-template-preview"),
+  "PtWorkoutTemplatePreviewPage",
+);
+const PtCheckinsQueuePage = lazyPage(
+  () => import("../pages/pt/checkins"),
+  "PtCheckinsQueuePage",
+);
+const PtCheckinTemplatesPage = lazyPage(
+  () => import("../pages/pt/checkin-templates"),
+  "PtCheckinTemplatesPage",
+);
+const PtCalendarPage = lazyPage(
+  () => import("../pages/pt/calendar"),
+  "PtCalendarPage",
+);
+const PtMessagesPage = lazyPage(
+  () => import("../pages/pt/messages"),
+  "PtMessagesPage",
+);
+const PtSettingsPage = lazyPage(
+  () => import("../pages/pt/settings"),
+  "PtSettingsPage",
+);
+const PtBaselineTemplatesPage = lazyPage(
+  () => import("../pages/pt/settings-baseline"),
+  "PtBaselineTemplatesPage",
+);
+const PtExerciseLibraryPage = lazyPage(
+  () => import("../pages/pt/settings-exercises"),
+  "PtExerciseLibraryPage",
+);
+const PtNutritionPage = lazyPage(
+  () => import("../pages/pt/nutrition"),
+  "PtNutritionPage",
+);
+const PtNutritionTemplateBuilderPage = lazyPage(
+  () => import("../pages/pt/nutrition-template-builder"),
+  "PtNutritionTemplateBuilderPage",
+);
+const PtWorkspaceOnboardingPage = lazyPage(
+  () => import("../pages/pt/onboarding-workspace"),
+  "PtWorkspaceOnboardingPage",
+);
+const PtOpsStatusPage = lazyPage(
+  () => import("../pages/pt/ops-status"),
+  "PtOpsStatusPage",
+);
+
+const ClientHomePage = lazyPage(
+  () => import("../pages/client/home"),
+  "ClientHomePage",
+);
+const ClientWorkoutDetailPage = lazyPage(
+  () => import("../pages/client/workout-detail"),
+  "ClientWorkoutDetailPage",
+);
+const ClientWorkoutTodayPage = lazyPage(
+  () => import("../pages/client/workout-today"),
+  "ClientWorkoutTodayPage",
+);
+const ClientWorkoutRunPage = lazyPage(
+  () => import("../pages/client/workout-run"),
+  "ClientWorkoutRunPage",
+);
+const ClientWorkoutSummaryPage = lazyPage(
+  () => import("../pages/client/workout-summary"),
+  "ClientWorkoutSummaryPage",
+);
+const ClientCheckinPage = lazyPage(
+  () => import("../pages/client/checkin"),
+  "ClientCheckinPage",
+);
+const ClientMessagesPage = lazyPage(
+  () => import("../pages/client/messages"),
+  "ClientMessagesPage",
+);
+const ClientProfilePage = lazyPage(
+  () => import("../pages/client/profile"),
+  "ClientProfilePage",
+);
+const ClientHabitsPage = lazyPage(
+  () => import("../pages/client/habits"),
+  "ClientHabitsPage",
+);
+const ClientBaselinePage = lazyPage(
+  () => import("../pages/client/baseline"),
+  "ClientBaselinePage",
+);
+const ClientProgressPage = lazyPage(
+  () => import("../pages/client/progress"),
+  "ClientProgressPage",
+);
+const ClientNutritionDayPage = lazyPage(
+  () => import("../pages/client/nutrition-day"),
+  "ClientNutritionDayPage",
+);
+const ClientOnboardingPage = lazyPage(
+  () => import("../pages/client/onboarding"),
+  "ClientOnboardingPage",
+);
 function FullPageLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -241,132 +370,147 @@ function RequireClientOnboarding({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <Routes>
-      {/* Smart landing */}
-      <Route path="/" element={<IndexRedirect />} />
+    <Suspense fallback={<FullPageLoader />}>
+      <Routes>
+        {/* Smart landing */}
+        <Route path="/" element={<IndexRedirect />} />
 
-      {/* Public */}
-      <Route path="/login" element={<LoginGate />} />
-      <Route path="/signup" element={<SignupRolePage />} />
-      <Route path="/signup/pt" element={<PtSignupPage />} />
-      <Route path="/invite/:token" element={<InvitePage />} />
-      <Route path="/join/:code" element={<LegacyJoinRedirect />} />
-      <Route path="/privacy" element={<PrivacyPage />} />
-      <Route path="/terms" element={<TermsPage />} />
-      <Route path="/support" element={<SupportPage />} />
-      <Route path="/health" element={<HealthPage />} />
+        {/* Public */}
+        <Route path="/login" element={<LoginGate />} />
+        <Route path="/signup" element={<SignupRolePage />} />
+        <Route path="/signup/pt" element={<PtSignupPage />} />
+        <Route path="/invite/:token" element={<InvitePage />} />
+        <Route path="/join/:code" element={<LegacyJoinRedirect />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/support" element={<SupportPage />} />
+        <Route path="/health" element={<HealthPage />} />
 
-      <Route
-        path="/no-workspace"
-        element={
-          <RequireAuth>
-            <NoWorkspacePage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/pt/onboarding/workspace"
-        element={
-          <RequireAuth>
-            <PtWorkspaceOnboardingPage />
-          </RequireAuth>
-        }
-      />
+        <Route
+          path="/no-workspace"
+          element={
+            <RequireAuth>
+              <NoWorkspacePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/pt/onboarding/workspace"
+          element={
+            <RequireAuth>
+              <PtWorkspaceOnboardingPage />
+            </RequireAuth>
+          }
+        />
 
-      {/* PT Side */}
-      <Route
-        path="/pt"
-        element={
-          <RequireAuth>
-            <RequireRole allow={["pt"]}>
-              <PtLayout />
-            </RequireRole>
-          </RequireAuth>
-        }
-      >
-        <Route path="dashboard" element={<PtDashboardPage />} />
-        <Route path="clients" element={<PtClientsPage />} />
-        <Route path="clients/:clientId" element={<PtClientDetailPage />} />
-        <Route path="programs" element={<PtProgramsPage />} />
-        <Route path="programs/new" element={<PtProgramBuilderPage />} />
-        <Route path="programs/:id/edit" element={<PtProgramBuilderPage />} />
-        <Route path="templates/workouts" element={<PtWorkoutTemplatesPage />} />
+        {/* PT Side */}
         <Route
-          path="templates/workouts/:id"
-          element={<PtWorkoutTemplatePreviewPage />}
-        />
-        <Route
-          path="templates/workouts/:id/edit"
-          element={<PtWorkoutTemplateBuilderPage />}
-        />
-        <Route path="calendar" element={<PtCalendarPage />} />
-        <Route path="checkins" element={<PtCheckinsQueuePage />} />
-        <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />
-        <Route path="messages" element={<PtMessagesPage />} />
-        <Route path="settings" element={<PtSettingsPage />} />
-        <Route path="settings/baseline" element={<PtBaselineTemplatesPage />} />
-        <Route path="settings/exercises" element={<PtExerciseLibraryPage />} />
-        <Route path="nutrition-programs" element={<PtNutritionPage />} />
-        <Route
-          path="nutrition-templates"
-          element={<Navigate to="/pt/nutrition-programs" replace />}
-        />
-        <Route
-          path="nutrition"
-          element={<Navigate to="/pt/nutrition-programs" replace />}
-        />
-        <Route
-          path="nutrition/programs/:id"
-          element={<PtNutritionTemplateBuilderPage />}
-        />
-        <Route
-          path="nutrition/templates/:id"
-          element={<PtNutritionTemplateBuilderPage />}
-        />
-      </Route>
+          path="/pt"
+          element={
+            <RequireAuth>
+              <RequireRole allow={["pt"]}>
+                <PtLayout />
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path="dashboard" element={<PtDashboardPage />} />
+          <Route path="clients" element={<PtClientsPage />} />
+          <Route path="clients/:clientId" element={<PtClientDetailPage />} />
+          <Route path="programs" element={<PtProgramsPage />} />
+          <Route path="programs/new" element={<PtProgramBuilderPage />} />
+          <Route path="programs/:id/edit" element={<PtProgramBuilderPage />} />
+          <Route
+            path="templates/workouts"
+            element={<PtWorkoutTemplatesPage />}
+          />
+          <Route
+            path="templates/workouts/:id"
+            element={<PtWorkoutTemplatePreviewPage />}
+          />
+          <Route
+            path="templates/workouts/:id/edit"
+            element={<PtWorkoutTemplateBuilderPage />}
+          />
+          <Route path="calendar" element={<PtCalendarPage />} />
+          <Route path="checkins" element={<PtCheckinsQueuePage />} />
+          <Route
+            path="checkins/templates"
+            element={<PtCheckinTemplatesPage />}
+          />
+          <Route path="messages" element={<PtMessagesPage />} />
+          <Route path="settings" element={<PtSettingsPage />} />
+          <Route
+            path="settings/baseline"
+            element={<PtBaselineTemplatesPage />}
+          />
+          <Route
+            path="settings/exercises"
+            element={<PtExerciseLibraryPage />}
+          />
+          <Route path="ops/status" element={<PtOpsStatusPage />} />
+          <Route path="nutrition-programs" element={<PtNutritionPage />} />
+          <Route
+            path="nutrition-templates"
+            element={<Navigate to="/pt/nutrition-programs" replace />}
+          />
+          <Route
+            path="nutrition"
+            element={<Navigate to="/pt/nutrition-programs" replace />}
+          />
+          <Route
+            path="nutrition/programs/:id"
+            element={<PtNutritionTemplateBuilderPage />}
+          />
+          <Route
+            path="nutrition/templates/:id"
+            element={<PtNutritionTemplateBuilderPage />}
+          />
+        </Route>
 
-      {/* Client Side */}
-      <Route
-        path="/app"
-        element={
-          <RequireAuth>
-            <RequireRole allow={["client"]}>
-              <RequireClientOnboarding>
-                <ClientLayout />
-              </RequireClientOnboarding>
-            </RequireRole>
-          </RequireAuth>
-        }
-      >
-        <Route path="onboarding" element={<ClientOnboardingPage />} />
-        <Route path="home" element={<ClientHomePage />} />
-        <Route path="workouts/today" element={<ClientWorkoutTodayPage />} />
+        {/* Client Side */}
         <Route
-          path="workouts/:assignedWorkoutId"
-          element={<ClientWorkoutDetailPage />}
-        />
-        <Route
-          path="workout-run/:assignedWorkoutId"
-          element={<ClientWorkoutRunPage />}
-        />
-        <Route
-          path="workout-summary/:assignedWorkoutId"
-          element={<ClientWorkoutSummaryPage />}
-        />
-        <Route path="checkin" element={<ClientCheckinPage />} />
-        <Route path="messages" element={<ClientMessagesPage />} />
-        <Route path="profile" element={<ClientProfilePage />} />
-        <Route path="habits" element={<ClientHabitsPage />} />
-        <Route path="progress" element={<ClientProgressPage />} />
-        <Route path="baseline" element={<ClientBaselinePage />} />
-        <Route
-          path="nutrition/:assigned_nutrition_day_id"
-          element={<ClientNutritionDayPage />}
-        />
-      </Route>
+          path="/app"
+          element={
+            <RequireAuth>
+              <RequireRole allow={["client"]}>
+                <RequireClientOnboarding>
+                  <ClientLayout />
+                </RequireClientOnboarding>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path="onboarding" element={<ClientOnboardingPage />} />
+          <Route path="home" element={<ClientHomePage />} />
+          <Route path="workouts/today" element={<ClientWorkoutTodayPage />} />
+          <Route
+            path="workouts/:assignedWorkoutId"
+            element={<ClientWorkoutDetailPage />}
+          />
+          <Route
+            path="workout-run/:assignedWorkoutId"
+            element={<ClientWorkoutRunPage />}
+          />
+          <Route
+            path="workout-summary/:assignedWorkoutId"
+            element={<ClientWorkoutSummaryPage />}
+          />
+          <Route path="checkin" element={<ClientCheckinPage />} />
+          <Route path="messages" element={<ClientMessagesPage />} />
+          <Route path="profile" element={<ClientProfilePage />} />
+          <Route path="habits" element={<ClientHabitsPage />} />
+          <Route path="progress" element={<ClientProgressPage />} />
+          <Route path="baseline" element={<ClientBaselinePage />} />
+          <Route
+            path="nutrition/:assigned_nutrition_day_id"
+            element={<ClientNutritionDayPage />}
+          />
+        </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
