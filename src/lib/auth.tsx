@@ -408,7 +408,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [resolveRoleOnce]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
