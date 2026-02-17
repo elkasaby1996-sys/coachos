@@ -31,12 +31,16 @@ async function isLoginUiVisible(page: Page) {
 }
 
 async function isRouteStable(page: Page, targetPath: string) {
-  for (let i = 0; i < 3; i += 1) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 2_000) {
     const url = page.url();
     if (isLoginPath(url) || !isOnTarget(url, targetPath)) {
       return false;
     }
-    await page.waitForTimeout(150);
+    if (await isLoginUiVisible(page)) {
+      return false;
+    }
+    await page.waitForTimeout(200);
   }
   return true;
 }
@@ -51,11 +55,70 @@ export async function signInWithEmail(
     if (!isLoginPath(page.url())) {
       return;
     }
-    const emailInput = page.getByPlaceholder("you@coachos.com");
-    const passwordInput = page.getByPlaceholder("Enter password");
+    const emailByLabel = page.getByLabel(/email/i);
+    const emailByPlaceholder = page.getByPlaceholder("you@coachos.com");
+    const passwordByLabel = page.getByLabel(/password/i);
+    const passwordByPlaceholder = page.getByPlaceholder("Enter password");
 
-    await emailInput.fill(email);
-    await passwordInput.fill(password);
+    let loginFormReady = false;
+    const formWaitStart = Date.now();
+    while (Date.now() - formWaitStart < 10_000) {
+      if (!isLoginPath(page.url())) return;
+      const emailVisible =
+        (await emailByLabel.isVisible().catch(() => false)) ||
+        (await emailByPlaceholder.isVisible().catch(() => false));
+      const passwordVisible =
+        (await passwordByLabel.isVisible().catch(() => false)) ||
+        (await passwordByPlaceholder.isVisible().catch(() => false));
+      if (emailVisible && passwordVisible) {
+        loginFormReady = true;
+        break;
+      }
+      const bootstrapLoading = await page
+        .getByText(/^Loading\.\.\.$/)
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (bootstrapLoading) {
+        if (Date.now() - formWaitStart > 4_000) {
+          return;
+        }
+        await page.waitForTimeout(300);
+        continue;
+      }
+      await page.waitForTimeout(200);
+    }
+
+    if (!loginFormReady) {
+      const stillBootstrappingOnLogin = await page
+        .getByText(/^Loading\.\.\.$/)
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (stillBootstrappingOnLogin) {
+        // Let caller retry navigation instead of timing out inside form fill.
+        return;
+      }
+      if (!isLoginPath(page.url())) return;
+      if (attempt === 0) {
+        await page.waitForTimeout(1_000);
+        continue;
+      }
+      throw new Error("Login form did not become ready on /login.");
+    }
+
+    if (await emailByLabel.isVisible().catch(() => false)) {
+      await emailByLabel.fill(email);
+    } else {
+      await emailByPlaceholder.fill(email);
+    }
+
+    if (await passwordByLabel.isVisible().catch(() => false)) {
+      await passwordByLabel.fill(password);
+    } else {
+      await passwordByPlaceholder.fill(password);
+    }
+
     await page.getByRole("button", { name: /^sign in$/i }).click();
 
     try {
@@ -66,6 +129,14 @@ export async function signInWithEmail(
         undefined,
         { timeout: 15_000 },
       );
+      await page.waitForTimeout(400);
+      if (isLoginPath(page.url()) || (await isLoginUiVisible(page))) {
+        if (attempt === 0) {
+          await page.waitForTimeout(1_500);
+          continue;
+        }
+        throw new Error("Sign-in appeared to succeed but returned to login.");
+      }
       return;
     } catch {
       if (attempt === 0) {
@@ -83,12 +154,17 @@ export async function ensureAuthenticatedNavigation(
   email: string,
   password: string,
 ) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  const startedAt = Date.now();
+  const budgetMs = 45_000;
+
+  while (Date.now() - startedAt < budgetMs) {
     if (isLoginPath(page.url()) || (await isLoginUiVisible(page))) {
       await signInWithEmail(page, email, password);
     }
 
-    await page.goto(targetPath, { waitUntil: "domcontentloaded" });
+    if (!isOnTarget(page.url(), targetPath)) {
+      await page.goto(targetPath, { waitUntil: "domcontentloaded" });
+    }
     if (await isLoginUiVisible(page)) {
       await signInWithEmail(page, email, password);
       await page.goto(targetPath, { waitUntil: "domcontentloaded" });
@@ -113,7 +189,7 @@ export async function ensureAuthenticatedNavigation(
   }
 
   throw new Error(
-    `Unable to reach route: ${targetPath} (current: ${page.url()})`,
+    `Unable to reach route within ${Math.round(budgetMs / 1000)}s: ${targetPath} (current: ${page.url()})`,
   );
 }
 

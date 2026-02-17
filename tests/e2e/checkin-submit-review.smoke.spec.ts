@@ -52,8 +52,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const loginHeading = clientPage.getByRole("heading", {
       name: /welcome back/i,
     });
-    let submitVisible = false;
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
       const noTemplateBanner = clientPage.getByText(
         /hasn[’']t assigned a check-in yet/i,
       );
@@ -75,23 +74,81 @@ test.describe("Smoke: check-in submit and PT review", () => {
       }
       await waitForAppReady(clientPage, 15_000);
 
-      if (await submitButton.isVisible()) {
-        submitVisible = true;
-        break;
-      }
+      if (await submitButton.isVisible()) break;
 
       if (await continueButton.isVisible()) {
-        await continueButton.click();
+        if (await continueButton.isDisabled()) {
+          const numberInputs = clientPage.locator('input[type="number"]');
+          for (let i = 0; i < (await numberInputs.count()); i += 1) {
+            const input = numberInputs.nth(i);
+            if (
+              (await input.isVisible().catch(() => false)) &&
+              (await input.isEnabled().catch(() => false))
+            ) {
+              await input.fill("5");
+            }
+          }
+
+          const textareas = clientPage.locator("textarea");
+          for (let i = 0; i < (await textareas.count()); i += 1) {
+            const textarea = textareas.nth(i);
+            if (
+              (await textarea.isVisible().catch(() => false)) &&
+              (await textarea.isEnabled().catch(() => false))
+            ) {
+              const current = await textarea.inputValue().catch(() => "");
+              if (!current.trim()) {
+                await textarea.fill("Smoke response");
+              }
+            }
+          }
+
+          const yesButtons = clientPage.getByRole("button", { name: /^yes$/i });
+          for (let i = 0; i < Math.min(await yesButtons.count(), 20); i += 1) {
+            const button = yesButtons.nth(i);
+            if (
+              (await button.isVisible().catch(() => false)) &&
+              (await button.isEnabled().catch(() => false))
+            ) {
+              await button.click().catch(() => {});
+            }
+          }
+
+          const scaleButtons = clientPage.getByRole("button", { name: /^5$/ });
+          for (
+            let i = 0;
+            i < Math.min(await scaleButtons.count(), 20);
+            i += 1
+          ) {
+            const button = scaleButtons.nth(i);
+            if (
+              (await button.isVisible().catch(() => false)) &&
+              (await button.isEnabled().catch(() => false))
+            ) {
+              await button.click().catch(() => {});
+            }
+          }
+        }
+        if (!(await continueButton.isDisabled())) {
+          await continueButton.click();
+        }
       } else {
         await clientPage.waitForTimeout(1_000);
       }
     }
-    if (!submitVisible && (await loginHeading.isVisible().catch(() => false))) {
-      await clientContext.close();
-      test.skip(true, "Client session returned to login during check-in flow.");
-      return;
+    if (!(await submitButton.isVisible().catch(() => false))) {
+      await ensureAuthenticatedNavigation(
+        clientPage,
+        "/app/checkin",
+        process.env.E2E_CLIENT_EMAIL!,
+        process.env.E2E_CLIENT_PASSWORD!,
+      );
+      await waitForAppReady(clientPage, 15_000);
     }
-    expect(submitVisible).toBeTruthy();
+    await expect(
+      submitButton,
+      `Submit button not visible after recovery attempts. Final URL: ${clientPage.url()}`,
+    ).toBeVisible({ timeout: 5_000 });
     if (await submitButton.isDisabled()) {
       await clientContext.close();
       test.skip(true, "Current check-in already submitted for this client.");
@@ -134,7 +191,14 @@ test.describe("Smoke: check-in submit and PT review", () => {
     await expect(reviewButton).toBeVisible({ timeout: 30_000 });
     await reviewButton.click();
 
-    await ptPage.getByLabel(/feedback/i).fill(`Smoke review ${Date.now()}`);
+    const reviewDialog = ptPage.getByRole("dialog").filter({
+      hasText: /check-in review/i,
+    });
+    await expect(reviewDialog).toBeVisible({ timeout: 15_000 });
+    await reviewDialog
+      .locator("textarea")
+      .first()
+      .fill(`Smoke review ${Date.now()}`);
     await ptPage.getByRole("button", { name: /save feedback/i }).click();
 
     await expect(ptPage.getByText(/feedback saved/i)).toBeVisible({

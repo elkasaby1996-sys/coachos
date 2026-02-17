@@ -118,7 +118,12 @@ export function PtLayout() {
             supabase
               .from("assigned_workouts")
               .select("id, client_id, completed_at, scheduled_date")
-              .eq("workspace_id", workspaceId)
+              .in(
+                "client_id",
+                clientIds.length
+                  ? clientIds
+                  : ["00000000-0000-0000-0000-000000000000"],
+              )
               .eq("status", "completed")
               .gte("completed_at", twoDaysAgoIso)
               .order("completed_at", { ascending: false })
