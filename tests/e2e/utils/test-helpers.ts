@@ -59,6 +59,21 @@ export async function signInWithEmail(
     const emailByPlaceholder = page.getByPlaceholder("you@coachos.com");
     const passwordByLabel = page.getByLabel(/password/i);
     const passwordByPlaceholder = page.getByPlaceholder("Enter password");
+    const emailByRole = page.getByRole("textbox", { name: /email/i }).first();
+    const passwordByRole = page
+      .getByRole("textbox", { name: /password/i })
+      .first();
+    const emailByInput = page
+      .locator(
+        'input[type="email"], input[name="email"], input[autocomplete="email"]',
+      )
+      .first();
+    const passwordByInput = page
+      .locator(
+        'input[type="password"], input[name="password"], input[autocomplete="current-password"]',
+      )
+      .first();
+    const genericInputs = page.locator('input:not([type="hidden"])');
 
     let loginFormReady = false;
     const formWaitStart = Date.now();
@@ -66,11 +81,28 @@ export async function signInWithEmail(
       if (!isLoginPath(page.url())) return;
       const emailVisible =
         (await emailByLabel.isVisible().catch(() => false)) ||
-        (await emailByPlaceholder.isVisible().catch(() => false));
+        (await emailByPlaceholder.isVisible().catch(() => false)) ||
+        (await emailByRole.isVisible().catch(() => false)) ||
+        (await emailByInput.isVisible().catch(() => false));
       const passwordVisible =
         (await passwordByLabel.isVisible().catch(() => false)) ||
-        (await passwordByPlaceholder.isVisible().catch(() => false));
+        (await passwordByPlaceholder.isVisible().catch(() => false)) ||
+        (await passwordByRole.isVisible().catch(() => false)) ||
+        (await passwordByInput.isVisible().catch(() => false));
+      const genericInputsVisible =
+        (await genericInputs
+          .first()
+          .isVisible()
+          .catch(() => false)) &&
+        (await genericInputs
+          .nth(1)
+          .isVisible()
+          .catch(() => false));
       if (emailVisible && passwordVisible) {
+        loginFormReady = true;
+        break;
+      }
+      if (genericInputsVisible) {
         loginFormReady = true;
         break;
       }
@@ -104,19 +136,47 @@ export async function signInWithEmail(
         await page.waitForTimeout(1_000);
         continue;
       }
-      throw new Error("Login form did not become ready on /login.");
+      throw new Error(
+        `Login form did not become ready on /login (url: ${page.url()}).`,
+      );
     }
 
     if (await emailByLabel.isVisible().catch(() => false)) {
       await emailByLabel.fill(email);
-    } else {
+    } else if (await emailByPlaceholder.isVisible().catch(() => false)) {
       await emailByPlaceholder.fill(email);
+    } else if (await emailByRole.isVisible().catch(() => false)) {
+      await emailByRole.fill(email);
+    } else if (await emailByInput.isVisible().catch(() => false)) {
+      await emailByInput.fill(email);
+    } else if (
+      await genericInputs
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await genericInputs.first().fill(email);
+    } else {
+      throw new Error("Email input not visible on /login.");
     }
 
     if (await passwordByLabel.isVisible().catch(() => false)) {
       await passwordByLabel.fill(password);
-    } else {
+    } else if (await passwordByPlaceholder.isVisible().catch(() => false)) {
       await passwordByPlaceholder.fill(password);
+    } else if (await passwordByRole.isVisible().catch(() => false)) {
+      await passwordByRole.fill(password);
+    } else if (await passwordByInput.isVisible().catch(() => false)) {
+      await passwordByInput.fill(password);
+    } else if (
+      await genericInputs
+        .nth(1)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await genericInputs.nth(1).fill(password);
+    } else {
+      throw new Error("Password input not visible on /login.");
     }
 
     await page.getByRole("button", { name: /^sign in$/i }).click();
