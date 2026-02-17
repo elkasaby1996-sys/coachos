@@ -54,6 +54,8 @@ jobs:
       E2E_CLIENT_PASSWORD: ${{ secrets.E2E_CLIENT_PASSWORD }}
       E2E_CLIENT_ID: ${{ secrets.E2E_CLIENT_ID }}
       E2E_WORKOUT_TEMPLATE_ID: ${{ secrets.E2E_WORKOUT_TEMPLATE_ID }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout
@@ -71,6 +73,8 @@ jobs:
       - name: Validate E2E secrets
         run: |
           required=(
+            VITE_SUPABASE_URL
+            VITE_SUPABASE_ANON_KEY
             E2E_PT_EMAIL
             E2E_PT_PASSWORD
             E2E_CLIENT_EMAIL
