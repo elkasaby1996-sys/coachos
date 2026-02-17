@@ -11,6 +11,8 @@ export default [
       "dist/**",
       "node_modules/**",
       "supabase/**",
+      "playwright-report/**",
+      "test-results/**",
       "*.min.js",
       "tsconfig.tsbuildinfo",
     ],

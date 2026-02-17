@@ -8,6 +8,7 @@
 
 ## Uptime Checks
 
+- [ ] `/health` health check (expects `200` and body containing `ok`)
 - [ ] `/login` health check
 - [ ] `/pt/dashboard` health check
 - [ ] `/app/home` health check
