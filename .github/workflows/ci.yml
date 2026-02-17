@@ -7,6 +7,9 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -18,10 +21,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: npm
@@ -42,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     env:
       E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
       E2E_PT_EMAIL: ${{ secrets.E2E_PT_EMAIL }}
@@ -51,13 +54,15 @@ jobs:
       E2E_CLIENT_PASSWORD: ${{ secrets.E2E_CLIENT_PASSWORD }}
       E2E_CLIENT_ID: ${{ secrets.E2E_CLIENT_ID }}
       E2E_WORKOUT_TEMPLATE_ID: ${{ secrets.E2E_WORKOUT_TEMPLATE_ID }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: npm
@@ -68,6 +73,8 @@ jobs:
       - name: Validate E2E secrets
         run: |
           required=(
+            VITE_SUPABASE_URL
+            VITE_SUPABASE_ANON_KEY
             E2E_PT_EMAIL
             E2E_PT_PASSWORD
             E2E_CLIENT_EMAIL
@@ -97,7 +104,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-report
           path: playwright-report
@@ -105,7 +112,7 @@ jobs:
 
       - name: Upload Playwright raw results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-test-results
           path: test-results
