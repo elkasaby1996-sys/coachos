@@ -42,7 +42,10 @@ test.describe("Smoke: PT assign workout", () => {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const ptPathname = new URL(page.url()).pathname;
       const onLoginUi = await loginHeading.isVisible().catch(() => false);
-      if (ptPathname !== `/pt/clients/${process.env.E2E_CLIENT_ID}` || onLoginUi) {
+      if (
+        ptPathname !== `/pt/clients/${process.env.E2E_CLIENT_ID}` ||
+        onLoginUi
+      ) {
         await ensureAuthenticatedNavigation(
           page,
           `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`,
@@ -62,8 +65,14 @@ test.describe("Smoke: PT assign workout", () => {
       }
       await page.waitForTimeout(1_000);
     }
-    if (!templateVisible && (await loginHeading.isVisible().catch(() => false))) {
-      test.skip(true, "PT session returned to login during workout assignment flow.");
+    if (
+      !templateVisible &&
+      (await loginHeading.isVisible().catch(() => false))
+    ) {
+      test.skip(
+        true,
+        "PT session returned to login during workout assignment flow.",
+      );
       return;
     }
     expect(templateVisible).toBeTruthy();
