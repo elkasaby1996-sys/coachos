@@ -90,10 +90,21 @@ test.describe("Smoke: PT assign workout", () => {
       .first()
       .fill(new Date().toISOString().slice(0, 10));
 
+    const assignResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/v1/rpc/assign_workout_with_template") &&
+        response.request().method() === "POST",
+      { timeout: 30_000 },
+    );
     await page.getByRole("button", { name: /assign workout/i }).click();
+    const assignResponse = await assignResponsePromise;
+    expect(
+      assignResponse.ok(),
+      `assign_workout_with_template failed: HTTP ${assignResponse.status()}`,
+    ).toBeTruthy();
 
-    await expect(page.getByText(/workout assigned/i).first()).toBeVisible({
-      timeout: 30_000,
-    });
+    await expect(
+      page.getByText(/workout (assigned|updated)/i).first(),
+    ).toBeVisible({ timeout: 30_000 });
   });
 });
