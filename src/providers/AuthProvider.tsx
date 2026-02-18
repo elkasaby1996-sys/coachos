@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -32,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const didRouteRef = useRef(false);
   const lastRoutedUserIdRef = useRef<string | null>(null);
 
-  const resolveRole = async (userId: string) => {
+  const resolveRole = useCallback(async (userId: string) => {
     setRoleError(null);
 
     const { data: member, error: memberError } = await supabase
@@ -69,56 +70,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setRole("none");
     return "none" as const;
-  };
+  }, []);
 
-  const resolveAndRedirect = async (nextSession: Session | null) => {
-    const userId = nextSession?.user?.id ?? null;
-    if (userId !== lastRoutedUserIdRef.current) {
-      lastRoutedUserIdRef.current = userId;
-      didRouteRef.current = false;
-    }
-    if (didRouteRef.current) return;
+  const resolveAndRedirect = useCallback(
+    async (nextSession: Session | null) => {
+      const userId = nextSession?.user?.id ?? null;
+      if (userId !== lastRoutedUserIdRef.current) {
+        lastRoutedUserIdRef.current = userId;
+        didRouteRef.current = false;
+      }
+      if (didRouteRef.current) return;
 
-    if (!nextSession?.user) {
-      setRole(null);
-      if (
-        location.pathname !== "/login" &&
-        !location.pathname.startsWith("/join")
-      ) {
-        navigate("/login", { replace: true });
+      if (!nextSession?.user) {
+        setRole(null);
+        if (
+          location.pathname !== "/login" &&
+          !location.pathname.startsWith("/join")
+        ) {
+          navigate("/login", { replace: true });
+        }
+        didRouteRef.current = true;
+        return;
+      }
+
+      const resolvedRole = await resolveRole(nextSession.user.id);
+
+      if (resolvedRole === "pt") {
+        if (!location.pathname.startsWith("/pt")) {
+          navigate("/pt/dashboard", { replace: true });
+        }
+        didRouteRef.current = true;
+        return;
+      }
+
+      if (resolvedRole === "client") {
+        if (!location.pathname.startsWith("/app")) {
+          navigate("/app/home", { replace: true });
+        }
+        didRouteRef.current = true;
+        return;
+      }
+
+      // Allow invite join flow to complete before enforcing workspace membership.
+      if (location.pathname.startsWith("/join/")) {
+        return;
+      }
+
+      if (location.pathname !== "/no-workspace") {
+        navigate("/no-workspace", { replace: true });
       }
       didRouteRef.current = true;
-      return;
-    }
-
-    const resolvedRole = await resolveRole(nextSession.user.id);
-
-    if (resolvedRole === "pt") {
-      if (!location.pathname.startsWith("/pt")) {
-        navigate("/pt/dashboard", { replace: true });
-      }
-      didRouteRef.current = true;
-      return;
-    }
-
-    if (resolvedRole === "client") {
-      if (!location.pathname.startsWith("/app")) {
-        navigate("/app/home", { replace: true });
-      }
-      didRouteRef.current = true;
-      return;
-    }
-
-    // Allow invite join flow to complete before enforcing workspace membership.
-    if (location.pathname.startsWith("/join/")) {
-      return;
-    }
-
-    if (location.pathname !== "/no-workspace") {
-      navigate("/no-workspace", { replace: true });
-    }
-    didRouteRef.current = true;
-  };
+    },
+    [location.pathname, navigate, resolveRole],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -146,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [location.pathname, navigate]);
+  }, [resolveAndRedirect]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
