@@ -440,7 +440,6 @@ export function ClientWorkoutDetailPage() {
     if (!workoutSession?.id) return;
     setSaveIndex(exerciseIndex);
     for (let idx = 0; idx < exercises[exerciseIndex].sets.length; idx += 1) {
-      // eslint-disable-next-line no-await-in-loop
       await saveSet(exerciseIndex, idx);
     }
     await queryClient.invalidateQueries({
@@ -458,7 +457,6 @@ export function ClientWorkoutDetailPage() {
         setIndex < exercises[exerciseIndex].sets.length;
         setIndex += 1
       ) {
-        // eslint-disable-next-line no-await-in-loop
         await saveSet(exerciseIndex, setIndex);
       }
     }
