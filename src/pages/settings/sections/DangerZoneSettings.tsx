@@ -4,13 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/dialog";
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../components/ui/alert-dialog";
 import { Input } from "../../../components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../components/ui/tooltip";
 import { useAuth } from "../../../lib/auth";
@@ -215,15 +215,15 @@ export function DangerZoneSettings() {
         </SettingsBlock>
       </SettingsPageShell>
 
-      <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Leave workspace?</DialogTitle>
-            <DialogDescription>
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave workspace?</AlertDialogTitle>
+            <AlertDialogDescription>
               You will lose access to workspace data until re-invited.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <Button type="button" variant="secondary" onClick={() => setLeaveOpen(false)}>
               Cancel
             </Button>
@@ -237,18 +237,18 @@ export function DangerZoneSettings() {
             >
               {leaveSaving ? "Leaving..." : "Confirm leave"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete workspace</DialogTitle>
-            <DialogDescription>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete workspace</AlertDialogTitle>
+            <AlertDialogDescription>
               This action cannot be undone. Type <strong>{workspaceName}</strong> to confirm deletion.
-            </DialogDescription>
-          </DialogHeader>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
           <div className="space-y-2">
             <Input
@@ -261,7 +261,7 @@ export function DangerZoneSettings() {
             </p>
           </div>
 
-          <DialogFooter>
+          <AlertDialogFooter>
             <Button type="button" variant="secondary" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
@@ -275,9 +275,9 @@ export function DangerZoneSettings() {
             >
               {deleteSaving ? "Deleting..." : "Delete workspace"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
