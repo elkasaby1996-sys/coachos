@@ -37,6 +37,7 @@ import { PtExerciseLibraryPage } from "../pages/pt/settings-exercises";
 import { PtNutritionPage } from "../pages/pt/nutrition";
 import { PtNutritionTemplateBuilderPage } from "../pages/pt/nutrition-template-builder";
 import { PtWorkspaceOnboardingPage } from "../pages/pt/onboarding-workspace";
+import { PtOpsStatusPage } from "../pages/pt/ops-status";
 import { SettingsLayout } from "../pages/settings/SettingsLayout";
 import { WorkspaceSettings } from "../pages/settings/sections/WorkspaceSettings";
 import { PublicProfileSettings } from "../pages/settings/sections/PublicProfileSettings";
@@ -310,6 +311,7 @@ export function App() {
         <Route path="checkins" element={<PtCheckinsQueuePage />} />
         <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />
         <Route path="messages" element={<PtMessagesPage />} />
+        <Route path="ops/status" element={<PtOpsStatusPage />} />
         <Route
           path="settings"
           element={<Navigate to="/settings/workspace" replace />}
