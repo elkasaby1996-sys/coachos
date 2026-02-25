@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, AlertDescription, AlertTitle } from "../../../components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
   AlertDialog,
@@ -12,7 +16,12 @@ import {
   AlertDialogTitle,
 } from "../../../components/ui/alert-dialog";
 import { Input } from "../../../components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
 import { useAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
@@ -29,7 +38,9 @@ export function DangerZoneSettings() {
   const { user, refreshRole } = useAuth();
   const { workspaceId } = useWorkspace();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [leaveSaving, setLeaveSaving] = useState(false);
@@ -123,9 +134,7 @@ export function DangerZoneSettings() {
     } catch (error) {
       setToastVariant("error");
       setToastMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to delete workspace.",
+        error instanceof Error ? error.message : "Unable to delete workspace.",
       );
     } finally {
       setDeleteSaving(false);
@@ -155,7 +164,8 @@ export function DangerZoneSettings() {
           <Alert className="border-danger/40 bg-danger/5">
             <AlertTitle>Destructive operations</AlertTitle>
             <AlertDescription>
-              Deleting a workspace permanently removes associated data. Confirm carefully.
+              Deleting a workspace permanently removes associated data. Confirm
+              carefully.
             </AlertDescription>
           </Alert>
 
@@ -209,7 +219,9 @@ export function DangerZoneSettings() {
               Delete workspace
             </Button>
             {!isOwner ? (
-              <p className="text-xs text-muted-foreground">Only workspace owners can delete the workspace.</p>
+              <p className="text-xs text-muted-foreground">
+                Only workspace owners can delete the workspace.
+              </p>
             ) : null}
           </SettingsRow>
         </SettingsBlock>
@@ -224,7 +236,11 @@ export function DangerZoneSettings() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setLeaveOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setLeaveOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -246,7 +262,8 @@ export function DangerZoneSettings() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete workspace</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. Type <strong>{workspaceName}</strong> to confirm deletion.
+              This action cannot be undone. Type{" "}
+              <strong>{workspaceName}</strong> to confirm deletion.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -257,12 +274,17 @@ export function DangerZoneSettings() {
               placeholder="Type workspace name to confirm"
             />
             <p className="text-xs text-muted-foreground">
-              All associated clients, templates, messages, and logs will be removed.
+              All associated clients, templates, messages, and logs will be
+              removed.
             </p>
           </div>
 
           <AlertDialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setDeleteOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeleteOpen(false)}
+            >
               Cancel
             </Button>
             <Button

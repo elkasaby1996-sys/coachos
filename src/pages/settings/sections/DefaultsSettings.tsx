@@ -21,7 +21,9 @@ export function DefaultsSettings() {
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
   const [savingDefault, setSavingDefault] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
 
   const workspaceQuery = useQuery({
     queryKey: ["settings-defaults-workspace", workspaceId],
@@ -75,7 +77,8 @@ export function DefaultsSettings() {
   }, [toastMessage]);
 
   const hasDefaultChanged =
-    defaultTemplateId !== (workspaceQuery.data?.default_checkin_template_id ?? "");
+    defaultTemplateId !==
+    (workspaceQuery.data?.default_checkin_template_id ?? "");
 
   const handleSaveDefaultTemplate = async () => {
     if (!workspaceId || !hasDefaultChanged) return;

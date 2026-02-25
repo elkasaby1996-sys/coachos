@@ -1,6 +1,11 @@
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
 import { SettingsBlock, SettingsPageShell, SettingsRow } from "./shared";
 
 export function BillingSettings() {
@@ -41,7 +46,8 @@ export function BillingSettings() {
             </Tooltip>
           </TooltipProvider>
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-            Billing is coming soon. Your current plan remains active without interruption.
+            Billing is coming soon. Your current plan remains active without
+            interruption.
           </div>
         </SettingsRow>
       </SettingsBlock>

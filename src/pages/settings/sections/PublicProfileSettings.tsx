@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Switch } from "../../../components/ui/switch";
@@ -58,13 +65,16 @@ export function PublicProfileSettings() {
     [workspaceId],
   );
   const [form, setForm] = useState<PublicProfileForm>(defaultForm);
-  const [initialForm, setInitialForm] = useState<PublicProfileForm>(defaultForm);
+  const [initialForm, setInitialForm] =
+    useState<PublicProfileForm>(defaultForm);
   const [specialtiesInput, setSpecialtiesInput] = useState("");
   const [languagesInput, setLanguagesInput] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
 
   useEffect(() => {
     try {
@@ -129,8 +139,12 @@ export function PublicProfileSettings() {
           >
             <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
               <div>
-                <p className="text-sm font-medium">List my profile on marketplace</p>
-                <p className="text-xs text-muted-foreground">You can save drafts while this is off.</p>
+                <p className="text-sm font-medium">
+                  List my profile on marketplace
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  You can save drafts while this is off.
+                </p>
               </div>
               <Switch
                 checked={form.listed}
@@ -144,17 +158,26 @@ export function PublicProfileSettings() {
 
           <SettingsInlineSeparator />
 
-          <SettingsRow label="Public display name" hint="Visible as your listing title.">
+          <SettingsRow
+            label="Public display name"
+            hint="Visible as your listing title."
+          >
             <Input
               value={form.displayName}
               onChange={(event) =>
-                setForm((prev) => ({ ...prev, displayName: event.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  displayName: event.target.value,
+                }))
               }
               placeholder="Coach name"
             />
           </SettingsRow>
 
-          <SettingsRow label="Headline" hint="Short one-line value proposition.">
+          <SettingsRow
+            label="Headline"
+            hint="Short one-line value proposition."
+          >
             <Input
               value={form.headline}
               onChange={(event) =>
@@ -164,7 +187,10 @@ export function PublicProfileSettings() {
             />
           </SettingsRow>
 
-          <SettingsRow label="Bio" hint="Tell prospects what outcomes you help create.">
+          <SettingsRow
+            label="Bio"
+            hint="Tell prospects what outcomes you help create."
+          >
             <textarea
               className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={form.bio}
@@ -189,7 +215,10 @@ export function PublicProfileSettings() {
             />
             <div className="flex flex-wrap gap-2">
               {form.specialties.map((tag) => (
-                <span key={tag} className="rounded-full border border-border bg-muted/40 px-2 py-1 text-xs">
+                <span
+                  key={tag}
+                  className="rounded-full border border-border bg-muted/40 px-2 py-1 text-xs"
+                >
                   {tag}
                 </span>
               ))}
@@ -237,26 +266,38 @@ export function PublicProfileSettings() {
             />
             <div className="flex flex-wrap gap-2">
               {form.languages.map((tag) => (
-                <span key={tag} className="rounded-full border border-border bg-muted/40 px-2 py-1 text-xs">
+                <span
+                  key={tag}
+                  className="rounded-full border border-border bg-muted/40 px-2 py-1 text-xs"
+                >
                   {tag}
                 </span>
               ))}
             </div>
           </SettingsRow>
 
-          <SettingsRow label="Starting price" hint="Optional monthly starting price.">
+          <SettingsRow
+            label="Starting price"
+            hint="Optional monthly starting price."
+          >
             <Input
               type="number"
               min={0}
               value={form.startingPrice}
               onChange={(event) =>
-                setForm((prev) => ({ ...prev, startingPrice: event.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  startingPrice: event.target.value,
+                }))
               }
               placeholder="149"
             />
           </SettingsRow>
 
-          <SettingsRow label="Profile media" hint="Upload hooks can be wired to storage later.">
+          <SettingsRow
+            label="Profile media"
+            hint="Upload hooks can be wired to storage later."
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
                 <Label className="mb-2 block text-xs uppercase tracking-[0.14em] text-muted-foreground">
@@ -265,7 +306,10 @@ export function PublicProfileSettings() {
                 <Input
                   value={form.profilePhoto}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, profilePhoto: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      profilePhoto: event.target.value,
+                    }))
                   }
                   placeholder="Image URL or upload later"
                 />
@@ -277,7 +321,10 @@ export function PublicProfileSettings() {
                 <Input
                   value={form.coverPhoto}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, coverPhoto: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      coverPhoto: event.target.value,
+                    }))
                   }
                   placeholder="Image URL or upload later"
                 />
@@ -286,7 +333,11 @@ export function PublicProfileSettings() {
           </SettingsRow>
 
           <SettingsActions>
-            <Button type="button" variant="secondary" onClick={() => setPreviewOpen(true)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setPreviewOpen(true)}
+            >
               Preview public profile
             </Button>
             <Button
@@ -306,15 +357,23 @@ export function PublicProfileSettings() {
           <DialogHeader>
             <DialogTitle>Public profile preview</DialogTitle>
             <DialogDescription>
-              Preview route will point to <code>/coaches/[slug]</code> once marketplace pages are enabled.
+              Preview route will point to <code>/coaches/[slug]</code> once
+              marketplace pages are enabled.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
-            <p className="text-lg font-semibold">{form.displayName || "Coach profile"}</p>
-            <p className="text-sm text-muted-foreground">{form.headline || "Headline"}</p>
-            <p className="text-sm text-foreground">{form.bio || "Bio preview"}</p>
+            <p className="text-lg font-semibold">
+              {form.displayName || "Coach profile"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {form.headline || "Headline"}
+            </p>
+            <p className="text-sm text-foreground">
+              {form.bio || "Bio preview"}
+            </p>
             <p className="text-xs text-muted-foreground">
-              {form.location || "Location"} - {form.trainingMode.replace("_", " ")}
+              {form.location || "Location"} -{" "}
+              {form.trainingMode.replace("_", " ")}
             </p>
           </div>
           <DialogFooter>

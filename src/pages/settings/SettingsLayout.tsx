@@ -9,22 +9,28 @@ export function SettingsLayout() {
   return (
     <div className="space-y-5">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Settings
+        </h1>
         <p className="text-sm text-muted-foreground">
           Manage workspace, account, and product defaults.
         </p>
       </header>
 
       <div className="md:hidden">
-        <label htmlFor="settings-section-select" className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <label
+          htmlFor="settings-section-select"
+          className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+        >
           Settings section
         </label>
         <select
           id="settings-section-select"
           className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
           value={
-            settingsNavItems.find((item) => location.pathname.startsWith(item.to))?.to ??
-            "/settings/workspace"
+            settingsNavItems.find((item) =>
+              location.pathname.startsWith(item.to),
+            )?.to ?? "/settings/workspace"
           }
           onChange={(event) => navigate(event.target.value)}
         >
@@ -59,8 +65,12 @@ export function SettingsLayout() {
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="space-y-1">
-                    <span className="block text-sm font-medium">{item.label}</span>
-                    <span className="block text-xs text-muted-foreground">{item.description}</span>
+                    <span className="block text-sm font-medium">
+                      {item.label}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {item.description}
+                    </span>
                   </span>
                 </NavLink>
               );

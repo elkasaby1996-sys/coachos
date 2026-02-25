@@ -20,7 +20,9 @@ export function WorkspaceSettings() {
   const [logoFileName, setLogoFileName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
 
   const workspaceQuery = useQuery({
     queryKey: ["settings-workspace", workspaceId],
@@ -74,10 +76,14 @@ export function WorkspaceSettings() {
 
       setToastVariant("success");
       setToastMessage("Workspace settings saved.");
-      await queryClient.invalidateQueries({ queryKey: ["settings-workspace", workspaceId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["settings-workspace", workspaceId],
+      });
     } catch (error) {
       setToastVariant("error");
-      setToastMessage(error instanceof Error ? error.message : "Unable to save workspace.");
+      setToastMessage(
+        error instanceof Error ? error.message : "Unable to save workspace.",
+      );
     } finally {
       setSaving(false);
     }
@@ -124,9 +130,13 @@ export function WorkspaceSettings() {
               >
                 <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
                   <p className="text-sm text-foreground">
-                    {logoFileName ? `Selected: ${logoFileName}` : "No logo selected"}
+                    {logoFileName
+                      ? `Selected: ${logoFileName}`
+                      : "No logo selected"}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">Recommended: square image, minimum 256x256.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Recommended: square image, minimum 256x256.
+                  </p>
                   <div className="mt-3 flex items-center gap-2">
                     <label className="inline-flex">
                       <Input

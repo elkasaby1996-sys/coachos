@@ -16,7 +16,9 @@ export function AppearanceSettings() {
   const [selectedTheme, setSelectedTheme] = useState(themePreference);
   const [selectedCompact, setSelectedCompact] = useState(compactDensity);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">("success");
+  const [toastVariant, setToastVariant] = useState<"success" | "error">(
+    "success",
+  );
 
   useEffect(() => {
     setSelectedTheme(themePreference);
@@ -33,7 +35,8 @@ export function AppearanceSettings() {
   }, [toastMessage]);
 
   const hasChanges = useMemo(
-    () => selectedTheme !== themePreference || selectedCompact !== compactDensity,
+    () =>
+      selectedTheme !== themePreference || selectedCompact !== compactDensity,
     [selectedTheme, themePreference, selectedCompact, compactDensity],
   );
 
@@ -83,7 +86,10 @@ export function AppearanceSettings() {
           description="Theme applies immediately. Save to persist in your account profile."
           noBorder
         >
-          <SettingsRow label="Theme" hint="Default mode is dark unless explicitly changed.">
+          <SettingsRow
+            label="Theme"
+            hint="Default mode is dark unless explicitly changed."
+          >
             <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
               {(["system", "dark", "light"] as const).map((theme) => (
                 <Button
@@ -100,15 +106,22 @@ export function AppearanceSettings() {
             </div>
           </SettingsRow>
 
-          <SettingsRow label="Density" hint="Compact mode reduces spacing in tables and cards.">
+          <SettingsRow
+            label="Density"
+            hint="Compact mode reduces spacing in tables and cards."
+          >
             <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
               <div>
                 <p className="text-sm font-medium">Compact mode</p>
-                <p className="text-xs text-muted-foreground">Useful for data-dense coaching workflows.</p>
+                <p className="text-xs text-muted-foreground">
+                  Useful for data-dense coaching workflows.
+                </p>
               </div>
               <Switch
                 checked={selectedCompact}
-                onCheckedChange={(checked) => void applyDensityOptimistically(checked)}
+                onCheckedChange={(checked) =>
+                  void applyDensityOptimistically(checked)
+                }
               />
             </div>
           </SettingsRow>
