@@ -359,7 +359,7 @@ export function PtBaselineTemplatesPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary" size="sm">
-            <Link to="/pt/settings">Back to settings</Link>
+            <Link to="/settings/defaults">Back to settings</Link>
           </Button>
           <Button size="sm" onClick={openCreateDialog}>
             New template

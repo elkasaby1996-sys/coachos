@@ -208,7 +208,7 @@ export function AuthComponent({
         setBusyAction("none");
       }
     },
-    [],
+    [isSignUp],
   );
 
   const onSubmitEmail = async (event: React.FormEvent<HTMLFormElement>) => {
