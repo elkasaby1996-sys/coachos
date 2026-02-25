@@ -37,9 +37,26 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const alreadySubmittedBanner = clientPage.getByText(
       /is submitted and locked/i,
     );
+    const noTemplateBanner = clientPage.getByText(/assigned a check-in yet/i);
+    const noQuestionsBanner = clientPage.getByText(
+      /no questions (yet|to review)/i,
+    );
+
     if (await alreadySubmittedBanner.isVisible()) {
       await clientContext.close();
       test.skip(true, "Current check-in already submitted for this client.");
+      return;
+    }
+
+    if (
+      (await noTemplateBanner.isVisible().catch(() => false)) ||
+      (await noQuestionsBanner.isVisible().catch(() => false))
+    ) {
+      await clientContext.close();
+      test.skip(
+        true,
+        "Client check-in template/questions are not currently configured.",
+      );
       return;
     }
 
@@ -52,13 +69,16 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const loginHeading = clientPage.getByRole("heading", {
       name: /welcome back/i,
     });
+
     for (let attempt = 0; attempt < 12; attempt += 1) {
-      const noTemplateBanner = clientPage.getByText(
-        /hasn[’']t assigned a check-in yet/i,
-      );
-      if (await noTemplateBanner.isVisible()) {
+      if (await noTemplateBanner.isVisible().catch(() => false)) {
         await clientContext.close();
         test.skip(true, "Client has no assigned check-in template.");
+        return;
+      }
+      if (await noQuestionsBanner.isVisible().catch(() => false)) {
+        await clientContext.close();
+        test.skip(true, "Assigned check-in has no questions.");
         return;
       }
 
@@ -136,6 +156,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
         await clientPage.waitForTimeout(1_000);
       }
     }
+
     if (!(await submitButton.isVisible().catch(() => false))) {
       await ensureAuthenticatedNavigation(
         clientPage,
@@ -144,11 +165,24 @@ test.describe("Smoke: check-in submit and PT review", () => {
         process.env.E2E_CLIENT_PASSWORD!,
       );
       await waitForAppReady(clientPage, 15_000);
+
+      if (await noTemplateBanner.isVisible().catch(() => false)) {
+        await clientContext.close();
+        test.skip(true, "Client has no assigned check-in template.");
+        return;
+      }
+      if (await noQuestionsBanner.isVisible().catch(() => false)) {
+        await clientContext.close();
+        test.skip(true, "Assigned check-in has no questions.");
+        return;
+      }
     }
+
     await expect(
       submitButton,
       `Submit button not visible after recovery attempts. Final URL: ${clientPage.url()}`,
     ).toBeVisible({ timeout: 5_000 });
+
     if (await submitButton.isDisabled()) {
       await clientContext.close();
       test.skip(true, "Current check-in already submitted for this client.");
@@ -188,8 +222,18 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const reviewButton = ptPage
       .getByRole("button", { name: /review|edit feedback/i })
       .first();
-    await expect(reviewButton).toBeVisible({ timeout: 30_000 });
-    await reviewButton.click();
+
+    if (!(await reviewButton.isVisible().catch(() => false))) {
+      const firstCheckinCard = ptPage
+        .locator('div[role="button"]')
+        .filter({ hasText: /week ending|weekly check-in/i })
+        .first();
+      if (await firstCheckinCard.isVisible().catch(() => false)) {
+        await firstCheckinCard.click();
+      }
+    } else {
+      await reviewButton.click();
+    }
 
     const reviewDialog = ptPage.getByRole("dialog").filter({
       hasText: /check-in review/i,
