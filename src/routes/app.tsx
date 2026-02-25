@@ -32,12 +32,19 @@ import { PtCheckinsQueuePage } from "../pages/pt/checkins";
 import { PtCheckinTemplatesPage } from "../pages/pt/checkin-templates";
 import { PtCalendarPage } from "../pages/pt/calendar";
 import { PtMessagesPage } from "../pages/pt/messages";
-import { PtSettingsPage } from "../pages/pt/settings";
 import { PtBaselineTemplatesPage } from "../pages/pt/settings-baseline";
 import { PtExerciseLibraryPage } from "../pages/pt/settings-exercises";
 import { PtNutritionPage } from "../pages/pt/nutrition";
 import { PtNutritionTemplateBuilderPage } from "../pages/pt/nutrition-template-builder";
 import { PtWorkspaceOnboardingPage } from "../pages/pt/onboarding-workspace";
+import { SettingsLayout } from "../pages/settings/SettingsLayout";
+import { WorkspaceSettings } from "../pages/settings/sections/WorkspaceSettings";
+import { PublicProfileSettings } from "../pages/settings/sections/PublicProfileSettings";
+import { AccountSettings } from "../pages/settings/sections/AccountSettings";
+import { BillingSettings } from "../pages/settings/sections/BillingSettings";
+import { AppearanceSettings } from "../pages/settings/sections/AppearanceSettings";
+import { DefaultsSettings } from "../pages/settings/sections/DefaultsSettings";
+import { DangerZoneSettings } from "../pages/settings/sections/DangerZoneSettings";
 
 import { ClientHomePage } from "../pages/client/home";
 import { ClientWorkoutDetailPage } from "../pages/client/workout-detail";
@@ -303,7 +310,10 @@ export function App() {
         <Route path="checkins" element={<PtCheckinsQueuePage />} />
         <Route path="checkins/templates" element={<PtCheckinTemplatesPage />} />
         <Route path="messages" element={<PtMessagesPage />} />
-        <Route path="settings" element={<PtSettingsPage />} />
+        <Route
+          path="settings"
+          element={<Navigate to="/settings/workspace" replace />}
+        />
         <Route path="settings/baseline" element={<PtBaselineTemplatesPage />} />
         <Route path="settings/exercises" element={<PtExerciseLibraryPage />} />
         <Route path="nutrition-programs" element={<PtNutritionPage />} />
@@ -323,6 +333,28 @@ export function App() {
           path="nutrition/templates/:id"
           element={<PtNutritionTemplateBuilderPage />}
         />
+      </Route>
+
+      <Route
+        path="/settings"
+        element={
+          <RequireAuth>
+            <RequireRole allow={["pt"]}>
+              <PtLayout />
+            </RequireRole>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<Navigate to="/settings/workspace" replace />} />
+        <Route element={<SettingsLayout />}>
+          <Route path="workspace" element={<WorkspaceSettings />} />
+          <Route path="public-profile" element={<PublicProfileSettings />} />
+          <Route path="account" element={<AccountSettings />} />
+          <Route path="billing" element={<BillingSettings />} />
+          <Route path="appearance" element={<AppearanceSettings />} />
+          <Route path="defaults" element={<DefaultsSettings />} />
+          <Route path="danger" element={<DangerZoneSettings />} />
+        </Route>
       </Route>
 
       {/* Client Side */}

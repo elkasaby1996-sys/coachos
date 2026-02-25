@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Menu,
   Plus,
+  Settings,
   Search,
   Sparkles,
   Users,
@@ -47,6 +48,7 @@ const navItems = [
   { label: "Nutrition Programs", to: "/pt/nutrition-programs", icon: Apple },
   { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
   { label: "Check-ins", to: "/pt/checkins", icon: ClipboardList },
+  { label: "Settings", to: "/settings/workspace", icon: Settings },
 ];
 
 type NotificationItem = {
@@ -663,7 +665,9 @@ export function PtLayout() {
                   <DropdownMenuContent align="end" className="w-52">
                     <DropdownMenuLabel>Profile</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/pt/settings")}>
+                    <DropdownMenuItem
+                      onClick={() => navigate("/settings/workspace")}
+                    >
                       Settings
                     </DropdownMenuItem>
                     <div className="px-2 py-1.5">
