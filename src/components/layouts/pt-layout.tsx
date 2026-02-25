@@ -3,6 +3,8 @@ import {
   Bell,
   BookOpen,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
@@ -51,6 +53,8 @@ const navItems = [
   { label: "Settings", to: "/settings/workspace", icon: Settings },
 ];
 
+const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
+
 type NotificationItem = {
   id: string;
   title: string;
@@ -75,6 +79,7 @@ export function PtLayout() {
     authError?.message ??
     (workspaceId ? null : "Workspace not found.");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -336,6 +341,20 @@ export function PtLayout() {
     "U"
   ).toUpperCase();
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(PT_SIDEBAR_COLLAPSE_KEY);
+    setDesktopNavCollapsed(raw === "1");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      PT_SIDEBAR_COLLAPSE_KEY,
+      desktopNavCollapsed ? "1" : "0",
+    );
+  }, [desktopNavCollapsed]);
+
   if (loading) {
     return <LoadingScreen message="Loading..." />;
   }
@@ -373,40 +392,87 @@ export function PtLayout() {
   return (
     <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
-        <aside className="hidden w-72 flex-col border-r border-border bg-card px-4 py-6 md:flex">
+        <aside
+          className={cn(
+            "hidden flex-col border-r border-border bg-card py-6 md:flex",
+            desktopNavCollapsed ? "w-20 px-2" : "w-72 px-4",
+          )}
+        >
           <div className="mb-6 flex items-center justify-between">
-            <div>
-              <span className="text-lg font-semibold tracking-tight">
+            <div className={cn(desktopNavCollapsed && "mx-auto")}>
+              <span
+                className={cn(
+                  "text-lg font-semibold tracking-tight",
+                  desktopNavCollapsed && "sr-only",
+                )}
+              >
                 CoachOS
               </span>
-              <p className="text-xs text-muted-foreground">
+              <p
+                className={cn(
+                  "text-xs text-muted-foreground",
+                  desktopNavCollapsed && "hidden",
+                )}
+              >
                 Performance console
               </p>
             </div>
-            <Sparkles className="h-5 w-5 text-accent" />
-          </div>
-          <div className="mb-8 rounded-xl border border-border bg-background p-3">
-            <p className="text-xs text-muted-foreground">Workspace</p>
-            <div className="mt-2 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Velocity PT Lab</p>
-                <p className="text-xs text-muted-foreground">
-                  Coach - Pro plan
-                </p>
-              </div>
-              <Button size="icon" variant="secondary">
-                <svg
-                  className="h-4 w-4 text-muted-foreground"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+            <div className="flex items-center gap-1">
+              <Sparkles
+                className={cn(
+                  "h-5 w-5 text-accent",
+                  desktopNavCollapsed && "hidden",
+                )}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => setDesktopNavCollapsed((prev) => !prev)}
+                aria-label={
+                  desktopNavCollapsed
+                    ? "Expand navigation"
+                    : "Collapse navigation"
+                }
+              >
+                {desktopNavCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
+          {!desktopNavCollapsed ? (
+            <div className="mb-8 rounded-xl border border-border bg-background p-3">
+              <p className="text-xs text-muted-foreground">Workspace</p>
+              <div className="mt-2 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold">Velocity PT Lab</p>
+                  <p className="text-xs text-muted-foreground">
+                    Coach - Pro plan
+                  </p>
+                </div>
+                <Button size="icon" variant="secondary">
+                  <svg
+                    className="h-4 w-4 text-muted-foreground"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6 flex justify-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-sm font-semibold">
+                PT
+              </div>
+            </div>
+          )}
           <nav className="flex flex-1 flex-col gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -414,9 +480,13 @@ export function PtLayout() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  title={desktopNavCollapsed ? item.label : undefined}
                   className={({ isActive }) =>
                     cn(
-                      "group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-muted",
+                      "group flex items-center rounded-xl border border-transparent text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-muted",
+                      desktopNavCollapsed
+                        ? "justify-center px-2 py-2"
+                        : "gap-3 px-3 py-2",
                       isActive &&
                         "border-accent/40 bg-accent/10 text-foreground shadow-sm shadow-accent/10",
                     )
@@ -425,20 +495,24 @@ export function PtLayout() {
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-foreground group-hover:bg-background">
                     <Icon className="h-4 w-4" />
                   </span>
-                  {item.label}
+                  {!desktopNavCollapsed ? item.label : null}
                 </NavLink>
               );
             })}
           </nav>
-          <div className="mt-6 rounded-xl border border-border bg-muted/60 p-4 text-xs text-muted-foreground">
-            <p className="text-sm font-medium text-foreground">Need a push?</p>
-            <p className="mt-1">
-              Enable performance alerts for clients with low adherence.
-            </p>
-            <Button className="mt-3 w-full" size="sm">
-              Activate alerts
-            </Button>
-          </div>
+          {!desktopNavCollapsed ? (
+            <div className="mt-6 rounded-xl border border-border bg-muted/60 p-4 text-xs text-muted-foreground">
+              <p className="text-sm font-medium text-foreground">
+                Need a push?
+              </p>
+              <p className="mt-1">
+                Enable performance alerts for clients with low adherence.
+              </p>
+              <Button className="mt-3 w-full" size="sm">
+                Activate alerts
+              </Button>
+            </div>
+          ) : null}
         </aside>
         <div
           className={cn(
