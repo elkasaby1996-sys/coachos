@@ -24,6 +24,14 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useAuth } from "../../lib/auth";
@@ -69,9 +78,22 @@ type ClientSummaryRow = {
   status: string | null;
 };
 
+type WorkspaceSwitcherOption = {
+  id: string;
+  name: string | null;
+};
+
 export function PtLayout() {
   const navigate = useNavigate();
-  const { workspaceId, loading, error } = useWorkspace();
+  const queryClient = useQueryClient();
+  const {
+    workspaceId,
+    workspaceIds,
+    loading,
+    error,
+    switchWorkspace,
+    refreshWorkspace,
+  } = useWorkspace();
   const { authError, user } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const errorMessage =
@@ -83,6 +105,31 @@ export function PtLayout() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [createWorkspaceError, setCreateWorkspaceError] = useState<
+    string | null
+  >(null);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const workspaceSwitcherQuery = useQuery({
+    queryKey: ["pt-workspace-switcher", user?.id, workspaceIds],
+    enabled: workspaceIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, name")
+        .in("id", workspaceIds);
+      if (error) throw error;
+      const rows = ((data ?? []) as WorkspaceSwitcherOption[]).sort(
+        (a, b) => workspaceIds.indexOf(a.id) - workspaceIds.indexOf(b.id),
+      );
+      return rows;
+    },
+  });
+  const workspaceOptions = workspaceSwitcherQuery.data ?? [];
+  const activeWorkspace =
+    workspaceOptions.find((workspace) => workspace.id === workspaceId) ?? null;
+  const workspaceDisplayName = activeWorkspace?.name?.trim() || "PT Workspace";
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -334,6 +381,52 @@ export function PtLayout() {
     return () => window.clearInterval(interval);
   }, [workspaceId, user?.id]);
 
+  const handleCreateWorkspace = async () => {
+    const nextName = newWorkspaceName.trim();
+    if (!nextName) {
+      setCreateWorkspaceError("Workspace name is required.");
+      return;
+    }
+
+    setIsCreatingWorkspace(true);
+    setCreateWorkspaceError(null);
+    try {
+      const { data, error } = await supabase.rpc("create_workspace", {
+        p_name: nextName,
+      });
+      if (error) throw error;
+
+      const createdWorkspaceId = Array.isArray(data)
+        ? ((data[0] as { workspace_id?: string } | undefined)?.workspace_id ??
+          null)
+        : ((data as { workspace_id?: string } | null)?.workspace_id ?? null);
+
+      if (!createdWorkspaceId) {
+        throw new Error("Workspace was created, but no workspace ID returned.");
+      }
+
+      switchWorkspace(createdWorkspaceId);
+      refreshWorkspace();
+      setNewWorkspaceName("");
+      setCreateWorkspaceOpen(false);
+
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey.some(
+            (part) => typeof part === "string" && part.includes("workspace"),
+          ),
+      });
+    } catch (createError) {
+      setCreateWorkspaceError(
+        createError instanceof Error
+          ? createError.message
+          : "Failed to create workspace.",
+      );
+    } finally {
+      setIsCreatingWorkspace(false);
+    }
+  };
+
   const unreadCount = useMemo(() => notifications.length, [notifications]);
   const userInitial = (
     user?.email?.charAt(0) ||
@@ -448,22 +541,62 @@ export function PtLayout() {
               <p className="text-xs text-muted-foreground">Workspace</p>
               <div className="mt-2 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold">Velocity PT Lab</p>
+                  <p className="text-sm font-semibold">
+                    {workspaceDisplayName}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Coach - Pro plan
                   </p>
                 </div>
-                <Button size="icon" variant="secondary">
-                  <svg
-                    className="h-4 w-4 text-muted-foreground"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      aria-label="Switch workspace"
+                    >
+                      <svg
+                        className="h-4 w-4 text-muted-foreground"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {workspaceSwitcherQuery.isLoading ? (
+                      <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                    ) : workspaceOptions.length === 0 ? (
+                      <DropdownMenuItem disabled>
+                        No workspaces found
+                      </DropdownMenuItem>
+                    ) : (
+                      workspaceOptions.map((workspace) => (
+                        <DropdownMenuItem
+                          key={workspace.id}
+                          onClick={() => switchWorkspace(workspace.id)}
+                        >
+                          {workspace.name?.trim() || "PT Workspace"}
+                          {workspace.id === workspaceId ? " (Current)" : ""}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setCreateWorkspaceError(null);
+                        setCreateWorkspaceOpen(true);
+                      }}
+                    >
+                      Create new workspace
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           ) : (
@@ -559,22 +692,63 @@ export function PtLayout() {
             <p className="text-xs text-muted-foreground">Workspace</p>
             <div className="mt-2 flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold">Velocity PT Lab</p>
+                <p className="text-sm font-semibold">{workspaceDisplayName}</p>
                 <p className="text-xs text-muted-foreground">
                   Coach - Pro plan
                 </p>
               </div>
-              <Button size="icon" variant="secondary">
-                <svg
-                  className="h-4 w-4 text-muted-foreground"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    aria-label="Switch workspace"
+                  >
+                    <svg
+                      className="h-4 w-4 text-muted-foreground"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {workspaceSwitcherQuery.isLoading ? (
+                    <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                  ) : workspaceOptions.length === 0 ? (
+                    <DropdownMenuItem disabled>
+                      No workspaces found
+                    </DropdownMenuItem>
+                  ) : (
+                    workspaceOptions.map((workspace) => (
+                      <DropdownMenuItem
+                        key={workspace.id}
+                        onClick={() => {
+                          switchWorkspace(workspace.id);
+                          setMobileNavOpen(false);
+                        }}
+                      >
+                        {workspace.name?.trim() || "PT Workspace"}
+                        {workspace.id === workspaceId ? " (Current)" : ""}
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setCreateWorkspaceError(null);
+                      setCreateWorkspaceOpen(true);
+                    }}
+                  >
+                    Create new workspace
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <nav className="flex flex-1 flex-col gap-2">
@@ -773,6 +947,60 @@ export function PtLayout() {
           </main>
         </div>
       </div>
+      <Dialog open={createWorkspaceOpen} onOpenChange={setCreateWorkspaceOpen}>
+        <DialogContent className="w-[92vw] max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Create workspace</DialogTitle>
+            <DialogDescription>
+              Add another workspace to this PT account, then switch between them
+              from the workspace card.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label
+              htmlFor="create-workspace-name"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Workspace name
+            </label>
+            <Input
+              id="create-workspace-name"
+              value={newWorkspaceName}
+              onChange={(event) => setNewWorkspaceName(event.target.value)}
+              placeholder="Enter workspace name"
+              autoFocus
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleCreateWorkspace();
+                }
+              }}
+            />
+            {createWorkspaceError ? (
+              <p className="text-xs text-danger">{createWorkspaceError}</p>
+            ) : null}
+          </div>
+          <DialogFooter className="mt-2 flex-row justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => setCreateWorkspaceOpen(false)}
+              disabled={isCreatingWorkspace}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={handleCreateWorkspace}
+              disabled={isCreatingWorkspace}
+            >
+              {isCreatingWorkspace ? "Creating..." : "Create workspace"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

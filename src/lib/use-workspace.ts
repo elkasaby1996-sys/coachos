@@ -1,13 +1,33 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { useAuth } from "./auth";
+
+const ACTIVE_WORKSPACE_STORAGE_KEY = "coachos_workspace_id";
 
 export function useWorkspace() {
   const { user } = useAuth();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [workspaceIds, setWorkspaceIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hasCached, setHasCached] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  const switchWorkspace = useCallback((nextWorkspaceId: string) => {
+    if (!nextWorkspaceId) return;
+    setWorkspaceId(nextWorkspaceId);
+    setHasCached(true);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        ACTIVE_WORKSPACE_STORAGE_KEY,
+        nextWorkspaceId,
+      );
+    }
+  }, []);
+
+  const refreshWorkspace = useCallback(() => {
+    setReloadNonce((value) => value + 1);
+  }, []);
 
   const withTimeout = async <T>(
     promise: PromiseLike<T>,
@@ -31,7 +51,7 @@ export function useWorkspace() {
   useEffect(() => {
     let mounted = true;
     if (typeof window !== "undefined") {
-      const cached = window.localStorage.getItem("coachos_workspace_id");
+      const cached = window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
       if (cached) {
         setWorkspaceId(cached);
         setHasCached(true);
@@ -42,8 +62,12 @@ export function useWorkspace() {
     const loadWorkspace = async () => {
       if (!user?.id) {
         setWorkspaceId(null);
+        setWorkspaceIds([]);
         setHasCached(false);
         setLoading(false);
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+        }
         return;
       }
 
@@ -59,19 +83,34 @@ export function useWorkspace() {
             .select("workspace_id, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: true })
-            .limit(1)
-            .maybeSingle(),
+            .returns<
+              Array<{ workspace_id: string | null; created_at: string }>
+            >(),
           8000,
           "Workspace lookup timed out (8s).",
         );
 
         if (memberError) throw memberError;
-        if (memberData?.workspace_id) {
-          if (mounted) setWorkspaceId(memberData.workspace_id);
+        const memberWorkspaceIds = (memberData ?? [])
+          .map((member) => member.workspace_id)
+          .filter((id): id is string => Boolean(id));
+        if (memberWorkspaceIds.length > 0) {
+          const cachedWorkspaceId =
+            typeof window !== "undefined"
+              ? window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)
+              : null;
+          const selectedWorkspaceId =
+            cachedWorkspaceId && memberWorkspaceIds.includes(cachedWorkspaceId)
+              ? cachedWorkspaceId
+              : memberWorkspaceIds[0];
+          if (mounted) {
+            setWorkspaceIds(memberWorkspaceIds);
+            setWorkspaceId(selectedWorkspaceId);
+          }
           if (typeof window !== "undefined") {
             window.localStorage.setItem(
-              "coachos_workspace_id",
-              memberData.workspace_id,
+              ACTIVE_WORKSPACE_STORAGE_KEY,
+              selectedWorkspaceId,
             );
           }
           return;
@@ -91,10 +130,13 @@ export function useWorkspace() {
         if (!clientData?.workspace_id) {
           throw new Error("Workspace not found for this user.");
         }
-        if (mounted) setWorkspaceId(clientData.workspace_id);
+        if (mounted) {
+          setWorkspaceId(clientData.workspace_id);
+          setWorkspaceIds([clientData.workspace_id]);
+        }
         if (typeof window !== "undefined") {
           window.localStorage.setItem(
-            "coachos_workspace_id",
+            ACTIVE_WORKSPACE_STORAGE_KEY,
             clientData.workspace_id,
           );
         }
@@ -102,8 +144,9 @@ export function useWorkspace() {
         console.error("Workspace bootstrap failed", err);
         if (mounted) {
           setWorkspaceId(null);
+          setWorkspaceIds([]);
           if (typeof window !== "undefined") {
-            window.localStorage.removeItem("coachos_workspace_id");
+            window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
           }
           setError(
             err instanceof Error
@@ -121,7 +164,14 @@ export function useWorkspace() {
     return () => {
       mounted = false;
     };
-  }, [user?.id, hasCached]);
+  }, [user?.id, hasCached, reloadNonce]);
 
-  return { workspaceId, loading, error };
+  return {
+    workspaceId,
+    workspaceIds,
+    loading,
+    error,
+    switchWorkspace,
+    refreshWorkspace,
+  };
 }

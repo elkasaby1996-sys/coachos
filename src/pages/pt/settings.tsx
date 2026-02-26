@@ -16,6 +16,7 @@ import { safeSelect } from "../../lib/supabase-safe";
 import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useAuth } from "../../lib/auth";
+import { refreshWorkspaceNameAcrossApp } from "../../lib/workspace-query";
 
 export function PtSettingsPage() {
   const navigate = useNavigate();
@@ -168,9 +169,7 @@ export function PtSettingsPage() {
     setBrandingSaveStatus("idle");
     setToastVariant("success");
     setToastMessage("Workspace name updated.");
-    await queryClient.invalidateQueries({
-      queryKey: ["pt-settings-workspace", workspaceId],
-    });
+    await refreshWorkspaceNameAcrossApp(queryClient, workspaceId, nextName);
   };
 
   const handleSaveAppearance = async () => {
