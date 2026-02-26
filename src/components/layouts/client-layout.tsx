@@ -1,11 +1,13 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   Home,
   LineChart,
+  LogOut,
   MessageCircle,
   UserCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
@@ -25,8 +27,10 @@ const navItems = [
 ];
 
 export function ClientLayout() {
+  const navigate = useNavigate();
   const { workspaceId, loading, error } = useWorkspace();
   const { authError } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const errorMessage =
     error?.message ??
     authError?.message ??
@@ -66,6 +70,17 @@ export function ClientLayout() {
     );
   }
 
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+      navigate("/login", { replace: true });
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="flex min-h-screen w-full">
@@ -93,6 +108,16 @@ export function ClientLayout() {
               </NavLink>
             ))}
           </nav>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-4 w-full justify-start gap-2"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+          >
+            <LogOut className="h-4 w-4" />
+            {isSigningOut ? "Logging out..." : "Log out"}
+          </Button>
         </aside>
         <div className="flex flex-1 min-w-0 flex-col">
           <header className="border-b border-border bg-card py-4 md:hidden">
@@ -126,6 +151,15 @@ export function ClientLayout() {
                   {item.label}
                 </NavLink>
               ))}
+              <button
+                type="button"
+                className="flex flex-col items-center gap-1 text-xs text-muted-foreground"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+              >
+                <LogOut className="h-5 w-5" />
+                {isSigningOut ? "..." : "Logout"}
+              </button>
             </PageContainer>
           </nav>
         </div>

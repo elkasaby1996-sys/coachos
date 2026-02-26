@@ -5,6 +5,7 @@ import { Input } from "../../../components/ui/input";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { useWorkspace } from "../../../lib/use-workspace";
 import { supabase } from "../../../lib/supabase";
+import { refreshWorkspaceNameAcrossApp } from "../../../lib/workspace-query";
 import {
   SettingsActions,
   SettingsBlock,
@@ -76,9 +77,7 @@ export function WorkspaceSettings() {
 
       setToastVariant("success");
       setToastMessage("Workspace settings saved.");
-      await queryClient.invalidateQueries({
-        queryKey: ["settings-workspace", workspaceId],
-      });
+      await refreshWorkspaceNameAcrossApp(queryClient, workspaceId, trimmedName);
     } catch (error) {
       setToastVariant("error");
       setToastMessage(
