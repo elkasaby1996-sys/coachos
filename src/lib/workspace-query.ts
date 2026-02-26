@@ -45,6 +45,7 @@ export async function refreshWorkspaceNameAcrossApp(
   );
 
   await queryClient.invalidateQueries({
-    predicate: (query) => isWorkspaceScopedQueryKey(query.queryKey, workspaceId),
+    predicate: (query) =>
+      isWorkspaceScopedQueryKey(query.queryKey, workspaceId),
   });
 }

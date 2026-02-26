@@ -77,7 +77,11 @@ export function WorkspaceSettings() {
 
       setToastVariant("success");
       setToastMessage("Workspace settings saved.");
-      await refreshWorkspaceNameAcrossApp(queryClient, workspaceId, trimmedName);
+      await refreshWorkspaceNameAcrossApp(
+        queryClient,
+        workspaceId,
+        trimmedName,
+      );
     } catch (error) {
       setToastVariant("error");
       setToastMessage(

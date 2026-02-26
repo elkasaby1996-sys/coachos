@@ -18,7 +18,10 @@ export function useWorkspace() {
     setWorkspaceId(nextWorkspaceId);
     setHasCached(true);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, nextWorkspaceId);
+      window.localStorage.setItem(
+        ACTIVE_WORKSPACE_STORAGE_KEY,
+        nextWorkspaceId,
+      );
     }
   }, []);
 
@@ -80,7 +83,9 @@ export function useWorkspace() {
             .select("workspace_id, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: true })
-            .returns<Array<{ workspace_id: string | null; created_at: string }>>(),
+            .returns<
+              Array<{ workspace_id: string | null; created_at: string }>
+            >(),
           8000,
           "Workspace lookup timed out (8s).",
         );

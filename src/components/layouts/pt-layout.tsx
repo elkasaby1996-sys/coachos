@@ -541,14 +541,20 @@ export function PtLayout() {
               <p className="text-xs text-muted-foreground">Workspace</p>
               <div className="mt-2 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold">{workspaceDisplayName}</p>
+                  <p className="text-sm font-semibold">
+                    {workspaceDisplayName}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Coach - Pro plan
                   </p>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="secondary" aria-label="Switch workspace">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      aria-label="Switch workspace"
+                    >
                       <svg
                         className="h-4 w-4 text-muted-foreground"
                         viewBox="0 0 24 24"
@@ -566,7 +572,9 @@ export function PtLayout() {
                     {workspaceSwitcherQuery.isLoading ? (
                       <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
                     ) : workspaceOptions.length === 0 ? (
-                      <DropdownMenuItem disabled>No workspaces found</DropdownMenuItem>
+                      <DropdownMenuItem disabled>
+                        No workspaces found
+                      </DropdownMenuItem>
                     ) : (
                       workspaceOptions.map((workspace) => (
                         <DropdownMenuItem
@@ -691,7 +699,11 @@ export function PtLayout() {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="secondary" aria-label="Switch workspace">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    aria-label="Switch workspace"
+                  >
                     <svg
                       className="h-4 w-4 text-muted-foreground"
                       viewBox="0 0 24 24"
@@ -709,7 +721,9 @@ export function PtLayout() {
                   {workspaceSwitcherQuery.isLoading ? (
                     <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
                   ) : workspaceOptions.length === 0 ? (
-                    <DropdownMenuItem disabled>No workspaces found</DropdownMenuItem>
+                    <DropdownMenuItem disabled>
+                      No workspaces found
+                    </DropdownMenuItem>
                   ) : (
                     workspaceOptions.map((workspace) => (
                       <DropdownMenuItem
