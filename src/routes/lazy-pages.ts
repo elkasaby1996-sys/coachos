@@ -206,11 +206,6 @@ export const ClientProfilePage = lazy(() =>
     default: m.ClientProfilePage,
   })),
 );
-export const ClientSettingsPage = lazy(() =>
-  import("../pages/client/settings").then((m) => ({
-    default: m.ClientSettingsPage,
-  })),
-);
 export const ClientHabitsPage = lazy(() =>
   import("../pages/client/habits").then((m) => ({
     default: m.ClientHabitsPage,
