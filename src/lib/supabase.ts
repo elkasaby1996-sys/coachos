@@ -1,15 +1,32 @@
 import { createClient } from "@supabase/supabase-js";
 
-export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
-export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Avoid crashing the whole app at module load when env vars are missing.
-// Runtime guards still enforce `supabaseConfigured` before auth flows proceed.
-const fallbackSupabaseUrl = "http://127.0.0.1:54321";
-const fallbackSupabaseAnonKey = "missing-supabase-anon-key";
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    "Missing Supabase environment variables. Check your .env.local file.",
+  );
+}
 
-export const supabase = createClient(
-  supabaseConfigured ? supabaseUrl : fallbackSupabaseUrl,
-  supabaseConfigured ? supabaseAnonKey : fallbackSupabaseAnonKey,
-);
+const isServiceRoleKey = (jwt: string) => {
+  try {
+    const payloadPart = jwt.split(".")[1];
+    if (!payloadPart) return false;
+    const payloadJson = atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/"));
+    return payloadJson.includes('"role":"service_role"');
+  } catch {
+    return false;
+  }
+};
+
+if (isServiceRoleKey(supabaseAnonKey)) {
+  throw new Error(
+    "Supabase service role key detected in client env. This key must only be used server-side.",
+  );
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export { supabaseUrl, supabaseAnonKey };

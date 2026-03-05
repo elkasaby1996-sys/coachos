@@ -13,6 +13,7 @@ import { supabase } from "../../../lib/supabase";
 
 export function AccountSettings() {
   const { session } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -32,14 +33,34 @@ export function AccountSettings() {
     confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   const canSubmit = useMemo(
-    () => newPassword.length >= 8 && newPassword === confirmPassword && !saving,
-    [newPassword, confirmPassword, saving],
+    () =>
+      currentPassword.length > 0 &&
+      newPassword.length >= 8 &&
+      newPassword === confirmPassword &&
+      !saving,
+    [currentPassword, newPassword, confirmPassword, saving],
   );
 
   const handleChangePassword = async () => {
     if (!canSubmit) return;
     setSaving(true);
     try {
+      const email = session?.user?.email;
+      if (!email) {
+        throw new Error(
+          "Password change requires an email/password account session.",
+        );
+      }
+
+      const { data: reauthData, error: reauthError } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password: currentPassword,
+        });
+      if (reauthError || !reauthData.user) {
+        throw new Error("Current password is incorrect.");
+      }
+
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -47,6 +68,7 @@ export function AccountSettings() {
 
       setToastVariant("success");
       setToastMessage("Password updated.");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
@@ -79,6 +101,19 @@ export function AccountSettings() {
               value={session?.user?.email ?? "No email"}
               readOnly
               disabled
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label="Current password"
+            hint="Required before you can set a new password."
+          >
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder="Enter current password"
+              data-testid="current-password-input"
             />
           </SettingsRow>
 

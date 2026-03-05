@@ -218,10 +218,15 @@ export function PtProgramBuilderPage() {
     payload: Partial<ProgramDayState>,
   ) => {
     const key = getDayKey(week, day);
+    const emptyDay: ProgramDayState = {
+      workout_template_id: null,
+      is_rest: false,
+      notes: "",
+    };
     setDaysMap((prev) => ({
       ...prev,
       [key]: {
-        ...prev[key],
+        ...(prev[key] ?? emptyDay),
         ...payload,
       },
     }));

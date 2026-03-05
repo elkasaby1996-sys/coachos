@@ -273,10 +273,11 @@ export function ClientHabitsPage() {
     );
     const weightUnit =
       weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
+    const firstWeightLog = weightLogs[0];
+    const lastWeightLog = weightLogs[weightLogs.length - 1];
     const weightChange =
-      weightLogs.length >= 2
-        ? (weightLogs[weightLogs.length - 1].weight_value ?? 0) -
-          (weightLogs[0].weight_value ?? 0)
+      firstWeightLog && lastWeightLog && weightLogs.length >= 2
+        ? (lastWeightLog.weight_value ?? 0) - (firstWeightLog.weight_value ?? 0)
         : null;
 
     return {

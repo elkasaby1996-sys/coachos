@@ -92,4 +92,4 @@ Set these repository secrets in GitHub Actions:
 - Migration runbook: `docs/migration-runbook.md`
 - Ops/monitoring checklist: `docs/ops-monitoring-checklist.md`
 - Ops incident runbook: `docs/ops-runbook.md`
-- Lint warnings triage: `docs-lint-triage.md`
+- Lint warnings triage: `docs/docs-lint-triage.md`

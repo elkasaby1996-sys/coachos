@@ -4,7 +4,7 @@ Use this checklist for every production release.
 
 ## 1. Code Health
 
-- [ ] `npm run lint` passes (warnings tracked in `docs-lint-triage.md`)
+- [ ] `npm run lint` passes (warnings tracked in `./docs-lint-triage.md`)
 - [ ] `npm run format` passes
 - [ ] `npm run build` passes
 - [ ] All migration files are committed and reviewed

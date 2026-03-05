@@ -21,7 +21,11 @@ const statusMap: Record<
 
 export function StatusPill({ status }: { status: string | null | undefined }) {
   const normalized = status?.toLowerCase() ?? "active";
-  const pill = statusMap[normalized] ?? statusMap.active;
+  const fallbackPill: { label: string; variant: "warning" } = {
+    label: "Pending",
+    variant: "warning",
+  };
+  const pill = statusMap[normalized] ?? statusMap.active ?? fallbackPill;
 
   return (
     <Badge

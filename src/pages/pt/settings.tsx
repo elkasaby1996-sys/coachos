@@ -49,6 +49,7 @@ export function PtSettingsPage() {
   const [appearanceCompactDensity, setAppearanceCompactDensity] =
     useState(compactDensity);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaveStatus, setPasswordSaveStatus] = useState<
@@ -193,6 +194,12 @@ export function PtSettingsPage() {
   };
 
   const handleChangePassword = async () => {
+    if (!currentPassword) {
+      setPasswordSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage("Current password is required.");
+      return;
+    }
     if (newPassword.length < 8) {
       setPasswordSaveStatus("error");
       setToastVariant("error");
@@ -207,6 +214,28 @@ export function PtSettingsPage() {
     }
 
     setPasswordSaveStatus("saving");
+    const email = session?.user?.email;
+    if (!email) {
+      setPasswordSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage(
+        "Password change requires an email/password account session.",
+      );
+      return;
+    }
+
+    const { data: reauthData, error: reauthError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+    if (reauthError || !reauthData.user) {
+      setPasswordSaveStatus("error");
+      setToastVariant("error");
+      setToastMessage("Current password is incorrect.");
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       setPasswordSaveStatus("error");
@@ -216,6 +245,7 @@ export function PtSettingsPage() {
     }
 
     setPasswordSaveStatus("idle");
+    setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
     setToastVariant("success");
@@ -296,6 +326,17 @@ export function PtSettingsPage() {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Current password
+              </label>
+              <Input
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                placeholder="Enter current password"
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 New password
