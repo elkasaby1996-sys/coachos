@@ -18,7 +18,7 @@ import {
   ClientMessagesPage,
   ClientNutritionDayPage,
   ClientOnboardingPage,
-  ClientProfilePage,
+  ClientSettingsPage,
   ClientProgressPage,
   ClientWorkoutDetailPage,
   ClientWorkoutRunPage,
@@ -404,7 +404,11 @@ export function App() {
           />
           <Route path="checkin" element={<ClientCheckinPage />} />
           <Route path="messages" element={<ClientMessagesPage />} />
-          <Route path="profile" element={<ClientProfilePage />} />
+          <Route path="settings" element={<ClientSettingsPage />} />
+          <Route
+            path="profile"
+            element={<Navigate to="/app/settings" replace />}
+          />
           <Route path="habits" element={<ClientHabitsPage />} />
           <Route path="progress" element={<ClientProgressPage />} />
           <Route path="baseline" element={<ClientBaselinePage />} />
