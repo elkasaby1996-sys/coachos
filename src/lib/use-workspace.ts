@@ -102,10 +102,7 @@ export function useWorkspace() {
           const selectedWorkspaceId =
             cachedWorkspaceId && memberWorkspaceIds.includes(cachedWorkspaceId)
               ? cachedWorkspaceId
-              : (memberWorkspaceIds[0] ?? null);
-          if (!selectedWorkspaceId) {
-            throw new Error("Workspace not found for this user.");
-          }
+              : memberWorkspaceIds[0];
           if (mounted) {
             setWorkspaceIds(memberWorkspaceIds);
             setWorkspaceId(selectedWorkspaceId);
