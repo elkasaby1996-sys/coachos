@@ -365,14 +365,15 @@ export function ClientWorkoutSummaryPage() {
                       return sum;
                     }, 0);
 
+                    const firstItem = orderedItems[0];
+                    const lastItem = orderedItems[orderedItems.length - 1];
                     const firstWeight =
-                      typeof orderedItems[0]?.weight === "number"
-                        ? orderedItems[0].weight
+                      typeof firstItem?.weight === "number"
+                        ? firstItem.weight
                         : null;
                     const lastWeight =
-                      typeof orderedItems[orderedItems.length - 1]?.weight ===
-                      "number"
-                        ? orderedItems[orderedItems.length - 1].weight
+                      typeof lastItem?.weight === "number"
+                        ? lastItem.weight
                         : null;
                     const loadDelta =
                       firstWeight !== null && lastWeight !== null

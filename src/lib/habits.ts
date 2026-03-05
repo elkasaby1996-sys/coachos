@@ -26,8 +26,7 @@ export const computeStreak = (
 
 export const getLatestLogDate = (logDates: string[]): string | null => {
   if (logDates.length === 0) return null;
-  return logDates.reduce(
-    (latest, date) => (date > latest ? date : latest),
-    logDates[0],
-  );
+  const [first, ...rest] = logDates;
+  if (!first) return null;
+  return rest.reduce((latest, date) => (date > latest ? date : latest), first);
 };

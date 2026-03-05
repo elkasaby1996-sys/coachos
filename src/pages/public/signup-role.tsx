@@ -15,8 +15,9 @@ function extractInviteToken(input: string): string {
       const inviteIndex = parts.findIndex(
         (p) => p === "invite" || p === "join",
       );
-      if (inviteIndex >= 0 && parts[inviteIndex + 1])
-        return parts[inviteIndex + 1];
+      if (inviteIndex >= 0 && parts[inviteIndex + 1]) {
+        return parts[inviteIndex + 1] ?? "";
+      }
       return "";
     } catch {
       return "";

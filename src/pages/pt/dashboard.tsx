@@ -84,7 +84,7 @@ type CoachTodo = {
 export function PtDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const messagesEnabled = Boolean(import.meta.env.VITE_MESSAGES_ENABLED);
+  const messagesEnabled = true;
   const {
     workspaceId: cachedWorkspaceId,
     loading: workspaceLoading,

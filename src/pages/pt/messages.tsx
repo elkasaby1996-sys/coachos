@@ -98,6 +98,7 @@ export function PtMessagesPage() {
   const conversationsQuery = useQuery({
     queryKey: ["pt-messages-conversations", workspaceId],
     enabled: !!workspaceId,
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("conversations")
@@ -194,6 +195,7 @@ export function PtMessagesPage() {
   const messagesQuery = useInfiniteQuery({
     queryKey: ["pt-messages-thread", activeConversationId],
     enabled: !!activeConversationId,
+    staleTime: 0,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const from = pageParam * messagePageSize;
@@ -222,6 +224,7 @@ export function PtMessagesPage() {
   const unreadCountsQuery = useQuery({
     queryKey: ["pt-messages-unread", conversationsQuery.data],
     enabled: (conversationsQuery.data ?? []).length > 0,
+    staleTime: 0,
     queryFn: async () => {
       const conversationIds = (conversationsQuery.data ?? []).map(
         (row) => row.id,
