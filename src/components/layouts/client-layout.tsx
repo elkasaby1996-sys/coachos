@@ -23,7 +23,7 @@ const navItems = [
   { label: "Habits", to: "/app/habits", icon: CalendarDays },
   { label: "Progress", to: "/app/progress", icon: LineChart },
   { label: "Messages", to: "/app/messages", icon: MessageCircle },
-  { label: "Profile", to: "/app/profile", icon: UserCircle },
+  { label: "Settings", to: "/app/settings", icon: UserCircle },
 ];
 
 export function ClientLayout() {
