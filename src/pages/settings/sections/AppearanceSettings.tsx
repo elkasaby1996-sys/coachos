@@ -100,7 +100,7 @@ export function AppearanceSettings() {
                   onClick={() => void applyThemeOptimistically(theme)}
                   data-testid={`theme-toggle-${theme}`}
                 >
-                  {theme[0].toUpperCase() + theme.slice(1)}
+                  {theme.charAt(0).toUpperCase() + theme.slice(1)}
                 </Button>
               ))}
             </div>

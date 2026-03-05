@@ -117,6 +117,7 @@ export function ClientMessagesPage() {
   const messagesQuery = useInfiniteQuery({
     queryKey: ["client-messages", conversationId],
     enabled: !!conversationId,
+    staleTime: 0,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const from = pageParam * messagePageSize;

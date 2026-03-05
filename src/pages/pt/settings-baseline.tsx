@@ -293,6 +293,7 @@ export function PtBaselineTemplatesPage() {
     const swapIndex = direction === "up" ? index - 1 : index + 1;
     if (swapIndex < 0 || swapIndex >= ordered.length) return;
     const target = ordered[swapIndex];
+    if (!target) return;
     const currentOrder = template.sort_order ?? 0;
     const targetOrder = target.sort_order ?? 0;
 

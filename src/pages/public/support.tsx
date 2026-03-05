@@ -1,7 +1,6 @@
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
-const supportEmail =
-  import.meta.env.VITE_SUPPORT_EMAIL || "support@coachos.com";
+const supportEmail = "support@coachos.com";
 
 export function SupportPage() {
   return (

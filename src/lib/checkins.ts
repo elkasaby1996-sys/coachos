@@ -129,7 +129,7 @@ export const getClientCheckinStatus = async (
     });
 
     if (!latestRow && rows.length > 0) {
-      latestRow = rows[0];
+      latestRow = rows[0] ?? null;
     }
 
     const isSaturday = getWeekdayFromDateString(todayStr) === 6;

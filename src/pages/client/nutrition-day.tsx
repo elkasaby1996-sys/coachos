@@ -41,8 +41,9 @@ export function ClientNutritionDayPage() {
   const meals = mealsQuery.data ?? [];
 
   useEffect(() => {
-    if (!selectedMealId && meals.length) {
-      setSelectedMealId(meals[0].id);
+    const firstMeal = meals[0];
+    if (!selectedMealId && firstMeal) {
+      setSelectedMealId(firstMeal.id);
     }
   }, [meals, selectedMealId]);
 

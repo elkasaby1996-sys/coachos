@@ -2,11 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Sentry from "@sentry/react";
+import { ErrorBoundary } from "@sentry/react";
 import { ThemeProvider } from "./components/common/theme-provider";
 import { AuthProvider } from "./lib/auth";
 import { App } from "./routes/app";
 import { initializeThemePreference } from "./lib/theme";
+import { HealthPage } from "./pages/public/health";
 import "./styles/globals.css";
 
 initializeThemePreference("dark");
@@ -33,6 +34,8 @@ const isRetryable = (error: any) => {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
       retry: (failureCount, error) => {
         if (isHardFail(error)) return false;
         if (isRetryable(error)) return failureCount < 2;
@@ -52,26 +55,22 @@ const queryClient = new QueryClient({
   },
 });
 
-if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    integrations: [Sentry.browserTracingIntegration()],
-    tracesSampleRate: 0.1,
-  });
-}
-
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <Sentry.ErrorBoundary fallback={<p>Something went wrong.</p>}>
-              <App />
-            </Sentry.ErrorBoundary>
-          </BrowserRouter>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    {window.location.pathname === "/health" ? (
+      <HealthPage />
+    ) : (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <ErrorBoundary fallback={<p>Something went wrong.</p>}>
+                <App />
+              </ErrorBoundary>
+            </BrowserRouter>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    )}
   </React.StrictMode>,
 );

@@ -35,7 +35,14 @@ export function StatusPill({
 }) {
   const map = statusMap ?? defaultStatusMap;
   const normalized = status?.toLowerCase() ?? "active";
-  const pill = map[normalized] ?? map.active;
+  const fallbackPill: {
+    label: string;
+    variant: "success" | "warning" | "danger" | "muted" | "secondary";
+  } = {
+    label: "Pending",
+    variant: "warning",
+  };
+  const pill = map[normalized] ?? map.active ?? fallbackPill;
 
   return (
     <Badge

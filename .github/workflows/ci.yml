@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
     env:
       E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
       E2E_PT_EMAIL: ${{ secrets.E2E_PT_EMAIL }}
