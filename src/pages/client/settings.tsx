@@ -408,7 +408,10 @@ export function ClientSettingsPage() {
                   <Input
                     value={formState.phone}
                     onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, phone: e.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
                     }
                   />
                 </SettingsRow>
@@ -438,7 +441,10 @@ export function ClientSettingsPage() {
                   <Input
                     value={formState.goal}
                     onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, goal: e.target.value }))
+                      setFormState((prev) => ({
+                        ...prev,
+                        goal: e.target.value,
+                      }))
                     }
                   />
                 </SettingsRow>
