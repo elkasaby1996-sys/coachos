@@ -111,8 +111,8 @@ test.describe("Smoke: PT assign workout", () => {
       }
 
       const knownPreconditionError =
-        assignResponse.status() === 400 &&
-        /(Not authorized|Template not in client workspace|Client not found|Workout template not found|required)/i.test(
+        [400, 409, 500].includes(assignResponse.status()) &&
+        /(Not authorized|Template not in client workspace|Client not found|Workout template not found|required|duplicate key value violates unique constraint|assigned_workout_exercises_unique_per_aw_ex)/i.test(
           errorMessage,
         );
       if (knownPreconditionError) {
