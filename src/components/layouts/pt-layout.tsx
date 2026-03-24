@@ -76,12 +76,38 @@ type ClientSummaryRow = {
   id: string;
   display_name: string | null;
   status: string | null;
+  dob?: string | null;
 };
 
 type WorkspaceSwitcherOption = {
   id: string;
   name: string | null;
 };
+
+function getBirthdayReminderLabel(dob: string, now = new Date()) {
+  const parsed = new Date(dob);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const birthdayMonth = parsed.getMonth();
+  const birthdayDate = parsed.getDate();
+  const todayMonth = now.getMonth();
+  const todayDate = now.getDate();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+
+  if (birthdayMonth === todayMonth && birthdayDate === todayDate) {
+    return "Birthday today";
+  }
+
+  if (
+    birthdayMonth === tomorrow.getMonth() &&
+    birthdayDate === tomorrow.getDate()
+  ) {
+    return "Birthday tomorrow";
+  }
+
+  return null;
+}
 
 export function PtLayout() {
   const navigate = useNavigate();
@@ -150,7 +176,7 @@ export function PtLayout() {
 
         const clientsRes = await supabase
           .from("clients")
-          .select("id, display_name, status")
+          .select("id, display_name, status, dob")
           .eq("workspace_id", workspaceId);
         if (clientsRes.error) throw clientsRes.error;
         const clientIds = ((clientsRes.data ?? []) as ClientSummaryRow[]).map(
@@ -347,6 +373,20 @@ export function PtLayout() {
         ((clientsRes.data ?? []) as ClientSummaryRow[]).forEach((client) => {
           const status = (client.status ?? "active").toLowerCase();
           if (status !== "active") return;
+
+          const birthdayLabel = client.dob
+            ? getBirthdayReminderLabel(client.dob, now)
+            : null;
+          if (birthdayLabel) {
+            items.push({
+              id: `birthday-${client.id}-${birthdayLabel.toLowerCase().replace(/\s+/g, "-")}`,
+              title: birthdayLabel,
+              description: `${client.display_name ?? "Client"}'s birthday reminder`,
+              createdAt: nowIso,
+              to: `/pt/clients/${client.id}?tab=overview`,
+            });
+          }
+
           const lastTs = lastActivityByClient.get(client.id) ?? 0;
           if (!lastTs || lastTs < inactiveCutoffTs) {
             items.push({
