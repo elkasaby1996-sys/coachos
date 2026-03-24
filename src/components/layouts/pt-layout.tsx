@@ -568,14 +568,14 @@ export function PtLayout() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {workspaceSwitcherQuery.isLoading ? (
-                    <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
-                  ) : workspaceOptions.length === 0 ? (
+                    <DropdownMenuSeparator />
+                    {workspaceSwitcherQuery.isLoading ? (
+                      <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                    ) : workspaceOptions.length === 0 ? (
                       <DropdownMenuItem disabled>
                         No workspaces found
                       </DropdownMenuItem>
-                  ) : (
+                    ) : (
                       workspaceOptions.map((workspace) => (
                         <DropdownMenuItem
                           key={workspace.id}
@@ -717,14 +717,14 @@ export function PtLayout() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {workspaceSwitcherQuery.isLoading ? (
-                  <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
-                ) : workspaceOptions.length === 0 ? (
+                  <DropdownMenuSeparator />
+                  {workspaceSwitcherQuery.isLoading ? (
+                    <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                  ) : workspaceOptions.length === 0 ? (
                     <DropdownMenuItem disabled>
                       No workspaces found
                     </DropdownMenuItem>
-                ) : (
+                  ) : (
                     workspaceOptions.map((workspace) => (
                       <DropdownMenuItem
                         key={workspace.id}
