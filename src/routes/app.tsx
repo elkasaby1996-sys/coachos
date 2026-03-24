@@ -30,6 +30,7 @@ import {
   InvitePage,
   LoginPage,
   NoWorkspacePage,
+  NotificationsPage,
   PrivacyPage,
   PtBaselineTemplatesPage,
   PtCalendarPage,
@@ -317,6 +318,7 @@ export function App() {
             element={<PtCheckinTemplatesPage />}
           />
           <Route path="messages" element={<PtMessagesPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="ops/status" element={<PtOpsStatusPage />} />
           <Route
             path="settings"
@@ -404,6 +406,7 @@ export function App() {
           />
           <Route path="checkin" element={<ClientCheckinPage />} />
           <Route path="messages" element={<ClientMessagesPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ClientProfilePage />} />
           <Route path="habits" element={<ClientHabitsPage />} />
           <Route path="progress" element={<ClientProgressPage />} />

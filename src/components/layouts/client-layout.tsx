@@ -8,6 +8,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
@@ -120,13 +121,16 @@ export function ClientLayout() {
           </Button>
         </aside>
         <div className="flex flex-1 min-w-0 flex-col">
-          <header className="border-b border-border bg-card py-4 md:hidden">
-            <PageContainer className="flex items-center justify-between">
+          <header className="border-b border-border bg-card py-4">
+            <PageContainer className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm text-muted-foreground">Client portal</p>
                 <h1 className="text-lg font-semibold tracking-tight">Today</h1>
               </div>
-              <ThemeToggle />
+              <div className="flex items-center gap-2">
+                <NotificationBell viewAllHref="/app/notifications" />
+                <ThemeToggle />
+              </div>
             </PageContainer>
           </header>
           <main className="flex-1 min-w-0 py-6">

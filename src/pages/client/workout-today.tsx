@@ -52,7 +52,9 @@ export function ClientWorkoutTodayPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
-        .select("id, workout_name, status, scheduled_date, completed_at")
+        .select(
+          "id, workout_name, status, scheduled_date, completed_at, coach_note",
+        )
         .eq("client_id", clientId)
         .eq("scheduled_date", todayKey)
         .order("created_at", { ascending: false })
@@ -158,6 +160,14 @@ export function ClientWorkoutTodayPage() {
               >
                 Open workout
               </Button>
+              {workoutQuery.data.coach_note ? (
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+                  <p className="text-xs text-muted-foreground">Coach note</p>
+                  <p className="mt-1 text-foreground">
+                    {workoutQuery.data.coach_note}
+                  </p>
+                </div>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button
                   disabled={

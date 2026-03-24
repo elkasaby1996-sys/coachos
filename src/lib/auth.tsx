@@ -10,7 +10,7 @@ import React, {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "./supabase";
 
-type AppRole = "pt" | "client" | "none";
+export type AppRole = "pt" | "client" | "none";
 
 interface AuthContextValue {
   user: User | null;

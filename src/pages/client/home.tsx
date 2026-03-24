@@ -246,7 +246,7 @@ export function ClientHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
+          "id, status, day_type, scheduled_date, created_at, completed_at, coach_note, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId)
         .eq("scheduled_date", todayKey)
@@ -331,7 +331,7 @@ export function ClientHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, scheduled_date, status, day_type, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
+          "id, scheduled_date, status, day_type, coach_note, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId)
         .gte("scheduled_date", todayKey)
@@ -864,7 +864,15 @@ export function ClientHomePage() {
                                 >
                                   {status}
                                 </Badge>
+                                {workout?.coach_note ? (
+                                  <Badge variant="secondary">Coach note</Badge>
+                                ) : null}
                               </div>
+                              {workout?.coach_note ? (
+                                <p className="line-clamp-3 text-sm text-foreground/90">
+                                  {workout.coach_note}
+                                </p>
+                              ) : null}
                             </div>
                           </button>
                         );
@@ -978,6 +986,16 @@ export function ClientHomePage() {
                       <Badge variant="muted">
                         {todayTemplateInfo.workoutType}
                       </Badge>
+                    ) : null}
+                    {todayWorkout?.coach_note ? (
+                      <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+                        <p className="text-xs text-muted-foreground">
+                          Coach note
+                        </p>
+                        <p className="mt-1 text-foreground">
+                          {todayWorkout.coach_note}
+                        </p>
+                      </div>
                     ) : null}
                     {todayWorkoutStatus === "completed" ? (
                       <Button
