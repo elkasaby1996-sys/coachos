@@ -541,8 +541,8 @@ export function PtWorkoutTemplatesPage() {
           <DialogHeader>
             <DialogTitle>Delete template</DialogTitle>
             <DialogDescription>
-              This will delete the template and all dependent workouts and
-              exercises.
+              This will delete the template and remove it from assigned workouts
+              and program days.
             </DialogDescription>
           </DialogHeader>
           {deleteError ? (

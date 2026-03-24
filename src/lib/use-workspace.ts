@@ -18,7 +18,14 @@ export function useWorkspace() {
     setWorkspaceId(nextWorkspaceId);
     setHasCached(true);
     if (typeof window !== "undefined") {
+<<<<<<< HEAD
       window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, nextWorkspaceId);
+=======
+      window.localStorage.setItem(
+        ACTIVE_WORKSPACE_STORAGE_KEY,
+        nextWorkspaceId,
+      );
+>>>>>>> a132096567b6bde9f150454c1cd679050b0c9fc5
     }
   }, []);
 
@@ -80,7 +87,13 @@ export function useWorkspace() {
             .select("workspace_id, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: true })
+<<<<<<< HEAD
             .returns<Array<{ workspace_id: string | null; created_at: string }>>(),
+=======
+            .returns<
+              Array<{ workspace_id: string | null; created_at: string }>
+            >(),
+>>>>>>> a132096567b6bde9f150454c1cd679050b0c9fc5
           8000,
           "Workspace lookup timed out (8s).",
         );
@@ -97,7 +110,14 @@ export function useWorkspace() {
           const selectedWorkspaceId =
             cachedWorkspaceId && memberWorkspaceIds.includes(cachedWorkspaceId)
               ? cachedWorkspaceId
+<<<<<<< HEAD
               : memberWorkspaceIds[0];
+=======
+              : (memberWorkspaceIds[0] ?? null);
+          if (!selectedWorkspaceId) {
+            throw new Error("Workspace not found for this user.");
+          }
+>>>>>>> a132096567b6bde9f150454c1cd679050b0c9fc5
           if (mounted) {
             setWorkspaceIds(memberWorkspaceIds);
             setWorkspaceId(selectedWorkspaceId);

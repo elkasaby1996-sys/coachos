@@ -239,6 +239,11 @@ export function ClientOnboardingPage() {
     () => Math.round(((step + 1) / stepMeta.length) * 100),
     [step],
   );
+  const currentStepMeta = stepMeta[step] ??
+    stepMeta[0] ?? {
+      title: "Setup",
+      subtitle: "",
+    };
 
   const validateStep = () => {
     switch (step) {
@@ -384,9 +389,9 @@ export function ClientOnboardingPage() {
 
       <Card className="rounded-2xl border-border/70 bg-card/95 shadow-card backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-xl">{stepMeta[step].title}</CardTitle>
+          <CardTitle className="text-xl">{currentStepMeta.title}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            {stepMeta[step].subtitle}
+            {currentStepMeta.subtitle}
           </p>
         </CardHeader>
         <CardContent className="space-y-5">

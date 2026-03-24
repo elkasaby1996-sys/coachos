@@ -7,3 +7,4 @@ vite.config.ts.timestamp-*
 .DS_Store
 playwright-report
 test-results
+tsconfig.tsbuildinfo
