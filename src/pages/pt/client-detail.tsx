@@ -3908,6 +3908,8 @@ function PtClientScheduleCard({
   const [editDate, setEditDate] = useState(scheduleStartKey);
   const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
   const [dayNote, setDayNote] = useState("");
+  const [dayNoteStatus, setDayNoteStatus] = useState<"idle" | "saving">("idle");
+  const [dayNoteMessage, setDayNoteMessage] = useState<string | null>(null);
   const [nutritionAssignOpen, setNutritionAssignOpen] = useState(false);
   const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(
     null,
@@ -3950,7 +3952,7 @@ function PtClientScheduleCard({
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, scheduled_date, status, day_type, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
+          "id, scheduled_date, status, day_type, coach_note, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", scheduleStartKey)
@@ -3962,6 +3964,7 @@ function PtClientScheduleCard({
         scheduled_date: string | null;
         status: string | null;
         day_type?: string | null;
+        coach_note?: string | null;
         workout_template:
           | {
               id: string | null;
@@ -4137,20 +4140,52 @@ function PtClientScheduleCard({
   }, [todayKey, weekRows]);
 
   useEffect(() => {
-    const noteKey = selectedWorkout?.id
-      ? `coachos_pt_note_${selectedWorkout.id}`
-      : `coachos_pt_note_${selectedKey}`;
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(noteKey) ?? "";
-    setDayNote(stored);
-  }, [selectedKey, selectedWorkout?.id]);
+    setDayNote(selectedWorkout?.coach_note ?? "");
+    setDayNoteMessage(null);
+  }, [selectedKey, selectedWorkout?.coach_note]);
 
-  const handleSaveDayNote = () => {
-    if (typeof window === "undefined") return;
-    const noteKey = selectedWorkout?.id
-      ? `coachos_pt_note_${selectedWorkout.id}`
-      : `coachos_pt_note_${selectedKey}`;
-    window.localStorage.setItem(noteKey, dayNote.trim());
+  const handleSaveDayNote = async () => {
+    if (!selectedWorkout?.id) {
+      setDayNoteMessage("Assign a workout or rest day before saving a note.");
+      return;
+    }
+
+    setDayNoteStatus("saving");
+    setDayNoteMessage(null);
+
+    const { error } = await supabase
+      .from("assigned_workouts")
+      .update({ coach_note: dayNote.trim() || null })
+      .eq("id", selectedWorkout.id);
+
+    if (error) {
+      setDayNoteStatus("idle");
+      setDayNoteMessage(getErrorMessage(error));
+      return;
+    }
+
+    await queryClient.invalidateQueries({
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceId,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-week-plan", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-today", clientId],
+    });
+
+    setDayNoteStatus("idle");
+    setDayNoteMessage(
+      dayNote.trim()
+        ? "Note saved. Client can now see it."
+        : "Note removed from the client view.",
+    );
   };
   const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
 
@@ -4335,6 +4370,11 @@ function PtClientScheduleCard({
                       {isRestDay ? (
                         <Moon className="h-4 w-4 text-sky-200" />
                       ) : null}
+                      {workout?.coach_note ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Coach note
+                        </Badge>
+                      ) : null}
                     </div>
                     <button
                       type="button"
@@ -4517,11 +4557,18 @@ function PtClientScheduleCard({
                 className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={dayNote}
                 onChange={(event) => setDayNote(event.target.value)}
-                placeholder="Add a private coaching note for this day."
+                placeholder="Add a coaching note the client can see for this day."
               />
               <div className="text-xs text-muted-foreground">
-                Saved locally for now.
+                {selectedWorkout
+                  ? "Visible to the client in their schedule."
+                  : "Assign a workout or rest day to save a note."}
               </div>
+              {dayNoteMessage ? (
+                <div className="text-xs text-muted-foreground">
+                  {dayNoteMessage}
+                </div>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -4539,8 +4586,12 @@ function PtClientScheduleCard({
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit workout
               </Button>
-              <Button variant="ghost" onClick={handleSaveDayNote}>
-                Save note
+              <Button
+                variant="ghost"
+                onClick={handleSaveDayNote}
+                disabled={!selectedWorkout || dayNoteStatus === "saving"}
+              >
+                {dayNoteStatus === "saving" ? "Saving..." : "Save note"}
               </Button>
               <Button
                 variant="ghost"

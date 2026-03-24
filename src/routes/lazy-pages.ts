@@ -168,6 +168,12 @@ export const DangerZoneSettings = lazy(() =>
   })),
 );
 
+export const NotificationsPage = lazy(() =>
+  import("../features/notifications/pages/notifications-page").then((m) => ({
+    default: m.NotificationsPage,
+  })),
+);
+
 export const ClientHomePage = lazy(() =>
   import("../pages/client/home").then((m) => ({ default: m.ClientHomePage })),
 );
