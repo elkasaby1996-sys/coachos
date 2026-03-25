@@ -185,7 +185,8 @@ export function PtHubSettingsPanel({
               ))}
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
-              A profile must be set to Ready to list before PT Hub will allow publishing.
+              A profile must be set to Ready to list before PT Hub will allow
+              publishing.
             </p>
           </div>
         </PtHubSectionCard>
@@ -202,7 +203,8 @@ export function PtHubSettingsPanel({
                   Password and deeper auth controls are external
                 </p>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Password reset and advanced authentication settings still route through the existing account settings experience.
+                  Password reset and advanced authentication settings still
+                  route through the existing account settings experience.
                 </p>
               </div>
             </div>
@@ -244,7 +246,9 @@ export function PtHubSettingsPanel({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {hasChanges ? "Unsaved changes" : "Everything is up to date"}
+                    {hasChanges
+                      ? "Unsaved changes"
+                      : "Everything is up to date"}
                   </p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
                     {hasChanges

@@ -294,7 +294,9 @@ function SidebarContent({
             <p className="text-lg font-semibold tracking-tight text-foreground">
               CoachOS
             </p>
-            <p className="text-sm text-muted-foreground">PT Hub business layer</p>
+            <p className="text-sm text-muted-foreground">
+              PT Hub business layer
+            </p>
           </div>
         </div>
       </div>
@@ -388,7 +390,8 @@ function SidebarContent({
       <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4">
         <p className="text-sm font-medium text-foreground">Session</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Use PT Hub first. Open a workspace only when you need operational depth.
+          Use PT Hub first. Open a workspace only when you need operational
+          depth.
         </p>
         <Button
           variant="ghost"

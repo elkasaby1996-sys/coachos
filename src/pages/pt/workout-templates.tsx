@@ -163,7 +163,10 @@ export function PtWorkoutTemplatesPage() {
     });
   };
 
-  const templates = templatesQuery.data ?? [];
+  const templates = useMemo(
+    () => templatesQuery.data ?? [],
+    [templatesQuery.data],
+  );
   const sharedTemplates: string[] = [];
   const formattedTemplates = useMemo(
     () =>

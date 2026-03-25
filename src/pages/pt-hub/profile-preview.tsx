@@ -52,10 +52,13 @@ export function PtHubProfilePreviewPage() {
                   Preview context
                 </p>
                 <p className="mt-2 text-base font-medium text-foreground">
-                  This preview uses the same public-facing coach layout clients will see later.
+                  This preview uses the same public-facing coach layout clients
+                  will see later.
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Use it to tighten positioning, reduce empty areas, and check whether your proof and CTA sections feel convincing before sharing a public link.
+                  Use it to tighten positioning, reduce empty areas, and check
+                  whether your proof and CTA sections feel convincing before
+                  sharing a public link.
                 </p>
               </div>
             </div>

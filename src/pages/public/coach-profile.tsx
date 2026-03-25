@@ -57,7 +57,11 @@ export function PublicCoachProfilePage() {
     <div className="relative">
       <div className="absolute left-0 right-0 top-0 z-10 px-4 pt-4 sm:px-6">
         <div className="mx-auto max-w-7xl">
-          <Button asChild variant="ghost" className="bg-background/40 backdrop-blur">
+          <Button
+            asChild
+            variant="ghost"
+            className="bg-background/40 backdrop-blur"
+          >
             <Link to="/">
               <ArrowLeft className="h-4 w-4" />
               CoachOS

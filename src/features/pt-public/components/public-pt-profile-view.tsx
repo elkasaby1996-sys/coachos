@@ -141,7 +141,8 @@ export function PublicPtProfileView({
                         Coaching style
                       </p>
                       <p className="text-sm leading-7 text-muted-foreground">
-                        {profile.coachingStyle || "Coaching style details will appear here once they are added."}
+                        {profile.coachingStyle ||
+                          "Coaching style details will appear here once they are added."}
                       </p>
                     </div>
                   </div>
@@ -188,7 +189,10 @@ export function PublicPtProfileView({
               </section>
 
               <section className="space-y-4">
-                <SectionHeader icon={<Star className="h-4 w-4" />} title="Proof" />
+                <SectionHeader
+                  icon={<Star className="h-4 w-4" />}
+                  title="Proof"
+                />
                 <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-4">
@@ -207,7 +211,9 @@ export function PublicPtProfileView({
                               </p>
                               <p className="mt-3 text-xs text-muted-foreground">
                                 {testimonial.author}
-                                {testimonial.role ? ` - ${testimonial.role}` : ""}
+                                {testimonial.role
+                                  ? ` - ${testimonial.role}`
+                                  : ""}
                               </p>
                             </div>
                           ))}
@@ -248,12 +254,15 @@ export function PublicPtProfileView({
 
             <div className="space-y-6">
               <div className="rounded-[28px] border border-primary/20 bg-primary/8 p-6">
-                <p className="text-sm font-medium text-primary">Work with {title}</p>
+                <p className="text-sm font-medium text-primary">
+                  Work with {title}
+                </p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
                   Built to convert interest into a real application.
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  This page is powered directly from PT Hub content and is designed to move prospects from trust to inquiry.
+                  This page is powered directly from PT Hub content and is
+                  designed to move prospects from trust to inquiry.
                 </p>
                 <div className="mt-5 grid gap-3">
                   <Button className="justify-between" disabled>
@@ -265,7 +274,8 @@ export function PublicPtProfileView({
                       Apply to work with {title}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Share your goals, training background, and budget so the coach can review fit.
+                      Share your goals, training background, and budget so the
+                      coach can review fit.
                     </p>
                     <div className="mt-4">
                       <PublicPtApplyForm
@@ -296,7 +306,9 @@ export function PublicPtProfileView({
                           <p className="text-sm font-medium text-foreground">
                             {link.label}
                           </p>
-                          <p className="text-xs text-muted-foreground">{link.url}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {link.url}
+                          </p>
                         </div>
                         <ExternalLink className="h-4 w-4 text-muted-foreground" />
                       </a>
@@ -314,13 +326,7 @@ export function PublicPtProfileView({
   );
 }
 
-function SectionHeader({
-  title,
-  icon,
-}: {
-  title: string;
-  icon?: ReactNode;
-}) {
+function SectionHeader({ title, icon }: { title: string; icon?: ReactNode }) {
   return (
     <div className="flex items-center gap-2">
       {icon}

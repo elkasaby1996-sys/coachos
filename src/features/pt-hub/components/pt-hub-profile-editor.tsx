@@ -5,7 +5,12 @@ import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Switch } from "../../../components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../../components/ui/tabs";
 import type { StoredProfileDraft } from "../lib/pt-hub";
 import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
 import type {
@@ -115,7 +120,9 @@ export function PtHubProfileEditor({
   const hasChanges =
     JSON.stringify(form) !== JSON.stringify(createDraft(profile));
   const publicUrl = getPublicCoachUrl(form.slug);
-  const quickWins = readiness.checklist.filter((item) => !item.complete).slice(0, 4);
+  const quickWins = readiness.checklist
+    .filter((item) => !item.complete)
+    .slice(0, 4);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.34fr)_340px]">
@@ -139,10 +146,13 @@ export function PtHubProfileEditor({
                   </p>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Complete the next few high-signal items inside the editor to strengthen publish readiness.
+                  Complete the next few high-signal items inside the editor to
+                  strengthen publish readiness.
                 </p>
               </div>
-              <Badge variant="secondary">{readiness.completionPercent}% complete</Badge>
+              <Badge variant="secondary">
+                {readiness.completionPercent}% complete
+              </Badge>
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -160,7 +170,12 @@ export function PtHubProfileEditor({
                         {item.guidance}
                       </p>
                     </div>
-                    <Button asChild size="sm" variant="ghost" className="shrink-0">
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0"
+                    >
                       <Link to={item.href}>Fix</Link>
                     </Button>
                   </div>
@@ -182,7 +197,9 @@ export function PtHubProfileEditor({
                   {form.profilePhotoUrl ? (
                     <img
                       src={form.profilePhotoUrl}
-                      alt={form.displayName || form.fullName || "Profile preview"}
+                      alt={
+                        form.displayName || form.fullName || "Profile preview"
+                      }
                       className="h-full w-full rounded-[20px] object-cover"
                     />
                   ) : (
@@ -192,7 +209,9 @@ export function PtHubProfileEditor({
                     </div>
                   )}
                 </div>
-                <p className="mt-4 text-sm font-medium text-foreground">Profile photo</p>
+                <p className="mt-4 text-sm font-medium text-foreground">
+                  Profile photo
+                </p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   Use a square headshot for the public-facing coach identity.
                 </p>
@@ -223,9 +242,12 @@ export function PtHubProfileEditor({
                     </div>
                   )}
                 </div>
-                <p className="mt-4 text-sm font-medium text-foreground">Banner image</p>
+                <p className="mt-4 text-sm font-medium text-foreground">
+                  Banner image
+                </p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Wide visual used in the public profile hero and future marketplace listing.
+                  Wide visual used in the public profile hero and future
+                  marketplace listing.
                 </p>
                 <Input
                   className="mt-4"
@@ -254,7 +276,10 @@ export function PtHubProfileEditor({
                 <Input
                   value={form.fullName}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, fullName: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      fullName: event.target.value,
+                    }))
                   }
                   placeholder="Your full name"
                 />
@@ -284,7 +309,9 @@ export function PtHubProfileEditor({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Headline</label>
+              <label className="text-sm font-medium text-foreground">
+                Headline
+              </label>
               <Input
                 value={form.headline}
                 onChange={(event) =>
@@ -302,7 +329,9 @@ export function PtHubProfileEditor({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Short bio</label>
+              <label className="text-sm font-medium text-foreground">
+                Short bio
+              </label>
               <textarea
                 className="min-h-[160px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                 value={form.shortBio}
@@ -391,7 +420,8 @@ export function PtHubProfileEditor({
                 Coaching style
               </label>
               <p className="text-sm text-muted-foreground">
-                Describe how you coach, communicate, and keep clients accountable.
+                Describe how you coach, communicate, and keep clients
+                accountable.
               </p>
             </div>
             <textarea

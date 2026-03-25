@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   useInfiniteQuery,
@@ -184,13 +184,15 @@ export function PtMessagesPage() {
     },
   });
 
+  const ensureConversation = ensureConversationMutation.mutate;
+
   useEffect(() => {
     if (!selectedClientId) return;
     const existing = conversationMap.get(selectedClientId);
     if (!existing) {
-      ensureConversationMutation.mutate(selectedClientId);
+      ensureConversation(selectedClientId);
     }
-  }, [conversationMap, ensureConversationMutation, selectedClientId]);
+  }, [conversationMap, ensureConversation, selectedClientId]);
 
   const messagesQuery = useInfiniteQuery({
     queryKey: ["pt-messages-thread", activeConversationId],
@@ -316,18 +318,21 @@ export function PtMessagesPage() {
     };
   }, [activeConversationId]);
 
-  const updateTyping = (isTyping: boolean) => {
-    if (!activeConversationId || !user?.id) return;
-    supabase.from("message_typing").upsert(
-      {
-        conversation_id: activeConversationId,
-        user_id: user.id,
-        role: "pt",
-        is_typing: isTyping,
-      },
-      { onConflict: "conversation_id,user_id" },
-    );
-  };
+  const updateTyping = useCallback(
+    (isTyping: boolean) => {
+      if (!activeConversationId || !user?.id) return;
+      supabase.from("message_typing").upsert(
+        {
+          conversation_id: activeConversationId,
+          user_id: user.id,
+          role: "pt",
+          is_typing: isTyping,
+        },
+        { onConflict: "conversation_id,user_id" },
+      );
+    },
+    [activeConversationId, user?.id],
+  );
 
   useEffect(() => {
     if (!activeConversationId || messageRows.length === 0) return;
@@ -390,7 +395,7 @@ export function PtMessagesPage() {
         window.clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, []);
+  }, [updateTyping]);
 
   const clients = clientsQuery.data ?? [];
   const selectedClient =

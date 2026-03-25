@@ -24,7 +24,9 @@ export function PtHubPublicationPanel({
           <Badge variant={publicationState.isPublished ? "default" : "muted"}>
             {publicationState.isPublished ? "Published" : "Unpublished"}
           </Badge>
-          <Badge variant="secondary">{publicationState.marketplaceStatus}</Badge>
+          <Badge variant="secondary">
+            {publicationState.marketplaceStatus}
+          </Badge>
         </div>
 
         <div className="space-y-2">
@@ -32,12 +34,17 @@ export function PtHubPublicationPanel({
             Public URL
           </p>
           <p className="mt-2 break-all text-sm text-foreground">
-            {publicationState.publicUrl ?? "Add a slug to generate a public URL."}
+            {publicationState.publicUrl ??
+              "Add a slug to generate a public URL."}
           </p>
           {publicationState.publicUrl ? (
             <div className="mt-3 flex flex-wrap gap-2">
               <Button asChild size="sm" variant="secondary">
-                <a href={publicationState.publicUrl} target="_blank" rel="noreferrer">
+                <a
+                  href={publicationState.publicUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Open public page
                   <ExternalLink className="h-4 w-4" />
                 </a>
@@ -71,7 +78,10 @@ export function PtHubPublicationPanel({
 
         <Button
           className="w-full justify-between"
-          disabled={publishing || (!publicationState.canPublish && !publicationState.isPublished)}
+          disabled={
+            publishing ||
+            (!publicationState.canPublish && !publicationState.isPublished)
+          }
           onClick={() => onTogglePublish(!publicationState.isPublished)}
         >
           {publicationState.isPublished ? (

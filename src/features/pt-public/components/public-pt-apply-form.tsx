@@ -43,7 +43,8 @@ export function PublicPtApplyForm({
     <div className="space-y-4">
       {success ? (
         <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-sm text-success">
-          Application sent. It has been delivered into the trainer's PT Hub leads inbox.
+          Application sent. It has been delivered into the trainer's PT Hub
+          leads inbox.
         </div>
       ) : null}
 
@@ -154,7 +155,11 @@ export function PublicPtApplyForm({
           });
         }}
       >
-        {preview ? "Apply form preview" : submitting ? "Submitting..." : "Apply to Work With Me"}
+        {preview
+          ? "Apply form preview"
+          : submitting
+            ? "Submitting..."
+            : "Apply to Work With Me"}
         <ArrowRight className="h-4 w-4" />
       </Button>
     </div>

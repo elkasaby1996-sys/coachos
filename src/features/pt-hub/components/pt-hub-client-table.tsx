@@ -54,7 +54,11 @@ export function PtHubClientTable({
               </Badge>
             </div>
             <div className="flex justify-end">
-              <Button variant="secondary" size="sm" onClick={() => onOpen(client)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onOpen(client)}
+              >
                 Open workspace
                 <ArrowUpRight className="h-4 w-4" />
               </Button>

@@ -1293,8 +1293,10 @@ export function PtClientDetailPage() {
     });
   }, [checkinsPage, checkinsQuery.data, active]);
 
-  const checkinsRows =
-    active === "checkins" ? checkinsList : (checkinsQuery.data ?? []);
+  const checkinsRows = useMemo(
+    () => (active === "checkins" ? checkinsList : (checkinsQuery.data ?? [])),
+    [active, checkinsList, checkinsQuery.data],
+  );
   const checkinsCanLoadMore =
     active === "checkins" &&
     (checkinsQuery.data?.length ?? 0) === checkinsPageSize;
@@ -5276,73 +5278,73 @@ function PtClientHabitsTab({
   const avgSteps = average(weeklyRows.map((row) => row.log?.steps));
   const avgProtein = average(weeklyRows.map((row) => row.log?.protein_g));
 
-  const habitMetricConfig: Record<
-    HabitMetricKey,
-    {
-      label: string;
-      extract: (log: HabitLog) => number | null;
-      format: (value: number, weightUnit?: string | null) => string;
-    }
-  > = {
-    calories: {
-      label: "Calories",
-      extract: (log) =>
-        typeof log.calories === "number" ? log.calories : null,
-      format: (value) => Math.round(value).toString(),
-    },
-    protein_g: {
-      label: "Protein",
-      extract: (log) =>
-        typeof log.protein_g === "number" ? log.protein_g : null,
-      format: (value) => `${Math.round(value)} g`,
-    },
-    carbs_g: {
-      label: "Carbs",
-      extract: (log) => (typeof log.carbs_g === "number" ? log.carbs_g : null),
-      format: (value) => `${Math.round(value)} g`,
-    },
-    fats_g: {
-      label: "Fats",
-      extract: (log) => (typeof log.fats_g === "number" ? log.fats_g : null),
-      format: (value) => `${Math.round(value)} g`,
-    },
-    weight_value: {
-      label: "Weight",
-      extract: (log) =>
-        typeof log.weight_value === "number" ? log.weight_value : null,
-      format: (value, weightUnit) =>
-        `${value.toFixed(1)} ${weightUnit ?? ""}`.trim(),
-    },
-    steps: {
-      label: "Steps",
-      extract: (log) => (typeof log.steps === "number" ? log.steps : null),
-      format: (value) => Math.round(value).toLocaleString(),
-    },
-    sleep_hours: {
-      label: "Sleep",
-      extract: (log) =>
-        typeof log.sleep_hours === "number" ? log.sleep_hours : null,
-      format: (value) => `${value.toFixed(1)} hrs`,
-    },
-    energy: {
-      label: "Energy",
-      extract: (log) => (typeof log.energy === "number" ? log.energy : null),
-      format: (value) => value.toFixed(0),
-    },
-    hunger: {
-      label: "Hunger",
-      extract: (log) => (typeof log.hunger === "number" ? log.hunger : null),
-      format: (value) => value.toFixed(0),
-    },
-    stress: {
-      label: "Stress",
-      extract: (log) => (typeof log.stress === "number" ? log.stress : null),
-      format: (value) => value.toFixed(0),
-    },
-  };
-
   const habitMetricTrend = useMemo(() => {
     if (!selectedHabitMetric) return null;
+    const habitMetricConfig: Record<
+      HabitMetricKey,
+      {
+        label: string;
+        extract: (log: HabitLog) => number | null;
+        format: (value: number, weightUnit?: string | null) => string;
+      }
+    > = {
+      calories: {
+        label: "Calories",
+        extract: (log) =>
+          typeof log.calories === "number" ? log.calories : null,
+        format: (value) => Math.round(value).toString(),
+      },
+      protein_g: {
+        label: "Protein",
+        extract: (log) =>
+          typeof log.protein_g === "number" ? log.protein_g : null,
+        format: (value) => `${Math.round(value)} g`,
+      },
+      carbs_g: {
+        label: "Carbs",
+        extract: (log) =>
+          typeof log.carbs_g === "number" ? log.carbs_g : null,
+        format: (value) => `${Math.round(value)} g`,
+      },
+      fats_g: {
+        label: "Fats",
+        extract: (log) => (typeof log.fats_g === "number" ? log.fats_g : null),
+        format: (value) => `${Math.round(value)} g`,
+      },
+      weight_value: {
+        label: "Weight",
+        extract: (log) =>
+          typeof log.weight_value === "number" ? log.weight_value : null,
+        format: (value, weightUnit) =>
+          `${value.toFixed(1)} ${weightUnit ?? ""}`.trim(),
+      },
+      steps: {
+        label: "Steps",
+        extract: (log) => (typeof log.steps === "number" ? log.steps : null),
+        format: (value) => Math.round(value).toLocaleString(),
+      },
+      sleep_hours: {
+        label: "Sleep",
+        extract: (log) =>
+          typeof log.sleep_hours === "number" ? log.sleep_hours : null,
+        format: (value) => `${value.toFixed(1)} hrs`,
+      },
+      energy: {
+        label: "Energy",
+        extract: (log) => (typeof log.energy === "number" ? log.energy : null),
+        format: (value) => value.toFixed(0),
+      },
+      hunger: {
+        label: "Hunger",
+        extract: (log) => (typeof log.hunger === "number" ? log.hunger : null),
+        format: (value) => value.toFixed(0),
+      },
+      stress: {
+        label: "Stress",
+        extract: (log) => (typeof log.stress === "number" ? log.stress : null),
+        format: (value) => value.toFixed(0),
+      },
+    };
     const config = habitMetricConfig[selectedHabitMetric.metric];
     const weightUnit =
       selectedHabitMetric.metric === "weight_value"
@@ -5384,7 +5386,7 @@ function PtClientHabitsTab({
       coveragePct,
       format: config.format,
     };
-  }, [habitMetricConfig, selectedHabitMetric, weeklyRows]);
+  }, [selectedHabitMetric, weeklyRows]);
 
   return (
     <div className="space-y-6">

@@ -63,7 +63,12 @@ export function StatCard({
               {value}
             </CardTitle>
             {helper ? (
-              <p className={cn("text-xs text-muted-foreground", isPtHub && "mt-1 text-sm")}>
+              <p
+                className={cn(
+                  "text-xs text-muted-foreground",
+                  isPtHub && "mt-1 text-sm",
+                )}
+              >
                 {helper}
               </p>
             ) : null}

@@ -11,7 +11,8 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { PtHubSectionCard } from "./pt-hub-section-card";
-import { PtHubLeadStatusBadge, ptHubLeadStatuses } from "./pt-hub-lead-status-badge";
+import { PtHubLeadStatusBadge } from "./pt-hub-lead-status-badge";
+import { ptHubLeadStatuses } from "./pt-hub-lead-statuses";
 import type { PTLead, PTLeadStatus } from "../types";
 import { formatRelativeTime } from "../../../lib/relative-time";
 
@@ -38,7 +39,7 @@ export function PtHubLeadDetailDialog({
   const [noteBody, setNoteBody] = useState("");
 
   const initialStatus = useMemo(
-    () => (lead?.status ?? "reviewed"),
+    () => lead?.status ?? "reviewed",
     [lead?.status],
   );
 
@@ -64,8 +65,8 @@ export function PtHubLeadDetailDialog({
                 </div>
                 <DialogTitle className="text-2xl">{lead.fullName}</DialogTitle>
                 <DialogDescription>
-                  Submitted {formatRelativeTime(lead.submittedAt)}. Use this panel
-                  to qualify, note, and progress the lead.
+                  Submitted {formatRelativeTime(lead.submittedAt)}. Use this
+                  panel to qualify, note, and progress the lead.
                 </DialogDescription>
               </div>
               <PtHubLeadStatusBadge status={lead.status} />
@@ -80,8 +81,14 @@ export function PtHubLeadDetailDialog({
                   description="Key details from the inquiry."
                 >
                   <DetailRow label="Source" value={lead.sourceLabel} />
-                  <DetailRow label="Email" value={lead.email || "Not provided"} />
-                  <DetailRow label="Phone" value={lead.phone || "Not provided"} />
+                  <DetailRow
+                    label="Email"
+                    value={lead.email || "Not provided"}
+                  />
+                  <DetailRow
+                    label="Phone"
+                    value={lead.phone || "Not provided"}
+                  />
                   <DetailRow label="Goal" value={lead.goalSummary} />
                   <DetailRow
                     label="Experience"
@@ -180,7 +187,9 @@ export function PtHubLeadDetailDialog({
                         variant="secondary"
                         className="flex-1"
                         disabled={saving}
-                        onClick={() => onUpdateStatus(lead.id, "accepted", true)}
+                        onClick={() =>
+                          onUpdateStatus(lead.id, "accepted", true)
+                        }
                       >
                         <CheckCircle2 className="h-4 w-4" />
                         Mark converted later

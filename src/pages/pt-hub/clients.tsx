@@ -24,15 +24,20 @@ export function PtHubClientsPage() {
   const [workspaceFilter, setWorkspaceFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const clients = clientsQuery.data ?? [];
-  const workspaces = workspacesQuery.data ?? [];
+  const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
+  const workspaces = useMemo(
+    () => workspacesQuery.data ?? [],
+    [workspacesQuery.data],
+  );
   const stats = getPtClientBaseStats(clients);
 
   const filteredClients = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
     return clients.filter((client) => {
       const matchesWorkspace =
-        workspaceFilter === "all" ? true : client.workspaceId === workspaceFilter;
+        workspaceFilter === "all"
+          ? true
+          : client.workspaceId === workspaceFilter;
       const matchesStatus =
         statusFilter === "all"
           ? true
@@ -146,7 +151,10 @@ export function PtHubClientsPage() {
             icon={<Users2 className="h-5 w-5" />}
           />
         ) : (
-          <PtHubClientTable clients={filteredClients} onOpen={openClientWorkspace} />
+          <PtHubClientTable
+            clients={filteredClients}
+            onOpen={openClientWorkspace}
+          />
         )}
       </PtHubSectionCard>
     </section>

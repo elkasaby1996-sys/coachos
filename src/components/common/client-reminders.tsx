@@ -223,7 +223,6 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     checkinAlertQuery.data,
     todayWorkoutReminderQuery.data,
     todayStr,
-    weekEndingSaturday,
   ]);
 
   const reminderItems = useMemo(() => {

@@ -426,7 +426,10 @@ export function ClientHomePage() {
     );
   }, [todayNutrition]);
   const workoutsWeek = workoutsWeekQuery.data ?? [];
-  const weeklyPlan = weeklyPlanQuery.data ?? [];
+  const weeklyPlan = useMemo(
+    () => weeklyPlanQuery.data ?? [],
+    [weeklyPlanQuery.data],
+  );
   const hasTargets = Boolean(targets);
 
   const getTemplateInfo = (row: unknown) => {

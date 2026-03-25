@@ -112,7 +112,10 @@ export function PtWorkoutTemplatePreviewPage() {
   });
 
   const template = templateQuery.data;
-  const exercises = templateExercisesQuery.data ?? [];
+  const exercises = useMemo(
+    () => templateExercisesQuery.data ?? [],
+    [templateExercisesQuery.data],
+  );
 
   const orderedExercises = useMemo(() => {
     return [...exercises];

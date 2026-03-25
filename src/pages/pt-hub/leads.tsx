@@ -6,10 +6,8 @@ import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { PtHubLeadDetailDialog } from "../../features/pt-hub/components/pt-hub-lead-detail-dialog";
-import {
-  PtHubLeadStatusBadge,
-  ptHubLeadStatuses,
-} from "../../features/pt-hub/components/pt-hub-lead-status-badge";
+import { PtHubLeadStatusBadge } from "../../features/pt-hub/components/pt-hub-lead-status-badge";
+import { ptHubLeadStatuses } from "../../features/pt-hub/components/pt-hub-lead-statuses";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
 import {
@@ -21,7 +19,10 @@ import type { PTLead, PTLeadStatus } from "../../features/pt-hub/types";
 import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 
-const statusOptions: Array<PTLeadStatus | "all"> = ["all", ...ptHubLeadStatuses];
+const statusOptions: Array<PTLeadStatus | "all"> = [
+  "all",
+  ...ptHubLeadStatuses,
+];
 
 export function PtHubLeadsPage() {
   const queryClient = useQueryClient();
@@ -32,7 +33,7 @@ export function PtHubLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<PTLead | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const leads = leadsQuery.data ?? [];
+  const leads = useMemo(() => leadsQuery.data ?? [], [leadsQuery.data]);
   const filteredLeads = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
     return leads.filter((lead) => {
@@ -228,7 +229,9 @@ export function PtHubLeadsPage() {
           try {
             await updatePtHubLeadStatus({ leadId, status, markConverted });
             const refreshed = await refreshLeads();
-            setSelectedLead(refreshed.find((lead) => lead.id === leadId) ?? null);
+            setSelectedLead(
+              refreshed.find((lead) => lead.id === leadId) ?? null,
+            );
           } finally {
             setSaving(false);
           }
@@ -239,7 +242,9 @@ export function PtHubLeadsPage() {
           try {
             await addPtHubLeadNote({ leadId, userId: user.id, body });
             const refreshed = await refreshLeads();
-            setSelectedLead(refreshed.find((lead) => lead.id === leadId) ?? null);
+            setSelectedLead(
+              refreshed.find((lead) => lead.id === leadId) ?? null,
+            );
           } finally {
             setSaving(false);
           }

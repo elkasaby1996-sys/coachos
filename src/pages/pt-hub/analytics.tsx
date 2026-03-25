@@ -28,7 +28,11 @@ export function PtHubAnalyticsPage() {
           surface="pt-hub"
           label="Profile Views"
           value={analytics?.profileViewsLabel ?? "Not live yet"}
-          helper={analytics?.profileViewsConnected ? "Live public traffic" : "Public page not connected"}
+          helper={
+            analytics?.profileViewsConnected
+              ? "Live public traffic"
+              : "Public page not connected"
+          }
           icon={Eye}
           accent
         />
@@ -137,7 +141,9 @@ export function PtHubAnalyticsPage() {
                 {analytics?.growthTrendLabel ?? "No growth signal yet"}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                This compares recent application flow against the previous 30-day window. It stays intentionally lightweight until deeper analytics instrumentation exists.
+                This compares recent application flow against the previous
+                30-day window. It stays intentionally lightweight until deeper
+                analytics instrumentation exists.
               </p>
             </div>
           </PtHubSectionCard>
@@ -153,8 +159,15 @@ export function PtHubAnalyticsPage() {
             description="What is real today versus placeholder."
           >
             <div className="space-y-3 text-sm text-muted-foreground">
-              <p>Applications, conversion rate, active clients, and workspace breakdown are derived from real PT Hub and CoachOS data.</p>
-              <p>Profile views, testimonials, and transformations remain placeholder metrics until the public website and proof surfaces exist.</p>
+              <p>
+                Applications, conversion rate, active clients, and workspace
+                breakdown are derived from real PT Hub and CoachOS data.
+              </p>
+              <p>
+                Profile views, testimonials, and transformations remain
+                placeholder metrics until the public website and proof surfaces
+                exist.
+              </p>
             </div>
           </PtHubSectionCard>
         </div>

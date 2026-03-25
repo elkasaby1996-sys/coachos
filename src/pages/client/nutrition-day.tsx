@@ -38,7 +38,7 @@ export function ClientNutritionDayPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const meals = mealsQuery.data ?? [];
+  const meals = useMemo(() => mealsQuery.data ?? [], [mealsQuery.data]);
 
   useEffect(() => {
     const firstMeal = meals[0];

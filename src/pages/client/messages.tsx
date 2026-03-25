@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   useInfiniteQuery,
@@ -108,11 +108,17 @@ export function ClientMessagesPage() {
     },
   });
 
+  const ensureConversation = ensureConversationMutation.mutate;
+
   useEffect(() => {
     if (clientQuery.data?.id && clientQuery.data?.workspace_id) {
-      ensureConversationMutation.mutate();
+      ensureConversation();
     }
-  }, [clientQuery.data?.id, clientQuery.data?.workspace_id]);
+  }, [
+    clientQuery.data?.id,
+    clientQuery.data?.workspace_id,
+    ensureConversation,
+  ]);
 
   const messagesQuery = useInfiniteQuery({
     queryKey: ["client-messages", conversationId],
@@ -206,18 +212,21 @@ export function ClientMessagesPage() {
     };
   }, [conversationId]);
 
-  const updateTyping = (isTyping: boolean) => {
-    if (!conversationId || !session?.user?.id) return;
-    supabase.from("message_typing").upsert(
-      {
-        conversation_id: conversationId,
-        user_id: session.user.id,
-        role: "client",
-        is_typing: isTyping,
-      },
-      { onConflict: "conversation_id,user_id" },
-    );
-  };
+  const updateTyping = useCallback(
+    (isTyping: boolean) => {
+      if (!conversationId || !session?.user?.id) return;
+      supabase.from("message_typing").upsert(
+        {
+          conversation_id: conversationId,
+          user_id: session.user.id,
+          role: "client",
+          is_typing: isTyping,
+        },
+        { onConflict: "conversation_id,user_id" },
+      );
+    },
+    [conversationId, session?.user?.id],
+  );
 
   const sendMutation = useMutation({
     mutationFn: async () => {
@@ -252,7 +261,7 @@ export function ClientMessagesPage() {
         window.clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, []);
+  }, [updateTyping]);
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">

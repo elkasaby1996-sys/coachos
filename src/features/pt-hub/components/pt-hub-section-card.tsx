@@ -41,10 +41,14 @@ export function PtHubSectionCard({
               </p>
             ) : null}
           </div>
-          {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+          {actions ? (
+            <div className="flex flex-wrap gap-2">{actions}</div>
+          ) : null}
         </div>
       </CardHeader>
-      <CardContent className={cn("space-y-5 px-5 py-5 sm:px-6", contentClassName)}>
+      <CardContent
+        className={cn("space-y-5 px-5 py-5 sm:px-6", contentClassName)}
+      >
         {children}
       </CardContent>
     </Card>

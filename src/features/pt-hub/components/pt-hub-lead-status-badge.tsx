@@ -27,13 +27,3 @@ const statusLabel: Record<PTLeadStatus, string> = {
 export function PtHubLeadStatusBadge({ status }: { status: PTLeadStatus }) {
   return <Badge variant={statusVariant[status]}>{statusLabel[status]}</Badge>;
 }
-
-export const ptHubLeadStatuses: PTLeadStatus[] = [
-  "new",
-  "reviewed",
-  "contacted",
-  "consultation_booked",
-  "accepted",
-  "rejected",
-  "archived",
-];

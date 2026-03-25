@@ -84,14 +84,17 @@ export function PtHubOverviewPage() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">PT Hub Overview</Badge>
-              <Badge variant="muted">{stats?.businessHealthLabel ?? "Setup in progress"}</Badge>
+              <Badge variant="muted">
+                {stats?.businessHealthLabel ?? "Setup in progress"}
+              </Badge>
             </div>
             <div className="space-y-1.5">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
                 Business command center
               </h1>
               <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                Monitor demand, profile readiness, and workspace portfolio health before stepping into coaching operations.
+                Monitor demand, profile readiness, and workspace portfolio
+                health before stepping into coaching operations.
               </p>
             </div>
           </div>
@@ -142,7 +145,11 @@ export function PtHubOverviewPage() {
           surface="pt-hub"
           label="Profile Readiness"
           value={`${readiness?.completionPercent ?? stats?.profileCompletionPercent ?? 0}%`}
-          helper={readiness?.readyForPublish ? "Ready for publish" : "Still in progress"}
+          helper={
+            readiness?.readyForPublish
+              ? "Ready for publish"
+              : "Still in progress"
+          }
           icon={UserCircle2}
         />
       </div>
@@ -162,7 +169,10 @@ export function PtHubOverviewPage() {
               {recentItems.length > 0 ? (
                 <div className="space-y-4">
                   {recentItems.map((item, index) => (
-                    <div key={`${item.title}-${item.meta}`} className="flex gap-4">
+                    <div
+                      key={`${item.title}-${item.meta}`}
+                      className="flex gap-4"
+                    >
                       <div className="flex flex-col items-center">
                         <div className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" />
                         {index < recentItems.length - 1 ? (
@@ -257,7 +267,11 @@ export function PtHubOverviewPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={readiness?.readyForPublish ? "success" : "warning"}>
+                      <Badge
+                        variant={
+                          readiness?.readyForPublish ? "success" : "warning"
+                        }
+                      >
                         {readiness?.statusLabel ?? "Not ready"}
                       </Badge>
                       <Badge variant="secondary">
@@ -267,7 +281,7 @@ export function PtHubOverviewPage() {
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
                       {readiness?.readyForPublish
                         ? "Your public-facing setup is in strong shape for future publishing."
-                        : `${quickFixes.length > 0 ? quickFixes.length : readiness?.missingItems.length ?? 0} area(s) still need attention before publish readiness feels complete.`}
+                        : `${quickFixes.length > 0 ? quickFixes.length : (readiness?.missingItems.length ?? 0)} area(s) still need attention before publish readiness feels complete.`}
                     </p>
                   </div>
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/45 text-primary">
@@ -286,7 +300,10 @@ export function PtHubOverviewPage() {
               {!readiness?.readyForPublish && quickFixes.length > 0 ? (
                 <div className="space-y-3">
                   {quickFixes.map((item) => (
-                    <div key={item.key} className="flex items-start justify-between gap-3">
+                    <div
+                      key={item.key}
+                      className="flex items-start justify-between gap-3"
+                    >
                       <div>
                         <p className="text-sm font-medium text-foreground">
                           {item.label}

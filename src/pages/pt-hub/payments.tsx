@@ -25,7 +25,11 @@ export function PtHubPaymentsPage() {
           surface="pt-hub"
           label="Subscription Plan"
           value={subscription?.planName ?? "CoachOS Pro"}
-          helper={subscription?.billingConnected ? "Live billing" : "Subscription placeholder"}
+          helper={
+            subscription?.billingConnected
+              ? "Live billing"
+              : "Subscription placeholder"
+          }
           icon={CreditCard}
           accent
         />
@@ -47,7 +51,11 @@ export function PtHubPaymentsPage() {
           surface="pt-hub"
           label="Invoices"
           value={invoices.length}
-          helper={invoices.some((invoice) => !invoice.placeholder) ? "Connected history" : "Placeholder history"}
+          helper={
+            invoices.some((invoice) => !invoice.placeholder)
+              ? "Connected history"
+              : "Placeholder history"
+          }
           icon={FileText}
         />
       </div>
@@ -73,7 +81,10 @@ export function PtHubPaymentsPage() {
               />
               <PaymentDetail
                 label="Payment method"
-                value={subscription?.paymentMethodLabel ?? "No payment method connected yet"}
+                value={
+                  subscription?.paymentMethodLabel ??
+                  "No payment method connected yet"
+                }
               />
             </div>
           </PtHubSectionCard>
@@ -101,7 +112,9 @@ export function PtHubPaymentsPage() {
                       <p className="text-sm font-medium text-foreground">
                         {invoice.amountLabel}
                       </p>
-                      <p className="text-xs text-muted-foreground">{invoice.status}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {invoice.status}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -161,10 +174,13 @@ export function PtHubPaymentsPage() {
           >
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
-                CoachOS subscription information is structured here, but live billing events and invoice sync are not connected yet.
+                CoachOS subscription information is structured here, but live
+                billing events and invoice sync are not connected yet.
               </p>
               <p>
-                Revenue widgets are deliberate placeholders so the PT Hub can grow into a trainer business platform without fabricating money data.
+                Revenue widgets are deliberate placeholders so the PT Hub can
+                grow into a trainer business platform without fabricating money
+                data.
               </p>
             </div>
           </PtHubSectionCard>

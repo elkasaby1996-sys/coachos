@@ -1,4 +1,9 @@
-import { CheckCircle2, CircleAlert, CircleDashed, Sparkles } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleAlert,
+  CircleDashed,
+  Sparkles,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -28,10 +33,14 @@ export function PtHubReadinessPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={readiness.readyForPublish ? "success" : "warning"}>
+              <Badge
+                variant={readiness.readyForPublish ? "success" : "warning"}
+              >
                 {readiness.statusLabel}
               </Badge>
-              <Badge variant="secondary">{readiness.completionPercent}% complete</Badge>
+              <Badge variant="secondary">
+                {readiness.completionPercent}% complete
+              </Badge>
             </div>
             <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">
               {readiness.completionPercent}%
@@ -107,7 +116,8 @@ export function PtHubReadinessPanel({
                       Quick wins
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Focus on the items below to move fastest toward publish readiness.
+                      Focus on the items below to move fastest toward publish
+                      readiness.
                     </p>
                   </div>
                 </div>

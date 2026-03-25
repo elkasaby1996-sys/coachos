@@ -212,8 +212,9 @@ function normalizeEnumList<TValue extends string>(
   allowed: readonly TValue[],
 ) {
   const source = Array.isArray(values) ? values : [];
-  return source.filter((value): value is TValue =>
-    typeof value === "string" && allowed.includes(value as TValue),
+  return source.filter(
+    (value): value is TValue =>
+      typeof value === "string" && allowed.includes(value as TValue),
   );
 }
 
@@ -241,17 +242,13 @@ function normalizeTestimonials(raw?: unknown) {
       const testimonial = item as Record<string, unknown>;
       return {
         quote:
-          typeof testimonial.quote === "string"
-            ? testimonial.quote.trim()
-            : "",
+          typeof testimonial.quote === "string" ? testimonial.quote.trim() : "",
         author:
           typeof testimonial.author === "string"
             ? testimonial.author.trim()
             : "",
         role:
-          typeof testimonial.role === "string"
-            ? testimonial.role.trim()
-            : null,
+          typeof testimonial.role === "string" ? testimonial.role.trim() : null,
       } satisfies PTPublicTestimonial;
     })
     .filter((item) => item.quote && item.author);
@@ -371,14 +368,17 @@ export function usePtHubWorkspaces() {
       if (workspaceIds.length > 0) {
         const { data: clients, error: clientsError } = await supabase
           .from("clients")
-          .select("id, workspace_id, status, display_name, goal, created_at, updated_at")
+          .select(
+            "id, workspace_id, status, display_name, goal, created_at, updated_at",
+          )
           .in("workspace_id", workspaceIds)
           .returns<ClientRow[]>();
 
         if (clientsError) throw clientsError;
 
         clientCountMap = (clients ?? []).reduce((map, client) => {
-          if (!client.workspace_id || !isClientActive(client.status)) return map;
+          if (!client.workspace_id || !isClientActive(client.status))
+            return map;
           map.set(client.workspace_id, (map.get(client.workspace_id) ?? 0) + 1);
           return map;
         }, new Map<string, number>());
@@ -415,10 +415,7 @@ function mapLeadNote(row: PtHubLeadNoteRow): PTLeadNote {
   };
 }
 
-function mapLead(
-  row: PtHubLeadRow,
-  notes: PTLeadNote[],
-): PTLead {
+function mapLead(row: PtHubLeadRow, notes: PTLeadNote[]): PTLead {
   const source = row.source?.trim() || "manual";
   return {
     id: row.id,
@@ -458,23 +455,25 @@ export function usePtHubProfile() {
       const userId = user?.id;
       if (!userId) return null as PTProfile | null;
 
-      const [{ data: hubProfile, error: hubProfileError }, { data: legacyRows, error: legacyError }] =
-        await Promise.all([
-          supabase
-            .from("pt_hub_profiles")
-            .select(
-              "id, user_id, full_name, display_name, slug, headline, searchable_headline, short_bio, specialties, certifications, coaching_style, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, profile_photo_url, banner_image_url, social_links, testimonials, transformations, updated_at, created_at",
-            )
-            .eq("user_id", userId)
-            .maybeSingle<PtHubProfileRow>(),
-          supabase
-            .from("pt_profiles")
-            .select("display_name, updated_at, created_at")
-            .eq("user_id", userId)
-            .order("updated_at", { ascending: false })
-            .limit(1)
-            .returns<LegacyPtProfileRow[]>(),
-        ]);
+      const [
+        { data: hubProfile, error: hubProfileError },
+        { data: legacyRows, error: legacyError },
+      ] = await Promise.all([
+        supabase
+          .from("pt_hub_profiles")
+          .select(
+            "id, user_id, full_name, display_name, slug, headline, searchable_headline, short_bio, specialties, certifications, coaching_style, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, profile_photo_url, banner_image_url, social_links, testimonials, transformations, updated_at, created_at",
+          )
+          .eq("user_id", userId)
+          .maybeSingle<PtHubProfileRow>(),
+        supabase
+          .from("pt_profiles")
+          .select("display_name, updated_at, created_at")
+          .eq("user_id", userId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .returns<LegacyPtProfileRow[]>(),
+      ]);
 
       if (hubProfileError) throw hubProfileError;
       if (legacyError) throw legacyError;
@@ -677,7 +676,8 @@ export function getPtProfileReadiness(params: {
       label: "Banner image",
       complete: Boolean(profile?.bannerImageUrl),
       href: "/pt-hub/profile",
-      guidance: "Set a banner so the future public profile has a strong hero section.",
+      guidance:
+        "Set a banner so the future public profile has a strong hero section.",
     },
     {
       key: "display_name",
@@ -719,16 +719,18 @@ export function getPtProfileReadiness(params: {
       label: "Coaching style",
       complete: isPresent(profile?.coachingStyle),
       href: "/pt-hub/profile",
-      guidance: "Explain how you coach, communicate, and keep clients accountable.",
+      guidance:
+        "Explain how you coach, communicate, and keep clients accountable.",
     },
     {
       key: "social_links",
       label: "Social links",
       complete:
-        (profile?.socialLinks.filter((link) => isPresent(link.url)).length ?? 0) >
-        0,
+        (profile?.socialLinks.filter((link) => isPresent(link.url)).length ??
+          0) > 0,
       href: "/pt-hub/profile",
-      guidance: "Add at least one destination where prospects can validate your brand.",
+      guidance:
+        "Add at least one destination where prospects can validate your brand.",
     },
     {
       key: "cta_ready",
@@ -736,7 +738,8 @@ export function getPtProfileReadiness(params: {
       complete:
         isPresent(settings?.contactEmail) || isPresent(settings?.supportEmail),
       href: "/pt-hub/settings",
-      guidance: "Add a contact or support email so future inquiry CTAs have a real destination.",
+      guidance:
+        "Add a contact or support email so future inquiry CTAs have a real destination.",
     },
   ];
 
@@ -749,8 +752,7 @@ export function getPtProfileReadiness(params: {
   return {
     completionPercent,
     readyForPublish: missingItems.length === 0,
-    statusLabel:
-      missingItems.length === 0 ? "Ready for publish" : "Not ready",
+    statusLabel: missingItems.length === 0 ? "Ready for publish" : "Not ready",
     missingItems,
     checklist,
   };
@@ -847,7 +849,8 @@ export function usePtHubPayments() {
 
       const subscription: PTSubscriptionSummary = {
         planName:
-          settingsQuery.data?.subscriptionPlan ?? DEFAULT_SETTINGS.subscriptionPlan,
+          settingsQuery.data?.subscriptionPlan ??
+          DEFAULT_SETTINGS.subscriptionPlan,
         billingStatus:
           settingsQuery.data?.subscriptionStatus ??
           DEFAULT_SETTINGS.subscriptionStatus,
@@ -873,7 +876,8 @@ export function usePtHubPayments() {
         monthlyRevenueLabel: "Not connected",
         trailingRevenueLabel: "Not connected",
         activePayingClientsLabel: "Not connected",
-        packagePricingLabel: "Add package pricing once client billing is integrated",
+        packagePricingLabel:
+          "Add package pricing once client billing is integrated",
         revenueConnected: false,
         potentialActiveClients: activeClients,
       };
@@ -955,8 +959,7 @@ export function usePtHubAnalytics() {
             : 0,
         activeClients: clients.filter((client) => isClientActive(client.status))
           .length,
-        profileCompletionPercent:
-          readinessQuery.data?.completionPercent ?? 0,
+        profileCompletionPercent: readinessQuery.data?.completionPercent ?? 0,
         testimonialCountLabel: "Placeholder",
         transformationsCountLabel: "Placeholder",
         growthTrendLabel,
@@ -978,38 +981,39 @@ export function usePtHubLeads() {
       const userId = user?.id;
       if (!userId) return [] as PTLead[];
 
-      const [{ data: leads, error: leadsError }, { data: notes, error: notesError }] =
-        await Promise.all([
-          supabase
-            .from("pt_hub_leads")
-            .select(
-              "id, user_id, full_name, email, phone, goal_summary, training_experience, budget_interest, package_interest, status, submitted_at, source, source_slug, converted_at, converted_workspace_id, converted_client_id, created_at, updated_at",
-            )
-            .eq("user_id", userId)
-            .order("submitted_at", { ascending: false })
-            .returns<PtHubLeadRow[]>(),
-          supabase
-            .from("pt_hub_lead_notes")
-            .select("id, lead_id, user_id, body, created_at")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false })
-            .returns<PtHubLeadNoteRow[]>(),
-        ]);
+      const [
+        { data: leads, error: leadsError },
+        { data: notes, error: notesError },
+      ] = await Promise.all([
+        supabase
+          .from("pt_hub_leads")
+          .select(
+            "id, user_id, full_name, email, phone, goal_summary, training_experience, budget_interest, package_interest, status, submitted_at, source, source_slug, converted_at, converted_workspace_id, converted_client_id, created_at, updated_at",
+          )
+          .eq("user_id", userId)
+          .order("submitted_at", { ascending: false })
+          .returns<PtHubLeadRow[]>(),
+        supabase
+          .from("pt_hub_lead_notes")
+          .select("id, lead_id, user_id, body, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .returns<PtHubLeadNoteRow[]>(),
+      ]);
 
       if (leadsError) throw leadsError;
       if (notesError) throw notesError;
 
-      const notesByLead = (notes ?? []).reduce(
-        (map, row) => {
-          const list = map.get(row.lead_id) ?? [];
-          list.push(mapLeadNote(row));
-          map.set(row.lead_id, list);
-          return map;
-        },
-        new Map<string, PTLeadNote[]>(),
-      );
+      const notesByLead = (notes ?? []).reduce((map, row) => {
+        const list = map.get(row.lead_id) ?? [];
+        list.push(mapLeadNote(row));
+        map.set(row.lead_id, list);
+        return map;
+      }, new Map<string, PTLeadNote[]>());
 
-      return (leads ?? []).map((lead) => mapLead(lead, notesByLead.get(lead.id) ?? []));
+      return (leads ?? []).map((lead) =>
+        mapLead(lead, notesByLead.get(lead.id) ?? []),
+      );
     },
   });
 }
@@ -1028,7 +1032,9 @@ export function usePtHubClients() {
 
       const { data, error } = await supabase
         .from("clients")
-        .select("id, workspace_id, status, display_name, goal, created_at, updated_at")
+        .select(
+          "id, workspace_id, status, display_name, goal, created_at, updated_at",
+        )
         .in("workspace_id", workspaceIds)
         .order("created_at", { ascending: false })
         .returns<ClientRow[]>();
@@ -1249,7 +1255,8 @@ export function usePublicPtProfile(slug: string | undefined) {
       return {
         userId: data.user_id,
         fullName: data.full_name?.trim() || "",
-        displayName: data.display_name?.trim() || data.full_name?.trim() || "Coach",
+        displayName:
+          data.display_name?.trim() || data.full_name?.trim() || "Coach",
         slug: data.slug?.trim() || nextSlug,
         headline: data.headline?.trim() || "",
         searchableHeadline:
@@ -1276,7 +1283,9 @@ export function usePublicPtProfile(slug: string | undefined) {
         ),
         testimonials: normalizeTestimonials(data.testimonials),
         transformations: normalizeTransformations(data.transformations),
-        publicUrl: getPublicCoachUrl(data.slug?.trim() || nextSlug) ?? `/coach/${nextSlug}`,
+        publicUrl:
+          getPublicCoachUrl(data.slug?.trim() || nextSlug) ??
+          `/coach/${nextSlug}`,
       } satisfies PTPublicProfile;
     },
   });
@@ -1302,7 +1311,10 @@ export async function submitPublicPtApplication(input: PTPublicLeadInput) {
     p_package_interest: input.packageInterest.trim(),
   };
 
-  const { data, error } = await supabase.rpc("submit_public_pt_application", nextInput);
+  const { data, error } = await supabase.rpc(
+    "submit_public_pt_application",
+    nextInput,
+  );
 
   if (error) throw error;
 
@@ -1333,9 +1345,5 @@ export async function createPtWorkspace(workspaceName: string) {
 
 export type StoredProfileDraft = Omit<
   PTProfile,
-  | "id"
-  | "workspaceId"
-  | "completionPercent"
-  | "updatedAt"
-  | "publicUrl"
+  "id" | "workspaceId" | "completionPercent" | "updatedAt" | "publicUrl"
 >;
