@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BookOpen,
+  Building2,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
