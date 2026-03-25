@@ -13,7 +13,7 @@ export function ClientOnlyRoute() {
   }
 
   if (role === "pt") {
-    return <Navigate to="/pt/dashboard" replace />;
+    return <Navigate to="/pt-hub" replace />;
   }
 
   if (role === "none") {

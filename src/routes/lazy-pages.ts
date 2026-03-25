@@ -5,6 +5,11 @@ export const PtLayout = lazy(() =>
     default: m.PtLayout,
   })),
 );
+export const PtHubLayout = lazy(() =>
+  import("../components/layouts/pt-hub-layout").then((m) => ({
+    default: m.PtHubLayout,
+  })),
+);
 export const ClientLayout = lazy(() =>
   import("../components/layouts/client-layout").then((m) => ({
     default: m.ClientLayout,
@@ -29,6 +34,11 @@ export const PtSignupPage = lazy(() =>
 );
 export const WelcomePage = lazy(() =>
   import("../pages/public/welcome").then((m) => ({ default: m.WelcomePage })),
+);
+export const PublicCoachProfilePage = lazy(() =>
+  import("../pages/public/coach-profile").then((m) => ({
+    default: m.PublicCoachProfilePage,
+  })),
 );
 export const SignupRolePage = lazy(() =>
   import("../pages/public/signup-role").then((m) => ({
@@ -124,6 +134,51 @@ export const PtWorkspaceOnboardingPage = lazy(() =>
 export const PtOpsStatusPage = lazy(() =>
   import("../pages/pt/ops-status").then((m) => ({
     default: m.PtOpsStatusPage,
+  })),
+);
+export const PtHubOverviewPage = lazy(() =>
+  import("../pages/pt-hub/overview").then((m) => ({
+    default: m.PtHubOverviewPage,
+  })),
+);
+export const PtHubProfilePage = lazy(() =>
+  import("../pages/pt-hub/profile").then((m) => ({
+    default: m.PtHubProfilePage,
+  })),
+);
+export const PtHubProfilePreviewPage = lazy(() =>
+  import("../pages/pt-hub/profile-preview").then((m) => ({
+    default: m.PtHubProfilePreviewPage,
+  })),
+);
+export const PtHubWorkspacesPage = lazy(() =>
+  import("../pages/pt-hub/workspaces").then((m) => ({
+    default: m.PtHubWorkspacesPage,
+  })),
+);
+export const PtHubLeadsPage = lazy(() =>
+  import("../pages/pt-hub/leads").then((m) => ({
+    default: m.PtHubLeadsPage,
+  })),
+);
+export const PtHubClientsPage = lazy(() =>
+  import("../pages/pt-hub/clients").then((m) => ({
+    default: m.PtHubClientsPage,
+  })),
+);
+export const PtHubPaymentsPage = lazy(() =>
+  import("../pages/pt-hub/payments").then((m) => ({
+    default: m.PtHubPaymentsPage,
+  })),
+);
+export const PtHubAnalyticsPage = lazy(() =>
+  import("../pages/pt-hub/analytics").then((m) => ({
+    default: m.PtHubAnalyticsPage,
+  })),
+);
+export const PtHubSettingsPage = lazy(() =>
+  import("../pages/pt-hub/settings").then((m) => ({
+    default: m.PtHubSettingsPage,
   })),
 );
 

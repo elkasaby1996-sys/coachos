@@ -36,7 +36,7 @@ export function PtWorkspaceOnboardingPage() {
 
   if (!session) return <Navigate to="/login" replace />;
   if (role === "client") return <Navigate to="/app/home" replace />;
-  if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
+  if (role === "pt") return <Navigate to="/pt-hub" replace />;
 
   const handleCreateWorkspace = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -57,7 +57,7 @@ export function PtWorkspaceOnboardingPage() {
       window.localStorage.removeItem("coachos_pt_workspace_name");
       window.localStorage.removeItem("coachos_signup_intent");
       await refreshRole?.();
-      navigate("/pt/dashboard", { replace: true });
+      navigate("/pt-hub", { replace: true });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to create workspace.",

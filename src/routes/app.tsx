@@ -32,6 +32,7 @@ import {
   NoWorkspacePage,
   NotificationsPage,
   PrivacyPage,
+  PublicCoachProfilePage,
   PtBaselineTemplatesPage,
   PtCalendarPage,
   PtCheckinsQueuePage,
@@ -40,6 +41,16 @@ import {
   PtClientsPage,
   PtDashboardPage,
   PtExerciseLibraryPage,
+  PtHubAnalyticsPage,
+  PtHubClientsPage,
+  PtHubLeadsPage,
+  PtHubLayout,
+  PtHubOverviewPage,
+  PtHubPaymentsPage,
+  PtHubProfilePage,
+  PtHubProfilePreviewPage,
+  PtHubSettingsPage,
+  PtHubWorkspacesPage,
   PtLayout,
   PtMessagesPage,
   PtNutritionPage,
@@ -122,7 +133,7 @@ function RequireRole({
         )
       ) : !(role === "pt" || role === "client") || !allow.includes(role) ? (
         role === "pt" ? (
-          <Navigate to="/pt/dashboard" replace />
+          <Navigate to="/pt-hub" replace />
         ) : role === "client" ? (
           <Navigate to="/app/home" replace />
         ) : (
@@ -149,7 +160,7 @@ function IndexRedirect() {
     return <Navigate to="/no-workspace" replace />;
   }
 
-  if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
+  if (role === "pt") return <Navigate to="/pt-hub" replace />;
   if (role === "client") return <Navigate to="/app/home" replace />;
 
   return <Navigate to="/no-workspace" replace />;
@@ -170,7 +181,7 @@ function LoginGate() {
   // If already logged in, don't allow staying on /login
   if (session) {
     if (redirectTarget) return <Navigate to={redirectTarget} replace />;
-    if (role === "pt") return <Navigate to="/pt/dashboard" replace />;
+    if (role === "pt") return <Navigate to="/pt-hub" replace />;
     if (role === "client") return <Navigate to="/app/home" replace />;
     if (window.localStorage.getItem("coachos_signup_intent") === "pt") {
       return <Navigate to="/pt/onboarding/workspace" replace />;
@@ -260,6 +271,7 @@ export function App() {
         <Route path="/signup/pt" element={<PtSignupPage />} />
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route path="/join/:code" element={<LegacyJoinRedirect />} />
+        <Route path="/coach/:slug" element={<PublicCoachProfilePage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/support" element={<SupportPage />} />
@@ -281,6 +293,27 @@ export function App() {
             </RequireAuth>
           }
         />
+
+        <Route
+          path="/pt-hub"
+          element={
+            <RequireAuth>
+              <RequireRole allow={["pt"]}>
+                <PtHubLayout />
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route index element={<PtHubOverviewPage />} />
+          <Route path="profile" element={<PtHubProfilePage />} />
+          <Route path="profile/preview" element={<PtHubProfilePreviewPage />} />
+          <Route path="leads" element={<PtHubLeadsPage />} />
+          <Route path="clients" element={<PtHubClientsPage />} />
+          <Route path="workspaces" element={<PtHubWorkspacesPage />} />
+          <Route path="payments" element={<PtHubPaymentsPage />} />
+          <Route path="analytics" element={<PtHubAnalyticsPage />} />
+          <Route path="settings" element={<PtHubSettingsPage />} />
+        </Route>
 
         {/* PT Side */}
         <Route
