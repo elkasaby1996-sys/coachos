@@ -301,10 +301,13 @@ export function ClientWorkoutDetailPage() {
     workoutSetLogsQuery.error,
   ].filter(Boolean);
 
-  const templateExercises =
-    assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
-      ? assignedExercisesQuery.data
-      : (templateExercisesQuery.data ?? []);
+  const templateExercises = useMemo(
+    () =>
+      assignedExercisesQuery.data && assignedExercisesQuery.data.length > 0
+        ? assignedExercisesQuery.data
+        : (templateExercisesQuery.data ?? []),
+    [assignedExercisesQuery.data, templateExercisesQuery.data],
+  );
   const setLogsByExercise = useMemo(() => {
     const map = new Map<string, WorkoutSetLog[]>();
     (workoutSetLogsQuery.data ?? []).forEach((item) => {

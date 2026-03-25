@@ -17,7 +17,7 @@ test.describe("Smoke: auth and onboarding", () => {
     ).toBeVisible();
   });
 
-  test("PT can sign in and reach dashboard or workspace onboarding", async ({
+  test("PT can sign in and reach PT Hub or workspace onboarding", async ({
     page,
   }) => {
     const required = requireEnvVars(["E2E_PT_EMAIL", "E2E_PT_PASSWORD"]);
@@ -29,14 +29,14 @@ test.describe("Smoke: auth and onboarding", () => {
       process.env.E2E_PT_PASSWORD!,
     );
 
-    await expect(page).toHaveURL(/\/pt\/(dashboard|onboarding\/workspace)/);
+    await expect(page).toHaveURL(/\/(pt-hub|pt\/onboarding\/workspace)/);
 
     if (page.url().includes("/pt/onboarding/workspace")) {
       await page
         .getByLabel(/workspace name/i)
         .fill(`Smoke Workspace ${Date.now()}`);
       await page.getByRole("button", { name: /create workspace/i }).click();
-      await expect(page).toHaveURL(/\/pt\/dashboard/);
+      await expect(page).toHaveURL(/\/pt-hub/);
     }
   });
 

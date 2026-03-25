@@ -366,7 +366,10 @@ export function PtWorkoutTemplateBuilderPage() {
     );
   }, [exerciseRows]);
 
-  const exercises = exercisesQuery.data ?? [];
+  const exercises = useMemo(
+    () => exercisesQuery.data ?? [],
+    [exercisesQuery.data],
+  );
   const filteredExercises = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return exercises;

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BookOpen,
+  Building2,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -588,6 +589,14 @@ export function PtLayout() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={() => navigate("/pt-hub")}
+                >
+                  <Building2 className="h-4 w-4" />
+                  PT Hub
+                </Button>
                 <InviteClientDialog
                   trigger={
                     <Button className="gap-2" variant="default">

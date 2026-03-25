@@ -213,7 +213,10 @@ export function PtExerciseLibraryPage() {
     });
   };
 
-  const exercises = exercisesQuery.data ?? [];
+  const exercises = useMemo(
+    () => exercisesQuery.data ?? [],
+    [exercisesQuery.data],
+  );
   const filteredExercises = useMemo(() => {
     const nameFilter = filters.name.trim().toLowerCase();
     const primaryFilter = filters.primary_muscle.trim().toLowerCase();

@@ -43,7 +43,10 @@ export function PtNutritionPage() {
   const [description, setDescription] = useState("");
   const [weeks, setWeeks] = useState("1");
 
-  const templates = templatesQuery.data ?? [];
+  const templates = useMemo(
+    () => templatesQuery.data ?? [],
+    [templatesQuery.data],
+  );
   const filteredTemplates = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return templates;

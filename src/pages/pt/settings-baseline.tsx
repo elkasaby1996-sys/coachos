@@ -137,7 +137,10 @@ export function PtBaselineTemplatesPage() {
     },
   });
 
-  const templates = templatesQuery.data ?? [];
+  const templates = useMemo(
+    () => templatesQuery.data ?? [],
+    [templatesQuery.data],
+  );
 
   const maxSortOrder = useMemo(() => {
     if (!templates.length) return 0;

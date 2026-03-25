@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
@@ -97,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (resolvedRole === "pt") {
         if (!location.pathname.startsWith("/pt")) {
-          navigate("/pt/dashboard", { replace: true });
+          navigate("/pt-hub", { replace: true });
         }
         didRouteRef.current = true;
         return;

@@ -160,7 +160,7 @@ export function PtDashboardPage() {
     };
 
     loadDashboard();
-  }, [user?.id, cachedWorkspaceId, workspaceLoading]);
+  }, [cachedWorkspaceId, messagesEnabled, user?.id, workspaceLoading]);
 
   useEffect(() => {
     if (workspaceError) {
