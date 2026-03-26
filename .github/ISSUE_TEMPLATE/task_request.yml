@@ -1,0 +1,39 @@
+name: Task / Chore
+description: Track non-feature delivery work such as cleanup, ops, docs, or CI tasks.
+title: "[Task]: "
+labels:
+  - chore
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: Task
+      description: Describe the work clearly and directly.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Task Type
+      options:
+        - Refactor
+        - Documentation
+        - CI / GitHub
+        - Supabase / Database
+        - Ops / Release
+        - Cleanup
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Done Looks Like
+      description: Describe the completion criteria.
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies Or Notes
+      description: Mention blockers, linked PRs, migrations, or rollout notes.
