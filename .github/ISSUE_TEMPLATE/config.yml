@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Report
+    url: https://github.com/elkasaby1996-sys/coachos/security/advisories/new
+    about: Report sensitive vulnerabilities privately through GitHub Security Advisories.

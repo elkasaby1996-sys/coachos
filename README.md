@@ -143,3 +143,9 @@ Set these repository secrets in GitHub Actions:
 - Ops/monitoring checklist: `docs/ops-monitoring-checklist.md`
 - Ops incident runbook: `docs/ops-runbook.md`
 - Lint warnings triage: `docs/docs-lint-triage.md`
+
+## Repository Governance
+
+- Contribution guide: `CONTRIBUTING.md`
+- Security policy: `SECURITY.md`
+- CODEOWNERS: `.github/CODEOWNERS`
