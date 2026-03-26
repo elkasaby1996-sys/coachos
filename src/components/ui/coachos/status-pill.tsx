@@ -45,10 +45,7 @@ export function StatusPill({
   const pill = map[normalized] ?? map.active ?? fallbackPill;
 
   return (
-    <Badge
-      variant={pill.variant}
-      className={cn("tracking-[0.2em]", className)}
-    >
+    <Badge variant={pill.variant} className={cn("tracking-[0.2em]", className)}>
       {pill.label}
     </Badge>
   );

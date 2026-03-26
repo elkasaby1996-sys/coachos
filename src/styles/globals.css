@@ -151,7 +151,11 @@
   .surface-panel-strong {
     @apply rounded-[28px] border shadow-[0_24px_70px_-52px_rgba(0,0,0,0.85)];
     border-color: oklch(var(--border) / 0.7);
-    background: linear-gradient(180deg, rgba(18, 24, 38, 0.9), rgba(11, 15, 25, 0.9));
+    background: linear-gradient(
+      180deg,
+      rgba(18, 24, 38, 0.9),
+      rgba(11, 15, 25, 0.9)
+    );
   }
 
   .surface-subtle {

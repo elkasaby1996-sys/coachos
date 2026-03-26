@@ -124,7 +124,9 @@ export function PtCheckinsQueuePage() {
             >
               Manage templates
             </Button>
-            <Button onClick={() => navigate("/pt/clients")}>View clients</Button>
+            <Button onClick={() => navigate("/pt/clients")}>
+              View clients
+            </Button>
           </>
         }
       />

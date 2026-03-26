@@ -409,9 +409,7 @@ export function PtLayout() {
                   <span className="text-lg font-semibold tracking-tight text-foreground">
                     CoachOS
                   </span>
-                  <p className="text-xs text-muted-foreground">
-                    PT Workspace
-                  </p>
+                  <p className="text-xs text-muted-foreground">PT Workspace</p>
                 </div>
               </div>
             </div>
@@ -490,7 +488,8 @@ export function PtLayout() {
                       desktopNavCollapsed
                         ? "justify-center px-2 py-2.5"
                         : "gap-3 px-3 py-2.5",
-                      isActive && "border-border/70 bg-background/62 text-foreground",
+                      isActive &&
+                        "border-border/70 bg-background/62 text-foreground",
                     )
                   }
                 >
@@ -625,7 +624,8 @@ export function PtLayout() {
                   className={({ isActive }) =>
                     cn(
                       "group flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-background/42 hover:text-foreground",
-                      isActive && "border-border/70 bg-background/62 text-foreground",
+                      isActive &&
+                        "border-border/70 bg-background/62 text-foreground",
                     )
                   }
                 >
@@ -716,7 +716,10 @@ export function PtLayout() {
                 </Button>
                 <InviteClientDialog
                   trigger={
-                    <Button className="gap-2 rounded-full px-4" variant="default">
+                    <Button
+                      className="gap-2 rounded-full px-4"
+                      variant="default"
+                    >
                       <Plus className="h-4 w-4" />
                       Invite client
                     </Button>
@@ -736,7 +739,9 @@ export function PtLayout() {
                     <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <InviteClientDialog
-                      trigger={<DropdownMenuItem>Invite client</DropdownMenuItem>}
+                      trigger={
+                        <DropdownMenuItem>Invite client</DropdownMenuItem>
+                      }
                     />
                     <DropdownMenuItem>Create template</DropdownMenuItem>
                     <DropdownMenuItem>Assign workout</DropdownMenuItem>
