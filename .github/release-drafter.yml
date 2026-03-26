@@ -1,0 +1,63 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+template: |
+  ## Summary
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
+categories:
+  - title: "Features"
+    labels:
+      - "feature"
+  - title: "Fixes"
+    labels:
+      - "bug"
+      - "fix"
+  - title: "Database"
+    labels:
+      - "db"
+  - title: "UI / UX"
+    labels:
+      - "ui"
+  - title: "Security"
+    labels:
+      - "security"
+  - title: "Operations"
+    labels:
+      - "ops"
+      - "github-actions"
+  - title: "Maintenance"
+    labels:
+      - "dependencies"
+      - "refactor"
+      - "chore"
+
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+change-title-escapes: '\<*_&'
+no-changes-template: "- No user-facing changes in this release."
+sort-by: "merged_at"
+sort-direction: "descending"
+
+version-resolver:
+  major:
+    labels:
+      - "breaking"
+  minor:
+    labels:
+      - "feature"
+  patch:
+    labels:
+      - "bug"
+      - "fix"
+      - "db"
+      - "ui"
+      - "security"
+      - "ops"
+      - "dependencies"
+      - "refactor"
+      - "chore"
+  default: patch
