@@ -14,6 +14,7 @@ import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
+import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 
 type BaselineEntry = {
   id: string;
@@ -65,6 +66,7 @@ type MarkerValueRow = {
 type BaselinePhotoRow = {
   photo_type: string | null;
   url: string | null;
+  storage_path: string | null;
 };
 
 const photoTypes = ["front", "side", "back"] as const;
@@ -318,10 +320,10 @@ export function ClientBaselinePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_photos")
-        .select("photo_type, url")
+        .select("photo_type, url, storage_path")
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
-      return (data ?? []) as BaselinePhotoRow[];
+      return resolveBaselinePhotoRows((data ?? []) as BaselinePhotoRow[]);
     },
   });
 

@@ -81,6 +81,7 @@ import {
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
+import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 
 const tabs = [
   "overview",
@@ -265,6 +266,7 @@ type BaselineMarkerRow = {
 type BaselinePhotoRow = {
   photo_type: string | null;
   url: string | null;
+  storage_path: string | null;
 };
 
 type HabitLog = {
@@ -1239,10 +1241,10 @@ export function PtClientDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_photos")
-        .select("photo_type, url")
+        .select("photo_type, url, storage_path")
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
-      return (data ?? []) as BaselinePhotoRow[];
+      return resolveBaselinePhotoRows((data ?? []) as BaselinePhotoRow[]);
     },
   });
 
