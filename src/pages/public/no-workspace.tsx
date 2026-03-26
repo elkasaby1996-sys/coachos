@@ -73,13 +73,16 @@ export function NoWorkspacePage() {
         <CardHeader>
           <CardTitle>No workspace found</CardTitle>
           <p className="text-sm text-muted-foreground">
-            We couldn't match your account to a workspace. Please ask your coach
-            for an invite.
+            We couldn't match your account to a workspace yet. Join a coach with
+            an invite code or create your own PT workspace to continue.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Button asChild variant="secondary">
             <Link to="/login">Back to login</Link>
+          </Button>
+          <Button asChild>
+            <Link to="/pt/onboarding/workspace">Create PT workspace</Link>
           </Button>
           <Dialog
             open={isDialogOpen}
@@ -91,7 +94,7 @@ export function NoWorkspacePage() {
             }}
           >
             <DialogTrigger asChild>
-              <Button>Use an invite code</Button>
+              <Button variant="ghost">Use an invite code</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
