@@ -707,8 +707,8 @@ export function PtLayout() {
 
               <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
-                  className="gap-2 rounded-full border border-border/70 bg-background/65 px-4"
+                  variant="secondary"
+                  className="gap-2"
                   onClick={() => navigate("/pt-hub")}
                 >
                   <Building2 className="h-4 w-4" />

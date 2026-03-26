@@ -24,7 +24,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "surface-dashed p-6 text-sm text-muted-foreground",
+        "rounded-[28px] border border-dashed border-border/70 bg-background/30 p-6 text-sm text-muted-foreground",
         centered && "text-center",
         className,
       )}
