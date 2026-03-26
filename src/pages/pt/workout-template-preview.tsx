@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 
 const getErrorDetails = (error: unknown) => {
@@ -145,29 +146,26 @@ export function PtWorkoutTemplatePreviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            {template?.name ?? "Workout template"}
-          </h2>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+      <WorkspacePageHeader
+        title={template?.name ?? "Workout template"}
+        description="Preview structure, exercise sequencing, and assignment readiness before opening the builder."
+        actions={
+          <>
             <Badge variant="muted">
               {formatWorkoutTypeTag(template?.workout_type_tag)}
             </Badge>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() =>
-              navigate(`/pt/templates/workouts/${templateId}/edit`)
-            }
-          >
-            Edit
-          </Button>
-          <Button>Assign</Button>
-        </div>
-      </div>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                navigate(`/pt/templates/workouts/${templateId}/edit`)
+              }
+            >
+              Edit
+            </Button>
+            <Button>Assign</Button>
+          </>
+        }
+      />
 
       {templateQuery.isLoading ? (
         <Card>
@@ -233,10 +231,7 @@ export function PtWorkoutTemplatePreviewPage() {
                 const videoUrl =
                   row.video_url ?? row.exercise?.video_url ?? null;
                 return (
-                  <li
-                    key={row.id}
-                    className="rounded-xl border border-border/70 bg-background/40 p-4"
-                  >
+                  <li key={row.id} className="surface-subtle p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">

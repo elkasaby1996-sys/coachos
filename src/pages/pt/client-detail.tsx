@@ -6127,10 +6127,7 @@ function PtClientPlanTab({
                 : "Scheduled";
               const canOverride = Boolean(workout.scheduled_date);
               return (
-                <div
-                  key={workout.id}
-                  className="rounded-xl border border-border/70 bg-background/40 p-3"
-                >
+                <div key={workout.id} className="surface-subtle p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold">{title}</div>

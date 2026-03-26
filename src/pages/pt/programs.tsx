@@ -9,6 +9,7 @@ import { Badge } from "../../components/ui/badge";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
 import { EmptyState } from "../../components/pt/dashboard/EmptyState";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -213,20 +214,15 @@ export function PtProgramsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            CoachOS Pro
-          </div>
-          <h2 className="text-2xl font-semibold tracking-tight">Programs</h2>
-          <p className="text-sm text-muted-foreground">
-            Design multi-week training programs for your clients.
-          </p>
-        </div>
-        <Button onClick={() => navigate("/pt/programs/new")}>
-          New Program
-        </Button>
-      </div>
+      <WorkspacePageHeader
+        title="Programs"
+        description="Design reusable multi-week training systems and keep edit actions close to the list."
+        actions={
+          <Button onClick={() => navigate("/pt/programs/new")}>
+            New Program
+          </Button>
+        }
+      />
 
       {actionError ? (
         <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">

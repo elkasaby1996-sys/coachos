@@ -28,7 +28,7 @@ export function StatCard({
       className={cn(
         isPtHub
           ? "rounded-[28px] border-border/70 bg-[linear-gradient(180deg,rgba(18,24,38,0.82),rgba(11,15,25,0.86))] shadow-[0_20px_60px_-48px_rgba(0,0,0,0.9)]"
-          : "border-border/70 bg-card/80",
+          : "rounded-[24px] border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))] shadow-card",
         accent &&
           (isPtHub
             ? "border-primary/30 bg-[linear-gradient(180deg,rgba(20,29,44,0.92),rgba(11,16,28,0.9))]"
@@ -36,7 +36,9 @@ export function StatCard({
         className,
       )}
     >
-      <CardHeader className={cn("space-y-2", isPtHub && "px-5 py-5")}>
+      <CardHeader
+        className={cn("space-y-2", isPtHub ? "px-5 py-5" : "px-5 py-4")}
+      >
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="uppercase tracking-[0.22em]">{label}</span>
           {Icon ? (
@@ -55,18 +57,17 @@ export function StatCard({
         <div className="flex items-end justify-between gap-3">
           <div>
             <CardTitle
-              className={cn(
-                "text-2xl font-semibold tracking-tight",
-                isPtHub && "text-[1.85rem]",
-              )}
-            >
-              {value}
-            </CardTitle>
+                className={cn(
+                  "text-[1.85rem] font-semibold tracking-tight",
+                )}
+              >
+                {value}
+              </CardTitle>
             {helper ? (
               <p
                 className={cn(
-                  "text-xs text-muted-foreground",
-                  isPtHub && "mt-1 text-sm",
+                  "mt-1 text-xs text-muted-foreground",
+                  isPtHub && "text-sm",
                 )}
               >
                 {helper}

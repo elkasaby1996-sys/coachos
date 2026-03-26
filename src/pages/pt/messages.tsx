@@ -18,6 +18,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { cn } from "../../lib/utils";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -403,12 +404,10 @@ export function PtMessagesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Messages</h2>
-        <p className="text-sm text-muted-foreground">
-          Chat with clients in real time.
-        </p>
-      </div>
+      <WorkspacePageHeader
+        title="Messages"
+        description="Stay responsive with a denser conversation layout that still matches the shared CoachOS system."
+      />
 
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <DashboardCard title="Clients" subtitle="Select a conversation.">
@@ -442,10 +441,10 @@ export function PtMessagesPage() {
                     type="button"
                     onClick={() => setSelectedClientId(client.id)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-xl border border-border/60 px-3 py-2 text-left text-sm transition",
+                      "flex w-full items-center justify-between rounded-2xl border border-border/60 px-3 py-2 text-left text-sm transition",
                       isActive
-                        ? "border-accent/60 bg-accent/10"
-                        : "bg-background/40 hover:border-border",
+                        ? "border-primary/25 bg-primary/10"
+                        : "bg-background/40 hover:border-border hover:bg-background/65",
                     )}
                   >
                     <div>
@@ -527,10 +526,10 @@ export function PtMessagesPage() {
                         <div
                           key={message.id}
                           className={cn(
-                            "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                            "max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
                             isCoach
-                              ? "ml-auto bg-accent/20 text-foreground"
-                              : "bg-muted text-foreground",
+                              ? "ml-auto border-primary/20 bg-primary/12 text-foreground"
+                              : "border-border/60 bg-secondary/45 text-foreground",
                           )}
                         >
                           <div className="text-[10px] uppercase text-muted-foreground">

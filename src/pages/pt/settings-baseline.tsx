@@ -20,6 +20,7 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
@@ -352,24 +353,20 @@ export function PtBaselineTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Baseline templates
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Create the performance markers clients will log during baseline.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/settings/defaults">Back to settings</Link>
-          </Button>
-          <Button size="sm" onClick={openCreateDialog}>
-            New template
-          </Button>
-        </div>
-      </div>
+      <WorkspacePageHeader
+        title="Baseline Templates"
+        description="Create the performance markers clients will log during baseline."
+        actions={
+          <>
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/settings/defaults">Back to settings</Link>
+            </Button>
+            <Button size="sm" onClick={openCreateDialog}>
+              New template
+            </Button>
+          </>
+        }
+      />
 
       {statusMessage ? (
         <Alert

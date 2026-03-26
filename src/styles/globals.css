@@ -106,11 +106,80 @@
     @apply bg-background text-foreground font-sans;
     min-height: 100dvh;
   }
+
+  select,
+  textarea {
+    @apply rounded-2xl border border-input bg-secondary text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] transition-colors;
+  }
+
+  select {
+    @apply h-11 w-full px-3 pr-10;
+  }
+
+  textarea {
+    @apply min-h-[120px] w-full resize-y px-3 py-2 leading-6;
+  }
+
+  select::placeholder,
+  textarea::placeholder {
+    @apply text-muted-foreground;
+  }
+
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+@layer components {
+  .surface-panel {
+    @apply rounded-[26px] border shadow-card;
+    border-color: oklch(var(--border) / 0.7);
+    background: linear-gradient(
+      180deg,
+      oklch(var(--card) / 0.94),
+      oklch(var(--card) / 0.84)
+    );
+  }
+
+  .surface-panel-strong {
+    @apply rounded-[28px] border shadow-[0_24px_70px_-52px_rgba(0,0,0,0.85)];
+    border-color: oklch(var(--border) / 0.7);
+    background: linear-gradient(180deg, rgba(18, 24, 38, 0.9), rgba(11, 15, 25, 0.9));
+  }
+
+  .surface-subtle {
+    @apply rounded-2xl border;
+    border-color: oklch(var(--border) / 0.7);
+    background-color: oklch(var(--background) / 0.45);
+  }
+
+  .surface-dashed {
+    @apply rounded-[24px] border border-dashed;
+    border-color: oklch(var(--border) / 0.7);
+    background-color: oklch(var(--muted) / 0.18);
+  }
+
+  .field-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground;
+  }
+
+  .workspace-filter-chip {
+    @apply h-9 rounded-full border px-4 text-xs font-medium text-muted-foreground transition-colors;
+    border-color: oklch(var(--input) / 0.75);
+    background-color: oklch(var(--secondary) / 0.4);
+  }
+
+  .workspace-filter-chip:hover {
+    border-color: oklch(var(--border));
+    background-color: oklch(var(--secondary) / 0.7);
+    color: oklch(var(--foreground));
   }
 }
 

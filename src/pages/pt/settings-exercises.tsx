@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 
@@ -247,17 +248,11 @@ export function PtExerciseLibraryPage() {
           </Alert>
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Exercise library
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Build a reusable exercise library for your workspace.
-          </p>
-        </div>
-        <Button onClick={openCreate}>Add exercise</Button>
-      </div>
+      <WorkspacePageHeader
+        title="Exercise Library"
+        description="Build a reusable exercise library for your workspace."
+        actions={<Button onClick={openCreate}>Add exercise</Button>}
+      />
 
       {workspaceError ? (
         <Card className="border-destructive/40">

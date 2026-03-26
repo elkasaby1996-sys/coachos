@@ -47,7 +47,7 @@ export function StatusPill({
   return (
     <Badge
       variant={pill.variant}
-      className={cn("text-[10px] uppercase tracking-wide", className)}
+      className={cn("tracking-[0.2em]", className)}
     >
       {pill.label}
     </Badge>

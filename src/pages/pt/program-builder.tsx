@@ -17,6 +17,7 @@ import {
 } from "../../components/ui/tabs";
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 
@@ -390,24 +391,23 @@ export function PtProgramBuilderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            {isNew ? "New Program" : "Program Builder"}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Configure weekly structure and day-by-day assignments.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate("/pt/programs")}>
-            Back to programs
-          </Button>
-          <Button disabled={saveStatus === "saving"} onClick={handleSave}>
-            {saveStatus === "saving" ? "Saving..." : "Save Program"}
-          </Button>
-        </div>
-      </div>
+      <WorkspacePageHeader
+        title={isNew ? "New Program" : "Program Builder"}
+        description="Configure weekly structure and day-by-day assignments."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => navigate("/pt/programs")}
+            >
+              Back to programs
+            </Button>
+            <Button disabled={saveStatus === "saving"} onClick={handleSave}>
+              {saveStatus === "saving" ? "Saving..." : "Save Program"}
+            </Button>
+          </>
+        }
+      />
 
       {(templateQuery.isLoading && !isNew) || templateDaysQuery.isLoading ? (
         <Card className="border-border/70 bg-card/80">
@@ -618,7 +618,7 @@ export function PtProgramBuilderPage() {
                             handleDropTemplate(week, day, selectedTemplateId);
                           }
                         }}
-                        className={`flex h-full flex-col justify-between rounded-xl border border-border/70 bg-background/40 p-3 transition ${
+                        className={`surface-subtle flex h-full flex-col justify-between p-3 transition ${
                           draggingTemplateId
                             ? "border-accent/60 bg-accent/10"
                             : "hover:border-border"

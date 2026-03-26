@@ -26,10 +26,10 @@ export function ClientRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background/40 px-4 py-3 text-left transition hover:border-border hover:bg-muted/40"
+      className="surface-subtle flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:border-border hover:bg-background/70"
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/70 text-xs font-semibold">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-background/75 text-xs font-semibold">
           {makeInitials(name)}
         </div>
         <div>
@@ -42,7 +42,9 @@ export function ClientRow({
       </div>
       <div className="flex items-center gap-3">
         <div className="text-right">
-          <p className="text-xs text-muted-foreground">Adherence</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Adherence
+          </p>
           <p className="text-sm font-semibold text-accent">{adherence}</p>
         </div>
         <MiniSparkline />

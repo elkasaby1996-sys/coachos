@@ -18,12 +18,12 @@ export function SettingsPageShell({
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h2 className="text-[1.85rem] font-semibold tracking-tight text-foreground">
           {title}
         </h2>
         <p className="text-sm text-muted-foreground">{description}</p>
       </header>
-      <div className="rounded-2xl border border-border bg-card/70">
+      <div className="rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))]">
         {children}
       </div>
     </section>
@@ -45,7 +45,7 @@ export function SettingsBlock({
     <div
       className={cn(
         "space-y-5 px-5 py-5 md:px-6",
-        !noBorder && "border-b border-border",
+        !noBorder && "border-b border-border/70",
       )}
     >
       <div className="space-y-1">
