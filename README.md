@@ -47,8 +47,58 @@ A lightweight seed helper script is included in `src/lib/seed.ts` with example d
 - `npm run lint` - run ESLint (flat config)
 - `npm run format` - check Prettier formatting
 - `npm run format:write` - apply Prettier formatting
+- `npm run supabase:start` - start local Supabase DB services
+- `npm run supabase:stop` - stop local Supabase services
+- `npm run supabase:status` - show local Supabase service status
+- `npm run supabase:migration:new -- <name>` - create a new migration file
+- `npm run supabase:migration:up` - apply pending local migrations
+- `npm run supabase:migration:list` - compare local and remote migration history
+- `npm run supabase:db:reset` - reset and rebuild the local database from migrations
+- `npm run supabase:db:lint` - lint the local database schema
+- `npm run supabase:db:test` - run pgTAP database tests when present
 - `npm run verify:release` - full release gate check
 - `npm run test:e2e:smoke` - run Playwright smoke E2E tests
+
+## Supabase Migration Flow
+
+1. Create a migration:
+
+```bash
+npm run supabase:migration:new -- add_feature_name
+```
+
+2. Edit the generated SQL file in `supabase/migrations`.
+
+3. Start the local database and apply migrations:
+
+```bash
+npm run supabase:start
+npm run supabase:migration:up
+```
+
+4. Validate locally:
+
+```bash
+npm run supabase:db:lint
+```
+
+5. Open a PR. `Supabase CI` will validate the local database and migrations.
+
+6. After merge to `main`, the staging workflow pushes pending migrations to the staging Supabase project.
+
+7. Promote to production with the manual `Supabase Deploy Production` workflow.
+
+Historical migration files in `supabase/migrations` are intentionally preserved. If the project ever needs a clean baseline, use a planned squash/re-baseline process instead of deleting committed migration history.
+
+## Supabase GitHub Secrets
+
+Set these repository or environment secrets before using the deploy workflows:
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_PROJECT_ID`
+- `SUPABASE_DB_PASSWORD`
+
+Use environment-scoped secrets so `supabase-staging` points to staging and `supabase-production` points to production.
 
 ## E2E Smoke Setup
 
