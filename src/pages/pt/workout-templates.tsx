@@ -22,6 +22,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 
 type TemplateRow = {
   id: string;
@@ -259,22 +260,15 @@ export function PtWorkoutTemplatesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            CoachOS Pro
-          </div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Templates Library
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your workout templates, programs, and exercise library.
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>Create template</Button>
-      </div>
+      <WorkspacePageHeader
+        title="Templates Library"
+        description="Manage workout templates, programs, and the exercise library in one tighter operational surface."
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>Create template</Button>
+        }
+      />
 
-      <Card className="border-border/70 bg-card/80">
+      <Card className="rounded-[24px] border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))]">
         <CardHeader className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
             <Badge variant="secondary" className="text-[10px]">
@@ -304,7 +298,7 @@ export function PtWorkoutTemplatesPage() {
               </span>
             </div>
             <select
-              className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
+              className="workspace-filter-chip w-auto"
               value={typeFilter}
               onChange={(event) => {
                 const next = event.target.value;
@@ -320,7 +314,7 @@ export function PtWorkoutTemplatesPage() {
               ))}
             </select>
             <select
-              className="h-9 rounded-full border border-border/70 bg-secondary/40 px-3 text-xs"
+              className="workspace-filter-chip w-auto"
               value={sortBy}
               onChange={(event) => {
                 const next = event.target.value;

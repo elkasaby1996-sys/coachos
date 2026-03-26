@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { settingsNavItems } from "./nav";
 import { cn } from "../../lib/utils";
 
@@ -8,14 +9,10 @@ export function SettingsLayout() {
 
   return (
     <div className="space-y-5">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Settings
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Manage workspace, account, and product defaults.
-        </p>
-      </header>
+      <WorkspacePageHeader
+        title="Settings"
+        description="Manage workspace, account, and product defaults with the same shared system used across the PT workspace."
+      />
 
       <div className="md:hidden">
         <label
@@ -26,7 +23,7 @@ export function SettingsLayout() {
         </label>
         <select
           id="settings-section-select"
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+          className="w-full"
           value={
             settingsNavItems.find((item) =>
               location.pathname.startsWith(item.to),
@@ -44,7 +41,7 @@ export function SettingsLayout() {
 
       <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden md:block">
-          <nav className="sticky top-24 rounded-2xl border border-border bg-card/70 p-2">
+          <nav className="sticky top-24 rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))] p-2">
             {settingsNavItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -54,14 +51,14 @@ export function SettingsLayout() {
                   data-testid={`settings-nav-${item.id}`}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-start gap-3 rounded-xl px-3 py-3 transition",
+                      "flex items-start gap-3 rounded-2xl px-3 py-3 transition",
                       isActive
-                        ? "bg-accent/10 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                        ? "border border-border/70 bg-background/70 text-foreground"
+                        : "border border-transparent text-muted-foreground hover:border-border/60 hover:bg-background/55 hover:text-foreground",
                     )
                   }
                 >
-                  <span className="mt-0.5 rounded-md border border-border bg-background p-1.5">
+                  <span className="mt-0.5 rounded-xl border border-border/70 bg-background/75 p-1.5">
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="space-y-1">

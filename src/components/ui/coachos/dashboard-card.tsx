@@ -18,20 +18,22 @@ export function DashboardCard({
   return (
     <Card
       className={cn(
-        "rounded-xl border border-border bg-card/80 shadow-sm",
+        "rounded-[24px] border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.88))] shadow-card",
         className,
       )}
     >
-      <CardHeader className="flex flex-row items-center justify-between gap-3 px-5 pb-3 pt-5">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/60 px-5 pb-3 pt-4 sm:px-5 sm:pt-4">
         <div>
           <CardTitle className="text-base font-semibold">{title}</CardTitle>
           {subtitle ? (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {subtitle}
+            </p>
           ) : null}
         </div>
         {action}
       </CardHeader>
-      <CardContent className="px-5 pb-5">{children}</CardContent>
+      <CardContent className="px-5 pb-5 pt-4 sm:px-5">{children}</CardContent>
     </Card>
   );
 }

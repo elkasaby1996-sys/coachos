@@ -26,6 +26,7 @@ import {
   type NutritionTemplate,
   useNutritionTemplates,
 } from "../../lib/nutrition";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 
 export function PtNutritionPage() {
   const navigate = useNavigate();
@@ -194,18 +195,10 @@ export function PtNutritionPage() {
 
   return (
     <PageContainer className="max-w-screen-2xl space-y-6">
-      <div className="space-y-1">
-        <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          CoachOS Pro
-        </div>
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Nutrition Programs
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Create multi-day programs and open the dedicated builder to configure
-          meals.
-        </p>
-      </div>
+      <WorkspacePageHeader
+        title="Nutrition Programs"
+        description="Create multi-day nutrition plans that feel like part of the same system as workouts and check-ins."
+      />
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <StatCard

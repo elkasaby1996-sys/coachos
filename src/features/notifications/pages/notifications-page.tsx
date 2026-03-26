@@ -15,6 +15,7 @@ import {
   TabsTrigger,
 } from "../../../components/ui/tabs";
 import { useAuth } from "../../../lib/auth";
+import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
 import { NotificationItem } from "../components/notification-item";
 import {
   useInfiniteNotifications,
@@ -59,25 +60,21 @@ export function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Notifications
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Activity across clients, messages, invites, and schedule changes.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          onClick={() => markAllReadMutation.mutate()}
-          disabled={unreadCount === 0 || markAllReadMutation.isPending}
-        >
-          Mark all as read
-        </Button>
-      </div>
+      <WorkspacePageHeader
+        title="Notifications"
+        description="Activity across clients, messages, invites, and schedule changes in a denser operational inbox."
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => markAllReadMutation.mutate()}
+            disabled={unreadCount === 0 || markAllReadMutation.isPending}
+          >
+            Mark all as read
+          </Button>
+        }
+      />
 
-      <Card className="border-border/70 bg-card/90">
+      <Card className="rounded-[24px] border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))]">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Inbox</CardTitle>
         </CardHeader>

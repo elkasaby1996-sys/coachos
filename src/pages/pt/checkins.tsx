@@ -14,6 +14,7 @@ import {
   Skeleton,
   StatusPill,
 } from "../../components/ui/coachos";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { getTodayInTimezone, getWeekEndSaturday } from "../../lib/date-utils";
@@ -112,26 +113,23 @@ export function PtCheckinsQueuePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Check-in queue
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Week ending {formatWeekEnding(weekEndingSaturday)} - review client
-            check-ins.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/pt/checkins/templates")}
-          >
-            Manage templates
-          </Button>
-          <Button onClick={() => navigate("/pt/clients")}>View clients</Button>
-        </div>
-      </div>
+      <WorkspacePageHeader
+        title="Check-in Queue"
+        description={`Week ending ${formatWeekEnding(weekEndingSaturday)}. Review due, submitted, and completed client check-ins.`}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => navigate("/pt/checkins/templates")}
+            >
+              Manage templates
+            </Button>
+            <Button onClick={() => navigate("/pt/clients")}>
+              View clients
+            </Button>
+          </>
+        }
+      />
 
       <DashboardCard
         title="Queue"
@@ -169,8 +167,8 @@ export function PtCheckinsQueuePage() {
                     description="You're all caught up."
                   />
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-border">
-                    <div className="grid grid-cols-[minmax(0,1.2fr)_140px_140px_120px] gap-3 bg-muted/40 px-4 py-2 text-xs font-semibold text-muted-foreground">
+                  <div className="overflow-hidden rounded-[22px] border border-border/70 bg-background/35">
+                    <div className="grid grid-cols-[minmax(0,1.2fr)_140px_140px_120px] gap-3 border-b border-border/60 bg-secondary/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       <span>Client</span>
                       <span>Week ending</span>
                       <span>Status</span>

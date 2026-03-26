@@ -27,6 +27,7 @@ import {
   Skeleton,
   StatusPill,
 } from "../../components/ui/coachos";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -249,17 +250,13 @@ export function PtCheckinTemplatesPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Check-in templates
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Create weekly check-in questions.
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>Create template</Button>
-      </div>
+      <WorkspacePageHeader
+        title="Check-in Templates"
+        description="Create weekly question sets that keep recurring review flows consistent and fast to scan."
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>Create template</Button>
+        }
+      />
 
       <DashboardCard
         title="Templates"
@@ -290,7 +287,10 @@ export function PtCheckinTemplatesPage() {
                 required: false,
               };
               return (
-                <Card key={template.id} className="border-border/70 bg-card/80">
+                <Card
+                  key={template.id}
+                  className="rounded-[24px] border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))]"
+                >
                   <CardHeader className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <CardTitle>

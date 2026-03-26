@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowUpRight,
   CalendarDays,
   ClipboardCheck,
   MessageCircle,
@@ -13,11 +14,13 @@ import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatCard } from "../../components/pt/dashboard/StatCard";
 import { ClientRow } from "../../components/pt/dashboard/ClientRow";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
 import { MiniSparkline } from "../../components/pt/dashboard/MiniSparkline";
+import { EmptyState } from "../../components/ui/coachos";
 import {
   Card,
   CardContent,
@@ -299,23 +302,37 @@ export function PtDashboardPage() {
 
   const visibleClients = clientRows.slice(0, 6);
   const messageRows = messages.slice(0, 5);
+  const quickActions = [
+    {
+      id: "program",
+      label: "New program",
+      helper: "Build a new training block",
+      icon: Plus,
+      onClick: () => navigate("/pt/programs/new"),
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      helper: "Jump into performance review",
+      icon: Rocket,
+      onClick: () => navigate("/pt/reports"),
+    },
+    {
+      id: "message",
+      label: "Message",
+      helper: "Open the conversation flow",
+      icon: MessageCircle,
+      onClick: () => navigate("/pt/messages"),
+    },
+  ] as const;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            CoachOS Pro
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Coach Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Here's what's happening with your clients today.
-          </p>
-        </div>
-        <div className="flex items-center gap-2"></div>
-      </div>
+      <WorkspacePageHeader
+        title="Coach Dashboard"
+        description="Track client activity, queues, and the next coaching action."
+        className="py-3.5 sm:py-4"
+      />
 
       {loadError ? (
         <Card className="border-destructive/40">
@@ -402,9 +419,10 @@ export function PtDashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-6 text-sm text-muted-foreground">
-                No clients yet. Invite your first client to get started.
-              </div>
+              <EmptyState
+                title="No clients yet"
+                description="Invite your first client to get started."
+              />
             )}
           </DashboardCard>
         </div>
@@ -412,7 +430,8 @@ export function PtDashboardPage() {
         <div className="space-y-4 xl:col-span-4">
           <DashboardCard
             title="Upcoming Check-ins"
-            subtitle="Next 7 days"
+            subtitle="Queue for the next 7 days"
+            className="border-primary/10"
             action={
               <Button
                 variant="ghost"
@@ -430,7 +449,7 @@ export function PtDashboardPage() {
                 ))}
               </div>
             ) : upcomingCheckins.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {upcomingCheckins.map((row) => {
                   const client = clients.find(
                     (item) => item.id === row.client_id,
@@ -448,48 +467,64 @@ export function PtDashboardPage() {
                   return (
                     <div
                       key={row.id}
-                      className="flex items-center justify-between rounded-xl border border-border/70 bg-background/40 px-3 py-2"
+                      className="surface-subtle flex items-center justify-between gap-3 px-3 py-2.5"
                     >
-                      <div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Check-in queue
+                        </p>
                         <p className="text-sm font-medium">{name}</p>
                         <p className="text-xs text-muted-foreground">
                           Check-in due
                         </p>
                       </div>
-                      <StatusPill status="pending" />
-                      <Badge variant="secondary" className="text-[10px]">
-                        {dueLabel}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <StatusPill status="pending" />
+                        <Badge variant="secondary" className="text-[10px]">
+                          {dueLabel}
+                        </Badge>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
-                No check-ins scheduled.
-              </div>
+              <EmptyState
+                title="No check-ins scheduled"
+                description="Nothing upcoming in the next 7 days."
+              />
             )}
           </DashboardCard>
 
-          <DashboardCard title="Today's Tasks" subtitle="Quick wins">
-            <div className="space-y-2">
+          <DashboardCard
+            title="Today's Tasks"
+            subtitle="Checklist for quick wins"
+            className="border-border/80"
+          >
+            <div className="space-y-2.5">
               {tasks.map((task) => (
                 <label
                   key={task.id}
-                  className="flex items-center justify-between rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm"
+                  className="surface-subtle flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
                 >
-                  <span
-                    className={
-                      task.done ? "line-through text-muted-foreground" : ""
-                    }
-                  >
-                    {task.label}
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={task.done}
+                      onChange={() => toggleTask(task.id)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span
+                      className={
+                        task.done ? "line-through text-muted-foreground" : ""
+                      }
+                    >
+                      {task.label}
+                    </span>
+                  </div>
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Action
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={task.done}
-                    onChange={() => toggleTask(task.id)}
-                  />
                 </label>
               ))}
             </div>
@@ -510,7 +545,7 @@ export function PtDashboardPage() {
               {messageRows.map((message) => (
                 <div
                   key={message.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-background/40 px-3 py-2"
+                  className="surface-subtle flex items-start justify-between gap-3 px-3 py-2"
                 >
                   <div>
                     <p className="text-sm font-medium">
@@ -529,55 +564,74 @@ export function PtDashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
-              No messages yet.
-            </div>
+            <EmptyState
+              title="No messages yet"
+              description="New client conversations will show up here."
+            />
           )}
         </DashboardCard>
 
-        <DashboardCard title="Quick Actions" subtitle="Shortcuts">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => navigate("/pt/programs/new")}
-              className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
-            >
-              <Plus className="h-4 w-4 text-primary" />
-              New program
-            </button>
+        <DashboardCard title="Quick Actions" subtitle="Operational shortcuts">
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={action.onClick}
+                  className="surface-subtle group flex min-h-[88px] items-start justify-between px-4 py-3 text-left text-sm transition hover:border-border hover:bg-background/70"
+                >
+                  <div className="space-y-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">
+                        {action.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {action.helper}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
+                </button>
+              );
+            })}
             <InviteClientDialog
               trigger={
                 <button
                   type="button"
-                  className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
+                  className="surface-subtle group flex min-h-[88px] items-start justify-between px-4 py-3 text-left text-sm transition hover:border-border hover:bg-background/70"
                 >
-                  <ClipboardCheck className="h-4 w-4 text-primary" />
-                  Invite client
+                  <div className="space-y-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-primary">
+                      <ClipboardCheck className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">
+                        Invite client
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Bring a new client into the workspace
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
                 </button>
               }
             />
-            <button
-              type="button"
-              onClick={() => navigate("/pt/reports")}
-              className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
-            >
-              <Rocket className="h-4 w-4 text-primary" />
-              Reports
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/pt/messages")}
-              className="flex flex-col items-start gap-2 rounded-xl border border-border/70 bg-background/40 px-4 py-3 text-sm transition hover:border-border hover:bg-muted/40"
-            >
-              <MessageCircle className="h-4 w-4 text-primary" />
-              Message
-            </button>
           </div>
         </DashboardCard>
 
-        <DashboardCard title="To-Do list" subtitle="Coach tasks">
+        <DashboardCard
+          title="To-Do list"
+          subtitle="Utility list for coach tasks"
+          className="border-border/80"
+        >
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="surface-subtle flex items-center gap-2 px-2 py-2">
               <Input
                 value={todoDraft}
                 onChange={(event) => setTodoDraft(event.target.value)}
@@ -588,8 +642,10 @@ export function PtDashboardPage() {
                   }
                 }}
                 placeholder="Add a new task"
+                className="h-9 border-transparent bg-transparent shadow-none"
               />
               <Button
+                size="sm"
                 onClick={() => void addTodo()}
                 disabled={!todoDraft.trim()}
               >
@@ -597,9 +653,10 @@ export function PtDashboardPage() {
               </Button>
             </div>
             {coachTodos.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
-                No tasks yet.
-              </div>
+              <EmptyState
+                title="No tasks yet"
+                description="Add a coach task to keep your next action visible."
+              />
             ) : (
               <div className="space-y-2">
                 {coachTodos.map((todo) => {
@@ -607,7 +664,7 @@ export function PtDashboardPage() {
                   return (
                     <div
                       key={todo.id}
-                      className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm"
+                      className="surface-subtle flex items-center gap-2 px-3 py-2.5 text-sm"
                     >
                       <input
                         type="checkbox"

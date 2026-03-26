@@ -17,6 +17,7 @@ import {
   Skeleton,
 } from "../../components/ui/coachos";
 import { PageContainer } from "../../components/common/page-container";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { sumMacros, useNutritionTemplate } from "../../lib/nutrition";
 import { SaveActions } from "../../components/common/save-actions";
@@ -322,26 +323,18 @@ export function PtNutritionTemplateBuilderPage() {
 
   return (
     <PageContainer className="max-w-screen-2xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            CoachOS Pro
-          </div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            {template.name}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Nutrition program builder: slots + meal components with macro
-            details.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          onClick={() => navigate("/pt/nutrition-programs")}
-        >
-          Back
-        </Button>
-      </div>
+      <WorkspacePageHeader
+        title={template.name}
+        description="Nutrition program builder: slots and meal components with macro details."
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/pt/nutrition-programs")}
+          >
+            Back
+          </Button>
+        }
+      />
 
       {errorMessage ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

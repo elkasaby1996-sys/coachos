@@ -17,6 +17,7 @@ import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useAuth } from "../../lib/auth";
 import { refreshWorkspaceNameAcrossApp } from "../../lib/workspace-query";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 
 export function PtSettingsPage() {
   const navigate = useNavigate();
@@ -271,12 +272,10 @@ export function PtSettingsPage() {
         </div>
       ) : null}
 
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Settings</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage workspace name and account access.
-        </p>
-      </div>
+      <WorkspacePageHeader
+        title="Settings"
+        description="Manage workspace identity, account access, defaults, and personal workspace preferences."
+      />
 
       <Card>
         <CardHeader>
@@ -394,7 +393,7 @@ export function PtSettingsPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">Theme</p>
-            <div className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-1">
+            <div className="inline-flex items-center rounded-2xl border border-border/70 bg-secondary/35 p-1">
               <Button
                 size="sm"
                 variant={appearanceTheme === "system" ? "default" : "ghost"}
@@ -419,7 +418,7 @@ export function PtSettingsPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+          <div className="surface-subtle flex flex-wrap items-center justify-between gap-3 px-3 py-2">
             <div>
               <p className="text-sm font-medium">Compact density</p>
               <p className="text-xs text-muted-foreground">
@@ -492,7 +491,7 @@ export function PtSettingsPage() {
                   Default template
                 </label>
                 <select
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="w-full"
                   value={defaultTemplateId}
                   onChange={(event) => setDefaultTemplateId(event.target.value)}
                 >

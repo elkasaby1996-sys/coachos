@@ -18,6 +18,7 @@ import {
   Skeleton,
   StatusPill,
 } from "../../components/ui/coachos";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import {
@@ -259,27 +260,23 @@ export function PtCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Coach calendar
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Track check-ins due today and upcoming events.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEventDate(todayKey);
-            setEventDialogOpen(true);
-          }}
-          className="gap-2"
-          disabled={!workspaceId}
-        >
-          <Plus className="h-4 w-4" />
-          Create event
-        </Button>
-      </div>
+      <WorkspacePageHeader
+        title="Coach Calendar"
+        description="Track check-ins due today, upcoming events, and operational timing without losing queue visibility."
+        actions={
+          <Button
+            onClick={() => {
+              setEventDate(todayKey);
+              setEventDialogOpen(true);
+            }}
+            className="gap-2"
+            disabled={!workspaceId}
+          >
+            <Plus className="h-4 w-4" />
+            Create event
+          </Button>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <DashboardCard

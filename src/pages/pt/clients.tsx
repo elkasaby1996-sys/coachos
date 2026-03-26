@@ -4,9 +4,11 @@ import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { ClientsKpiRow } from "../../components/pt/clients/ClientsKpiRow";
 import { ClientsFilters } from "../../components/pt/clients/ClientsFilters";
 import { ClientListRow } from "../../components/pt/clients/ClientListRow";
+import { EmptyState } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -189,22 +191,18 @@ export function PtClientsPage() {
         </Alert>
       ) : null}
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Clients</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your client roster and track their progress.
-          </p>
-        </div>
-        <InviteClientDialog trigger={<Button>+ Add Client</Button>} />
-      </div>
+      <WorkspacePageHeader
+        title="Clients"
+        description="Manage the roster, scan adherence and stage changes, and open client work without extra clicks."
+        actions={<InviteClientDialog trigger={<Button>+ Add Client</Button>} />}
+      />
 
       <ClientsKpiRow stats={stats} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ClientsFilters />
         <select
-          className="h-9 rounded-full border border-border/70 bg-secondary/40 px-4 text-xs text-muted-foreground"
+          className="workspace-filter-chip w-auto"
           value={stage}
           onChange={(event) => setStage(event.target.value)}
         >
@@ -251,21 +249,20 @@ export function PtClientsPage() {
             ) : null}
           </>
         ) : (
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/40 p-8 text-center">
-            <p className="text-sm font-semibold">
-              No clients in this view yet.
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Invite a new client or adjust their status.
-            </p>
-            <InviteClientDialog
-              trigger={
-                <Button className="mt-4" size="sm">
-                  Invite client
-                </Button>
-              }
-            />
-          </div>
+          <EmptyState
+            centered
+            title="No clients in this view yet"
+            description="Invite a new client or adjust their status."
+            action={
+              <InviteClientDialog
+                trigger={
+                  <Button className="mt-4" size="sm">
+                    Invite client
+                  </Button>
+                }
+              />
+            }
+          />
         )}
       </div>
     </div>
