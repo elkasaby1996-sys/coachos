@@ -122,6 +122,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
         .from("baseline_entries")
         .select("id")
         .eq("client_id", clientId ?? "")
+        .eq("status", "submitted")
         .limit(1)
         .maybeSingle();
       if (error) throw error;
