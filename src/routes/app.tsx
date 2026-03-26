@@ -227,7 +227,7 @@ function RequireClientOnboarding({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.warn("Failed to check onboarding status", error);
-        setIsComplete(true);
+        setIsComplete(false);
         setOnboardingLoading(false);
         return;
       }
