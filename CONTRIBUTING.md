@@ -7,8 +7,18 @@ Thanks for contributing to CoachOS. This repo ships both application code and Su
 1. Branch from `main`.
 2. Make the smallest coherent change that solves the problem.
 3. Run the relevant local checks before opening a PR.
-4. Open a PR using the repository template.
-5. Merge only after required checks pass and review feedback is addressed.
+4. Update [`docs/session-journal.md`](docs/session-journal.md) with a dated entry summarizing the session, files changed, commands run, blockers, repo state, and next step.
+5. Open a PR using the repository template.
+6. Merge only after required checks pass and review feedback is addressed.
+
+## Session Journal
+
+`docs/session-journal.md` is required workflow state for this repo.
+
+- Read the latest entry before starting work on a new machine or in a new session.
+- Append a new dated entry after any meaningful work session.
+- Include timestamps when known, and clearly mark times as approximate when they were not captured live.
+- Do not rewrite old entries unless you are correcting factual errors; add follow-up notes instead.
 
 ## Branch Naming
 
