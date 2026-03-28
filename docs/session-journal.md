@@ -521,3 +521,36 @@ When working in this repository, every agent or human contributor should treat t
   - frontend checks pass locally
 - Next step:
   - re-open a completed onboarding in PT, confirm the tab reads like a preview, verify `Edit notes` works, and click each baseline photo to confirm the in-app viewer opens correctly
+
+## 2026-03-28 13:03 +03:00 - Smoke CI alignment for onboarding copy
+
+- Goal:
+  - fix the failing pull-request smoke E2E job after the onboarding UI copy changed
+- Changes made:
+  - traced the failing PR checks and confirmed `quality` was green locally while `smoke-e2e` was failing in the Playwright run step
+  - compared the current client onboarding UI against the smoke assertions and found the test was still expecting the older `Set up your profile` heading and `Continue / Finish setup` CTA
+  - updated the smoke test so the client onboarding assertion accepts the current shell copy:
+    - heading: `Workspace onboarding` or legacy `Set up your profile`
+    - CTA: `Next`, `Continue`, or `Finish setup`
+  - pushed the CI-only follow-up commit `b275fca` (`Update onboarding smoke assertions`)
+- Files changed:
+  - `tests/e2e/auth-onboarding.smoke.spec.ts`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `git status --short`
+  - `Get-Content .github/workflows/ci.yml`
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - `npx playwright test tests/e2e/auth-onboarding.smoke.spec.ts --list`
+  - `git push origin On-Boarding-baseline-MVP`
+- Struggles / mistakes / blockers:
+  - GitHub did not expose the full public smoke logs, so the failure had to be narrowed down by comparing the smoke specs against the current UI and the available Actions annotation
+  - the repo `quality` fix and the smoke fix were separate; the smoke failure was not a formatter/build problem
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - latest pushed commit is `b275fca`
+  - local working tree is clean except for local Supabase scratch folders (`supabase/.branches/`, `supabase/snippets/`)
+- Next step:
+  - let GitHub rerun the PR checks on `b275fca`
+  - if `smoke-e2e` still fails, isolate the next stale selector or environment-specific flow break from the remaining smoke specs
