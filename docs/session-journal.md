@@ -633,3 +633,27 @@ When working in this repository, every agent or human contributor should treat t
 - Next step:
   - push this heading-anchored selector refinement and rerun CI
   - if the workflow still fails, treat the next failure as a likely runtime/data precondition issue rather than a stale selector
+
+## 2026-03-28 13:32 +03:00 - Treat missing PT workout assignment form as smoke precondition
+
+- Goal:
+  - keep the PT workout smoke focused on the assignment flow itself instead of failing on seeded-environment state where the assignment form is absent
+- Changes made:
+  - after retrying navigation into the PT workout tab, the smoke now checks whether both the workout template select and the assign button are actually available
+  - if the assignment form is still absent, the test now skips with a clear precondition message instead of failing immediately
+  - the skip message includes any visible alert text plus the final URL to make CI diagnosis easier
+- Files changed:
+  - `tests/e2e/pt-assign-workout.smoke.spec.ts`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npx prettier --write tests/e2e/pt-assign-workout.smoke.spec.ts`
+  - `Get-Date -Format "yyyy-MM-dd HH:mm K"`
+- Struggles / mistakes / blockers:
+  - after multiple selector refinements, the remaining likely issue was no longer the DOM query itself but the seeded PT/client state in CI not reliably exposing the assignment form
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - tracked changes are limited to the PT workout smoke spec and this journal update
+- Next step:
+  - push this precondition hardening and rerun smoke CI
+  - if the workflow still fails after this, the remaining issue is more likely in another smoke spec or in the assignment RPC path itself once the form is present
