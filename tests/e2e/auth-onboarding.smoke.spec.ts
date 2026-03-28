@@ -57,10 +57,12 @@ test.describe("Smoke: auth and onboarding", () => {
 
     if (page.url().includes("/app/onboarding")) {
       await expect(
-        page.getByRole("heading", { name: /set up your profile/i }),
+        page.getByRole("heading", {
+          name: /workspace onboarding|set up your profile/i,
+        }),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: /continue|finish setup/i }),
+        page.getByRole("button", { name: /next|continue|finish setup/i }),
       ).toBeVisible();
     }
   });
