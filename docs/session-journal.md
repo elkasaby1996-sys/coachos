@@ -605,3 +605,31 @@ When working in this repository, every agent or human contributor should treat t
 - Next step:
   - push the PT workout smoke selector fix and rerun PR CI
   - if smoke still fails after this, inspect whether the next issue is a real runtime precondition rather than a stale selector
+
+## 2026-03-28 13:24 +03:00 - Tighten PT workout smoke to heading-anchored card lookup
+
+- Goal:
+  - fix the remaining likely flake in the PT workout smoke after the first card-scoped selector change
+- Changes made:
+  - reviewed the UI component primitives and confirmed `CardTitle` renders as a real heading element
+  - replaced the generic `div`-filtered `Schedule workout` card locator with a heading-anchored lookup:
+    - find the `Schedule workout` heading
+    - walk up to the nearest `surface-panel` ancestor
+    - query the select/date/button within that exact card
+  - this removes the risk of Playwright matching a larger ancestor container that happens to contain the workout card text and then choosing the wrong `select`
+- Files changed:
+  - `tests/e2e/pt-assign-workout.smoke.spec.ts`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npx prettier --write tests/e2e/pt-assign-workout.smoke.spec.ts`
+  - `npx playwright test tests/e2e/pt-assign-workout.smoke.spec.ts --list`
+  - `Get-Content src/components/ui/card.tsx`
+- Struggles / mistakes / blockers:
+  - the first PT workout smoke fix was still too loose because it relied on text containment over a generic container query rather than anchoring to the actual card heading structure
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - tracked changes are limited to the PT workout smoke spec and this journal update
+- Next step:
+  - push this heading-anchored selector refinement and rerun CI
+  - if the workflow still fails, treat the next failure as a likely runtime/data precondition issue rather than a stale selector

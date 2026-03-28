@@ -35,12 +35,11 @@ test.describe("Smoke: PT assign workout", () => {
     }
 
     const loginHeading = page.getByRole("heading", { name: /welcome back/i });
-    const scheduleWorkoutCard = page
-      .locator('[class*="card"], div')
-      .filter({
-        has: page.getByText(/schedule workout/i),
-        hasText: "Assign a one-off template to this client.",
-      })
+    const scheduleWorkoutHeading = page.getByRole("heading", {
+      name: /^schedule workout$/i,
+    });
+    const scheduleWorkoutCard = scheduleWorkoutHeading
+      .locator("xpath=ancestor::div[contains(@class,'surface-panel')][1]")
       .first();
     const templateSelect = scheduleWorkoutCard.locator("select").first();
     const dateInput = scheduleWorkoutCard.locator('input[type="date"]').first();
