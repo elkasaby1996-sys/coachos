@@ -34,14 +34,19 @@ test.describe("Smoke: PT assign workout", () => {
       await workoutTab.click();
     }
 
-    const workoutTemplateLabel = page.locator("label", {
-      hasText: "Workout template",
-    });
     const loginHeading = page.getByRole("heading", { name: /welcome back/i });
-    const templateSelect = page
-      .locator("label", { hasText: "Workout template" })
-      .locator("xpath=following-sibling::select")
+    const scheduleWorkoutCard = page
+      .locator('[class*="card"], div')
+      .filter({
+        has: page.getByText(/schedule workout/i),
+        hasText: "Assign a one-off template to this client.",
+      })
       .first();
+    const templateSelect = scheduleWorkoutCard.locator("select").first();
+    const dateInput = scheduleWorkoutCard.locator('input[type="date"]').first();
+    const assignButton = scheduleWorkoutCard.getByRole("button", {
+      name: /assign workout/i,
+    });
     for (let attempt = 0; attempt < 12; attempt += 1) {
       const ptPathname = new URL(page.url()).pathname;
       const onLoginUi = await loginHeading.isVisible().catch(() => false);
@@ -62,7 +67,7 @@ test.describe("Smoke: PT assign workout", () => {
         await workoutTab.click();
       }
 
-      if (await workoutTemplateLabel.isVisible()) {
+      if (await templateSelect.isVisible().catch(() => false)) {
         break;
       }
       await page.waitForTimeout(1_000);
@@ -108,10 +113,7 @@ test.describe("Smoke: PT assign workout", () => {
     }
 
     await templateSelect.selectOption(templateId);
-    await page
-      .locator('input[type="date"]')
-      .first()
-      .fill(new Date().toISOString().slice(0, 10));
+    await dateInput.fill(new Date().toISOString().slice(0, 10));
 
     const assignResponsePromise = page.waitForResponse(
       (response) =>
@@ -119,7 +121,7 @@ test.describe("Smoke: PT assign workout", () => {
         response.request().method() === "POST",
       { timeout: 30_000 },
     );
-    await page.getByRole("button", { name: /assign workout/i }).click();
+    await assignButton.click();
     const assignResponse = await assignResponsePromise;
     if (!assignResponse.ok()) {
       let errorMessage = "";

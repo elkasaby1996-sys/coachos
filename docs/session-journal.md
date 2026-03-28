@@ -578,3 +578,30 @@ When working in this repository, every agent or human contributor should treat t
   - tracked changes are limited to the smoke spec and this journal update
 - Next step:
   - push the selector correction and watch the next `smoke-e2e` rerun for a different failing spec if one still exists
+
+## 2026-03-28 13:18 +03:00 - Fix PT workout smoke selector for current client detail layout
+
+- Goal:
+  - address the remaining `smoke-e2e` failure in the PT workout assignment test
+- Changes made:
+  - reviewed the current PT client detail workout tab and confirmed the smoke was using a brittle `label -> sibling select` locator that no longer matched the rendered card structure reliably
+  - updated the smoke to scope itself to the `Schedule workout` card, then target:
+    - the first `select` inside that card for workout template choice
+    - the first `input[type="date"]` inside that card
+    - the `Assign workout` button inside that card
+  - kept the existing retry/navigation behavior, but changed the visibility gate to wait for the card-scoped select instead of the old standalone label selector
+- Files changed:
+  - `tests/e2e/pt-assign-workout.smoke.spec.ts`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npx playwright test tests/e2e/pt-assign-workout.smoke.spec.ts --list`
+  - `Get-Content src/pages/pt/client-detail.tsx`
+- Struggles / mistakes / blockers:
+  - the smoke failure was not in the workout feature logic itself; it was caused by a selector that encoded an outdated DOM relationship rather than the visible workflow surface
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - tracked changes are limited to the PT workout smoke spec and this journal update
+- Next step:
+  - push the PT workout smoke selector fix and rerun PR CI
+  - if smoke still fails after this, inspect whether the next issue is a real runtime precondition rather than a stale selector
