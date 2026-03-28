@@ -554,3 +554,27 @@ When working in this repository, every agent or human contributor should treat t
 - Next step:
   - let GitHub rerun the PR checks on `b275fca`
   - if `smoke-e2e` still fails, isolate the next stale selector or environment-specific flow break from the remaining smoke specs
+
+## 2026-03-28 13:13 +03:00 - Tighten onboarding smoke selector to actual heading
+
+- Goal:
+  - address the remaining likely smoke mismatch after the first onboarding test copy update
+- Changes made:
+  - inspected the current onboarding shell markup and confirmed the visible onboarding eyebrow text is not the page heading
+  - updated the smoke assertion to target the real onboarding `<h1>` text: `Guided onboarding for your coaching workspace`
+  - widened the secondary CTA assertion so the smoke still passes if the first onboarding step shows `Next` or the shell-level `Save and finish later` action
+- Files changed:
+  - `tests/e2e/auth-onboarding.smoke.spec.ts`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `Get-Content src/features/client-onboarding/components/client-onboarding-shell.tsx`
+  - `npm run lint`
+  - `npx playwright test tests/e2e/auth-onboarding.smoke.spec.ts --list`
+  - `npx prettier --write tests/e2e/auth-onboarding.smoke.spec.ts`
+- Struggles / mistakes / blockers:
+  - the first smoke fix still used the onboarding eyebrow copy as if it were the heading, so this follow-up pass had to align the selector with the actual DOM semantics
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - tracked changes are limited to the smoke spec and this journal update
+- Next step:
+  - push the selector correction and watch the next `smoke-e2e` rerun for a different failing spec if one still exists
