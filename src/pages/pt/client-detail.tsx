@@ -83,6 +83,12 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
+import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
+import {
+  buildPtOnboardingChecklist,
+  getPtOnboardingStatusMeta,
+  isReadyForOnboardingCompletion,
+} from "../../features/pt-client-onboarding/lib/pt-client-onboarding";
 
 const tabs = [
   "overview",
