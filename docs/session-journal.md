@@ -353,6 +353,7 @@ When working in this repository, every agent or human contributor should treat t
   - smoke test the client reminder/check-in states and PT legacy backfill behavior against real data
 
 ## 2026-03-28 11:48 +03:00 - QA fixes: goals step cleanup and baseline photo storage bucket
+
 - Goal:
   - respond to manual QA feedback from local onboarding testing
   - remove `target timeline` from step 2 so the goals step stays lighter-weight
@@ -382,6 +383,7 @@ When working in this repository, every agent or human contributor should treat t
   - retest baseline photo upload and the lighter goals step in the browser
 
 ## 2026-03-28 12:05 +03:00 - QA fix: require first program and first check-in before onboarding completion
+
 - Goal:
   - close a PT activation gap found in manual QA where onboarding could be marked complete without the required first program assignment and first check-in scheduling
 - Changes made:
@@ -408,6 +410,7 @@ When working in this repository, every agent or human contributor should treat t
   - apply the new migration locally and verify the PT cannot complete onboarding until both the first program and first check-in are set
 
 ## 2026-03-28 12:18 +03:00 - Product correction: program/check-in remain optional for onboarding completion
+
 - Goal:
   - align the PT onboarding completion rules with the intended product behavior after clarifying that first program assignment and first check-in scheduling should stay optional
 - Changes made:
@@ -432,6 +435,7 @@ When working in this repository, every agent or human contributor should treat t
   - apply the relaxing completion migration locally and retest that PT can complete onboarding without first program/check-in while those items still remain visible as optional follow-up setup
 
 ## 2026-03-28 12:32 +03:00 - Remove first program and first check-in from onboarding
+
 - Goal:
   - remove first program assignment and first check-in scheduling from the onboarding process while keeping those operational workflows available elsewhere in the PT app
 - Changes made:
@@ -460,6 +464,7 @@ When working in this repository, every agent or human contributor should treat t
   - apply the decoupling SQL locally and retest the PT onboarding review tab to confirm program/check-in no longer appear there and partial activation still works as an explicit action
 
 ## 2026-03-28 12:45 +03:00 - Remove partial activation from onboarding
+
 - Goal:
   - remove `Partially activate` completely from the onboarding lifecycle and collapse the flow down to `review_needed -> submitted -> completed`
 - Changes made:
@@ -495,6 +500,7 @@ When working in this repository, every agent or human contributor should treat t
   - apply the cleanup SQL locally and retest that PT now sees only review and complete actions, with no partial status anywhere in onboarding
 
 ## 2026-03-28 13:05 +03:00 - PT completed-onboarding preview polish
+
 - Goal:
   - make the completed PT onboarding tab feel like a clean preview while still allowing note edits when needed
   - keep baseline photo inspection inside the app instead of sending PTs to a separate browser tab

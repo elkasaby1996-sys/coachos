@@ -230,306 +230,311 @@ export function PtClientOnboardingTab({
     <>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
         <div className="space-y-6">
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={onboardingStatusMeta.variant}>
-                {getOnboardingReviewBadgeLabel(onboarding.status)}
-              </Badge>
-              <Badge variant="muted">
-                {formatOnboardingSource(onboarding.source)}
-              </Badge>
-            </div>
-            <CardTitle>Onboarding review</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {isCompleted
-                ? "Onboarding is complete. This tab now acts as a read-only preview of the submitted intake and coach review."
-                : "Review the intake, confirm the initial assessment, and move this client through the remaining onboarding actions."}
-            </p>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryBox
-              label="Client"
-              value={clientSnapshot?.display_name ?? "Client"}
-              detail={toDisplayText(
-                onboarding.basics?.email ?? clientSnapshot?.email,
-                "No email saved",
-              )}
-            />
-            <SummaryBox
-              label="Started"
-              value={
-                onboarding.started_at
-                  ? formatRelativeTime(onboarding.started_at)
-                  : "Recently"
-              }
-              detail={
-                onboarding.last_saved_at
-                  ? `Last saved ${formatRelativeTime(onboarding.last_saved_at)}`
-                  : "No draft saves yet"
-              }
-            />
-            <SummaryBox
-              label="Submitted"
-              value={
-                onboarding.submitted_at
-                  ? formatRelativeTime(onboarding.submitted_at)
-                  : "Not submitted"
-              }
-              detail={
-                onboarding.reviewed_at
-                  ? `Reviewed ${formatRelativeTime(onboarding.reviewed_at)}`
-                  : "Review not logged yet"
-              }
-            />
-            <SummaryBox
-              label="Status"
-              value={onboardingStatusMeta.label}
-              detail={onboardingStatusMeta.description}
-            />
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2">
           <Card className="border-border/70 bg-card/80">
-            <CardHeader>
-              <CardTitle className="text-base">Basics</CardTitle>
+            <CardHeader className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={onboardingStatusMeta.variant}>
+                  {getOnboardingReviewBadgeLabel(onboarding.status)}
+                </Badge>
+                <Badge variant="muted">
+                  {formatOnboardingSource(onboarding.source)}
+                </Badge>
+              </div>
+              <CardTitle>Onboarding review</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {isCompleted
+                  ? "Onboarding is complete. This tab now acts as a read-only preview of the submitted intake and coach review."
+                  : "Review the intake, confirm the initial assessment, and move this client through the remaining onboarding actions."}
+              </p>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              {[
-                ["Full name", onboarding.basics?.display_name],
-                ["Phone", onboarding.basics?.phone],
-                ["Email", onboarding.basics?.email ?? clientSnapshot?.email],
-                ["Location", onboarding.basics?.location],
-                ["Timezone", onboarding.basics?.timezone],
-                ["Units", onboarding.basics?.unit_preference],
-              ].map(([label, value]) => (
-                <FieldValue
-                  key={String(label)}
-                  label={String(label)}
-                  value={value}
-                />
-              ))}
+            <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryBox
+                label="Client"
+                value={clientSnapshot?.display_name ?? "Client"}
+                detail={toDisplayText(
+                  onboarding.basics?.email ?? clientSnapshot?.email,
+                  "No email saved",
+                )}
+              />
+              <SummaryBox
+                label="Started"
+                value={
+                  onboarding.started_at
+                    ? formatRelativeTime(onboarding.started_at)
+                    : "Recently"
+                }
+                detail={
+                  onboarding.last_saved_at
+                    ? `Last saved ${formatRelativeTime(onboarding.last_saved_at)}`
+                    : "No draft saves yet"
+                }
+              />
+              <SummaryBox
+                label="Submitted"
+                value={
+                  onboarding.submitted_at
+                    ? formatRelativeTime(onboarding.submitted_at)
+                    : "Not submitted"
+                }
+                detail={
+                  onboarding.reviewed_at
+                    ? `Reviewed ${formatRelativeTime(onboarding.reviewed_at)}`
+                    : "Review not logged yet"
+                }
+              />
+              <SummaryBox
+                label="Status"
+                value={onboardingStatusMeta.label}
+                detail={onboardingStatusMeta.description}
+              />
             </CardContent>
           </Card>
 
-          {intakeSections.map((section) => (
-            <Card key={section.title} className="border-border/70 bg-card/80">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="border-border/70 bg-card/80">
               <CardHeader>
-                <CardTitle className="text-base">{section.title}</CardTitle>
+                <CardTitle className="text-base">Basics</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 sm:grid-cols-2">
-                {section.rows.map(([label, value]) => (
+                {[
+                  ["Full name", onboarding.basics?.display_name],
+                  ["Phone", onboarding.basics?.phone],
+                  ["Email", onboarding.basics?.email ?? clientSnapshot?.email],
+                  ["Location", onboarding.basics?.location],
+                  ["Timezone", onboarding.basics?.timezone],
+                  ["Units", onboarding.basics?.unit_preference],
+                ].map(([label, value]) => (
                   <FieldValue
-                    key={`${section.title}-${label}`}
+                    key={String(label)}
                     label={String(label)}
                     value={value}
                   />
                 ))}
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle className="text-base">Initial assessment</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Submitted baseline linked to this onboarding cycle.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {baselineLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-            ) : baselineEntryQuery.data ? (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Submitted at
-                    </p>
-                    <p className="text-sm font-semibold">
-                      {baselineEntryQuery.data.submitted_at
-                        ? new Date(
-                            baselineEntryQuery.data.submitted_at,
-                          ).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })
-                        : "Submitted"}
-                    </p>
-                  </div>
-                  <Badge variant="success">Submitted</Badge>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {[
-                    ["Weight", baselineMetricsQuery.data?.weight_kg, "kg"],
-                    ["Height", baselineMetricsQuery.data?.height_cm, "cm"],
-                    ["Body fat", baselineMetricsQuery.data?.body_fat_pct, "%"],
-                    ["Waist", baselineMetricsQuery.data?.waist_cm, "cm"],
-                  ].map(([label, value, unit]) => (
-                    <SummaryBox
-                      key={String(label)}
+            {intakeSections.map((section) => (
+              <Card key={section.title} className="border-border/70 bg-card/80">
+                <CardHeader>
+                  <CardTitle className="text-base">{section.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2">
+                  {section.rows.map(([label, value]) => (
+                    <FieldValue
+                      key={`${section.title}-${label}`}
                       label={String(label)}
-                      value={
-                        typeof value === "number"
-                          ? `${value} ${unit}`
-                          : "Not provided"
-                      }
+                      value={value}
                     />
                   ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="border-border/70 bg-card/80">
+            <CardHeader>
+              <CardTitle className="text-base">Initial assessment</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Submitted baseline linked to this onboarding cycle.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {baselineLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-24 w-full" />
                 </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Performance markers
-                  </p>
-                  {baselineMarkersQuery.data &&
-                  baselineMarkersQuery.data.length > 0 ? (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {baselineMarkersQuery.data.map((marker, index) => (
-                        <SummaryBox
-                          key={`${marker.template?.name ?? "marker"}-${index}`}
-                          label={marker.template?.name ?? "Marker"}
-                          value={
-                            marker.value_number !== null &&
-                            marker.value_number !== undefined
-                              ? `${marker.value_number}${
-                                  marker.template?.unit_label
-                                    ? ` ${marker.template.unit_label}`
-                                    : ""
-                                }`
-                              : (marker.value_text ?? "Not provided")
-                          }
-                        />
-                      ))}
+              ) : baselineEntryQuery.data ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Submitted at
+                      </p>
+                      <p className="text-sm font-semibold">
+                        {baselineEntryQuery.data.submitted_at
+                          ? new Date(
+                              baselineEntryQuery.data.submitted_at,
+                            ).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })
+                          : "Submitted"}
+                      </p>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No markers submitted.
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Photos
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {(["front", "side", "back"] as const).map((type) => (
-                      <div key={type} className="space-y-2">
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">
-                          {type}
-                        </p>
-                        <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
-                          {baselinePhotoMap[type] ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setActivePhoto({
-                                  type,
-                                  url: baselinePhotoMap[type] ?? "",
-                                })
-                              }
-                              className="group relative block h-full w-full"
-                              aria-label={`Open full ${type} baseline photo`}
-                            >
-                              <img
-                                src={baselinePhotoMap[type] ?? ""}
-                                alt={`${type} baseline`}
-                                className="h-full w-full rounded-md object-cover transition group-hover:opacity-90"
-                              />
-                              <div className="pointer-events-none absolute inset-0 flex items-end justify-center rounded-md bg-gradient-to-t from-black/45 via-black/0 to-transparent px-2 py-2 opacity-0 transition group-hover:opacity-100">
-                                <span className="text-[11px] font-medium text-white">
-                                  Open full photo
-                                </span>
-                              </div>
-                            </button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Missing
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    <Badge variant="success">Submitted</Badge>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      ["Weight", baselineMetricsQuery.data?.weight_kg, "kg"],
+                      ["Height", baselineMetricsQuery.data?.height_cm, "cm"],
+                      [
+                        "Body fat",
+                        baselineMetricsQuery.data?.body_fat_pct,
+                        "%",
+                      ],
+                      ["Waist", baselineMetricsQuery.data?.waist_cm, "cm"],
+                    ].map(([label, value, unit]) => (
+                      <SummaryBox
+                        key={String(label)}
+                        label={String(label)}
+                        value={
+                          typeof value === "number"
+                            ? `${value} ${unit}`
+                            : "Not provided"
+                        }
+                      />
                     ))}
                   </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No submitted baseline yet.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      Performance markers
+                    </p>
+                    {baselineMarkersQuery.data &&
+                    baselineMarkersQuery.data.length > 0 ? (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {baselineMarkersQuery.data.map((marker, index) => (
+                          <SummaryBox
+                            key={`${marker.template?.name ?? "marker"}-${index}`}
+                            label={marker.template?.name ?? "Marker"}
+                            value={
+                              marker.value_number !== null &&
+                              marker.value_number !== undefined
+                                ? `${marker.value_number}${
+                                    marker.template?.unit_label
+                                      ? ` ${marker.template.unit_label}`
+                                      : ""
+                                  }`
+                                : (marker.value_text ?? "Not provided")
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No markers submitted.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      Photos
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {(["front", "side", "back"] as const).map((type) => (
+                        <div key={type} className="space-y-2">
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">
+                            {type}
+                          </p>
+                          <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
+                            {baselinePhotoMap[type] ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setActivePhoto({
+                                    type,
+                                    url: baselinePhotoMap[type] ?? "",
+                                  })
+                                }
+                                className="group relative block h-full w-full"
+                                aria-label={`Open full ${type} baseline photo`}
+                              >
+                                <img
+                                  src={baselinePhotoMap[type] ?? ""}
+                                  alt={`${type} baseline`}
+                                  className="h-full w-full rounded-md object-cover transition group-hover:opacity-90"
+                                />
+                                <div className="pointer-events-none absolute inset-0 flex items-end justify-center rounded-md bg-gradient-to-t from-black/45 via-black/0 to-transparent px-2 py-2 opacity-0 transition group-hover:opacity-100">
+                                  <span className="text-[11px] font-medium text-white">
+                                    Open full photo
+                                  </span>
+                                </div>
+                              </button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Missing
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No submitted baseline yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
           <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {isCompleted ? "Completion summary" : "Onboarding checklist"}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {isCompleted
-                ? "A historical view of the completion criteria for this onboarding."
-                : "Completion requires the core onboarding items below. Program assignment and check-in setup now live in their own PT workflow surfaces outside onboarding."}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {onboardingChecklist.map((item) => (
-              <div
-                key={item.key}
-                className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/30 px-3 py-3"
-              >
-                <div className="mt-0.5">
-                  {item.complete ? (
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-warning" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">
-                      {item.label}
-                    </p>
-                    {item.optional ? (
-                      <Badge variant="muted">Optional</Badge>
-                    ) : null}
+            <CardHeader>
+              <CardTitle className="text-base">
+                {isCompleted ? "Completion summary" : "Onboarding checklist"}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {isCompleted
+                  ? "A historical view of the completion criteria for this onboarding."
+                  : "Completion requires the core onboarding items below. Program assignment and check-in setup now live in their own PT workflow surfaces outside onboarding."}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {onboardingChecklist.map((item) => (
+                <div
+                  key={item.key}
+                  className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/30 px-3 py-3"
+                >
+                  <div className="mt-0.5">
+                    {item.complete ? (
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                    )}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.detail}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">
+                        {item.label}
+                      </p>
+                      {item.optional ? (
+                        <Badge variant="muted">Optional</Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.detail}
+                    </p>
+                  </div>
+                  <Badge variant={item.complete ? "success" : "warning"}>
+                    {item.complete ? "Done" : "Missing"}
+                  </Badge>
                 </div>
-                <Badge variant={item.complete ? "success" : "warning"}>
-                  {item.complete ? "Done" : "Missing"}
-                </Badge>
-              </div>
-            ))}
-            {isCompleted ? (
-              <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground">
-                Onboarding completed
-                {onboarding.completed_at
-                  ? ` ${formatRelativeTime(onboarding.completed_at)}`
-                  : ""}.
-              </div>
-            ) : !onboardingReadyForCompletion ? (
-              <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-foreground">
-                Completion is blocked by: {onboardingMissingItems.join(", ")}.
-              </div>
-            ) : (
-              <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground">
-                Required completion items are in place.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              ))}
+              {isCompleted ? (
+                <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground">
+                  Onboarding completed
+                  {onboarding.completed_at
+                    ? ` ${formatRelativeTime(onboarding.completed_at)}`
+                    : ""}
+                  .
+                </div>
+              ) : !onboardingReadyForCompletion ? (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-foreground">
+                  Completion is blocked by: {onboardingMissingItems.join(", ")}.
+                </div>
+              ) : (
+                <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground">
+                  Required completion items are in place.
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="border-border/70 bg-card/80">
             <CardHeader>
@@ -593,7 +598,8 @@ export function PtClientOnboardingTab({
                       />
                     ) : (
                       <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
-                        {onboardingReviewNotes.trim() || "No coach notes saved."}
+                        {onboardingReviewNotes.trim() ||
+                          "No coach notes saved."}
                       </p>
                     )}
                   </div>
@@ -610,7 +616,9 @@ export function PtClientOnboardingTab({
                     <textarea
                       className="min-h-[140px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={onboardingReviewNotes}
-                      onChange={(event) => onReviewNotesChange(event.target.value)}
+                      onChange={(event) =>
+                        onReviewNotesChange(event.target.value)
+                      }
                       placeholder="Key coaching context, red flags, and activation notes..."
                     />
                   </div>
@@ -643,16 +651,16 @@ export function PtClientOnboardingTab({
                   </div>
                 </>
               )}
-            {onboardingReviewMessage ? (
-              <p className="text-xs text-muted-foreground">
-                {onboardingReviewMessage}
-              </p>
-            ) : null}
-            {onboardingActionMessage ? (
-              <div className="rounded-lg border border-border/60 bg-background/30 p-3 text-xs text-muted-foreground">
-                {onboardingActionMessage}
-              </div>
-            ) : null}
+              {onboardingReviewMessage ? (
+                <p className="text-xs text-muted-foreground">
+                  {onboardingReviewMessage}
+                </p>
+              ) : null}
+              {onboardingActionMessage ? (
+                <div className="rounded-lg border border-border/60 bg-background/30 p-3 text-xs text-muted-foreground">
+                  {onboardingActionMessage}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>

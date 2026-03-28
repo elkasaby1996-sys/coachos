@@ -65,7 +65,10 @@ export const clientOnboardingSteps: Array<{
 ];
 
 const editableStatuses: ClientOnboardingStatus[] = ["invited", "in_progress"];
-const awaitingReviewStatuses: ClientOnboardingStatus[] = ["submitted", "review_needed"];
+const awaitingReviewStatuses: ClientOnboardingStatus[] = [
+  "submitted",
+  "review_needed",
+];
 
 const hasText = (value: string | null | undefined) =>
   Boolean(value && value.trim().length > 0);
