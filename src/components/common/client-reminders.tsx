@@ -136,6 +136,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
         .from("workspace_client_onboardings")
         .select("status")
         .eq("client_id", clientId ?? "")
+        .eq("status", "submitted")
         .limit(1)
         .maybeSingle();
       if (error) throw error;
