@@ -657,3 +657,34 @@ When working in this repository, every agent or human contributor should treat t
 - Next step:
   - push this precondition hardening and rerun smoke CI
   - if the workflow still fails after this, the remaining issue is more likely in another smoke spec or in the assignment RPC path itself once the form is present
+
+## 2026-03-28 13:45 +03:00 - Main branch hotfix for PT client detail onboarding import
+
+- Branch:
+  - `main`
+- Goal:
+  - fix a runtime crash on the PT client detail page after switching back to hosted Supabase on updated `main`
+- Changes made:
+  - investigated the browser error `getPtOnboardingStatusMeta is not defined`
+  - confirmed the PT onboarding helper functions and component exist in `src/features/pt-client-onboarding/`, but `src/pages/pt/client-detail.tsx` was missing the imports on `main`
+  - added imports for:
+    - `PtClientOnboardingTab`
+    - `buildPtOnboardingChecklist`
+    - `getPtOnboardingStatusMeta`
+    - `isReadyForOnboardingCompletion`
+- Files changed:
+  - `src/pages/pt/client-detail.tsx`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+  - `rg -n "getPtOnboardingStatusMeta" src -S`
+  - `Get-Content src/lib/auth.tsx`
+- Struggles / mistakes / blockers:
+  - the page file uses `// @ts-nocheck`, so the missing import slipped through type checking and only surfaced as a browser runtime error
+- Repo state at end:
+  - local `main` includes the PT client detail hotfix
+  - `lint` and `build` pass locally after the import fix
+- Next step:
+  - reload the PT client detail page against hosted Supabase to confirm the crash is gone
+  - if the auth timeout warning remains noisy, evaluate whether the current role lookup timeouts are too aggressive for hosted latency
