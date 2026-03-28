@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import {
   Navigate,
   Route,
@@ -75,8 +75,6 @@ import {
 // ✅ assumes your AuthProvider exports this hook
 import { useAuth } from "../lib/auth";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
-import { supabase } from "../lib/supabase";
-import { hasCompletedClientOnboarding } from "../lib/client-onboarding";
 
 function FullPageLoader() {
   return (
@@ -195,67 +193,6 @@ function LoginGate() {
 function LegacyJoinRedirect() {
   const { code } = useParams<{ code: string }>();
   return <Navigate to={`/invite/${code ?? ""}`} replace />;
-}
-
-function RequireClientOnboarding({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-  const { session, role, loading } = useAuth();
-  const [onboardingLoading, setOnboardingLoading] = useState(true);
-  const [isComplete, setIsComplete] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    const checkStatus = async () => {
-      if (loading || !session?.user?.id || role !== "client") {
-        if (active) {
-          setOnboardingLoading(false);
-        }
-        return;
-      }
-
-      setOnboardingLoading(true);
-      const { data, error } = await supabase
-        .from("clients")
-        .select(
-          "display_name, dob, location, timezone, gender, gym_name, days_per_week, goal, height_cm, current_weight",
-        )
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      if (!active) return;
-
-      if (error) {
-        console.warn("Failed to check onboarding status", error);
-        setIsComplete(false);
-        setOnboardingLoading(false);
-        return;
-      }
-
-      setIsComplete(hasCompletedClientOnboarding(data));
-      setOnboardingLoading(false);
-    };
-
-    checkStatus();
-
-    return () => {
-      active = false;
-    };
-  }, [loading, role, session?.user?.id, location.pathname]);
-
-  if (loading || onboardingLoading) return <FullPageLoader />;
-
-  const onOnboardingRoute = location.pathname.startsWith("/app/onboarding");
-
-  if (!isComplete && !onOnboardingRoute) {
-    return <Navigate to="/app/onboarding" replace />;
-  }
-
-  if (isComplete && onOnboardingRoute) {
-    return <Navigate to="/app/home" replace />;
-  }
-
-  return <>{children}</>;
 }
 
 export function App() {
@@ -415,9 +352,7 @@ export function App() {
           element={
             <RequireAuth>
               <RequireRole allow={["client"]}>
-                <RequireClientOnboarding>
-                  <ClientLayout />
-                </RequireClientOnboarding>
+                <ClientLayout />
               </RequireRole>
             </RequireAuth>
           }

@@ -204,3 +204,314 @@ When working in this repository, every agent or human contributor should treat t
   - this documentation update still needs commit/push if the user wants it versioned remotely
 - Next step:
   - keep appending to this file at the end of every meaningful session, especially after schema changes, environment changes, or branching/PR actions
+
+## 2026-03-28 09:46 +03:00 - Client onboarding shell and workspace soft gate
+
+- Branch:
+  - `On-Boarding-baseline-MVP`
+- Goal:
+  - implement the client-side onboarding shell for workspace-specific onboarding rows
+  - replace the old hard gate with a soft-gate workspace experience
+  - reuse the existing baseline subsystem as the onboarding Initial Assessment step
+- Changes made:
+  - removed the old hard redirect behavior that forced incomplete clients out of the workspace and routed client `/app` directly through `ClientLayout`
+  - added a new `src/features/client-onboarding/` frontend module with onboarding types, step logic, Supabase draft/submit helpers, onboarding data hook, soft-gate UI, and the main onboarding shell
+  - built a seven-step onboarding flow for Basics, Goals, Training History, Injuries / Limitations, Nutrition & Lifestyle, Initial Assessment, and Review & Submit
+  - implemented step progress, resume behavior, autosave/manual draft save, validation, status presentation, and review summary rendering against `workspace_client_onboardings`
+  - prefills draft state from `clients` where sensible while keeping draft persistence in `workspace_client_onboardings`
+  - integrated the existing baseline flow by linking the onboarding step to `/app/baseline?onboarding=1&returnTo=...`, treating submitted baseline as completion criteria, and returning the client back into onboarding after submission
+  - updated the baseline page so onboarding mode does not auto-create a fresh draft when a submitted baseline already exists, invalidates onboarding query state after submission, and shows an onboarding-aware completion state
+  - updated invite acceptance to send joined clients into onboarding entry rather than directly to home
+- Files changed:
+  - `src/features/client-onboarding/types.ts`
+  - `src/features/client-onboarding/lib/client-onboarding.ts`
+  - `src/features/client-onboarding/lib/client-onboarding-api.ts`
+  - `src/features/client-onboarding/hooks/use-client-onboarding.ts`
+  - `src/features/client-onboarding/components/client-onboarding-soft-gate.tsx`
+  - `src/features/client-onboarding/components/client-onboarding-shell.tsx`
+  - `src/components/layouts/client-layout.tsx`
+  - `src/pages/client/onboarding.tsx`
+  - `src/pages/client/baseline.tsx`
+  - `src/pages/public/invite.tsx`
+  - `src/routes/app.tsx`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - targeted `npx prettier --write ...` on changed onboarding files
+  - `git status --short`
+  - `git diff --stat`
+  - `Get-Date -Format "yyyy-MM-dd HH:mm:ss K"`
+- Struggles / mistakes / blockers:
+  - the first pass of the onboarding hook hit a Supabase typing mismatch on `maybeSingle()` and needed explicit return typing
+  - the onboarding shell autosave effect needed a callback refactor to satisfy `react-hooks/exhaustive-deps`
+  - PT review / activation UI was intentionally not implemented in this phase
+  - end-to-end smoke tests were not run in this session
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - HEAD before new commit is `a552954`
+  - onboarding shell + soft gate changes are present in the working tree and pass lint, format, and build locally
+  - working tree is dirty only with the onboarding-related frontend changes listed above
+- Next step:
+  - build the PT-side review / activation experience that reads submitted onboarding packages and uses the existing backend RPCs
+  - add E2E coverage for invite-to-onboarding entry, draft resume, baseline return-to-onboarding flow, and submit-for-review
+
+## 2026-03-28 10:07 +03:00 - PT onboarding review and activation flow
+
+- Branch:
+  - `On-Boarding-baseline-MVP`
+- Goal:
+  - build the PT-side onboarding review and activation experience on top of workspace-specific onboarding rows
+  - surface onboarding status in PT workspace views
+  - let PT review intake + baseline together, assign first program/check-in, partially activate, and complete onboarding
+- Changes made:
+  - added a PT onboarding helper module with onboarding select fields, PT-facing status metadata, and activation checklist rules
+  - extended shared onboarding types to include first program/check-in and reviewer metadata fields
+  - added a dedicated PT onboarding review tab in client detail and surfaced onboarding status in the client header/overview
+  - built a PT onboarding review surface that shows intake sections, linked baseline summary, coach review notes, activation checklist, first program assignment, first check-in scheduling, review action, partial activation action, and completion action
+  - reused the existing baseline subsystem data instead of rebuilding assessment review logic from scratch
+  - synced first program assignment into `workspace_client_onboardings.first_program_template_id` / `first_program_applied_at` whenever PT assigns or switches a program
+  - synced first check-in setup into `workspace_client_onboardings.first_checkin_template_id`, `first_checkin_date`, and `first_checkin_scheduled_at` when PT saves the client check-in configuration
+  - cleared onboarding first-program tracking when the PT unassigns the program so the checklist stays truthful
+  - added onboarding badges to PT client list rows and dashboard client rows
+  - added onboarding queue visibility to PT dashboard with counts for in-progress, review queue, partially activated, and completed
+  - updated PT roster/dashboard navigation so clients with unfinished onboarding open directly into the onboarding review tab
+- Files changed:
+  - `src/features/client-onboarding/types.ts`
+  - `src/features/client-onboarding/hooks/use-client-onboarding.ts`
+  - `src/features/pt-client-onboarding/lib/pt-client-onboarding.ts`
+  - `src/features/pt-client-onboarding/components/pt-client-onboarding-tab.tsx`
+  - `src/components/ui/coachos/status-pill.tsx`
+  - `src/components/pt/clients/ClientListRow.tsx`
+  - `src/components/pt/dashboard/ClientRow.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `src/pages/pt/clients.tsx`
+  - `src/pages/pt/dashboard.tsx`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - targeted `npx prettier --write ...` on the PT onboarding files
+  - `git status --short`
+  - `Get-Date -Format "yyyy-MM-dd HH:mm:ss K"`
+- Struggles / mistakes / blockers:
+  - the existing PT client detail page is very large, so the new onboarding review UI was moved into a feature component to avoid expanding the page file further
+  - dashboard and clients pages still use local effect-based loading rather than React Query, so onboarding status refresh there is navigation-driven instead of cache-invalidation-driven
+  - end-to-end tests for the PT onboarding review flow were not added in this session
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - PT onboarding review/activation UI is implemented in the working tree
+  - lint, format, and build all pass locally
+- Next step:
+  - add E2E coverage for PT review, partial activation, and completion
+  - consider moving PT dashboard/client roster loading to React Query if live cross-page onboarding updates become important
+  - QA the completion path against real hosted data, especially first-program/check-in edge cases
+
+## 2026-03-28 11:40 +03:00 - Final onboarding integration, legacy handling, and QA pass
+
+- Branch:
+  - `On-Boarding-baseline-MVP`
+- Goal:
+  - complete the final onboarding integration pass so onboarding status feels consistent across the client/PT app
+  - reduce conflicting prompts from the older baseline-only flow
+  - handle legacy clients safely without blindly marking everyone complete
+  - leave behind a concrete QA checklist for the onboarding MVP
+- Changes made:
+  - updated shared client onboarding status copy so `review_needed`, `submitted`, `partially_activated`, and `completed` read consistently with the actual lifecycle
+  - removed the old baseline-only prompt from client home and suppressed the generic profile-completion card until onboarding is completed, reducing duplicate/conflicting asks during onboarding
+  - made client reminders onboarding-aware so incomplete onboarding, submitted review state, and partial activation surface through `/app/onboarding` instead of the old standalone baseline reminder
+  - updated client check-in empty states so missing first check-in setup points back to onboarding/activation where appropriate instead of telling the client to “finish onboarding” in unrelated error states
+  - added a final onboarding integration migration that:
+    - upgrades `ensure_workspace_client_onboarding`
+    - backfills legacy missing rows into grounded `partially_activated` / `completed` states only when existing baseline + operational setup data justify it
+    - adds `ensure_workspace_client_onboardings` for PT workspace surfaces to ensure/load onboarding rows in batches
+  - switched PT clients list and PT dashboard onboarding loads to the new batch ensure RPC so legacy clients show onboarding state more reliably in operational views
+  - added `docs/onboarding-qa-checklist.md` with a release-style manual test checklist covering client, PT, legacy, and regression flows
+- Files changed:
+  - `src/features/client-onboarding/lib/client-onboarding.ts`
+  - `src/pages/client/home.tsx`
+  - `src/components/common/client-reminders.tsx`
+  - `src/pages/client/checkin.tsx`
+  - `src/pages/pt/clients.tsx`
+  - `src/pages/pt/dashboard.tsx`
+  - `supabase/migrations/20260328114000_onboarding_final_integration.sql`
+  - `docs/onboarding-qa-checklist.md`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - `git status --short`
+- Struggles / mistakes / blockers:
+  - the client check-in page still contains some older copy/branching that had to be patched carefully because of mixed encoding in existing strings
+  - automated E2E coverage for the full onboarding lifecycle still was not added in this pass; the QA checklist is manual for now
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - final integration/polish changes are in the working tree and lint/format/build all pass locally
+- Next step:
+  - run lint/format/build and fix anything that shakes loose from the final pass
+  - smoke test the client reminder/check-in states and PT legacy backfill behavior against real data
+
+## 2026-03-28 11:48 +03:00 - QA fixes: goals step cleanup and baseline photo storage bucket
+- Goal:
+  - respond to manual QA feedback from local onboarding testing
+  - remove `target timeline` from step 2 so the goals step stays lighter-weight
+  - fix baseline photo uploads failing locally with `Bucket not found`
+- Changes made:
+  - removed `target_timeline` from the client onboarding field state, goals payload builder, step validation, client review summary, and PT onboarding review summary
+  - kept the goals step focused on primary goal, optional secondary goals, and motivation / success definition
+  - added a storage migration that creates the private `baseline_photos` bucket and adds authenticated storage object policies for client upload/update/delete plus client/PT read access via the baseline/workspace relationship
+- Files changed:
+  - `src/features/client-onboarding/types.ts`
+  - `src/features/client-onboarding/lib/client-onboarding.ts`
+  - `src/features/client-onboarding/components/client-onboarding-shell.tsx`
+  - `src/features/pt-client-onboarding/components/pt-client-onboarding-tab.tsx`
+  - `supabase/migrations/20260328161500_baseline_photo_storage_bucket.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - the bucket error came from a missing storage bucket migration rather than the baseline UI itself, so local testing needs the new migration applied before photo uploads can pass
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - frontend checks pass locally
+  - local Supabase still needs this new migration applied before retesting photo upload
+- Next step:
+  - apply the new migration locally with `npm run supabase:db:reset` or create the bucket/policies manually in local SQL if preserving test data matters
+  - retest baseline photo upload and the lighter goals step in the browser
+
+## 2026-03-28 12:05 +03:00 - QA fix: require first program and first check-in before onboarding completion
+- Goal:
+  - close a PT activation gap found in manual QA where onboarding could be marked complete without the required first program assignment and first check-in scheduling
+- Changes made:
+  - added a stricter PT-side completion guard so the client detail onboarding action refuses completion unless both the first program and the first check-in are already recorded on the onboarding row
+  - added a backend `create or replace function` migration for `public.complete_workspace_client_onboarding` that now raises if:
+    - no submitted baseline is linked
+    - no effective first program assignment exists
+    - no effective first check-in schedule exists
+  - kept the completion RPC compatible with either already-saved onboarding assignment fields or newly passed values, but no longer allows `completed` with those activation requirements missing
+- Files changed:
+  - `src/pages/pt/client-detail.tsx`
+  - `supabase/migrations/20260328174000_require_program_and_checkin_for_onboarding_completion.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - the UI already modeled program/check-in as required, but the original backend completion RPC still accepted `null` activation parameters, so both layers had to be tightened to fully close the hole
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - frontend checks pass locally
+  - local Supabase needs the new completion-enforcement migration applied before retesting
+- Next step:
+  - apply the new migration locally and verify the PT cannot complete onboarding until both the first program and first check-in are set
+
+## 2026-03-28 12:18 +03:00 - Product correction: program/check-in remain optional for onboarding completion
+- Goal:
+  - align the PT onboarding completion rules with the intended product behavior after clarifying that first program assignment and first check-in scheduling should stay optional
+- Changes made:
+  - marked `First program assigned` and `First check-in scheduled` as optional checklist items in the PT onboarding review flow
+  - removed the temporary PT-side action guard that blocked `Complete onboarding` when those two items were missing
+  - added a follow-up migration that re-relaxes `public.complete_workspace_client_onboarding`, so completion once again requires the intake/baseline/review path but not first program or first check-in setup
+- Files changed:
+  - `src/features/pt-client-onboarding/lib/pt-client-onboarding.ts`
+  - `src/pages/pt/client-detail.tsx`
+  - `supabase/migrations/20260328181500_relax_onboarding_completion_activation_requirements.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - the prior strict completion guard matched an incorrect assumption rather than the intended product rule, so both frontend and backend had to be relaxed again to keep local testing truthful
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - frontend checks pass locally
+  - any local DB that already applied the stricter completion SQL must apply the relaxing follow-up SQL to match the current product behavior
+- Next step:
+  - apply the relaxing completion migration locally and retest that PT can complete onboarding without first program/check-in while those items still remain visible as optional follow-up setup
+
+## 2026-03-28 12:32 +03:00 - Remove first program and first check-in from onboarding
+- Goal:
+  - remove first program assignment and first check-in scheduling from the onboarding process while keeping those operational workflows available elsewhere in the PT app
+- Changes made:
+  - removed the first program and first check-in items from the PT onboarding checklist so onboarding completion now focuses on intake, baseline, review, and explicit activation state only
+  - removed the first program assignment and first check-in scheduling cards from the PT onboarding review tab
+  - stopped syncing program assignments and check-in setup back into `workspace_client_onboardings` from the PT workout/check-in flows
+  - added a backend migration that:
+    - updates `review_workspace_client_onboarding` so partial activation is no longer inferred from onboarding program/check-in fields
+    - adds `partially_activate_workspace_client_onboarding` so partial activation remains an explicit coach action
+- Files changed:
+  - `src/features/pt-client-onboarding/lib/pt-client-onboarding.ts`
+  - `src/features/pt-client-onboarding/components/pt-client-onboarding-tab.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `supabase/migrations/20260328184500_decouple_program_and_checkin_from_onboarding.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - earlier QA patches had briefly tightened onboarding around program/check-in, so this pass had to remove both the visible onboarding UI and the hidden backend coupling behind partial-activation status
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - frontend checks pass locally
+  - local Supabase needs the new decoupling SQL applied if it has older onboarding status logic loaded
+- Next step:
+  - apply the decoupling SQL locally and retest the PT onboarding review tab to confirm program/check-in no longer appear there and partial activation still works as an explicit action
+
+## 2026-03-28 12:45 +03:00 - Remove partial activation from onboarding
+- Goal:
+  - remove `Partially activate` completely from the onboarding lifecycle and collapse the flow down to `review_needed -> submitted -> completed`
+- Changes made:
+  - removed the `Partially activate` action from the PT onboarding review UI
+  - removed the onboarding checklist activation-state item, since there is no longer an intermediate partial activation status to track
+  - updated client/PT onboarding status copy, reminders, roster stats, dashboard counts, and fallback status pills so old `partially_activated` rows are treated like reviewed items rather than surfacing a dead status
+  - added a migration that:
+    - converts existing non-completed `partially_activated` onboarding rows back to `submitted`
+    - rewrites `review_workspace_client_onboarding` to never emit `partially_activated`
+    - drops `partially_activate_workspace_client_onboarding`
+    - updates the legacy ensure/backfill function so it no longer creates new `partially_activated` rows
+- Files changed:
+  - `src/features/pt-client-onboarding/lib/pt-client-onboarding.ts`
+  - `src/features/client-onboarding/lib/client-onboarding.ts`
+  - `src/components/common/client-reminders.tsx`
+  - `src/components/ui/coachos/status-pill.tsx`
+  - `src/pages/pt/clients.tsx`
+  - `src/pages/pt/dashboard.tsx`
+  - `src/features/pt-client-onboarding/components/pt-client-onboarding-tab.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `supabase/migrations/20260328193000_remove_partially_activated_onboarding_status_usage.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - removing the state cleanly required both UI deletion and follow-up backend normalization, because earlier migrations and QA passes had already introduced `partially_activated` into lifecycle logic and legacy backfill
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - frontend checks pass locally
+  - local Supabase needs the new cleanup migration applied if older partial-activation SQL has already been run
+- Next step:
+  - apply the cleanup SQL locally and retest that PT now sees only review and complete actions, with no partial status anywhere in onboarding
+
+## 2026-03-28 13:05 +03:00 - PT completed-onboarding preview polish
+- Goal:
+  - make the completed PT onboarding tab feel like a clean preview while still allowing note edits when needed
+  - keep baseline photo inspection inside the app instead of sending PTs to a separate browser tab
+- Changes made:
+  - updated the PT onboarding tab so completed onboarding shows preview-oriented copy, a completion summary, and a read-only notes view by default
+  - added an `Edit notes` path for completed onboarding, allowing PTs to re-open the notes field, save changes, or cancel back to the persisted review notes
+  - replaced the baseline photo external-link behavior with an in-app dialog viewer so uploaded front/side/back photos open full-size in the same tab context
+- Files changed:
+  - `src/features/pt-client-onboarding/components/pt-client-onboarding-tab.tsx`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - the initial implementation placed new hooks after early-return branches, which build tolerated but lint correctly rejected, so the component state had to be moved up to the top-level hook section
+- Repo state at end:
+  - branch remains `On-Boarding-baseline-MVP`
+  - frontend checks pass locally
+- Next step:
+  - re-open a completed onboarding in PT, confirm the tab reads like a preview, verify `Edit notes` works, and click each baseline photo to confirm the in-app viewer opens correctly

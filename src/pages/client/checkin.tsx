@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -14,6 +15,8 @@ import { safeSelect } from "../../lib/supabase-safe";
 import { useAuth } from "../../lib/auth";
 import { cn } from "../../lib/utils";
 import { getTodayInTimezone, getWeekEndSaturday } from "../../lib/date-utils";
+import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
+import { getOnboardingStatusMeta } from "../../features/client-onboarding/lib/client-onboarding";
 
 type ClientRow = {
   id: string;
@@ -169,7 +172,9 @@ const computeNextCheckinDate = (
 };
 
 export function ClientCheckinPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const onboardingSummary = useClientOnboarding().data ?? null;
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionValue>>({});
   const [photos, setPhotos] = useState<Record<PhotoType, PhotoState>>({
@@ -337,6 +342,21 @@ export function ClientCheckinPage() {
   const hasTemplate = Boolean(templateQuery.data);
   const missingTemplate =
     !isLoading && !hasTemplate && !!clientQuery.data?.workspace_id;
+  const onboardingStatusMeta = onboardingSummary
+    ? getOnboardingStatusMeta(onboardingSummary.onboarding.status)
+    : null;
+  const onboardingNeedsActivation = Boolean(
+    onboardingSummary &&
+    onboardingSummary.onboarding.status !== "completed" &&
+    missingTemplate,
+  );
+  const missingTemplateTitle = onboardingNeedsActivation
+    ? "Your first check-in opens after onboarding activation."
+    : "Your coach hasn’t assigned a check-in yet.";
+  const missingTemplateDescription = onboardingNeedsActivation
+    ? (onboardingStatusMeta?.description ??
+      "Your coach will finish your first check-in setup after onboarding.")
+    : "Check back soon once your coach adds one.";
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -622,17 +642,38 @@ export function ClientCheckinPage() {
         ) : (
           <EmptyState
             title="No client profile found"
-            description="Please finish onboarding first."
+            description="A client profile is required before check-ins can load."
           />
         )}
       </DashboardCard>
 
       {missingTemplate ? (
         <EmptyState
-          title="Your coach hasn’t assigned a check-in yet."
-          description="Check back soon once your coach adds one."
+          title={missingTemplateTitle}
+          description={missingTemplateDescription}
+          actionLabel={
+            onboardingNeedsActivation ? "Open onboarding" : undefined
+          }
+          onAction={
+            onboardingNeedsActivation
+              ? () => navigate("/app/onboarding")
+              : undefined
+          }
         />
       ) : null}
+
+      {/* legacy placeholder removed during final onboarding integration
+        <EmptyState
+          title="Your coach hasn’t assigned a check-in yet."
+          description="Check back soon once your coach adds one."
+          {...(onboardingNeedsActivation
+            ? {
+                actionLabel: "Open onboarding",
+                onAction: () => navigate("/app/onboarding"),
+              }
+            : {})}
+        />
+      */}
 
       {pageError ? (
         <Alert className="border-destructive/30">
@@ -697,11 +738,23 @@ export function ClientCheckinPage() {
             <EmptyState
               title="Your coach hasn’t assigned a check-in yet."
               description="Check back soon once your coach adds one."
+              {...(onboardingNeedsActivation
+                ? {
+                    actionLabel: "Open onboarding",
+                    onAction: () => navigate("/app/onboarding"),
+                  }
+                : {})}
             />
           ) : !hasTemplate ? (
             <EmptyState
               title="Your coach hasn’t assigned a check-in yet."
               description="Check back soon once your coach adds one."
+              {...(onboardingNeedsActivation
+                ? {
+                    actionLabel: "Open onboarding",
+                    onAction: () => navigate("/app/onboarding"),
+                  }
+                : {})}
             />
           ) : questions.length === 0 ? (
             <EmptyState
@@ -846,12 +899,18 @@ export function ClientCheckinPage() {
           ) : !clientQuery.data ? (
             <EmptyState
               title="No profile found"
-              description="Please finish onboarding first."
+              description="A client profile is required before check-ins can load."
             />
           ) : missingTemplate ? (
             <EmptyState
               title="Your coach hasn’t assigned a check-in yet."
               description="Check back soon once your coach adds one."
+              {...(onboardingNeedsActivation
+                ? {
+                    actionLabel: "Open onboarding",
+                    onAction: () => navigate("/app/onboarding"),
+                  }
+                : {})}
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -944,6 +1003,12 @@ export function ClientCheckinPage() {
             <EmptyState
               title="Your coach hasn’t assigned a check-in yet."
               description="Check back soon once your coach adds one."
+              {...(onboardingNeedsActivation
+                ? {
+                    actionLabel: "Open onboarding",
+                    onAction: () => navigate("/app/onboarding"),
+                  }
+                : {})}
             />
           ) : (
             <div className="space-y-6">

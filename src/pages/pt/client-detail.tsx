@@ -29,6 +29,7 @@ import {
   Apple,
   AlertTriangle,
   CalendarDays,
+  ClipboardCheck,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
@@ -82,9 +83,18 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
+import type { WorkspaceClientOnboardingRow } from "../../features/client-onboarding/types";
+import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
+import {
+  buildPtOnboardingChecklist,
+  getPtOnboardingStatusMeta,
+  isReadyForOnboardingCompletion,
+  ptOnboardingSelect,
+} from "../../features/pt-client-onboarding/lib/pt-client-onboarding";
 
 const tabs = [
   "overview",
+  "onboarding",
   "workout",
   "nutrition",
   "logs",
@@ -99,6 +109,7 @@ const workbenchTabs: Array<{
   value: Exclude<(typeof tabs)[number], "overview">;
   label: string;
 }> = [
+  { value: "onboarding", label: "Onboarding" },
   { value: "workout", label: "Workout" },
   { value: "nutrition", label: "Nutrition" },
   { value: "habits", label: "Habits" },
@@ -113,6 +124,7 @@ const workbenchTabIcons: Record<
   Exclude<(typeof tabs)[number], "overview">,
   ComponentType<{ className?: string }>
 > = {
+  onboarding: ClipboardCheck,
   workout: Rocket,
   nutrition: Apple,
   habits: Flame,
@@ -562,6 +574,19 @@ export function PtClientDetailPage() {
   const [baselineNotesMessage, setBaselineNotesMessage] = useState<
     string | null
   >(null);
+  const [onboardingReviewNotes, setOnboardingReviewNotes] = useState("");
+  const [onboardingReviewStatus, setOnboardingReviewStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
+  const [onboardingReviewMessage, setOnboardingReviewMessage] = useState<
+    string | null
+  >(null);
+  const [onboardingActionStatus, setOnboardingActionStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
+  const [onboardingActionMessage, setOnboardingActionMessage] = useState<
+    string | null
+  >(null);
   const baselineReviewLoggedRef = useRef<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [selectedCheckin, setSelectedCheckin] = useState<CheckinRow | null>(
@@ -724,6 +749,31 @@ export function PtClientDetailPage() {
       if (error) throw error;
       if (!data) throw new Error("Client not found in this workspace.");
       return data;
+    },
+  });
+
+  const onboardingQuery = useQuery({
+    queryKey: ["pt-client-onboarding", clientId, workspaceQuery.data],
+    enabled: !!clientId && !!workspaceQuery.data,
+    queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_workspace_client_onboarding",
+        {
+          p_client_id: clientId ?? "",
+        },
+      );
+      if (ensureError) throw ensureError;
+
+      const { data, error } = await supabase
+        .from("workspace_client_onboardings")
+        .select(ptOnboardingSelect)
+        .eq("workspace_id", workspaceQuery.data ?? "")
+        .eq("client_id", clientId ?? "")
+        .returns<WorkspaceClientOnboardingRow>()
+        .maybeSingle();
+
+      if (error) throw error;
+      return (data ?? null) as WorkspaceClientOnboardingRow | null;
     },
   });
 
@@ -941,7 +991,9 @@ export function PtClientDetailPage() {
 
   const programTemplatesQuery = useQuery({
     queryKey: ["program-templates", workspaceQuery.data],
-    enabled: !!workspaceQuery.data && active === "workout",
+    enabled:
+      !!workspaceQuery.data &&
+      (active === "workout" || active === "onboarding"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("program_templates")
@@ -956,7 +1008,7 @@ export function PtClientDetailPage() {
 
   const activeProgramQuery = useQuery({
     queryKey: ["client-program-active", clientId],
-    enabled: !!clientId && active === "workout",
+    enabled: !!clientId && (active === "workout" || active === "onboarding"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_programs")
@@ -978,7 +1030,7 @@ export function PtClientDetailPage() {
 
   const pausedProgramQuery = useQuery({
     queryKey: ["client-program-paused", clientId],
-    enabled: !!clientId && active === "workout",
+    enabled: !!clientId && (active === "workout" || active === "onboarding"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_programs")
@@ -1164,17 +1216,25 @@ export function PtClientDetailPage() {
   });
 
   const baselineEntryQuery = useQuery({
-    queryKey: ["pt-client-baseline-entry", clientId],
-    enabled: !!clientId && active === "baseline",
+    queryKey: [
+      "pt-client-baseline-entry",
+      clientId,
+      onboardingQuery.data?.initial_baseline_entry_id ?? null,
+      active,
+    ],
+    enabled: !!clientId && (active === "baseline" || active === "onboarding"),
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("baseline_entries")
         .select("id, submitted_at, coach_notes")
         .eq("client_id", clientId ?? "")
-        .eq("status", "submitted")
-        .order("submitted_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq("status", "submitted");
+      if (onboardingQuery.data?.initial_baseline_entry_id) {
+        query = query.eq("id", onboardingQuery.data.initial_baseline_entry_id);
+      } else {
+        query = query.order("submitted_at", { ascending: false }).limit(1);
+      }
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return (data ?? null) as BaselineEntry | null;
     },
@@ -1190,9 +1250,13 @@ export function PtClientDetailPage() {
     setBaselineNotes(baselineEntryQuery.data.coach_notes ?? "");
   }, [baselineEntryQuery.data]);
 
+  useEffect(() => {
+    setOnboardingReviewNotes(onboardingQuery.data?.coach_review_notes ?? "");
+  }, [onboardingQuery.data?.coach_review_notes]);
+
   const baselineMetricsQuery = useQuery({
     queryKey: ["pt-client-baseline-metrics", baselineId],
-    enabled: !!baselineId && active === "baseline",
+    enabled: !!baselineId && (active === "baseline" || active === "onboarding"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_metrics")
@@ -1208,7 +1272,7 @@ export function PtClientDetailPage() {
 
   const baselineMarkersQuery = useQuery({
     queryKey: ["pt-client-baseline-markers", baselineId],
-    enabled: !!baselineId && active === "baseline",
+    enabled: !!baselineId && (active === "baseline" || active === "onboarding"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_values")
@@ -1237,7 +1301,7 @@ export function PtClientDetailPage() {
 
   const baselinePhotosQuery = useQuery({
     queryKey: ["pt-client-baseline-photos", baselineId],
-    enabled: !!baselineId && active === "baseline",
+    enabled: !!baselineId && (active === "baseline" || active === "onboarding"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_photos")
@@ -2201,6 +2265,40 @@ export function PtClientDetailPage() {
     return map;
   }, [baselinePhotosQuery.data]);
 
+  const onboardingSnapshot = onboardingQuery.data ?? null;
+  const onboardingStatusMeta = useMemo(
+    () => getPtOnboardingStatusMeta(onboardingSnapshot?.status),
+    [onboardingSnapshot?.status],
+  );
+  const onboardingChecklist = useMemo(
+    () =>
+      buildPtOnboardingChecklist({
+        onboarding: onboardingSnapshot,
+        baselineSubmitted: Boolean(baselineEntryQuery.data?.id),
+      }),
+    [baselineEntryQuery.data?.id, onboardingSnapshot],
+  );
+  const onboardingReadyForCompletion = useMemo(
+    () => isReadyForOnboardingCompletion(onboardingChecklist),
+    [onboardingChecklist],
+  );
+  const onboardingMissingItems = useMemo(
+    () =>
+      onboardingChecklist
+        .filter((item) => !item.optional && !item.complete)
+        .map((item) => item.label),
+    [onboardingChecklist],
+  );
+  const invalidateOnboardingViews = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-onboarding", clientId, workspaceQuery.data],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-clients-onboarding", workspaceQuery.data],
+    });
+  };
+
   const handleQuickAction = (message: string) => {
     if (!clientId) return;
     const params = new URLSearchParams({ client: clientId, draft: message });
@@ -2332,7 +2430,7 @@ export function PtClientDetailPage() {
     const nextId = checkinTemplateId || null;
     const nextFrequency = checkinFrequency || "weekly";
     const nextStartDate = checkinStartDate || null;
-
+    const nextTemplateId = nextId ?? defaultCheckinTemplate?.id ?? null;
     const clientUpdate = await supabase
       .from("clients")
       .update({
@@ -2419,6 +2517,97 @@ export function PtClientDetailPage() {
     await queryClient.invalidateQueries({
       queryKey: ["pt-client-baseline-entry", clientId],
     });
+  };
+
+  const handleSaveOnboardingReviewNotes = async () => {
+    if (!onboardingSnapshot?.id) return;
+    setOnboardingReviewStatus("saving");
+    setOnboardingReviewMessage(null);
+    const { error } = await supabase
+      .from("workspace_client_onboardings")
+      .update({ coach_review_notes: onboardingReviewNotes.trim() || null })
+      .eq("id", onboardingSnapshot.id);
+
+    if (error) {
+      setOnboardingReviewStatus("error");
+      setOnboardingReviewMessage(getErrorMessage(error));
+      return;
+    }
+
+    setOnboardingReviewStatus("idle");
+    setOnboardingReviewMessage("Coach notes saved.");
+    await invalidateOnboardingViews();
+  };
+
+  const handleMarkOnboardingReviewed = async () => {
+    if (!clientId) return;
+    setOnboardingActionStatus("saving");
+    setOnboardingActionMessage(null);
+    const { error } = await supabase.rpc("review_workspace_client_onboarding", {
+      p_client_id: clientId,
+      p_coach_review_notes: onboardingReviewNotes.trim() || null,
+    });
+
+    if (error) {
+      setOnboardingActionStatus("error");
+      setOnboardingActionMessage(getErrorMessage(error));
+      return;
+    }
+
+    setOnboardingActionStatus("idle");
+    setOnboardingActionMessage("Onboarding marked reviewed.");
+    setToastVariant("success");
+    setToastMessage("Onboarding reviewed");
+    await invalidateOnboardingViews();
+  };
+
+  const handleCompleteOnboarding = async () => {
+    if (!clientId) return;
+    if (!onboardingReadyForCompletion) {
+      setOnboardingActionStatus("error");
+      setOnboardingActionMessage(
+        `Complete the remaining items first: ${onboardingMissingItems.join(", ")}.`,
+      );
+      return;
+    }
+
+    setOnboardingActionStatus("saving");
+    setOnboardingActionMessage(null);
+    const { error } = await supabase.rpc(
+      "complete_workspace_client_onboarding",
+      {
+        p_client_id: clientId,
+        p_program_template_id: null,
+        p_checkin_template_id: null,
+        p_first_checkin_date: null,
+        p_coach_review_notes: onboardingReviewNotes.trim() || null,
+      },
+    );
+
+    if (error) {
+      setOnboardingActionStatus("error");
+      setOnboardingActionMessage(getErrorMessage(error));
+      return;
+    }
+
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client", clientId, workspaceQuery.data],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-active", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["client-program-paused", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-checkins", clientId, "checkins", 0],
+    });
+    await invalidateOnboardingViews();
+
+    setOnboardingActionStatus("idle");
+    setOnboardingActionMessage("Client onboarding completed.");
+    setToastVariant("success");
+    setToastMessage("Client onboarding completed");
   };
 
   useEffect(() => {
@@ -2622,6 +2811,9 @@ export function PtClientDetailPage() {
                       {clientSnapshot?.display_name ?? "Client profile"}
                     </h2>
                     <StatusPill status={clientSnapshot?.status ?? "active"} />
+                    {onboardingSnapshot ? (
+                      <StatusPill status={onboardingSnapshot.status} />
+                    ) : null}
                     {lastSeen ? (
                       <span className="text-xs text-muted-foreground">
                         Last seen {lastSeen}
@@ -2715,6 +2907,14 @@ export function PtClientDetailPage() {
                         Status
                       </span>
                       <StatusPill status={clientSnapshot?.status ?? "active"} />
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">
+                        Onboarding
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {onboardingStatusMeta.label}
+                      </span>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
                       <span className="block text-xs text-muted-foreground">
@@ -2970,6 +3170,7 @@ export function PtClientDetailPage() {
             baselineMetricsQuery.error ||
             baselineMarkersQuery.error ||
             baselinePhotosQuery.error ||
+            onboardingQuery.error ||
             checkinsQuery.error ||
             clientQuery.error ||
             assignStatus === "error") && (
@@ -2999,6 +3200,7 @@ export function PtClientDetailPage() {
                       baselineMetricsQuery.error,
                       baselineMarkersQuery.error,
                       baselinePhotosQuery.error,
+                      onboardingQuery.error,
                       checkinsQuery.error,
                       clientQuery.error,
                     ]
@@ -3083,6 +3285,30 @@ export function PtClientDetailPage() {
                     ))}
                   </TabsList>
                 </div>
+                <TabsContent value="onboarding">
+                  <PtClientOnboardingTab
+                    clientSnapshot={clientSnapshot}
+                    onboardingQuery={onboardingQuery}
+                    onboardingStatusMeta={onboardingStatusMeta}
+                    onboardingChecklist={onboardingChecklist}
+                    onboardingReadyForCompletion={onboardingReadyForCompletion}
+                    onboardingMissingItems={onboardingMissingItems}
+                    onboardingReviewNotes={onboardingReviewNotes}
+                    onboardingReviewStatus={onboardingReviewStatus}
+                    onboardingReviewMessage={onboardingReviewMessage}
+                    onboardingActionStatus={onboardingActionStatus}
+                    onboardingActionMessage={onboardingActionMessage}
+                    baselineEntryQuery={baselineEntryQuery}
+                    baselineMetricsQuery={baselineMetricsQuery}
+                    baselineMarkersQuery={baselineMarkersQuery}
+                    baselinePhotosQuery={baselinePhotosQuery}
+                    baselinePhotoMap={baselinePhotoMap}
+                    onReviewNotesChange={setOnboardingReviewNotes}
+                    onSaveReviewNotes={handleSaveOnboardingReviewNotes}
+                    onMarkReviewed={handleMarkOnboardingReviewed}
+                    onComplete={handleCompleteOnboarding}
+                  />
+                </TabsContent>
                 <TabsContent value="workout">
                   <PtClientPlanTab
                     templatesQuery={templatesQuery}

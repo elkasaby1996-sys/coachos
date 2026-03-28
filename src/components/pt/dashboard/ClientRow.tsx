@@ -14,12 +14,14 @@ export function ClientRow({
   joined,
   adherence,
   status,
+  onboardingStatus,
   onClick,
 }: {
   name: string;
   joined: string;
   adherence: string;
   status: string | null;
+  onboardingStatus?: string | null;
   onClick: () => void;
 }) {
   return (
@@ -36,6 +38,7 @@ export function ClientRow({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold">{name}</p>
             <StatusPill status={status} />
+            {onboardingStatus ? <StatusPill status={onboardingStatus} /> : null}
           </div>
           <p className="text-xs text-muted-foreground">Joined {joined}</p>
         </div>

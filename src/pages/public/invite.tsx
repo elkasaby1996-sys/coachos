@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -79,6 +79,7 @@ export function InvitePage() {
   const [passwordEmail, setPasswordEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phoneStep, setPhoneStep] = useState<"send" | "verify">("send");
+  const acceptingInviteRef = useRef(false);
 
   const tokenValue = token ?? "";
   const redirectTo = useMemo(
@@ -134,7 +135,9 @@ export function InvitePage() {
 
   useEffect(() => {
     if (!session?.user || !invite?.is_valid || !tokenValue) return;
+    if (acceptingInviteRef.current) return;
     const accept = async () => {
+      acceptingInviteRef.current = true;
       setBusyAction("accept_invite");
       setError(null);
       setNotice(null);
@@ -145,8 +148,9 @@ export function InvitePage() {
         if (acceptError) throw acceptError;
         setNotice("Invite accepted. Redirecting...");
         await refreshRole?.();
-        navigate("/app/home", { replace: true });
+        navigate("/app/onboarding", { replace: true });
       } catch (err) {
+        acceptingInviteRef.current = false;
         setError(getErrorMessage(err) || "Failed to accept invite.");
       } finally {
         setBusyAction(null);

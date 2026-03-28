@@ -209,10 +209,12 @@ async function resolveRole(userId: string): Promise<{
     throw timeoutError;
   }
 
-  console.warn("Client record not found or not accessible", {
-    userId,
-    query: clientQuery,
-  });
+  if (!window.location.pathname.startsWith("/invite/")) {
+    console.warn("Client record not found or not accessible", {
+      userId,
+      query: clientQuery,
+    });
+  }
 
   return {
     role: "none",

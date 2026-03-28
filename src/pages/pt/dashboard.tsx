@@ -37,6 +37,7 @@ import {
   getLastSaturday,
   getTodayInTimezone,
 } from "../../lib/date-utils";
+import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 type ClientRecord = {
   id: string;
@@ -84,6 +85,11 @@ type CoachTodo = {
   created_at: string | null;
 };
 
+type OnboardingRow = {
+  client_id: string;
+  status: ClientOnboardingStatus;
+};
+
 export function PtDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -104,6 +110,7 @@ export function PtDashboardPage() {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [onboardingRows, setOnboardingRows] = useState<OnboardingRow[]>([]);
   const [coachTodos, setCoachTodos] = useState<CoachTodo[]>([]);
   const [todoDraft, setTodoDraft] = useState("");
   const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
@@ -141,6 +148,7 @@ export function PtDashboardPage() {
           p_coach_id: user.id,
         });
         if (error) throw error;
+
         const summary = data as {
           clients: ClientRecord[];
           assignedWorkouts: AssignedWorkoutRow[];
@@ -155,6 +163,19 @@ export function PtDashboardPage() {
         setMessages(messagesEnabled ? (summary?.messages ?? []) : []);
         setUnreadCount(messagesEnabled ? (summary?.unreadCount ?? 0) : 0);
         setCoachTodos(summary?.coachTodos ?? []);
+
+        const clientIds = (summary?.clients ?? []).map((client) => client.id);
+        if (clientIds.length > 0) {
+          const { data: onboardingData, error: onboardingError } =
+            await supabase.rpc("ensure_workspace_client_onboardings", {
+              p_workspace_id: cachedWorkspaceId,
+              p_client_ids: clientIds,
+            });
+          if (onboardingError) throw onboardingError;
+          setOnboardingRows((onboardingData ?? []) as OnboardingRow[]);
+        } else {
+          setOnboardingRows([]);
+        }
       } catch (error: any) {
         setLoadError(error?.message ?? "Failed to load dashboard.");
       } finally {
@@ -279,17 +300,48 @@ export function PtDashboardPage() {
         const name = client.display_name?.trim()
           ? client.display_name
           : `Client ${client.user_id.slice(0, 6)}`;
+        const onboardingStatus =
+          onboardingRows.find((row) => row.client_id === client.id)?.status ??
+          null;
         return {
           id: client.id,
           name,
           status: client.status ?? "active",
+          onboardingStatus,
           joined: client.created_at
             ? formatRelativeTime(client.created_at)
             : "Recently",
           adherence: adherencePercent ? `${adherencePercent}%` : "—",
         };
       }),
-    [clients, adherencePercent],
+    [clients, adherencePercent, onboardingRows],
+  );
+
+  const onboardingCounts = useMemo(() => {
+    return {
+      inProgress: onboardingRows.filter(
+        (row) => row.status === "invited" || row.status === "in_progress",
+      ).length,
+      reviewQueue: onboardingRows.filter(
+        (row) =>
+          row.status === "review_needed" ||
+          row.status === "submitted" ||
+          row.status === "partially_activated",
+      ).length,
+      completed: onboardingRows.filter((row) => row.status === "completed")
+        .length,
+    };
+  }, [onboardingRows]);
+
+  const onboardingQueueClients = useMemo(
+    () =>
+      clientRows.filter(
+        (client) =>
+          client.onboardingStatus === "review_needed" ||
+          client.onboardingStatus === "submitted" ||
+          client.onboardingStatus === "partially_activated",
+      ),
+    [clientRows],
   );
 
   const toggleTask = (taskId: string) => {
@@ -345,9 +397,9 @@ export function PtDashboardPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, index) => (
+          Array.from({ length: 5 }).map((_, index) => (
             <Skeleton key={index} className="h-28 w-full" />
           ))
         ) : (
@@ -371,6 +423,13 @@ export function PtDashboardPage() {
               value={unreadCount}
               helper="Needs replies"
               icon={MessageCircle}
+              sparkline={<MiniSparkline />}
+            />
+            <StatCard
+              label="Review queue"
+              value={onboardingCounts.reviewQueue}
+              helper="Needs onboarding review"
+              icon={ClipboardCheck}
               sparkline={<MiniSparkline />}
             />
             <StatCard
@@ -414,7 +473,15 @@ export function PtDashboardPage() {
                     joined={client.joined}
                     adherence={client.adherence}
                     status={client.status}
-                    onClick={() => navigate(`/pt/clients/${client.id}`)}
+                    onboardingStatus={client.onboardingStatus}
+                    onClick={() =>
+                      navigate(
+                        client.onboardingStatus &&
+                          client.onboardingStatus !== "completed"
+                          ? `/pt/clients/${client.id}?tab=onboarding`
+                          : `/pt/clients/${client.id}`,
+                      )
+                    }
                   />
                 ))}
               </div>
@@ -428,6 +495,85 @@ export function PtDashboardPage() {
         </div>
 
         <div className="space-y-4 xl:col-span-4">
+          <DashboardCard
+            title="Onboarding Queue"
+            subtitle="Intake and activation states across the workspace"
+            className="border-primary/10"
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/pt/clients")}
+              >
+                Open clients
+              </Button>
+            }
+          >
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="surface-subtle rounded-2xl px-3 py-3 text-sm">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                      In progress
+                    </p>
+                    <p className="mt-1 text-xl font-semibold">
+                      {onboardingCounts.inProgress}
+                    </p>
+                  </div>
+                  <div className="surface-subtle rounded-2xl px-3 py-3 text-sm">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Review queue
+                    </p>
+                    <p className="mt-1 text-xl font-semibold">
+                      {onboardingCounts.reviewQueue}
+                    </p>
+                  </div>
+                  <div className="surface-subtle rounded-2xl px-3 py-3 text-sm">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Completed
+                    </p>
+                    <p className="mt-1 text-xl font-semibold">
+                      {onboardingCounts.completed}
+                    </p>
+                  </div>
+                </div>
+                {onboardingQueueClients.length > 0 ? (
+                  <div className="space-y-2">
+                    {onboardingQueueClients.slice(0, 4).map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() =>
+                          navigate(`/pt/clients/${client.id}?tab=onboarding`)
+                        }
+                        className="surface-subtle flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:border-border hover:bg-background/70"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{client.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Joined {client.joined}
+                          </p>
+                        </div>
+                        <StatusPill status={client.onboardingStatus} />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="No onboarding queue"
+                    description="No clients currently need onboarding review."
+                  />
+                )}
+              </div>
+            )}
+          </DashboardCard>
+
           <DashboardCard
             title="Upcoming Check-ins"
             subtitle="Queue for the next 7 days"

@@ -10,6 +10,8 @@ import {
   getWeekEndSaturday,
   getWeekdayFromDateString,
 } from "../../lib/date-utils";
+import { getOnboardingStatusMeta } from "../../features/client-onboarding/lib/client-onboarding";
+import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 type ReminderSeverity = "info" | "warn";
 
@@ -28,7 +30,7 @@ type ReminderDefinition = ReminderItem & {
 
 type ReminderContext = {
   hasTodayLog: boolean;
-  baselineExists: boolean;
+  onboardingStatus: ClientOnboardingStatus | null;
   checkinDue: boolean;
   checkinUpcomingSoon: boolean;
   todayWorkoutId: string | null;
@@ -55,6 +57,10 @@ type TodayWorkoutReminderRow = {
   id: string;
   status: string | null;
   day_type: string | null;
+};
+
+type OnboardingReminderRow = {
+  status: ClientOnboardingStatus;
 };
 
 type ClientRemindersProps = {
@@ -114,19 +120,26 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     },
   });
 
-  const baselineExistsQuery = useQuery({
-    queryKey: ["client-baseline-exists", clientId],
+  const onboardingQuery = useQuery({
+    queryKey: ["client-reminder-onboarding", clientId],
     enabled: !!clientId,
     queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_workspace_client_onboarding",
+        {
+          p_client_id: clientId,
+        },
+      );
+      if (ensureError) throw ensureError;
+
       const { data, error } = await supabase
-        .from("baseline_entries")
-        .select("id")
+        .from("workspace_client_onboardings")
+        .select("status")
         .eq("client_id", clientId ?? "")
-        .eq("status", "submitted")
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return Boolean(data?.id);
+      return (data ?? null) as OnboardingReminderRow | null;
     },
   });
 
@@ -184,7 +197,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
   const reminderContext = useMemo(() => {
     const logs = habitLogsQuery.data ?? [];
     const hasTodayLog = logs.some((row) => row.log_date === todayStr);
-    const baselineExists = Boolean(baselineExistsQuery.data);
+    const onboardingStatus = onboardingQuery.data?.status ?? null;
     const weekday = getWeekdayFromDateString(todayStr);
     const isFridayOrSaturday = weekday === 5 || weekday === 6;
     const isWednesdayOrThursday = weekday === 3 || weekday === 4;
@@ -212,7 +225,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
 
     return {
       hasTodayLog,
-      baselineExists,
+      onboardingStatus,
       checkinDue,
       checkinUpcomingSoon,
       todayWorkoutId,
@@ -220,7 +233,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     };
   }, [
     habitLogsQuery.data,
-    baselineExistsQuery.data,
+    onboardingQuery.data?.status,
     checkinAlertQuery.data,
     todayWorkoutReminderQuery.data,
     todayStr,
@@ -229,11 +242,15 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
   const reminderItems = useMemo(() => {
     if (
       habitLogsQuery.isError ||
-      baselineExistsQuery.isError ||
+      onboardingQuery.isError ||
       dismissedQuery.isError
     ) {
       return [] as ReminderItem[];
     }
+    const onboardingStatus = reminderContext.onboardingStatus;
+    const onboardingStatusMeta = onboardingStatus
+      ? getOnboardingStatusMeta(onboardingStatus)
+      : null;
     const definitions: ReminderDefinition[] = [
       {
         key: "log_habits_today",
@@ -245,13 +262,32 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
         isRelevant: (context) => !context.hasTodayLog,
       },
       {
-        key: "baseline_missing",
-        title: "Complete your baseline",
-        description: "Your coach needs baseline data to personalize your plan.",
-        ctaLabel: "Start baseline",
-        ctaTo: "/app/baseline",
-        severity: "info",
-        isRelevant: (context) => !context.baselineExists,
+        key: "workspace_onboarding",
+        title:
+          onboardingStatus === "review_needed"
+            ? "Onboarding submitted"
+            : onboardingStatus === "submitted"
+              ? "Coach reviewed onboarding"
+              : "Finish workspace onboarding",
+        description:
+          onboardingStatusMeta?.description ??
+          "Complete onboarding so your coach can finish setup.",
+        ctaLabel:
+          onboardingStatus === "review_needed" ||
+          onboardingStatus === "submitted"
+            ? "View onboarding"
+            : "Continue onboarding",
+        ctaTo: "/app/onboarding",
+        severity:
+          onboardingStatus === "review_needed" ||
+          onboardingStatus === "submitted"
+            ? "info"
+            : "warn",
+        isRelevant: (context) =>
+          Boolean(
+            context.onboardingStatus &&
+            context.onboardingStatus !== "completed",
+          ),
       },
       {
         key: "checkin_due",
@@ -294,7 +330,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     return base;
   }, [
     habitLogsQuery.isError,
-    baselineExistsQuery.isError,
+    onboardingQuery.isError,
     dismissedQuery.isError,
     reminderContext,
   ]);
