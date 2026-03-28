@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   Home,
@@ -18,6 +18,8 @@ import { useWorkspace } from "../../lib/use-workspace";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { LoadingScreen } from "../common/bootstrap-gate";
+import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
+import { ClientOnboardingSoftGate } from "../../features/client-onboarding/components/client-onboarding-soft-gate";
 
 const navItems = [
   { label: "Home", to: "/app/home", icon: Home },
@@ -29,8 +31,17 @@ const navItems = [
 
 export function ClientLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { workspaceId, loading, error } = useWorkspace();
   const { authError } = useAuth();
+  const onboardingQuery = useClientOnboarding();
+  const onboardingSummary = onboardingQuery.data ?? null;
+  const basicsGateRequired = Boolean(
+    onboardingSummary &&
+    onboardingSummary.canEdit &&
+    !onboardingSummary.progress.basics.complete,
+  );
+  const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
   const [isSigningOut, setIsSigningOut] = useState(false);
   const errorMessage =
     error?.message ??
@@ -135,7 +146,49 @@ export function ClientLayout() {
           </header>
           <main className="flex-1 min-w-0 py-6">
             <PageContainer>
-              <Outlet />
+              {onboardingSummary &&
+              onboardingSummary.onboarding.status !== "completed" &&
+              !isOnboardingRoute ? (
+                <div className="mb-6">
+                  <ClientOnboardingSoftGate
+                    summary={onboardingSummary}
+                    compact
+                  />
+                </div>
+              ) : null}
+              {basicsGateRequired && !isOnboardingRoute ? (
+                <Card className="mx-auto max-w-2xl border-border/70 bg-card/95 shadow-[0_20px_60px_-46px_rgba(0,0,0,0.9)]">
+                  <CardHeader>
+                    <CardTitle>Complete your basics first</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-sm text-muted-foreground">
+                    <p>
+                      Before we open the workspace, we need your basic personal
+                      details so your coach knows who they are working with.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        onClick={() =>
+                          navigate("/app/onboarding?step=basics", {
+                            replace: true,
+                          })
+                        }
+                      >
+                        Continue basics
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
+                      >
+                        {isSigningOut ? "Logging out..." : "Log out"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Outlet />
+              )}
             </PageContainer>
           </main>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card py-2 md:hidden">

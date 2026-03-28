@@ -16,6 +16,7 @@ import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak } from "../../lib/habits";
+import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -199,6 +200,7 @@ export function ClientHomePage() {
 
   const clientId = clientQuery.data?.id ?? null;
   const clientTimezone = clientQuery.data?.timezone ?? null;
+  const onboardingSummary = useClientOnboarding().data ?? null;
   const todayStr = useMemo(
     () => getTodayInTimezone(clientTimezone),
     [clientTimezone],
@@ -207,23 +209,6 @@ export function ClientHomePage() {
     () => addDaysToDateString(todayStr, -29),
     [todayStr],
   );
-  const baselineSubmittedQuery = useQuery({
-    queryKey: ["client-baseline-submitted-latest", clientId],
-    enabled: !!clientId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("baseline_entries")
-        .select("id, submitted_at")
-        .eq("client_id", clientId ?? "")
-        .eq("status", "submitted")
-        .order("submitted_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data ?? null;
-    },
-  });
-
   const coachActivityQuery = useQuery({
     queryKey: ["coach-activity-log-latest", clientId],
     enabled: !!clientId,
@@ -671,25 +656,6 @@ export function ClientHomePage() {
         </Badge>
       </section>
 
-      {!baselineSubmittedQuery.isLoading && !baselineSubmittedQuery.data ? (
-        <Card className={`border-dashed ${cardChrome}`}>
-          <CardHeader>
-            <CardTitle>Complete your baseline</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              This helps your coach personalize your plan.
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Three quick steps: metrics, performance markers, and photos.
-            </p>
-            <Button onClick={() => navigate("/app/baseline")}>
-              Start baseline
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
-
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryStat
           label="Training"
@@ -896,7 +862,8 @@ export function ClientHomePage() {
       </Card>
 
       {profileCompletion &&
-      profileCompletion.completed < profileCompletion.total ? (
+      profileCompletion.completed < profileCompletion.total &&
+      onboardingSummary?.onboarding.status === "completed" ? (
         <Card className={`border-dashed ${cardChrome}`}>
           <CardHeader>
             <CardTitle>Complete your profile</CardTitle>

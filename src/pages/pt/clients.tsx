@@ -13,6 +13,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { useWorkspace } from "../../lib/use-workspace";
+import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 type ClientRecord = {
   id: string;
@@ -23,6 +24,11 @@ type ClientRecord = {
   created_at: string | null;
   last_session_at?: string | null;
   last_checkin_at?: string | null;
+};
+
+type ClientOnboardingStatusRow = {
+  client_id: string;
+  status: ClientOnboardingStatus;
 };
 
 const stages = ["All", "Onboarding", "Active", "At Risk", "Paused"];
@@ -72,6 +78,9 @@ export function PtClientsPage() {
   const [stage, setStage] = useState("All");
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [onboardingByClient, setOnboardingByClient] = useState<
+    Record<string, ClientOnboardingStatus | null>
+  >({});
   const pageSize = 50;
 
   useEffect(() => {
@@ -104,7 +113,28 @@ export function PtClientsPage() {
         if (!isMounted) return;
 
         const rows = (data as ClientRecord[]) ?? [];
+        const clientIds = rows.map((row) => row.id);
+        let onboardingRows: ClientOnboardingStatusRow[] = [];
+        if (clientIds.length > 0) {
+          const { data: onboardingData, error: onboardingError } =
+            await supabase.rpc("ensure_workspace_client_onboardings", {
+              p_workspace_id: workspaceId,
+              p_client_ids: clientIds,
+            });
+
+          if (onboardingError) throw onboardingError;
+          onboardingRows = (onboardingData ??
+            []) as ClientOnboardingStatusRow[];
+        }
+
         setClients((prev) => (page === 0 ? rows : [...prev, ...rows]));
+        setOnboardingByClient((prev) => {
+          const next = page === 0 ? {} : { ...prev };
+          onboardingRows.forEach((row) => {
+            next[row.client_id] = row.status;
+          });
+          return next;
+        });
         setHasMore(rows.length === pageSize);
         setError(null);
       } catch (err) {
@@ -154,31 +184,37 @@ export function PtClientsPage() {
         lastActivity: lastActivityRaw
           ? formatRelativeTime(lastActivityRaw)
           : "Never",
+        onboardingStatus: onboardingByClient[client.id] ?? null,
       };
     });
-  }, [clients]);
+  }, [clients, onboardingByClient]);
 
   const filteredClients = useMemo(() => {
     if (stage === "All") return formattedClients;
+    if (stage === "Onboarding") {
+      return formattedClients.filter(
+        (client) =>
+          client.onboardingStatus && client.onboardingStatus !== "completed",
+      );
+    }
     return formattedClients.filter((client) => client.status === stage);
   }, [formattedClients, stage]);
 
   const stats = useMemo(() => {
     const total = formattedClients.length;
-    const active = formattedClients.filter(
-      (client) => client.status === "Active",
+    const reviewQueue = formattedClients.filter(
+      (client) =>
+        client.onboardingStatus === "review_needed" ||
+        client.onboardingStatus === "submitted" ||
+        client.onboardingStatus === "partially_activated",
     ).length;
-    const onboarding = formattedClients.filter(
-      (client) => client.status === "Onboarding",
-    ).length;
-    const atRisk = formattedClients.filter(
-      (client) => client.status === "At Risk",
+    const completed = formattedClients.filter(
+      (client) => client.onboardingStatus === "completed",
     ).length;
     return [
       { label: "Total Clients", value: total },
-      { label: "Active", value: active, tone: "text-success" },
-      { label: "Pending Onboard", value: onboarding, tone: "text-warning" },
-      { label: "Needs Attention", value: atRisk, tone: "text-danger" },
+      { label: "Review Queue", value: reviewQueue, tone: "text-warning" },
+      { label: "Completed", value: completed, tone: "text-success" },
     ];
   }, [formattedClients]);
 
@@ -230,10 +266,18 @@ export function PtClientsPage() {
                 program={client.program}
                 week={client.week}
                 status={client.status}
+                onboardingStatus={client.onboardingStatus}
                 adherence={client.adherence}
                 lastActivity={client.lastActivity}
                 trend={client.trend}
-                onClick={() => navigate(`/pt/clients/${client.id}`)}
+                onClick={() =>
+                  navigate(
+                    client.onboardingStatus &&
+                      client.onboardingStatus !== "completed"
+                      ? `/pt/clients/${client.id}?tab=onboarding`
+                      : `/pt/clients/${client.id}`,
+                  )
+                }
               />
             ))}
             {hasMore ? (

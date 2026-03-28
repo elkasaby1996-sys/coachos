@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -106,6 +106,7 @@ const formatSupabaseError = (error: unknown) => {
 
 export function ClientBaselinePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [baselineEntry, setBaselineEntry] = useState<BaselineEntry | null>(
@@ -190,6 +191,8 @@ export function ClientBaselinePage() {
   const unitPreference = clientQuery.data?.unit_preference ?? null;
   const showImperial = isImperial(unitPreference);
   const clientWorkspaceId = clientQuery.data?.workspace_id ?? null;
+  const onboardingMode = searchParams.get("onboarding") === "1";
+  const returnTo = searchParams.get("returnTo");
 
   useEffect(() => {
     if (!clientId || !workspaceId || initializationRef.current) return;
@@ -213,7 +216,29 @@ export function ClientBaselinePage() {
         return;
       }
 
-      if (!data || data.status === "submitted") {
+      if (!data) {
+        const { data: inserted, error: insertError } = await supabase
+          .from("baseline_entries")
+          .insert({
+            client_id: clientId,
+            workspace_id: workspaceId,
+            status: "draft",
+            created_at: new Date().toISOString(),
+          })
+          .select("id, status, created_at, submitted_at, coach_notes")
+          .maybeSingle();
+
+        if (insertError) {
+          setBaselineError(formatSupabaseError(insertError));
+          setBaselineLoading(false);
+          return;
+        }
+        setBaselineEntry(inserted ?? null);
+        setBaselineLoading(false);
+        return;
+      }
+
+      if (data.status === "submitted" && !onboardingMode) {
         const { data: inserted, error: insertError } = await supabase
           .from("baseline_entries")
           .insert({
@@ -240,7 +265,7 @@ export function ClientBaselinePage() {
     };
 
     loadBaselineEntry();
-  }, [clientId, workspaceId]);
+  }, [clientId, onboardingMode, workspaceId]);
 
   const baselineId = baselineEntry?.id ?? null;
 
@@ -676,7 +701,13 @@ export function ClientBaselinePage() {
     await queryClient.invalidateQueries({
       queryKey: ["client-baseline-submitted-latest", clientId],
     });
-    window.setTimeout(() => navigate("/app/home"), 1200);
+    await queryClient.invalidateQueries({
+      queryKey: ["client-workspace-onboarding"],
+    });
+    window.setTimeout(
+      () => navigate(returnTo || "/app/home", { replace: true }),
+      1200,
+    );
   };
 
   const errors = [
@@ -722,11 +753,38 @@ export function ClientBaselinePage() {
             <CardTitle>Baseline submitted</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>Your coach has received your baseline. Redirecting you now.</p>
+            <Button
+              onClick={() =>
+                navigate(returnTo || "/app/home", { replace: true })
+              }
+            >
+              {returnTo ? "Return to onboarding" : "Go to home now"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (onboardingMode && baselineEntry?.status === "submitted") {
+    return (
+      <div className="space-y-6 pb-16 md:pb-0">
+        <Card>
+          <CardHeader>
+            <CardTitle>Initial assessment already submitted</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Your coach has received your baseline. Redirecting you to home.
+              This baseline has already been submitted and counts toward your
+              onboarding progress.
             </p>
-            <Button onClick={() => navigate("/app/home")}>
-              Go to home now
+            <Button
+              onClick={() =>
+                navigate(returnTo || "/app/onboarding", { replace: true })
+              }
+            >
+              Return to onboarding
             </Button>
           </CardContent>
         </Card>

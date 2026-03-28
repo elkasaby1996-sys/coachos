@@ -14,6 +14,7 @@ export function ClientListRow({
   program,
   week,
   status,
+  onboardingStatus,
   adherence,
   lastActivity,
   trend,
@@ -23,6 +24,7 @@ export function ClientListRow({
   program: string;
   week: string;
   status: string | null;
+  onboardingStatus?: string | null;
   adherence: string;
   lastActivity: string;
   trend?: number[];
@@ -47,6 +49,7 @@ export function ClientListRow({
       </div>
       <div className="flex flex-1 items-center gap-2 text-xs">
         <StatusPill status={status ?? "active"} />
+        {onboardingStatus ? <StatusPill status={onboardingStatus} /> : null}
       </div>
       <div className="flex items-center gap-3">
         <div className="text-right">
