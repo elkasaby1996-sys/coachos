@@ -4,13 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { supabase } from "../../lib/supabase";
-import {
-  addDaysToDateString,
-  getTodayInTimezone,
-  getWeekEndSaturday,
-  getWeekdayFromDateString,
-} from "../../lib/date-utils";
+import { safeSelect } from "../../lib/supabase-safe";
+import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { getOnboardingStatusMeta } from "../../features/client-onboarding/lib/client-onboarding";
+import {
+  getCheckinOperationalState,
+  getPrimaryClientCheckin,
+  isCheckinUpcomingWithinDays,
+  type CheckinOperationalState,
+} from "../../lib/checkin-review";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 type ReminderSeverity = "info" | "warn";
@@ -31,7 +33,7 @@ type ReminderDefinition = ReminderItem & {
 type ReminderContext = {
   hasTodayLog: boolean;
   onboardingStatus: ClientOnboardingStatus | null;
-  checkinDue: boolean;
+  checkinState: CheckinOperationalState | null;
   checkinUpcomingSoon: boolean;
   todayWorkoutId: string | null;
   todayWorkoutNeedsAction: boolean;
@@ -45,8 +47,23 @@ type HabitLogRow = {
 type CheckinAlertRow = {
   id: string;
   submitted_at: string | null;
-  pt_feedback: string | null;
+  reviewed_at: string | null;
   week_ending_saturday: string;
+};
+
+type CheckinProfileRow = {
+  workspace_id: string | null;
+  checkin_template_id: string | null;
+  checkin_frequency: string | null;
+  checkin_start_date: string | null;
+};
+
+type WorkspaceRow = {
+  default_checkin_template_id: string | null;
+};
+
+type CheckinTemplateRow = {
+  id: string;
 };
 
 type DismissedReminderRow = {
@@ -98,11 +115,82 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
   const [dismissingKey, setDismissingKey] = useState<string | null>(null);
 
   const todayStr = useMemo(() => getTodayInTimezone(timezone), [timezone]);
-  const weekEndingSaturday = useMemo(
-    () => getWeekEndSaturday(todayStr),
+  const isDev = import.meta.env.DEV;
+
+  const checkinProfileQuery = useQuery({
+    queryKey: ["client-reminder-checkin-profile", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select(
+          "workspace_id, checkin_template_id, checkin_frequency, checkin_start_date",
+        )
+        .eq("id", clientId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as CheckinProfileRow | null;
+    },
+  });
+
+  const workspaceQuery = useQuery({
+    queryKey: [
+      "client-reminder-checkin-workspace",
+      checkinProfileQuery.data?.workspace_id,
+    ],
+    enabled: !!checkinProfileQuery.data?.workspace_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("default_checkin_template_id")
+        .eq("id", checkinProfileQuery.data?.workspace_id ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as WorkspaceRow | null;
+    },
+  });
+
+  const latestTemplateQuery = useQuery({
+    queryKey: [
+      "client-reminder-checkin-latest-template",
+      checkinProfileQuery.data?.workspace_id,
+    ],
+    enabled:
+      !!checkinProfileQuery.data?.workspace_id &&
+      workspaceQuery.isFetched &&
+      !checkinProfileQuery.data?.checkin_template_id &&
+      !workspaceQuery.data?.default_checkin_template_id,
+    queryFn: async () => {
+      const { data, error } = await safeSelect<CheckinTemplateRow>({
+        table: "checkin_templates",
+        columns: "id, workspace_id, is_active, created_at",
+        fallbackColumns: "id, workspace_id, created_at",
+        filter: (query) =>
+          query
+            .eq("workspace_id", checkinProfileQuery.data?.workspace_id ?? "")
+            .neq("is_active", false)
+            .order("created_at", { ascending: false })
+            .limit(1),
+      });
+      if (error) throw error;
+      return ((data ?? [])[0] ?? null) as CheckinTemplateRow | null;
+    },
+  });
+
+  const effectiveTemplateId =
+    checkinProfileQuery.data?.checkin_template_id ??
+    workspaceQuery.data?.default_checkin_template_id ??
+    latestTemplateQuery.data?.id ??
+    null;
+
+  const checkinWindowStart = useMemo(
+    () => addDaysToDateString(todayStr, -45),
     [todayStr],
   );
-  const isDev = import.meta.env.DEV;
+  const checkinWindowEnd = useMemo(
+    () => addDaysToDateString(todayStr, 45),
+    [todayStr],
+  );
 
   const habitLogsQuery = useQuery({
     queryKey: ["client-alerts-habit-logs", clientId, todayStr],
@@ -145,22 +233,46 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
   });
 
   const checkinAlertQuery = useQuery({
-    queryKey: ["client-checkin-alert", clientId, weekEndingSaturday],
-    enabled: !!clientId && !!weekEndingSaturday,
+    queryKey: [
+      "client-checkin-alert",
+      clientId,
+      checkinWindowStart,
+      checkinWindowEnd,
+    ],
+    enabled:
+      !!clientId &&
+      !!effectiveTemplateId &&
+      !!checkinProfileQuery.data?.checkin_start_date &&
+      !!checkinWindowStart &&
+      !!checkinWindowEnd,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
     queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_client_checkins",
+        {
+          p_client_id: clientId ?? "",
+          p_range_start: checkinWindowStart,
+          p_range_end: checkinWindowEnd,
+        },
+      );
+      if (ensureError) {
+        warnCheckinAlertErrorOnce(ensureError);
+        return { rows: [], error: true };
+      }
+
       const { data, error } = await supabase
         .from("checkins")
-        .select("id, submitted_at, pt_feedback, week_ending_saturday")
+        .select("id, submitted_at, reviewed_at, week_ending_saturday")
         .eq("client_id", clientId ?? "")
-        .eq("week_ending_saturday", weekEndingSaturday)
-        .maybeSingle();
+        .gte("week_ending_saturday", checkinWindowStart ?? "")
+        .lte("week_ending_saturday", checkinWindowEnd ?? "")
+        .order("week_ending_saturday", { ascending: true });
       if (error) {
         warnCheckinAlertErrorOnce(error);
-        return { row: null, error: true };
+        return { rows: [], error: true };
       }
-      return { row: (data ?? null) as CheckinAlertRow | null, error: false };
+      return { rows: (data ?? []) as CheckinAlertRow[], error: false };
     },
   });
 
@@ -199,20 +311,20 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     const logs = habitLogsQuery.data ?? [];
     const hasTodayLog = logs.some((row) => row.log_date === todayStr);
     const onboardingStatus = onboardingQuery.data?.status ?? null;
-    const weekday = getWeekdayFromDateString(todayStr);
-    const isFridayOrSaturday = weekday === 5 || weekday === 6;
-    const isWednesdayOrThursday = weekday === 3 || weekday === 4;
-    const checkinRow = checkinAlertQuery.data?.row ?? null;
+    const checkinRow = getPrimaryClientCheckin(
+      checkinAlertQuery.data?.rows ?? [],
+      todayStr,
+    );
     const checkinError = Boolean(checkinAlertQuery.data?.error);
-    const checkinDue =
+    const checkinState =
+      checkinRow && !checkinError
+        ? getCheckinOperationalState(checkinRow, todayStr)
+        : null;
+    const checkinUpcomingSoon = Boolean(
+      checkinRow &&
       !checkinError &&
-      isFridayOrSaturday &&
-      (!checkinRow || !checkinRow.submitted_at);
-    const checkinUpcomingSoon =
-      !checkinError &&
-      isWednesdayOrThursday &&
-      !checkinDue &&
-      (!checkinRow || !checkinRow.submitted_at);
+      isCheckinUpcomingWithinDays(checkinRow, todayStr, 3),
+    );
     const todayWorkout = todayWorkoutReminderQuery.data;
     const todayWorkoutNeedsAction = Boolean(
       todayWorkout &&
@@ -227,7 +339,7 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     return {
       hasTodayLog,
       onboardingStatus,
-      checkinDue,
+      checkinState,
       checkinUpcomingSoon,
       todayWorkoutId,
       todayWorkoutNeedsAction,
@@ -244,7 +356,10 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     if (
       habitLogsQuery.isError ||
       onboardingQuery.isError ||
-      dismissedQuery.isError
+      dismissedQuery.isError ||
+      checkinProfileQuery.isError ||
+      workspaceQuery.isError ||
+      latestTemplateQuery.isError
     ) {
       return [] as ReminderItem[];
     }
@@ -291,19 +406,28 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
           ),
       },
       {
+        key: "checkin_overdue",
+        title: "Check-in overdue",
+        description: "You have a missed check-in waiting for submission.",
+        ctaLabel: "Resume check-in",
+        ctaTo: "/app/checkin",
+        severity: "warn",
+        isRelevant: (context) => context.checkinState === "overdue",
+      },
+      {
         key: "checkin_due",
-        title: "Weekly check-in due today",
-        description: "Submit your weekly check-in.",
+        title: "Check-in due today",
+        description: "Submit your scheduled check-in.",
         ctaLabel: "Complete check-in",
         ctaTo: "/app/checkin",
         severity: "warn",
-        isRelevant: (context) => context.checkinDue,
+        isRelevant: (context) => context.checkinState === "due",
       },
       {
         key: "checkin_upcoming_2d",
-        title: "Weekly check-in coming up",
+        title: "Check-in coming up",
         description:
-          "Your check-in is due in about 2 days. Prep your notes now.",
+          "Your next check-in is coming up soon. Prep your notes now.",
         ctaLabel: "Open check-in",
         ctaTo: "/app/checkin",
         severity: "info",
@@ -333,6 +457,9 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
     habitLogsQuery.isError,
     onboardingQuery.isError,
     dismissedQuery.isError,
+    checkinProfileQuery.isError,
+    workspaceQuery.isError,
+    latestTemplateQuery.isError,
     reminderContext,
   ]);
 

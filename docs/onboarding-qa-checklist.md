@@ -30,7 +30,7 @@ Use this checklist for the final onboarding MVP pass before release.
 ## PT flows
 
 - Roster and dashboard visibility:
-  - Confirm PT clients list and PT dashboard both show onboarding badges for invited, in progress, review needed, partially activated, and completed states.
+  - Confirm PT clients list and PT dashboard both show onboarding badges for invited, in progress, review needed, submitted, and completed states.
   - Confirm legacy clients gain onboarding rows/status when surfaced through PT workspace views.
 - Review:
   - Open a submitted onboarding from client detail.
@@ -41,9 +41,6 @@ Use this checklist for the final onboarding MVP pass before release.
 - Check-in scheduling:
   - Set the first check-in template/date.
   - Confirm `workspace_client_onboardings.first_checkin_template_id`, `first_checkin_date`, and `first_checkin_scheduled_at` update.
-- Partial activation:
-  - Review onboarding, assign either the program or check-in, then partially activate.
-  - Confirm status becomes `partially_activated` and remaining checklist items still show.
 - Completion:
   - Complete the checklist and run the PT complete action.
   - Confirm status becomes `completed`, timestamps populate, and stable intake fields sync into `public.clients`.
@@ -59,5 +56,4 @@ Use this checklist for the final onboarding MVP pass before release.
 
 - Confirm client home no longer shows the old baseline-only prompt.
 - Confirm completed onboarding removes client soft-gate prompts/reminders.
-- Confirm partial activation still keeps onboarding visible on PT/client surfaces.
-- Confirm invite acceptance, baseline submission, onboarding submit, PT review, PT partial activation, and PT completion all invalidate/refetch the right surfaces.
+- Confirm invite acceptance, baseline submission, onboarding submit, PT review, and PT completion all invalidate/refetch the right surfaces.

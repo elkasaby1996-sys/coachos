@@ -1,5 +1,6 @@
 // @ts-nocheck
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -81,6 +82,12 @@ import {
 } from "../../lib/coach-activity";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
+import { getNextCheckinDueDate } from "../../lib/checkin-schedule";
+import {
+  checkinReviewStatusMap,
+  getCheckinReviewState,
+} from "../../lib/checkin-review";
+import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
@@ -88,6 +95,7 @@ import {
   buildPtOnboardingChecklist,
   getPtOnboardingStatusMeta,
   isReadyForOnboardingCompletion,
+  ptOnboardingSelect,
 } from "../../features/pt-client-onboarding/lib/pt-client-onboarding";
 
 const tabs = [
@@ -140,29 +148,6 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const computeNextCheckinDate = (
-  startDate: string | null | undefined,
-  frequency: string | null | undefined,
-  fromDate: string,
-) => {
-  if (!startDate) return null;
-  const start = new Date(`${startDate}T00:00:00Z`);
-  if (Number.isNaN(start.getTime())) return null;
-  const from = new Date(`${fromDate}T00:00:00Z`);
-  if (Number.isNaN(from.getTime())) return null;
-
-  const freq = frequency ?? "weekly";
-  const stepDays = freq === "biweekly" ? 14 : freq === "monthly" ? 30 : 7;
-  const next = new Date(start);
-  while (next < from) {
-    next.setDate(next.getDate() + stepDays);
-  }
-  const yyyy = next.getUTCFullYear();
-  const mm = String(next.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(next.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
 const diffDays = (start: string, end: string) => {
   const startDate = new Date(start);
   const endDate = new Date(end);
@@ -212,6 +197,7 @@ const checkinFrequencyOptions = [
 const checkinTemplateStatusMap = {
   default: { label: "Default", variant: "muted" },
   override: { label: "Override", variant: "warning" },
+  fallback: { label: "Fallback", variant: "secondary" },
 } as const;
 
 const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null => {
@@ -319,6 +305,8 @@ type CheckinRow = {
   id: string;
   week_ending_saturday: string | null;
   submitted_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by_user_id: string | null;
   pt_feedback: string | null;
   created_at: string | null;
 };
@@ -430,7 +418,11 @@ type CheckinAnswerRow = {
   id: string;
   value_text: string | null;
   value_number: number | null;
-  question: { question_text: string | null; prompt: string | null } | null;
+  question: {
+    question_text: string | null;
+    prompt: string | null;
+    sort_order?: number | null;
+  } | null;
 };
 
 type UpcomingWorkoutRow = {
@@ -590,11 +582,22 @@ export function PtClientDetailPage() {
   const [selectedCheckin, setSelectedCheckin] = useState<CheckinRow | null>(
     null,
   );
+  const [reviewTab, setReviewTab] = useState<"answers" | "photos" | "notes">(
+    "answers",
+  );
   const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackValidationMessage, setFeedbackValidationMessage] = useState<
+    string | null
+  >(null);
   const [feedbackStatus, setFeedbackStatus] = useState<
-    "idle" | "saving" | "error"
+    "idle" | "saving_draft" | "marking_reviewed" | "error"
   >("idle");
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [reviewPhotoLoadErrors, setReviewPhotoLoadErrors] = useState<
+    Record<string, boolean>
+  >({});
+  const [reviewPhotoPreview, setReviewPhotoPreview] =
+    useState<CheckinPhotoRow | null>(null);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [profileEditStatus, setProfileEditStatus] = useState<"idle" | "saving">(
     "idle",
@@ -613,7 +616,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("checkin_answers")
         .select(
-          "id, value_text, value_number, question:checkin_questions(question_text, prompt)",
+          "id, value_text, value_number, question:checkin_questions(question_text, prompt, sort_order)",
         )
         .eq("checkin_id", selectedCheckin?.id ?? "");
       if (error) throw error;
@@ -625,10 +628,15 @@ export function PtClientDetailPage() {
             | null;
         }
       >;
-      return rows.map((row) => ({
-        ...row,
-        question: getSingleRelation(row.question),
-      }));
+      return rows
+        .map((row) => ({
+          ...row,
+          question: getSingleRelation(row.question),
+        }))
+        .sort(
+          (a, b) =>
+            (a.question?.sort_order ?? 0) - (b.question?.sort_order ?? 0),
+        );
     },
   });
   const selectedCheckinPhotosQuery = useQuery({
@@ -640,7 +648,7 @@ export function PtClientDetailPage() {
         .select("id, checkin_id, client_id, url, storage_path, photo_type")
         .eq("checkin_id", selectedCheckin?.id ?? "");
       if (error) throw error;
-      return (data ?? []) as CheckinPhotoRow[];
+      return resolveCheckinPhotoRows((data ?? []) as CheckinPhotoRow[]);
     },
   });
   const [loadsOpen, setLoadsOpen] = useState(false);
@@ -957,7 +965,21 @@ export function PtClientDetailPage() {
 
   const availableCheckinTemplates = useMemo(() => {
     const rows = checkinTemplatesQuery.data ?? [];
-    return rows.filter((row) => row.is_active !== false);
+    return rows.filter(
+      (row) =>
+        row.is_active !== false ||
+        row.id === checkinTemplateId ||
+        row.id === workspaceDetailsQuery.data?.default_checkin_template_id,
+    );
+  }, [
+    checkinTemplateId,
+    checkinTemplatesQuery.data,
+    workspaceDetailsQuery.data?.default_checkin_template_id,
+  ]);
+
+  const latestActiveCheckinTemplate = useMemo(() => {
+    const rows = checkinTemplatesQuery.data ?? [];
+    return rows.find((row) => row.is_active !== false) ?? null;
   }, [checkinTemplatesQuery.data]);
 
   const assignedCheckinTemplate =
@@ -970,8 +992,17 @@ export function PtClientDetailPage() {
         template.id === workspaceDetailsQuery.data?.default_checkin_template_id,
     ) ?? null;
   const effectiveCheckinTemplate =
-    assignedCheckinTemplate ?? defaultCheckinTemplate ?? null;
-  const checkinTemplateStatusKey = checkinTemplateId ? "override" : "default";
+    assignedCheckinTemplate ??
+    defaultCheckinTemplate ??
+    latestActiveCheckinTemplate ??
+    null;
+  const checkinTemplateStatusKey = checkinTemplateId
+    ? "override"
+    : defaultCheckinTemplate
+      ? "default"
+      : effectiveCheckinTemplate
+        ? "fallback"
+        : "default";
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
@@ -1314,10 +1345,20 @@ export function PtClientDetailPage() {
     queryKey: ["pt-client-checkins", clientId, active, checkinsPage],
     enabled: !!clientId && (active === "checkins" || active === "overview"),
     queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_client_checkins",
+        {
+          p_client_id: clientId ?? "",
+          p_range_start: todayKey,
+          p_range_end: addDaysToDateString(todayKey, 120),
+        },
+      );
+      if (ensureError) throw ensureError;
+
       const base = supabase
         .from("checkins")
         .select(
-          "id, week_ending_saturday, submitted_at, pt_feedback, created_at",
+          "id, week_ending_saturday, submitted_at, reviewed_at, reviewed_by_user_id, pt_feedback, created_at",
         )
         .eq("client_id", clientId ?? "")
         .order("week_ending_saturday", { ascending: false });
@@ -2167,9 +2208,9 @@ export function PtClientDetailPage() {
   const checkinStatus = useMemo(() => {
     if (!checkinsRows || checkinsRows.length === 0) return null;
     const latest = checkinsRows[0];
-    if (!latest.submitted_at) return "Due";
-    return latest.pt_feedback ? "Reviewed" : "Submitted";
-  }, [checkinsRows]);
+    return checkinReviewStatusMap[getCheckinReviewState(latest, todayKey)]
+      .label;
+  }, [checkinsRows, todayKey]);
 
   const lastWorkout = useMemo(() => {
     if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) {
@@ -2248,6 +2289,68 @@ export function PtClientDetailPage() {
       return `${answer.value_number}`;
     return "--";
   };
+
+  const selectedCheckinReviewState = selectedCheckin
+    ? getCheckinReviewState(selectedCheckin, todayKey)
+    : null;
+  const selectedCheckinNotesRequired =
+    Boolean(selectedCheckin?.submitted_at) && feedbackText.trim().length === 0;
+  const selectedCheckinReviewerLabel = selectedCheckin?.reviewed_by_user_id
+    ? selectedCheckin.reviewed_by_user_id === user?.id
+      ? "You"
+      : "Another coach"
+    : null;
+  const reviewClientLabel = clientQuery.data?.display_name?.trim()
+    ? clientQuery.data.display_name
+    : clientQuery.data?.email?.trim()
+      ? clientQuery.data.email
+      : "Client";
+  const selectedCheckinPhotos = useMemo(() => {
+    const order = new Map([
+      ["front", 0],
+      ["side", 1],
+      ["back", 2],
+      ["optional", 3],
+    ]);
+    return [...(selectedCheckinPhotosQuery.data ?? [])].sort(
+      (a, b) =>
+        (order.get(a.photo_type) ?? 99) - (order.get(b.photo_type) ?? 99),
+    );
+  }, [selectedCheckinPhotosQuery.data]);
+  const selectedCheckinPhotoCards = useMemo(() => {
+    const labels: Record<string, string> = {
+      front: "Front",
+      side: "Side",
+      back: "Back",
+      optional: "Optional",
+    };
+    const requiredCards = ["front", "side", "back"].map((photoType) => ({
+      id: `required-${photoType}`,
+      photoType,
+      label: labels[photoType] ?? photoType,
+      photo:
+        selectedCheckinPhotos.find((item) => item.photo_type === photoType) ??
+        null,
+      isMissing: !selectedCheckinPhotos.some(
+        (item) => item.photo_type === photoType,
+      ),
+    }));
+    const optionalCards = selectedCheckinPhotos
+      .filter(
+        (item) => !["front", "side", "back"].includes(item.photo_type ?? ""),
+      )
+      .map((photo, index) => ({
+        id: photo.id,
+        photoType: photo.photo_type ?? "optional",
+        label:
+          photo.photo_type === "optional"
+            ? `Optional ${index + 1}`
+            : labels[photo.photo_type] ?? photo.photo_type ?? "Photo",
+        photo,
+        isMissing: false,
+      }));
+    return [...requiredCards, ...optionalCards];
+  }, [selectedCheckinPhotos]);
 
   const baselinePhotoMap = useMemo(() => {
     const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
@@ -2428,63 +2531,61 @@ export function PtClientDetailPage() {
     const nextId = checkinTemplateId || null;
     const nextFrequency = checkinFrequency || "weekly";
     const nextStartDate = checkinStartDate || null;
-    const nextTemplateId = nextId ?? defaultCheckinTemplate?.id ?? null;
-    const clientUpdate = await supabase
-      .from("clients")
-      .update({
-        checkin_template_id: nextId,
-        checkin_frequency: nextFrequency,
-        checkin_start_date: nextStartDate,
-      })
-      .eq("id", clientQuery.data.id)
-      .select("id, checkin_template_id, checkin_frequency, checkin_start_date")
-      .maybeSingle();
+    const { data, error } = await supabase.rpc(
+      "pt_update_client_checkin_settings",
+      {
+        p_client_id: clientQuery.data.id,
+        p_checkin_template_id: nextId,
+        p_checkin_frequency: nextFrequency,
+        p_checkin_start_date: nextStartDate,
+      },
+    );
 
-    if (clientUpdate.error) {
+    if (error) {
       setCheckinTemplateStatus("error");
       setToastVariant("error");
-      setToastMessage("Unable to save check-in template.");
+      setToastMessage(getErrorMessage(error));
       return;
     }
 
-    if (clientUpdate.data) {
+    const updatedClient = Array.isArray(data) ? data[0] : data;
+
+    if (updatedClient) {
       queryClient.setQueryData(
         ["pt-client", clientId, workspaceQuery.data],
         (prev: PtClientProfile | undefined) => ({
           ...(prev ?? {}),
-          checkin_template_id: clientUpdate.data?.checkin_template_id ?? null,
-          checkin_frequency: clientUpdate.data?.checkin_frequency ?? "weekly",
-          checkin_start_date: clientUpdate.data?.checkin_start_date ?? null,
+          checkin_template_id: updatedClient?.checkin_template_id ?? null,
+          checkin_frequency: updatedClient?.checkin_frequency ?? "weekly",
+          checkin_start_date: updatedClient?.checkin_start_date ?? null,
         }),
       );
       setClientProfile((prev) =>
         prev
           ? {
               ...prev,
-              checkin_template_id:
-                clientUpdate.data?.checkin_template_id ?? null,
-              checkin_frequency:
-                clientUpdate.data?.checkin_frequency ?? "weekly",
-              checkin_start_date: clientUpdate.data?.checkin_start_date ?? null,
+              checkin_template_id: updatedClient?.checkin_template_id ?? null,
+              checkin_frequency: updatedClient?.checkin_frequency ?? "weekly",
+              checkin_start_date: updatedClient?.checkin_start_date ?? null,
             }
           : prev,
       );
     }
 
-    if (nextId && nextStartDate) {
-      const nextDate = computeNextCheckinDate(
+    if (nextStartDate) {
+      const nextDueDate = getNextCheckinDueDate(
         nextStartDate,
         nextFrequency,
         todayKey,
       );
-      if (nextDate) {
-        const { error: scheduleError } = await supabase.from("checkins").upsert(
+      if (nextDueDate) {
+        const { error: scheduleError } = await supabase.rpc(
+          "ensure_client_checkins",
           {
-            client_id: clientQuery.data.id,
-            template_id: nextId,
-            week_ending_saturday: nextDate,
+            p_client_id: clientQuery.data.id,
+            p_range_start: nextDueDate,
+            p_range_end: addDaysToDateString(nextDueDate, 90),
           },
-          { onConflict: "client_id,week_ending_saturday" },
         );
         if (scheduleError && isDev) {
           console.warn("CHECKIN_SCHEDULE_ERROR", scheduleError);
@@ -2492,6 +2593,9 @@ export function PtClientDetailPage() {
       }
     }
 
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-onboarding", clientId, workspaceQuery.data],
+    });
     setCheckinTemplateStatus("idle");
     setToastVariant("success");
     setToastMessage("Check-in template updated.");
@@ -2667,55 +2771,113 @@ export function PtClientDetailPage() {
     setLoadsOpen(false);
   };
 
-  const openCheckinReview = (row: CheckinRow) => {
+  const openCheckinReview = useCallback((row: CheckinRow) => {
+    if (!row.submitted_at && !row.reviewed_at) return;
     setSelectedCheckin(row);
+    setReviewTab("answers");
     setFeedbackText(row.pt_feedback ?? "");
+    setFeedbackValidationMessage(null);
     setFeedbackMessage(null);
     setFeedbackStatus("idle");
+    setReviewPhotoLoadErrors({});
+    setReviewPhotoPreview(null);
     setReviewOpen(true);
-  };
+  }, []);
 
-  const handleSaveCheckinFeedback = async () => {
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const targetCheckinId = params.get("checkin");
+    if (active !== "checkins" || !targetCheckinId) return;
+    const match = checkinsRows.find((row) => row.id === targetCheckinId);
+    if (!match || (!match.submitted_at && !match.reviewed_at)) return;
+    if (reviewOpen && selectedCheckin?.id === targetCheckinId) return;
+    openCheckinReview(match);
+  }, [
+    active,
+    checkinsRows,
+    location.search,
+    openCheckinReview,
+    reviewOpen,
+    selectedCheckin?.id,
+  ]);
+
+  const handleSaveCheckinReview = async (markReviewed: boolean) => {
     if (!selectedCheckin) return;
-    setFeedbackStatus("saving");
-    setFeedbackMessage(null);
-    const nextFeedback = feedbackText.trim() || null;
-    const queryKey = ["pt-client-checkins", clientId];
-    const previous = queryClient.getQueryData(queryKey) as
-      | CheckinRow[]
-      | undefined;
-
-    queryClient.setQueryData(queryKey, (old) => {
-      const rows = (old ?? []) as CheckinRow[];
-      return rows.map((row) =>
-        row.id === selectedCheckin.id
-          ? { ...row, pt_feedback: nextFeedback }
-          : row,
+    const trimmedFeedback = feedbackText.trim();
+    if (markReviewed && trimmedFeedback.length === 0) {
+      setFeedbackStatus("error");
+      setReviewTab("notes");
+      setFeedbackValidationMessage(
+        "Review notes are required before marking this check-in reviewed.",
       );
+      setFeedbackMessage(null);
+      return;
+    }
+    setFeedbackStatus(markReviewed ? "marking_reviewed" : "saving_draft");
+    setFeedbackValidationMessage(null);
+    setFeedbackMessage(null);
+    const nextFeedback = trimmedFeedback || null;
+
+    const { error } = await supabase.rpc("review_checkin", {
+      p_checkin_id: selectedCheckin.id,
+      p_pt_feedback: nextFeedback,
+      p_mark_reviewed: markReviewed,
     });
 
-    const { error } = await supabase
-      .from("checkins")
-      .update({ pt_feedback: nextFeedback })
-      .eq("id", selectedCheckin.id);
-
     if (error) {
-      if (previous) {
-        queryClient.setQueryData(queryKey, previous);
-      }
       setFeedbackStatus("error");
-      setFeedbackMessage("Unable to save feedback.");
+      const nextMessage = getErrorMessage(error);
+      setFeedbackMessage(nextMessage);
+      setToastVariant("error");
+      setToastMessage(nextMessage);
       if (isDev) {
         console.warn("CHECKIN_FEEDBACK_SAVE_ERROR", error);
       }
       return;
     }
 
+    if (markReviewed) {
+      await logCoachActivity({
+        clientId,
+        workspaceId: workspaceQuery.data,
+        action: "checkin_reviewed",
+        metadata: {
+          checkinId: selectedCheckin.id,
+          dueDate: selectedCheckin.week_ending_saturday,
+        },
+      });
+    }
+
     setFeedbackStatus("idle");
-    setFeedbackMessage("Feedback saved.");
-    setReviewOpen(false);
-    setSelectedCheckin(null);
-    await queryClient.invalidateQueries({ queryKey });
+    setFeedbackMessage(markReviewed ? "Check-in reviewed." : "Draft saved.");
+    setToastVariant("success");
+    setToastMessage(
+      markReviewed ? "Check-in reviewed." : "Review draft saved.",
+    );
+    setSelectedCheckin((current) =>
+      current
+        ? {
+            ...current,
+            pt_feedback: nextFeedback,
+            reviewed_at: markReviewed
+              ? (current.reviewed_at ?? new Date().toISOString())
+              : current.reviewed_at,
+            reviewed_by_user_id: markReviewed
+              ? (current.reviewed_by_user_id ?? user?.id ?? null)
+              : current.reviewed_by_user_id,
+          }
+        : current,
+    );
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-checkins", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-checkins-queue"],
+    });
+    if (markReviewed) {
+      setReviewOpen(false);
+      setSelectedCheckin(null);
+    }
   };
 
   useEffect(() => {
@@ -2964,7 +3126,7 @@ export function PtClientDetailPage() {
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
                       <span className="block text-xs text-muted-foreground">
-                        Weekly check-in
+                        Check-in status
                       </span>
                       <span className="mt-0.5 block font-medium">
                         {checkinStatus ?? "--"}
@@ -3466,7 +3628,7 @@ export function PtClientDetailPage() {
                               <span className="font-semibold text-foreground">
                                 Next:
                               </span>{" "}
-                              {computeNextCheckinDate(
+                              {getNextCheckinDueDate(
                                 checkinStartDate,
                                 checkinFrequency,
                                 todayKey,
@@ -3476,9 +3638,21 @@ export function PtClientDetailPage() {
                           {!effectiveCheckinTemplate ? (
                             <EmptyState
                               title="No template assigned"
-                              description="Assign a template to start weekly check-ins."
+                              description="Assign a template to start scheduled check-ins."
                             />
                           ) : null}
+                          <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground">
+                              Resolution:
+                            </span>{" "}
+                            {checkinTemplateId
+                              ? "Client override"
+                              : defaultCheckinTemplate
+                                ? "Workspace default"
+                                : effectiveCheckinTemplate
+                                  ? "Latest active workspace template fallback"
+                                  : "No template resolved"}
+                          </div>
                           <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
                             <span className="font-semibold text-foreground">
                               Using:
@@ -3501,6 +3675,7 @@ export function PtClientDetailPage() {
 
                     <PtClientCheckinsTab
                       rows={checkinsRows}
+                      todayKey={todayKey}
                       isLoading={checkinsQuery.isLoading}
                       error={checkinsQuery.error}
                       canLoadMore={checkinsCanLoadMore}
@@ -3721,129 +3896,394 @@ export function PtClientDetailPage() {
         onOpenChange={(open) => {
           setReviewOpen(open);
           if (!open) {
+            const params = new URLSearchParams(location.search);
+            if (params.has("checkin")) {
+              params.delete("checkin");
+              navigate(
+                {
+                  pathname: location.pathname,
+                  search: params.toString(),
+                },
+                { replace: true },
+              );
+            }
             setSelectedCheckin(null);
+            setReviewTab("answers");
             setFeedbackText("");
+            setFeedbackValidationMessage(null);
             setFeedbackMessage(null);
             setFeedbackStatus("idle");
+            setReviewPhotoLoadErrors({});
+            setReviewPhotoPreview(null);
           }
         }}
       >
-        <DialogContent className="sm:max-w-[720px]">
-          <DialogHeader>
-            <DialogTitle>Check-in review</DialogTitle>
-            <DialogDescription>
-              {selectedCheckin?.week_ending_saturday
-                ? `Week ending ${selectedCheckin.week_ending_saturday}`
-                : "Weekly check-in feedback"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">
-                Responses
-              </p>
-              {selectedCheckinAnswersQuery.isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : selectedCheckinAnswersQuery.error ? (
-                <Alert className="border-destructive/30">
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>
-                    {getFriendlyErrorMessage()}
-                  </AlertDescription>
-                </Alert>
-              ) : selectedCheckinAnswersQuery.data &&
-                selectedCheckinAnswersQuery.data.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedCheckinAnswersQuery.data.map((answer) => (
-                    <div
-                      key={answer.id}
-                      className="rounded-lg border border-border bg-muted/30 p-3"
-                    >
-                      <p className="text-xs text-muted-foreground">
-                        {answer.question?.question_text ??
-                          answer.question?.prompt ??
-                          "Question"}
-                      </p>
-                      <p className="text-sm font-semibold">
-                        {renderCheckinAnswerValue(answer)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No responses recorded.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">
-                Photos
-              </p>
-              {selectedCheckinPhotosQuery.isLoading ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Skeleton className="h-32 w-full" />
-                  <Skeleton className="h-32 w-full" />
-                </div>
-              ) : selectedCheckinPhotosQuery.data &&
-                selectedCheckinPhotosQuery.data.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {selectedCheckinPhotosQuery.data.map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="rounded-lg border border-border bg-muted/30 p-2"
-                    >
-                      <img
-                        src={photo.url}
-                        alt={`${photo.photo_type} photo`}
-                        className="h-40 w-full rounded-md object-cover"
-                      />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {photo.photo_type}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No photos uploaded.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase text-muted-foreground">
-                Feedback
-              </label>
-              <textarea
-                className="min-h-[140px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={feedbackText}
-                onChange={(event) => setFeedbackText(event.target.value)}
-                placeholder="Write notes for the client..."
-              />
-              {feedbackMessage ? (
-                <div className="text-xs text-muted-foreground">
-                  {feedbackMessage}
-                </div>
+        <DialogContent className="flex max-h-[88vh] w-[min(96vw,1080px)] max-w-[1080px] flex-col overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b border-border/70 bg-card/95 px-6 py-5 pr-14 backdrop-blur">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <DialogTitle className="text-lg sm:text-xl">
+                  {reviewClientLabel}
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedCheckin?.week_ending_saturday
+                    ? `Check-in due ${selectedCheckin.week_ending_saturday}`
+                    : "Check-in review"}
+                </DialogDescription>
+              </div>
+              {selectedCheckinReviewState ? (
+                <StatusPill
+                  status={selectedCheckinReviewState}
+                  statusMap={checkinReviewStatusMap}
+                />
               ) : null}
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setReviewOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveCheckinFeedback}
-              disabled={feedbackStatus === "saving" || !selectedCheckin}
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-border/70 bg-muted/30 px-3 py-1">
+                Due: {selectedCheckin?.week_ending_saturday ?? "--"}
+              </span>
+              <span className="rounded-full border border-border/70 bg-muted/30 px-3 py-1">
+                Submitted:{" "}
+                {selectedCheckin?.submitted_at
+                  ? formatRelativeTime(selectedCheckin.submitted_at)
+                  : "Not submitted"}
+              </span>
+              <span className="rounded-full border border-border/70 bg-muted/30 px-3 py-1">
+                Reviewed:{" "}
+                {selectedCheckin?.reviewed_at
+                  ? formatRelativeTime(selectedCheckin.reviewed_at)
+                  : "Not reviewed"}
+              </span>
+              <span className="rounded-full border border-border/70 bg-muted/30 px-3 py-1">
+                Reviewer: {selectedCheckinReviewerLabel ?? "Not assigned"}
+              </span>
+            </div>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            {!selectedCheckin?.submitted_at ? (
+              <Alert className="mb-5 border-warning/30 bg-warning/10">
+                <AlertTitle>Submission required</AlertTitle>
+                <AlertDescription>
+                  This check-in is still awaiting client submission, so review
+                  metadata cannot be completed yet.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <Tabs
+              value={reviewTab}
+              onValueChange={(value) =>
+                setReviewTab(value as "answers" | "photos" | "notes")
+              }
+              className="space-y-4"
             >
-              {feedbackStatus === "saving" ? "Saving..." : "Save feedback"}
-            </Button>
-          </DialogFooter>
+              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-2xl bg-muted/25 p-2">
+                <TabsTrigger value="answers">
+                  Answers ({selectedCheckinAnswersQuery.data?.length ?? 0})
+                </TabsTrigger>
+                <TabsTrigger value="photos">
+                  Photos ({selectedCheckinPhotos.filter((photo) => photo.url).length})
+                </TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="answers" className="mt-0">
+                <div className="rounded-[24px] border border-border/70 bg-card/70 p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Answers
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Question and answer pairs for quick scan review.
+                      </p>
+                    </div>
+                    <Badge variant="secondary">
+                      {selectedCheckinAnswersQuery.data?.length ?? 0} responses
+                    </Badge>
+                  </div>
+
+                  {selectedCheckinAnswersQuery.isLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
+                  ) : selectedCheckinAnswersQuery.error ? (
+                    <Alert className="border-destructive/30">
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        {getFriendlyErrorMessage()}
+                      </AlertDescription>
+                    </Alert>
+                  ) : selectedCheckinAnswersQuery.data &&
+                    selectedCheckinAnswersQuery.data.length > 0 ? (
+                    <div className="space-y-3">
+                      {selectedCheckinAnswersQuery.data.map((answer, index) => (
+                        <div
+                          key={answer.id}
+                          className="grid gap-2 rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              Question {index + 1}
+                            </p>
+                            <p className="text-sm font-medium leading-6 text-foreground">
+                              {answer.question?.question_text ??
+                                answer.question?.prompt ??
+                                "Question"}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              Answer
+                            </p>
+                            <p className="text-sm leading-6 text-foreground">
+                              {renderCheckinAnswerValue(answer)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
+                      No responses recorded.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="photos" className="mt-0">
+                <div className="rounded-[24px] border border-border/70 bg-card/70 p-4">
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Photos
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Compact reference photos with graceful fallbacks.
+                    </p>
+                  </div>
+
+                  {selectedCheckinPhotosQuery.isLoading ? (
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                      <Skeleton className="aspect-[4/5] w-full rounded-2xl" />
+                      <Skeleton className="aspect-[4/5] w-full rounded-2xl" />
+                      <Skeleton className="aspect-[4/5] w-full rounded-2xl" />
+                    </div>
+                  ) : selectedCheckinPhotosQuery.error ? (
+                    <Alert className="border-destructive/30">
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        Unable to load review photos right now.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                      {selectedCheckinPhotoCards.map((card) => {
+                        const photo = card.photo;
+                        const loadFailed = photo
+                          ? reviewPhotoLoadErrors[photo.id] === true
+                          : false;
+                        const isUnavailable =
+                          card.isMissing || !photo?.url || loadFailed;
+                        return (
+                          <div
+                            key={card.id}
+                            className="space-y-2 rounded-2xl border border-border/60 bg-muted/15 p-2"
+                          >
+                            {isUnavailable ? (
+                              <div className="flex aspect-[4/5] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+                                <div className="space-y-1">
+                                  <div className="font-medium text-foreground">
+                                    {card.label}
+                                  </div>
+                                  <div>
+                                    {card.isMissing
+                                      ? "No image uploaded"
+                                      : "Image unavailable"}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="block w-full overflow-hidden rounded-xl border border-border/60 bg-background transition hover:border-border hover:shadow-sm"
+                                onClick={() => setReviewPhotoPreview(photo)}
+                              >
+                                <img
+                                  src={photo.url}
+                                  alt={`${card.label} progress photo`}
+                                  className="aspect-[4/5] w-full object-cover"
+                                  onError={() =>
+                                    setReviewPhotoLoadErrors((current) => ({
+                                      ...current,
+                                      [photo.id]: true,
+                                    }))
+                                  }
+                                />
+                              </button>
+                            )}
+                            <div className="flex items-center justify-between gap-2 px-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                {card.label}
+                              </p>
+                              {!isUnavailable ? (
+                                <button
+                                  type="button"
+                                  className="text-[11px] font-medium text-foreground underline-offset-4 hover:underline"
+                                  onClick={() => setReviewPhotoPreview(photo)}
+                                >
+                                  Preview
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="notes" className="mt-0">
+                <div
+                  className={cn(
+                    "rounded-[24px] border bg-card/70 p-4",
+                    selectedCheckinNotesRequired
+                      ? "border-warning/50 bg-warning/5"
+                      : "border-border/70",
+                  )}
+                >
+                  <div className="mb-4 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Notes
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Notes are required before this review can be completed.
+                    </p>
+                  </div>
+
+                  <textarea
+                    className={cn(
+                      "min-h-[320px] w-full rounded-2xl border bg-background px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      selectedCheckinNotesRequired
+                        ? "border-warning/60"
+                        : "border-border",
+                    )}
+                    value={feedbackText}
+                    onChange={(event) => {
+                      setFeedbackText(event.target.value);
+                      if (
+                        feedbackValidationMessage &&
+                        event.target.value.trim().length > 0
+                      ) {
+                        setFeedbackValidationMessage(null);
+                      }
+                    }}
+                    placeholder="Summarize the client's check-in, key observations, and the coaching direction you want captured in the review."
+                  />
+
+                  <div className="mt-3 space-y-2 text-xs">
+                    {feedbackValidationMessage ? (
+                      <div className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-warning-foreground">
+                        {feedbackValidationMessage}
+                      </div>
+                    ) : null}
+                    {selectedCheckinNotesRequired ? (
+                      <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                        Add review notes to enable final review completion.
+                      </div>
+                    ) : null}
+                    {feedbackMessage ? (
+                      <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                        {feedbackMessage}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <div className="shrink-0 border-t border-border/70 bg-card/95 px-6 py-4 backdrop-blur">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-muted-foreground">
+                {selectedCheckin?.submitted_at
+                  ? selectedCheckinNotesRequired
+                    ? "Review notes are required before final completion."
+                    : "Draft notes can be saved anytime. Final review completion stays locked to a non-empty note."
+                  : "Client submission is required before this review can be completed."}
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <Button variant="secondary" onClick={() => setReviewOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleSaveCheckinReview(false)}
+                  disabled={
+                    feedbackStatus === "saving_draft" ||
+                    feedbackStatus === "marking_reviewed" ||
+                    !selectedCheckin?.submitted_at
+                  }
+                >
+                  {feedbackStatus === "saving_draft"
+                    ? "Saving..."
+                    : "Save draft"}
+                </Button>
+                <Button
+                  onClick={() => handleSaveCheckinReview(true)}
+                  disabled={
+                    feedbackStatus === "saving_draft" ||
+                    feedbackStatus === "marking_reviewed" ||
+                    !selectedCheckin?.submitted_at
+                  }
+                >
+                  {feedbackStatus === "marking_reviewed"
+                    ? "Saving..."
+                    : selectedCheckin?.reviewed_at
+                      ? "Update review"
+                      : "Mark reviewed"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(reviewPhotoPreview)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReviewPhotoPreview(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[88vh] w-[min(92vw,820px)] max-w-[820px] overflow-hidden p-0">
+          <div className="border-b border-border/70 px-6 py-4 pr-14">
+            <DialogTitle className="text-lg">
+              {reviewPhotoPreview?.photo_type
+                ? `${reviewPhotoPreview.photo_type} photo`
+                : "Photo preview"}
+            </DialogTitle>
+            <DialogDescription>
+              Enlarged review photo preview.
+            </DialogDescription>
+          </div>
+          <div className="max-h-[74vh] overflow-auto bg-muted/20 p-4">
+            {reviewPhotoPreview?.url ? (
+              <img
+                src={reviewPhotoPreview.url}
+                alt={`${reviewPhotoPreview.photo_type ?? "check-in"} preview`}
+                className="mx-auto max-h-[68vh] w-auto max-w-full rounded-2xl object-contain"
+              />
+            ) : (
+              <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+                Image unavailable
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -4224,6 +4664,16 @@ function PtClientScheduleCard({
     ],
     enabled: !!clientId,
     queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_client_checkins",
+        {
+          p_client_id: clientId ?? "",
+          p_range_start: scheduleStartKey,
+          p_range_end: scheduleEndKey,
+        },
+      );
+      if (ensureError) throw ensureError;
+
       const { data, error } = await supabase
         .from("checkins")
         .select("id, week_ending_saturday, submitted_at")
@@ -5348,6 +5798,7 @@ function PtClientBaselineTab({
 
 function PtClientCheckinsTab({
   rows,
+  todayKey,
   isLoading,
   error,
   canLoadMore,
@@ -5355,6 +5806,7 @@ function PtClientCheckinsTab({
   onReview,
 }: {
   rows: CheckinRow[];
+  todayKey: string;
   isLoading: boolean;
   error: unknown;
   canLoadMore: boolean;
@@ -5367,7 +5819,8 @@ function PtClientCheckinsTab({
         <CardHeader>
           <CardTitle>Check-ins</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Weekly check-ins and coach feedback.
+            Structured review state for due, overdue, submitted, and reviewed
+            check-ins.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -5384,24 +5837,26 @@ function PtClientCheckinsTab({
           ) : rows && rows.length > 0 ? (
             <div className="space-y-3">
               {rows.map((checkin) => {
-                const status = !checkin.submitted_at
-                  ? "Due"
-                  : checkin.pt_feedback
-                    ? "Reviewed"
-                    : "Submitted";
-                const variant =
-                  status === "Reviewed"
-                    ? "success"
-                    : status === "Submitted"
-                      ? "secondary"
-                      : "warning";
+                const status = getCheckinReviewState(checkin, todayKey);
+                const canReview =
+                  status === "submitted" || status === "reviewed";
+                const statusDetail = checkin.reviewed_at
+                  ? `Reviewed ${formatRelativeTime(checkin.reviewed_at)}`
+                  : checkin.submitted_at
+                    ? `Submitted ${formatRelativeTime(checkin.submitted_at)}`
+                    : status === "overdue"
+                      ? "Overdue for submission"
+                      : "Awaiting submission";
                 return (
                   <div
                     key={checkin.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onReview(checkin)}
+                    role={canReview ? "button" : undefined}
+                    tabIndex={canReview ? 0 : undefined}
+                    onClick={() => {
+                      if (canReview) onReview(checkin);
+                    }}
                     onKeyDown={(event) => {
+                      if (!canReview) return;
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         onReview(checkin);
@@ -5412,18 +5867,19 @@ function PtClientCheckinsTab({
                     <div>
                       <div className="text-sm font-semibold">
                         {checkin.week_ending_saturday
-                          ? `Week ending ${checkin.week_ending_saturday}`
-                          : "Weekly check-in"}
+                          ? `Due ${checkin.week_ending_saturday}`
+                          : "Scheduled check-in"}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {checkin.submitted_at
-                          ? `Submitted ${formatRelativeTime(checkin.submitted_at)}`
-                          : "Awaiting submission"}
+                        {statusDetail}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={variant}>{status}</Badge>
-                      {checkin.submitted_at ? (
+                      <StatusPill
+                        status={status}
+                        statusMap={checkinReviewStatusMap}
+                      />
+                      {canReview ? (
                         <Button
                           size="sm"
                           variant="secondary"
@@ -5432,9 +5888,15 @@ function PtClientCheckinsTab({
                             onReview(checkin);
                           }}
                         >
-                          {checkin.pt_feedback ? "Edit feedback" : "Review"}
+                          {status === "reviewed" ? "Edit review" : "Review"}
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Badge
+                          variant={status === "overdue" ? "danger" : "muted"}
+                        >
+                          Waiting on client
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 );

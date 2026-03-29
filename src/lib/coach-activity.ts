@@ -4,7 +4,8 @@ export type CoachActivityAction =
   | "workout_assigned"
   | "targets_updated"
   | "plan_updated"
-  | "baseline_reviewed";
+  | "baseline_reviewed"
+  | "checkin_reviewed";
 
 export type CoachActivityLogPayload = {
   clientId: string | null | undefined;
@@ -46,6 +47,8 @@ export const getCoachActionLabel = (action: string | null | undefined) => {
       return "Plan updated";
     case "baseline_reviewed":
       return "Baseline reviewed";
+    case "checkin_reviewed":
+      return "Check-in reviewed";
     default:
       return action ? action.replace(/_/g, " ") : "Coach action";
   }

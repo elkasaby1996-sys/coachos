@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -126,6 +126,14 @@ export function PtSettingsPage() {
   useEffect(() => {
     setAppearanceCompactDensity(compactDensity);
   }, [compactDensity]);
+
+  const availableDefaultTemplates = useMemo(() => {
+    const rows = templatesQuery.data ?? [];
+    return rows.filter(
+      (template) =>
+        template.is_active !== false || template.id === defaultTemplateId,
+    );
+  }, [defaultTemplateId, templatesQuery.data]);
 
   const handleSaveDefaultTemplate = async () => {
     if (!workspaceId) return;
@@ -490,15 +498,20 @@ export function PtSettingsPage() {
                 <label className="text-xs font-semibold text-muted-foreground">
                   Default template
                 </label>
+                <p className="text-xs text-muted-foreground">
+                  Used when a client has no direct override. If no default is
+                  set, CoachOS falls back to the latest active template.
+                </p>
                 <select
                   className="w-full"
                   value={defaultTemplateId}
                   onChange={(event) => setDefaultTemplateId(event.target.value)}
                 >
                   <option value="">No default</option>
-                  {templatesQuery.data?.map((template) => (
+                  {availableDefaultTemplates.map((template) => (
                     <option key={template.id} value={template.id}>
                       {template.name ?? "Template"}
+                      {template.is_active === false ? " (Inactive)" : ""}
                     </option>
                   ))}
                 </select>

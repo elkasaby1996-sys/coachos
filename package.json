@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
+    "test:unit": "vitest run",
     "supabase:start": "npx supabase@latest db start --yes",
     "supabase:stop": "npx supabase@latest stop",
     "supabase:status": "npx supabase@latest status",
@@ -78,6 +79,7 @@
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.4",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.1.2"
   }
 }

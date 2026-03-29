@@ -201,6 +201,15 @@ test.describe("Smoke: check-in submit and PT review", () => {
     await expect(clientPage.getByText(/check-in submitted/i)).toBeVisible({
       timeout: 30_000,
     });
+
+    await clientPage.reload({ waitUntil: "domcontentloaded" });
+    await waitForAppReady(clientPage);
+    await expect(clientPage.getByText(/is submitted and locked/i)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      clientPage.getByRole("button", { name: /submit check-in/i }),
+    ).toBeDisabled();
     await clientContext.close();
 
     const ptContext = await browser.newContext();
@@ -243,10 +252,23 @@ test.describe("Smoke: check-in submit and PT review", () => {
       .locator("textarea")
       .first()
       .fill(`Smoke review ${Date.now()}`);
-    await ptPage.getByRole("button", { name: /save feedback/i }).click();
+    await ptPage.getByRole("button", { name: /save draft/i }).click();
 
-    await expect(ptPage.getByText(/feedback saved/i)).toBeVisible({
+    await expect(
+      ptPage.getByText(/draft saved|review draft saved/i),
+    ).toBeVisible({
       timeout: 30_000,
+    });
+
+    await ptPage
+      .getByRole("button", { name: /mark reviewed|update review/i })
+      .click();
+
+    await expect(ptPage.getByText(/check-in reviewed/i)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(reviewDialog.getByText(/reviewed/i)).toBeVisible({
+      timeout: 15_000,
     });
     await ptContext.close();
   });
