@@ -1119,3 +1119,35 @@ When working in this repository, every agent or human contributor should treat t
     - draft save with partial notes
     - blocked final review with empty notes
     - successful `Mark reviewed` / `Update review` with valid notes
+
+## 2026-03-29 14:15 +03:00 - Branch Hygiene And Push Handoff
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - finalize the branch handoff after the full check-in hardening/review pass and keep local-only Supabase scratch directories out of Git
+- Changes made:
+  - committed the check-in hardening/review upgrade as:
+    - `5e31e1d` `Harden and refine check-in workflows`
+  - pushed the branch to:
+    - `origin/Check-in-Hardening`
+  - updated `.gitignore` to ignore local Supabase scratch directories:
+    - `supabase/.branches/`
+    - `supabase/snippets/`
+- Files changed:
+  - `.gitignore`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `git commit -m "Harden and refine check-in workflows"`
+  - `git push -u origin Check-in-Hardening`
+- Struggles / mistakes / blockers:
+  - none; this was a hygiene follow-up so local Supabase scratch output stops appearing as untracked repo noise
+- Repo state at end:
+  - branch pushed and tracking `origin/Check-in-Hardening`
+  - local scratch directories now ignored
+- Next step:
+  - open a PR from `Check-in-Hardening`
+  - continue manual QA on the pushed branch, especially:
+    - PT review tabs and signed photo loading
+    - exact-date check-in cadence
+    - client check-in photo upload and submit flow
