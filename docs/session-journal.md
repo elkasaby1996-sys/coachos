@@ -1152,83 +1152,33 @@ When working in this repository, every agent or human contributor should treat t
     - exact-date check-in cadence
     - client check-in photo upload and submit flow
 
-## 2026-03-30 11:10 +03:00 - Lifecycle States, Risk Flags, And Smart Segments
+## 2026-03-30 11:22 +03:00 - PR #76 Quality Gate Cleanup
 
 - Branch:
-  - `life-cycle-risk-flags`
+  - `Check-in-Hardening`
 - Goal:
-  - add workspace-scoped client lifecycle states, lightweight lifecycle history, grounded automatic risk flags, and shared smart filters across PT Hub, workspace clients, and client detail
+  - fix the failing quality gate on the check-in hardening PR without changing behavior
 - Changes made:
-  - added a new lifecycle model on `public.clients`:
-    - `lifecycle_state`
-    - `lifecycle_changed_at`
-    - `paused_reason`
-    - `churn_reason`
-  - added `public.client_lifecycle_events` for lifecycle history with:
-    - previous/new state
-    - reason
-    - changed-by user
-    - created timestamp
-  - added DB trigger logic to:
-    - validate pause/churn reasons
-    - keep legacy `clients.status` synced with lifecycle
-    - append lifecycle history entries
-    - sync `invited` / `onboarding` / `active` lifecycle transitions from onboarding status without overwriting explicit PT pause/completion/churn intent
-  - added `public.client_operational_snapshot(...)` and expanded `public.pt_clients_summary(...)` so risk flags and lifecycle-aware client list data come from one backend source of truth
-  - added `public.pt_update_client_lifecycle(...)` so PT lifecycle changes happen through a safe shared backend path
-  - added shared frontend lifecycle/risk helpers in `src/lib/client-lifecycle.ts`
-  - replaced the workspace clients page’s fake adherence/trend placeholders with:
-    - lifecycle badges
-    - real risk badges
-    - search + smart segment filters
-    - lifecycle filter
-    - operational KPI cards
-  - updated PT Hub clients to use the same lifecycle/risk summary model across workspaces instead of raw `clients.status` heuristics
-  - updated PT client detail to:
-    - show lifecycle in the header/overview
-    - show risk signals in the summary
-    - manage lifecycle through a dedicated lifecycle dialog
-    - require reasons when pausing or churning
-  - added unit coverage for the shared lifecycle/risk helper
-- Risk flag rules implemented:
-  - `missed_checkins`
-    - client has at least one overdue unsubmitted check-in
-  - `no_recent_reply`
-    - latest conversation message is from PT and has been waiting 5+ days
-  - `low_adherence_trend`
-    - in the last 21 days, at least 3 workouts were due and completed-workout rate is below 50%
-  - `inactive_client`
-    - no recent client engagement across workouts, submitted check-ins, client replies, or habit logs for 14+ days
+  - ran the local release-quality checks on the branch
+  - found that `lint`, `build`, and `test:unit` were already passing
+  - identified the actual failure as the Prettier format gate
+  - reformatted the two files that were failing the formatter:
+    - `src/pages/client/checkin.tsx`
+    - `src/pages/pt/client-detail.tsx`
 - Files changed:
-  - `supabase/migrations/20260330113000_client_lifecycle_risk_flags.sql`
-  - `src/lib/client-lifecycle.ts`
-  - `src/pages/pt/clients.tsx`
-  - `src/components/pt/clients/ClientsFilters.tsx`
-  - `src/components/pt/clients/ClientListRow.tsx`
-  - `src/components/pt/clients/ClientsKpiRow.tsx`
-  - `src/features/pt-hub/lib/pt-hub.ts`
-  - `src/features/pt-hub/types.ts`
-  - `src/features/pt-hub/components/pt-hub-client-table.tsx`
-  - `src/pages/pt-hub/clients.tsx`
+  - `src/pages/client/checkin.tsx`
   - `src/pages/pt/client-detail.tsx`
-  - `src/components/ui/coachos/status-pill.tsx`
-  - `tests/unit/client-lifecycle.test.ts`
   - `docs/session-journal.md`
 - Commands/tests run:
-  - `npm run test:unit`
+  - `npm install`
   - `npm run lint`
+  - `npm run format`
   - `npm run build`
+  - `npm run test:unit`
+  - `npx prettier --write src/pages/client/checkin.tsx src/pages/pt/client-detail.tsx`
 - Struggles / mistakes / blockers:
-  - local Docker / local Supabase was not available in this session, so the new migration was not applied or DB-linted live here
-  - PT client detail now consumes the shared workspace client summary via `pt_clients_summary(...)` for risk display, which is acceptable for this phase but could later be tightened with a dedicated single-client operational RPC if workspace sizes grow significantly
+  - none in product logic; the failing PR signal was formatting-only
 - Repo state at end:
-  - frontend/unit/build validation passes
-  - lifecycle/risk UI is wired on PT Hub, workspace clients, and client detail
-  - migration file is present but still needs local Supabase apply/reset/lint verification
+  - all local quality gates pass on `Check-in-Hardening`
 - Next step:
-  - run the new migration locally against Supabase
-  - verify lifecycle transitions and reason enforcement live
-  - QA smart segments on:
-    - PT Hub clients
-    - workspace clients
-    - client detail header/actions
+  - commit and push the formatter-only fix so PR #76 can re-run cleanly
