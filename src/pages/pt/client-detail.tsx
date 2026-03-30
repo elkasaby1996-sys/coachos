@@ -2491,9 +2491,9 @@ export function PtClientDetailPage() {
     setLifecycleTargetState(state);
     setLifecycleReason(
       state === "paused"
-        ? clientSnapshot?.paused_reason ?? ""
+        ? (clientSnapshot?.paused_reason ?? "")
         : state === "churned"
-          ? clientSnapshot?.churn_reason ?? ""
+          ? (clientSnapshot?.churn_reason ?? "")
           : "",
     );
     setLifecycleValidationMessage(null);
@@ -2564,7 +2564,11 @@ export function PtClientDetailPage() {
 
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ["pt-client-operational-summary", clientId, workspaceQuery.data],
+        queryKey: [
+          "pt-client-operational-summary",
+          clientId,
+          workspaceQuery.data,
+        ],
       }),
       queryClient.invalidateQueries({ queryKey: ["pt-checkins-queue"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
@@ -2593,9 +2597,7 @@ export function PtClientDetailPage() {
       .from("clients")
       .update(payload)
       .eq("id", clientSnapshot.id)
-      .select(
-        "id, display_name, goal, training_type, timezone, updated_at",
-      )
+      .select("id, display_name, goal, training_type, timezone, updated_at")
       .maybeSingle();
     if (error) {
       setToastVariant("error");
@@ -4624,12 +4626,15 @@ export function PtClientDetailPage() {
                 New lifecycle
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Badge variant={getClientLifecycleMeta(lifecycleTargetState).variant}>
+                <Badge
+                  variant={getClientLifecycleMeta(lifecycleTargetState).variant}
+                >
                   {getClientLifecycleMeta(lifecycleTargetState).label}
                 </Badge>
                 {clientOperationalQuery.data?.has_overdue_checkin ? (
                   <Badge variant="warning">
-                    {clientOperationalQuery.data.overdue_checkins_count ?? 0} overdue
+                    {clientOperationalQuery.data.overdue_checkins_count ?? 0}{" "}
+                    overdue
                   </Badge>
                 ) : null}
               </div>
@@ -4693,7 +4698,8 @@ export function PtClientDetailPage() {
           <DialogHeader>
             <DialogTitle>Edit client profile</DialogTitle>
             <DialogDescription>
-              Update client profile details. Lifecycle is managed from the client actions menu.
+              Update client profile details. Lifecycle is managed from the
+              client actions menu.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">

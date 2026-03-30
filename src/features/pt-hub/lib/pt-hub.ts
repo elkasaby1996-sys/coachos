@@ -1134,8 +1134,9 @@ export function getPtClientBaseStats(clients: PTClientSummary[]) {
   const activeClients = clients.filter((client) =>
     isLifecycleCoached(client.lifecycleState),
   ).length;
-  const pausedClients = clients.filter((client) =>
-    normalizeClientLifecycleState(client.lifecycleState) === "paused",
+  const pausedClients = clients.filter(
+    (client) =>
+      normalizeClientLifecycleState(client.lifecycleState) === "paused",
   ).length;
   const atRiskClients = clients.filter((client) =>
     matchesClientSegment(client, "at_risk"),

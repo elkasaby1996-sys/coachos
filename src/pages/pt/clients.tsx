@@ -137,7 +137,9 @@ export function PtClientsPage() {
 
   const formattedClients = useMemo(() => {
     return clients.map((client) => {
-      const lifecycleState = normalizeClientLifecycleState(client.lifecycle_state);
+      const lifecycleState = normalizeClientLifecycleState(
+        client.lifecycle_state,
+      );
       const lastActivityRaw =
         client.last_activity_at ??
         client.last_client_reply_at ??

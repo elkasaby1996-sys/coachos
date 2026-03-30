@@ -64,19 +64,10 @@ export function PtHubClientsPage() {
         ? haystack.includes(normalizedSearch)
         : true;
       return (
-        matchesWorkspace &&
-        matchesLifecycle &&
-        matchesSegment &&
-        matchesSearch
+        matchesWorkspace && matchesLifecycle && matchesSegment && matchesSearch
       );
     });
-  }, [
-    clients,
-    lifecycleFilter,
-    searchValue,
-    segmentFilter,
-    workspaceFilter,
-  ]);
+  }, [clients, lifecycleFilter, searchValue, segmentFilter, workspaceFilter]);
 
   const openClientWorkspace = (client: PTClientSummary) => {
     switchWorkspace(client.workspaceId);

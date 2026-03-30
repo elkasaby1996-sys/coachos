@@ -26,7 +26,10 @@ export function PtHubClientTable({
       <div className="divide-y divide-border/60">
         {clients.map((client) => {
           const lifecycle = getClientLifecycleMeta(client.lifecycleState);
-          const riskFlags = normalizeClientRiskFlags(client.riskFlags).slice(0, 2);
+          const riskFlags = normalizeClientRiskFlags(client.riskFlags).slice(
+            0,
+            2,
+          );
           const reason = client.pausedReason ?? client.churnReason;
 
           return (

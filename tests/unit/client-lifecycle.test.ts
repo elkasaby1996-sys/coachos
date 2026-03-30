@@ -28,14 +28,17 @@ describe("client lifecycle helpers", () => {
 
   it("surfaces at-risk clients from lifecycle or derived flags", () => {
     expect(
-      isClientAtRisk({ lifecycle_state: "active", risk_flags: ["inactive_client"] }),
+      isClientAtRisk({
+        lifecycle_state: "active",
+        risk_flags: ["inactive_client"],
+      }),
     ).toBe(true);
-    expect(
-      isClientAtRisk({ lifecycle_state: "at_risk", risk_flags: [] }),
-    ).toBe(true);
-    expect(
-      isClientAtRisk({ lifecycle_state: "active", risk_flags: [] }),
-    ).toBe(false);
+    expect(isClientAtRisk({ lifecycle_state: "at_risk", risk_flags: [] })).toBe(
+      true,
+    );
+    expect(isClientAtRisk({ lifecycle_state: "active", risk_flags: [] })).toBe(
+      false,
+    );
   });
 
   it("matches the required smart segments", () => {
