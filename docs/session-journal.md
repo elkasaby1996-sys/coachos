@@ -1182,3 +1182,40 @@ When working in this repository, every agent or human contributor should treat t
   - all local quality gates pass on `Check-in-Hardening`
 - Next step:
   - commit and push the formatter-only fix so PR #76 can re-run cleanly
+
+## 2026-03-30 13:58 +03:00 - Full App Screenshot Pack
+
+- Branch:
+  - `life-cycle-risk-flags`
+- Goal:
+  - generate a broad local screenshot pack for product review across public, PT Hub, workspace/PT, settings, client, and key check-in review surfaces
+- Changes made:
+  - created a reproducible Playwright-based app capture script:
+    - `scripts/capture-app-screenshots.mjs`
+  - created a focused PT client-detail capture script for workbench tabs and review modal states:
+    - `scripts/capture-client-detail-screens.mjs`
+  - generated and saved a dated screenshot bundle in:
+    - `docs/screenshots/2026-03-30-app-review/`
+    - `docs/screenshots/2026-03-30-app-review.zip`
+  - captured the main public pages, PT Hub surfaces, workspace/PT pages, settings screens, client app pages, PT client-detail workbench tabs, and check-in review modal tabs
+  - aligned local E2E capture credentials to the real seeded local users so automated screenshots resolve against the current local Supabase state
+- Files changed:
+  - `docs/session-journal.md`
+  - `scripts/capture-app-screenshots.mjs`
+  - `scripts/capture-client-detail-screens.mjs`
+  - `docs/screenshots/2026-03-30-app-review/`
+  - `docs/screenshots/2026-03-30-app-review.zip`
+- Commands/tests run:
+  - `npx supabase@latest status -o env`
+  - `npx supabase@latest db query --local`
+  - `node scripts/capture-app-screenshots.mjs`
+  - `node scripts/capture-client-detail-screens.mjs`
+- Struggles / mistakes / blockers:
+  - the first capture pass used stale E2E credentials and only produced login/loading states
+  - local auth bootstrap sometimes held on the loading gate, so the capture flow needed cached role seeding to stay stable during automated screenshots
+  - lifecycle action modal did not expose reliably in the automated pass; the broader screenshot pack and check-in review modal coverage did complete
+- Repo state at end:
+  - dated screenshot artifacts are present locally under `docs/screenshots/2026-03-30-app-review/`
+  - the screenshot generation scripts are present locally and ready to reuse
+- Next step:
+  - commit and push the screenshot pack plus scripts if we want them available to the rest of the team
