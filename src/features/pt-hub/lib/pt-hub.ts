@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../../lib/auth";
+import {
+  matchesClientSegment,
+  normalizeClientLifecycleState,
+  type ClientSegmentKey,
+} from "../../../lib/client-lifecycle";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
@@ -164,6 +169,32 @@ type ClientRow = {
   updated_at: string | null;
 };
 
+type PtClientsSummaryRow = {
+  id: string;
+  workspace_id: string | null;
+  user_id: string | null;
+  status: string | null;
+  lifecycle_state: string | null;
+  lifecycle_changed_at: string | null;
+  paused_reason: string | null;
+  churn_reason: string | null;
+  display_name: string | null;
+  goal: string | null;
+  tags: string[] | null;
+  created_at: string | null;
+  updated_at: string | null;
+  onboarding_status: string | null;
+  onboarding_incomplete: boolean | null;
+  last_session_at: string | null;
+  last_checkin_at: string | null;
+  last_message_at: string | null;
+  last_client_reply_at: string | null;
+  last_activity_at: string | null;
+  overdue_checkins_count: number | null;
+  has_overdue_checkin: boolean | null;
+  risk_flags: string[] | null;
+};
+
 type PtHubLeadRow = {
   id: string;
   user_id: string;
@@ -315,6 +346,48 @@ function isClientActive(status: string | null) {
   if (!status) return true;
   const normalized = status.trim().toLowerCase();
   return !["archived", "inactive", "paused"].includes(normalized);
+}
+
+function isLifecycleCoached(lifecycleState: string | null | undefined) {
+  const lifecycle = normalizeClientLifecycleState(lifecycleState);
+  return ["active", "at_risk"].includes(lifecycle);
+}
+
+function mapPtClientSummary(
+  row: PtClientsSummaryRow,
+  workspaceName: string,
+): PTClientSummary {
+  const recentActivityAt =
+    row.last_activity_at ??
+    row.updated_at ??
+    row.created_at ??
+    row.last_message_at ??
+    row.last_checkin_at;
+
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id ?? "",
+    workspaceName,
+    displayName: row.display_name?.trim() || "Client",
+    status: row.status?.trim() || "active",
+    lifecycleState: row.lifecycle_state?.trim() || "active",
+    lifecycleChangedAt: row.lifecycle_changed_at,
+    pausedReason: row.paused_reason ?? null,
+    churnReason: row.churn_reason ?? null,
+    goal: row.goal,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    onboardingStatus: row.onboarding_status ?? null,
+    onboardingIncomplete: Boolean(row.onboarding_incomplete),
+    lastActivityAt: row.last_activity_at ?? null,
+    lastClientReplyAt: row.last_client_reply_at ?? null,
+    hasOverdueCheckin: Boolean(row.has_overdue_checkin),
+    overdueCheckinsCount: row.overdue_checkins_count ?? 0,
+    riskFlags: row.risk_flags ?? [],
+    recentActivityLabel: recentActivityAt
+      ? formatRelativeTime(recentActivityAt)
+      : "No recent activity",
+  };
 }
 
 function getWorkspaceStatus(
@@ -626,8 +699,9 @@ export function usePtHubOverview() {
 
       return {
         activeWorkspaces: workspaces.length,
-        activeClients: clients.filter((client) => isClientActive(client.status))
-          .length,
+        activeClients: clients.filter((client) =>
+          isLifecycleCoached(client.lifecycleState),
+        ).length,
         profileCompletionPercent:
           readinessQuery.data?.completionPercent ??
           profileQuery.data?.completionPercent ??
@@ -844,7 +918,7 @@ export function usePtHubPayments() {
     queryFn: async () => {
       const clients = clientsQuery.data ?? [];
       const activeClients = clients.filter((client) =>
-        isClientActive(client.status),
+        isLifecycleCoached(client.lifecycleState),
       ).length;
 
       const subscription: PTSubscriptionSummary = {
@@ -957,8 +1031,9 @@ export function usePtHubAnalytics() {
           leads.length > 0
             ? Math.round((acceptedApplications / leads.length) * 100)
             : 0,
-        activeClients: clients.filter((client) => isClientActive(client.status))
-          .length,
+        activeClients: clients.filter((client) =>
+          isLifecycleCoached(client.lifecycleState),
+        ).length,
         profileCompletionPercent: readinessQuery.data?.completionPercent ?? 0,
         testimonialCountLabel: "Placeholder",
         transformationsCountLabel: "Placeholder",
@@ -1027,40 +1102,29 @@ export function usePtHubClients() {
     enabled: Boolean(user?.id) && workspacesQuery.isSuccess,
     queryFn: async () => {
       const workspaces = workspacesQuery.data ?? [];
-      const workspaceIds = workspaces.map((workspace) => workspace.id);
-      if (workspaceIds.length === 0) return [] as PTClientSummary[];
+      if (workspaces.length === 0) return [] as PTClientSummary[];
 
-      const { data, error } = await supabase
-        .from("clients")
-        .select(
-          "id, workspace_id, status, display_name, goal, created_at, updated_at",
-        )
-        .in("workspace_id", workspaceIds)
-        .order("created_at", { ascending: false })
-        .returns<ClientRow[]>();
+      const results = await Promise.all(
+        workspaces.map(async (workspace) => {
+          const { data, error } = await supabase.rpc("pt_clients_summary", {
+            p_workspace_id: workspace.id,
+            p_limit: 500,
+            p_offset: 0,
+          });
 
-      if (error) throw error;
+          if (error) throw error;
 
-      const workspaceMap = new Map(
-        workspaces.map((workspace) => [workspace.id, workspace.name]),
+          return ((data ?? []) as PtClientsSummaryRow[]).map((row) =>
+            mapPtClientSummary(row, workspace.name),
+          );
+        }),
       );
 
-      return (data ?? [])
-        .filter((client) => Boolean(client.workspace_id))
-        .map((client) => ({
-          id: client.id,
-          workspaceId: client.workspace_id as string,
-          workspaceName:
-            workspaceMap.get(client.workspace_id as string) ?? "Workspace",
-          displayName: client.display_name?.trim() || "Client",
-          status: client.status?.trim() || "active",
-          goal: client.goal,
-          createdAt: client.created_at,
-          updatedAt: client.updated_at,
-          recentActivityLabel: formatRelativeTime(
-            client.updated_at ?? client.created_at,
-          ),
-        }));
+      return results.flat().sort((a, b) => {
+        const aTime = new Date(a.createdAt ?? 0).getTime();
+        const bTime = new Date(b.createdAt ?? 0).getTime();
+        return bTime - aTime;
+      });
     },
   });
 }
@@ -1068,10 +1132,19 @@ export function usePtHubClients() {
 export function getPtClientBaseStats(clients: PTClientSummary[]) {
   const totalClients = clients.length;
   const activeClients = clients.filter((client) =>
-    isClientActive(client.status),
+    isLifecycleCoached(client.lifecycleState),
   ).length;
   const pausedClients = clients.filter((client) =>
-    ["paused", "inactive"].includes(client.status.trim().toLowerCase()),
+    normalizeClientLifecycleState(client.lifecycleState) === "paused",
+  ).length;
+  const atRiskClients = clients.filter((client) =>
+    matchesClientSegment(client, "at_risk"),
+  ).length;
+  const onboardingIncompleteClients = clients.filter((client) =>
+    matchesClientSegment(client, "onboarding_incomplete"),
+  ).length;
+  const overdueCheckinClients = clients.filter((client) =>
+    matchesClientSegment(client, "checkin_overdue"),
   ).length;
 
   const now = Date.now();
@@ -1086,6 +1159,9 @@ export function getPtClientBaseStats(clients: PTClientSummary[]) {
     totalClients,
     activeClients,
     pausedClients,
+    atRiskClients,
+    onboardingIncompleteClients,
+    overdueCheckinClients,
     recentlyOnboardedClients,
   };
 }

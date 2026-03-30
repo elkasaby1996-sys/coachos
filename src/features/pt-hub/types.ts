@@ -126,9 +126,20 @@ export interface PTClientSummary {
   workspaceName: string;
   displayName: string;
   status: string;
+  lifecycleState: string;
+  lifecycleChangedAt: string | null;
+  pausedReason: string | null;
+  churnReason: string | null;
   goal: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  onboardingStatus: string | null;
+  onboardingIncomplete: boolean;
+  lastActivityAt: string | null;
+  lastClientReplyAt: string | null;
+  hasOverdueCheckin: boolean;
+  overdueCheckinsCount: number;
+  riskFlags: string[];
   recentActivityLabel: string;
 }
 

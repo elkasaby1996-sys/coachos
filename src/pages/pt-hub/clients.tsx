@@ -13,6 +13,11 @@ import {
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTClientSummary } from "../../features/pt-hub/types";
+import {
+  matchesClientSegment,
+  normalizeClientLifecycleState,
+  type ClientSegmentKey,
+} from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtHubClientsPage() {
@@ -22,7 +27,8 @@ export function PtHubClientsPage() {
   const workspacesQuery = usePtHubWorkspaces();
   const [searchValue, setSearchValue] = useState("");
   const [workspaceFilter, setWorkspaceFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
+  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
 
   const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
   const workspaces = useMemo(
@@ -38,24 +44,39 @@ export function PtHubClientsPage() {
         workspaceFilter === "all"
           ? true
           : client.workspaceId === workspaceFilter;
-      const matchesStatus =
-        statusFilter === "all"
+      const matchesLifecycle =
+        lifecycleFilter === "all"
           ? true
-          : client.status.trim().toLowerCase() === statusFilter;
+          : normalizeClientLifecycleState(client.lifecycleState) ===
+            lifecycleFilter;
+      const matchesSegment = matchesClientSegment(client, segmentFilter);
       const haystack = [
         client.displayName,
         client.goal ?? "",
         client.workspaceName,
-        client.status,
+        client.lifecycleState,
+        ...(client.riskFlags ?? []),
+        client.onboardingStatus ?? "",
       ]
         .join(" ")
         .toLowerCase();
       const matchesSearch = normalizedSearch
         ? haystack.includes(normalizedSearch)
         : true;
-      return matchesWorkspace && matchesStatus && matchesSearch;
+      return (
+        matchesWorkspace &&
+        matchesLifecycle &&
+        matchesSegment &&
+        matchesSearch
+      );
     });
-  }, [clients, searchValue, workspaceFilter, statusFilter]);
+  }, [
+    clients,
+    lifecycleFilter,
+    searchValue,
+    segmentFilter,
+    workspaceFilter,
+  ]);
 
   const openClientWorkspace = (client: PTClientSummary) => {
     switchWorkspace(client.workspaceId);
@@ -87,15 +108,21 @@ export function PtHubClientsPage() {
         />
         <StatCard
           surface="pt-hub"
-          label="Paused / Inactive"
-          value={stats.pausedClients}
-          helper="Needs reactivation or cleanup"
+          label="At Risk"
+          value={stats.atRiskClients}
+          helper="Flagged for coach attention"
         />
         <StatCard
           surface="pt-hub"
-          label="Recently Onboarded"
-          value={stats.recentlyOnboardedClients}
-          helper="Created in the last 30 days"
+          label="Onboarding Incomplete"
+          value={stats.onboardingIncompleteClients}
+          helper="Not fully activated yet"
+        />
+        <StatCard
+          surface="pt-hub"
+          label="Paused"
+          value={stats.pausedClients}
+          helper="Intentional hold or retention risk"
         />
       </div>
 
@@ -105,7 +132,7 @@ export function PtHubClientsPage() {
         contentClassName="space-y-6"
       >
         <div className="rounded-[24px] border border-border/60 bg-background/35 p-4">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -129,13 +156,32 @@ export function PtHubClientsPage() {
             </select>
             <select
               className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              value={lifecycleFilter}
+              onChange={(event) => setLifecycleFilter(event.target.value)}
             >
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
+              <option value="all">All lifecycles</option>
+              <option value="invited">Invited</option>
+              <option value="onboarding">Onboarding</option>
               <option value="paused">Paused</option>
-              <option value="inactive">Inactive</option>
+              <option value="active">Active</option>
+              <option value="at_risk">At risk</option>
+              <option value="completed">Completed</option>
+              <option value="churned">Churned</option>
+            </select>
+            <select
+              className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+              value={segmentFilter}
+              onChange={(event) =>
+                setSegmentFilter(event.target.value as ClientSegmentKey)
+              }
+            >
+              <option value="all">All segments</option>
+              <option value="onboarding_incomplete">
+                Onboarding incomplete
+              </option>
+              <option value="checkin_overdue">Check-in overdue</option>
+              <option value="at_risk">At-risk clients</option>
+              <option value="paused">Paused clients</option>
             </select>
           </div>
         </div>
@@ -146,7 +192,7 @@ export function PtHubClientsPage() {
             description={
               clients.length === 0
                 ? "No client records exist across your owned workspaces yet."
-                : "No clients match the current workspace, status, and search filters."
+                : "No clients match the current workspace, lifecycle, segment, and search filters."
             }
             icon={<Users2 className="h-5 w-5" />}
           />

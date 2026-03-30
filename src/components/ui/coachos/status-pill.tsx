@@ -10,7 +10,9 @@ const defaultStatusMap: Record<
 > = {
   active: { label: "Active", variant: "success" },
   inactive: { label: "Inactive", variant: "muted" },
+  onboarding: { label: "Onboarding", variant: "secondary" },
   paused: { label: "Paused", variant: "warning" },
+  at_risk: { label: "At risk", variant: "danger" },
   "at risk": { label: "Needs attention", variant: "danger" },
   pending: { label: "Pending", variant: "warning" },
   invited: { label: "Not started", variant: "warning" },
@@ -29,6 +31,7 @@ const defaultStatusMap: Record<
     variant: "secondary",
   },
   completed: { label: "Completed", variant: "success" },
+  churned: { label: "Churned", variant: "muted" },
   skipped: { label: "Skipped", variant: "danger" },
   rest: { label: "Rest day", variant: "warning" },
   "rest day": { label: "Rest day", variant: "warning" },

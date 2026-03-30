@@ -6,7 +6,7 @@ export function ClientsKpiRow({
   stats: Array<{ label: string; value: number; tone?: string }>;
 }) {
   return (
-    <div className="grid gap-3 md:grid-cols-4">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
       {stats.map((stat) => (
         <Card
           key={stat.label}
