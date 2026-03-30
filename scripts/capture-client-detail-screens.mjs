@@ -30,14 +30,18 @@ function loadEnvFile(filePath) {
 
 const fileEnv = loadEnvFile(envPath);
 const config = {
-  baseURL: process.env.E2E_BASE_URL || fileEnv.E2E_BASE_URL || "http://127.0.0.1:4173",
+  baseURL:
+    process.env.E2E_BASE_URL || fileEnv.E2E_BASE_URL || "http://127.0.0.1:4173",
   ptEmail: process.env.E2E_PT_EMAIL || fileEnv.E2E_PT_EMAIL,
   ptPassword: process.env.E2E_PT_PASSWORD || fileEnv.E2E_PT_PASSWORD,
   clientId: process.env.E2E_CLIENT_ID || fileEnv.E2E_CLIENT_ID,
 };
 
 function safeSlug(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 async function isServerReachable(url) {
@@ -59,12 +63,16 @@ async function waitForServer(url, timeoutMs = 120000) {
 }
 
 function startDevServer() {
-  return spawn("cmd.exe", ["/c", "npm run dev -- --host 127.0.0.1 --port 4173"], {
-    cwd: repoRoot,
-    stdio: ["ignore", "pipe", "pipe"],
-    env: process.env,
-    windowsHide: true,
-  });
+  return spawn(
+    "cmd.exe",
+    ["/c", "npm run dev -- --host 127.0.0.1 --port 4173"],
+    {
+      cwd: repoRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: process.env,
+      windowsHide: true,
+    },
+  );
 }
 
 async function waitForUi(page, timeoutMs = 15000) {
@@ -130,7 +138,8 @@ async function main() {
   if (!(await isServerReachable(config.baseURL))) {
     devServer = startDevServer();
     const ready = await waitForServer(config.baseURL);
-    if (!ready) throw new Error(`App server did not start at ${config.baseURL}`);
+    if (!ready)
+      throw new Error(`App server did not start at ${config.baseURL}`);
   }
 
   const browser = await chromium.launch({ headless: true });
@@ -163,7 +172,9 @@ async function main() {
       }
     }
 
-    const moreActions = page.getByRole("button", { name: /more actions/i }).first();
+    const moreActions = page
+      .getByRole("button", { name: /more actions/i })
+      .first();
     if (await moreActions.isVisible().catch(() => false)) {
       await moreActions.click();
       await page.waitForTimeout(300);
@@ -177,13 +188,17 @@ async function main() {
     }
 
     if (await clickText(page, "Check-ins")) {
-      const reviewButton = page.getByRole("button", { name: /review|edit review/i }).first();
+      const reviewButton = page
+        .getByRole("button", { name: /review|edit review/i })
+        .first();
       if (await reviewButton.isVisible({ timeout: 4000 }).catch(() => false)) {
         await reviewButton.click();
         await page.waitForTimeout(900);
         await snap(page, "modal-review-answers", false);
         for (const tab of ["Photos", "Notes"]) {
-          const tabButton = page.getByRole("tab", { name: new RegExp(`^${tab}`, "i") }).first();
+          const tabButton = page
+            .getByRole("tab", { name: new RegExp(`^${tab}`, "i") })
+            .first();
           if (await tabButton.isVisible().catch(() => false)) {
             await tabButton.click();
             await page.waitForTimeout(700);

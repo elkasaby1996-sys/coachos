@@ -30,16 +30,21 @@ function loadEnvFile(filePath) {
 
 const fileEnv = loadEnvFile(envPath);
 const config = {
-  baseURL: process.env.E2E_BASE_URL || fileEnv.E2E_BASE_URL || "http://127.0.0.1:4173",
+  baseURL:
+    process.env.E2E_BASE_URL || fileEnv.E2E_BASE_URL || "http://127.0.0.1:4173",
   ptEmail: process.env.E2E_PT_EMAIL || fileEnv.E2E_PT_EMAIL,
   ptPassword: process.env.E2E_PT_PASSWORD || fileEnv.E2E_PT_PASSWORD,
   clientEmail: process.env.E2E_CLIENT_EMAIL || fileEnv.E2E_CLIENT_EMAIL,
-  clientPassword: process.env.E2E_CLIENT_PASSWORD || fileEnv.E2E_CLIENT_PASSWORD,
+  clientPassword:
+    process.env.E2E_CLIENT_PASSWORD || fileEnv.E2E_CLIENT_PASSWORD,
   clientId: process.env.E2E_CLIENT_ID || fileEnv.E2E_CLIENT_ID,
 };
 
 function sanitizeName(value) {
-  return value.replace(/[^a-z0-9-_]+/gi, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .replace(/[^a-z0-9-_]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 async function waitForUi(page, timeoutMs = 15000) {
@@ -108,7 +113,9 @@ async function login(page, email, password) {
   if (!page.url().includes("/login")) return;
 
   const emailInput = page
-    .locator('input[type="email"], input[name="email"], input[autocomplete="email"]')
+    .locator(
+      'input[type="email"], input[name="email"], input[autocomplete="email"]',
+    )
     .first();
   const passwordInput = page
     .locator(
@@ -139,7 +146,9 @@ async function capture(page, relativePath, options = {}) {
 }
 
 async function gotoAndCapture(page, relativePath, urlPath, options = {}) {
-  await page.goto(`${config.baseURL}${urlPath}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${config.baseURL}${urlPath}`, {
+    waitUntil: "domcontentloaded",
+  });
   await capture(page, relativePath, options);
 }
 
@@ -172,7 +181,9 @@ async function captureClientDetailTabs(page) {
   await waitForStable(page);
 
   for (const tabName of tabNames) {
-    const tabButton = page.getByRole("tab", { name: new RegExp(`^${tabName}$`, "i") }).first();
+    const tabButton = page
+      .getByRole("tab", { name: new RegExp(`^${tabName}$`, "i") })
+      .first();
     if (!(await tabButton.isVisible().catch(() => false))) continue;
     await tabButton.click();
     await page.waitForTimeout(800);
@@ -207,7 +218,9 @@ async function captureCheckinReviewModal(page) {
   await checkinsTab.click();
   await page.waitForTimeout(1200);
 
-  const reviewButton = page.getByRole("button", { name: /review|edit review/i }).first();
+  const reviewButton = page
+    .getByRole("button", { name: /review|edit review/i })
+    .first();
   if (!(await reviewButton.isVisible({ timeout: 4000 }).catch(() => false))) {
     console.log("skipped check-in review screenshots");
     return;
@@ -215,7 +228,9 @@ async function captureCheckinReviewModal(page) {
 
   await reviewButton.click();
   await page.waitForTimeout(1200);
-  await capture(page, "pt/client-detail/modal-review-answers", { fullPage: false });
+  await capture(page, "pt/client-detail/modal-review-answers", {
+    fullPage: false,
+  });
 
   const photosTab = page.getByRole("tab", { name: /^Photos/i }).first();
   if (await photosTab.isVisible().catch(() => false)) {
@@ -238,8 +253,15 @@ async function captureCheckinReviewModal(page) {
   await page.keyboard.press("Escape");
 }
 
-async function tryCaptureFirstLinkedPage(page, listPath, linkPattern, savePath) {
-  await page.goto(`${config.baseURL}${listPath}`, { waitUntil: "domcontentloaded" });
+async function tryCaptureFirstLinkedPage(
+  page,
+  listPath,
+  linkPattern,
+  savePath,
+) {
+  await page.goto(`${config.baseURL}${listPath}`, {
+    waitUntil: "domcontentloaded",
+  });
   await waitForStable(page);
   const link = page.locator(`a[href*="${linkPattern}"]`).first();
   if (!(await link.isVisible().catch(() => false))) {
@@ -251,7 +273,12 @@ async function tryCaptureFirstLinkedPage(page, listPath, linkPattern, savePath) 
 }
 
 async function main() {
-  if (!config.ptEmail || !config.ptPassword || !config.clientEmail || !config.clientPassword) {
+  if (
+    !config.ptEmail ||
+    !config.ptPassword ||
+    !config.clientEmail ||
+    !config.clientPassword
+  ) {
     throw new Error("Missing E2E credentials in .env.e2e.local.");
   }
   if (!config.clientId) {
@@ -302,7 +329,11 @@ async function main() {
     await login(ptPage, config.ptEmail, config.ptPassword);
     await gotoAndCapture(ptPage, "pt-hub/overview", "/pt-hub");
     await gotoAndCapture(ptPage, "pt-hub/profile", "/pt-hub/profile");
-    await gotoAndCapture(ptPage, "pt-hub/profile-preview", "/pt-hub/profile/preview");
+    await gotoAndCapture(
+      ptPage,
+      "pt-hub/profile-preview",
+      "/pt-hub/profile/preview",
+    );
     await gotoAndCapture(ptPage, "pt-hub/leads", "/pt-hub/leads");
     await gotoAndCapture(ptPage, "pt-hub/clients", "/pt-hub/clients");
     await gotoAndCapture(ptPage, "pt-hub/workspaces", "/pt-hub/workspaces");
@@ -312,22 +343,42 @@ async function main() {
 
     await gotoAndCapture(ptPage, "pt/dashboard", "/pt/dashboard");
     await gotoAndCapture(ptPage, "pt/clients", "/pt/clients");
-    await gotoAndCapture(ptPage, "pt/client-detail/overview", `/pt/clients/${config.clientId}`);
+    await gotoAndCapture(
+      ptPage,
+      "pt/client-detail/overview",
+      `/pt/clients/${config.clientId}`,
+    );
     await captureClientDetailTabs(ptPage);
     await captureLifecycleModal(ptPage);
     await captureCheckinReviewModal(ptPage);
     await gotoAndCapture(ptPage, "pt/programs", "/pt/programs");
     await gotoAndCapture(ptPage, "pt/calendar", "/pt/calendar");
     await gotoAndCapture(ptPage, "pt/checkins", "/pt/checkins");
-    await gotoAndCapture(ptPage, "pt/checkin-templates", "/pt/checkins/templates");
+    await gotoAndCapture(
+      ptPage,
+      "pt/checkin-templates",
+      "/pt/checkins/templates",
+    );
     await gotoAndCapture(ptPage, "pt/messages", "/pt/messages");
     await gotoAndCapture(ptPage, "pt/notifications", "/pt/notifications");
     await gotoAndCapture(ptPage, "pt/ops-status", "/pt/ops/status");
-    await gotoAndCapture(ptPage, "pt/baseline-settings", "/pt/settings/baseline");
+    await gotoAndCapture(
+      ptPage,
+      "pt/baseline-settings",
+      "/pt/settings/baseline",
+    );
     await gotoAndCapture(ptPage, "pt/exercises", "/pt/settings/exercises");
-    await gotoAndCapture(ptPage, "pt/nutrition-programs", "/pt/nutrition-programs");
+    await gotoAndCapture(
+      ptPage,
+      "pt/nutrition-programs",
+      "/pt/nutrition-programs",
+    );
     await gotoAndCapture(ptPage, "settings/workspace", "/settings/workspace");
-    await gotoAndCapture(ptPage, "settings/public-profile", "/settings/public-profile");
+    await gotoAndCapture(
+      ptPage,
+      "settings/public-profile",
+      "/settings/public-profile",
+    );
     await gotoAndCapture(ptPage, "settings/account", "/settings/account");
     await gotoAndCapture(ptPage, "settings/billing", "/settings/billing");
     await gotoAndCapture(ptPage, "settings/appearance", "/settings/appearance");
@@ -343,10 +394,18 @@ async function main() {
     await login(clientPage, config.clientEmail, config.clientPassword);
     await gotoAndCapture(clientPage, "client/onboarding", "/app/onboarding");
     await gotoAndCapture(clientPage, "client/home", "/app/home");
-    await gotoAndCapture(clientPage, "client/workouts-today", "/app/workouts/today");
+    await gotoAndCapture(
+      clientPage,
+      "client/workouts-today",
+      "/app/workouts/today",
+    );
     await gotoAndCapture(clientPage, "client/checkin", "/app/checkin");
     await gotoAndCapture(clientPage, "client/messages", "/app/messages");
-    await gotoAndCapture(clientPage, "client/notifications", "/app/notifications");
+    await gotoAndCapture(
+      clientPage,
+      "client/notifications",
+      "/app/notifications",
+    );
     await gotoAndCapture(clientPage, "client/profile", "/app/profile");
     await gotoAndCapture(clientPage, "client/habits", "/app/habits");
     await gotoAndCapture(clientPage, "client/progress", "/app/progress");
