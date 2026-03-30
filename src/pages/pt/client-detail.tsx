@@ -73,6 +73,12 @@ import {
   getSupabaseErrorMessage,
 } from "../../lib/supabase-errors";
 import { useAuth } from "../../lib/auth";
+import {
+  getClientLifecycleMeta,
+  getClientLifecycleReason,
+  getClientRiskFlagMeta,
+  normalizeClientRiskFlags,
+} from "../../lib/client-lifecycle";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 import { cn } from "../../lib/utils";
 import { getProfileCompletion } from "../../lib/profile-completion";
@@ -215,6 +221,10 @@ type PtClientProfile = {
   display_name: string | null;
   goal: string | null;
   status: string | null;
+  lifecycle_state: string | null;
+  lifecycle_changed_at: string | null;
+  paused_reason: string | null;
+  churn_reason: string | null;
   injuries: string | null;
   limitations: string | null;
   height_cm: number | null;
@@ -232,6 +242,17 @@ type PtClientProfile = {
   tags: string[] | string | null;
   photo_url: string | null;
   updated_at: string | null;
+};
+
+type ClientOperationalSummaryRow = {
+  id: string;
+  onboarding_status: string | null;
+  onboarding_incomplete: boolean | null;
+  last_activity_at: string | null;
+  last_client_reply_at: string | null;
+  overdue_checkins_count: number | null;
+  has_overdue_checkin: boolean | null;
+  risk_flags: string[] | null;
 };
 
 type BaselineEntry = {
@@ -607,8 +628,16 @@ export function PtClientDetailPage() {
     goal: "",
     training_type: "",
     timezone: "",
-    status: "active",
   });
+  const [lifecycleDialogOpen, setLifecycleDialogOpen] = useState(false);
+  const [lifecycleTargetState, setLifecycleTargetState] = useState("active");
+  const [lifecycleReason, setLifecycleReason] = useState("");
+  const [lifecycleValidationMessage, setLifecycleValidationMessage] = useState<
+    string | null
+  >(null);
+  const [lifecycleActionStatus, setLifecycleActionStatus] = useState<
+    "idle" | "saving"
+  >("idle");
   const selectedCheckinAnswersQuery = useQuery({
     queryKey: ["pt-checkin-answers", selectedCheckin?.id],
     enabled: !!selectedCheckin?.id,
@@ -747,7 +776,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
         )
         .eq("id", clientId ?? "")
         .eq("workspace_id", workspaceQuery.data ?? "")
@@ -755,6 +784,24 @@ export function PtClientDetailPage() {
       if (error) throw error;
       if (!data) throw new Error("Client not found in this workspace.");
       return data;
+    },
+  });
+
+  const clientOperationalQuery = useQuery({
+    queryKey: ["pt-client-operational-summary", clientId, workspaceQuery.data],
+    enabled: !!clientId && !!workspaceQuery.data,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("pt_clients_summary", {
+        p_workspace_id: workspaceQuery.data,
+        p_limit: 1000,
+        p_offset: 0,
+      });
+      if (error) throw error;
+      return (
+        ((data ?? []) as ClientOperationalSummaryRow[]).find(
+          (row) => row.id === clientId,
+        ) ?? null
+      );
     },
   });
 
@@ -2245,6 +2292,23 @@ export function PtClientDetailPage() {
       clientSnapshot?.created_at ?? clientSnapshot?.updated_at ?? null;
     return joinedAt ? formatRelativeTime(joinedAt) : null;
   }, [clientSnapshot?.created_at, clientSnapshot?.updated_at]);
+  const lifecycleReasonLabel = useMemo(
+    () =>
+      getClientLifecycleReason({
+        lifecycleState: clientSnapshot?.lifecycle_state,
+        pausedReason: clientSnapshot?.paused_reason,
+        churnReason: clientSnapshot?.churn_reason,
+      }),
+    [
+      clientSnapshot?.churn_reason,
+      clientSnapshot?.lifecycle_state,
+      clientSnapshot?.paused_reason,
+    ],
+  );
+  const clientRiskFlags = useMemo(
+    () => normalizeClientRiskFlags(clientOperationalQuery.data?.risk_flags),
+    [clientOperationalQuery.data?.risk_flags],
+  );
 
   const upcomingCheckins = useMemo(() => {
     if (!checkinsRows || checkinsRows.length === 0) return [];
@@ -2419,38 +2483,104 @@ export function PtClientDetailPage() {
       goal: clientSnapshot.goal ?? "",
       training_type: clientSnapshot.training_type ?? "",
       timezone: clientSnapshot.timezone ?? "",
-      status: clientSnapshot.status ?? "active",
     });
     setProfileEditOpen(true);
   };
 
-  const updateClientStatus = async (
-    status: "active" | "paused" | "terminated",
-  ) => {
+  const openLifecycleDialog = (state: string) => {
+    setLifecycleTargetState(state);
+    setLifecycleReason(
+      state === "paused"
+        ? (clientSnapshot?.paused_reason ?? "")
+        : state === "churned"
+          ? (clientSnapshot?.churn_reason ?? "")
+          : "",
+    );
+    setLifecycleValidationMessage(null);
+    setLifecycleDialogOpen(true);
+  };
+
+  const handleLifecycleSave = async () => {
     if (!clientSnapshot?.id) return;
-    const { data, error } = await supabase
-      .from("clients")
-      .update({ status })
-      .eq("id", clientSnapshot.id)
-      .select("id, status")
-      .maybeSingle();
+    if (
+      ["paused", "churned"].includes(lifecycleTargetState) &&
+      !lifecycleReason.trim()
+    ) {
+      setLifecycleValidationMessage(
+        lifecycleTargetState === "paused"
+          ? "Pause reason is required."
+          : "Churn reason is required.",
+      );
+      return;
+    }
+
+    setLifecycleActionStatus("saving");
+    const { data, error } = await supabase.rpc("pt_update_client_lifecycle", {
+      p_client_id: clientSnapshot.id,
+      p_lifecycle_state: lifecycleTargetState,
+      p_reason: lifecycleReason.trim() || null,
+    });
+
     if (error) {
       setToastVariant("error");
       setToastMessage(getErrorMessage(error));
+      setLifecycleActionStatus("idle");
       return;
     }
-    if (data?.status) {
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (updated) {
       setClientProfile((prev) =>
-        prev ? { ...prev, status: data.status } : prev,
+        prev
+          ? {
+              ...prev,
+              status: updated.status ?? prev.status,
+              lifecycle_state:
+                updated.lifecycle_state ?? prev.lifecycle_state ?? "active",
+              lifecycle_changed_at:
+                updated.lifecycle_changed_at ?? prev.lifecycle_changed_at,
+              paused_reason: updated.paused_reason ?? null,
+              churn_reason: updated.churn_reason ?? null,
+            }
+          : prev,
       );
       queryClient.setQueryData(
         ["pt-client", clientId, workspaceQuery.data],
         (prev: PtClientProfile | undefined) =>
-          prev ? { ...prev, status: data.status } : prev,
+          prev
+            ? {
+                ...prev,
+                status: updated.status ?? prev.status,
+                lifecycle_state:
+                  updated.lifecycle_state ?? prev.lifecycle_state ?? "active",
+                lifecycle_changed_at:
+                  updated.lifecycle_changed_at ?? prev.lifecycle_changed_at,
+                paused_reason: updated.paused_reason ?? null,
+                churn_reason: updated.churn_reason ?? null,
+              }
+            : prev,
       );
     }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: [
+          "pt-client-operational-summary",
+          clientId,
+          workspaceQuery.data,
+        ],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["pt-checkins-queue"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+    ]);
+
+    setLifecycleActionStatus("idle");
+    setLifecycleDialogOpen(false);
     setToastVariant("success");
-    setToastMessage(`Client marked ${status}.`);
+    setToastMessage(
+      `Client moved to ${lifecycleTargetState.replace(/_/g, " ")}.`,
+    );
   };
 
   const handleProfileSave = async () => {
@@ -2461,16 +2591,13 @@ export function PtClientDetailPage() {
       goal: profileEditForm.goal.trim() || null,
       training_type: profileEditForm.training_type || null,
       timezone: profileEditForm.timezone.trim() || null,
-      status: profileEditForm.status || "active",
       updated_at: new Date().toISOString(),
     };
     const { data, error } = await supabase
       .from("clients")
       .update(payload)
       .eq("id", clientSnapshot.id)
-      .select(
-        "id, display_name, goal, training_type, timezone, status, updated_at",
-      )
+      .select("id, display_name, goal, training_type, timezone, updated_at")
       .maybeSingle();
     if (error) {
       setToastVariant("error");
@@ -2970,10 +3097,25 @@ export function PtClientDetailPage() {
                     <h2 className="text-xl font-semibold tracking-tight">
                       {clientSnapshot?.display_name ?? "Client profile"}
                     </h2>
-                    <StatusPill status={clientSnapshot?.status ?? "active"} />
+                    <StatusPill
+                      status={
+                        clientSnapshot?.lifecycle_state ??
+                        clientSnapshot?.status ??
+                        "active"
+                      }
+                    />
                     {onboardingSnapshot ? (
                       <StatusPill status={onboardingSnapshot.status} />
                     ) : null}
+                    {clientRiskFlags.slice(0, 2).map((flag) => {
+                      const meta = getClientRiskFlagMeta(flag);
+                      if (!meta) return null;
+                      return (
+                        <Badge key={flag} variant={meta.variant}>
+                          {meta.shortLabel}
+                        </Badge>
+                      );
+                    })}
                     {lastSeen ? (
                       <span className="text-xs text-muted-foreground">
                         Last seen {lastSeen}
@@ -3041,19 +3183,29 @@ export function PtClientDetailPage() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => updateClientStatus("active")}
+                      onClick={() => openLifecycleDialog("active")}
                     >
                       Mark active
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => updateClientStatus("paused")}
+                      onClick={() => openLifecycleDialog("paused")}
                     >
                       Mark paused
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => updateClientStatus("terminated")}
+                      onClick={() => openLifecycleDialog("at_risk")}
                     >
-                      Mark terminated
+                      Mark at risk
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => openLifecycleDialog("completed")}
+                    >
+                      Mark completed
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => openLifecycleDialog("churned")}
+                    >
+                      Mark churned
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -3064,9 +3216,24 @@ export function PtClientDetailPage() {
                   <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
                       <span className="block text-xs text-muted-foreground">
-                        Status
+                        Lifecycle
                       </span>
-                      <StatusPill status={clientSnapshot?.status ?? "active"} />
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                        <StatusPill
+                          status={
+                            clientSnapshot?.lifecycle_state ??
+                            clientSnapshot?.status ??
+                            "active"
+                          }
+                        />
+                        {clientSnapshot?.lifecycle_changed_at ? (
+                          <span className="text-xs text-muted-foreground">
+                            {formatRelativeTime(
+                              clientSnapshot.lifecycle_changed_at,
+                            )}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
                       <span className="block text-xs text-muted-foreground">
@@ -3138,6 +3305,40 @@ export function PtClientDetailPage() {
                       </span>
                       <span className="mt-0.5 block font-medium">
                         {lastWorkoutStatus ?? "--"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">
+                        Risk signals
+                      </span>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {clientRiskFlags.length > 0 ? (
+                          clientRiskFlags.map((flag) => {
+                            const meta = getClientRiskFlagMeta(flag);
+                            if (!meta) return null;
+                            return (
+                              <Badge
+                                key={flag}
+                                variant={meta.variant}
+                                className="text-[10px]"
+                              >
+                                {meta.shortLabel}
+                              </Badge>
+                            );
+                          })
+                        ) : (
+                          <span className="text-sm font-medium text-muted-foreground">
+                            No active risk flags
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                      <span className="block text-xs text-muted-foreground">
+                        Lifecycle reason
+                      </span>
+                      <span className="mt-0.5 block font-medium">
+                        {lifecycleReasonLabel ?? "No pause or churn reason"}
                       </span>
                     </div>
                   </div>
@@ -4401,12 +4602,104 @@ export function PtClientDetailPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={lifecycleDialogOpen}
+        onOpenChange={(open) => {
+          setLifecycleDialogOpen(open);
+          if (!open) {
+            setLifecycleValidationMessage(null);
+            setLifecycleActionStatus("idle");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Update lifecycle</DialogTitle>
+            <DialogDescription>
+              Keep lifecycle intent explicit so this client is filtered and
+              surfaced correctly across PT Hub and the workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3">
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                New lifecycle
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge
+                  variant={getClientLifecycleMeta(lifecycleTargetState).variant}
+                >
+                  {getClientLifecycleMeta(lifecycleTargetState).label}
+                </Badge>
+                {clientOperationalQuery.data?.has_overdue_checkin ? (
+                  <Badge variant="warning">
+                    {clientOperationalQuery.data.overdue_checkins_count ?? 0}{" "}
+                    overdue
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+            {["paused", "churned"].includes(lifecycleTargetState) ? (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  {lifecycleTargetState === "paused"
+                    ? "Pause reason"
+                    : "Churn reason"}
+                </label>
+                <textarea
+                  className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={lifecycleReason}
+                  onChange={(event) => {
+                    setLifecycleReason(event.target.value);
+                    if (lifecycleValidationMessage) {
+                      setLifecycleValidationMessage(null);
+                    }
+                  }}
+                  placeholder={
+                    lifecycleTargetState === "paused"
+                      ? "Why is this client paused right now?"
+                      : "Why did this client churn?"
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                This will update lifecycle badges, smart filters, and PT Hub
+                visibility for the client.
+              </p>
+            )}
+            {lifecycleValidationMessage ? (
+              <p className="text-sm text-destructive">
+                {lifecycleValidationMessage}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setLifecycleDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLifecycleSave}
+              disabled={lifecycleActionStatus === "saving"}
+            >
+              {lifecycleActionStatus === "saving"
+                ? "Saving..."
+                : "Save lifecycle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={profileEditOpen} onOpenChange={setProfileEditOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Edit client profile</DialogTitle>
             <DialogDescription>
-              Update client status and profile details.
+              Update client profile details. Lifecycle is managed from the
+              client actions menu.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -4460,25 +4753,6 @@ export function PtClientDetailPage() {
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Status
-              </label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={profileEditForm.status}
-                onChange={(event) =>
-                  setProfileEditForm((prev) => ({
-                    ...prev,
-                    status: event.target.value,
-                  }))
-                }
-              >
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-                <option value="terminated">Terminated</option>
               </select>
             </div>
             <div className="space-y-2 sm:col-span-2">
