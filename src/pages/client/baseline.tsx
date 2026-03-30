@@ -12,6 +12,12 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import {
+  PortalPageHeader,
+  StatusBanner,
+  StepIndicator,
+  StickyActionBar,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
@@ -71,6 +77,7 @@ type BaselinePhotoRow = {
 
 const photoTypes = ["front", "side", "back"] as const;
 type PhotoType = (typeof photoTypes)[number];
+const baselineSteps = ["Core stats", "Performance markers", "Photos"] as const;
 
 const lbPerKg = 2.2046226218;
 
@@ -722,7 +729,7 @@ export function ClientBaselinePage() {
 
   if (baselineLoading || clientQuery.isLoading) {
     return (
-      <div className="space-y-4 pb-16 md:pb-0">
+      <div className="portal-shell">
         <Skeleton className="h-10 w-1/2" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-40 w-full" />
@@ -732,7 +739,7 @@ export function ClientBaselinePage() {
 
   if (clientQuery.error || !clientId) {
     return (
-      <div className="space-y-4 pb-16 md:pb-0">
+      <div className="portal-shell">
         <Alert className="border-danger/30">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
@@ -747,63 +754,68 @@ export function ClientBaselinePage() {
 
   if (submitStatus === "success") {
     return (
-      <div className="space-y-6 pb-16 md:pb-0">
-        <Card>
-          <CardHeader>
-            <CardTitle>Baseline submitted</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Your coach has received your baseline. Redirecting you now.</p>
-            <Button
-              onClick={() =>
-                navigate(returnTo || "/app/home", { replace: true })
-              }
-            >
-              {returnTo ? "Return to onboarding" : "Go to home now"}
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="portal-shell">
+        <PortalPageHeader
+          title="Baseline submitted"
+          subtitle="Your coach has received your baseline."
+        />
+        <div className="portal-form-step">
+          <StatusBanner
+            variant="success"
+            title="Baseline submitted"
+            description="Your coach has received your baseline. Redirecting you now."
+            actions={
+              <Button
+                onClick={() =>
+                  navigate(returnTo || "/app/home", { replace: true })
+                }
+              >
+                {returnTo ? "Return to onboarding" : "Go to home now"}
+              </Button>
+            }
+          />
+        </div>
       </div>
     );
   }
 
   if (onboardingMode && baselineEntry?.status === "submitted") {
     return (
-      <div className="space-y-6 pb-16 md:pb-0">
-        <Card>
-          <CardHeader>
-            <CardTitle>Initial assessment already submitted</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              This baseline has already been submitted and counts toward your
-              onboarding progress.
-            </p>
-            <Button
-              onClick={() =>
-                navigate(returnTo || "/app/onboarding", { replace: true })
-              }
-            >
-              Return to onboarding
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="portal-shell">
+        <PortalPageHeader
+          title="Baseline already submitted"
+          subtitle="This initial assessment already counts toward your onboarding progress."
+        />
+        <div className="portal-form-step">
+          <StatusBanner
+            variant="locked"
+            title="Initial assessment already submitted"
+            description="This baseline has already been submitted and counts toward your onboarding progress."
+            actions={
+              <Button
+                onClick={() =>
+                  navigate(returnTo || "/app/onboarding", { replace: true })
+                }
+              >
+                Return to onboarding
+              </Button>
+            }
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Baseline</h1>
-          <p className="text-sm text-muted-foreground">
-            Capture your body metrics, performance markers, and photos.
-          </p>
-        </div>
-        <Badge variant="muted">Draft</Badge>
-      </div>
+    <div className="portal-shell">
+      <PortalPageHeader
+        title="Baseline"
+        subtitle="Capture your body metrics, performance markers, and photos."
+        stateText={onboardingMode ? "Onboarding flow" : undefined}
+        actions={<Badge variant="muted">{baselineSteps[activeStep]}</Badge>}
+      />
 
+      <div className="portal-form-shell space-y-6">
       {errors.length > 0 ? (
         <div className="space-y-2">
           {errors.map((error, index) => (
@@ -830,18 +842,20 @@ export function ClientBaselinePage() {
         </Alert>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        {["Body metrics", "Performance markers", "Photos"].map(
-          (label, index) => (
-            <Badge
-              key={label}
-              variant={activeStep === index ? "success" : "muted"}
-            >
-              {index + 1}. {label}
-            </Badge>
-          ),
+      <StepIndicator
+        steps={baselineSteps.map(
+          (label, index) => ({
+            label,
+            state:
+              index < activeStep
+                ? "completed"
+                : index === activeStep
+                  ? "current"
+                  : "upcoming",
+            onClick: index <= activeStep ? () => setActiveStep(index) : undefined,
+          }),
         )}
-      </div>
+      />
 
       {activeStep === 0 ? (
         <Card>
@@ -1035,16 +1049,21 @@ export function ClientBaselinePage() {
                 }
               />
             </div>
-            <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3">
-              <Button variant="secondary" onClick={() => navigate("/app/home")}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleMetricsSave}
-                disabled={!metricsRequiredFilled || metricsStatus === "saving"}
-              >
-                {metricsStatus === "saving" ? "Saving..." : "Next"}
-              </Button>
+            <div className="sm:col-span-2">
+              <StickyActionBar>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate("/app/home")}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleMetricsSave}
+                  disabled={!metricsRequiredFilled || metricsStatus === "saving"}
+                >
+                  {metricsStatus === "saving" ? "Saving..." : "Next"}
+                </Button>
+              </StickyActionBar>
             </div>
           </CardContent>
         </Card>
@@ -1095,7 +1114,7 @@ export function ClientBaselinePage() {
                 ))}
               </div>
             )}
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <StickyActionBar>
               <Button variant="secondary" onClick={() => setActiveStep(0)}>
                 Back
               </Button>
@@ -1105,7 +1124,7 @@ export function ClientBaselinePage() {
               >
                 {markerStatus === "saving" ? "Saving..." : "Next"}
               </Button>
-            </div>
+            </StickyActionBar>
           </CardContent>
         </Card>
       ) : null}
@@ -1156,7 +1175,7 @@ export function ClientBaselinePage() {
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <StickyActionBar>
               <Button variant="secondary" onClick={() => setActiveStep(1)}>
                 Back
               </Button>
@@ -1172,10 +1191,11 @@ export function ClientBaselinePage() {
                   ? "Submitting..."
                   : "Submit baseline"}
               </Button>
-            </div>
+            </StickyActionBar>
           </CardContent>
         </Card>
       ) : null}
+    </div>
     </div>
   );
 }

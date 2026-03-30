@@ -3,14 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ClientReminders } from "../../components/common/client-reminders";
+import {
+  EmptyStateBlock,
+  PortalPageHeader,
+  SectionCard,
+  StatusBanner,
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -89,56 +94,6 @@ const writeDayStatus = (dateKey: string, status: DayStatus) => {
     JSON.stringify(status),
   );
 };
-
-const cardChrome =
-  "border border-border/70 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_14px_30px_-18px_rgba(0,0,0,0.85)]";
-
-function SectionHeader({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle?: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2">
-        <span className="h-3 w-3 rounded-full border-2 border-primary/85 bg-transparent shadow-[0_0_12px_rgba(56,189,248,0.45)]" />
-        <CardTitle>{title}</CardTitle>
-      </div>
-      {subtitle ? (
-        <span className="text-xs text-muted-foreground">{subtitle}</span>
-      ) : null}
-    </div>
-  );
-}
-
-function SummaryStat({
-  label,
-  value,
-  hint,
-  status,
-  statusVariant = "muted",
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  status: string;
-  statusVariant?: "muted" | "success" | "danger" | "secondary" | "warning";
-}) {
-  return (
-    <Card className={`${cardChrome} bg-muted/20`}>
-      <CardHeader className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="uppercase tracking-wide">{label}</span>
-          <Badge variant={statusVariant}>{status}</Badge>
-        </div>
-        <CardTitle className="text-lg">{value}</CardTitle>
-        {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-      </CardHeader>
-    </Card>
-  );
-}
 
 const getWorkoutTemplateInfo = (row: any) => {
   const raw = row?.workout_template ?? null;
@@ -520,7 +475,7 @@ export function ClientHomePage() {
 
   const coachBadgeLabel = latestCoachActivity?.created_at
     ? `Coach reviewed your plan ${formatRelativeTime(latestCoachActivity.created_at)}`
-    : "Coach hasn’t reviewed your plan yet.";
+    : "Coach hasn't reviewed your plan yet.";
 
   const profileCompletion = useMemo(() => {
     if (!clientQuery.data) return null;
@@ -632,630 +587,556 @@ export function ClientHomePage() {
   const handleRequestAdjustment = () => {
     navigate(
       `/app/messages?draft=${encodeURIComponent(
-        "I skipped today's workout — can we adjust?",
+        "I skipped today's workout - can we adjust?",
       )}`,
     );
   };
 
+  const checklistCompletedCount = Object.values(checklist).filter(Boolean).length;
+  const trainingStatusVariant =
+    summaryTrainingStatus === "completed"
+      ? "success"
+      : summaryTrainingStatus === "skipped"
+        ? "danger"
+        : summaryTrainingStatus === "planned"
+          ? "secondary"
+          : summaryTrainingStatus.toLowerCase().includes("rest")
+            ? "warning"
+            : "muted";
+  const nutritionRequestDraft = encodeURIComponent(
+    "Can you set my nutrition targets for this week?",
+  );
+  const primaryAction = (() => {
+    if (todayWorkout && !isRestDay) {
+      if (todayWorkoutStatus === "completed") {
+        return {
+          label: "View workout summary",
+          onClick: () => navigate(`/app/workout-summary/${todayWorkout.id}`),
+        };
+      }
+      if (todayWorkoutStatus === "skipped") {
+        return {
+          label: "Request adjustment",
+          onClick: handleRequestAdjustment,
+        };
+      }
+      return {
+        label: "Start workout",
+        onClick: () => navigate(`/app/workout-run/${todayWorkout.id}`),
+      };
+    }
+
+    if (isRestDay) {
+      return {
+        label: "Open habits log",
+        onClick: () => navigate("/app/habits"),
+      };
+    }
+
+    return {
+      label: "Start default session",
+      onClick: handleStartDefaultSession,
+    };
+  })();
+  const weeklyStats = useMemo(() => {
+    const weeklyWorkouts = weekRows.filter(
+      (row) => row.workout && row.workout.day_type !== "rest",
+    );
+
+    return {
+      completed: weeklyWorkouts.filter(
+        (row) => row.workout?.status === "completed",
+      ).length,
+      skipped: weeklyWorkouts.filter((row) => row.workout?.status === "skipped")
+        .length,
+      planned: weeklyWorkouts.filter((row) => {
+        const status = row.workout?.status;
+        return status === "planned" || status === "pending" || !status;
+      }).length,
+      rest: weekRows.filter(
+        (row) => row.workout?.day_type === "rest" || !row.workout,
+      ).length,
+    };
+  }, [weekRows]);
+
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
-      <section className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Today&apos;s Mission
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Today&apos;s Mission
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {subtitleDate} &bull; {missionCopy}
-          </p>
-        </div>
-        <Badge variant={latestCoachActivity ? "success" : "muted"}>
-          {coachBadgeLabel}
-        </Badge>
-      </section>
+    <div className="portal-shell">
+      <PortalPageHeader
+        title="Today's Mission"
+        subtitle={`${subtitleDate}. ${missionCopy}`}
+        stateText={coachBadgeLabel}
+      />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryStat
-          label="Training"
-          value={summaryTrainingTitle}
-          hint={summaryTrainingHint}
-          status={summaryTrainingStatus}
-          statusVariant={
-            summaryTrainingStatus === "completed"
-              ? "success"
-              : summaryTrainingStatus === "skipped"
-                ? "danger"
-                : summaryTrainingStatus === "planned"
-                  ? "secondary"
-                  : summaryTrainingStatus.toLowerCase().includes("rest")
-                    ? "warning"
-                    : "muted"
-          }
-        />
-        <SummaryStat
-          label="Nutrition"
-          value={summaryNutritionValue}
-          hint={summaryNutritionHint}
-          status={typeof targets?.calories === "number" ? "set" : "pending"}
-          statusVariant={
-            typeof targets?.calories === "number" ? "success" : "muted"
-          }
-        />
-        <SummaryStat
-          label="Habits"
-          value={`${checklistProgress}%`}
-          hint={summaryHabitHint}
-          status={checklistProgress === 100 ? "perfect" : "in progress"}
-          statusVariant={checklistProgress === 100 ? "success" : "secondary"}
-        />
-        <SummaryStat
-          label="Streak"
-          value={`${consistencyStreak} days`}
-          hint="Days logged in a row"
-          status={consistencyStreak > 0 ? "active" : "start"}
-          statusVariant={consistencyStreak > 0 ? "success" : "muted"}
-        />
-      </section>
-
-      <Card className={`${cardChrome}`}>
-        <CardHeader className="space-y-2">
-          <SectionHeader title="Calendar" subtitle="Next 7 days" />
-          <p className="text-sm text-muted-foreground">
-            Training and recovery mapped out in calendar view.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {weeklyPlanQuery.isLoading ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-              {Array.from({ length: 7 }).map((_, index) => (
-                <Skeleton key={index} className="h-10 w-full" />
-              ))}
+      <SurfaceCard>
+        <SurfaceCardHeader className="pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <SurfaceCardTitle className="text-2xl">
+                {summaryTrainingTitle}
+              </SurfaceCardTitle>
+              <SurfaceCardDescription>{summaryTrainingHint}</SurfaceCardDescription>
             </div>
-          ) : (
-            <>
-              {(() => {
-                const weeklyWorkouts = weekRows.filter(
-                  (row) => row.workout && row.workout.day_type !== "rest",
-                );
-                const weeklyCompleted = weeklyWorkouts.filter(
-                  (row) => row.workout?.status === "completed",
-                ).length;
-                const weeklySkipped = weeklyWorkouts.filter(
-                  (row) => row.workout?.status === "skipped",
-                ).length;
-                const weeklyPlanned = weeklyWorkouts.filter((row) => {
-                  const status = row.workout?.status;
-                  return (
-                    status === "planned" || status === "pending" || !status
-                  );
-                }).length;
-                const weeklyRest = weekRows.filter(
-                  (row) => row.workout?.day_type === "rest" || !row.workout,
-                ).length;
-                return (
-                  <>
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-                        <div className="text-muted-foreground">Completed</div>
-                        <div className="text-sm font-semibold text-foreground">
-                          {weeklyCompleted}
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-                        <div className="text-muted-foreground">Skipped</div>
-                        <div className="text-sm font-semibold text-foreground">
-                          {weeklySkipped}
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-                        <div className="text-muted-foreground">Planned</div>
-                        <div className="text-sm font-semibold text-foreground">
-                          {weeklyPlanned}
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-                        <div className="text-muted-foreground">Rest</div>
-                        <div className="text-sm font-semibold text-foreground">
-                          {weeklyRest}
-                        </div>
-                      </div>
-                    </div>
+            <Badge variant={trainingStatusVariant}>{summaryTrainingStatus}</Badge>
+          </div>
+        </SurfaceCardHeader>
+        <SurfaceCardContent className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.95fr)]">
+          <SectionCard className="space-y-5">
+            <div className="space-y-3">
+              <p className="field-label">Primary focus</p>
+              <p className="text-base leading-7 text-foreground">{missionCopy}</p>
+            </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-                      {weekRows.map((row) => {
-                        const workout = row.workout;
-                        const isRestDay = workout?.day_type === "rest";
-                        const status = isRestDay
-                          ? "rest day"
-                          : workout?.status === "pending"
-                            ? "planned"
-                            : (workout?.status ??
-                              (workout ? "planned" : "rest day"));
-                        const title = isRestDay
-                          ? "Rest day"
-                          : (getWorkoutTemplateInfo(workout).name ??
-                            (workout as { workout_template_name?: string })
-                              ?.workout_template_name ??
-                            "Workout");
-                        const isTodayCard = row.key === todayKey;
-                        const statusVariant =
-                          status === "completed"
-                            ? "success"
-                            : status === "skipped"
-                              ? "danger"
-                              : status === "rest day"
-                                ? "warning"
-                                : "muted";
+            {todayWorkout?.coach_note ? (
+              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                <p className="field-label">Coach note</p>
+                <p className="mt-2 text-sm leading-6 text-foreground">
+                  {todayWorkout.coach_note}
+                </p>
+              </div>
+            ) : null}
 
-                        return (
-                          <button
-                            key={row.key}
-                            type="button"
-                            onClick={() => {
-                              if (workout?.id && !isRestDay)
-                                navigate(`/app/workouts/${workout.id}`);
-                            }}
-                            disabled={!workout?.id || isRestDay}
-                            className={
-                              isTodayCard
-                                ? "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border shadow-[0_0_22px_rgba(56,189,248,0.2)]"
-                                : "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border"
-                            }
-                          >
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <span className="uppercase tracking-[0.2em]">
-                                  {row.date.toLocaleDateString("en-US", {
-                                    weekday: "short",
-                                    day: "numeric",
-                                  })}
-                                </span>
-                              </div>
+            {!todayWorkout && !isRestDay ? (
+              <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 p-4">
+                <p className="text-sm font-semibold text-foreground">
+                  No workout assigned yet
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your coach hasn't scheduled a session for today. Use the fallback plan if you still want to train.
+                </p>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                  {defaultPlan.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-                              <div className="space-y-1">
-                                <p className="line-clamp-2 text-base font-semibold text-foreground">
-                                  {title}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {isRestDay
-                                    ? "Planned rest day"
-                                    : (getWorkoutTemplateInfo(workout)
-                                        .workout_type_tag ?? "Workout")}
-                                </p>
-                              </div>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
+              <Button
+                variant="secondary"
+                onClick={() => navigate("/app/messages")}
+              >
+                Message coach
+              </Button>
+            </div>
+          </SectionCard>
 
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge
-                                  variant={statusVariant}
-                                  className="uppercase"
-                                >
-                                  {status}
-                                </Badge>
-                                {workout?.coach_note ? (
-                                  <Badge variant="secondary">Coach note</Badge>
-                                ) : null}
-                              </div>
-                              {workout?.coach_note ? (
-                                <p className="line-clamp-3 text-sm text-foreground/90">
-                                  {workout.coach_note}
-                                </p>
-                              ) : null}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                );
-              })()}
-              {weeklyPlan.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                  No sessions scheduled yet. Focus on steps, hydration, and
-                  sleep.
+          <div className="space-y-3">
+            <SectionCard className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="field-label">Today at a glance</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    The essentials that matter most today.
+                  </p>
                 </div>
-              ) : null}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                <Badge variant={trainingStatusVariant}>{summaryTrainingStatus}</Badge>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Training</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {summaryTrainingTitle}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
+                    {workoutsCompletedThisWeek} done this week
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Checklist</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {summaryHabitHint}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
+                    {checklistProgress}%
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Nutrition</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {summaryNutritionHint}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
+                    {summaryNutritionValue}
+                  </span>
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard className="space-y-2">
+              <p className="field-label">Consistency</p>
+              <p className="text-2xl font-semibold text-foreground">
+                {consistencyStreak} days
+              </p>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Keep your logging streak moving and today will compound into the rest of the week.
+              </p>
+            </SectionCard>
+          </div>
+        </SurfaceCardContent>
+      </SurfaceCard>
 
       {profileCompletion &&
       profileCompletion.completed < profileCompletion.total &&
       onboardingSummary?.onboarding.status === "completed" ? (
-        <Card className={`border-dashed ${cardChrome}`}>
-          <CardHeader>
-            <CardTitle>Complete your profile</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              This helps your coach tailor your plan.
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-muted-foreground">
-              {profileCompletion.completed}/{profileCompletion.total} fields
-              complete
-            </div>
+        <StatusBanner
+          variant="info"
+          title="Complete your profile"
+          description={`${profileCompletion.completed}/${profileCompletion.total} fields complete. Filling in the rest helps your coach tailor the plan.`}
+          actions={
             <Button onClick={() => navigate("/app/profile")}>
               Complete profile
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <Card className={`${cardChrome}`}>
-            <CardHeader>
-              <SectionHeader title="Today's Training" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {todayWorkoutQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-8 w-1/3" />
-                  <Skeleton className="h-10 w-full" />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <SurfaceCard>
+          <SurfaceCardHeader>
+            <SurfaceCardTitle>Today's training and nutrition</SurfaceCardTitle>
+            <SurfaceCardDescription>
+              Keep today's work, nutrition, and recovery targets in one place.
+            </SurfaceCardDescription>
+          </SurfaceCardHeader>
+          <SurfaceCardContent className="grid gap-5 lg:grid-cols-2">
+            <SectionCard className="space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="field-label">Today's training</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {summaryTrainingTitle}
+                  </p>
                 </div>
-              ) : todayWorkout ? (
-                isRestDay ? (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Rest day
-                        </p>
-                        <p className="text-lg font-semibold">Rest day</p>
-                      </div>
-                      <Badge variant="warning">Rest day</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Rest day. Steps + nutrition still count.
-                    </p>
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => navigate("/app/messages")}
-                    >
-                      Message coach
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          {todayWorkoutStatus === "completed"
-                            ? "Workout completed"
-                            : todayWorkoutStatus === "skipped"
-                              ? "Workout skipped (coach notified)"
-                              : "Workout planned"}
-                        </p>
-                        <p className="text-lg font-semibold">
-                          {todayTemplate.name ??
-                            (
-                              todayWorkout as {
-                                workout_template_name?: string;
-                              } | null
-                            )?.workout_template_name ??
-                            "Planned session"}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          todayWorkoutStatus === "completed"
-                            ? "success"
-                            : todayWorkoutStatus === "skipped"
-                              ? "danger"
-                              : "muted"
-                        }
-                      >
-                        {todayWorkoutStatus ?? "planned"}
-                      </Badge>
-                    </div>
-                    {todayTemplateInfo.workoutType ? (
-                      <Badge variant="muted">
-                        {todayTemplateInfo.workoutType}
-                      </Badge>
-                    ) : null}
-                    {todayWorkout?.coach_note ? (
-                      <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
-                        <p className="text-xs text-muted-foreground">
-                          Coach note
-                        </p>
-                        <p className="mt-1 text-foreground">
-                          {todayWorkout.coach_note}
-                        </p>
-                      </div>
-                    ) : null}
-                    {todayWorkoutStatus === "completed" ? (
-                      <Button
-                        className="w-full"
-                        onClick={() =>
-                          navigate(`/app/workout-summary/${todayWorkout.id}`)
-                        }
-                      >
-                        View summary
-                      </Button>
-                    ) : todayWorkoutStatus === "skipped" ? (
-                      <Button
-                        className="w-full"
-                        onClick={handleRequestAdjustment}
-                      >
-                        Request adjustment
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        onClick={() =>
-                          navigate(`/app/workout-run/${todayWorkout.id}`)
-                        }
-                      >
-                        Start workout
-                      </Button>
-                    )}
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => navigate("/app/messages")}
-                    >
-                      Message coach
-                    </Button>
-                  </div>
-                )
-              ) : (
-                <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
-                  <div>
-                    <p className="text-sm font-semibold">
-                      No workout assigned yet
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Your coach hasn&apos;t scheduled today&apos;s session. You
-                      can still do your default plan:
-                    </p>
-                  </div>
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                    {defaultPlan.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="w-full"
-                    onClick={handleStartDefaultSession}
-                  >
-                    Start default session
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => navigate("/app/messages")}
-                  >
-                    Message coach
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                <Badge variant={trainingStatusVariant}>{summaryTrainingStatus}</Badge>
+              </div>
+              {todayTemplateInfo.workoutType ? (
+                <p className="text-sm text-muted-foreground">
+                  {todayTemplateInfo.workoutType}
+                </p>
+              ) : null}
+              <p className="text-sm leading-6 text-muted-foreground">
+                {summaryTrainingHint}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate("/app/messages")}
+                >
+                  Message coach
+                </Button>
+              </div>
+            </SectionCard>
 
-          <Card className={`${cardChrome}`}>
-            <CardHeader>
-              <SectionHeader title="Today's Nutrition" />
-            </CardHeader>
-            <CardContent className="space-y-3">
+            <SectionCard className="space-y-4">
+              <div className="space-y-1">
+                <p className="field-label">Nutrition and habits</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {todayNutritionTemplate?.name ?? "Nutrition plan pending"}
+                </p>
+              </div>
+
               {todayNutritionQuery.isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-20 w-full" />
                 </div>
               ) : todayNutrition ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        Assigned for today
-                      </p>
-                      <p className="text-sm font-semibold">
-                        {todayNutritionTemplate?.name ?? "Nutrition plan"}
-                      </p>
-                    </div>
-                    <Badge variant="muted">planned</Badge>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
+                <>
+                  <div className="grid grid-cols-4 gap-2 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-3 text-center text-xs">
                     <div>
                       <p className="text-muted-foreground">Cals</p>
-                      <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.calories)}
-                      </p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.calories)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">P</p>
-                      <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.protein_g)}
-                      </p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.protein_g)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">C</p>
-                      <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.carbs_g)}
-                      </p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.carbs_g)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">F</p>
-                      <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.fat_g)}
-                      </p>
+                      <p className="font-semibold">{Math.round(todayNutritionTotals.fat_g)}</p>
                     </div>
                   </div>
                   <Button
                     className="w-full"
-                    onClick={() =>
-                      navigate(`/app/nutrition/${todayNutrition.id}`)
-                    }
+                    onClick={() => navigate(`/app/nutrition/${todayNutrition.id}`)}
                   >
                     Open nutrition plan
                   </Button>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
-                    <p className="mb-2 font-semibold text-foreground">
-                      Upcoming 7 days
-                    </p>
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                      {Array.from({ length: 7 }).map((_, idx) => {
-                        const date = addDaysToDateString(todayKey, idx);
-                        const hasAssigned = (
-                          nutritionWeekQuery.data ?? []
-                        ).some((row: any) => row.date === date);
-                        return (
-                          <div
-                            key={date}
-                            className={`rounded-md border px-2 py-1 text-center ${
-                              hasAssigned
-                                ? "border-primary/60 bg-primary/10"
-                                : "border-border/60"
-                            }`}
-                          >
-                            {date.slice(5)}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                </>
               ) : (
-                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                  No nutrition assigned for today yet.
-                </div>
+                <EmptyStateBlock
+                  title="No nutrition assigned yet"
+                  description="You can still keep protein, hydration, and steps on track while your coach finalizes today's plan."
+                />
               )}
-            </CardContent>
-          </Card>
 
-          <Card className={`${cardChrome}`}>
-            <CardHeader>
-              <SectionHeader title="Nutrition Targets" />
-            </CardHeader>
-            <CardContent className="space-y-4">
               {targetsQuery.isLoading ? (
                 <div className="space-y-3">
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
                 </div>
               ) : (
-                <div
-                  className={
-                    hasTargets
-                      ? "space-y-3"
-                      : "space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4"
-                  }
-                >
+                <>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <p className="text-xs text-muted-foreground">Calories</p>
-                      <p className="text-sm font-semibold">
+                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-3">
+                      <p className="field-label">Calories</p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.calories === "number"
                           ? targets.calories.toLocaleString()
                           : "Coach setting in progress"}
                       </p>
                     </div>
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <p className="text-xs text-muted-foreground">Protein</p>
-                      <p className="text-sm font-semibold">
+                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-3">
+                      <p className="field-label">Protein</p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.protein_g === "number"
                           ? `${targets.protein_g} g`
                           : "Prioritize protein today"}
                       </p>
                     </div>
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <p className="text-xs text-muted-foreground">Steps</p>
-                      <p className="text-sm font-semibold">
+                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-3">
+                      <p className="field-label">Steps</p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.steps === "number"
                           ? targets.steps.toLocaleString()
-                          : "8,000 (today's focus)"}
+                          : "8,000 focus"}
                       </p>
                     </div>
                   </div>
-                  <div className="rounded-lg border border-border bg-background p-3 text-sm">
-                    <p className="text-xs text-muted-foreground">Coach notes</p>
-                    <p>
+                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-3">
+                    <p className="field-label">Coach notes</p>
+                    <p className="mt-2 text-sm leading-6 text-foreground">
                       {targets?.coach_notes ??
-                        "Today: protein first, hydrate, don't skip steps."}
+                        "Today: protein first, hydrate, and don't skip steps."}
                     </p>
                   </div>
                   {!hasTargets ? (
                     <Button
                       variant="secondary"
                       className="w-full"
-                      onClick={() =>
-                        navigate(
-                          `/app/messages?draft=${encodeURIComponent(
-                            "Can you set my nutrition targets for this week?",
-                          )}`,
-                        )
-                      }
+                      onClick={() => navigate(`/app/messages?draft=${nutritionRequestDraft}`)}
                     >
-                      Request targets
+                      Request nutrition targets
                     </Button>
                   ) : null}
-                </div>
+                </>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </SectionCard>
+          </SurfaceCardContent>
+        </SurfaceCard>
 
-        <div className="space-y-6">
-          <Card className={`${cardChrome}`}>
-            <CardHeader>
-              <SectionHeader title="Today's Checklist" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Progress</span>
-                  <span>{checklistProgress}%</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div
-                    className="h-2 rounded-full bg-primary transition-all"
-                    style={{ width: `${checklistProgress}%` }}
+        <SurfaceCard>
+          <SurfaceCardHeader>
+            <SurfaceCardTitle>Today's checklist</SurfaceCardTitle>
+            <SurfaceCardDescription>
+              Tick off the daily basics so training, recovery, and habits stay visible.
+            </SurfaceCardDescription>
+          </SurfaceCardHeader>
+          <SurfaceCardContent className="space-y-4">
+            <SectionCard className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Progress</span>
+                <span>{checklistProgress}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted">
+                <div
+                  className="h-2 rounded-full bg-primary transition-all"
+                  style={{ width: `${checklistProgress}%` }}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {checklistCompletedCount} of {checklistKeys.length} complete
+              </p>
+            </SectionCard>
+
+            <div className="space-y-2">
+              {checklistKeys.map((key) => (
+                <label
+                  key={key}
+                  className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm"
+                >
+                  <span className="font-medium capitalize text-foreground">
+                    {key === "steps" && typeof targets?.steps === "number"
+                      ? `Steps (${targets.steps.toLocaleString()})`
+                      : key}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={checklist[key]}
+                    onChange={() =>
+                      setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
+                    }
                   />
-                </div>
-              </div>
-              <div className="space-y-2">
-                {checklistKeys.map((key) => (
-                  <label
-                    key={key}
-                    className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  >
-                    <span className="capitalize">
-                      {key === "steps" && typeof targets?.steps === "number"
-                        ? `Steps (${targets.steps.toLocaleString()})`
-                        : key}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={checklist[key]}
-                      onChange={() =>
-                        setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
-                      }
-                    />
-                  </label>
-                ))}
-              </div>
-              {dayStatus?.completed ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-                  {"\u2705"} Perfect day logged
-                </div>
-              ) : null}
+                </label>
+              ))}
+            </div>
+
+            {dayStatus?.completed ? (
+              <StatusBanner
+                variant="success"
+                title="Perfect day logged"
+                description="All checklist items are complete for today."
+              />
+            ) : null}
+
+            <div className="flex flex-wrap gap-3">
               <Button
                 variant="secondary"
-                className="w-full"
+                onClick={() => navigate("/app/habits")}
+              >
+                Open habits
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => setChecklist(emptyChecklist)}
               >
                 Reset today
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </SurfaceCardContent>
+        </SurfaceCard>
+      </div>
 
-          <ClientReminders clientId={clientId} timezone={clientTimezone} />
-        </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.15fr)]">
+        <ClientReminders clientId={clientId} timezone={clientTimezone} />
+
+        <SurfaceCard>
+          <SurfaceCardHeader>
+            <SurfaceCardTitle>Calendar</SurfaceCardTitle>
+            <SurfaceCardDescription>
+              Training and recovery mapped across the next 7 days.
+            </SurfaceCardDescription>
+          </SurfaceCardHeader>
+          <SurfaceCardContent className="space-y-4">
+            {weeklyPlanQuery.isLoading ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                {Array.from({ length: 7 }).map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full rounded-[var(--radius-lg)]" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <SectionCard className="p-3">
+                    <p className="field-label">Completed</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      {weeklyStats.completed}
+                    </p>
+                  </SectionCard>
+                  <SectionCard className="p-3">
+                    <p className="field-label">Planned</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      {weeklyStats.planned}
+                    </p>
+                  </SectionCard>
+                  <SectionCard className="p-3">
+                    <p className="field-label">Skipped</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      {weeklyStats.skipped}
+                    </p>
+                  </SectionCard>
+                  <SectionCard className="p-3">
+                    <p className="field-label">Rest</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      {weeklyStats.rest}
+                    </p>
+                  </SectionCard>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+                  {weekRows.map((row) => {
+                    const workout = row.workout;
+                    const rowIsRestDay = workout?.day_type === "rest";
+                    const status = rowIsRestDay
+                      ? "rest day"
+                      : workout?.status === "pending"
+                        ? "planned"
+                        : (workout?.status ?? (workout ? "planned" : "rest day"));
+                    const title = rowIsRestDay
+                      ? "Rest day"
+                      : (getWorkoutTemplateInfo(workout).name ??
+                        (workout as { workout_template_name?: string })?.workout_template_name ??
+                        "Workout");
+                    const statusVariant =
+                      status === "completed"
+                        ? "success"
+                        : status === "skipped"
+                          ? "danger"
+                          : status === "rest day"
+                            ? "warning"
+                            : "muted";
+
+                    return (
+                      <button
+                        key={row.key}
+                        type="button"
+                        onClick={() => {
+                          if (workout?.id && !rowIsRestDay) {
+                            navigate(`/app/workouts/${workout.id}`);
+                          }
+                        }}
+                        disabled={!workout?.id || rowIsRestDay}
+                        className={`rounded-[var(--radius-lg)] border px-4 py-4 text-left transition ${
+                          row.key === todayKey
+                            ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(56,189,248,0.75)]"
+                            : "border-border/70 bg-background/45 hover:border-border"
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              {row.date.toLocaleDateString("en-US", {
+                                weekday: "short",
+                                day: "numeric",
+                              })}
+                            </span>
+                            <Badge variant={statusVariant}>{status}</Badge>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                              {title}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {rowIsRestDay
+                                ? "Recovery focus"
+                                : (getWorkoutTemplateInfo(workout).workout_type_tag ??
+                                  "Workout")}
+                            </p>
+                          </div>
+                          {workout?.coach_note ? (
+                            <p className="line-clamp-3 text-xs leading-5 text-muted-foreground">
+                              {workout.coach_note}
+                            </p>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {weeklyPlan.length === 0 ? (
+                  <EmptyStateBlock
+                    title="No sessions scheduled yet"
+                    description="Focus on steps, hydration, and sleep while your coach builds the next block."
+                  />
+                ) : null}
+              </>
+            )}
+          </SurfaceCardContent>
+        </SurfaceCard>
       </div>
     </div>
   );

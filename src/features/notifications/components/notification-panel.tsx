@@ -22,19 +22,21 @@ export function NotificationPanel({
   unreadCount: number;
   viewAllHref: string;
 }) {
+  const audience = viewAllHref.startsWith("/app") ? "client" : "pt";
+
   return (
     <div className="w-[380px] max-w-[92vw] overflow-hidden rounded-2xl border border-border/70 bg-[oklch(0.2_0.015_255)] shadow-[0_22px_56px_-32px_rgb(0_0_0/0.8)]">
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-foreground">Notifications</p>
           <p className="text-xs text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread` : "You’re all caught up"}
+            {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
           </p>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 px-2 text-xs"
+          className={`h-8 px-2 text-xs ${markAllDisabled ? "opacity-50" : ""}`}
           onClick={onMarkAllRead}
           disabled={markAllDisabled}
         >
@@ -69,6 +71,7 @@ export function NotificationPanel({
             <NotificationItem
               key={notification.id}
               notification={notification}
+              audience={audience}
               compact
               onClick={() => onNotificationClick(notification)}
             />

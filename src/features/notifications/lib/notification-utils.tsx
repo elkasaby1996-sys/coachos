@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import type { NotificationRecord, NotificationType } from "./types";
 
-export function getNotificationTypeLabel(type: NotificationType | string) {
+export function getNotificationTypeLabel(
+  type: NotificationType | string,
+  audience: "client" | "pt" = "pt",
+) {
   switch (type) {
     case "workout_assigned":
       return "Workout assigned";
@@ -29,7 +32,7 @@ export function getNotificationTypeLabel(type: NotificationType | string) {
     case "milestone_achieved":
       return "Milestone";
     case "client_joined_workspace":
-      return "Client joined";
+      return audience === "client" ? "Access ready" : "Client joined";
     case "invite_accepted":
       return "Invite accepted";
     case "workout_due_today":
@@ -37,7 +40,7 @@ export function getNotificationTypeLabel(type: NotificationType | string) {
     case "checkin_due_tomorrow":
       return "Check-in reminder";
     case "client_inactive":
-      return "Client inactive";
+      return audience === "client" ? "Activity reminder" : "Client inactive";
     default:
       return "Notification";
   }

@@ -10,6 +10,13 @@ import {
   Skeleton,
   StatusPill,
 } from "../../components/ui/coachos";
+import {
+  PortalPageHeader,
+  SectionCard,
+  StatusBanner,
+  StepIndicator,
+  StickyActionBar,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useAuth } from "../../lib/auth";
@@ -124,11 +131,6 @@ const statusMap = {
   reviewed: { label: "Reviewed", variant: "success" },
 } as const;
 
-const requiredStatusMap = {
-  active: { label: "Required", variant: "warning" },
-  required: { label: "Required", variant: "warning" },
-} as const;
-
 const photoSlots: Array<{
   type: PhotoType;
   label: string;
@@ -139,6 +141,8 @@ const photoSlots: Array<{
   { type: "back", label: "Back", required: true },
   { type: "optional", label: "Optional" },
 ];
+
+const compactInputClass = "form-control-compact";
 
 const formatCheckinDueDate = (dateStr: string) => {
   if (!dateStr) return "--";
@@ -695,9 +699,59 @@ export function ClientCheckinPage() {
     checkinQuery.error ||
     answersQuery.error ||
     photosQuery.error;
+  const requiredQuestions = questions.filter((question) => question.is_required);
+  const answeredQuestions = questions.filter((question) => {
+    const value = answers[question.id] ?? {};
+    return (
+      (typeof value.text === "string" && value.text.trim().length > 0) ||
+      typeof value.number === "number" ||
+      typeof value.boolean === "boolean"
+    );
+  }).length;
+  const uploadedRequiredPhotos = photoSlots.filter(
+    (slot) => slot.required && photos[slot.type]?.previewUrl,
+  ).length;
+  const summaryVariant =
+    missingTemplate || pageError
+      ? "error"
+      : checkinState === "reviewed"
+        ? "reviewed"
+        : checkinState === "submitted"
+          ? "locked"
+          : checkinState === "overdue"
+            ? "warning"
+            : checkinState === "upcoming"
+              ? "info"
+              : "info";
+  const summaryTitle = missingTemplate
+    ? missingTemplateTitle
+    : pageError
+      ? "Unable to load check-in"
+      : checkinState === "reviewed"
+        ? `Reviewed for ${checkinDueDateLabel}`
+        : checkinState === "submitted"
+          ? `Submitted for ${checkinDueDateLabel}`
+          : checkinState === "overdue"
+            ? `Check-in overdue since ${checkinDueDateLabel}`
+            : checkinState === "upcoming"
+              ? `Next check-in opens for ${checkinDueDateLabel}`
+              : `Check-in due ${checkinDueDateLabel}`;
+  const summaryDescription = missingTemplate
+    ? missingTemplateDescription
+    : pageError
+      ? "Please refresh the page or try again shortly."
+      : checkinState === "reviewed"
+        ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
+        : checkinState === "submitted"
+          ? "Your responses are submitted and locked for this cycle."
+          : checkinState === "overdue"
+            ? "Finish this open check-in before moving on to the next cycle."
+            : checkinState === "upcoming"
+              ? "Use the current flow to review what will be required when the window opens."
+              : `${answeredQuestions}/${questions.length} questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
+    <div className="portal-shell">
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
           <Alert
@@ -715,52 +769,33 @@ export function ClientCheckinPage() {
         </div>
       ) : null}
 
-      <DashboardCard
-        title={`${checkinFrequencyLabel} check-in`}
+      <PortalPageHeader
+        title="Check-in"
         subtitle={`Stay aligned with your coach every ${checkinFrequencyLabel.toLowerCase().replace("-", " ")} cycle.`}
-      >
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        ) : clientQuery.data ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <StatusPill status={statusKey} statusMap={statusMap} />
-            <span>
-              {checkinState === "submitted" || checkinState === "reviewed"
-                ? `Completed for ${checkinDueDateLabel}`
-                : checkinState === "overdue"
-                  ? `Overdue since ${checkinDueDateLabel}`
-                  : checkinState === "upcoming"
-                    ? `Scheduled for ${checkinDueDateLabel}`
-                    : `Due ${checkinDueDateLabel}`}
-            </span>
-            <span className="text-muted-foreground">|</span>
-            <span>Due date: {checkinDueDateLabel}</span>
-          </div>
-        ) : (
-          <EmptyState
-            title="No client profile found"
-            description="A client profile is required before check-ins can load."
-          />
-        )}
-      </DashboardCard>
+        stateText={`Due ${checkinDueDateLabel}`}
+        actions={<StatusPill status={statusKey} statusMap={statusMap} />}
+      />
 
-      {missingTemplate ? (
-        <EmptyState
-          title={missingTemplateTitle}
-          description={missingTemplateDescription}
-          actionLabel={
-            onboardingNeedsActivation ? "Open onboarding" : undefined
-          }
-          onAction={
-            onboardingNeedsActivation
-              ? () => navigate("/app/onboarding")
-              : undefined
+      <div className="portal-form-shell space-y-6">
+        <StatusBanner
+          variant={summaryVariant}
+          title={summaryTitle}
+          description={summaryDescription}
+          actions={
+            missingTemplate && onboardingNeedsActivation ? (
+              <Button onClick={() => navigate("/app/onboarding")}>
+                Open onboarding
+              </Button>
+            ) : !missingTemplate && !pageError ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPill status={statusKey} statusMap={statusMap} />
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Due {checkinDueDateLabel}
+                </span>
+              </div>
+            ) : undefined
           }
         />
-      ) : null}
 
       {/* legacy placeholder removed during final onboarding integration
         <EmptyState
@@ -775,28 +810,6 @@ export function ClientCheckinPage() {
         />
       */}
 
-      {pageError ? (
-        <Alert className="border-destructive/30">
-          <AlertTitle>Unable to load check-in data</AlertTitle>
-          <AlertDescription>
-            Please refresh the page or try again shortly.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {isSubmitted ? (
-        <div className="rounded-lg border border-emerald-200/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          Your check-in for {checkinDueDateLabel} is submitted and locked.
-        </div>
-      ) : null}
-
-      {checkinState === "overdue" ? (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-foreground">
-          This check-in is overdue. Finish this open check-in before moving on
-          to the next cycle.
-        </div>
-      ) : null}
-
       {isSubmitted && checkinQuery.data?.pt_feedback ? (
         <DashboardCard
           title="Coach feedback"
@@ -808,29 +821,25 @@ export function ClientCheckinPage() {
         </DashboardCard>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {steps.map((label, index) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => canProceed && setStep(index)}
-            className={cn(
-              "rounded-xl border border-border px-4 py-3 text-left text-sm transition",
-              step === index
-                ? "border-accent/50 bg-accent/10 text-foreground"
-                : "bg-card/80 text-muted-foreground hover:border-border/80",
-            )}
-          >
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Step {index + 1}
-            </div>
-            <div className="mt-1 font-semibold text-foreground">{label}</div>
-          </button>
-        ))}
-      </div>
+      <StepIndicator
+        steps={steps.map((label, index) => ({
+          label,
+          state:
+            index < step
+              ? "completed"
+              : index === step
+                ? "current"
+                : "upcoming",
+          onClick:
+            index <= step || canProceed
+              ? () => setStep(index)
+              : undefined,
+        }))}
+      />
 
       {step === 0 ? (
         <DashboardCard
+          className="portal-form-step"
           title={`${checkinFrequencyLabel} questions`}
           subtitle="Share the latest updates for this check-in period."
         >
@@ -875,47 +884,56 @@ export function ClientCheckinPage() {
                 const helpText = getCheckinQuestionHelpText(question);
                 const choiceOptions = getCheckinQuestionOptions(question);
                 return (
-                  <div
+                  <SectionCard
                     key={question.id}
-                    className="rounded-xl border border-border bg-background/40 p-4"
+                    className={cn(
+                      "space-y-3",
+                      type === "scale" && "border-primary/30 bg-primary/5",
+                      type === "choice" && "border-accent/20 bg-background/55",
+                      type === "yes_no" && "bg-background/55",
+                    )}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {getCheckinQuestionLabel(question)}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-foreground">
+                            {getCheckinQuestionLabel(question)}
+                          </p>
+                          {question.is_required ? (
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              Required
+                            </span>
+                          ) : null}
+                        </div>
                         {helpText ? (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs leading-5 text-muted-foreground">
                             {helpText}
                           </p>
                         ) : null}
                       </div>
-                      {question.is_required ? (
-                        <StatusPill
-                          status="required"
-                          statusMap={requiredStatusMap}
-                        />
-                      ) : null}
                     </div>
 
-                    <div className="mt-3">
+                    <div>
                       {type === "number" ? (
-                        <Input
-                          type="number"
-                          value={
-                            typeof value.number === "number" ? value.number : ""
-                          }
-                          onChange={(event) =>
-                            handleAnswerChange(question.id, {
-                              number: event.target.value
-                                ? Number(event.target.value)
-                                : null,
-                            })
-                          }
-                          disabled={isSubmitted}
-                        />
+                        <div className="max-w-xs">
+                          <Input
+                            className={compactInputClass}
+                            type="number"
+                            value={
+                              typeof value.number === "number" ? value.number : ""
+                            }
+                            onChange={(event) =>
+                              handleAnswerChange(question.id, {
+                                number: event.target.value
+                                  ? Number(event.target.value)
+                                  : null,
+                              })
+                            }
+                            disabled={isSubmitted}
+                          />
+                        </div>
                       ) : type === "yes_no" ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid gap-2 sm:grid-cols-2">
                           <Button
                             type="button"
                             variant={
@@ -945,7 +963,7 @@ export function ClientCheckinPage() {
                         </div>
                       ) : type === "choice" ? (
                         choiceOptions.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="grid gap-2 sm:grid-cols-2">
                             {choiceOptions.map((option) => (
                               <Button
                                 key={option}
@@ -967,41 +985,47 @@ export function ClientCheckinPage() {
                             ))}
                           </div>
                         ) : (
-                          <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-                            Your coach still needs to add options for this
-                            question.
-                          </div>
+                          <StatusBanner
+                            variant="warning"
+                            title="Options not configured yet"
+                            description="Your coach still needs to add options for this question."
+                          />
                         )
                       ) : type === "scale" ? (
-                        <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-                          {Array.from({
-                            length: CHECKIN_SCALE_MAX - CHECKIN_SCALE_MIN + 1,
-                          })
-                            .map((_, idx) => CHECKIN_SCALE_MIN + idx)
-                            .map((score) => (
-                              <Button
-                                key={score}
-                                type="button"
-                                size="sm"
-                                variant={
-                                  value.number === score
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                onClick={() =>
-                                  handleAnswerChange(question.id, {
-                                    number: score,
-                                  })
-                                }
-                                disabled={isSubmitted}
-                              >
-                                {score}
-                              </Button>
-                            ))}
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground">
+                            Choose a score from {CHECKIN_SCALE_MIN} to {CHECKIN_SCALE_MAX}.
+                          </div>
+                          <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+                            {Array.from({
+                              length: CHECKIN_SCALE_MAX - CHECKIN_SCALE_MIN + 1,
+                            })
+                              .map((_, idx) => CHECKIN_SCALE_MIN + idx)
+                              .map((score) => (
+                                <Button
+                                  key={score}
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    value.number === score
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  onClick={() =>
+                                    handleAnswerChange(question.id, {
+                                      number: score,
+                                    })
+                                  }
+                                  disabled={isSubmitted}
+                                >
+                                  {score}
+                                </Button>
+                              ))}
+                          </div>
                         </div>
                       ) : (
                         <textarea
-                          className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          className={`${compactInputClass} w-full`}
                           placeholder="Share details..."
                           value={value.text ?? ""}
                           onChange={(event) =>
@@ -1013,7 +1037,7 @@ export function ClientCheckinPage() {
                         />
                       )}
                     </div>
-                  </div>
+                  </SectionCard>
                 );
               })}
             </div>
@@ -1023,6 +1047,7 @@ export function ClientCheckinPage() {
 
       {step === 1 ? (
         <DashboardCard
+          className="portal-form-step"
           title="Progress photos"
           subtitle="Front, side, and back photos are required for submission."
         >
@@ -1053,9 +1078,9 @@ export function ClientCheckinPage() {
               {photoSlots.map((slot) => {
                 const state = photos[slot.type];
                 return (
-                  <div
+                  <SectionCard
                     key={slot.type}
-                    className="rounded-xl border border-border bg-background/40 p-4"
+                    className="space-y-3"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -1075,10 +1100,10 @@ export function ClientCheckinPage() {
                         <img
                           src={state.previewUrl}
                           alt={`${slot.label} preview`}
-                          className="h-40 w-full rounded-lg border border-border object-cover"
+                          className="h-40 w-full rounded-xl border border-border object-cover"
                         />
                       ) : (
-                        <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
                           No photo uploaded
                         </div>
                       )}
@@ -1117,7 +1142,7 @@ export function ClientCheckinPage() {
                         </Button>
                       ) : null}
                     </div>
-                  </div>
+                  </SectionCard>
                 );
               })}
             </div>
@@ -1127,6 +1152,7 @@ export function ClientCheckinPage() {
 
       {step === 2 ? (
         <DashboardCard
+          className="portal-form-step"
           title="Review & submit"
           subtitle="Make sure everything looks right."
         >
@@ -1171,15 +1197,15 @@ export function ClientCheckinPage() {
                             ? value.text
                             : "--";
                     return (
-                      <div
+                      <SectionCard
                         key={question.id}
-                        className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm"
+                        className="space-y-2 text-sm"
                       >
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                           {getCheckinQuestionLabel(question)}
                         </p>
-                        <p className="mt-1 text-foreground">{display}</p>
-                      </div>
+                        <p className="text-foreground">{display}</p>
+                      </SectionCard>
                     );
                   })
                 )}
@@ -1191,9 +1217,9 @@ export function ClientCheckinPage() {
                   {photoSlots.map((slot) => {
                     const state = photos[slot.type];
                     return (
-                      <div
+                      <SectionCard
                         key={slot.type}
-                        className="rounded-lg border border-border bg-muted/20 p-3 text-sm"
+                        className="space-y-2 text-sm"
                       >
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                           {slot.label}
@@ -1202,16 +1228,16 @@ export function ClientCheckinPage() {
                           <img
                             src={state.previewUrl}
                             alt={`${slot.label} preview`}
-                            className="mt-2 h-32 w-full rounded-md border border-border object-cover"
+                            className="h-32 w-full rounded-xl border border-border object-cover"
                           />
                         ) : (
-                          <p className="mt-2 text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {slot.required
                               ? "Required photo missing"
                               : "No photo"}
                           </p>
                         )}
-                      </div>
+                      </SectionCard>
                     );
                   })}
                 </div>
@@ -1221,15 +1247,23 @@ export function ClientCheckinPage() {
         </DashboardCard>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button
-          variant="secondary"
-          onClick={() => setStep((prev) => Math.max(0, prev - 1))}
-          disabled={step === 0}
-        >
-          Back
-        </Button>
+      <StickyActionBar>
+        <div className="text-xs text-muted-foreground">
+          {questions.length > 0
+            ? `${answeredQuestions}/${questions.length} responses ready`
+            : "Waiting for template setup"}
+          {step === 1 || step === 2
+            ? ` • ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos uploaded`
+            : ""}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setStep((prev) => Math.max(0, prev - 1))}
+            disabled={step === 0}
+          >
+            Back
+          </Button>
           {step < steps.length - 1 ? (
             <Button
               onClick={() =>
@@ -1248,6 +1282,7 @@ export function ClientCheckinPage() {
             </Button>
           )}
         </div>
+      </StickyActionBar>
       </div>
     </div>
   );

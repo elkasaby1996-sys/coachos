@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import { Button } from "../button";
-import { cn } from "../../../lib/utils";
+import {
+  EmptyStateActionButton,
+  EmptyStateBlock,
+} from "../../client/portal";
 
 export function EmptyState({
   title,
@@ -22,38 +24,19 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-[28px] border border-dashed border-border/70 bg-background/30 p-6 text-sm text-muted-foreground",
-        centered && "text-center",
-        className,
-      )}
-    >
-      {icon ? (
-        <div
-          className={cn(
-            "mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/70 text-primary",
-            centered && "mx-auto",
-          )}
-        >
-          {icon}
-        </div>
-      ) : null}
-      <p className="font-medium text-foreground">{title}</p>
-      {description ? (
-        <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-          {description}
-        </p>
-      ) : null}
-      {action ? <div className="mt-4">{action}</div> : null}
-      {!action && actionLabel && onAction ? (
-        <div className="mt-4">
-          <Button size="sm" variant="secondary" onClick={onAction}>
-            {actionLabel}
-          </Button>
-        </div>
-      ) : null}
-    </div>
+    <EmptyStateBlock
+      title={title}
+      description={description}
+      icon={icon}
+      centered={centered}
+      className={className}
+      actions={
+        action ??
+        (actionLabel && onAction ? (
+          <EmptyStateActionButton label={actionLabel} onClick={onAction} />
+        ) : undefined)
+      }
+    />
   );
 }
 

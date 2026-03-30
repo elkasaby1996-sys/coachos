@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import {
@@ -10,14 +10,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { Skeleton } from "../../components/ui/skeleton";
 import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Skeleton } from "../../components/ui/skeleton";
+import {
+  EmptyStateBlock,
+  PortalPageHeader,
+  SectionCard,
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
@@ -49,97 +54,75 @@ type SeriesPoint = {
   value: number | null;
 };
 
+type LoadSeriesPoint = {
+  dateKey: string;
+  label: string;
+  volume: number | null;
+  avgWeight: number | null;
+};
+
 const toShortDate = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-function MetricCard({
+function filterSeriesByCutoff<T extends { dateKey: string }>(
+  rows: T[],
+  cutoff: string,
+) {
+  return rows.filter((row) => row.dateKey >= cutoff);
+}
+
+function getDelta(series: SeriesPoint[]) {
+  const numeric = series.filter(
+    (point): point is SeriesPoint & { value: number } =>
+      typeof point.value === "number",
+  );
+  if (numeric.length < 2) return null;
+  const first = numeric[0]!.value;
+  const last = numeric[numeric.length - 1]!.value;
+  return last - first;
+}
+
+function getSeriesPointCount(series: SeriesPoint[]) {
+  return series.filter((point) => typeof point.value === "number").length;
+}
+
+function getLoadPointCount(series: LoadSeriesPoint[]) {
+  return series.filter((point) => typeof point.volume === "number").length;
+}
+
+function ChartSurface({
   title,
-  unit,
-  series,
-  colorVar,
+  description,
+  latestLabel,
+  children,
 }: {
   title: string;
-  unit: string;
-  series: SeriesPoint[];
-  colorVar: string;
+  description: string;
+  latestLabel?: string;
+  children: React.ReactNode;
 }) {
-  const axisColor = "oklch(0.98 0 0 / 0.92)";
-
-  const latest =
-    [...series].reverse().find((point) => typeof point.value === "number")
-      ?.value ?? null;
-  const first =
-    series.find((point) => typeof point.value === "number")?.value ?? null;
-  const delta =
-    typeof latest === "number" && typeof first === "number"
-      ? latest - first
-      : null;
-
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle>{title}</CardTitle>
-          <Badge variant="muted">
-            {typeof latest === "number"
-              ? `${latest}${unit ? ` ${unit}` : ""}`
-              : "--"}
-          </Badge>
+    <SurfaceCard>
+      <SurfaceCardHeader className="pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <SurfaceCardTitle>{title}</SurfaceCardTitle>
+            <SurfaceCardDescription>{description}</SurfaceCardDescription>
+          </div>
+          {latestLabel ? <Badge variant="muted">{latestLabel}</Badge> : null}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="h-[220px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={series}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="oklch(0.35 0.02 260 / 0.35)"
-              />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: axisColor }}
-                axisLine={{ stroke: axisColor }}
-                tickLine={{ stroke: axisColor }}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: axisColor }}
-                axisLine={{ stroke: axisColor }}
-                tickLine={{ stroke: axisColor }}
-              />
-              <Tooltip
-                formatter={(value: number | string) =>
-                  typeof value === "number"
-                    ? `${value}${unit ? ` ${unit}` : ""}`
-                    : value
-                }
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                name={title}
-                stroke={colorVar}
-                strokeWidth={2.5}
-                dot={false}
-                connectNulls
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {delta === null
-            ? "Not enough data to compute change."
-            : `Change: ${delta > 0 ? "+" : ""}${delta.toFixed(1)}${unit ? ` ${unit}` : ""}`}
-        </p>
-      </CardContent>
-    </Card>
+      </SurfaceCardHeader>
+      <SurfaceCardContent>{children}</SurfaceCardContent>
+    </SurfaceCard>
   );
 }
 
 export function ClientProgressPage() {
   const { session } = useAuth();
+  const [timeframe, setTimeframe] = useState<"4w" | "8w">("8w");
   const axisColor = "oklch(0.98 0 0 / 0.92)";
 
   const clientQuery = useQuery({
@@ -165,9 +148,10 @@ export function ClientProgressPage() {
     () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
     [clientQuery.data?.timezone],
   );
-  const startKey = useMemo(
-    () => addDaysToDateString(todayKey, -55),
-    [todayKey],
+  const startKey = useMemo(() => addDaysToDateString(todayKey, -55), [todayKey]);
+  const cutoffKey = useMemo(
+    () => addDaysToDateString(todayKey, timeframe === "4w" ? -27 : -55),
+    [timeframe, todayKey],
   );
 
   const habitsQuery = useQuery({
@@ -245,11 +229,14 @@ export function ClientProgressPage() {
     habitsQuery.isLoading ||
     setLogsQuery.isLoading ||
     baselineWeightQuery.isLoading;
+  const error =
+    clientQuery.error ||
+    habitsQuery.error ||
+    setLogsQuery.error ||
+    baselineWeightQuery.error;
 
   const weightUnit = useMemo(() => {
-    const fromLogs = (habitsQuery.data ?? []).find(
-      (row) => row.weight_unit,
-    )?.weight_unit;
+    const fromLogs = (habitsQuery.data ?? []).find((row) => row.weight_unit)?.weight_unit;
     if (fromLogs) return fromLogs;
     return clientQuery.data?.unit_preference?.toLowerCase() === "imperial"
       ? "lb"
@@ -287,8 +274,11 @@ export function ClientProgressPage() {
       : rows;
 
     habitRowsForWeight.forEach((row) => {
-      const label = toShortDate(row.log_date);
-      weight.push({ dateKey: row.log_date, label, value: row.weight_value });
+      weight.push({
+        dateKey: row.log_date,
+        label: toShortDate(row.log_date),
+        value: row.weight_value,
+      });
     });
 
     rows.forEach((row) => {
@@ -296,6 +286,7 @@ export function ClientProgressPage() {
       sleep.push({ dateKey: row.log_date, label, value: row.sleep_hours });
       steps.push({ dateKey: row.log_date, label, value: row.steps });
     });
+
     return { weight, sleep, steps };
   }, [baselineWeightQuery.data, habitsQuery.data, weightUnit]);
 
@@ -323,17 +314,17 @@ export function ClientProgressPage() {
       const volume = reps !== null && weight !== null ? reps * weight : null;
 
       if (dateKey) {
-        const curr = byDate.get(dateKey) ?? {
+        const current = byDate.get(dateKey) ?? {
           volume: 0,
           weightSum: 0,
           weightCount: 0,
         };
-        if (typeof volume === "number" && volume > 0) curr.volume += volume;
+        if (typeof volume === "number" && volume > 0) current.volume += volume;
         if (typeof weight === "number" && weight > 0) {
-          curr.weightSum += weight;
-          curr.weightCount += 1;
+          current.weightSum += weight;
+          current.weightCount += 1;
         }
-        byDate.set(dateKey, curr);
+        byDate.set(dateKey, current);
       }
 
       if (!row.exercise_id) return;
@@ -347,30 +338,24 @@ export function ClientProgressPage() {
         firstVolume: null,
         latestVolume: null,
       };
-      if (
-        existing.firstWeight === null &&
-        typeof weight === "number" &&
-        weight > 0
-      ) {
+
+      if (existing.firstWeight === null && typeof weight === "number" && weight > 0) {
         existing.firstWeight = weight;
       }
       if (typeof weight === "number" && weight > 0) {
         existing.latestWeight = weight;
       }
-      if (
-        existing.firstVolume === null &&
-        typeof volume === "number" &&
-        volume > 0
-      ) {
+      if (existing.firstVolume === null && typeof volume === "number" && volume > 0) {
         existing.firstVolume = volume;
       }
       if (typeof volume === "number" && volume > 0) {
         existing.latestVolume = volume;
       }
+
       byExercise.set(row.exercise_id, existing);
     });
 
-    const loadSeries = [...byDate.entries()]
+    const loadSeries: LoadSeriesPoint[] = [...byDate.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([dateKey, value]) => ({
         dateKey,
@@ -385,10 +370,6 @@ export function ClientProgressPage() {
     const changes = [...byExercise.values()]
       .map((row) => ({
         name: row.name,
-        firstWeight: row.firstWeight,
-        latestWeight: row.latestWeight,
-        firstVolume: row.firstVolume,
-        latestVolume: row.latestVolume,
         weightDelta:
           row.firstWeight !== null && row.latestWeight !== null
             ? row.latestWeight - row.firstWeight
@@ -416,180 +397,430 @@ export function ClientProgressPage() {
           Math.abs((b.weightDelta ?? 0) + (b.volumeDelta ?? 0) / 10) -
           Math.abs((a.weightDelta ?? 0) + (a.volumeDelta ?? 0) / 10),
       )
-      .slice(0, 8);
+      .slice(0, 6);
 
     return { loadSeries, changes };
   }, [setLogsQuery.data]);
 
+  const filteredWeightSeries = useMemo(
+    () => filterSeriesByCutoff(habitSeries.weight, cutoffKey),
+    [cutoffKey, habitSeries.weight],
+  );
+  const filteredSleepSeries = useMemo(
+    () => filterSeriesByCutoff(habitSeries.sleep, cutoffKey),
+    [cutoffKey, habitSeries.sleep],
+  );
+  const filteredStepsSeries = useMemo(
+    () => filterSeriesByCutoff(habitSeries.steps, cutoffKey),
+    [cutoffKey, habitSeries.steps],
+  );
+  const filteredLoadSeries = useMemo(
+    () => filterSeriesByCutoff(exerciseTrends.loadSeries, cutoffKey),
+    [cutoffKey, exerciseTrends.loadSeries],
+  );
+  const weightPointCount = getSeriesPointCount(filteredWeightSeries);
+  const sleepPointCount = getSeriesPointCount(filteredSleepSeries);
+  const stepsPointCount = getSeriesPointCount(filteredStepsSeries);
+  const loadPointCount = getLoadPointCount(filteredLoadSeries);
+
+  const hasAnyData =
+    weightPointCount > 0 ||
+    sleepPointCount > 0 ||
+    stepsPointCount > 0 ||
+    loadPointCount > 0;
+
+  const insightText = useMemo(() => {
+    const weightDelta = getDelta(filteredWeightSeries);
+    const sleepDelta = getDelta(filteredSleepSeries);
+    const stepsDelta = getDelta(filteredStepsSeries);
+    const latestLoad =
+      filteredLoadSeries.length > 0
+        ? filteredLoadSeries[filteredLoadSeries.length - 1]?.volume
+        : null;
+
+    const parts: string[] = [];
+    if (weightDelta !== null) {
+      parts.push(
+        `Body weight moved ${weightDelta > 0 ? "up" : weightDelta < 0 ? "down" : "sideways"} ${Math.abs(weightDelta).toFixed(1)} ${weightUnit}.`,
+      );
+    }
+    if (sleepDelta !== null) {
+      parts.push(
+        `Sleep shifted ${sleepDelta > 0 ? "up" : sleepDelta < 0 ? "down" : "sideways"} ${Math.abs(sleepDelta).toFixed(1)} hrs.`,
+      );
+    }
+    if (stepsDelta !== null) {
+      parts.push(
+        `Steps changed by ${stepsDelta > 0 ? "+" : ""}${Math.round(stepsDelta)}.`,
+      );
+    }
+    if (typeof latestLoad === "number" && latestLoad > 0) {
+      parts.push(`Latest logged training volume is ${latestLoad.toFixed(0)}.`);
+    }
+    return parts.join(" ");
+  }, [
+    filteredLoadSeries,
+    filteredSleepSeries,
+    filteredStepsSeries,
+    filteredWeightSeries,
+    weightUnit,
+  ]);
+
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
-      <section className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Progress</h1>
-          <p className="text-sm text-muted-foreground">
-            Weight, sleep, steps, and exercise load trends.
-          </p>
-        </div>
-        <Badge variant="muted">Last 8 weeks</Badge>
-      </section>
+    <div className="portal-shell">
+      <PortalPageHeader
+        title="Progress"
+        subtitle="Track body trends, recovery, activity, and training load in one place."
+        stateText={timeframe === "4w" ? "Short-term view" : "Broader trend view"}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant={timeframe === "4w" ? "default" : "secondary"}
+              size="sm"
+              onClick={() => setTimeframe("4w")}
+            >
+              Last 4 weeks
+            </Button>
+            <Button
+              variant={timeframe === "8w" ? "default" : "secondary"}
+              size="sm"
+              onClick={() => setTimeframe("8w")}
+            >
+              Last 8 weeks
+            </Button>
+          </div>
+        }
+      />
 
       {loading ? (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-1/3" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-[220px] w-full" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-1/3" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-[220px] w-full" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-1/3" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-[220px] w-full" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-1/3" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-[220px] w-full" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-1/3" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-[220px] w-full" />
-            </CardContent>
-          </Card>
+        <div className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
+            <Skeleton className="h-28 w-full rounded-[var(--radius-xl)]" />
+            <Skeleton className="h-28 w-full rounded-[var(--radius-xl)]" />
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <Skeleton className="h-[23rem] w-full rounded-[var(--radius-xl)]" />
+            <Skeleton className="h-[23rem] w-full rounded-[var(--radius-xl)]" />
+          </div>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <Skeleton className="h-[22rem] w-full rounded-[var(--radius-xl)]" />
+            <Skeleton className="h-[22rem] w-full rounded-[var(--radius-xl)]" />
+          </div>
+          <Skeleton className="h-48 w-full rounded-[var(--radius-xl)]" />
         </div>
+      ) : error ? (
+        <EmptyStateBlock
+          title="Progress could not be loaded"
+          description={
+            error instanceof Error
+              ? error.message
+              : "We couldn't load your progress trends right now."
+          }
+        />
+      ) : !hasAnyData ? (
+        <EmptyStateBlock
+          title="No progress data yet"
+          description="Log habits, complete workouts, and submit your baseline to start seeing meaningful trends here."
+        />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <MetricCard
-            title="Body weight"
-            unit={weightUnit}
-            series={habitSeries.weight}
-            colorVar="oklch(var(--chart-1))"
-          />
-          <MetricCard
-            title="Sleep hours"
-            unit="hrs"
-            series={habitSeries.sleep}
-            colorVar="oklch(var(--chart-2))"
-          />
-          <MetricCard
-            title="Steps"
-            unit=""
-            series={habitSeries.steps}
-            colorVar="oklch(var(--chart-4))"
-          />
-          <Card>
-            <CardHeader>
-              <CardTitle>Exercise volume</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[220px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={exerciseTrends.loadSeries}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="oklch(0.35 0.02 260 / 0.35)"
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11, fill: axisColor }}
-                      axisLine={{ stroke: axisColor }}
-                      tickLine={{ stroke: axisColor }}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: axisColor }}
-                      axisLine={{ stroke: axisColor }}
-                      tickLine={{ stroke: axisColor }}
-                    />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="volume"
-                      name="Volume"
-                      stroke="oklch(var(--chart-3))"
-                      strokeWidth={2.3}
-                      dot={false}
-                      connectNulls
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Exercise changes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {exerciseTrends.changes.length > 0 ? (
-                <div className="space-y-2">
-                  {exerciseTrends.changes.map((item) => {
-                    const trendBase = item.volumeDelta ?? item.weightDelta ?? 0;
-                    const TrendIcon =
-                      trendBase > 0
-                        ? ArrowUpRight
-                        : trendBase < 0
-                          ? ArrowDownRight
-                          : Minus;
-
-                    return (
-                      <div
-                        key={item.name}
-                        className="flex items-start justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                      >
-                        <div className="space-y-1">
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Weight:{" "}
-                            {item.weightDelta !== null
-                              ? `${item.weightDelta > 0 ? "+" : ""}${item.weightDelta.toFixed(1)} (${item.weightPct !== null ? `${item.weightPct > 0 ? "+" : ""}${item.weightPct.toFixed(1)}%` : "--"})`
-                              : "--"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Volume:{" "}
-                            {item.volumeDelta !== null
-                              ? `${item.volumeDelta > 0 ? "+" : ""}${item.volumeDelta.toFixed(0)} (${item.volumePct !== null ? `${item.volumePct > 0 ? "+" : ""}${item.volumePct.toFixed(1)}%` : "--"})`
-                              : "--"}
-                          </p>
-                        </div>
-                        <TrendIcon
-                          className={
-                            trendBase > 0
-                              ? "mt-0.5 h-4 w-4 text-emerald-500"
-                              : trendBase < 0
-                                ? "mt-0.5 h-4 w-4 text-rose-500"
-                                : "mt-0.5 h-4 w-4 text-muted-foreground"
-                          }
-                        />
-                      </div>
-                    );
-                  })}
+        <div className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-2">
+            <ChartSurface
+              title="Body weight"
+              description="Changes since your submitted baseline and recent habit logs."
+              latestLabel={
+                filteredWeightSeries.length > 0
+                  ? `${filteredWeightSeries[filteredWeightSeries.length - 1]?.value ?? "--"} ${weightUnit}`
+                  : undefined
+              }
+            >
+              {weightPointCount >= 2 ? (
+                <div className="h-[19rem] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={filteredWeightSeries}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 11, fill: axisColor }}
+                        axisLine={{ stroke: axisColor }}
+                        tickLine={{ stroke: axisColor }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: axisColor }}
+                        axisLine={{ stroke: axisColor }}
+                        tickLine={{ stroke: axisColor }}
+                      />
+                      <Tooltip formatter={(value: number | string) => `${value} ${weightUnit}`} />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="oklch(var(--chart-1))"
+                        strokeWidth={2.6}
+                        dot={false}
+                        connectNulls
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No exercise change data yet. Log a few sessions to see trends.
-                </p>
+                <EmptyStateBlock
+                  title="Not enough body-weight entries yet"
+                  description="Keep logging weight over the next few check-ins to unlock a clearer chart."
+                  className="min-h-[19rem]"
+                />
               )}
-            </CardContent>
-          </Card>
+            </ChartSurface>
+
+            <ChartSurface
+              title="Training volume"
+              description="Logged output across your recent sessions."
+              latestLabel={
+                filteredLoadSeries.length > 0
+                  ? `${filteredLoadSeries[filteredLoadSeries.length - 1]?.volume?.toFixed(0) ?? "--"} volume`
+                  : undefined
+              }
+            >
+              {loadPointCount >= 2 ? (
+                <div className="h-[19rem] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={filteredLoadSeries}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 11, fill: axisColor }}
+                        axisLine={{ stroke: axisColor }}
+                        tickLine={{ stroke: axisColor }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: axisColor }}
+                        axisLine={{ stroke: axisColor }}
+                        tickLine={{ stroke: axisColor }}
+                      />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="volume"
+                        stroke="oklch(var(--chart-3))"
+                        strokeWidth={2.6}
+                        dot={false}
+                        connectNulls
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <EmptyStateBlock
+                  title="Not enough training-load data yet"
+                  description="Log a couple of sessions with working sets and this chart will start to show useful changes."
+                  className="min-h-[19rem]"
+                />
+              )}
+            </ChartSurface>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
+            <SurfaceCard>
+              <SurfaceCardHeader className="pb-4">
+                <SurfaceCardTitle>Recovery and activity</SurfaceCardTitle>
+                <SurfaceCardDescription>
+                  Supporting signals that influence readiness and consistency.
+                </SurfaceCardDescription>
+              </SurfaceCardHeader>
+              <SurfaceCardContent className="space-y-4">
+                <SectionCard className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">Sleep hours</p>
+                    <Badge variant="muted">
+                      {filteredSleepSeries.length > 0
+                        ? `${filteredSleepSeries[filteredSleepSeries.length - 1]?.value ?? "--"} hrs`
+                        : "--"}
+                    </Badge>
+                  </div>
+                  {sleepPointCount >= 2 ? (
+                    <div className="h-40 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={filteredSleepSeries}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                          <XAxis dataKey="label" hide />
+                          <YAxis hide />
+                          <Tooltip formatter={(value: number | string) => `${value} hrs`} />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke="oklch(var(--chart-2))"
+                            strokeWidth={2.3}
+                            dot={false}
+                            connectNulls
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyStateBlock
+                      title="Sleep trend pending"
+                      description="Log sleep across a few days to make this recovery signal useful."
+                      className="min-h-[12rem]"
+                    />
+                  )}
+                </SectionCard>
+
+                <SectionCard className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">Steps</p>
+                    <Badge variant="muted">
+                      {filteredStepsSeries.length > 0
+                        ? `${filteredStepsSeries[filteredStepsSeries.length - 1]?.value ?? "--"}`
+                        : "--"}
+                    </Badge>
+                  </div>
+                  {stepsPointCount >= 2 ? (
+                    <div className="h-40 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={filteredStepsSeries}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                          <XAxis dataKey="label" hide />
+                          <YAxis hide />
+                          <Tooltip />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke="oklch(var(--chart-4))"
+                            strokeWidth={2.3}
+                            dot={false}
+                            connectNulls
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyStateBlock
+                      title="Step trend pending"
+                      description="A few logged activity days will make this section more informative."
+                      className="min-h-[12rem]"
+                    />
+                  )}
+                </SectionCard>
+              </SurfaceCardContent>
+            </SurfaceCard>
+
+            <SurfaceCard>
+              <SurfaceCardHeader className="pb-4">
+                <SurfaceCardTitle>Exercise changes</SurfaceCardTitle>
+                <SurfaceCardDescription>
+                  The strongest positive or negative movement across tracked exercises.
+                </SurfaceCardDescription>
+              </SurfaceCardHeader>
+              <SurfaceCardContent>
+                {exerciseTrends.changes.length > 0 ? (
+                  <div className="space-y-3">
+                    {exerciseTrends.changes.map((item) => {
+                      const trendBase = item.volumeDelta ?? item.weightDelta ?? 0;
+                      const TrendIcon =
+                        trendBase > 0 ? ArrowUpRight : trendBase < 0 ? ArrowDownRight : Minus;
+
+                      return (
+                        <SectionCard
+                          key={item.name}
+                          className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm font-semibold text-foreground">
+                                {item.name}
+                              </p>
+                              <TrendIcon
+                                className={
+                                  trendBase > 0
+                                    ? "h-4 w-4 text-emerald-500"
+                                    : trendBase < 0
+                                      ? "h-4 w-4 text-rose-500"
+                                      : "h-4 w-4 text-muted-foreground"
+                                }
+                              />
+                            </div>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              Compare your earliest and latest logged sets for a quick performance read.
+                            </p>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[18rem]">
+                            <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                              <p className="field-label">Weight</p>
+                              <p className="mt-1 text-sm text-foreground">
+                                {item.weightDelta !== null
+                                  ? `${item.weightDelta > 0 ? "+" : ""}${item.weightDelta.toFixed(1)} (${item.weightPct !== null ? `${item.weightPct > 0 ? "+" : ""}${item.weightPct.toFixed(1)}%` : "--"})`
+                                  : "--"}
+                              </p>
+                            </div>
+                            <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                              <p className="field-label">Volume</p>
+                              <p className="mt-1 text-sm text-foreground">
+                                {item.volumeDelta !== null
+                                  ? `${item.volumeDelta > 0 ? "+" : ""}${item.volumeDelta.toFixed(0)} (${item.volumePct !== null ? `${item.volumePct > 0 ? "+" : ""}${item.volumePct.toFixed(1)}%` : "--"})`
+                                  : "--"}
+                              </p>
+                            </div>
+                          </div>
+                        </SectionCard>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <EmptyStateBlock
+                    title="No exercise trend data yet"
+                    description="Log a few sessions with working sets to unlock performance-change summaries."
+                  />
+                )}
+              </SurfaceCardContent>
+            </SurfaceCard>
+          </div>
+
+          <SurfaceCard>
+            <SurfaceCardHeader className="pb-4">
+              <SurfaceCardTitle>Summary insight</SurfaceCardTitle>
+              <SurfaceCardDescription>
+                A quick read on what the recent data is saying.
+              </SurfaceCardDescription>
+            </SurfaceCardHeader>
+            <SurfaceCardContent>
+              <SectionCard className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+                <div className="space-y-3">
+                  <p className="text-base leading-7 text-foreground">
+                    {insightText ||
+                      "Keep logging consistently to unlock clearer trend signals and stronger coach-facing insights."}
+                  </p>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    This summary updates from your baseline, habit logs, and completed workout set logs.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                    <p className="field-label">Weight trend</p>
+                    <p className="mt-1 text-sm text-foreground">
+                      {getDelta(filteredWeightSeries) !== null
+                        ? `${getDelta(filteredWeightSeries)! > 0 ? "+" : ""}${getDelta(filteredWeightSeries)!.toFixed(1)} ${weightUnit}`
+                        : "Not enough data"}
+                    </p>
+                  </div>
+                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                    <p className="field-label">Sleep trend</p>
+                    <p className="mt-1 text-sm text-foreground">
+                      {getDelta(filteredSleepSeries) !== null
+                        ? `${getDelta(filteredSleepSeries)! > 0 ? "+" : ""}${getDelta(filteredSleepSeries)!.toFixed(1)} hrs`
+                        : "Not enough data"}
+                    </p>
+                  </div>
+                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                    <p className="field-label">Step trend</p>
+                    <p className="mt-1 text-sm text-foreground">
+                      {getDelta(filteredStepsSeries) !== null
+                        ? `${Math.round(getDelta(filteredStepsSeries)!)}`
+                        : "Not enough data"}
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
+            </SurfaceCardContent>
+          </SurfaceCard>
         </div>
       )}
     </div>

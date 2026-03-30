@@ -1,12 +1,21 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { BellRing } from "lucide-react";
 import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { getOnboardingStatusMeta } from "../../features/client-onboarding/lib/client-onboarding";
+import {
+  EmptyStateBlock,
+  StatusBanner,
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
+} from "../client/portal";
 import {
   getCheckinOperationalState,
   getPrimaryClientCheckin,
@@ -494,71 +503,84 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
   if (!clientId) return null;
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full border-2 border-primary/85 bg-transparent shadow-[0_0_12px_rgba(56,189,248,0.45)]" />
-            <CardTitle>Reminders</CardTitle>
+    <SurfaceCard>
+      <SurfaceCardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <SurfaceCardTitle>Reminders</SurfaceCardTitle>
+            <SurfaceCardDescription>
+              Keep urgent coach prompts and due items visible without crowding the page.
+            </SurfaceCardDescription>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Dismiss items you have handled.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {dismissError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {dismissError}
-            </div>
-          ) : null}
-          {dismissedQuery.error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              Unable to load reminders.
-              {isDev ? (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {getDismissError(dismissedQuery.error)}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {reminders.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-              No reminders right now.
-            </div>
-          ) : (
-            reminders.map((item) => (
+          <div className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-xs font-medium text-muted-foreground">
+            {reminders.length > 0 ? `${reminders.length} active` : "Clear"}
+          </div>
+        </div>
+      </SurfaceCardHeader>
+      <SurfaceCardContent className="space-y-3">
+        {dismissError ? (
+          <StatusBanner variant="error" title={dismissError} />
+        ) : null}
+        {dismissedQuery.error ? (
+          <StatusBanner
+            variant="error"
+            title="Unable to load reminders"
+            description={
+              isDev ? getDismissError(dismissedQuery.error) : undefined
+            }
+          />
+        ) : null}
+        {reminders.length === 0 ? (
+          <EmptyStateBlock
+            icon={<BellRing className="h-5 w-5" />}
+            title="Nothing urgent right now"
+            description="You're caught up on today's reminders. New coach prompts and due items will appear here when they matter."
+            className="min-h-[16rem]"
+          />
+        ) : (
+          reminders.map((item) => {
+            const toneClass =
+              item.severity === "warn"
+                ? "border-warning/25 bg-warning/8"
+                : "border-border/70 bg-background/45";
+
+            return (
               <div
                 key={item.key}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3"
+                className={`rounded-[var(--radius-lg)] border px-4 py-4 ${toneClass}`}
               >
-                <div>
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.description}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => navigate(item.ctaTo)}
-                  >
-                    {item.ctaLabel}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDismiss(item.key)}
-                    disabled={dismissingKey === item.key}
-                  >
-                    {dismissingKey === item.key ? "Dismissing..." : "Dismiss"}
-                  </Button>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.title}
+                    </p>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => navigate(item.ctaTo)}
+                    >
+                      {item.ctaLabel}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDismiss(item.key)}
+                      disabled={dismissingKey === item.key}
+                    >
+                      {dismissingKey === item.key ? "Dismissing..." : "Dismiss"}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            );
+          })
+        )}
+      </SurfaceCardContent>
+    </SurfaceCard>
   );
 }

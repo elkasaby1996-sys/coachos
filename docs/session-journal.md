@@ -1219,3 +1219,75 @@ When working in this repository, every agent or human contributor should treat t
   - the screenshot generation scripts are present locally and ready to reuse
 - Next step:
   - commit and push the screenshot pack plus scripts if we want them available to the rest of the team
+
+## 2026-03-30 23:18 +03:00 - Client Portal UI System And Polish Pass
+
+- Branch:
+  - `UI-CLient-design`
+- Goal:
+  - refactor the client portal onto a shared premium dark UI system, then polish the shell and high-traffic client pages without changing product logic
+- Changes made:
+  - introduced a reusable client portal UI foundation:
+    - `PortalPageHeader`
+    - `SurfaceCard`
+    - `SectionCard`
+    - `StatusBanner`
+    - `EmptyStateBlock`
+    - `StickyActionBar`
+    - `StepIndicator`
+  - widened and tightened the client portal shell so desktop pages feel less constrained while keeping the current branding and navigation
+  - reduced the dominance of the onboarding banner by making the compact banner lighter and dismissible and limiting it to the most relevant client routes
+  - refactored the client portal screens to use the shared layout system and improve hierarchy, state clarity, and density across:
+    - Home
+    - Messages
+    - Notifications
+    - Profile
+    - Progress
+    - Workout Today
+    - Baseline
+    - Monthly check-in
+    - Habits
+    - Settings
+    - onboarding review / submit shell
+  - improved state handling and page polish for:
+    - chart empty states and loading layout fidelity on Progress
+    - true chat layout and sticky composer on Messages
+    - action-first mission layout and clearer reminders/calendar grouping on Home
+    - clearer unread vs recent-activity behavior and muted no-op actions on Notifications
+  - updated legacy shared wrappers so existing client cards and empty states inherit the newer portal surface treatment more consistently
+- Files changed:
+  - `docs/session-journal.md`
+  - `src/components/client/portal/index.ts`
+  - `src/components/client/portal/portal-ui.tsx`
+  - `src/components/common/client-reminders.tsx`
+  - `src/components/common/page-container.tsx`
+  - `src/components/layouts/client-layout.tsx`
+  - `src/components/ui/coachos/dashboard-card.tsx`
+  - `src/components/ui/coachos/empty-state.tsx`
+  - `src/features/client-onboarding/components/client-onboarding-shell.tsx`
+  - `src/features/client-onboarding/components/client-onboarding-soft-gate.tsx`
+  - `src/features/notifications/components/notification-item.tsx`
+  - `src/features/notifications/components/notification-panel.tsx`
+  - `src/features/notifications/lib/notification-utils.tsx`
+  - `src/features/notifications/pages/notifications-page.tsx`
+  - `src/pages/client/baseline.tsx`
+  - `src/pages/client/checkin.tsx`
+  - `src/pages/client/habits.tsx`
+  - `src/pages/client/home.tsx`
+  - `src/pages/client/messages.tsx`
+  - `src/pages/client/profile.tsx`
+  - `src/pages/client/progress.tsx`
+  - `src/pages/client/settings.tsx`
+  - `src/pages/client/workout-today.tsx`
+  - `src/styles/globals.css`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - none in product logic; the final polish pass needed a small strict-null fix in the client layout before the production build passed
+- Repo state at end:
+  - branch contains the shared client portal component system plus the full client screen refactor/polish pass
+  - `lint` and `build` both pass locally
+- Next step:
+  - commit and push `UI-CLient-design`
+  - open a PR for visual review and compare the updated client portal against the prior docs screenshots

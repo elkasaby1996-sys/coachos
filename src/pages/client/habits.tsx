@@ -12,6 +12,12 @@ import {
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ClientReminders } from "../../components/common/client-reminders";
+import {
+  PortalPageHeader,
+  SectionCard,
+  StatusBanner,
+  StickyActionBar,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import {
@@ -358,20 +364,19 @@ export function ClientHabitsPage() {
     : null;
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Habits</h1>
-          <p className="text-sm text-muted-foreground">
-            Track daily nutrition, recovery, and mindset.
-          </p>
-        </div>
-        <Badge variant={isEditable ? "success" : "muted"}>
-          {isEditable ? "Editable" : "Read-only"}
-        </Badge>
-      </div>
+    <div className="portal-shell">
+      <PortalPageHeader
+        title="Habits"
+        subtitle="Track daily nutrition, recovery, and mindset."
+        stateText={selectedDate || todayStr}
+        actions={
+          <Badge variant={isEditable ? "success" : "muted"}>
+            {isEditable ? "Editable" : "Read-only"}
+          </Badge>
+        }
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/60 px-4 py-3">
+      <SectionCard className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-muted-foreground">
           Editing date:{" "}
           <span className="font-medium text-foreground">
@@ -388,7 +393,7 @@ export function ClientHabitsPage() {
             onChange={(event) => setSelectedDate(event.target.value)}
           />
         </div>
-      </div>
+      </SectionCard>
 
       <ClientReminders clientId={clientId} timezone={clientTimezone} />
 
@@ -467,12 +472,11 @@ export function ClientHabitsPage() {
           ) : (
             <>
               {!isEditable ? (
-                <Alert className="border-warning/40 bg-warning/10 text-warning-foreground">
-                  <AlertTitle>Read-only log</AlertTitle>
-                  <AlertDescription>
-                    Past logs can only be edited within 7 days.
-                  </AlertDescription>
-                </Alert>
+                <StatusBanner
+                  variant="locked"
+                  title="Read-only log"
+                  description="Past logs can only be edited within 7 days."
+                />
               ) : null}
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -698,24 +702,20 @@ export function ClientHabitsPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <StickyActionBar>
                 <div className="text-xs text-muted-foreground">
                   {lastSavedLabel
                     ? `Last saved at ${lastSavedLabel}`
                     : "Not saved yet"}
+                  {!isDirty ? " • No changes to save." : " • Unsaved changes ready."}
                 </div>
                 <Button
                   onClick={handleSave}
                   disabled={!isEditable || saveStatus === "saving" || !isDirty}
                 >
-                  {saveStatus === "saving" ? "Saving..." : "Save"}
+                  {saveStatus === "saving" ? "Saving..." : "Save habits"}
                 </Button>
-              </div>
-              {!isDirty ? (
-                <div className="text-xs text-muted-foreground">
-                  No changes to save.
-                </div>
-              ) : null}
+              </StickyActionBar>
             </>
           )}
         </CardContent>
