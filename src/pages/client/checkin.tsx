@@ -784,11 +784,11 @@ export function ClientCheckinPage() {
         </Alert>
       ) : null}
 
-        {isSubmitted ? (
-          <div className="rounded-lg border border-emerald-200/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-            Your check-in for {checkinDueDateLabel} is submitted and locked.
-          </div>
-        ) : null}
+      {isSubmitted ? (
+        <div className="rounded-lg border border-emerald-200/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+          Your check-in for {checkinDueDateLabel} is submitted and locked.
+        </div>
+      ) : null}
 
       {checkinState === "overdue" ? (
         <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-foreground">
