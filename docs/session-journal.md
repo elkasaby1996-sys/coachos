@@ -1151,3 +1151,34 @@ When working in this repository, every agent or human contributor should treat t
     - PT review tabs and signed photo loading
     - exact-date check-in cadence
     - client check-in photo upload and submit flow
+
+## 2026-03-30 11:22 +03:00 - PR #76 Quality Gate Cleanup
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - fix the failing quality gate on the check-in hardening PR without changing behavior
+- Changes made:
+  - ran the local release-quality checks on the branch
+  - found that `lint`, `build`, and `test:unit` were already passing
+  - identified the actual failure as the Prettier format gate
+  - reformatted the two files that were failing the formatter:
+    - `src/pages/client/checkin.tsx`
+    - `src/pages/pt/client-detail.tsx`
+- Files changed:
+  - `src/pages/client/checkin.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm install`
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - `npm run test:unit`
+  - `npx prettier --write src/pages/client/checkin.tsx src/pages/pt/client-detail.tsx`
+- Struggles / mistakes / blockers:
+  - none in product logic; the failing PR signal was formatting-only
+- Repo state at end:
+  - all local quality gates pass on `Check-in-Hardening`
+- Next step:
+  - commit and push the formatter-only fix so PR #76 can re-run cleanly

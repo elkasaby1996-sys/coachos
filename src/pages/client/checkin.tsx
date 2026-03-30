@@ -786,8 +786,7 @@ export function ClientCheckinPage() {
 
       {isSubmitted ? (
         <div className="rounded-lg border border-emerald-200/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          Your check-in for {checkinDueDateLabel} is submitted and
-          locked.
+          Your check-in for {checkinDueDateLabel} is submitted and locked.
         </div>
       ) : null}
 

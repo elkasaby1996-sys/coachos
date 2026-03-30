@@ -2345,7 +2345,7 @@ export function PtClientDetailPage() {
         label:
           photo.photo_type === "optional"
             ? `Optional ${index + 1}`
-            : labels[photo.photo_type] ?? photo.photo_type ?? "Photo",
+            : (labels[photo.photo_type] ?? photo.photo_type ?? "Photo"),
         photo,
         isMissing: false,
       }));
@@ -3983,7 +3983,8 @@ export function PtClientDetailPage() {
                   Answers ({selectedCheckinAnswersQuery.data?.length ?? 0})
                 </TabsTrigger>
                 <TabsTrigger value="photos">
-                  Photos ({selectedCheckinPhotos.filter((photo) => photo.url).length})
+                  Photos (
+                  {selectedCheckinPhotos.filter((photo) => photo.url).length})
                 </TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
               </TabsList>
@@ -4216,7 +4217,10 @@ export function PtClientDetailPage() {
                   : "Client submission is required before this review can be completed."}
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button variant="secondary" onClick={() => setReviewOpen(false)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setReviewOpen(false)}
+                >
                   Close
                 </Button>
                 <Button
