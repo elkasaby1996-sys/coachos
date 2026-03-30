@@ -17,8 +17,14 @@ import {
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
-import { getTodayInTimezone, getWeekEndSaturday } from "../../lib/date-utils";
+import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { cn } from "../../lib/utils";
+import { formatRelativeTime } from "../../lib/relative-time";
+import {
+  checkinOperationalStatusMap,
+  getCheckinOperationalState,
+  type CheckinOperationalState,
+} from "../../lib/checkin-review";
 
 type ClientRow = {
   id: string;
@@ -32,18 +38,11 @@ type CheckinRow = {
   client_id: string | null;
   week_ending_saturday: string | null;
   submitted_at: string | null;
-  pt_feedback: string | null;
+  reviewed_at: string | null;
+  reviewed_by_user_id: string | null;
 };
 
-type QueueStatus = "due" | "submitted" | "reviewed";
-
-const statusMap = {
-  due: { label: "Due", variant: "warning" },
-  submitted: { label: "Submitted", variant: "warning" },
-  reviewed: { label: "Reviewed", variant: "success" },
-} as const;
-
-const formatWeekEnding = (dateStr: string) => {
+const formatCheckinDate = (dateStr: string) => {
   if (!dateStr) return "--";
   const date = new Date(`${dateStr}T00:00:00Z`);
   return date.toLocaleDateString("en-US", {
@@ -55,25 +54,42 @@ const formatWeekEnding = (dateStr: string) => {
 export function PtCheckinsQueuePage() {
   const navigate = useNavigate();
   const { workspaceId } = useWorkspace();
-  const [activeTab, setActiveTab] = useState<QueueStatus>("due");
+  const [activeTab, setActiveTab] =
+    useState<CheckinOperationalState>("submitted");
 
   const todayStr = useMemo(() => getTodayInTimezone(null), []);
-  const weekEndingSaturday = useMemo(
-    () => getWeekEndSaturday(todayStr),
+  const queueStartDate = useMemo(
+    () => addDaysToDateString(todayStr, -45),
+    [todayStr],
+  );
+  const queueEndDate = useMemo(
+    () => addDaysToDateString(todayStr, 14),
     [todayStr],
   );
 
   const checkinsQuery = useQuery({
-    queryKey: ["pt-checkins-week", workspaceId, weekEndingSaturday],
-    enabled: !!workspaceId && !!weekEndingSaturday,
+    queryKey: ["pt-checkins-queue", workspaceId, queueStartDate, queueEndDate],
+    enabled: !!workspaceId && !!queueStartDate && !!queueEndDate,
     queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_workspace_checkins",
+        {
+          p_workspace_id: workspaceId ?? "",
+          p_range_start: queueStartDate,
+          p_range_end: queueEndDate,
+        },
+      );
+      if (ensureError) throw ensureError;
+
       const { data, error } = await supabase
         .from("checkins")
         .select(
-          "id, client_id, week_ending_saturday, submitted_at, pt_feedback, client:clients(id, display_name, user_id, status)",
+          "id, client_id, week_ending_saturday, submitted_at, reviewed_at, reviewed_by_user_id, client:clients(id, display_name, user_id, status)",
         )
-        .eq("week_ending_saturday", weekEndingSaturday)
-        .eq("client.workspace_id", workspaceId ?? "");
+        .gte("week_ending_saturday", queueStartDate)
+        .lte("week_ending_saturday", queueEndDate)
+        .eq("client.workspace_id", workspaceId ?? "")
+        .order("week_ending_saturday", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Array<
         CheckinRow & { client: ClientRow | ClientRow[] | null }
@@ -90,20 +106,20 @@ export function PtCheckinsQueuePage() {
         user_id: null,
         status: null,
       };
-      let status: QueueStatus = "due";
-      if (row.submitted_at) {
-        status =
-          row.pt_feedback && row.pt_feedback.trim().length > 0
-            ? "reviewed"
-            : "submitted";
-      }
+      const status = getCheckinOperationalState(row, todayStr);
       return { client, checkin: row, status };
     });
     return rows;
-  }, [checkinsQuery.data]);
+  }, [checkinsQuery.data, todayStr]);
 
   const isLoading = checkinsQuery.isLoading;
+  const upcomingCount = queueRows.filter(
+    (row) => row.status === "upcoming",
+  ).length;
   const dueCount = queueRows.filter((row) => row.status === "due").length;
+  const overdueCount = queueRows.filter(
+    (row) => row.status === "overdue",
+  ).length;
   const submittedCount = queueRows.filter(
     (row) => row.status === "submitted",
   ).length;
@@ -115,7 +131,7 @@ export function PtCheckinsQueuePage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Check-in Queue"
-        description={`Week ending ${formatWeekEnding(weekEndingSaturday)}. Review due, submitted, and completed client check-ins.`}
+        description={`Operational review queue from ${formatCheckinDate(queueStartDate)} to ${formatCheckinDate(queueEndDate)}.`}
         actions={
           <>
             <Button
@@ -133,14 +149,20 @@ export function PtCheckinsQueuePage() {
 
       <DashboardCard
         title="Queue"
-        subtitle="Due, submitted, and reviewed check-ins."
+        subtitle="Upcoming, due, overdue, submitted, and reviewed check-ins."
       >
         <Tabs
           value={activeTab}
-          onValueChange={(value) => setActiveTab(value as QueueStatus)}
+          onValueChange={(value) =>
+            setActiveTab(value as CheckinOperationalState)
+          }
         >
           <TabsList className="mb-4 flex h-auto flex-wrap gap-2 rounded-lg bg-transparent p-0">
+            <TabsTrigger value="upcoming">
+              Upcoming ({upcomingCount})
+            </TabsTrigger>
             <TabsTrigger value="due">Due ({dueCount})</TabsTrigger>
+            <TabsTrigger value="overdue">Overdue ({overdueCount})</TabsTrigger>
             <TabsTrigger value="submitted">
               Submitted ({submittedCount})
             </TabsTrigger>
@@ -149,7 +171,15 @@ export function PtCheckinsQueuePage() {
             </TabsTrigger>
           </TabsList>
 
-          {(["due", "submitted", "reviewed"] as QueueStatus[]).map((status) => {
+          {(
+            [
+              "upcoming",
+              "due",
+              "overdue",
+              "submitted",
+              "reviewed",
+            ] as CheckinOperationalState[]
+          ).map((status) => {
             const rowsForStatus = queueRows.filter(
               (row) => row.status === status,
             );
@@ -168,9 +198,10 @@ export function PtCheckinsQueuePage() {
                   />
                 ) : (
                   <div className="overflow-hidden rounded-[22px] border border-border/70 bg-background/35">
-                    <div className="grid grid-cols-[minmax(0,1.2fr)_140px_140px_120px] gap-3 border-b border-border/60 bg-secondary/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <div className="grid grid-cols-[minmax(0,1.1fr)_120px_150px_120px_120px] gap-3 border-b border-border/60 bg-secondary/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       <span>Client</span>
-                      <span>Week ending</span>
+                      <span>Due</span>
+                      <span>Updated</span>
                       <span>Status</span>
                       <span className="text-right">Action</span>
                     </div>
@@ -180,13 +211,24 @@ export function PtCheckinsQueuePage() {
                         : row.client.user_id
                           ? `Client ${row.client.user_id.slice(0, 6)}`
                           : "Client";
-                      const weekEnding =
-                        row.checkin?.week_ending_saturday ?? weekEndingSaturday;
+                      const dueDate =
+                        row.checkin?.week_ending_saturday ?? todayStr;
+                      const statusDetail = row.checkin.reviewed_at
+                        ? `Reviewed ${formatRelativeTime(row.checkin.reviewed_at)}`
+                        : row.checkin.submitted_at
+                          ? `Submitted ${formatRelativeTime(
+                              row.checkin.submitted_at,
+                            )}`
+                          : row.status === "upcoming"
+                            ? "Scheduled ahead"
+                            : row.status === "overdue"
+                              ? "Overdue for submission"
+                              : "Awaiting submission";
                       return (
                         <div
                           key={row.client.id}
                           className={cn(
-                            "grid grid-cols-[minmax(0,1.2fr)_140px_140px_120px] items-center gap-3 border-t border-border px-4 py-3 text-sm",
+                            "grid grid-cols-[minmax(0,1.1fr)_120px_150px_120px_120px] items-center gap-3 border-t border-border px-4 py-3 text-sm",
                             status === "reviewed" && "text-muted-foreground",
                           )}
                         >
@@ -200,10 +242,13 @@ export function PtCheckinsQueuePage() {
                               </span>
                             ) : null}
                           </div>
-                          <span>{formatWeekEnding(weekEnding)}</span>
+                          <span>{formatCheckinDate(dueDate)}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {statusDetail}
+                          </span>
                           <StatusPill
                             status={row.status}
-                            statusMap={statusMap}
+                            statusMap={checkinOperationalStatusMap}
                           />
                           <div className="text-right">
                             <Button
@@ -211,11 +256,17 @@ export function PtCheckinsQueuePage() {
                               variant="secondary"
                               onClick={() =>
                                 navigate(
-                                  `/pt/clients/${row.client.id}?tab=checkins`,
+                                  row.status === "submitted" ||
+                                    row.status === "reviewed"
+                                    ? `/pt/clients/${row.client.id}?tab=checkins&checkin=${row.checkin.id}`
+                                    : `/pt/clients/${row.client.id}?tab=checkins`,
                                 )
                               }
                             >
-                              Open
+                              {row.status === "submitted" ||
+                              row.status === "reviewed"
+                                ? "Review"
+                                : "Open"}
                             </Button>
                           </div>
                         </div>

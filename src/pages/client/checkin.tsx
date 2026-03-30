@@ -14,7 +14,23 @@ import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useAuth } from "../../lib/auth";
 import { cn } from "../../lib/utils";
-import { getTodayInTimezone, getWeekEndSaturday } from "../../lib/date-utils";
+import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
+import {
+  CHECKIN_REQUIRED_PHOTO_TYPES,
+  getCheckinFrequencyLabel,
+} from "../../lib/checkin-schedule";
+import {
+  getCheckinOperationalState,
+  getPrimaryClientCheckin,
+} from "../../lib/checkin-review";
+import {
+  CHECKIN_SCALE_MAX,
+  CHECKIN_SCALE_MIN,
+  getCheckinQuestionHelpText,
+  getCheckinQuestionLabel,
+  getCheckinQuestionOptions,
+  normalizeCheckinQuestionType,
+} from "../../lib/checkin-template";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { getOnboardingStatusMeta } from "../../features/client-onboarding/lib/client-onboarding";
 
@@ -49,6 +65,7 @@ type CheckinQuestionRow = Record<string, unknown> & {
   response_type?: string | null;
   type?: string | null;
   input_type?: string | null;
+  options?: string[] | null;
   min?: number | null;
   max?: number | null;
   is_required?: boolean | null;
@@ -93,14 +110,18 @@ type PhotoState = {
   file: File | null;
   previewUrl: string | null;
   existingUrl: string | null;
+  existingStoragePath: string | null;
 };
 
 const steps = ["Questions", "Photos", "Review"];
 
 const statusMap = {
   active: { label: "In progress", variant: "warning" },
+  upcoming: { label: "Upcoming", variant: "muted" },
   submitted: { label: "Submitted", variant: "success" },
   due: { label: "Due", variant: "warning" },
+  overdue: { label: "Overdue", variant: "danger" },
+  reviewed: { label: "Reviewed", variant: "success" },
 } as const;
 
 const requiredStatusMap = {
@@ -119,26 +140,7 @@ const photoSlots: Array<{
   { type: "optional", label: "Optional" },
 ];
 
-const getQuestionLabel = (question: CheckinQuestionRow) =>
-  question.question_text || question.prompt || "Question";
-
-const normalizeQuestionType = (question: CheckinQuestionRow) => {
-  const raw =
-    question.question_type ||
-    question.response_type ||
-    question.type ||
-    question.input_type ||
-    "text";
-  const normalized = String(raw).toLowerCase();
-  if (["scale", "rating", "slider"].includes(normalized)) return "scale";
-  if (["boolean", "yes_no", "yes-no", "yesno"].includes(normalized))
-    return "yes_no";
-  if (["number", "numeric", "int", "float"].includes(normalized))
-    return "number";
-  return "text";
-};
-
-const formatWeekEnding = (dateStr: string) => {
+const formatCheckinDueDate = (dateStr: string) => {
   if (!dateStr) return "--";
   const date = new Date(`${dateStr}T00:00:00Z`);
   return date.toLocaleDateString("en-US", {
@@ -148,29 +150,6 @@ const formatWeekEnding = (dateStr: string) => {
   });
 };
 
-const computeNextCheckinDate = (
-  startDate: string | null | undefined,
-  frequency: string | null | undefined,
-  fromDate: string,
-) => {
-  if (!startDate) return null;
-  const start = new Date(`${startDate}T00:00:00Z`);
-  if (Number.isNaN(start.getTime())) return null;
-  const from = new Date(`${fromDate}T00:00:00Z`);
-  if (Number.isNaN(from.getTime())) return null;
-
-  const freq = frequency ?? "weekly";
-  const stepDays = freq === "biweekly" ? 14 : freq === "monthly" ? 30 : 7;
-  const next = new Date(start);
-  while (next <= from) {
-    next.setDate(next.getDate() + stepDays);
-  }
-  const yyyy = next.getUTCFullYear();
-  const mm = String(next.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(next.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
 export function ClientCheckinPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -178,10 +157,30 @@ export function ClientCheckinPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionValue>>({});
   const [photos, setPhotos] = useState<Record<PhotoType, PhotoState>>({
-    front: { file: null, previewUrl: null, existingUrl: null },
-    side: { file: null, previewUrl: null, existingUrl: null },
-    back: { file: null, previewUrl: null, existingUrl: null },
-    optional: { file: null, previewUrl: null, existingUrl: null },
+    front: {
+      file: null,
+      previewUrl: null,
+      existingUrl: null,
+      existingStoragePath: null,
+    },
+    side: {
+      file: null,
+      previewUrl: null,
+      existingUrl: null,
+      existingStoragePath: null,
+    },
+    back: {
+      file: null,
+      previewUrl: null,
+      existingUrl: null,
+      existingStoragePath: null,
+    },
+    optional: {
+      file: null,
+      previewUrl: null,
+      existingUrl: null,
+      existingStoragePath: null,
+    },
   });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<"success" | "error">(
@@ -212,8 +211,12 @@ export function ClientCheckinPage() {
     () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
     [clientQuery.data?.timezone],
   );
-  const weekEndingSaturday = useMemo(
-    () => getWeekEndSaturday(todayStr),
+  const checkinWindowStart = useMemo(
+    () => addDaysToDateString(todayStr, -45),
+    [todayStr],
+  );
+  const checkinWindowEnd = useMemo(
+    () => addDaysToDateString(todayStr, 45),
     [todayStr],
   );
 
@@ -253,6 +256,7 @@ export function ClientCheckinPage() {
         filter: (query) =>
           query
             .eq("workspace_id", clientQuery.data?.workspace_id ?? "")
+            .neq("is_active", false)
             .order("created_at", { ascending: false })
             .limit(1),
       });
@@ -283,17 +287,38 @@ export function ClientCheckinPage() {
   });
 
   const checkinQuery = useQuery({
-    queryKey: ["client-week-checkin", clientQuery.data?.id, weekEndingSaturday],
-    enabled: !!clientQuery.data?.id && !!weekEndingSaturday,
+    queryKey: [
+      "client-checkin",
+      clientQuery.data?.id,
+      checkinWindowStart,
+      checkinWindowEnd,
+    ],
+    enabled:
+      !!clientQuery.data?.id &&
+      !!templateId &&
+      !!clientQuery.data?.checkin_start_date &&
+      !!checkinWindowStart &&
+      !!checkinWindowEnd,
     queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_client_checkins",
+        {
+          p_client_id: clientQuery.data?.id ?? "",
+          p_range_start: checkinWindowStart,
+          p_range_end: checkinWindowEnd,
+        },
+      );
+      if (ensureError) throw ensureError;
+
       const { data, error } = await supabase
         .from("checkins")
         .select("*")
         .eq("client_id", clientQuery.data?.id ?? "")
-        .eq("week_ending_saturday", weekEndingSaturday)
-        .maybeSingle();
+        .gte("week_ending_saturday", checkinWindowStart ?? "")
+        .lte("week_ending_saturday", checkinWindowEnd ?? "")
+        .order("week_ending_saturday", { ascending: true });
       if (error) throw error;
-      return (data ?? null) as CheckinRow | null;
+      return getPrimaryClientCheckin((data ?? []) as CheckinRow[], todayStr);
     },
   });
 
@@ -332,7 +357,11 @@ export function ClientCheckinPage() {
     });
   }, [templateQuery.data]);
 
-  const isSubmitted = Boolean(checkinQuery.data?.submitted_at);
+  const checkinState = checkinQuery.data
+    ? getCheckinOperationalState(checkinQuery.data, todayStr)
+    : null;
+  const isSubmitted =
+    checkinState === "submitted" || checkinState === "reviewed";
   const isLoading =
     clientQuery.isLoading ||
     workspaceQuery.isLoading ||
@@ -369,10 +398,30 @@ export function ClientCheckinPage() {
     if (!checkinId) {
       setAnswers({});
       setPhotos({
-        front: { file: null, previewUrl: null, existingUrl: null },
-        side: { file: null, previewUrl: null, existingUrl: null },
-        back: { file: null, previewUrl: null, existingUrl: null },
-        optional: { file: null, previewUrl: null, existingUrl: null },
+        front: {
+          file: null,
+          previewUrl: null,
+          existingUrl: null,
+          existingStoragePath: null,
+        },
+        side: {
+          file: null,
+          previewUrl: null,
+          existingUrl: null,
+          existingStoragePath: null,
+        },
+        back: {
+          file: null,
+          previewUrl: null,
+          existingUrl: null,
+          existingStoragePath: null,
+        },
+        optional: {
+          file: null,
+          previewUrl: null,
+          existingUrl: null,
+          existingStoragePath: null,
+        },
       });
       setHydratedCheckinId(null);
       return;
@@ -395,10 +444,30 @@ export function ClientCheckinPage() {
     setAnswers(hydratedAnswers);
 
     const nextPhotos: Record<PhotoType, PhotoState> = {
-      front: { file: null, previewUrl: null, existingUrl: null },
-      side: { file: null, previewUrl: null, existingUrl: null },
-      back: { file: null, previewUrl: null, existingUrl: null },
-      optional: { file: null, previewUrl: null, existingUrl: null },
+      front: {
+        file: null,
+        previewUrl: null,
+        existingUrl: null,
+        existingStoragePath: null,
+      },
+      side: {
+        file: null,
+        previewUrl: null,
+        existingUrl: null,
+        existingStoragePath: null,
+      },
+      back: {
+        file: null,
+        previewUrl: null,
+        existingUrl: null,
+        existingStoragePath: null,
+      },
+      optional: {
+        file: null,
+        previewUrl: null,
+        existingUrl: null,
+        existingStoragePath: null,
+      },
     };
     (photosQuery.data ?? []).forEach((row) => {
       const type = row.photo_type as PhotoType;
@@ -407,6 +476,7 @@ export function ClientCheckinPage() {
         file: null,
         previewUrl: row.url,
         existingUrl: row.url,
+        existingStoragePath: row.storage_path,
       };
     });
     setPhotos(nextPhotos);
@@ -436,6 +506,7 @@ export function ClientCheckinPage() {
             ? URL.createObjectURL(file)
             : (current.existingUrl ?? null),
           existingUrl: current.existingUrl ?? null,
+          existingStoragePath: current.existingStoragePath ?? null,
         },
       };
     });
@@ -449,14 +520,19 @@ export function ClientCheckinPage() {
       }
       return {
         ...prev,
-        [type]: { file: null, previewUrl: null, existingUrl: null },
+        [type]: {
+          file: null,
+          previewUrl: null,
+          existingUrl: null,
+          existingStoragePath: null,
+        },
       };
     });
   };
 
   const handleSubmit = async () => {
-    if (!clientQuery.data?.id || !weekEndingSaturday || !templateQuery.data?.id)
-      return;
+    const dueDate = checkinQuery.data?.week_ending_saturday ?? null;
+    if (!clientQuery.data?.id || !dueDate || !templateQuery.data?.id) return;
     setSubmitting(true);
     setToastMessage(null);
     try {
@@ -465,7 +541,7 @@ export function ClientCheckinPage() {
         .upsert(
           {
             client_id: clientQuery.data.id,
-            week_ending_saturday: weekEndingSaturday,
+            week_ending_saturday: dueDate,
             template_id: templateQuery.data.id,
           },
           { onConflict: "client_id,week_ending_saturday" },
@@ -508,10 +584,16 @@ export function ClientCheckinPage() {
         value_number: number | null;
       }>;
 
+      const { error: clearAnswersError } = await supabase
+        .from("checkin_answers")
+        .delete()
+        .eq("checkin_id", checkinRow.id);
+      if (clearAnswersError) throw clearAnswersError;
+
       if (payload.length > 0) {
         const { error: answersError } = await supabase
           .from("checkin_answers")
-          .upsert(payload, { onConflict: "checkin_id,question_id" });
+          .insert(payload);
         if (answersError) throw answersError;
       }
 
@@ -525,29 +607,45 @@ export function ClientCheckinPage() {
 
       for (const slot of photoSlots) {
         const state = photos[slot.type];
-        if (!state?.file) continue;
-        const extension = state.file.name.split(".").pop() || "jpg";
-        const storagePath = `${clientQuery.data.id}/${checkinRow.id}/${slot.type}-${Date.now()}.${extension}`;
-        const { error: uploadError } = await supabase.storage
-          .from("checkin-photos")
-          .upload(storagePath, state.file, { upsert: true });
-        if (uploadError) throw uploadError;
-        const { data: publicUrl } = supabase.storage
-          .from("checkin-photos")
-          .getPublicUrl(storagePath);
+        if (!state) continue;
+
+        let storagePath = state.existingStoragePath;
+        let publicUrl = state.existingUrl;
+
+        if (state.file) {
+          const extension = state.file.name.split(".").pop() || "jpg";
+          storagePath = `${clientQuery.data.id}/${checkinRow.id}/${slot.type}-${Date.now()}.${extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("checkin-photos")
+            .upload(storagePath, state.file, { upsert: true });
+          if (uploadError) throw uploadError;
+          const { data } = supabase.storage
+            .from("checkin-photos")
+            .getPublicUrl(storagePath);
+          publicUrl = data.publicUrl;
+        }
+
+        if (!storagePath || !publicUrl) continue;
+
         photoRows.push({
           checkin_id: checkinRow.id,
           client_id: clientQuery.data.id,
-          url: publicUrl.publicUrl,
+          url: publicUrl,
           storage_path: storagePath,
           photo_type: slot.type,
         });
       }
 
+      const { error: clearPhotosError } = await supabase
+        .from("checkin_photos")
+        .delete()
+        .eq("checkin_id", checkinRow.id);
+      if (clearPhotosError) throw clearPhotosError;
+
       if (photoRows.length > 0) {
         const { error: photosError } = await supabase
           .from("checkin_photos")
-          .upsert(photoRows, { onConflict: "checkin_id,photo_type" });
+          .insert(photoRows);
         if (photosError) throw photosError;
       }
 
@@ -556,22 +654,6 @@ export function ClientCheckinPage() {
         .update({ submitted_at: new Date().toISOString() })
         .eq("id", checkinRow.id);
       if (submitError) throw submitError;
-
-      const nextDate = computeNextCheckinDate(
-        clientQuery.data?.checkin_start_date ?? null,
-        clientQuery.data?.checkin_frequency ?? "weekly",
-        weekEndingSaturday,
-      );
-      if (nextDate && templateQuery.data?.id) {
-        await supabase.from("checkins").upsert(
-          {
-            client_id: clientQuery.data.id,
-            week_ending_saturday: nextDate,
-            template_id: templateQuery.data.id,
-          },
-          { onConflict: "client_id,week_ending_saturday" },
-        );
-      }
 
       setToastVariant("success");
       setToastMessage("Check-in submitted.");
@@ -589,12 +671,22 @@ export function ClientCheckinPage() {
   };
 
   const canProceed = hasTemplate && !isLoading;
-  const weekEndingLabel = formatWeekEnding(weekEndingSaturday);
-  const statusKey = isSubmitted
-    ? "submitted"
-    : checkinQuery.data
-      ? "active"
-      : "due";
+  const checkinDueDateLabel = formatCheckinDueDate(
+    checkinQuery.data?.week_ending_saturday ?? "",
+  );
+  const checkinFrequencyLabel = getCheckinFrequencyLabel(
+    clientQuery.data?.checkin_frequency,
+  );
+  const statusKey =
+    checkinState === "submitted" || checkinState === "reviewed"
+      ? checkinState
+      : checkinState === "overdue"
+        ? "overdue"
+        : checkinState === "upcoming"
+          ? "upcoming"
+          : checkinQuery.data
+            ? "active"
+            : "due";
   const pageError =
     clientQuery.error ||
     workspaceQuery.error ||
@@ -624,8 +716,8 @@ export function ClientCheckinPage() {
       ) : null}
 
       <DashboardCard
-        title="Weekly check-in"
-        subtitle="Stay aligned with your coach each week."
+        title={`${checkinFrequencyLabel} check-in`}
+        subtitle={`Stay aligned with your coach every ${checkinFrequencyLabel.toLowerCase().replace("-", " ")} cycle.`}
       >
         {isLoading ? (
           <div className="space-y-3">
@@ -635,9 +727,17 @@ export function ClientCheckinPage() {
         ) : clientQuery.data ? (
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <StatusPill status={statusKey} statusMap={statusMap} />
-            <span>Due Saturday</span>
+            <span>
+              {checkinState === "submitted" || checkinState === "reviewed"
+                ? `Completed for ${checkinDueDateLabel}`
+                : checkinState === "overdue"
+                  ? `Overdue since ${checkinDueDateLabel}`
+                  : checkinState === "upcoming"
+                    ? `Scheduled for ${checkinDueDateLabel}`
+                    : `Due ${checkinDueDateLabel}`}
+            </span>
             <span className="text-muted-foreground">|</span>
-            <span>Week ending: {weekEndingLabel}</span>
+            <span>Due date: {checkinDueDateLabel}</span>
           </div>
         ) : (
           <EmptyState
@@ -686,8 +786,14 @@ export function ClientCheckinPage() {
 
       {isSubmitted ? (
         <div className="rounded-lg border border-emerald-200/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          Your check-in for the week ending {weekEndingLabel} is submitted and
-          locked.
+          Your check-in for {checkinDueDateLabel} is submitted and locked.
+        </div>
+      ) : null}
+
+      {checkinState === "overdue" ? (
+        <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-foreground">
+          This check-in is overdue. Finish this open check-in before moving on
+          to the next cycle.
         </div>
       ) : null}
 
@@ -725,8 +831,8 @@ export function ClientCheckinPage() {
 
       {step === 0 ? (
         <DashboardCard
-          title="Weekly questions"
-          subtitle="Share key updates from this week."
+          title={`${checkinFrequencyLabel} questions`}
+          subtitle="Share the latest updates for this check-in period."
         >
           {isLoading ? (
             <div className="space-y-3">
@@ -764,8 +870,10 @@ export function ClientCheckinPage() {
           ) : (
             <div className="space-y-4">
               {questions.map((question) => {
-                const type = normalizeQuestionType(question);
+                const type = normalizeCheckinQuestionType(question);
                 const value = answers[question.id] ?? {};
+                const helpText = getCheckinQuestionHelpText(question);
+                const choiceOptions = getCheckinQuestionOptions(question);
                 return (
                   <div
                     key={question.id}
@@ -774,11 +882,11 @@ export function ClientCheckinPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-foreground">
-                          {getQuestionLabel(question)}
+                          {getCheckinQuestionLabel(question)}
                         </p>
-                        {question.prompt ? (
+                        {helpText ? (
                           <p className="text-xs text-muted-foreground">
-                            {question.prompt}
+                            {helpText}
                           </p>
                         ) : null}
                       </div>
@@ -835,13 +943,41 @@ export function ClientCheckinPage() {
                             No
                           </Button>
                         </div>
+                      ) : type === "choice" ? (
+                        choiceOptions.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {choiceOptions.map((option) => (
+                              <Button
+                                key={option}
+                                type="button"
+                                variant={
+                                  value.text === option
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                onClick={() =>
+                                  handleAnswerChange(question.id, {
+                                    text: option,
+                                  })
+                                }
+                                disabled={isSubmitted}
+                              >
+                                {option}
+                              </Button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+                            Your coach still needs to add options for this
+                            question.
+                          </div>
+                        )
                       ) : type === "scale" ? (
                         <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
                           {Array.from({
-                            length:
-                              (question.max ?? 10) - (question.min ?? 1) + 1,
+                            length: CHECKIN_SCALE_MAX - CHECKIN_SCALE_MIN + 1,
                           })
-                            .map((_, idx) => (question.min ?? 1) + idx)
+                            .map((_, idx) => CHECKIN_SCALE_MIN + idx)
                             .map((score) => (
                               <Button
                                 key={score}
@@ -888,7 +1024,7 @@ export function ClientCheckinPage() {
       {step === 1 ? (
         <DashboardCard
           title="Progress photos"
-          subtitle="Optional but helpful for your coach."
+          subtitle="Front, side, and back photos are required for submission."
         >
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1040,7 +1176,7 @@ export function ClientCheckinPage() {
                         className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm"
                       >
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          {getQuestionLabel(question)}
+                          {getCheckinQuestionLabel(question)}
                         </p>
                         <p className="mt-1 text-foreground">{display}</p>
                       </div>
@@ -1070,7 +1206,9 @@ export function ClientCheckinPage() {
                           />
                         ) : (
                           <p className="mt-2 text-xs text-muted-foreground">
-                            No photo
+                            {slot.required
+                              ? "Required photo missing"
+                              : "No photo"}
                           </p>
                         )}
                       </div>

@@ -24,18 +24,16 @@ import { useWorkspace } from "../../lib/use-workspace";
 import {
   addDaysToDateString,
   formatDateInTimezone,
+  getTodayInTimezone,
   getWeekStartSunday,
 } from "../../lib/date-utils";
+import { formatRelativeTime } from "../../lib/relative-time";
+import {
+  checkinOperationalStatusMap,
+  getCheckinOperationalState,
+  type CheckinOperationalState,
+} from "../../lib/checkin-review";
 import { cn } from "../../lib/utils";
-
-const pad = (value: number) => String(value).padStart(2, "0");
-
-const formatDateKey = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
 
 const getMonthStartKey = (date: Date) => {
   const year = date.getFullYear();
@@ -56,7 +54,7 @@ const buildCalendarDays = (monthCursor: Date) => {
   });
   const days = allDays.filter((day) => day.inMonth);
   const gridEndKey = addDaysToDateString(gridStartKey, 41);
-  return { days, gridStartKey, gridEndKey, monthStartKey };
+  return { days, gridStartKey, gridEndKey };
 };
 
 type ClientRow = {
@@ -69,6 +67,7 @@ type CheckinRow = {
   client_id: string | null;
   week_ending_saturday: string | null;
   submitted_at: string | null;
+  reviewed_at: string | null;
 };
 
 type CoachEventRow = {
@@ -79,16 +78,12 @@ type CoachEventRow = {
   ends_at: string | null;
 };
 
-const statusMap = {
-  due: { label: "Due", variant: "warning" },
-} as const;
-
 export function PtCalendarPage() {
   const { workspaceId } = useWorkspace();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const today = useMemo(() => new Date(), []);
-  const todayKey = useMemo(() => formatDateKey(today), [today]);
+  const todayKey = useMemo(() => getTodayInTimezone(null), []);
   const [monthCursor, setMonthCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
@@ -105,7 +100,7 @@ export function PtCalendarPage() {
   const [eventTitle, setEventTitle] = useState("");
   const [eventDescription, setEventDescription] = useState("");
 
-  const { days, gridStartKey, gridEndKey, monthStartKey } = useMemo(
+  const { days, gridStartKey, gridEndKey } = useMemo(
     () => buildCalendarDays(monthCursor),
     [monthCursor],
   );
@@ -134,10 +129,22 @@ export function PtCalendarPage() {
     ],
     enabled: !!workspaceId && (clientsQuery.data?.length ?? 0) > 0,
     queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_workspace_checkins",
+        {
+          p_workspace_id: workspaceId ?? "",
+          p_range_start: gridStartKey,
+          p_range_end: gridEndKey,
+        },
+      );
+      if (ensureError) throw ensureError;
+
       const clientIds = (clientsQuery.data ?? []).map((row) => row.id);
       const { data, error } = await supabase
         .from("checkins")
-        .select("id, client_id, week_ending_saturday, submitted_at")
+        .select(
+          "id, client_id, week_ending_saturday, submitted_at, reviewed_at",
+        )
         .in("client_id", clientIds)
         .gte("week_ending_saturday", gridStartKey)
         .lte("week_ending_saturday", gridEndKey);
@@ -335,6 +342,20 @@ export function PtCalendarPage() {
                 const checkins = checkinsByDate.get(day.key) ?? [];
                 const events = eventsByDate.get(day.key) ?? [];
                 const isToday = day.key === todayKey;
+                const dayState = (
+                  [
+                    "overdue",
+                    "due",
+                    "upcoming",
+                    "submitted",
+                    "reviewed",
+                  ] as CheckinOperationalState[]
+                ).find((state) =>
+                  checkins.some(
+                    (row) =>
+                      getCheckinOperationalState(row, todayKey) === state,
+                  ),
+                );
                 return (
                   <div
                     key={day.key}
@@ -363,8 +384,11 @@ export function PtCalendarPage() {
                       <span className="text-sm font-semibold text-foreground">
                         {day.key.slice(-2)}
                       </span>
-                      {checkins.some((row) => !row.submitted_at) ? (
-                        <StatusPill status="due" statusMap={statusMap} />
+                      {dayState ? (
+                        <StatusPill
+                          status={dayState}
+                          statusMap={checkinOperationalStatusMap}
+                        />
                       ) : null}
                     </div>
 
@@ -376,6 +400,12 @@ export function PtCalendarPage() {
                         const label = client?.display_name?.trim()
                           ? client.display_name
                           : "Client";
+                        const state = getCheckinOperationalState(row, todayKey);
+                        const detail = row.reviewed_at
+                          ? `Reviewed ${formatRelativeTime(row.reviewed_at)}`
+                          : row.submitted_at
+                            ? `Submitted ${formatRelativeTime(row.submitted_at)}`
+                            : checkinOperationalStatusMap[state].label;
                         return (
                           <button
                             key={row.id}
@@ -384,7 +414,9 @@ export function PtCalendarPage() {
                               event.stopPropagation();
                               if (row.client_id) {
                                 navigate(
-                                  `/pt/clients/${row.client_id}?tab=checkins`,
+                                  state === "submitted" || state === "reviewed"
+                                    ? `/pt/clients/${row.client_id}?tab=checkins&checkin=${row.id}`
+                                    : `/pt/clients/${row.client_id}?tab=checkins`,
                                 );
                               }
                             }}
@@ -393,10 +425,12 @@ export function PtCalendarPage() {
                             <div className="font-semibold text-foreground">
                               {label}
                             </div>
-                            <div className="text-muted-foreground">
-                              {row.submitted_at
-                                ? "Check-in submitted"
-                                : "Check-in due"}
+                            <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                              <span>{detail}</span>
+                              <StatusPill
+                                status={state}
+                                statusMap={checkinOperationalStatusMap}
+                              />
                             </div>
                           </button>
                         );

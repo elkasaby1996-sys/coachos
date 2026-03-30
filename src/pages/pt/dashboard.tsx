@@ -32,11 +32,11 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import {
-  addDaysToDateString,
-  getLastSaturday,
-  getTodayInTimezone,
-} from "../../lib/date-utils";
+  checkinOperationalStatusMap,
+  getCheckinOperationalState,
+} from "../../lib/checkin-review";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 type ClientRecord = {
@@ -62,6 +62,7 @@ type CheckinRow = {
   client_id: string | null;
   week_ending_saturday: string | null;
   submitted_at: string | null;
+  reviewed_at: string | null;
   created_at: string | null;
 };
 
@@ -275,11 +276,11 @@ export function PtDashboardPage() {
   const checkinsTodayCount = useMemo(() => {
     if (checkins.length === 0) return 0;
     const todayStr = getTodayInTimezone(null);
-    const currentSaturday = getLastSaturday(todayStr);
-    return checkins.filter((checkin) => {
-      const weekEnding = checkin.week_ending_saturday ?? "";
-      return weekEnding === currentSaturday && !checkin.submitted_at;
-    }).length;
+    return checkins.filter(
+      (checkin) =>
+        getCheckinOperationalState(checkin, todayStr) === "due" &&
+        checkin.week_ending_saturday === todayStr,
+    ).length;
   }, [checkins]);
 
   const upcomingCheckins = useMemo(() => {
@@ -289,8 +290,16 @@ export function PtDashboardPage() {
       .map((row) => ({
         ...row,
         due: row.week_ending_saturday ?? row.created_at ?? todayStr,
+        state: getCheckinOperationalState(row, todayStr),
       }))
-      .filter((row) => row.due && row.due >= todayStr && row.due <= end)
+      .filter(
+        (row) =>
+          row.due &&
+          row.due >= todayStr &&
+          row.due <= end &&
+          (row.state === "due" || row.state === "upcoming"),
+      )
+      .sort((a, b) => a.due.localeCompare(b.due))
       .slice(0, 5);
   }, [checkins]);
 
@@ -625,7 +634,10 @@ export function PtDashboardPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <StatusPill status="pending" />
+                        <StatusPill
+                          status={row.state}
+                          statusMap={checkinOperationalStatusMap}
+                        />
                         <Badge variant="secondary" className="text-[10px]">
                           {dueLabel}
                         </Badge>

@@ -688,3 +688,497 @@ When working in this repository, every agent or human contributor should treat t
 - Next step:
   - reload the PT client detail page against hosted Supabase to confirm the crash is gone
   - if the auth timeout warning remains noisy, evaluate whether the current role lookup timeouts are too aggressive for hosted latency
+
+## 2026-03-29 09:49 +03:00 - Check-in engine hardening
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - harden the existing check-in engine without rebuilding it
+  - make scheduling authoritative across client/PT surfaces
+  - enforce submission validation and post-submit immutability on the server side
+- Changes made:
+  - added a shared frontend scheduling utility in `src/lib/checkin-schedule.ts` for canonical due-date normalization, frequency handling, and next/range due-date calculation
+  - removed stale `src/lib/checkins.ts`, which was unused and still referenced non-canonical row shapes like `reviewed_at`
+  - updated the client check-in page to:
+    - use the shared scheduler instead of the old weekly/current-week helper
+    - load the active due row via `ensure_client_checkins`
+    - keep question/photo writes aligned with the current draft by clearing and re-inserting answers/photos on submit
+    - stop opportunistically creating the next row in the browser
+    - keep existing photo storage metadata around draft resubmits so required-photo validation can be grounded against the actual current payload
+  - updated client reminders to use the same schedule rules for next due date / upcoming-soon timing instead of weekday heuristics
+  - updated PT queue, dashboard, calendar, and PT client detail check-in flows to rely on the shared scheduler and `ensure_client_checkins` / `ensure_workspace_checkins` where applicable
+  - changed PT check-in feedback save to go through a dedicated `review_checkin` RPC instead of a raw table update
+  - added `supabase/migrations/20260329103000_checkin_engine_hardening.sql` to:
+    - add canonical SQL helpers for month-clamped cadence math and Saturday-normalized due dates
+    - resolve effective client check-in templates consistently
+    - reconcile current/future unsubmitted check-in rows against client settings
+    - expose `ensure_client_checkins` and `ensure_workspace_checkins`
+    - validate required questions/photos before submission
+    - enforce immutability for submitted check-ins and their answers/photos
+    - narrow RLS so authenticated users no longer have broad write access to submitted check-in records
+    - tighten check-in photo storage writes to draft-owned objects only
+    - update `pt_clients_summary` so scheduled future rows do not inflate `last_checkin_at`
+    - update `pt_dashboard_summary` so dashboard data ensures check-in rows before reading
+    - soften `handle_checkin_requested_notifications` so schedule reconciliation does not spam clients with far-future request notifications
+- Files changed:
+  - `src/lib/checkin-schedule.ts`
+  - `src/pages/client/checkin.tsx`
+  - `src/components/common/client-reminders.tsx`
+  - `src/pages/pt/checkins.tsx`
+  - `src/pages/pt/dashboard.tsx`
+  - `src/pages/pt/calendar.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `src/lib/checkins.ts` (removed)
+  - `supabase/migrations/20260329103000_checkin_engine_hardening.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `git checkout -b Check-in-Hardening origin/main`
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - `npm run supabase:db:reset`
+  - `npm run supabase:db:lint`
+  - targeted `npx prettier --write ...` on the touched frontend files
+- Struggles / mistakes / blockers:
+  - local Supabase validation is currently blocked on this machine because Docker Desktop / the local Supabase Postgres container is not running:
+    - `supabase:db:reset` failed trying to connect to `dockerDesktopLinuxEngine`
+    - `supabase:db:lint` failed to connect to local Postgres on `127.0.0.1:54322`
+  - because of that blocker, the SQL migration has not yet been validated through a local reset/lint cycle on this machine
+- Repo state at end:
+  - branch is `Check-in-Hardening`
+  - frontend `lint`, `format`, and `build` all pass locally
+  - tracked changes are the check-in hardening edits above
+  - local Supabase scratch folders remain untracked: `supabase/.branches/`, `supabase/snippets/`
+- Next step:
+  - start Docker Desktop / local Supabase services and rerun `npm run supabase:db:reset` plus `npm run supabase:db:lint`
+  - once the migration validates locally, smoke-test:
+    - client `/app/checkin`
+    - client reminder timing around weekly/biweekly/monthly schedules
+    - PT queue / dashboard / calendar visibility for scheduled rows
+    - PT client detail review save after submission
+
+## 2026-03-29 11:42 +03:00 - Check-in template builder upgrade
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - upgrade the PT check-in template system so coaches can build real templates with structured question types
+  - keep the PT builder and client renderer aligned without rebuilding the underlying schema
+  - protect historical and submitted check-ins when template definitions evolve
+- Changes made:
+  - added `src/lib/checkin-template.ts` as the shared question-template utility for:
+    - supported types: `text`, `number`, `scale`, `choice`, `yes_no`
+    - label/help-text normalization
+    - choice option normalization
+    - draft mapping and validation helpers used by the PT builder
+  - upgraded `src/pages/pt/checkin-templates.tsx` from a simple text-question admin list into a full template builder that now supports:
+    - editing template name/description
+    - activate/deactivate state
+    - create, edit, reorder, and remove questions
+    - required/optional questions
+    - question types for `text`, `number`, `scale`, `choice`, and `yes_no`
+    - choice option editing
+    - template duplication
+    - usage-aware copy-on-write behavior when a template is already in use
+  - updated `src/pages/client/checkin.tsx` to use the shared helper and render supported question types directly:
+    - `text` as textarea
+    - `number` as numeric input
+    - `scale` as 1-10 score buttons
+    - `choice` as explicit option buttons
+    - `yes_no` as dedicated yes/no buttons
+  - updated `src/components/common/client-reminders.tsx` and `src/pages/client/checkin.tsx` so fallback template resolution only considers active templates when no override/default is set
+  - updated `src/pages/pt/client-detail.tsx` and `src/pages/pt/settings.tsx` to make resolution behavior more explicit:
+    - client override
+    - workspace default
+    - latest active template fallback
+    - default selection copy now explains that fallback path
+  - added `supabase/migrations/20260329121500_checkin_template_builder_safety.sql` to:
+    - extend `public.question_type` with `yes_no`
+    - block structural edits or deletes to `checkin_questions` once submitted check-ins depend on them
+    - force later changes onto new template versions instead of mutating historical question definitions in place
+- Files changed:
+  - `src/lib/checkin-template.ts`
+  - `src/pages/pt/checkin-templates.tsx`
+  - `src/pages/client/checkin.tsx`
+  - `src/components/common/client-reminders.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `src/pages/pt/settings.tsx`
+  - `supabase/migrations/20260329121500_checkin_template_builder_safety.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - targeted `npx prettier --write ...` on the touched files
+- Struggles / mistakes / blockers:
+  - the new PT builder initially had a state-flow bug where "new template" immediately reselected the first existing template; fixed by tracking explicit create mode
+  - TypeScript also needed a follow-up pass for array-swap narrowing in the reorder controls before `build` passed cleanly
+  - local Supabase migration validation is still blocked on this machine because Docker / local Supabase is not running, so the new SQL migration has not yet been reset/linted locally
+- Repo state at end:
+  - frontend `lint`, `format`, and `build` pass locally
+  - branch remains `Check-in-Hardening`
+  - both check-in hardening migrations are present but still need a local Supabase reset/lint pass once Docker is available
+- Next step:
+  - start Docker Desktop / local Supabase and rerun:
+    - `npm run supabase:db:reset`
+    - `npm run supabase:db:lint`
+  - smoke-test:
+    - PT `/pt/checkins/templates`
+    - client `/app/checkin`
+    - PT client detail check-in assignment clarity
+    - workspace settings default template selection
+
+## 2026-03-29 13:18 +03:00 - Check-in review workflow upgrade
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - turn PT review into a structured operational workflow instead of relying on `pt_feedback` text alone
+  - add real review metadata and stronger queue states without rebuilding the check-in system
+- Changes made:
+  - added `src/lib/checkin-review.ts` to centralize derived review state rules:
+    - `reviewed` when `reviewed_at` is present
+    - `submitted` when `submitted_at` is present and `reviewed_at` is null
+    - `overdue` when not submitted and `week_ending_saturday` is before today
+    - `due` when not submitted and due date is today or later
+  - extended `src/lib/coach-activity.ts` with a new `checkin_reviewed` action so first review completion can be logged through the existing coach activity system
+  - upgraded `src/pages/pt/checkins.tsx` to:
+    - query an operational date window instead of only the current week row
+    - show explicit `due`, `overdue`, `submitted`, and `reviewed` tabs
+    - display reviewed/submitted timing in the queue row
+    - deep-link submitted/reviewed items straight into the client detail review flow
+  - upgraded `src/pages/pt/client-detail.tsx` to:
+    - use the shared review-state helper for status labels
+    - load `reviewed_at` and `reviewed_by_user_id`
+    - open the exact review dialog from a queue deep-link
+    - show a denser review modal with state/submitted/reviewed/reviewer metadata, clearer answers, ordered photos, draft notes, and explicit `Save draft` / `Mark reviewed` actions
+    - write first review completion through the existing coach activity log
+  - added `supabase/migrations/20260329130000_checkin_review_workflow.sql` to:
+    - add `reviewed_at` and `reviewed_by_user_id` to `public.checkins`
+    - backfill `reviewed_at` for already-submitted rows that already had PT feedback
+    - tighten `enforce_checkin_write_rules()` so review metadata is PT-only, cannot exist before submission, and cannot be cleared after review
+    - replace `review_checkin()` with a review-aware RPC that supports draft-note saves and explicit review completion
+- Files changed:
+  - `src/lib/checkin-review.ts`
+  - `src/lib/coach-activity.ts`
+  - `src/pages/pt/checkins.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `supabase/migrations/20260329130000_checkin_review_workflow.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - targeted `npx prettier --write ...` on the touched TypeScript files
+- Struggles / mistakes / blockers:
+  - the repo formatter still does not infer a parser for `.sql` files directly, so the new migration was kept hand-formatted instead of going through the normal Prettier write step
+  - local Supabase migration validation is still blocked because Docker / local Supabase is not running on this machine
+- Repo state at end:
+  - frontend `lint`, `format`, and `build` pass locally
+  - the new review workflow migration exists but still needs a local `supabase db reset` / `db lint` pass once Docker is available
+- Next step:
+  - start Docker Desktop / local Supabase and rerun:
+    - `npm run supabase:db:reset`
+    - `npm run supabase:db:lint`
+  - smoke-test:
+    - PT `/pt/checkins`
+    - PT client detail review deep-link from the queue
+    - draft review notes vs first `Mark reviewed`
+    - reviewed metadata visibility after refresh
+
+## 2026-03-29 15:08 +03:00 - Check-in visibility and recurrence unification
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - move reminders, queue, dashboard, calendar, and onboarding first-check-in metadata onto one shared due-state model
+  - eliminate the remaining mismatch where surfaces interpreted future, due, overdue, submitted, and reviewed rows differently
+- Changes made:
+  - expanded `src/lib/checkin-review.ts` into the shared operational state helper for:
+    - `upcoming`
+    - `due`
+    - `overdue`
+    - `submitted`
+    - `reviewed`
+  - added helper utilities there for:
+    - selecting the primary client-facing check-in from a reconciled window
+    - checking whether an upcoming check-in falls inside a reminder window
+    - keeping the legacy review-only mapping available where older PT surfaces still use the narrower states
+  - upgraded `src/components/common/client-reminders.tsx` to:
+    - reconcile and inspect a real check-in window instead of assuming only the next future due row matters
+    - surface overdue, due-today, and upcoming-soon reminders from the shared operational state
+  - upgraded `src/pages/client/checkin.tsx` to:
+    - load a reconciled date window
+    - focus the client on the primary actionable or most recent relevant check-in instead of always jumping to the next future scheduled row
+    - show clearer overdue/upcoming/submitted state messaging in the header
+  - upgraded `src/pages/pt/checkins.tsx` so the operational queue now includes an explicit `Upcoming` bucket and uses the shared state helper end-to-end
+  - upgraded `src/pages/pt/dashboard.tsx` to:
+    - derive the "Check-ins today" stat from the shared due-state helper
+    - keep the upcoming list limited to rows that are actually `due` or `upcoming`
+    - show the same shared status pill labels as the queue/calendar
+  - upgraded `src/pages/pt/calendar.tsx` to:
+    - load `reviewed_at`
+    - derive day-level and row-level status from the shared due-state helper
+    - deep-link submitted/reviewed rows straight into the PT review flow
+  - added `supabase/migrations/20260329143000_checkin_visibility_unification.sql` to:
+    - normalize onboarding `first_checkin_date` to the same canonical week-ending Saturday used by the scheduler
+    - update `pt_dashboard_summary()` so dashboard check-in payloads include `reviewed_at`
+- Files changed:
+  - `src/components/common/client-reminders.tsx`
+  - `src/lib/checkin-review.ts`
+  - `src/pages/client/checkin.tsx`
+  - `src/pages/pt/checkins.tsx`
+  - `src/pages/pt/dashboard.tsx`
+  - `src/pages/pt/calendar.tsx`
+  - `supabase/migrations/20260329143000_checkin_visibility_unification.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - targeted `npx prettier --write ...` on the touched frontend files
+- Struggles / mistakes / blockers:
+  - the first build pass failed because this TypeScript target does not support `Array.prototype.at`; replaced it with indexed access
+  - local Supabase migration validation is still blocked because Docker / local Supabase is not running on this machine
+- Repo state at end:
+  - frontend `lint`, `format`, and `build` pass locally
+  - the new visibility-unification migration exists but still needs a local `supabase db reset` / `db lint` pass once Docker is available
+- Next step:
+  - start Docker Desktop / local Supabase and rerun:
+    - `npm run supabase:db:reset`
+    - `npm run supabase:db:lint`
+  - smoke-test:
+    - client reminders and `/app/checkin` for overdue vs upcoming behavior
+    - PT `/pt/checkins` upcoming tab and submitted/reviewed deep-links
+    - PT dashboard check-in cards
+    - PT calendar mixed due/submitted/reviewed states
+    - onboarding completion to confirm the stored first check-in date matches the created check-in row
+
+## 2026-03-29 16:02 +03:00 - Check-in QA hardening pass
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - validate the upgraded check-in MVP with focused automated coverage, a sharper smoke path, and a realistic manual QA checklist
+  - clean up stale test/docs assumptions before calling the feature set operationally ready
+- Changes made:
+  - added a lightweight Vitest harness with `npm run test:unit` via `vitest.config.ts`
+  - added `tests/unit/checkin-schedule.test.ts` to cover:
+    - weekly cadence due-date calculation
+    - biweekly cadence due-date calculation
+    - monthly clamped cadence calculation
+    - next-due resolution
+    - non-Saturday normalization to canonical Saturday due dates
+  - added `tests/unit/checkin-review.test.ts` to cover:
+    - `upcoming`
+    - `due`
+    - `overdue`
+    - `submitted`
+    - `reviewed`
+    - reminder-window upcoming detection
+    - primary client-facing check-in selection
+  - upgraded `tests/e2e/checkin-submit-review.smoke.spec.ts` so the smoke flow now checks:
+    - post-submit lock behavior after reload
+    - PT draft review save
+    - PT `Mark reviewed` / `Update review` flow
+    - reviewed confirmation copy instead of the old feedback-only expectation
+  - added `docs/checkin-qa-checklist.md` as the concise manual QA list for:
+    - PT template builder
+    - assignment/cadence behavior
+    - client submission and photo handling
+    - reminders
+    - PT review
+    - queue/dashboard/calendar consistency
+    - onboarding first check-in
+    - DB/security verification steps
+  - cleaned stale references by:
+    - removing obsolete `partially_activated` expectations from `docs/onboarding-qa-checklist.md`
+    - removing unused check-in fields from reminder/queue fetch shapes
+    - removing dead calendar helpers left behind by the recent state unification
+- Files changed:
+  - `package.json`
+  - `vitest.config.ts`
+  - `tests/unit/checkin-schedule.test.ts`
+  - `tests/unit/checkin-review.test.ts`
+  - `tests/e2e/checkin-submit-review.smoke.spec.ts`
+  - `docs/checkin-qa-checklist.md`
+  - `docs/onboarding-qa-checklist.md`
+  - `src/components/common/client-reminders.tsx`
+  - `src/pages/pt/calendar.tsx`
+  - `src/pages/pt/checkins.tsx`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run test:unit`
+  - `npx playwright test tests/e2e/checkin-submit-review.smoke.spec.ts`
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - the Playwright check-in smoke test is wired and up to date, but it skipped in this workspace because the required `E2E_*` auth/client environment variables are not configured here
+  - server-side submission validation and post-submit immutability still need a live local Supabase reset/lint plus manual verification because Docker / local Supabase is not running on this machine
+  - no DB-level automated test harness exists yet for RLS / trigger assertions, so that portion remains manual in this pass
+- Repo state at end:
+  - `lint`, `format`, `build`, and new unit tests pass locally
+  - check-in smoke test is present and updated, but requires configured E2E credentials plus a suitable seeded workspace/client to execute fully
+- Next step:
+  - start Docker Desktop / local Supabase and rerun:
+    - `npm run supabase:db:reset`
+    - `npm run supabase:db:lint`
+  - run the updated smoke test with configured credentials:
+    - `npx playwright test tests/e2e/checkin-submit-review.smoke.spec.ts`
+  - execute `docs/checkin-qa-checklist.md` end to end, especially:
+    - required-answer/photo submit failures
+    - post-submit immutability against the live DB
+    - onboarding-created first check-in visibility across reminders, queue, dashboard, and calendar
+
+## 2026-03-29 13:20 +03:00 - Exact-Date Check-In Cadence Fix
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - remove the unintended Saturday normalization so the first assigned check-in date stays exact and all future due dates follow the selected cadence from that anchor date
+- Changes made:
+  - changed the shared client/PT check-in scheduler to preserve the exact assigned date instead of shifting it to the ending Saturday
+  - updated unit tests to cover exact-date weekly, biweekly, and monthly cadence behavior
+  - added a follow-up migration that:
+    - makes `normalize_checkin_due_date(...)` an identity function
+    - keeps `calculate_checkin_due_date(...)` anchored to the exact assigned date
+    - removes the Saturday-only submission validation and table constraint
+    - updates check-in request notification copy from `week ending` language to `due on`
+  - updated client/PT check-in UI copy on the main surfaces from `Week ending` to `Due date` / `Due`
+- Files changed:
+  - `src/lib/checkin-schedule.ts`
+  - `tests/unit/checkin-schedule.test.ts`
+  - `src/pages/client/checkin.tsx`
+  - `src/pages/pt/checkins.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `supabase/migrations/20260329193000_exact_date_checkin_cadence.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run supabase:migration:up`
+  - `npm run supabase:db:lint`
+  - `npm run test:unit`
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - the earlier hardening pass codified Saturday normalization too aggressively, which did not match the desired product rule for first-date anchoring
+  - the legacy column name `week_ending_saturday` remains in place for compatibility even though it now stores the exact due date rather than a guaranteed Saturday
+- Repo state at end:
+  - local DB migration applied successfully
+  - schema lint, unit tests, lint, and build all pass
+  - check-in cadence now uses exact assigned dates from the anchor instead of converting to Saturdays
+- Next step:
+  - restart the dev server, sign back in, and re-test PT assignment plus onboarding first-check-in scheduling
+  - manually confirm:
+    - first assigned due date matches the exact chosen date
+    - weekly cadence adds 7 days from that date
+    - biweekly cadence adds 14 days from that date
+    - monthly cadence clamps by calendar month without Saturday translation
+
+## 2026-03-29 13:50 +03:00 - PT Review Modal Workflow Refinement
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - make the PT check-in review modal denser, easier to use in normal desktop viewports, and require notes before final review completion
+- Changes made:
+  - redesigned the existing PT check-in review modal into a capped-height internal-scroll workspace with:
+    - sticky header metadata
+    - scrollable body
+    - sticky footer actions
+  - separated review content into clearer sections and then refined them into in-modal tabs:
+    - `Answers` as the primary compact question/answer review area
+    - `Photos` as a smaller thumbnail grid with preview support
+    - `Notes` as a dedicated, visually stronger review panel
+  - added clean missing/broken image states so review photos render `No image uploaded` / `Image unavailable` instead of broken browser placeholders
+  - switched PT review photo loading to signed URLs resolved from `storage_path` so private `checkin-photos` bucket assets render reliably in the modal
+  - added inline UI validation so `Mark reviewed` / `Update review` requires non-empty notes
+  - added backend enforcement in `public.review_checkin(...)` so final review completion also requires non-empty notes server-side
+- Files changed:
+  - `src/pages/pt/client-detail.tsx`
+  - `supabase/migrations/20260329204000_require_review_notes_for_completion.sql`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm run supabase:migration:up`
+  - `npm run lint`
+  - `npm run test:unit`
+  - `npm run build`
+  - `npm run supabase:db:lint`
+- Struggles / mistakes / blockers:
+  - none blocking after implementation; this pass stayed inside the existing review surface rather than introducing a side sheet or dedicated page
+- Repo state at end:
+  - local migration applied
+  - lint, unit tests, build, and DB lint all pass
+  - PT review now requires notes for final completion in both UI and backend
+- Next step:
+  - manually verify the PT review modal at normal desktop zoom with:
+    - long answer sets
+    - missing photos
+    - broken/unavailable photo URLs
+    - draft save with partial notes
+    - blocked final review with empty notes
+    - successful `Mark reviewed` / `Update review` with valid notes
+
+## 2026-03-29 14:15 +03:00 - Branch Hygiene And Push Handoff
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - finalize the branch handoff after the full check-in hardening/review pass and keep local-only Supabase scratch directories out of Git
+- Changes made:
+  - committed the check-in hardening/review upgrade as:
+    - `5e31e1d` `Harden and refine check-in workflows`
+  - pushed the branch to:
+    - `origin/Check-in-Hardening`
+  - updated `.gitignore` to ignore local Supabase scratch directories:
+    - `supabase/.branches/`
+    - `supabase/snippets/`
+- Files changed:
+  - `.gitignore`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `git commit -m "Harden and refine check-in workflows"`
+  - `git push -u origin Check-in-Hardening`
+- Struggles / mistakes / blockers:
+  - none; this was a hygiene follow-up so local Supabase scratch output stops appearing as untracked repo noise
+- Repo state at end:
+  - branch pushed and tracking `origin/Check-in-Hardening`
+  - local scratch directories now ignored
+- Next step:
+  - open a PR from `Check-in-Hardening`
+  - continue manual QA on the pushed branch, especially:
+    - PT review tabs and signed photo loading
+    - exact-date check-in cadence
+    - client check-in photo upload and submit flow
+
+## 2026-03-30 11:22 +03:00 - PR #76 Quality Gate Cleanup
+
+- Branch:
+  - `Check-in-Hardening`
+- Goal:
+  - fix the failing quality gate on the check-in hardening PR without changing behavior
+- Changes made:
+  - ran the local release-quality checks on the branch
+  - found that `lint`, `build`, and `test:unit` were already passing
+  - identified the actual failure as the Prettier format gate
+  - reformatted the two files that were failing the formatter:
+    - `src/pages/client/checkin.tsx`
+    - `src/pages/pt/client-detail.tsx`
+- Files changed:
+  - `src/pages/client/checkin.tsx`
+  - `src/pages/pt/client-detail.tsx`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `npm install`
+  - `npm run lint`
+  - `npm run format`
+  - `npm run build`
+  - `npm run test:unit`
+  - `npx prettier --write src/pages/client/checkin.tsx src/pages/pt/client-detail.tsx`
+- Struggles / mistakes / blockers:
+  - none in product logic; the failing PR signal was formatting-only
+- Repo state at end:
+  - all local quality gates pass on `Check-in-Hardening`
+- Next step:
+  - commit and push the formatter-only fix so PR #76 can re-run cleanly
