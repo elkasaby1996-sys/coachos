@@ -29,7 +29,14 @@ test.describe("Smoke: auth and onboarding", () => {
       process.env.E2E_PT_PASSWORD!,
     );
 
-    await expect(page).toHaveURL(/\/(pt-hub|pt\/onboarding\/workspace)/);
+    await expect(page).toHaveURL(
+      /\/(pt-hub|pt\/onboarding\/workspace|no-workspace)/,
+    );
+
+    if (page.url().includes("/no-workspace")) {
+      await page.getByRole("link", { name: /create pt workspace/i }).click();
+      await expect(page).toHaveURL(/\/pt\/onboarding\/workspace/);
+    }
 
     if (page.url().includes("/pt/onboarding/workspace")) {
       await page

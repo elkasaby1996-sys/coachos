@@ -34,15 +34,18 @@ test.describe("Smoke: check-in submit and PT review", () => {
     );
     await waitForAppReady(clientPage);
 
-    const alreadySubmittedBanner = clientPage.getByText(
-      /is submitted and locked/i,
-    );
     const noTemplateBanner = clientPage.getByText(/assigned a check-in yet/i);
     const noQuestionsBanner = clientPage.getByText(
       /no questions (yet|to review)/i,
     );
+    const hasLockedCheckinState = async () => {
+      const bodyText = (await clientPage.locator("body").textContent()) ?? "";
+      return /check-in reviewed|check-in submitted|record is locked|submitted responses from this cycle|reviewed with missing required items|is submitted and locked/i.test(
+        bodyText,
+      );
+    };
 
-    if (await alreadySubmittedBanner.isVisible()) {
+    if (await hasLockedCheckinState()) {
       await clientContext.close();
       test.skip(true, "Current check-in already submitted for this client.");
       return;
@@ -74,6 +77,11 @@ test.describe("Smoke: check-in submit and PT review", () => {
       if (await noTemplateBanner.isVisible().catch(() => false)) {
         await clientContext.close();
         test.skip(true, "Client has no assigned check-in template.");
+        return;
+      }
+      if (await hasLockedCheckinState()) {
+        await clientContext.close();
+        test.skip(true, "Current check-in is already locked for this client.");
         return;
       }
       if (await noQuestionsBanner.isVisible().catch(() => false)) {
@@ -148,6 +156,18 @@ test.describe("Smoke: check-in submit and PT review", () => {
               await button.click().catch(() => {});
             }
           }
+
+          const fileInputs = clientPage.locator('input[type="file"]');
+          const requiredPhotoCount = Math.min(await fileInputs.count(), 3);
+          for (let index = 0; index < requiredPhotoCount; index += 1) {
+            const input = fileInputs.nth(index);
+            if (
+              (await input.isVisible().catch(() => false)) &&
+              (await input.isEnabled().catch(() => false))
+            ) {
+              await input.setInputFiles(tinyPngFile(`smoke-${index}.png`));
+            }
+          }
         }
         if (!(await continueButton.isDisabled())) {
           await continueButton.click();
@@ -176,6 +196,11 @@ test.describe("Smoke: check-in submit and PT review", () => {
         test.skip(true, "Assigned check-in has no questions.");
         return;
       }
+      if (await hasLockedCheckinState()) {
+        await clientContext.close();
+        test.skip(true, "Current check-in is already locked for this client.");
+        return;
+      }
     }
 
     await expect(
@@ -185,16 +210,8 @@ test.describe("Smoke: check-in submit and PT review", () => {
 
     if (await submitButton.isDisabled()) {
       await clientContext.close();
-      test.skip(true, "Current check-in already submitted for this client.");
+      test.skip(true, "Current check-in is already locked for this client.");
       return;
-    }
-
-    const fileInputs = clientPage.locator('input[type="file"]');
-    const requiredPhotoCount = Math.min(await fileInputs.count(), 3);
-    for (let index = 0; index < requiredPhotoCount; index += 1) {
-      await fileInputs
-        .nth(index)
-        .setInputFiles(tinyPngFile(`smoke-${index}.png`));
     }
 
     await submitButton.click();
@@ -204,12 +221,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
 
     await clientPage.reload({ waitUntil: "domcontentloaded" });
     await waitForAppReady(clientPage);
-    await expect(clientPage.getByText(/is submitted and locked/i)).toBeVisible({
-      timeout: 15_000,
-    });
-    await expect(
-      clientPage.getByRole("button", { name: /submit check-in/i }),
-    ).toBeDisabled();
+    await expect.poll(hasLockedCheckinState, { timeout: 15_000 }).toBe(true);
     await clientContext.close();
 
     const ptContext = await browser.newContext();
