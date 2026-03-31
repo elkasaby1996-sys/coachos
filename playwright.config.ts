@@ -1,8 +1,22 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const configuredBaseUrl = process.env.E2E_BASE_URL?.trim();
-const baseURL = configuredBaseUrl || "http://127.0.0.1:4173";
-const useWebServer = !configuredBaseUrl;
+const defaultBaseUrl = "http://127.0.0.1:4173";
+
+function isLoopbackBaseUrl(url: string) {
+  try {
+    const { hostname } = new URL(url);
+    return ["127.0.0.1", "localhost", "0.0.0.0"].includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
+const useExternalBaseUrl =
+  Boolean(configuredBaseUrl) &&
+  (!process.env.CI || !isLoopbackBaseUrl(configuredBaseUrl));
+const baseURL = useExternalBaseUrl ? configuredBaseUrl : defaultBaseUrl;
+const useWebServer = !useExternalBaseUrl;
 
 export default defineConfig({
   testDir: "tests/e2e",
