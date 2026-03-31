@@ -6,6 +6,7 @@ import {
   LineChart,
   LogOut,
   MessageCircle,
+  PanelLeftClose,
   PanelTop,
   UserCircle,
 } from "lucide-react";
@@ -66,8 +67,8 @@ export function ClientLayout() {
   const onboardingSummary = onboardingQuery.data ?? null;
   const basicsGateRequired = Boolean(
     onboardingSummary &&
-    onboardingSummary.canEdit &&
-    !onboardingSummary.progress.basics.complete,
+      onboardingSummary.canEdit &&
+      !onboardingSummary.progress.basics.complete,
   );
   const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
   const routeLabel = useMemo(
@@ -77,23 +78,24 @@ export function ClientLayout() {
   const [isOnboardingBannerDismissed, setIsOnboardingBannerDismissed] =
     useState(() => {
       if (typeof window === "undefined") return false;
-      return window.sessionStorage.getItem(
-        "coachos-client-onboarding-banner-dismissed",
-      ) === "1";
+      return (
+        window.sessionStorage.getItem(
+          "coachos-client-onboarding-banner-dismissed",
+        ) === "1"
+      );
     });
   const [isSigningOut, setIsSigningOut] = useState(false);
   const errorMessage =
     error?.message ??
     authError?.message ??
     (workspaceId ? null : "Workspace not found.");
-  const shouldRenderOnboardingBanner =
-    Boolean(
-      onboardingSummary &&
-        onboardingSummary.onboarding.status !== "completed" &&
-        !isOnboardingRoute &&
-        shouldShowOnboardingBanner(location.pathname) &&
-        !isOnboardingBannerDismissed,
-    );
+  const shouldRenderOnboardingBanner = Boolean(
+    onboardingSummary &&
+      onboardingSummary.onboarding.status !== "completed" &&
+      !isOnboardingRoute &&
+      shouldShowOnboardingBanner(location.pathname) &&
+      !isOnboardingBannerDismissed,
+  );
   const topStatusText = onboardingSummary
     ? onboardingSummary.onboarding.status === "completed"
       ? "Workspace setup complete"
@@ -101,6 +103,11 @@ export function ClientLayout() {
         ? "Onboarding with coach"
         : `${onboardingSummary.completionPercent}% onboarding complete`
     : "Private coaching workspace";
+  const shouldShowTopStatusText = Boolean(
+    onboardingSummary
+      ? onboardingSummary.onboarding.status !== "completed"
+      : false,
+  );
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -150,10 +157,13 @@ export function ClientLayout() {
   return (
     <div className="min-h-screen bg-background [background:var(--portal-page-bg)]">
       <div className="flex min-h-screen w-full">
-        <aside className="hidden w-64 flex-col border-r border-border/70 bg-card/80 px-4 py-6 backdrop-blur-xl md:flex">
+        <aside className="hidden w-20 flex-col border-r border-border/70 bg-card/80 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
           <div className="mb-8 flex items-center justify-between">
-            <span className="text-lg font-semibold tracking-tight">
+            <span className="hidden text-lg font-semibold tracking-tight xl:inline">
               CoachOS
+            </span>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-background/55 text-sm font-semibold text-foreground xl:hidden">
+              C
             </span>
           </div>
           <nav className="flex flex-1 flex-col gap-2">
@@ -161,52 +171,74 @@ export function ClientLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                aria-label={item.label}
+                title={item.label}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted",
+                    "flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm text-muted-foreground hover:bg-muted xl:justify-start",
                     isActive && "bg-muted text-foreground",
                   )
                 }
               >
                 <item.icon className="h-4 w-4" />
-                {item.label}
+                <span className="hidden xl:inline">{item.label}</span>
               </NavLink>
             ))}
           </nav>
           <Button
             variant="secondary"
             size="sm"
-            className="mt-4 w-full justify-start gap-2"
+            className="mt-4 w-full justify-center gap-2 xl:justify-start"
             onClick={handleSignOut}
             disabled={isSigningOut}
+            aria-label="Log out"
+            title="Log out"
           >
             <LogOut className="h-4 w-4" />
-            {isSigningOut ? "Logging out..." : "Log out"}
+            <span className="hidden xl:inline">
+              {isSigningOut ? "Logging out..." : "Log out"}
+            </span>
           </Button>
         </aside>
-        <div className="flex flex-1 min-w-0 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <header className="border-b border-border/60 bg-background/60 py-3.5 backdrop-blur-xl">
             <PageContainer
               size="portal"
-              className="flex items-center justify-between gap-3"
+              className="flex flex-wrap items-center justify-between gap-3"
             >
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <PanelTop className="h-4 w-4 text-primary" />
+                  <PanelTop className="hidden h-4 w-4 text-primary sm:inline-flex" />
+                  <PanelLeftClose className="h-4 w-4 text-primary md:hidden" />
                   <span>CoachOS client workspace</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                   <span>{routeLabel}</span>
-                  <span className="hidden text-border sm:inline">•</span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <CircleDot className="h-3.5 w-3.5 text-primary" />
-                    {topStatusText}
-                  </span>
+                  {shouldShowTopStatusText ? (
+                    <>
+                      <span className="hidden text-border sm:inline">|</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <CircleDot className="h-3.5 w-3.5 text-primary" />
+                        {topStatusText}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-start sm:self-auto">
                 <NotificationBell viewAllHref="/app/notifications" />
                 <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  aria-label="Log out"
+                  title="Log out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             </PageContainer>
           </header>
@@ -263,18 +295,16 @@ export function ClientLayout() {
             </PageContainer>
           </main>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 bg-card/92 py-2 backdrop-blur-xl md:hidden">
-            <PageContainer
-              size="portal"
-              className="flex items-center justify-between"
-            >
+            <PageContainer size="portal" className="grid grid-cols-5 gap-1">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  aria-label={item.label}
                   className={({ isActive }) =>
                     cn(
-                      "flex flex-col items-center gap-1 text-xs text-muted-foreground",
-                      isActive && "text-foreground",
+                      "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-[11px] text-muted-foreground transition",
+                      isActive && "bg-background/65 text-foreground",
                     )
                   }
                 >
@@ -282,15 +312,6 @@ export function ClientLayout() {
                   {item.label}
                 </NavLink>
               ))}
-              <button
-                type="button"
-                className="flex flex-col items-center gap-1 text-xs text-muted-foreground"
-                onClick={handleSignOut}
-                disabled={isSigningOut}
-              >
-                <LogOut className="h-5 w-5" />
-                {isSigningOut ? "..." : "Logout"}
-              </button>
             </PageContainer>
           </nav>
         </div>

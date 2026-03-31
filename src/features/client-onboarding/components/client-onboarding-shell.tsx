@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock3,
   Loader2,
+  PencilLine,
   Save,
   ShieldCheck,
 } from "lucide-react";
@@ -1796,9 +1797,11 @@ export function ClientOnboardingShell() {
                           {summary.canEdit ? (
                             <Button
                               size="sm"
-                              variant="secondary"
+                              variant="ghost"
+                              className="h-8 px-2.5 text-muted-foreground hover:text-foreground"
                               onClick={() => void goToStep(section.stepKey)}
                             >
+                              <PencilLine className="mr-1.5 h-3.5 w-3.5" />
                               Edit
                             </Button>
                           ) : null}
@@ -1810,9 +1813,7 @@ export function ClientOnboardingShell() {
                             key={`${section.title}-${label}`}
                             className="space-y-1"
                           >
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              {label}
-                            </p>
+                            <p className="field-label">{label}</p>
                             <p className="text-sm text-foreground">
                               {toReviewValue(value)}
                             </p>
@@ -1831,10 +1832,14 @@ export function ClientOnboardingShell() {
                         {summary.canEdit ? (
                           <Button
                             size="sm"
-                            variant="secondary"
+                            variant="ghost"
+                            className="h-8 px-2.5 text-muted-foreground hover:text-foreground"
                             asChild
                           >
-                            <Link to={baselineStepHref}>Edit</Link>
+                            <Link to={baselineStepHref}>
+                              <PencilLine className="mr-1.5 h-3.5 w-3.5" />
+                              Edit
+                            </Link>
                           </Button>
                         ) : null}
                       </div>

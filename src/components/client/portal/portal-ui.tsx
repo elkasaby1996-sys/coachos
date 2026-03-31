@@ -28,19 +28,19 @@ export function PortalPageHeader({
   return (
     <section
       className={cn(
-        "flex flex-col gap-4 border-b border-border/50 pb-5 md:flex-row md:items-end md:justify-between",
+        "flex flex-col gap-5 border-b border-border/50 pb-5 lg:flex-row lg:items-end lg:justify-between",
         className,
       )}
     >
       <div className="min-w-0 space-y-2">
-        <h1 className="text-[2rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2.35rem]">
+        <h1 className="text-[1.85rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2.15rem] lg:text-[2.35rem]">
           {title}
         </h1>
         {subtitle || stateText ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px] leading-7 text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-muted-foreground sm:text-[15px] sm:leading-7">
             {subtitle ? <p className="max-w-3xl">{subtitle}</p> : null}
             {stateText ? (
-              <span className="rounded-full border border-border/70 bg-background/40 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex max-w-full items-center rounded-full border border-border/70 bg-background/40 px-2.5 py-1 text-[12px] font-medium text-foreground/80">
                 {stateText}
               </span>
             ) : null}
@@ -48,7 +48,7 @@ export function PortalPageHeader({
         ) : null}
       </div>
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+        <div className="grid w-full gap-2 sm:flex sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
           {actions}
         </div>
       ) : null}
@@ -215,7 +215,7 @@ export function StatusBanner({
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">{title}</p>
           {description ? (
-            <div className="text-sm leading-6 text-muted-foreground">
+            <div className="text-sm leading-6 text-foreground/80">
               {description}
             </div>
           ) : null}
@@ -274,8 +274,8 @@ export function EmptyStateBlock({
       {actions ? (
         <div
           className={cn(
-            "mt-5 flex flex-wrap items-center gap-2",
-            centered && "justify-center",
+            "mt-5 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center",
+            centered && "sm:justify-center",
           )}
         >
           {actions}
@@ -293,12 +293,12 @@ export function StickyActionBar({
   return (
     <div
       className={cn(
-        "sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 md:bottom-4",
+        "sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mt-6 lg:bottom-6",
         className,
       )}
       {...props}
     >
-      <div className="surface-panel-portal flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
+      <div className="surface-panel-portal flex flex-col items-stretch gap-3 border border-border/70 bg-background/92 px-4 py-4 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.92)] backdrop-blur-xl sm:px-5 md:flex-row md:flex-wrap md:items-center md:justify-between">
         {children}
       </div>
     </div>
@@ -334,7 +334,7 @@ export function StepIndicator({
               onClick={step.onClick}
               disabled={step.disabled}
               className={cn(
-                "surface-section flex w-full items-center gap-3 px-4 py-3 text-left transition",
+                "surface-section flex w-full items-center gap-3 px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 step.state === "current" &&
                   "border-primary/45 bg-primary/10 shadow-[0_12px_36px_-28px_rgba(56,189,248,0.65)]",
                 step.state === "completed" &&

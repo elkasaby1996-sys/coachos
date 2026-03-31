@@ -205,6 +205,14 @@ export function ClientWorkoutTodayPage() {
     startDefaultSession.error;
 
   const workout = workoutQuery.data ?? null;
+  const workoutStatusLabel =
+    workout?.status === "completed"
+      ? "Completed"
+      : workout?.status === "skipped"
+        ? "Skipped"
+        : workout?.status === "planned" || workout?.status === "pending"
+          ? "Scheduled"
+          : "Scheduled";
   const exerciseRows =
     (assignedExercisesQuery.data ?? []).length > 0
       ? (assignedExercisesQuery.data ?? [])
@@ -221,19 +229,23 @@ export function ClientWorkoutTodayPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Workout Today"
-        subtitle={today.toLocaleDateString("en-US", {
+        subtitle={`Your session plan for ${today.toLocaleDateString("en-US", {
           weekday: "long",
           month: "short",
           day: "numeric",
-        })}
+        })}.`}
         stateText={
           state === "assigned" && workout?.status
-            ? `Status: ${workout.status}`
-            : undefined
+            ? workoutStatusLabel
+            : state === "empty"
+              ? "No workout scheduled"
+              : state === "error"
+                ? "Unavailable"
+                : "Loading"
         }
         actions={
           <Button variant="secondary" onClick={() => navigate("/app/home")}>
-            Return home
+            Back to home
           </Button>
         }
       />
@@ -264,9 +276,16 @@ export function ClientWorkoutTodayPage() {
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => navigate("/app/home")}
+                onClick={() =>
+                  navigate(
+                    `/app/messages?draft=${encodeURIComponent(
+                      "I can't load today's workout in the portal. Can you help?",
+                    )}`,
+                  )
+                }
               >
-                Return home
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Message your coach
               </Button>
             </>
           }
@@ -276,8 +295,8 @@ export function ClientWorkoutTodayPage() {
       {state === "empty" ? (
         <EmptyStateBlock
           icon={<Dumbbell className="h-5 w-5" />}
-          title="No workout assigned today"
-          description="Your coach has not scheduled a session for today yet. You can check back later, message your coach, or start a fallback session now."
+          title="No workout scheduled for today"
+          description="Your coach has not added a workout for today yet. You can check back later, message your coach, or start a fallback session now."
           actions={
             <>
               <Button
@@ -286,7 +305,7 @@ export function ClientWorkoutTodayPage() {
               >
                 {startDefaultSession.isPending
                   ? "Starting..."
-                  : "Start default session"}
+                  : "Start fallback workout"}
               </Button>
               <Button
                 variant="secondary"
@@ -299,13 +318,13 @@ export function ClientWorkoutTodayPage() {
                 }
               >
                 <MessageCircle className="mr-2 h-4 w-4" />
-                Message coach
+                Message your coach
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => navigate("/app/home")}
               >
-                Return home
+                Back to home
               </Button>
             </>
           }
@@ -320,7 +339,7 @@ export function ClientWorkoutTodayPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
                     <SurfaceCardTitle>
-                      {workoutTemplate?.name ?? workout.workout_name ?? "Assigned workout"}
+                      {workoutTemplate?.name ?? workout.workout_name ?? "Today’s workout"}
                     </SurfaceCardTitle>
                     <SurfaceCardDescription>
                       {workoutTemplate?.description ??
@@ -336,12 +355,12 @@ export function ClientWorkoutTodayPage() {
                           : "secondary"
                     }
                   >
-                    {workout.status}
+                    {workoutStatusLabel}
                   </Badge>
                 </div>
               </SurfaceCardHeader>
               <SurfaceCardContent className="space-y-4">
-                <SectionCard className="grid gap-4 md:grid-cols-3">
+                <SectionCard className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-1">
                     <p className="field-label">Session type</p>
                     <p className="text-sm text-foreground">
@@ -401,8 +420,8 @@ export function ClientWorkoutTodayPage() {
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {details.length > 0
-                                    ? details.join(" • ")
-                                    : "No exercise details added yet."}
+                                    ? details.join(" | ")
+                                    : "Exercise details will appear here once your coach adds them."}
                                 </p>
                               </div>
                               {exercise.superset_group ? (
@@ -449,17 +468,17 @@ export function ClientWorkoutTodayPage() {
                   ) : (
                     <EmptyStateBlock
                       title="No coach note for today"
-                      description="This session does not include any extra coach instructions."
+                      description="There are no extra coach notes for this session."
                     />
                   )}
 
                   <SectionCard className="space-y-3">
-                    <p className="field-label">Quick actions</p>
+                    <p className="field-label">Session actions</p>
                     <div className="grid gap-3">
                       <Button
                         onClick={() => navigate(`/app/workout-run/${workout.id}`)}
                       >
-                        Open workout
+                        Start workout
                       </Button>
                       <Button
                         variant="secondary"
@@ -471,7 +490,7 @@ export function ClientWorkoutTodayPage() {
                           )
                         }
                       >
-                        Message coach
+                        Message your coach
                       </Button>
                     </div>
                   </SectionCard>
@@ -486,26 +505,26 @@ export function ClientWorkoutTodayPage() {
                 Ready to train?
               </p>
               <p className="text-sm text-muted-foreground">
-                Open the workout to log the session, or mark the status here.
+                Start the workout to log your session, or update the status here.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => navigate(`/app/workout-run/${workout.id}`)}>
-                Open workout
+                Start workout
               </Button>
               <Button
                 variant="secondary"
                 disabled={updateStatus.isPending || workout.status === "completed"}
                 onClick={() => updateStatus.mutate("completed")}
               >
-                {workout.status === "completed" ? "Completed" : "Mark completed"}
+                {workout.status === "completed" ? "Completed" : "Mark as complete"}
               </Button>
               <Button
                 variant="ghost"
                 disabled={updateStatus.isPending || workout.status === "skipped"}
                 onClick={() => updateStatus.mutate("skipped")}
               >
-                {workout.status === "skipped" ? "Skipped" : "Skip workout"}
+                {workout.status === "skipped" ? "Skipped" : "Mark as skipped"}
               </Button>
             </div>
           </StickyActionBar>

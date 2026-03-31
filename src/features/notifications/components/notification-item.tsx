@@ -30,7 +30,7 @@ export function NotificationItem({
     <button
       type="button"
       className={cn(
-        "group flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition",
+        "group flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         notification.is_read
           ? "border-border/60 bg-secondary/16 hover:border-border hover:bg-secondary/24"
           : "border-primary/24 bg-primary/[0.07] shadow-[0_18px_40px_-34px_rgba(56,189,248,0.75)] hover:border-primary/38 hover:bg-primary/[0.1]",
@@ -50,21 +50,21 @@ export function NotificationItem({
       </div>
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium tracking-[0.04em] text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {typeLabel}
           </span>
           {notification.priority === "high" ? (
             <span className="rounded-full border border-warning/30 bg-warning/12 px-2 py-0.5 text-[11px] font-medium text-warning">
-              Priority
+              High priority
             </span>
           ) : null}
           {!notification.is_read ? (
             <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-              Unread
+              New
             </span>
           ) : null}
         </div>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0 space-y-1">
             <p className="line-clamp-1 text-sm font-semibold text-foreground">
               {notification.title}
@@ -73,7 +73,7 @@ export function NotificationItem({
               {notification.body}
             </p>
           </div>
-          <div className="flex items-center gap-2 pl-2">
+          <div className="flex items-center gap-2 sm:pl-2">
             <span className="shrink-0 text-xs text-muted-foreground">
               {formatRelativeTime(notification.created_at)}
             </span>
@@ -85,14 +85,8 @@ export function NotificationItem({
             />
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>{hasAction ? "Open details" : "No action required"}</span>
-          {!notification.is_read ? (
-            <span className="inline-flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-primary" />
-              New
-            </span>
-          ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>{hasAction ? "Open update" : "For reference"}</span>
         </div>
       </div>
     </button>

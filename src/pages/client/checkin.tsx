@@ -145,13 +145,27 @@ const photoSlots: Array<{
 const compactInputClass = "form-control-compact";
 
 const formatCheckinDueDate = (dateStr: string) => {
-  if (!dateStr) return "--";
+  if (!dateStr) return "Date unavailable";
   const date = new Date(`${dateStr}T00:00:00Z`);
   return date.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
+};
+
+const hasQuestionValue = (value: QuestionValue | undefined) =>
+  (typeof value?.text === "string" && value.text.trim().length > 0) ||
+  typeof value?.number === "number" ||
+  typeof value?.boolean === "boolean";
+
+const getQuestionSummaryValue = (value: QuestionValue | undefined) => {
+  if (typeof value?.number === "number") return String(value.number);
+  if (typeof value?.boolean === "boolean") return value.boolean ? "Yes" : "No";
+  if (typeof value?.text === "string" && value.text.trim().length > 0) {
+    return value.text.trim();
+  }
+  return "No response submitted";
 };
 
 export function ClientCheckinPage() {
@@ -675,6 +689,7 @@ export function ClientCheckinPage() {
   };
 
   const canProceed = hasTemplate && !isLoading;
+  const checkinLocked = isSubmitted;
   const checkinDueDateLabel = formatCheckinDueDate(
     checkinQuery.data?.week_ending_saturday ?? "",
   );
@@ -700,17 +715,32 @@ export function ClientCheckinPage() {
     answersQuery.error ||
     photosQuery.error;
   const requiredQuestions = questions.filter((question) => question.is_required);
-  const answeredQuestions = questions.filter((question) => {
-    const value = answers[question.id] ?? {};
-    return (
-      (typeof value.text === "string" && value.text.trim().length > 0) ||
-      typeof value.number === "number" ||
-      typeof value.boolean === "boolean"
-    );
-  }).length;
+  const answeredQuestions = questions.filter((question) =>
+    hasQuestionValue(answers[question.id]),
+  ).length;
+  const answeredRequiredQuestions = requiredQuestions.filter((question) =>
+    hasQuestionValue(answers[question.id]),
+  ).length;
   const uploadedRequiredPhotos = photoSlots.filter(
     (slot) => slot.required && photos[slot.type]?.previewUrl,
   ).length;
+  const missingRequiredAnswers = Math.max(
+    requiredQuestions.length - answeredRequiredQuestions,
+    0,
+  );
+  const missingRequiredPhotos = Math.max(
+    CHECKIN_REQUIRED_PHOTO_TYPES.length - uploadedRequiredPhotos,
+    0,
+  );
+  const lockedSubmissionComplete =
+    missingRequiredAnswers === 0 && missingRequiredPhotos === 0;
+  const canAdvanceQuestions =
+    canProceed &&
+    (checkinLocked || answeredRequiredQuestions === requiredQuestions.length);
+  const canAdvancePhotos =
+    canProceed &&
+    (checkinLocked ||
+      uploadedRequiredPhotos === CHECKIN_REQUIRED_PHOTO_TYPES.length);
   const summaryVariant =
     missingTemplate || pageError
       ? "error"
@@ -728,27 +758,45 @@ export function ClientCheckinPage() {
     : pageError
       ? "Unable to load check-in"
       : checkinState === "reviewed"
-        ? `Reviewed for ${checkinDueDateLabel}`
+        ? "Check-in reviewed"
         : checkinState === "submitted"
-          ? `Submitted for ${checkinDueDateLabel}`
+          ? "Check-in submitted"
           : checkinState === "overdue"
-            ? `Check-in overdue since ${checkinDueDateLabel}`
+            ? "Check-in overdue"
             : checkinState === "upcoming"
-              ? `Next check-in opens for ${checkinDueDateLabel}`
-              : `Check-in due ${checkinDueDateLabel}`;
+              ? "Check-in window upcoming"
+              : "Check-in in progress";
   const summaryDescription = missingTemplate
     ? missingTemplateDescription
     : pageError
       ? "Please refresh the page or try again shortly."
       : checkinState === "reviewed"
-        ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
+        ? lockedSubmissionComplete
+          ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
+          : `Your coach reviewed this check-in, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing from the submission.`
         : checkinState === "submitted"
-          ? "Your responses are submitted and locked for this cycle."
+          ? lockedSubmissionComplete
+            ? "Your responses are submitted and locked for this cycle."
+            : `This check-in was submitted with ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} still missing.`
           : checkinState === "overdue"
             ? "Finish this open check-in before moving on to the next cycle."
             : checkinState === "upcoming"
               ? "Use the current flow to review what will be required when the window opens."
-              : `${answeredQuestions}/${questions.length} questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
+              : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
+  const headerStateText =
+    checkinState === "reviewed"
+      ? `Reviewed ${checkinDueDateLabel}`
+      : checkinState === "submitted"
+        ? `Submitted ${checkinDueDateLabel}`
+        : checkinState === "upcoming"
+          ? `Opens ${checkinDueDateLabel}`
+          : `Due ${checkinDueDateLabel}`;
+
+  useEffect(() => {
+    if (checkinLocked) {
+      setStep(steps.length - 1);
+    }
+  }, [checkinLocked]);
 
   return (
     <div className="portal-shell">
@@ -762,7 +810,7 @@ export function ClientCheckinPage() {
             }
           >
             <AlertTitle>
-              {toastVariant === "error" ? "Error" : "Success"}
+              {toastVariant === "error" ? "Error" : "Saved"}
             </AlertTitle>
             <AlertDescription>{toastMessage}</AlertDescription>
           </Alert>
@@ -772,7 +820,7 @@ export function ClientCheckinPage() {
       <PortalPageHeader
         title="Check-in"
         subtitle={`Stay aligned with your coach every ${checkinFrequencyLabel.toLowerCase().replace("-", " ")} cycle.`}
-        stateText={`Due ${checkinDueDateLabel}`}
+        stateText={headerStateText}
         actions={<StatusPill status={statusKey} statusMap={statusMap} />}
       />
 
@@ -786,13 +834,6 @@ export function ClientCheckinPage() {
               <Button onClick={() => navigate("/app/onboarding")}>
                 Open onboarding
               </Button>
-            ) : !missingTemplate && !pageError ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusPill status={statusKey} statusMap={statusMap} />
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Due {checkinDueDateLabel}
-                </span>
-              </div>
             ) : undefined
           }
         />
@@ -810,7 +851,7 @@ export function ClientCheckinPage() {
         />
       */}
 
-      {isSubmitted && checkinQuery.data?.pt_feedback ? (
+      {checkinState === "reviewed" && checkinQuery.data?.pt_feedback ? (
         <DashboardCard
           title="Coach feedback"
           subtitle="Your coach reviewed this check-in."
@@ -824,14 +865,17 @@ export function ClientCheckinPage() {
       <StepIndicator
         steps={steps.map((label, index) => ({
           label,
-          state:
-            index < step
+          state: checkinLocked
+            ? index < steps.length - 1
+              ? "completed"
+              : "current"
+            : index < step
               ? "completed"
               : index === step
                 ? "current"
                 : "upcoming",
           onClick:
-            index <= step || canProceed
+            !checkinLocked && (index <= step || canProceed)
               ? () => setStep(index)
               : undefined,
         }))}
@@ -873,9 +917,31 @@ export function ClientCheckinPage() {
             />
           ) : questions.length === 0 ? (
             <EmptyState
-              title="No questions yet"
-              description="Your coach will add questions to this template soon."
+              title="No questions added yet"
+              description="Your coach will add check-in questions here soon."
             />
+          ) : checkinLocked ? (
+            <div className="space-y-4">
+              {questions.map((question) => (
+                <SectionCard key={question.id} className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {getCheckinQuestionLabel(question)}
+                    </p>
+                    {question.is_required ? (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Required
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-sm leading-6 text-foreground">
+                    {!hasQuestionValue(answers[question.id]) && question.is_required
+                      ? "Required response was not submitted."
+                      : getQuestionSummaryValue(answers[question.id])}
+                  </p>
+                </SectionCard>
+              ))}
+            </div>
           ) : (
             <div className="space-y-4">
               {questions.map((question) => {
@@ -900,7 +966,7 @@ export function ClientCheckinPage() {
                             {getCheckinQuestionLabel(question)}
                           </p>
                           {question.is_required ? (
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            <span className="text-xs font-medium text-muted-foreground">
                               Required
                             </span>
                           ) : null}
@@ -996,7 +1062,7 @@ export function ClientCheckinPage() {
                           <div className="text-xs text-muted-foreground">
                             Choose a score from {CHECKIN_SCALE_MIN} to {CHECKIN_SCALE_MAX}.
                           </div>
-                          <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+                          <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-5 sm:grid-cols-10">
                             {Array.from({
                               length: CHECKIN_SCALE_MAX - CHECKIN_SCALE_MIN + 1,
                             })
@@ -1049,7 +1115,11 @@ export function ClientCheckinPage() {
         <DashboardCard
           className="portal-form-step"
           title="Progress photos"
-          subtitle="Front, side, and back photos are required for submission."
+          subtitle={
+            checkinLocked
+              ? "Submitted photos from this cycle."
+              : "Front, side, and back photos are required for submission."
+          }
         >
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1073,6 +1143,49 @@ export function ClientCheckinPage() {
                   }
                 : {})}
             />
+          ) : checkinLocked ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {photoSlots.map((slot) => {
+                const state = photos[slot.type];
+                return (
+                  <SectionCard
+                    key={slot.type}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {slot.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {state.previewUrl
+                            ? "Submitted for review"
+                            : slot.required
+                              ? "Required photo missing"
+                              : "Optional photo not added"}
+                        </p>
+                      </div>
+                      {state.previewUrl ? (
+                        <StatusPill status="submitted" statusMap={statusMap} />
+                      ) : null}
+                    </div>
+                    {state.previewUrl ? (
+                      <img
+                        src={state.previewUrl}
+                        alt={`${slot.label} preview`}
+                        className="h-40 w-full rounded-xl border border-border object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                        {slot.required
+                          ? "No submitted photo"
+                          : "No optional photo added"}
+                      </div>
+                    )}
+                  </SectionCard>
+                );
+              })}
+            </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {photoSlots.map((slot) => {
@@ -1102,9 +1215,9 @@ export function ClientCheckinPage() {
                           alt={`${slot.label} preview`}
                           className="h-40 w-full rounded-xl border border-border object-cover"
                         />
-                      ) : (
+                        ) : (
                         <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
-                          No photo uploaded
+                          No photo added yet
                         </div>
                       )}
                     </div>
@@ -1153,8 +1266,12 @@ export function ClientCheckinPage() {
       {step === 2 ? (
         <DashboardCard
           className="portal-form-step"
-          title="Review & submit"
-          subtitle="Make sure everything looks right."
+          title="Review and submit"
+          subtitle={
+            checkinLocked
+              ? "Submitted responses from this cycle."
+              : "Make sure everything looks right."
+          }
         >
           {isLoading ? (
             <div className="space-y-3">
@@ -1174,6 +1291,14 @@ export function ClientCheckinPage() {
             />
           ) : (
             <div className="space-y-6">
+              {checkinLocked && !lockedSubmissionComplete ? (
+                <StatusBanner
+                  variant="warning"
+                  title="Reviewed with missing required items"
+                  description={`This submission is locked, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing when it was reviewed.`}
+                />
+              ) : null}
+
               <div className="space-y-3">
                 <p className="text-sm font-semibold text-foreground">
                   Responses
@@ -1185,26 +1310,17 @@ export function ClientCheckinPage() {
                   />
                 ) : (
                   questions.map((question) => {
-                    const value = answers[question.id] ?? {};
-                    const display =
-                      typeof value.number === "number"
-                        ? value.number
-                        : typeof value.boolean === "boolean"
-                          ? value.boolean
-                            ? "Yes"
-                            : "No"
-                          : value.text && value.text.trim().length > 0
-                            ? value.text
-                            : "--";
                     return (
                       <SectionCard
                         key={question.id}
                         className="space-y-2 text-sm"
                       >
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        <p className="field-label">
                           {getCheckinQuestionLabel(question)}
                         </p>
-                        <p className="text-foreground">{display}</p>
+                        <p className="text-foreground">
+                          {getQuestionSummaryValue(answers[question.id])}
+                        </p>
                       </SectionCard>
                     );
                   })
@@ -1221,7 +1337,7 @@ export function ClientCheckinPage() {
                         key={slot.type}
                         className="space-y-2 text-sm"
                       >
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        <p className="field-label">
                           {slot.label}
                         </p>
                         {state.previewUrl ? (
@@ -1233,8 +1349,8 @@ export function ClientCheckinPage() {
                         ) : (
                           <p className="text-xs text-muted-foreground">
                             {slot.required
-                              ? "Required photo missing"
-                              : "No photo"}
+                              ? "Required photo missing from submission"
+                              : "Optional photo not added"}
                           </p>
                         )}
                       </SectionCard>
@@ -1247,42 +1363,75 @@ export function ClientCheckinPage() {
         </DashboardCard>
       ) : null}
 
-      <StickyActionBar>
-        <div className="text-xs text-muted-foreground">
-          {questions.length > 0
-            ? `${answeredQuestions}/${questions.length} responses ready`
-            : "Waiting for template setup"}
-          {step === 1 || step === 2
-            ? ` • ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos uploaded`
-            : ""}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setStep((prev) => Math.max(0, prev - 1))}
-            disabled={step === 0}
-          >
-            Back
-          </Button>
-          {step < steps.length - 1 ? (
+      {checkinLocked ? (
+        <SectionCard className="mt-6 flex flex-col gap-3 border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1 text-sm">
+            <p className="font-semibold text-foreground">
+              {checkinState === "reviewed"
+                ? lockedSubmissionComplete
+                  ? "Check-in reviewed"
+                  : "Check-in reviewed with missing items"
+                : lockedSubmissionComplete
+                  ? "Check-in submitted"
+                  : "Check-in submitted with missing items"}
+            </p>
+            <p className="text-muted-foreground">
+              {lockedSubmissionComplete
+                ? checkinState === "reviewed"
+                  ? "Your coach reviewed this check-in and the submitted record is now final for this cycle."
+                  : "This check-in is submitted and locked until your coach reviews it."
+                : `This record is locked. ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing in the submission.`}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              onClick={() =>
-                setStep((prev) => Math.min(steps.length - 1, prev + 1))
-              }
-              disabled={!canProceed}
+              variant="secondary"
+              onClick={() => navigate("/app/home")}
             >
-              Continue
+              Back to home
             </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={!canProceed || isSubmitted || submitting}
-            >
-              {submitting ? "Submitting..." : "Submit check-in"}
-            </Button>
-          )}
-        </div>
-      </StickyActionBar>
+          </div>
+        </SectionCard>
+      ) : (
+        <StickyActionBar>
+          <>
+            <div className="text-xs text-muted-foreground">
+              {questions.length > 0
+                ? `${answeredQuestions}/${questions.length} responses ready`
+                : "Waiting for template setup"}
+              {step === 1 || step === 2
+                ? ` | ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos uploaded`
+                : ""}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setStep((prev) => Math.max(0, prev - 1))}
+                disabled={step === 0}
+              >
+                Back
+              </Button>
+              {step < steps.length - 1 ? (
+                <Button
+                  onClick={() =>
+                    setStep((prev) => Math.min(steps.length - 1, prev + 1))
+                  }
+                  disabled={step === 0 ? !canAdvanceQuestions : !canAdvancePhotos}
+                >
+                  Continue
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canAdvancePhotos || submitting}
+                >
+                  {submitting ? "Submitting..." : "Submit check-in"}
+                </Button>
+              )}
+            </div>
+          </>
+        </StickyActionBar>
+      )}
       </div>
     </div>
   );

@@ -51,6 +51,7 @@ export function NotificationsPage() {
   const unreadCount = useMemo(() => {
     return allNotifications.filter((row) => !row.is_read).length;
   }, [allNotifications]);
+  const notificationsError = allQuery.error ?? unreadQuery.error;
 
   const handleOpenNotification = async (notification: NotificationRecord) => {
     if (!notification.is_read) {
@@ -63,15 +64,15 @@ export function NotificationsPage() {
 
   const clientStateText =
     unreadCount > 0
-      ? `${unreadCount} unread`
+      ? `${unreadCount} new`
       : allNotifications.length > 0
-        ? "Recent activity available"
-        : "Waiting for updates";
+        ? "Up to date"
+        : "No updates yet";
 
   const pageHeader = isClientPortal ? (
     <PortalPageHeader
       title="Notifications"
-      subtitle="Updates from your coach, training plan, check-ins, messages, and reminders."
+      subtitle="Coach updates, plan changes, reminders, and messages in one place."
       stateText={clientStateText}
       actions={
         <Button
@@ -107,32 +108,40 @@ export function NotificationsPage() {
       {isClientPortal ? (
         <StatusBanner
           variant={
-            unreadCount > 0
+            notificationsError
+              ? "warning"
+              : unreadCount > 0
               ? "info"
               : allNotifications.length > 0
                 ? "success"
                 : "info"
           }
           title={
-            unreadCount > 0
+            notificationsError
+              ? "Notifications are partially unavailable"
+              : unreadCount > 0
               ? `${unreadCount} updates need your attention`
               : allNotifications.length > 0
-                ? "No unread items right now"
-                : "No notifications yet"
+                ? "You're all caught up"
+                : "No updates yet"
           }
           description={
-            unreadCount > 0
+            notificationsError
+              ? notificationsError instanceof Error
+                ? `${notificationsError.message} You can still review anything already loaded below.`
+                : "We could not refresh every notification feed, but anything already loaded is still available below."
+              : unreadCount > 0
               ? "Review anything that changes today's training, coach communication, or check-in timing."
               : allNotifications.length > 0
-                ? "You're caught up, but recent coach activity and schedule changes are still listed below for reference."
-                : "Coach updates, reminders, and schedule changes will appear here when they happen."
+                ? "You're caught up, but recent coach activity and schedule changes are still available below."
+                : "Coach updates, reminders, and schedule changes will appear here as they happen."
           }
         />
       ) : null}
 
       <SurfaceCard className={isClientPortal ? "" : "rounded-[24px]"}>
         <SurfaceCardHeader className="gap-4 pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
               <SurfaceCardTitle className="text-xl">
                 {isClientPortal ? "Recent updates" : "Inbox"}
@@ -144,19 +153,19 @@ export function NotificationsPage() {
               </SurfaceCardDescription>
             </div>
             {isClientPortal ? (
-              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm">
+              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm lg:max-w-xs">
                 <p className="font-semibold text-foreground">
                   {unreadCount > 0
-                    ? `${unreadCount} unread items`
+                    ? `${unreadCount} new updates`
                     : allNotifications.length > 0
-                      ? "All unread items cleared"
-                      : "No activity yet"}
+                      ? "You're all caught up"
+                      : "No updates yet"}
                 </p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   {unreadCount > 0
                     ? "Start with anything unread, then use All to review the rest."
                     : allNotifications.length > 0
-                      ? "Use All to review recent activity whenever you need a quick recap."
+                      ? "Use All whenever you want a quick recap of recent changes."
                       : "This feed will populate as coach updates and reminders are created."}
                 </p>
               </div>
@@ -169,7 +178,7 @@ export function NotificationsPage() {
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as NotificationFilter)}
           >
-            <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-2 rounded-[var(--radius-lg)] bg-transparent p-0">
+            <TabsList className="grid h-auto w-full max-w-md grid-cols-1 gap-2 rounded-[var(--radius-lg)] bg-transparent p-0 sm:grid-cols-2">
               <TabsTrigger
                 value="all"
                 className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
@@ -183,7 +192,7 @@ export function NotificationsPage() {
                 value="unread"
                 className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
               >
-                <span>Unread</span>
+                <span>New</span>
                 <span className="text-xs text-muted-foreground">{unreadCount}</span>
               </TabsTrigger>
             </TabsList>
@@ -193,16 +202,14 @@ export function NotificationsPage() {
               const rows = query.data?.pages.flat() ?? [];
               const emptyTitle =
                 filter === "unread"
-                  ? allNotifications.length > 0
-                    ? "No unread items"
-                    : "No unread notifications"
-                  : "No recent activity yet";
+                  ? "No new notifications"
+                  : "No recent updates";
               const emptyDescription =
                 filter === "unread"
                   ? isClientPortal
                     ? allNotifications.length > 0
-                      ? "You're caught up. Switch to All if you want to review recent coach activity."
-                      : "New unread updates from your coach will show up here."
+                      ? "You're caught up. Switch to All to review recent updates."
+                      : "New updates from your coach will show up here."
                     : "Everything has been reviewed."
                   : isClientPortal
                     ? "Coach updates and reminders will appear here as they happen."
@@ -240,7 +247,7 @@ export function NotificationsPage() {
                             variant="secondary"
                             onClick={() => setActiveTab("all")}
                           >
-                            View recent activity
+                            View all updates
                           </Button>
                         ) : undefined
                       }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import {
   CartesianGrid,
@@ -120,8 +121,115 @@ function ChartSurface({
   );
 }
 
+function ProgressLoadingState() {
+  return (
+    <div className="portal-shell">
+      <section className="flex flex-col gap-5 border-b border-border/50 pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 space-y-3">
+          <Skeleton className="h-10 w-40 rounded-xl" />
+          <Skeleton className="h-5 w-full max-w-2xl rounded-lg" />
+        </div>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <Skeleton className="h-10 w-28 rounded-xl" />
+          <Skeleton className="h-10 w-28 rounded-xl" />
+        </div>
+      </section>
+
+      <div className="space-y-6">
+        <div className="grid gap-6 xl:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <SurfaceCard key={`chart-${index}`}>
+              <SurfaceCardHeader className="pb-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-36 rounded-lg" />
+                    <Skeleton className="h-4 w-72 rounded-lg" />
+                  </div>
+                  <Skeleton className="h-8 w-24 rounded-full" />
+                </div>
+              </SurfaceCardHeader>
+              <SurfaceCardContent>
+                <Skeleton className="h-[16rem] w-full rounded-[var(--radius-lg)] sm:h-[19rem]" />
+              </SurfaceCardContent>
+            </SurfaceCard>
+          ))}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
+          <SurfaceCard>
+            <SurfaceCardHeader className="pb-4">
+              <Skeleton className="h-6 w-44 rounded-lg" />
+              <Skeleton className="h-4 w-80 rounded-lg" />
+            </SurfaceCardHeader>
+            <SurfaceCardContent className="space-y-4">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <SectionCard key={`support-${index}`} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Skeleton className="h-5 w-28 rounded-lg" />
+                    <Skeleton className="h-7 w-20 rounded-full" />
+                  </div>
+                  <Skeleton className="h-32 w-full rounded-[var(--radius-lg)] sm:h-40" />
+                </SectionCard>
+              ))}
+            </SurfaceCardContent>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <SurfaceCardHeader className="pb-4">
+              <Skeleton className="h-6 w-40 rounded-lg" />
+              <Skeleton className="h-4 w-72 rounded-lg" />
+            </SurfaceCardHeader>
+            <SurfaceCardContent className="space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <SectionCard
+                  key={`change-${index}`}
+                  className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]"
+                >
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-32 rounded-lg" />
+                    <Skeleton className="h-4 w-full rounded-lg" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[18rem]">
+                    <Skeleton className="h-16 w-full rounded-[var(--radius-lg)]" />
+                    <Skeleton className="h-16 w-full rounded-[var(--radius-lg)]" />
+                  </div>
+                </SectionCard>
+              ))}
+            </SurfaceCardContent>
+          </SurfaceCard>
+        </div>
+
+        <SurfaceCard>
+          <SurfaceCardHeader className="pb-4">
+            <Skeleton className="h-6 w-40 rounded-lg" />
+            <Skeleton className="h-4 w-72 rounded-lg" />
+          </SurfaceCardHeader>
+          <SurfaceCardContent>
+            <SectionCard className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-full rounded-lg" />
+                <Skeleton className="h-5 w-[92%] rounded-lg" />
+                <Skeleton className="h-4 w-[75%] rounded-lg" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton
+                    key={`summary-${index}`}
+                    className="h-16 w-full rounded-[var(--radius-lg)]"
+                  />
+                ))}
+              </div>
+            </SectionCard>
+          </SurfaceCardContent>
+        </SurfaceCard>
+      </div>
+    </div>
+  );
+}
+
 export function ClientProgressPage() {
   const { session } = useAuth();
+  const navigate = useNavigate();
   const [timeframe, setTimeframe] = useState<"4w" | "8w">("8w");
   const axisColor = "oklch(0.98 0 0 / 0.92)";
 
@@ -422,6 +530,7 @@ export function ClientProgressPage() {
   const sleepPointCount = getSeriesPointCount(filteredSleepSeries);
   const stepsPointCount = getSeriesPointCount(filteredStepsSeries);
   const loadPointCount = getLoadPointCount(filteredLoadSeries);
+  const hasBaseline = Boolean(baselineWeightQuery.data?.log_date);
 
   const hasAnyData =
     weightPointCount > 0 ||
@@ -466,14 +575,18 @@ export function ClientProgressPage() {
     weightUnit,
   ]);
 
+  if (loading) {
+    return <ProgressLoadingState />;
+  }
+
   return (
     <div className="portal-shell">
       <PortalPageHeader
         title="Progress"
         subtitle="Track body trends, recovery, activity, and training load in one place."
-        stateText={timeframe === "4w" ? "Short-term view" : "Broader trend view"}
+        stateText={timeframe === "4w" ? "Last 4 weeks" : "Last 8 weeks"}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <Button
               variant={timeframe === "4w" ? "default" : "secondary"}
               size="sm"
@@ -492,23 +605,7 @@ export function ClientProgressPage() {
         }
       />
 
-      {loading ? (
-        <div className="space-y-6">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
-            <Skeleton className="h-28 w-full rounded-[var(--radius-xl)]" />
-            <Skeleton className="h-28 w-full rounded-[var(--radius-xl)]" />
-          </div>
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Skeleton className="h-[23rem] w-full rounded-[var(--radius-xl)]" />
-            <Skeleton className="h-[23rem] w-full rounded-[var(--radius-xl)]" />
-          </div>
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-            <Skeleton className="h-[22rem] w-full rounded-[var(--radius-xl)]" />
-            <Skeleton className="h-[22rem] w-full rounded-[var(--radius-xl)]" />
-          </div>
-          <Skeleton className="h-48 w-full rounded-[var(--radius-xl)]" />
-        </div>
-      ) : error ? (
+      {error ? (
         <EmptyStateBlock
           title="Progress could not be loaded"
           description={
@@ -521,6 +618,27 @@ export function ClientProgressPage() {
         <EmptyStateBlock
           title="No progress data yet"
           description="Log habits, complete workouts, and submit your baseline to start seeing meaningful trends here."
+          actions={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => navigate("/app/habits")}
+              >
+                Log habits
+              </Button>
+              {!hasBaseline ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate("/app/baseline")}
+                >
+                  Complete baseline
+                </Button>
+              ) : null}
+              <Button onClick={() => navigate("/app/workouts/today")}>
+                Start workout
+              </Button>
+            </>
+          }
         />
       ) : (
         <div className="space-y-6">
@@ -535,7 +653,7 @@ export function ClientProgressPage() {
               }
             >
               {weightPointCount >= 2 ? (
-                <div className="h-[19rem] w-full">
+                <div className="h-[16rem] w-full sm:h-[19rem]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={filteredWeightSeries}>
                       <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
@@ -567,6 +685,23 @@ export function ClientProgressPage() {
                   title="Not enough body-weight entries yet"
                   description="Keep logging weight over the next few check-ins to unlock a clearer chart."
                   className="min-h-[19rem]"
+                  actions={
+                    hasBaseline ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate("/app/habits")}
+                      >
+                        Log habits
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate("/app/baseline")}
+                      >
+                        Complete baseline
+                      </Button>
+                    )
+                  }
                 />
               )}
             </ChartSurface>
@@ -581,7 +716,7 @@ export function ClientProgressPage() {
               }
             >
               {loadPointCount >= 2 ? (
-                <div className="h-[19rem] w-full">
+                <div className="h-[16rem] w-full sm:h-[19rem]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={filteredLoadSeries}>
                       <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
@@ -613,6 +748,11 @@ export function ClientProgressPage() {
                   title="Not enough training-load data yet"
                   description="Log a couple of sessions with working sets and this chart will start to show useful changes."
                   className="min-h-[19rem]"
+                  actions={
+                    <Button onClick={() => navigate("/app/workouts/today")}>
+                      Start workout
+                    </Button>
+                  }
                 />
               )}
             </ChartSurface>
@@ -637,7 +777,7 @@ export function ClientProgressPage() {
                     </Badge>
                   </div>
                   {sleepPointCount >= 2 ? (
-                    <div className="h-40 w-full">
+                    <div className="h-32 w-full sm:h-40">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={filteredSleepSeries}>
                           <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
@@ -674,7 +814,7 @@ export function ClientProgressPage() {
                     </Badge>
                   </div>
                   {stepsPointCount >= 2 ? (
-                    <div className="h-40 w-full">
+                    <div className="h-32 w-full sm:h-40">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={filteredStepsSeries}>
                           <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
@@ -768,6 +908,14 @@ export function ClientProgressPage() {
                   <EmptyStateBlock
                     title="No exercise trend data yet"
                     description="Log a few sessions with working sets to unlock performance-change summaries."
+                    actions={
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate("/app/workouts/today")}
+                      >
+                        Start workout
+                      </Button>
+                    }
                   />
                 )}
               </SurfaceCardContent>
@@ -776,7 +924,7 @@ export function ClientProgressPage() {
 
           <SurfaceCard>
             <SurfaceCardHeader className="pb-4">
-              <SurfaceCardTitle>Summary insight</SurfaceCardTitle>
+              <SurfaceCardTitle>Progress summary</SurfaceCardTitle>
               <SurfaceCardDescription>
                 A quick read on what the recent data is saying.
               </SurfaceCardDescription>

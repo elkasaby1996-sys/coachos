@@ -585,10 +585,10 @@ export function ClientProfilePage() {
               variant="secondary"
               onClick={() => navigate("/app/messages")}
             >
-              Message coach
+              Message your coach
             </Button>
             <Button onClick={() => setEditOpen(true)} disabled={!profile}>
-              Edit Profile
+              Edit profile
             </Button>
           </>
         }
@@ -603,7 +603,11 @@ export function ClientProfilePage() {
       ) : null}
 
       {inlineError ? (
-        <StatusBanner variant="error" title="Error" description={inlineError} />
+        <StatusBanner
+          variant="error"
+          title="Unable to save profile changes"
+          description={inlineError}
+        />
       ) : null}
 
       {clientQuery.isLoading ? (
@@ -632,7 +636,7 @@ export function ClientProfilePage() {
           description="Client record not accessible or not found for this account."
           actions={
             <Button variant="secondary" onClick={() => navigate("/app/home")}>
-              Return home
+              Back to home
             </Button>
           }
         />
@@ -679,7 +683,7 @@ export function ClientProfilePage() {
                         <SectionCard key={item.label} className="space-y-2 p-4">
                           <div className="flex items-center gap-2 text-muted-foreground">
                             {item.icon}
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">
+                            <span className="text-xs font-medium">
                               {item.label}
                             </span>
                           </div>
@@ -695,8 +699,8 @@ export function ClientProfilePage() {
                 <SectionCard className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Completion
+                      <p className="field-label">
+                        Profile completion
                       </p>
                       <p className="mt-1 text-2xl font-semibold text-foreground">
                         {completion.percent}%
@@ -722,32 +726,27 @@ export function ClientProfilePage() {
                   <div className="flex flex-wrap gap-2">
                     {completion.missing.slice(0, 4).map((field) => (
                       <Badge key={field} variant="warning">
-                        {field}
+                        {field.replace(/_/g, " ")}
                       </Badge>
                     ))}
                   </div>
+                  {completion.completed < completion.total ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setActiveTab("identity");
+                          setEditOpen(true);
+                        }}
+                      >
+                        Finish profile
+                      </Button>
+                    </div>
+                  ) : null}
                 </SectionCard>
               </div>
             </SurfaceCardContent>
           </SurfaceCard>
-
-          {completion.completed < completion.total ? (
-            <StatusBanner
-              variant="warning"
-              title="Your coach is still missing some profile context"
-              description={`${completion.completed}/${completion.total} fields are complete. Finish the missing items to improve plan quality and check-in context.`}
-              actions={
-                <Button
-                  onClick={() => {
-                    setActiveTab("identity");
-                    setEditOpen(true);
-                  }}
-                >
-                  Finish profile
-                </Button>
-              }
-            />
-          ) : null}
 
           <div className="grid gap-6 xl:grid-cols-2">
             <ProfileSection
@@ -862,13 +861,13 @@ export function ClientProfilePage() {
             </div>
           </DialogHeader>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "identity" | "training" | "health")} className="px-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="identity">Identity</TabsTrigger>
               <TabsTrigger value="training">Training</TabsTrigger>
               <TabsTrigger value="health">Health</TabsTrigger>
             </TabsList>
 
-            <div className="mt-4 max-h-[56vh] overflow-y-auto pr-1">
+            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1 sm:max-h-[56vh]">
               <TabsContent
                 value="identity"
                 className="grid gap-4 sm:grid-cols-2"
@@ -885,8 +884,7 @@ export function ClientProfilePage() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Upload support is in progress. If it fails, we&apos;ll keep
-                    your current photo.
+                    If upload fails, we&apos;ll keep your current photo.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -1134,7 +1132,7 @@ export function ClientProfilePage() {
             </div>
           </Tabs>
 
-          <DialogFooter className="border-t border-border px-6 py-4">
+          <DialogFooter className="border-t border-border px-6 py-4 sm:flex-row">
             <Button variant="secondary" onClick={() => setEditOpen(false)}>
               Cancel
             </Button>

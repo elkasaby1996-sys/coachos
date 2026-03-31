@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -13,6 +12,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import {
+  EmptyStateBlock,
   PortalPageHeader,
   StatusBanner,
   StepIndicator,
@@ -78,6 +78,7 @@ type BaselinePhotoRow = {
 const photoTypes = ["front", "side", "back"] as const;
 type PhotoType = (typeof photoTypes)[number];
 const baselineSteps = ["Core stats", "Performance markers", "Photos"] as const;
+const baselineInputClass = "border-border/70 bg-background/70 shadow-none";
 
 const lbPerKg = 2.2046226218;
 
@@ -812,7 +813,6 @@ export function ClientBaselinePage() {
         title="Baseline"
         subtitle="Capture your body metrics, performance markers, and photos."
         stateText={onboardingMode ? "Onboarding flow" : undefined}
-        actions={<Badge variant="muted">{baselineSteps[activeStep]}</Badge>}
       />
 
       <div className="portal-form-shell space-y-6">
@@ -860,7 +860,7 @@ export function ClientBaselinePage() {
       {activeStep === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Step 1 — Body metrics</CardTitle>
+            <CardTitle>Body metrics</CardTitle>
             <p className="text-sm text-muted-foreground">
               We always store metric units. Please keep units visible.
             </p>
@@ -879,6 +879,14 @@ export function ClientBaselinePage() {
                 </AlertDescription>
               </Alert>
             ) : null}
+            <div className="space-y-1 sm:col-span-2">
+              <p className="text-sm font-semibold text-foreground">
+                Core measurements
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Enter the key measurements your coach will reference most often.
+              </p>
+            </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Weight {showImperial ? "(lb)" : "(kg)"} *
@@ -887,6 +895,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.weight}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -904,6 +913,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.height_cm}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -921,6 +931,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.body_fat_pct}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -930,6 +941,15 @@ export function ClientBaselinePage() {
                 }
               />
             </div>
+            <div className="space-y-1 sm:col-span-2">
+              <p className="text-sm font-semibold text-foreground">
+                Circumference + performance
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Add any optional measurements and performance markers you have
+                available today.
+              </p>
+            </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Waist (cm)
@@ -938,6 +958,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.waist_cm}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -955,6 +976,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.chest_cm}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -972,6 +994,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.hips_cm}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -989,6 +1012,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.thigh_cm}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -1006,6 +1030,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.arm_cm}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -1023,6 +1048,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="1"
+                className={baselineInputClass}
                 value={metricsState.resting_hr}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -1040,6 +1066,7 @@ export function ClientBaselinePage() {
                 type="number"
                 min="0"
                 step="0.1"
+                className={baselineInputClass}
                 value={metricsState.vo2max}
                 onChange={(event) =>
                   setMetricsState((prev) => ({
@@ -1072,7 +1099,7 @@ export function ClientBaselinePage() {
       {activeStep === 1 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Step 2 — Performance markers</CardTitle>
+            <CardTitle>Performance markers</CardTitle>
             <p className="text-sm text-muted-foreground">
               Log the markers your coach set for this baseline.
             </p>
@@ -1084,9 +1111,10 @@ export function ClientBaselinePage() {
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : templates.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                No performance markers set by coach yet.
-              </div>
+              <EmptyStateBlock
+                title="Performance markers are not ready yet"
+                description="Your coach has not added baseline markers for this phase. You can still move on to photos and return later if needed."
+              />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {templates.map((template) => (
@@ -1099,6 +1127,7 @@ export function ClientBaselinePage() {
                       type={
                         template.value_type === "number" ? "number" : "text"
                       }
+                      className={baselineInputClass}
                       step={
                         template.value_type === "number" ? "0.1" : undefined
                       }
@@ -1132,19 +1161,19 @@ export function ClientBaselinePage() {
       {activeStep === 2 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Step 3 — Photos</CardTitle>
+            <CardTitle>Photos</CardTitle>
             <p className="text-sm text-muted-foreground">
               Upload front, side, and back photos to complete your baseline.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3">
               {photoTypes.map((type) => (
                 <div
                   key={type}
                   className="space-y-2 rounded-lg border border-border p-3"
                 >
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  <p className="field-label">
                     {type}
                   </p>
                   <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
@@ -1156,13 +1185,14 @@ export function ClientBaselinePage() {
                       />
                     ) : (
                       <span className="text-xs text-muted-foreground">
-                        No photo
+                        No photo added yet
                       </span>
                     )}
                   </div>
                   <Input
                     type="file"
                     accept="image/*"
+                    className={baselineInputClass}
                     onChange={(event) =>
                       handlePhotoUpload(type, event.target.files?.[0] ?? null)
                     }

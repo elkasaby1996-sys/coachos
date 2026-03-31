@@ -76,6 +76,7 @@ export function ClientMessagesPage() {
   const [messageInput, setMessageInput] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [composerFocused, setComposerFocused] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const messagePageSize = 50;
@@ -285,7 +286,7 @@ export function ClientMessagesPage() {
     messageRows.length > 0 ? messageRows[messageRows.length - 1] : null;
   const conversationContext = lastMessage?.created_at
     ? `Last message ${formatTime(lastMessage.created_at)}`
-    : "Private 1:1 coaching thread";
+    : "Ready for your next update";
   const isLoadingConversation =
     clientQuery.isLoading ||
     ensureConversationMutation.isPending ||
@@ -298,8 +299,8 @@ export function ClientMessagesPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Messages"
-        subtitle="Direct conversation with your coach for updates, questions, and quick adjustments."
-        stateText={typingUsers.length > 0 ? "Coach typing" : "1:1 thread"}
+        subtitle="Message your coach about workouts, check-ins, nutrition, and plan changes."
+        stateText={typingUsers.length > 0 ? "Coach is typing" : undefined}
       />
 
       {conversationError ? (
@@ -307,12 +308,26 @@ export function ClientMessagesPage() {
           variant="error"
           title="Unable to load messages"
           description="Refresh the page and try again. If the problem persists, re-open the portal."
+          actions={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                clientQuery.refetch();
+                ensureConversationMutation.reset();
+                if (conversationId) {
+                  messagesQuery.refetch();
+                }
+              }}
+            >
+              Retry
+            </Button>
+          }
         />
       ) : null}
 
       <SurfaceCard className="overflow-hidden">
         <SurfaceCardHeader className="border-b border-border/60 pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
                 <MessageCircleMore className="h-5 w-5" />
@@ -322,15 +337,14 @@ export function ClientMessagesPage() {
                   Conversation with your coach
                 </SurfaceCardTitle>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Share wins, ask questions, or flag anything that needs adjustment.
+                  Share updates, ask questions, or flag anything that needs
+                  adjustment.
                 </p>
               </div>
             </div>
-            <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm">
+            <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm lg:max-w-xs">
               <p className="font-semibold text-foreground">
-                {typingUsers.length > 0
-                  ? "Coach is replying now"
-                  : "Private coaching thread"}
+                {typingUsers.length > 0 ? "Coach is replying now" : "Conversation details"}
               </p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
                 {conversationContext}. Use this space for workout changes,
@@ -347,8 +361,8 @@ export function ClientMessagesPage() {
             ))}
           </SurfaceCardContent>
         ) : (
-          <div className="flex min-h-[34rem] max-h-[calc(100dvh-14rem)] flex-col">
-            <SurfaceCardContent className="flex-1 space-y-4 overflow-y-auto bg-background/10 pb-28 pt-5">
+          <div className="flex min-h-[30rem] max-h-[calc(100dvh-12.5rem)] flex-col sm:min-h-[34rem] lg:max-h-[calc(100dvh-10.5rem)]">
+            <SurfaceCardContent className="flex-1 space-y-4 overflow-y-auto bg-background/10 pb-36 pt-5 sm:pb-28">
               {messagesQuery.hasNextPage ? (
                 <div className="flex justify-center">
                   <Button
@@ -357,7 +371,9 @@ export function ClientMessagesPage() {
                     onClick={() => messagesQuery.fetchNextPage()}
                     disabled={messagesQuery.isFetchingNextPage}
                   >
-                    {messagesQuery.isFetchingNextPage ? "Loading..." : "Load older"}
+                    {messagesQuery.isFetchingNextPage
+                      ? "Loading..."
+                      : "Load older"}
                   </Button>
                 </div>
               ) : null}
@@ -372,7 +388,7 @@ export function ClientMessagesPage() {
                         className={`flex ${isClient ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[min(100%,40rem)] rounded-[24px] border px-4 py-3 shadow-[0_16px_40px_-32px_rgba(0,0,0,0.9)] ${
+                          className={`max-w-full rounded-[24px] border px-4 py-3 shadow-[0_16px_40px_-32px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
                             isClient
                               ? "border-primary/24 bg-primary/14 text-foreground"
                               : "border-border/70 bg-background/55 text-foreground"
@@ -380,9 +396,11 @@ export function ClientMessagesPage() {
                         >
                           <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="font-medium text-foreground/90">
-                              {isClient ? "You" : (message.sender_name ?? "Coach")}
+                              {isClient
+                                ? "You"
+                                : (message.sender_name ?? "Coach")}
                             </span>
-                            <span className="opacity-60">•</span>
+                            <span className="opacity-60">|</span>
                             <span>{formatTime(message.created_at)}</span>
                           </div>
                           <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">
@@ -425,9 +443,9 @@ export function ClientMessagesPage() {
               <div ref={scrollRef} />
             </SurfaceCardContent>
 
-            <div className="sticky bottom-0 border-t border-border/60 bg-[linear-gradient(180deg,rgba(10,14,22,0.16),rgba(10,14,22,0.94)_24%,rgba(10,14,22,0.98))] px-5 pb-5 pt-4 backdrop-blur">
+            <div className="sticky bottom-0 border-t border-border/60 bg-[linear-gradient(180deg,rgba(10,14,22,0.16),rgba(10,14,22,0.94)_24%,rgba(10,14,22,0.98))] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur sm:px-5 sm:pb-5">
               <SectionCard className="space-y-3 border-border/60 bg-background/60 p-4 shadow-none">
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+                <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                   <span>Send a direct update to your coach.</span>
                   <span className="text-xs">
                     Enter sends. Shift+Enter adds a new line.
@@ -435,7 +453,8 @@ export function ClientMessagesPage() {
                 </div>
                 <div className="flex flex-col gap-3 md:flex-row md:items-end">
                   <textarea
-                    className="form-control-compact min-h-[92px] flex-1 resize-y bg-background/80"
+                    aria-label="Message your coach"
+                    className={`form-control-compact flex-1 resize-y bg-background/80 transition-[min-height] duration-200 ${(composerFocused || messageInput.trim().length > 0) ? "min-h-[120px]" : "min-h-[58px]"}`}
                     placeholder="Share your update, question, or request..."
                     value={messageInput}
                     onChange={(event) => setMessageInput(event.target.value)}
@@ -445,8 +464,14 @@ export function ClientMessagesPage() {
                         sendMutation.mutate();
                       }
                     }}
-                    onFocus={() => updateTyping(true)}
-                    onBlur={() => updateTyping(false)}
+                    onFocus={() => {
+                      setComposerFocused(true);
+                      updateTyping(true);
+                    }}
+                    onBlur={() => {
+                      setComposerFocused(false);
+                      updateTyping(false);
+                    }}
                     onInput={() => {
                       updateTyping(true);
                       if (typingTimeoutRef.current) {
@@ -458,7 +483,7 @@ export function ClientMessagesPage() {
                     }}
                   />
                   <Button
-                    className="h-11 min-w-[10rem] md:self-end"
+                    className="h-11 w-full min-w-[10rem] md:w-auto md:self-end"
                     onClick={() => sendMutation.mutate()}
                     disabled={
                       !conversationId ||

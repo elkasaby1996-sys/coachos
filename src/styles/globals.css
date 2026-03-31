@@ -87,7 +87,7 @@
     --accent: 0.75 0.18 195;
     --accent-foreground: 0.12 0.01 260;
     --muted: 0.2 0.01 260;
-    --muted-foreground: 0.6 0 0;
+    --muted-foreground: 0.68 0 0;
     --border: 0.28 0.01 260;
     --input: 0.24 0.01 260;
     --ring: 0.75 0.18 195;
@@ -114,6 +114,15 @@
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
   }
 
   select,
@@ -200,15 +209,15 @@
   }
 
   .portal-shell {
-    @apply space-y-6 pb-24 md:space-y-7 md:pb-6;
+    @apply space-y-5 pb-24 md:space-y-6 lg:space-y-7 lg:pb-6;
   }
 
   .portal-shell-tight {
-    @apply space-y-5 pb-24 md:space-y-6 md:pb-6;
+    @apply space-y-4 pb-24 md:space-y-5 lg:space-y-6 lg:pb-6;
   }
 
   .portal-form-shell {
-    @apply mx-auto w-full max-w-5xl;
+    @apply mx-auto w-full max-w-5xl pb-28 lg:pb-10;
   }
 
   .portal-form-step {
@@ -225,7 +234,7 @@
   }
 
   .field-label {
-    @apply text-xs font-medium tracking-[0.03em] text-muted-foreground;
+    @apply text-[13px] font-medium text-muted-foreground;
   }
 
   .workspace-filter-chip {
@@ -247,6 +256,17 @@
   .portal-kicker {
     @apply text-xs font-medium tracking-[0.08em] text-muted-foreground;
     text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
