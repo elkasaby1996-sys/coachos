@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -12,6 +11,13 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import {
+  EmptyStateBlock,
+  PortalPageHeader,
+  StatusBanner,
+  StepIndicator,
+  StickyActionBar,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
@@ -71,6 +77,8 @@ type BaselinePhotoRow = {
 
 const photoTypes = ["front", "side", "back"] as const;
 type PhotoType = (typeof photoTypes)[number];
+const baselineSteps = ["Core stats", "Performance markers", "Photos"] as const;
+const baselineInputClass = "border-border/70 bg-background/70 shadow-none";
 
 const lbPerKg = 2.2046226218;
 
@@ -722,7 +730,7 @@ export function ClientBaselinePage() {
 
   if (baselineLoading || clientQuery.isLoading) {
     return (
-      <div className="space-y-4 pb-16 md:pb-0">
+      <div className="portal-shell">
         <Skeleton className="h-10 w-1/2" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-40 w-full" />
@@ -732,7 +740,7 @@ export function ClientBaselinePage() {
 
   if (clientQuery.error || !clientId) {
     return (
-      <div className="space-y-4 pb-16 md:pb-0">
+      <div className="portal-shell">
         <Alert className="border-danger/30">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
@@ -747,435 +755,479 @@ export function ClientBaselinePage() {
 
   if (submitStatus === "success") {
     return (
-      <div className="space-y-6 pb-16 md:pb-0">
-        <Card>
-          <CardHeader>
-            <CardTitle>Baseline submitted</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Your coach has received your baseline. Redirecting you now.</p>
-            <Button
-              onClick={() =>
-                navigate(returnTo || "/app/home", { replace: true })
-              }
-            >
-              {returnTo ? "Return to onboarding" : "Go to home now"}
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="portal-shell">
+        <PortalPageHeader
+          title="Baseline submitted"
+          subtitle="Your coach has received your baseline."
+        />
+        <div className="portal-form-step">
+          <StatusBanner
+            variant="success"
+            title="Baseline submitted"
+            description="Your coach has received your baseline. Redirecting you now."
+            actions={
+              <Button
+                onClick={() =>
+                  navigate(returnTo || "/app/home", { replace: true })
+                }
+              >
+                {returnTo ? "Return to onboarding" : "Go to home now"}
+              </Button>
+            }
+          />
+        </div>
       </div>
     );
   }
 
   if (onboardingMode && baselineEntry?.status === "submitted") {
     return (
-      <div className="space-y-6 pb-16 md:pb-0">
-        <Card>
-          <CardHeader>
-            <CardTitle>Initial assessment already submitted</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              This baseline has already been submitted and counts toward your
-              onboarding progress.
-            </p>
-            <Button
-              onClick={() =>
-                navigate(returnTo || "/app/onboarding", { replace: true })
-              }
-            >
-              Return to onboarding
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="portal-shell">
+        <PortalPageHeader
+          title="Baseline already submitted"
+          subtitle="This initial assessment already counts toward your onboarding progress."
+        />
+        <div className="portal-form-step">
+          <StatusBanner
+            variant="locked"
+            title="Initial assessment already submitted"
+            description="This baseline has already been submitted and counts toward your onboarding progress."
+            actions={
+              <Button
+                onClick={() =>
+                  navigate(returnTo || "/app/onboarding", { replace: true })
+                }
+              >
+                Return to onboarding
+              </Button>
+            }
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Baseline</h1>
-          <p className="text-sm text-muted-foreground">
-            Capture your body metrics, performance markers, and photos.
-          </p>
-        </div>
-        <Badge variant="muted">Draft</Badge>
-      </div>
+    <div className="portal-shell">
+      <PortalPageHeader
+        title="Baseline"
+        subtitle="Capture your body metrics, performance markers, and photos."
+        stateText={onboardingMode ? "Onboarding flow" : undefined}
+      />
 
-      {errors.length > 0 ? (
-        <div className="space-y-2">
-          {errors.map((error, index) => (
-            <Alert
-              key={`${index}-${formatSupabaseError(error)}`}
-              className="border-danger/30"
-            >
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{formatSupabaseError(error)}</AlertDescription>
-            </Alert>
-          ))}
-        </div>
-      ) : null}
-
-      {lastSupabaseError ? (
-        <Alert className="border-danger/30">
-          <AlertTitle>Supabase error</AlertTitle>
-          <AlertDescription>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <div>code: {lastSupabaseError.code ?? "n/a"}</div>
-              <div>message: {lastSupabaseError.message ?? "n/a"}</div>
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex flex-wrap gap-2">
-        {["Body metrics", "Performance markers", "Photos"].map(
-          (label, index) => (
-            <Badge
-              key={label}
-              variant={activeStep === index ? "success" : "muted"}
-            >
-              {index + 1}. {label}
-            </Badge>
-          ),
-        )}
-      </div>
-
-      {activeStep === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Step 1 — Body metrics</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              We always store metric units. Please keep units visible.
-            </p>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            {metricsStatus === "error" && metricsError ? (
-              <Alert className="border-danger/30 sm:col-span-2">
-                <AlertTitle>Baseline metrics save failed</AlertTitle>
+      <div className="portal-form-shell space-y-6">
+        {errors.length > 0 ? (
+          <div className="space-y-2">
+            {errors.map((error, index) => (
+              <Alert
+                key={`${index}-${formatSupabaseError(error)}`}
+                className="border-danger/30"
+              >
+                <AlertTitle>Error</AlertTitle>
                 <AlertDescription>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div>code: {metricsError.code ?? "n/a"}</div>
-                    <div>message: {metricsError.message ?? "n/a"}</div>
-                    <div>details: {metricsError.details ?? "n/a"}</div>
-                    <div>hint: {metricsError.hint ?? "n/a"}</div>
-                  </div>
+                  {formatSupabaseError(error)}
                 </AlertDescription>
               </Alert>
-            ) : null}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Weight {showImperial ? "(lb)" : "(kg)"} *
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.weight}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    weight: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Height (cm)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.height_cm}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    height_cm: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Body fat (%)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.body_fat_pct}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    body_fat_pct: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Waist (cm)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.waist_cm}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    waist_cm: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Chest (cm)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.chest_cm}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    chest_cm: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Hips (cm)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.hips_cm}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    hips_cm: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Thigh (cm)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.thigh_cm}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    thigh_cm: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Arm (cm)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.arm_cm}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    arm_cm: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Resting heart rate (bpm)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="1"
-                value={metricsState.resting_hr}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    resting_hr: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                VO2 max (ml/kg/min)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                value={metricsState.vo2max}
-                onChange={(event) =>
-                  setMetricsState((prev) => ({
-                    ...prev,
-                    vo2max: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3">
-              <Button variant="secondary" onClick={() => navigate("/app/home")}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleMetricsSave}
-                disabled={!metricsRequiredFilled || metricsStatus === "saving"}
-              >
-                {metricsStatus === "saving" ? "Saving..." : "Next"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+            ))}
+          </div>
+        ) : null}
 
-      {activeStep === 1 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Step 2 — Performance markers</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Log the markers your coach set for this baseline.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {templatesQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
+        {lastSupabaseError ? (
+          <Alert className="border-danger/30">
+            <AlertTitle>Supabase error</AlertTitle>
+            <AlertDescription>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <div>code: {lastSupabaseError.code ?? "n/a"}</div>
+                <div>message: {lastSupabaseError.message ?? "n/a"}</div>
               </div>
-            ) : templates.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                No performance markers set by coach yet.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        <StepIndicator
+          steps={baselineSteps.map((label, index) => ({
+            label,
+            state:
+              index < activeStep
+                ? "completed"
+                : index === activeStep
+                  ? "current"
+                  : "upcoming",
+            onClick:
+              index <= activeStep ? () => setActiveStep(index) : undefined,
+          }))}
+        />
+
+        {activeStep === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Body metrics</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                We always store metric units. Please keep units visible.
+              </p>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              {metricsStatus === "error" && metricsError ? (
+                <Alert className="border-danger/30 sm:col-span-2">
+                  <AlertTitle>Baseline metrics save failed</AlertTitle>
+                  <AlertDescription>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <div>code: {metricsError.code ?? "n/a"}</div>
+                      <div>message: {metricsError.message ?? "n/a"}</div>
+                      <div>details: {metricsError.details ?? "n/a"}</div>
+                      <div>hint: {metricsError.hint ?? "n/a"}</div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              <div className="space-y-1 sm:col-span-2">
+                <p className="text-sm font-semibold text-foreground">
+                  Core measurements
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Enter the key measurements your coach will reference most
+                  often.
+                </p>
               </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {templates.map((template) => (
-                  <div key={template.id} className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">
-                      {template.name ?? "Marker"}
-                      {template.unit_label ? ` (${template.unit_label})` : ""}
-                    </label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Weight {showImperial ? "(lb)" : "(kg)"} *
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.weight}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      weight: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Height (cm)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.height_cm}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      height_cm: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Body fat (%)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.body_fat_pct}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      body_fat_pct: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <p className="text-sm font-semibold text-foreground">
+                  Circumference + performance
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Add any optional measurements and performance markers you have
+                  available today.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Waist (cm)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.waist_cm}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      waist_cm: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Chest (cm)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.chest_cm}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      chest_cm: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Hips (cm)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.hips_cm}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      hips_cm: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Thigh (cm)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.thigh_cm}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      thigh_cm: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Arm (cm)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.arm_cm}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      arm_cm: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Resting heart rate (bpm)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className={baselineInputClass}
+                  value={metricsState.resting_hr}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      resting_hr: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  VO2 max (ml/kg/min)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={baselineInputClass}
+                  value={metricsState.vo2max}
+                  onChange={(event) =>
+                    setMetricsState((prev) => ({
+                      ...prev,
+                      vo2max: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <StickyActionBar>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate("/app/home")}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleMetricsSave}
+                    disabled={
+                      !metricsRequiredFilled || metricsStatus === "saving"
+                    }
+                  >
+                    {metricsStatus === "saving" ? "Saving..." : "Next"}
+                  </Button>
+                </StickyActionBar>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {activeStep === 1 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance markers</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Log the markers your coach set for this baseline.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {templatesQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : templates.length === 0 ? (
+                <EmptyStateBlock
+                  title="Performance markers are not ready yet"
+                  description="Your coach has not added baseline markers for this phase. You can still move on to photos and return later if needed."
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {templates.map((template) => (
+                    <div key={template.id} className="space-y-2">
+                      <label className="text-xs font-semibold text-muted-foreground">
+                        {template.name ?? "Marker"}
+                        {template.unit_label ? ` (${template.unit_label})` : ""}
+                      </label>
+                      <Input
+                        type={
+                          template.value_type === "number" ? "number" : "text"
+                        }
+                        className={baselineInputClass}
+                        step={
+                          template.value_type === "number" ? "0.1" : undefined
+                        }
+                        value={markerValues[template.id] ?? ""}
+                        onChange={(event) =>
+                          setMarkerValues((prev) => ({
+                            ...prev,
+                            [template.id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <StickyActionBar>
+                <Button variant="secondary" onClick={() => setActiveStep(0)}>
+                  Back
+                </Button>
+                <Button
+                  onClick={handleMarkersSave}
+                  disabled={!markersComplete || markerStatus === "saving"}
+                >
+                  {markerStatus === "saving" ? "Saving..." : "Next"}
+                </Button>
+              </StickyActionBar>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {activeStep === 2 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Photos</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Upload front, side, and back photos to complete your baseline.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                {photoTypes.map((type) => (
+                  <div
+                    key={type}
+                    className="space-y-2 rounded-lg border border-border p-3"
+                  >
+                    <p className="field-label">{type}</p>
+                    <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
+                      {photoMap[type]?.url ? (
+                        <img
+                          src={photoMap[type]?.url ?? ""}
+                          alt={`${type} photo`}
+                          className="h-full w-full rounded-md object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          No photo added yet
+                        </span>
+                      )}
+                    </div>
                     <Input
-                      type={
-                        template.value_type === "number" ? "number" : "text"
-                      }
-                      step={
-                        template.value_type === "number" ? "0.1" : undefined
-                      }
-                      value={markerValues[template.id] ?? ""}
+                      type="file"
+                      accept="image/*"
+                      className={baselineInputClass}
                       onChange={(event) =>
-                        setMarkerValues((prev) => ({
-                          ...prev,
-                          [template.id]: event.target.value,
-                        }))
+                        handlePhotoUpload(type, event.target.files?.[0] ?? null)
                       }
                     />
+                    {photoMap[type]?.error ? (
+                      <p className="text-xs text-danger">
+                        {photoMap[type]?.error}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>
-            )}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="secondary" onClick={() => setActiveStep(0)}>
-                Back
-              </Button>
-              <Button
-                onClick={handleMarkersSave}
-                disabled={!markersComplete || markerStatus === "saving"}
-              >
-                {markerStatus === "saving" ? "Saving..." : "Next"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {activeStep === 2 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Step 3 — Photos</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Upload front, side, and back photos to complete your baseline.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              {photoTypes.map((type) => (
-                <div
-                  key={type}
-                  className="space-y-2 rounded-lg border border-border p-3"
+              <StickyActionBar>
+                <Button variant="secondary" onClick={() => setActiveStep(1)}>
+                  Back
+                </Button>
+                <Button
+                  onClick={handleSubmitBaseline}
+                  disabled={
+                    !photosComplete ||
+                    submitStatus === "saving" ||
+                    photoStatus === "saving"
+                  }
                 >
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    {type}
-                  </p>
-                  <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
-                    {photoMap[type]?.url ? (
-                      <img
-                        src={photoMap[type]?.url ?? ""}
-                        alt={`${type} photo`}
-                        className="h-full w-full rounded-md object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        No photo
-                      </span>
-                    )}
-                  </div>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) =>
-                      handlePhotoUpload(type, event.target.files?.[0] ?? null)
-                    }
-                  />
-                  {photoMap[type]?.error ? (
-                    <p className="text-xs text-danger">
-                      {photoMap[type]?.error}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="secondary" onClick={() => setActiveStep(1)}>
-                Back
-              </Button>
-              <Button
-                onClick={handleSubmitBaseline}
-                disabled={
-                  !photosComplete ||
-                  submitStatus === "saving" ||
-                  photoStatus === "saving"
-                }
-              >
-                {submitStatus === "saving"
-                  ? "Submitting..."
-                  : "Submit baseline"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+                  {submitStatus === "saving"
+                    ? "Submitting..."
+                    : "Submit baseline"}
+                </Button>
+              </StickyActionBar>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
     </div>
   );
 }

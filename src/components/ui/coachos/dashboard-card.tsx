@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../card";
+import {
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
+} from "../../client/portal";
 import { cn } from "../../../lib/utils";
 
 export function DashboardCard({
@@ -16,25 +22,20 @@ export function DashboardCard({
   children: ReactNode;
 }) {
   return (
-    <Card
-      className={cn(
-        "rounded-[24px] border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.88))] shadow-card",
-        className,
-      )}
-    >
-      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/60 px-5 pb-3 pt-4 sm:px-5 sm:pt-4">
+    <SurfaceCard className={cn(className)}>
+      <SurfaceCardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border/55 pb-4">
         <div>
-          <CardTitle className="text-base font-semibold">{title}</CardTitle>
+          <SurfaceCardTitle className="text-base">{title}</SurfaceCardTitle>
           {subtitle ? (
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            <SurfaceCardDescription className="mt-1">
               {subtitle}
-            </p>
+            </SurfaceCardDescription>
           ) : null}
         </div>
         {action}
-      </CardHeader>
-      <CardContent className="px-5 pb-5 pt-4 sm:px-5">{children}</CardContent>
-    </Card>
+      </SurfaceCardHeader>
+      <SurfaceCardContent className="pt-4">{children}</SurfaceCardContent>
+    </SurfaceCard>
   );
 }
 

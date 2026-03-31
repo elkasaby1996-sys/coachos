@@ -4,18 +4,13 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  ChevronRight,
   Clock3,
   Loader2,
+  PencilLine,
   Save,
   ShieldCheck,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import {
@@ -26,6 +21,17 @@ import {
 } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
 import { Skeleton } from "../../../components/ui/skeleton";
+import {
+  EmptyStateBlock,
+  SectionCard,
+  StatusBanner,
+  StickyActionBar,
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
+} from "../../../components/client/portal";
 import { useAuth } from "../../../lib/auth";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { useClientOnboarding } from "../hooks/use-client-onboarding";
@@ -597,11 +603,11 @@ export function ClientOnboardingShell() {
 
   if (onboardingQuery.isLoading || !draft || !summary || !progress) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-28 w-full" />
-        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <Skeleton className="h-[520px] w-full" />
-          <Skeleton className="h-[520px] w-full" />
+      <div className="portal-shell">
+        <Skeleton className="h-36 w-full rounded-[var(--radius-xl)]" />
+        <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
+          <Skeleton className="h-[36rem] w-full rounded-[var(--radius-xl)]" />
+          <Skeleton className="h-[36rem] w-full rounded-[var(--radius-xl)]" />
         </div>
       </div>
     );
@@ -609,14 +615,15 @@ export function ClientOnboardingShell() {
 
   if (onboardingQuery.error || !summary) {
     return (
-      <Alert className="border-danger/30">
-        <AlertTitle>Unable to load onboarding</AlertTitle>
-        <AlertDescription>
-          {onboardingQuery.error instanceof Error
+      <StatusBanner
+        variant="error"
+        title="Unable to load onboarding"
+        description={
+          onboardingQuery.error instanceof Error
             ? onboardingQuery.error.message
-            : "Client onboarding could not be loaded."}
-        </AlertDescription>
-      </Alert>
+            : "Client onboarding could not be loaded."
+        }
+      />
     );
   }
 
@@ -626,6 +633,7 @@ export function ClientOnboardingShell() {
     : "Not saved yet";
   const reviewCards = [
     {
+      stepKey: "basics" as const,
       title: "Basics",
       values: [
         ["Full name", draft.basics.display_name],
@@ -638,6 +646,7 @@ export function ClientOnboardingShell() {
       ],
     },
     {
+      stepKey: "goals" as const,
       title: "Goals",
       values: [
         ["Primary goal", draft.goals.goal],
@@ -646,6 +655,7 @@ export function ClientOnboardingShell() {
       ],
     },
     {
+      stepKey: "training-history" as const,
       title: "Training History",
       values: [
         ["Experience", draft.trainingHistory.experience_level],
@@ -661,6 +671,7 @@ export function ClientOnboardingShell() {
       ],
     },
     {
+      stepKey: "injuries-limitations" as const,
       title: "Injuries / Limitations",
       values: [
         ["Current injuries", draft.injuriesLimitations.injuries],
@@ -670,6 +681,7 @@ export function ClientOnboardingShell() {
       ],
     },
     {
+      stepKey: "nutrition-lifestyle" as const,
       title: "Nutrition & Lifestyle",
       values: [
         ["Dietary preferences", draft.nutritionLifestyle.dietary_preferences],
@@ -688,11 +700,17 @@ export function ClientOnboardingShell() {
     },
   ];
   const phoneParts = splitPhoneValue(draft.basics.phone);
+  const currentStepMeta = clientOnboardingSteps.find(
+    (step) => step.key === currentStep,
+  );
+  const completedStepsCount = Object.values(progress).filter(
+    (step) => step.complete,
+  ).length;
 
   return (
-    <section className="space-y-6">
-      <Card className="border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.94))] shadow-[0_26px_72px_-50px_rgba(0,0,0,0.85)]">
-        <CardContent className="space-y-5 px-5 py-5 sm:px-6">
+    <section className="portal-shell">
+      <SurfaceCard>
+        <SurfaceCardContent className="space-y-6 pt-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -708,8 +726,8 @@ export function ClientOnboardingShell() {
                   Guided onboarding for your coaching workspace
                 </h1>
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                  Move through the steps at your own pace, save whenever you
-                  want, and send everything to your coach when it is ready.
+                  Move through each step, save as you go, and submit once
+                  everything is ready for coach review.
                 </p>
               </div>
             </div>
@@ -720,7 +738,7 @@ export function ClientOnboardingShell() {
                 onClick={() => void handleSaveAndExit()}
               >
                 <Save className="h-4 w-4" />
-                Save and finish later
+                Save for later
               </Button>
               <Button asChild variant="ghost">
                 <Link to="/app/home">Back to workspace</Link>
@@ -728,45 +746,66 @@ export function ClientOnboardingShell() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              <span>Overall progress</span>
-              <span>{completionPercent}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-[width]"
-                style={{ width: `${completionPercent}%` }}
-              />
-            </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <SectionCard className="space-y-2 p-4">
+              <p className="field-label">Overall progress</p>
+              <p className="text-2xl font-semibold text-foreground">
+                {completionPercent}%
+              </p>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width]"
+                  style={{ width: `${completionPercent}%` }}
+                />
+              </div>
+            </SectionCard>
+            <SectionCard className="space-y-2 p-4">
+              <p className="field-label">Completed steps</p>
+              <p className="text-2xl font-semibold text-foreground">
+                {completedStepsCount}/{clientOnboardingSteps.length}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Required steps only count once enough detail has been saved.
+              </p>
+            </SectionCard>
+            <SectionCard className="space-y-2 p-4">
+              <p className="field-label">Readiness</p>
+              <p className="text-2xl font-semibold text-foreground">
+                {progress["review-submit"].complete ? "Ready" : "In progress"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {statusMeta.description}
+              </p>
+            </SectionCard>
           </div>
-        </CardContent>
-      </Card>
+        </SurfaceCardContent>
+      </SurfaceCard>
 
       {errorMessage ? (
-        <Alert className="border-danger/30 bg-danger/10">
-          <AlertTitle>Action needed</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
+        <StatusBanner
+          variant="error"
+          title="Action needed"
+          description={errorMessage}
+        />
       ) : null}
 
       {successMessage ? (
-        <Alert className="border-success/25 bg-success/10">
-          <AlertTitle>Status</AlertTitle>
-          <AlertDescription>{successMessage}</AlertDescription>
-        </Alert>
+        <StatusBanner
+          variant="success"
+          title="Status"
+          description={successMessage}
+        />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <Card className="border-border/70 bg-card/92">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-base">Steps</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Resume from any step. Required steps show completion only when
-              enough information has been saved.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
+      <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
+        <SurfaceCard>
+          <SurfaceCardHeader className="pb-4">
+            <SurfaceCardTitle>Steps</SurfaceCardTitle>
+            <SurfaceCardDescription>
+              Short progress rail for the onboarding flow.
+            </SurfaceCardDescription>
+          </SurfaceCardHeader>
+          <SurfaceCardContent className="space-y-2">
             {clientOnboardingSteps.map((step, index) => {
               const isActive = step.key === currentStep;
               const isComplete = progress[step.key].complete;
@@ -775,19 +814,19 @@ export function ClientOnboardingShell() {
                   key={step.key}
                   type="button"
                   onClick={() => void goToStep(step.key)}
-                  className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                  className={`flex w-full items-center gap-3 rounded-[var(--radius-lg)] border px-3 py-3 text-left transition ${
                     isActive
-                      ? "border-primary/30 bg-primary/8"
+                      ? "border-primary/40 bg-primary/10"
                       : "border-border/60 bg-background/35 hover:border-border"
                   }`}
                 >
                   <div
-                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-xs font-semibold ${
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
                       isComplete
-                        ? "border-success/30 bg-success/10 text-success"
+                        ? "border-success/35 bg-success/14 text-success"
                         : isActive
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-border/70 bg-background text-muted-foreground"
+                          ? "border-primary/40 bg-primary text-primary-foreground"
+                          : "border-border/70 bg-background/70 text-muted-foreground"
                     }`}
                   >
                     {isComplete ? (
@@ -796,36 +835,35 @@ export function ClientOnboardingShell() {
                       index + 1
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-foreground">
-                        {step.title}
+                        {step.shortTitle}
                       </p>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                        {isComplete ? "Done" : isActive ? "Current" : "Next"}
+                      </span>
                     </div>
-                    <p className="text-xs leading-5 text-muted-foreground">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {step.description}
                     </p>
                   </div>
                 </button>
               );
             })}
-          </CardContent>
-        </Card>
+          </SurfaceCardContent>
+        </SurfaceCard>
 
-        <Card className="border-border/70 bg-card/95 shadow-[0_20px_60px_-46px_rgba(0,0,0,0.9)]">
-          <CardHeader className="space-y-2">
+        <SurfaceCard>
+          <SurfaceCardHeader className="space-y-2 pb-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-xl">
-                  {getOnboardingStepTitle(currentStep)}
-                </CardTitle>
+                <SurfaceCardTitle className="text-xl">
+                  {currentStepMeta?.title ??
+                    getOnboardingStepTitle(currentStep)}
+                </SurfaceCardTitle>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {
-                    clientOnboardingSteps.find(
-                      (step) => step.key === currentStep,
-                    )?.description
-                  }
+                  {currentStepMeta?.description}
                 </p>
               </div>
               {saveState === "autosaving" || saveState === "saving" ? (
@@ -839,9 +877,9 @@ export function ClientOnboardingShell() {
                 <Badge variant="muted">Read only</Badge>
               ) : null}
             </div>
-          </CardHeader>
+          </SurfaceCardHeader>
 
-          <CardContent className="space-y-6">
+          <SurfaceCardContent className="space-y-6">
             {summary.awaitingReview ? (
               <div className="rounded-2xl border border-border/70 bg-secondary/18 p-5">
                 <div className="flex items-start gap-3">
@@ -1714,17 +1752,30 @@ export function ClientOnboardingShell() {
 
             {currentStep === "review-submit" ? (
               <div className="space-y-5">
-                <div className="rounded-2xl border border-border/70 bg-secondary/18 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Submission readiness
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Review each section below. The initial assessment must
-                        be submitted before you can send this to your coach.
-                      </p>
-                    </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <SectionCard className="space-y-2 p-4">
+                    <p className="field-label">Submission status</p>
+                    <p className="text-xl font-semibold text-foreground">
+                      {progress["review-submit"].complete
+                        ? "Ready to submit"
+                        : "Still missing items"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      The initial assessment must be submitted before this
+                      package can be sent.
+                    </p>
+                  </SectionCard>
+                  <SectionCard className="space-y-2 p-4">
+                    <p className="field-label">Saved draft</p>
+                    <p className="text-xl font-semibold text-foreground">
+                      {lastSavedLabel}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Draft changes are preserved while you work.
+                    </p>
+                  </SectionCard>
+                  <SectionCard className="space-y-2 p-4">
+                    <p className="field-label">Review state</p>
                     <Badge
                       variant={
                         progress["review-submit"].complete
@@ -1732,46 +1783,77 @@ export function ClientOnboardingShell() {
                           : "warning"
                       }
                     >
-                      {progress["review-submit"].complete
-                        ? "Ready to submit"
-                        : "Still missing required items"}
+                      {summary.awaitingReview
+                        ? "Submitted"
+                        : progress["review-submit"].complete
+                          ? "Ready"
+                          : "Incomplete"}
                     </Badge>
-                  </div>
+                    <p className="text-sm text-muted-foreground">
+                      Check each section below before you submit.
+                    </p>
+                  </SectionCard>
                 </div>
 
                 <div className="grid gap-4">
                   {reviewCards.map((section) => (
-                    <Card key={section.title} className="border-border/70">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">
-                          {section.title}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="grid gap-3 md:grid-cols-2">
+                    <SurfaceCard key={section.title}>
+                      <SurfaceCardHeader className="pb-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <SurfaceCardTitle className="text-base">
+                            {section.title}
+                          </SurfaceCardTitle>
+                          {summary.canEdit ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2.5 text-muted-foreground hover:text-foreground"
+                              onClick={() => void goToStep(section.stepKey)}
+                            >
+                              <PencilLine className="mr-1.5 h-3.5 w-3.5" />
+                              Edit
+                            </Button>
+                          ) : null}
+                        </div>
+                      </SurfaceCardHeader>
+                      <SurfaceCardContent className="grid gap-3 md:grid-cols-2">
                         {section.values.map(([label, value]) => (
                           <div
                             key={`${section.title}-${label}`}
                             className="space-y-1"
                           >
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              {label}
-                            </p>
+                            <p className="field-label">{label}</p>
                             <p className="text-sm text-foreground">
                               {toReviewValue(value)}
                             </p>
                           </div>
                         ))}
-                      </CardContent>
-                    </Card>
+                      </SurfaceCardContent>
+                    </SurfaceCard>
                   ))}
 
-                  <Card className="border-border/70">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">
-                        Initial Assessment
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
+                  <SurfaceCard>
+                    <SurfaceCardHeader className="pb-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <SurfaceCardTitle className="text-base">
+                          Initial Assessment
+                        </SurfaceCardTitle>
+                        {summary.canEdit ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2.5 text-muted-foreground hover:text-foreground"
+                            asChild
+                          >
+                            <Link to={baselineStepHref}>
+                              <PencilLine className="mr-1.5 h-3.5 w-3.5" />
+                              Edit
+                            </Link>
+                          </Button>
+                        ) : null}
+                      </div>
+                    </SurfaceCardHeader>
+                    <SurfaceCardContent className="space-y-3">
                       <div className="flex items-center gap-2">
                         <Badge
                           variant={
@@ -1790,13 +1872,13 @@ export function ClientOnboardingShell() {
                           ? "Your baseline has been submitted and will travel with this onboarding package."
                           : "Complete the Initial Assessment step before submission."}
                       </p>
-                    </CardContent>
-                  </Card>
+                    </SurfaceCardContent>
+                  </SurfaceCard>
                 </div>
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <StickyActionBar>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Clock3 className="h-3.5 w-3.5" />
                 {summary.awaitingReview
@@ -1849,7 +1931,7 @@ export function ClientOnboardingShell() {
                   </Button>
                 )}
               </div>
-            </div>
+            </StickyActionBar>
 
             {currentStep === "initial-assessment" && summary.canEdit ? (
               <div className="rounded-2xl border border-border/60 bg-background/35 p-4 text-sm text-muted-foreground">
@@ -1857,8 +1939,8 @@ export function ClientOnboardingShell() {
                 the baseline, return here and continue to review.
               </div>
             ) : null}
-          </CardContent>
-        </Card>
+          </SurfaceCardContent>
+        </SurfaceCard>
       </div>
     </section>
   );

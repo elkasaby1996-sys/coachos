@@ -12,6 +12,12 @@ import {
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ClientReminders } from "../../components/common/client-reminders";
+import {
+  PortalPageHeader,
+  SectionCard,
+  StatusBanner,
+  StickyActionBar,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import {
@@ -75,6 +81,8 @@ const emptyForm: HabitFormState = {
   stress: "5",
   notes: "",
 };
+
+const logInputClass = "border-border/70 bg-background/70 shadow-none";
 
 const toNumberOrNull = (value: string) => {
   if (!value.trim()) return null;
@@ -328,7 +336,7 @@ export function ClientHabitsPage() {
     if (error) {
       console.log("HABIT_LOG_SAVE_ERROR", error);
       setToastVariant("error");
-      setToastMessage(error.message ?? "Failed to save habits.");
+      setToastMessage(error.message ?? "Couldn't save this log.");
       setSaveError({
         code: error.code ?? null,
         message: error.message ?? null,
@@ -338,7 +346,7 @@ export function ClientHabitsPage() {
     }
 
     setToastVariant("success");
-    setToastMessage("Habits saved.");
+    setToastMessage("Log saved.");
     setLastSavedAt(data?.updated_at ?? data?.created_at ?? null);
     setInitialFormState(formState);
     setSaveStatus("idle");
@@ -356,39 +364,56 @@ export function ClientHabitsPage() {
         minute: "2-digit",
       })
     : null;
+  const saveStateLabel = !isEditable
+    ? "This date is locked."
+    : saveStatus === "saving"
+      ? "Saving changes..."
+      : isDirty
+        ? "Unsaved changes ready."
+        : lastSavedLabel
+          ? `Saved at ${lastSavedLabel}. No new changes.`
+          : "No changes yet.";
+  const saveButtonLabel =
+    saveStatus === "saving"
+      ? "Saving..."
+      : !isEditable
+        ? "Log locked"
+        : isDirty
+          ? "Save log"
+          : "No changes to save";
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Habits</h1>
-          <p className="text-sm text-muted-foreground">
-            Track daily nutrition, recovery, and mindset.
-          </p>
-        </div>
-        <Badge variant={isEditable ? "success" : "muted"}>
-          {isEditable ? "Editable" : "Read-only"}
-        </Badge>
-      </div>
+    <div className="portal-shell">
+      <PortalPageHeader
+        title="Habits"
+        subtitle="Log nutrition, recovery, and daily metrics."
+        stateText={selectedDate || todayStr}
+        actions={
+          <Badge variant={isEditable ? "success" : "muted"}>
+            {isEditable ? "Open for edits" : "Locked"}
+          </Badge>
+        }
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/60 px-4 py-3">
+      <SectionCard className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-muted-foreground">
-          Editing date:{" "}
+          Log date:{" "}
           <span className="font-medium text-foreground">
             {selectedDate || todayStr}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <label className="text-xs font-semibold text-muted-foreground">
             Date
           </label>
           <Input
             type="date"
+            className="sm:min-w-[12rem]"
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value)}
           />
         </div>
-      </div>
+      </SectionCard>
 
       <ClientReminders clientId={clientId} timezone={clientTimezone} />
 
@@ -407,7 +432,7 @@ export function ClientHabitsPage() {
 
       {queryErrorDetails ? (
         <Alert className="border-danger/30">
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Unable to load habit log</AlertTitle>
           <AlertDescription>
             <div className="space-y-1 text-xs text-muted-foreground">
               <div>code: {queryErrorDetails.code ?? "n/a"}</div>
@@ -419,7 +444,7 @@ export function ClientHabitsPage() {
 
       {saveError ? (
         <Alert className="border-danger/30">
-          <AlertTitle>Save error</AlertTitle>
+          <AlertTitle>Couldn't save this log</AlertTitle>
           <AlertDescription>
             <div className="space-y-1 text-xs text-muted-foreground">
               <div>code: {saveError.code ?? "n/a"}</div>
@@ -431,14 +456,14 @@ export function ClientHabitsPage() {
 
       {formError ? (
         <Alert className="border-danger/30">
-          <AlertTitle>Validation</AlertTitle>
+          <AlertTitle>Update needed</AlertTitle>
           <AlertDescription>{formError}</AlertDescription>
         </Alert>
       ) : null}
 
       {clientQuery.error ? (
         <Alert className="border-danger/30">
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Unable to load habits</AlertTitle>
           <AlertDescription>
             {clientQuery.error instanceof Error
               ? clientQuery.error.message
@@ -467,226 +492,246 @@ export function ClientHabitsPage() {
           ) : (
             <>
               {!isEditable ? (
-                <Alert className="border-warning/40 bg-warning/10 text-warning-foreground">
-                  <AlertTitle>Read-only log</AlertTitle>
-                  <AlertDescription>
-                    Past logs can only be edited within 7 days.
-                  </AlertDescription>
-                </Alert>
+                <StatusBanner
+                  variant="locked"
+                  title="This log is locked"
+                  description="You can edit entries from today and the previous 6 days."
+                />
               ) : null}
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Calories
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formState.calories}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        calories: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
+              <SectionCard className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Nutrition
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Recommended today: prioritize calories and protein before
+                    fine-tuning carbs and fats.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Protein (g)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formState.protein_g}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        protein_g: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <label className="field-label">Calories</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      className={logInputClass}
+                      value={formState.calories}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          calories: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Protein (g)</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      className={logInputClass}
+                      value={formState.protein_g}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          protein_g: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Carbs (g)</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      className={logInputClass}
+                      value={formState.carbs_g}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          carbs_g: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Fats (g)</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      className={logInputClass}
+                      value={formState.fats_g}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          fats_g: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Carbs (g)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formState.carbs_g}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        carbs_g: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Fats (g)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formState.fats_g}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        fats_g: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Recommended today: prioritize calories + protein before
-                fine-tuning carbs/fats.
-              </p>
+              </SectionCard>
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    {weightUnitLabel}
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formState.weight_value}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        weight_value: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
+              <SectionCard className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Recovery
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Capture sleep and how you felt so your coach can spot
+                    recovery trends quickly.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Weight unit
-                  </label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={formState.weight_unit}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        weight_unit: event.target.value as "kg" | "lb",
-                      }))
-                    }
-                    disabled={!isEditable}
-                  >
-                    <option value="kg">kg</option>
-                    <option value="lb">lb</option>
-                  </select>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <label className="field-label">Sleep (hours)</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      className={logInputClass}
+                      value={formState.sleep_hours}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          sleep_hours: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Energy (1-10)</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="10"
+                      className={logInputClass}
+                      value={formState.energy}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          energy: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Hunger (1-10)</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="10"
+                      className={logInputClass}
+                      value={formState.hunger}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          hunger: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Stress (1-10)</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="10"
+                      className={logInputClass}
+                      value={formState.stress}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          stress: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Sleep (hours)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={formState.sleep_hours}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        sleep_hours: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Steps
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formState.steps}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        steps: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
-                </div>
-              </div>
+              </SectionCard>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Energy (1-10)
-                  </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formState.energy}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        energy: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
+              <SectionCard className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Body + activity
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Log body weight and daily movement for a complete picture of
+                    your day.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Hunger (1-10)
-                  </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formState.hunger}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        hunger: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <label className="field-label">{weightUnitLabel}</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      className={logInputClass}
+                      value={formState.weight_value}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          weight_value: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Weight unit</label>
+                    <select
+                      className={`h-10 w-full rounded-md border px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${logInputClass}`}
+                      value={formState.weight_unit}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          weight_unit: event.target.value as "kg" | "lb",
+                        }))
+                      }
+                      disabled={!isEditable}
+                    >
+                      <option value="kg">kg</option>
+                      <option value="lb">lb</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">Steps</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      className={logInputClass}
+                      value={formState.steps}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          steps: event.target.value,
+                        }))
+                      }
+                      disabled={!isEditable}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Stress (1-10)
-                  </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formState.stress}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        stress: event.target.value,
-                      }))
-                    }
-                    disabled={!isEditable}
-                  />
-                </div>
-              </div>
+              </SectionCard>
 
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Notes
-                </label>
+              <SectionCard className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Notes</p>
+                  <p className="text-sm text-muted-foreground">
+                    Add context that may help your coach interpret today&apos;s
+                    log.
+                  </p>
+                </div>
                 <textarea
-                  className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="min-h-[96px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={formState.notes}
                   onChange={(event) =>
                     setFormState((prev) => ({
@@ -696,26 +741,20 @@ export function ClientHabitsPage() {
                   }
                   disabled={!isEditable}
                 />
-              </div>
+              </SectionCard>
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <StickyActionBar>
                 <div className="text-xs text-muted-foreground">
-                  {lastSavedLabel
-                    ? `Last saved at ${lastSavedLabel}`
-                    : "Not saved yet"}
+                  {saveStateLabel}
                 </div>
                 <Button
+                  variant={isDirty ? "default" : "secondary"}
                   onClick={handleSave}
                   disabled={!isEditable || saveStatus === "saving" || !isDirty}
                 >
-                  {saveStatus === "saving" ? "Saving..." : "Save"}
+                  {saveButtonLabel}
                 </Button>
-              </div>
-              {!isDirty ? (
-                <div className="text-xs text-muted-foreground">
-                  No changes to save.
-                </div>
-              ) : null}
+              </StickyActionBar>
             </>
           )}
         </CardContent>
@@ -737,6 +776,14 @@ export function ClientHabitsPage() {
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </>
+          ) : trends.daysLogged === 0 ? (
+            <div className="lg:col-span-5">
+              <StatusBanner
+                variant="info"
+                title="No habits logged yet"
+                description="Save your first daily log to unlock a weekly view of steps, sleep, protein, and body weight."
+              />
+            </div>
           ) : (
             <>
               <div className="rounded-lg border border-border p-3">
@@ -748,19 +795,19 @@ export function ClientHabitsPage() {
                 <p className="text-lg font-semibold">
                   {trends.avgSteps !== null
                     ? trends.avgSteps.toLocaleString()
-                    : "—"}
+                    : "--"}
                 </p>
               </div>
               <div className="rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Avg sleep</p>
                 <p className="text-lg font-semibold">
-                  {trends.avgSleep !== null ? `${trends.avgSleep} hrs` : "—"}
+                  {trends.avgSleep !== null ? `${trends.avgSleep} hrs` : "--"}
                 </p>
               </div>
               <div className="rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Avg protein</p>
                 <p className="text-lg font-semibold">
-                  {trends.avgProtein !== null ? `${trends.avgProtein} g` : "—"}
+                  {trends.avgProtein !== null ? `${trends.avgProtein} g` : "--"}
                 </p>
               </div>
               <div className="rounded-lg border border-border p-3">
@@ -770,7 +817,7 @@ export function ClientHabitsPage() {
                     ? `${trends.weightChange > 0 ? "+" : ""}${trends.weightChange.toFixed(1)} ${
                         trends.weightUnit ?? ""
                       }`
-                    : "—"}
+                    : "--"}
                 </p>
               </div>
             </>

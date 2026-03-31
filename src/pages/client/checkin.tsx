@@ -10,6 +10,13 @@ import {
   Skeleton,
   StatusPill,
 } from "../../components/ui/coachos";
+import {
+  PortalPageHeader,
+  SectionCard,
+  StatusBanner,
+  StepIndicator,
+  StickyActionBar,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useAuth } from "../../lib/auth";
@@ -124,11 +131,6 @@ const statusMap = {
   reviewed: { label: "Reviewed", variant: "success" },
 } as const;
 
-const requiredStatusMap = {
-  active: { label: "Required", variant: "warning" },
-  required: { label: "Required", variant: "warning" },
-} as const;
-
 const photoSlots: Array<{
   type: PhotoType;
   label: string;
@@ -140,14 +142,30 @@ const photoSlots: Array<{
   { type: "optional", label: "Optional" },
 ];
 
+const compactInputClass = "form-control-compact";
+
 const formatCheckinDueDate = (dateStr: string) => {
-  if (!dateStr) return "--";
+  if (!dateStr) return "Date unavailable";
   const date = new Date(`${dateStr}T00:00:00Z`);
   return date.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
+};
+
+const hasQuestionValue = (value: QuestionValue | undefined) =>
+  (typeof value?.text === "string" && value.text.trim().length > 0) ||
+  typeof value?.number === "number" ||
+  typeof value?.boolean === "boolean";
+
+const getQuestionSummaryValue = (value: QuestionValue | undefined) => {
+  if (typeof value?.number === "number") return String(value.number);
+  if (typeof value?.boolean === "boolean") return value.boolean ? "Yes" : "No";
+  if (typeof value?.text === "string" && value.text.trim().length > 0) {
+    return value.text.trim();
+  }
+  return "No response submitted";
 };
 
 export function ClientCheckinPage() {
@@ -671,6 +689,7 @@ export function ClientCheckinPage() {
   };
 
   const canProceed = hasTemplate && !isLoading;
+  const checkinLocked = isSubmitted;
   const checkinDueDateLabel = formatCheckinDueDate(
     checkinQuery.data?.week_ending_saturday ?? "",
   );
@@ -695,9 +714,94 @@ export function ClientCheckinPage() {
     checkinQuery.error ||
     answersQuery.error ||
     photosQuery.error;
+  const requiredQuestions = questions.filter(
+    (question) => question.is_required,
+  );
+  const answeredQuestions = questions.filter((question) =>
+    hasQuestionValue(answers[question.id]),
+  ).length;
+  const answeredRequiredQuestions = requiredQuestions.filter((question) =>
+    hasQuestionValue(answers[question.id]),
+  ).length;
+  const uploadedRequiredPhotos = photoSlots.filter(
+    (slot) => slot.required && photos[slot.type]?.previewUrl,
+  ).length;
+  const missingRequiredAnswers = Math.max(
+    requiredQuestions.length - answeredRequiredQuestions,
+    0,
+  );
+  const missingRequiredPhotos = Math.max(
+    CHECKIN_REQUIRED_PHOTO_TYPES.length - uploadedRequiredPhotos,
+    0,
+  );
+  const lockedSubmissionComplete =
+    missingRequiredAnswers === 0 && missingRequiredPhotos === 0;
+  const canAdvanceQuestions =
+    canProceed &&
+    (checkinLocked || answeredRequiredQuestions === requiredQuestions.length);
+  const canAdvancePhotos =
+    canProceed &&
+    (checkinLocked ||
+      uploadedRequiredPhotos === CHECKIN_REQUIRED_PHOTO_TYPES.length);
+  const summaryVariant =
+    missingTemplate || pageError
+      ? "error"
+      : checkinState === "reviewed"
+        ? "reviewed"
+        : checkinState === "submitted"
+          ? "locked"
+          : checkinState === "overdue"
+            ? "warning"
+            : checkinState === "upcoming"
+              ? "info"
+              : "info";
+  const summaryTitle = missingTemplate
+    ? missingTemplateTitle
+    : pageError
+      ? "Unable to load check-in"
+      : checkinState === "reviewed"
+        ? "Check-in reviewed"
+        : checkinState === "submitted"
+          ? "Check-in submitted"
+          : checkinState === "overdue"
+            ? "Check-in overdue"
+            : checkinState === "upcoming"
+              ? "Check-in window upcoming"
+              : "Check-in in progress";
+  const summaryDescription = missingTemplate
+    ? missingTemplateDescription
+    : pageError
+      ? "Please refresh the page or try again shortly."
+      : checkinState === "reviewed"
+        ? lockedSubmissionComplete
+          ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
+          : `Your coach reviewed this check-in, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing from the submission.`
+        : checkinState === "submitted"
+          ? lockedSubmissionComplete
+            ? "Your responses are submitted and locked for this cycle."
+            : `This check-in was submitted with ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} still missing.`
+          : checkinState === "overdue"
+            ? "Finish this open check-in before moving on to the next cycle."
+            : checkinState === "upcoming"
+              ? "Use the current flow to review what will be required when the window opens."
+              : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
+  const headerStateText =
+    checkinState === "reviewed"
+      ? `Reviewed ${checkinDueDateLabel}`
+      : checkinState === "submitted"
+        ? `Submitted ${checkinDueDateLabel}`
+        : checkinState === "upcoming"
+          ? `Opens ${checkinDueDateLabel}`
+          : `Due ${checkinDueDateLabel}`;
+
+  useEffect(() => {
+    if (checkinLocked) {
+      setStep(steps.length - 1);
+    }
+  }, [checkinLocked]);
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
+    <div className="portal-shell">
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
           <Alert
@@ -708,61 +812,35 @@ export function ClientCheckinPage() {
             }
           >
             <AlertTitle>
-              {toastVariant === "error" ? "Error" : "Success"}
+              {toastVariant === "error" ? "Error" : "Saved"}
             </AlertTitle>
             <AlertDescription>{toastMessage}</AlertDescription>
           </Alert>
         </div>
       ) : null}
 
-      <DashboardCard
-        title={`${checkinFrequencyLabel} check-in`}
+      <PortalPageHeader
+        title="Check-in"
         subtitle={`Stay aligned with your coach every ${checkinFrequencyLabel.toLowerCase().replace("-", " ")} cycle.`}
-      >
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        ) : clientQuery.data ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <StatusPill status={statusKey} statusMap={statusMap} />
-            <span>
-              {checkinState === "submitted" || checkinState === "reviewed"
-                ? `Completed for ${checkinDueDateLabel}`
-                : checkinState === "overdue"
-                  ? `Overdue since ${checkinDueDateLabel}`
-                  : checkinState === "upcoming"
-                    ? `Scheduled for ${checkinDueDateLabel}`
-                    : `Due ${checkinDueDateLabel}`}
-            </span>
-            <span className="text-muted-foreground">|</span>
-            <span>Due date: {checkinDueDateLabel}</span>
-          </div>
-        ) : (
-          <EmptyState
-            title="No client profile found"
-            description="A client profile is required before check-ins can load."
-          />
-        )}
-      </DashboardCard>
+        stateText={headerStateText}
+        actions={<StatusPill status={statusKey} statusMap={statusMap} />}
+      />
 
-      {missingTemplate ? (
-        <EmptyState
-          title={missingTemplateTitle}
-          description={missingTemplateDescription}
-          actionLabel={
-            onboardingNeedsActivation ? "Open onboarding" : undefined
-          }
-          onAction={
-            onboardingNeedsActivation
-              ? () => navigate("/app/onboarding")
-              : undefined
+      <div className="portal-form-shell space-y-6">
+        <StatusBanner
+          variant={summaryVariant}
+          title={summaryTitle}
+          description={summaryDescription}
+          actions={
+            missingTemplate && onboardingNeedsActivation ? (
+              <Button onClick={() => navigate("/app/onboarding")}>
+                Open onboarding
+              </Button>
+            ) : undefined
           }
         />
-      ) : null}
 
-      {/* legacy placeholder removed during final onboarding integration
+        {/* legacy placeholder removed during final onboarding integration
         <EmptyState
           title="Your coach hasn’t assigned a check-in yet."
           description="Check back soon once your coach adds one."
@@ -775,479 +853,598 @@ export function ClientCheckinPage() {
         />
       */}
 
-      {pageError ? (
-        <Alert className="border-destructive/30">
-          <AlertTitle>Unable to load check-in data</AlertTitle>
-          <AlertDescription>
-            Please refresh the page or try again shortly.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {isSubmitted ? (
-        <div className="rounded-lg border border-emerald-200/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          Your check-in for {checkinDueDateLabel} is submitted and locked.
-        </div>
-      ) : null}
-
-      {checkinState === "overdue" ? (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-foreground">
-          This check-in is overdue. Finish this open check-in before moving on
-          to the next cycle.
-        </div>
-      ) : null}
-
-      {isSubmitted && checkinQuery.data?.pt_feedback ? (
-        <DashboardCard
-          title="Coach feedback"
-          subtitle="Your coach reviewed this check-in."
-        >
-          <p className="text-sm text-foreground">
-            {checkinQuery.data.pt_feedback}
-          </p>
-        </DashboardCard>
-      ) : null}
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        {steps.map((label, index) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => canProceed && setStep(index)}
-            className={cn(
-              "rounded-xl border border-border px-4 py-3 text-left text-sm transition",
-              step === index
-                ? "border-accent/50 bg-accent/10 text-foreground"
-                : "bg-card/80 text-muted-foreground hover:border-border/80",
-            )}
+        {checkinState === "reviewed" && checkinQuery.data?.pt_feedback ? (
+          <DashboardCard
+            title="Coach feedback"
+            subtitle="Your coach reviewed this check-in."
           >
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Step {index + 1}
-            </div>
-            <div className="mt-1 font-semibold text-foreground">{label}</div>
-          </button>
-        ))}
-      </div>
+            <p className="text-sm text-foreground">
+              {checkinQuery.data.pt_feedback}
+            </p>
+          </DashboardCard>
+        ) : null}
 
-      {step === 0 ? (
-        <DashboardCard
-          title={`${checkinFrequencyLabel} questions`}
-          subtitle="Share the latest updates for this check-in period."
-        >
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : missingTemplate ? (
-            <EmptyState
-              title="Your coach hasn’t assigned a check-in yet."
-              description="Check back soon once your coach adds one."
-              {...(onboardingNeedsActivation
-                ? {
-                    actionLabel: "Open onboarding",
-                    onAction: () => navigate("/app/onboarding"),
-                  }
-                : {})}
-            />
-          ) : !hasTemplate ? (
-            <EmptyState
-              title="Your coach hasn’t assigned a check-in yet."
-              description="Check back soon once your coach adds one."
-              {...(onboardingNeedsActivation
-                ? {
-                    actionLabel: "Open onboarding",
-                    onAction: () => navigate("/app/onboarding"),
-                  }
-                : {})}
-            />
-          ) : questions.length === 0 ? (
-            <EmptyState
-              title="No questions yet"
-              description="Your coach will add questions to this template soon."
-            />
-          ) : (
-            <div className="space-y-4">
-              {questions.map((question) => {
-                const type = normalizeCheckinQuestionType(question);
-                const value = answers[question.id] ?? {};
-                const helpText = getCheckinQuestionHelpText(question);
-                const choiceOptions = getCheckinQuestionOptions(question);
-                return (
-                  <div
-                    key={question.id}
-                    className="rounded-xl border border-border bg-background/40 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {getCheckinQuestionLabel(question)}
-                        </p>
-                        {helpText ? (
-                          <p className="text-xs text-muted-foreground">
-                            {helpText}
-                          </p>
-                        ) : null}
-                      </div>
+        <StepIndicator
+          steps={steps.map((label, index) => ({
+            label,
+            state: checkinLocked
+              ? index < steps.length - 1
+                ? "completed"
+                : "current"
+              : index < step
+                ? "completed"
+                : index === step
+                  ? "current"
+                  : "upcoming",
+            onClick:
+              !checkinLocked && (index <= step || canProceed)
+                ? () => setStep(index)
+                : undefined,
+          }))}
+        />
+
+        {step === 0 ? (
+          <DashboardCard
+            className="portal-form-step"
+            title={`${checkinFrequencyLabel} questions`}
+            subtitle="Share the latest updates for this check-in period."
+          >
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : missingTemplate ? (
+              <EmptyState
+                title="Your coach hasn’t assigned a check-in yet."
+                description="Check back soon once your coach adds one."
+                {...(onboardingNeedsActivation
+                  ? {
+                      actionLabel: "Open onboarding",
+                      onAction: () => navigate("/app/onboarding"),
+                    }
+                  : {})}
+              />
+            ) : !hasTemplate ? (
+              <EmptyState
+                title="Your coach hasn’t assigned a check-in yet."
+                description="Check back soon once your coach adds one."
+                {...(onboardingNeedsActivation
+                  ? {
+                      actionLabel: "Open onboarding",
+                      onAction: () => navigate("/app/onboarding"),
+                    }
+                  : {})}
+              />
+            ) : questions.length === 0 ? (
+              <EmptyState
+                title="No questions added yet"
+                description="Your coach will add check-in questions here soon."
+              />
+            ) : checkinLocked ? (
+              <div className="space-y-4">
+                {questions.map((question) => (
+                  <SectionCard key={question.id} className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">
+                        {getCheckinQuestionLabel(question)}
+                      </p>
                       {question.is_required ? (
-                        <StatusPill
-                          status="required"
-                          statusMap={requiredStatusMap}
-                        />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Required
+                        </span>
                       ) : null}
                     </div>
+                    <p className="text-sm leading-6 text-foreground">
+                      {!hasQuestionValue(answers[question.id]) &&
+                      question.is_required
+                        ? "Required response was not submitted."
+                        : getQuestionSummaryValue(answers[question.id])}
+                    </p>
+                  </SectionCard>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {questions.map((question) => {
+                  const type = normalizeCheckinQuestionType(question);
+                  const value = answers[question.id] ?? {};
+                  const helpText = getCheckinQuestionHelpText(question);
+                  const choiceOptions = getCheckinQuestionOptions(question);
+                  return (
+                    <SectionCard
+                      key={question.id}
+                      className={cn(
+                        "space-y-3",
+                        type === "scale" && "border-primary/30 bg-primary/5",
+                        type === "choice" &&
+                          "border-accent/20 bg-background/55",
+                        type === "yes_no" && "bg-background/55",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground">
+                              {getCheckinQuestionLabel(question)}
+                            </p>
+                            {question.is_required ? (
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Required
+                              </span>
+                            ) : null}
+                          </div>
+                          {helpText ? (
+                            <p className="text-xs leading-5 text-muted-foreground">
+                              {helpText}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
 
-                    <div className="mt-3">
-                      {type === "number" ? (
-                        <Input
-                          type="number"
-                          value={
-                            typeof value.number === "number" ? value.number : ""
-                          }
-                          onChange={(event) =>
-                            handleAnswerChange(question.id, {
-                              number: event.target.value
-                                ? Number(event.target.value)
-                                : null,
-                            })
-                          }
-                          disabled={isSubmitted}
-                        />
-                      ) : type === "yes_no" ? (
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant={
-                              value.boolean === true ? "default" : "secondary"
-                            }
-                            onClick={() =>
-                              handleAnswerChange(question.id, { boolean: true })
-                            }
-                            disabled={isSubmitted}
-                          >
-                            Yes
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={
-                              value.boolean === false ? "default" : "secondary"
-                            }
-                            onClick={() =>
+                      <div>
+                        {type === "number" ? (
+                          <div className="max-w-xs">
+                            <Input
+                              className={compactInputClass}
+                              type="number"
+                              value={
+                                typeof value.number === "number"
+                                  ? value.number
+                                  : ""
+                              }
+                              onChange={(event) =>
+                                handleAnswerChange(question.id, {
+                                  number: event.target.value
+                                    ? Number(event.target.value)
+                                    : null,
+                                })
+                              }
+                              disabled={isSubmitted}
+                            />
+                          </div>
+                        ) : type === "yes_no" ? (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <Button
+                              type="button"
+                              variant={
+                                value.boolean === true ? "default" : "secondary"
+                              }
+                              onClick={() =>
+                                handleAnswerChange(question.id, {
+                                  boolean: true,
+                                })
+                              }
+                              disabled={isSubmitted}
+                            >
+                              Yes
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={
+                                value.boolean === false
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              onClick={() =>
+                                handleAnswerChange(question.id, {
+                                  boolean: false,
+                                })
+                              }
+                              disabled={isSubmitted}
+                            >
+                              No
+                            </Button>
+                          </div>
+                        ) : type === "choice" ? (
+                          choiceOptions.length > 0 ? (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {choiceOptions.map((option) => (
+                                <Button
+                                  key={option}
+                                  type="button"
+                                  variant={
+                                    value.text === option
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  onClick={() =>
+                                    handleAnswerChange(question.id, {
+                                      text: option,
+                                    })
+                                  }
+                                  disabled={isSubmitted}
+                                >
+                                  {option}
+                                </Button>
+                              ))}
+                            </div>
+                          ) : (
+                            <StatusBanner
+                              variant="warning"
+                              title="Options not configured yet"
+                              description="Your coach still needs to add options for this question."
+                            />
+                          )
+                        ) : type === "scale" ? (
+                          <div className="space-y-2">
+                            <div className="text-xs text-muted-foreground">
+                              Choose a score from {CHECKIN_SCALE_MIN} to{" "}
+                              {CHECKIN_SCALE_MAX}.
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-5 sm:grid-cols-10">
+                              {Array.from({
+                                length:
+                                  CHECKIN_SCALE_MAX - CHECKIN_SCALE_MIN + 1,
+                              })
+                                .map((_, idx) => CHECKIN_SCALE_MIN + idx)
+                                .map((score) => (
+                                  <Button
+                                    key={score}
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                      value.number === score
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                    onClick={() =>
+                                      handleAnswerChange(question.id, {
+                                        number: score,
+                                      })
+                                    }
+                                    disabled={isSubmitted}
+                                  >
+                                    {score}
+                                  </Button>
+                                ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <textarea
+                            className={`${compactInputClass} w-full`}
+                            placeholder="Share details..."
+                            value={value.text ?? ""}
+                            onChange={(event) =>
                               handleAnswerChange(question.id, {
-                                boolean: false,
+                                text: event.target.value,
                               })
                             }
                             disabled={isSubmitted}
-                          >
-                            No
-                          </Button>
-                        </div>
-                      ) : type === "choice" ? (
-                        choiceOptions.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {choiceOptions.map((option) => (
-                              <Button
-                                key={option}
-                                type="button"
-                                variant={
-                                  value.text === option
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                onClick={() =>
-                                  handleAnswerChange(question.id, {
-                                    text: option,
-                                  })
-                                }
-                                disabled={isSubmitted}
-                              >
-                                {option}
-                              </Button>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-                            Your coach still needs to add options for this
-                            question.
-                          </div>
-                        )
-                      ) : type === "scale" ? (
-                        <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-                          {Array.from({
-                            length: CHECKIN_SCALE_MAX - CHECKIN_SCALE_MIN + 1,
-                          })
-                            .map((_, idx) => CHECKIN_SCALE_MIN + idx)
-                            .map((score) => (
-                              <Button
-                                key={score}
-                                type="button"
-                                size="sm"
-                                variant={
-                                  value.number === score
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                onClick={() =>
-                                  handleAnswerChange(question.id, {
-                                    number: score,
-                                  })
-                                }
-                                disabled={isSubmitted}
-                              >
-                                {score}
-                              </Button>
-                            ))}
-                        </div>
-                      ) : (
-                        <textarea
-                          className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          placeholder="Share details..."
-                          value={value.text ?? ""}
-                          onChange={(event) =>
-                            handleAnswerChange(question.id, {
-                              text: event.target.value,
-                            })
-                          }
-                          disabled={isSubmitted}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </DashboardCard>
-      ) : null}
-
-      {step === 1 ? (
-        <DashboardCard
-          title="Progress photos"
-          subtitle="Front, side, and back photos are required for submission."
-        >
-          {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-40 w-full" />
-              ))}
-            </div>
-          ) : !clientQuery.data ? (
-            <EmptyState
-              title="No profile found"
-              description="A client profile is required before check-ins can load."
-            />
-          ) : missingTemplate ? (
-            <EmptyState
-              title="Your coach hasn’t assigned a check-in yet."
-              description="Check back soon once your coach adds one."
-              {...(onboardingNeedsActivation
-                ? {
-                    actionLabel: "Open onboarding",
-                    onAction: () => navigate("/app/onboarding"),
-                  }
-                : {})}
-            />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {photoSlots.map((slot) => {
-                const state = photos[slot.type];
-                return (
-                  <div
-                    key={slot.type}
-                    className="rounded-xl border border-border bg-background/40 p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {slot.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {slot.required ? "Required" : "Optional"}
-                        </p>
+                          />
+                        )}
                       </div>
-                      {state.existingUrl ? (
-                        <StatusPill status="submitted" statusMap={statusMap} />
-                      ) : null}
-                    </div>
-                    <div className="mt-3">
+                    </SectionCard>
+                  );
+                })}
+              </div>
+            )}
+          </DashboardCard>
+        ) : null}
+
+        {step === 1 ? (
+          <DashboardCard
+            className="portal-form-step"
+            title="Progress photos"
+            subtitle={
+              checkinLocked
+                ? "Submitted photos from this cycle."
+                : "Front, side, and back photos are required for submission."
+            }
+          >
+            {isLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-40 w-full" />
+                ))}
+              </div>
+            ) : !clientQuery.data ? (
+              <EmptyState
+                title="No profile found"
+                description="A client profile is required before check-ins can load."
+              />
+            ) : missingTemplate ? (
+              <EmptyState
+                title="Your coach hasn’t assigned a check-in yet."
+                description="Check back soon once your coach adds one."
+                {...(onboardingNeedsActivation
+                  ? {
+                      actionLabel: "Open onboarding",
+                      onAction: () => navigate("/app/onboarding"),
+                    }
+                  : {})}
+              />
+            ) : checkinLocked ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {photoSlots.map((slot) => {
+                  const state = photos[slot.type];
+                  return (
+                    <SectionCard key={slot.type} className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {slot.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {state.previewUrl
+                              ? "Submitted for review"
+                              : slot.required
+                                ? "Required photo missing"
+                                : "Optional photo not added"}
+                          </p>
+                        </div>
+                        {state.previewUrl ? (
+                          <StatusPill
+                            status="submitted"
+                            statusMap={statusMap}
+                          />
+                        ) : null}
+                      </div>
                       {state.previewUrl ? (
                         <img
                           src={state.previewUrl}
                           alt={`${slot.label} preview`}
-                          className="h-40 w-full rounded-lg border border-border object-cover"
+                          className="h-40 w-full rounded-xl border border-border object-cover"
                         />
                       ) : (
-                        <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
-                          No photo uploaded
+                        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                          {slot.required
+                            ? "No submitted photo"
+                            : "No optional photo added"}
                         </div>
                       )}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <label className="inline-flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          disabled={isSubmitted}
-                          onChange={(event) =>
-                            handleFileChange(
-                              slot.type,
-                              event.target.files?.[0] ?? null,
-                            )
-                          }
-                        />
-                        <Button
-                          asChild
-                          variant="secondary"
-                          size="sm"
-                          disabled={isSubmitted}
-                        >
-                          <span>{state.previewUrl ? "Replace" : "Upload"}</span>
-                        </Button>
-                      </label>
-                      {state.previewUrl ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemovePhoto(slot.type)}
-                          disabled={isSubmitted}
-                        >
-                          Remove
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </DashboardCard>
-      ) : null}
-
-      {step === 2 ? (
-        <DashboardCard
-          title="Review & submit"
-          subtitle="Make sure everything looks right."
-        >
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          ) : missingTemplate ? (
-            <EmptyState
-              title="Your coach hasn’t assigned a check-in yet."
-              description="Check back soon once your coach adds one."
-              {...(onboardingNeedsActivation
-                ? {
-                    actionLabel: "Open onboarding",
-                    onAction: () => navigate("/app/onboarding"),
-                  }
-                : {})}
-            />
-          ) : (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">
-                  Responses
-                </p>
-                {questions.length === 0 ? (
-                  <EmptyState
-                    title="No questions to review"
-                    description="Your coach has not added questions yet."
-                  />
-                ) : (
-                  questions.map((question) => {
-                    const value = answers[question.id] ?? {};
-                    const display =
-                      typeof value.number === "number"
-                        ? value.number
-                        : typeof value.boolean === "boolean"
-                          ? value.boolean
-                            ? "Yes"
-                            : "No"
-                          : value.text && value.text.trim().length > 0
-                            ? value.text
-                            : "--";
-                    return (
-                      <div
-                        key={question.id}
-                        className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm"
-                      >
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          {getCheckinQuestionLabel(question)}
-                        </p>
-                        <p className="mt-1 text-foreground">{display}</p>
-                      </div>
-                    );
-                  })
-                )}
+                    </SectionCard>
+                  );
+                })}
               </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">Photos</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {photoSlots.map((slot) => {
-                    const state = photos[slot.type];
-                    return (
-                      <div
-                        key={slot.type}
-                        className="rounded-lg border border-border bg-muted/20 p-3 text-sm"
-                      >
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          {slot.label}
-                        </p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {photoSlots.map((slot) => {
+                  const state = photos[slot.type];
+                  return (
+                    <SectionCard key={slot.type} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {slot.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {slot.required ? "Required" : "Optional"}
+                          </p>
+                        </div>
+                        {state.existingUrl ? (
+                          <StatusPill
+                            status="submitted"
+                            statusMap={statusMap}
+                          />
+                        ) : null}
+                      </div>
+                      <div className="mt-3">
                         {state.previewUrl ? (
                           <img
                             src={state.previewUrl}
                             alt={`${slot.label} preview`}
-                            className="mt-2 h-32 w-full rounded-md border border-border object-cover"
+                            className="h-40 w-full rounded-xl border border-border object-cover"
                           />
                         ) : (
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            {slot.required
-                              ? "Required photo missing"
-                              : "No photo"}
-                          </p>
+                          <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                            No photo added yet
+                          </div>
                         )}
                       </div>
-                    );
-                  })}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <label className="inline-flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={isSubmitted}
+                            onChange={(event) =>
+                              handleFileChange(
+                                slot.type,
+                                event.target.files?.[0] ?? null,
+                              )
+                            }
+                          />
+                          <Button
+                            asChild
+                            variant="secondary"
+                            size="sm"
+                            disabled={isSubmitted}
+                          >
+                            <span>
+                              {state.previewUrl ? "Replace" : "Upload"}
+                            </span>
+                          </Button>
+                        </label>
+                        {state.previewUrl ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemovePhoto(slot.type)}
+                            disabled={isSubmitted}
+                          >
+                            Remove
+                          </Button>
+                        ) : null}
+                      </div>
+                    </SectionCard>
+                  );
+                })}
+              </div>
+            )}
+          </DashboardCard>
+        ) : null}
+
+        {step === 2 ? (
+          <DashboardCard
+            className="portal-form-step"
+            title="Review and submit"
+            subtitle={
+              checkinLocked
+                ? "Submitted responses from this cycle."
+                : "Make sure everything looks right."
+            }
+          >
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : missingTemplate ? (
+              <EmptyState
+                title="Your coach hasn’t assigned a check-in yet."
+                description="Check back soon once your coach adds one."
+                {...(onboardingNeedsActivation
+                  ? {
+                      actionLabel: "Open onboarding",
+                      onAction: () => navigate("/app/onboarding"),
+                    }
+                  : {})}
+              />
+            ) : (
+              <div className="space-y-6">
+                {checkinLocked && !lockedSubmissionComplete ? (
+                  <StatusBanner
+                    variant="warning"
+                    title="Reviewed with missing required items"
+                    description={`This submission is locked, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing when it was reviewed.`}
+                  />
+                ) : null}
+
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    Responses
+                  </p>
+                  {questions.length === 0 ? (
+                    <EmptyState
+                      title="No questions to review"
+                      description="Your coach has not added questions yet."
+                    />
+                  ) : (
+                    questions.map((question) => {
+                      return (
+                        <SectionCard
+                          key={question.id}
+                          className="space-y-2 text-sm"
+                        >
+                          <p className="field-label">
+                            {getCheckinQuestionLabel(question)}
+                          </p>
+                          <p className="text-foreground">
+                            {getQuestionSummaryValue(answers[question.id])}
+                          </p>
+                        </SectionCard>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    Photos
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {photoSlots.map((slot) => {
+                      const state = photos[slot.type];
+                      return (
+                        <SectionCard
+                          key={slot.type}
+                          className="space-y-2 text-sm"
+                        >
+                          <p className="field-label">{slot.label}</p>
+                          {state.previewUrl ? (
+                            <img
+                              src={state.previewUrl}
+                              alt={`${slot.label} preview`}
+                              className="h-32 w-full rounded-xl border border-border object-cover"
+                            />
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              {slot.required
+                                ? "Required photo missing from submission"
+                                : "Optional photo not added"}
+                            </p>
+                          )}
+                        </SectionCard>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </DashboardCard>
-      ) : null}
+            )}
+          </DashboardCard>
+        ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button
-          variant="secondary"
-          onClick={() => setStep((prev) => Math.max(0, prev - 1))}
-          disabled={step === 0}
-        >
-          Back
-        </Button>
-        <div className="flex flex-wrap items-center gap-2">
-          {step < steps.length - 1 ? (
-            <Button
-              onClick={() =>
-                setStep((prev) => Math.min(steps.length - 1, prev + 1))
-              }
-              disabled={!canProceed}
-            >
-              Continue
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={!canProceed || isSubmitted || submitting}
-            >
-              {submitting ? "Submitting..." : "Submit check-in"}
-            </Button>
-          )}
-        </div>
+        {checkinLocked ? (
+          <SectionCard className="mt-6 flex flex-col gap-3 border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold text-foreground">
+                {checkinState === "reviewed"
+                  ? lockedSubmissionComplete
+                    ? "Check-in reviewed"
+                    : "Check-in reviewed with missing items"
+                  : lockedSubmissionComplete
+                    ? "Check-in submitted"
+                    : "Check-in submitted with missing items"}
+              </p>
+              <p className="text-muted-foreground">
+                {lockedSubmissionComplete
+                  ? checkinState === "reviewed"
+                    ? "Your coach reviewed this check-in and the submitted record is now final for this cycle."
+                    : "This check-in is submitted and locked until your coach reviews it."
+                  : `This record is locked. ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing in the submission.`}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                Back to home
+              </Button>
+            </div>
+          </SectionCard>
+        ) : (
+          <StickyActionBar>
+            <>
+              <div className="text-xs text-muted-foreground">
+                {questions.length > 0
+                  ? `${answeredQuestions}/${questions.length} responses ready`
+                  : "Waiting for template setup"}
+                {step === 1 || step === 2
+                  ? ` | ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos uploaded`
+                  : ""}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setStep((prev) => Math.max(0, prev - 1))}
+                  disabled={step === 0}
+                >
+                  Back
+                </Button>
+                {step < steps.length - 1 ? (
+                  <Button
+                    onClick={() =>
+                      setStep((prev) => Math.min(steps.length - 1, prev + 1))
+                    }
+                    disabled={
+                      step === 0 ? !canAdvanceQuestions : !canAdvancePhotos
+                    }
+                  >
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!canAdvancePhotos || submitting}
+                  >
+                    {submitting ? "Submitting..." : "Submit check-in"}
+                  </Button>
+                )}
+              </div>
+            </>
+          </StickyActionBar>
+        )}
       </div>
     </div>
   );

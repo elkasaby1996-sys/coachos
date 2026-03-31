@@ -1,7 +1,24 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { requireEnvVars, signInWithEmail } from "./utils/test-helpers";
 
 test.describe("Smoke: auth guards and recovery", () => {
+  const expectClientLandingRoute = async (page: Page) => {
+    await expect(page).toHaveURL(/\/(app\/(onboarding|home)|no-workspace)/);
+
+    if (page.url().includes("/no-workspace")) {
+      await expect(
+        page.getByRole("heading", {
+          name: /no workspace found|no workspace yet/i,
+        }),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole("button", { name: /use an invite code/i })
+          .or(page.getByRole("link", { name: /join with invite code/i })),
+      ).toBeVisible();
+    }
+  };
+
   test("Unauthenticated user is redirected to login from protected PT route", async ({
     page,
   }) => {
@@ -26,7 +43,7 @@ test.describe("Smoke: auth guards and recovery", () => {
       process.env.E2E_CLIENT_EMAIL!,
       process.env.E2E_CLIENT_PASSWORD!,
     );
-    await expect(page).toHaveURL(/\/app\/(onboarding|home)/);
+    await expectClientLandingRoute(page);
 
     await page.context().clearCookies();
     await page.evaluate(() => {
@@ -42,6 +59,6 @@ test.describe("Smoke: auth guards and recovery", () => {
       process.env.E2E_CLIENT_EMAIL!,
       process.env.E2E_CLIENT_PASSWORD!,
     );
-    await expect(page).toHaveURL(/\/app\/(onboarding|home)/);
+    await expectClientLandingRoute(page);
   });
 });

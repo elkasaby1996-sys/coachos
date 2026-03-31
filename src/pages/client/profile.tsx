@@ -2,15 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { CalendarDays, Dumbbell, MapPin, UserRound } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +21,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../components/ui/tabs";
+import {
+  EmptyStateBlock,
+  PortalPageHeader,
+  SectionCard,
+  StatusBanner,
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
+} from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { getProfileCompletion } from "../../lib/profile-completion";
@@ -191,12 +196,44 @@ const toNumberOrNull = (value: string) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
+function ProfileSection({
+  title,
+  description,
+  onEdit,
+  children,
+}: {
+  title: string;
+  description: string;
+  onEdit: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <SurfaceCard>
+      <SurfaceCardHeader className="pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <SurfaceCardTitle>{title}</SurfaceCardTitle>
+            <SurfaceCardDescription>{description}</SurfaceCardDescription>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onEdit}>
+            Edit
+          </Button>
+        </div>
+      </SurfaceCardHeader>
+      <SurfaceCardContent>{children}</SurfaceCardContent>
+    </SurfaceCard>
+  );
+}
+
 export function ClientProfilePage() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "identity" | "training" | "health"
+  >("identity");
   const [formState, setFormState] = useState<ProfileFormState>({
     display_name: "",
     phone: "",
@@ -262,6 +299,12 @@ export function ClientProfilePage() {
       current_weight: toInput(profile.current_weight),
     });
   }, [profile, editOpen]);
+
+  useEffect(() => {
+    if (!editOpen) {
+      setActiveTab("identity");
+    }
+  }, [editOpen]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -382,6 +425,19 @@ export function ClientProfilePage() {
         value: formatDisplayValue(profile?.phone ?? null, fallbackText.phone),
       },
       {
+        label: "Units",
+        value: formatDisplayValue(
+          profile?.unit_preference ?? null,
+          fallbackText.unit_preference,
+        ),
+      },
+    ],
+    [profile, session?.user?.email],
+  );
+
+  const preferenceFields = useMemo(
+    () => [
+      {
         label: "Country",
         value: formatDisplayValue(
           profile?.location ?? null,
@@ -396,13 +452,6 @@ export function ClientProfilePage() {
         ),
       },
       {
-        label: "Units",
-        value: formatDisplayValue(
-          profile?.unit_preference ?? null,
-          fallbackText.unit_preference,
-        ),
-      },
-      {
         label: "Birthdate",
         value: formatDateValue(profile?.dob ?? null, fallbackText.dob),
       },
@@ -411,7 +460,7 @@ export function ClientProfilePage() {
         value: formatDisplayValue(profile?.gender ?? null, fallbackText.gender),
       },
     ],
-    [profile, session?.user?.email],
+    [profile],
   );
 
   const trainingFields = useMemo(
@@ -448,20 +497,6 @@ export function ClientProfilePage() {
         value: formatDisplayValue(profile?.goal ?? null, fallbackText.goal),
       },
       {
-        label: "Injuries",
-        value: formatDisplayValue(
-          profile?.injuries ?? null,
-          fallbackText.injuries,
-        ),
-      },
-      {
-        label: "Limitations",
-        value: formatDisplayValue(
-          profile?.limitations ?? null,
-          fallbackText.limitations,
-        ),
-      },
-      {
         label: "Height (cm)",
         value: formatNumberValue(
           profile?.height_cm ?? null,
@@ -479,175 +514,348 @@ export function ClientProfilePage() {
     [profile],
   );
 
+  const injuryFields = useMemo(
+    () => [
+      {
+        label: "Injuries",
+        value: formatDisplayValue(
+          profile?.injuries ?? null,
+          fallbackText.injuries,
+        ),
+      },
+      {
+        label: "Limitations",
+        value: formatDisplayValue(
+          profile?.limitations ?? null,
+          fallbackText.limitations,
+        ),
+      },
+    ],
+    [profile],
+  );
+
   const completion = useMemo(() => getProfileCompletion(profile), [profile]);
+  const profileStatusLabel =
+    completion.completed === completion.total
+      ? "Complete"
+      : `${completion.percent}% complete`;
+  const summaryHighlights = useMemo(
+    () => [
+      {
+        label: "Goal",
+        value: formatDisplayValue(profile?.goal ?? null, "Set your main goal"),
+        icon: <UserRound className="h-4 w-4" />,
+      },
+      {
+        label: "Training",
+        value: formatDisplayValue(
+          profile?.training_type ?? null,
+          "Coach will define this",
+        ),
+        icon: <Dumbbell className="h-4 w-4" />,
+      },
+      {
+        label: "Frequency",
+        value:
+          typeof profile?.days_per_week === "number"
+            ? `${profile.days_per_week} days / week`
+            : "Set your weekly rhythm",
+        icon: <CalendarDays className="h-4 w-4" />,
+      },
+      {
+        label: "Location",
+        value: formatDisplayValue(profile?.location ?? null, "Choose country"),
+        icon: <MapPin className="h-4 w-4" />,
+      },
+    ],
+    [profile],
+  );
 
   return (
-    <div className="space-y-6 pb-16 md:pb-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-          <p className="text-sm text-muted-foreground">
-            Keep your profile current so your coach can tailor your plan.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate("/app/messages")}>
-            Message coach
-          </Button>
-          <Button onClick={() => setEditOpen(true)} disabled={!profile}>
-            Edit Profile
-          </Button>
-        </div>
-      </div>
+    <div className="portal-shell">
+      <PortalPageHeader
+        title="Profile"
+        subtitle="Keep your profile current so your coach can tailor your plan."
+        stateText={
+          profile
+            ? `${completion.completed}/${completion.total} fields complete`
+            : undefined
+        }
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => navigate("/app/messages")}
+            >
+              Message your coach
+            </Button>
+            <Button onClick={() => setEditOpen(true)} disabled={!profile}>
+              Edit profile
+            </Button>
+          </>
+        }
+      />
 
       {toastMessage ? (
-        <Alert
-          className={
-            toastVariant === "error" ? "border-danger/30" : "border-emerald-200"
-          }
-        >
-          <AlertTitle>
-            {toastVariant === "error" ? "Update failed" : "Saved"}
-          </AlertTitle>
-          <AlertDescription>{toastMessage}</AlertDescription>
-        </Alert>
+        <StatusBanner
+          variant={toastVariant === "error" ? "error" : "success"}
+          title={toastVariant === "error" ? "Update failed" : "Saved"}
+          description={toastMessage}
+        />
       ) : null}
 
       {inlineError ? (
-        <Alert className="border-danger/30">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{inlineError}</AlertDescription>
-        </Alert>
+        <StatusBanner
+          variant="error"
+          title="Unable to save profile changes"
+          description={inlineError}
+        />
       ) : null}
 
       {clientQuery.isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+        <div className="space-y-6">
+          <Skeleton className="h-48 w-full rounded-[var(--radius-xl)]" />
+          <div className="grid gap-6 xl:grid-cols-2">
+            <Skeleton className="h-64 w-full rounded-[var(--radius-xl)]" />
+            <Skeleton className="h-64 w-full rounded-[var(--radius-xl)]" />
+            <Skeleton className="h-56 w-full rounded-[var(--radius-xl)]" />
+            <Skeleton className="h-56 w-full rounded-[var(--radius-xl)]" />
+          </div>
         </div>
       ) : clientQuery.error ? (
-        <Alert className="border-danger/30">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {clientQuery.error instanceof Error
+        <StatusBanner
+          variant="error"
+          title="Unable to load profile"
+          description={
+            clientQuery.error instanceof Error
               ? clientQuery.error.message
-              : "Failed to load profile."}
-          </AlertDescription>
-        </Alert>
+              : "Failed to load profile."
+          }
+        />
       ) : !profile ? (
-        <Card>
-          <CardContent className="space-y-2 py-6 text-sm text-muted-foreground">
-            Client record not accessible (RLS) or not found.
-          </CardContent>
-        </Card>
+        <EmptyStateBlock
+          title="Profile not available"
+          description="Client record not accessible or not found for this account."
+          actions={
+            <Button variant="secondary" onClick={() => navigate("/app/home")}>
+              Back to home
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-6">
-          {completion.completed < completion.total ? (
-            <Card className="border-dashed">
-              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
-                <div>
-                  <CardTitle>
-                    Complete your profile ({completion.completed}/
-                    {completion.total})
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Finish your missing fields so your coach can tailor your
-                    plan.
-                  </p>
+          <SurfaceCard>
+            <SurfaceCardContent className="pt-6">
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
+                <div className="flex flex-wrap items-start gap-4">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background/45 text-lg font-semibold text-muted-foreground">
+                    {profile.photo_url ? (
+                      <img
+                        src={profile.photo_url}
+                        alt={profile.display_name ?? "Client"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      getInitials(profile.display_name)
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                          {profile.display_name?.trim() || "Your profile"}
+                        </h2>
+                        <Badge
+                          variant={
+                            completion.completed === completion.total
+                              ? "success"
+                              : "warning"
+                          }
+                        >
+                          {profileStatusLabel}
+                        </Badge>
+                      </div>
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        Complete the essentials so your coach has the right
+                        context for training, nutrition, and recovery decisions.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {summaryHighlights.map((item) => (
+                        <SectionCard key={item.label} className="space-y-2 p-4">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            {item.icon}
+                            <span className="text-xs font-medium">
+                              {item.label}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-foreground">
+                            {item.value}
+                          </p>
+                        </SectionCard>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <Button size="sm" onClick={() => setEditOpen(true)}>
-                  Finish now
-                </Button>
-              </CardHeader>
-              <CardContent className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground">Missing:</span>
-                {completion.missing.map((field) => (
-                  <Badge key={field} variant="warning">
-                    {field}
-                  </Badge>
+
+                <SectionCard className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="field-label">Profile completion</p>
+                      <p className="mt-1 text-2xl font-semibold text-foreground">
+                        {completion.percent}%
+                      </p>
+                    </div>
+                    <Badge variant="muted">
+                      {completion.completed}/{completion.total} fields
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-[width]"
+                        style={{ width: `${completion.percent}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {completion.completed === completion.total
+                        ? "Your profile is ready for coaching."
+                        : "Finish the missing fields to sharpen your coach's programming context."}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {completion.missing.slice(0, 4).map((field) => (
+                      <Badge key={field} variant="warning">
+                        {field.replace(/_/g, " ")}
+                      </Badge>
+                    ))}
+                  </div>
+                  {completion.completed < completion.total ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setActiveTab("identity");
+                          setEditOpen(true);
+                        }}
+                      >
+                        Finish profile
+                      </Button>
+                    </div>
+                  ) : null}
+                </SectionCard>
+              </div>
+            </SurfaceCardContent>
+          </SurfaceCard>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <ProfileSection
+              title="Identity & Preferences"
+              description="Core account identity, communication details, and unit preferences."
+              onEdit={() => {
+                setActiveTab("identity");
+                setEditOpen(true);
+              }}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                {identityFields.map((field) => (
+                  <div key={field.label} className="space-y-1">
+                    <p className="field-label">{field.label}</p>
+                    <p className="text-sm leading-6 text-foreground">
+                      {field.value}
+                    </p>
+                  </div>
                 ))}
-              </CardContent>
-            </Card>
-          ) : null}
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle>Identity & Preferences</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Keep the basics up to date for smoother coaching.
-                </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-muted/40 text-sm font-semibold text-muted-foreground">
-                  {profile.photo_url ? (
-                    <img
-                      src={profile.photo_url}
-                      alt={profile.display_name ?? "Client"}
-                      className="h-full w-full rounded-full object-cover"
-                    />
-                  ) : (
-                    getInitials(profile.display_name)
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Profile photo
-                </div>
+            </ProfileSection>
+
+            <ProfileSection
+              title="Training Context"
+              description="Training setup, frequency, and coaching context."
+              onEdit={() => {
+                setActiveTab("training");
+                setEditOpen(true);
+              }}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                {trainingFields.map((field) => (
+                  <div key={field.label} className="space-y-1">
+                    <p className="field-label">{field.label}</p>
+                    {field.label === "Training type" ? (
+                      <Badge variant="secondary">{field.value}</Badge>
+                    ) : (
+                      <p className="text-sm leading-6 text-foreground">
+                        {field.value}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              {identityFields.map((field) => (
-                <div key={field.label} className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    {field.label}
-                  </p>
-                  <p className="text-sm text-foreground">{field.value}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+            </ProfileSection>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Training Context</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Share how and where you train so programming fits your reality.
-              </p>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              {trainingFields.map((field) => (
-                <div key={field.label} className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    {field.label}
-                  </p>
-                  {field.label === "Training type" ? (
-                    <Badge variant="secondary">{field.value}</Badge>
-                  ) : (
-                    <p className="text-sm text-foreground">{field.value}</p>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+            <ProfileSection
+              title="Health & Goals"
+              description="Primary outcome focus and current body tracking anchors."
+              onEdit={() => {
+                setActiveTab("training");
+                setEditOpen(true);
+              }}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                {healthFields.map((field) => (
+                  <div key={field.label} className="space-y-1">
+                    <p className="field-label">{field.label}</p>
+                    <p className="text-sm leading-6 text-foreground">
+                      {field.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ProfileSection>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Health & Goals</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Help us protect your body while pushing progress.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {healthFields.map((field) => (
-                <div key={field.label} className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    {field.label}
-                  </p>
-                  <p className="text-sm text-foreground">{field.value}</p>
+            <ProfileSection
+              title="Recovery / Lifestyle"
+              description="Personal context that affects scheduling, communication, and recovery rhythm."
+              onEdit={() => {
+                setActiveTab("identity");
+                setEditOpen(true);
+              }}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                {preferenceFields.map((field) => (
+                  <div key={field.label} className="space-y-1">
+                    <p className="field-label">{field.label}</p>
+                    <p className="text-sm leading-6 text-foreground">
+                      {field.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ProfileSection>
+
+            <div className="xl:col-span-2">
+              <ProfileSection
+                title="Injuries / Limitations"
+                description="Visible constraints that keep programming safe and realistic."
+                onEdit={() => {
+                  setActiveTab("health");
+                  setEditOpen(true);
+                }}
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  {injuryFields.map((field) => (
+                    <SectionCard key={field.label} className="space-y-2">
+                      <p className="field-label">{field.label}</p>
+                      <p className="text-sm leading-6 text-foreground">
+                        {field.value}
+                      </p>
+                    </SectionCard>
+                  ))}
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+              </ProfileSection>
+            </div>
+          </div>
         </div>
       )}
 
@@ -661,14 +869,20 @@ export function ClientProfilePage() {
               </DialogDescription>
             </div>
           </DialogHeader>
-          <Tabs defaultValue="identity" className="px-6">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as "identity" | "training" | "health")
+            }
+            className="px-6"
+          >
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="identity">Identity</TabsTrigger>
               <TabsTrigger value="training">Training</TabsTrigger>
               <TabsTrigger value="health">Health</TabsTrigger>
             </TabsList>
 
-            <div className="mt-4 max-h-[56vh] overflow-y-auto pr-1">
+            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1 sm:max-h-[56vh]">
               <TabsContent
                 value="identity"
                 className="grid gap-4 sm:grid-cols-2"
@@ -685,8 +899,7 @@ export function ClientProfilePage() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Upload support is in progress. If it fails, we&apos;ll keep
-                    your current photo.
+                    If upload fails, we&apos;ll keep your current photo.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -934,7 +1147,7 @@ export function ClientProfilePage() {
             </div>
           </Tabs>
 
-          <DialogFooter className="border-t border-border px-6 py-4">
+          <DialogFooter className="border-t border-border px-6 py-4 sm:flex-row">
             <Button variant="secondary" onClick={() => setEditOpen(false)}>
               Cancel
             </Button>

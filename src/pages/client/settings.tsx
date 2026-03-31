@@ -5,6 +5,7 @@ import { Lock, Palette, User } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Switch } from "../../components/ui/switch";
+import { PortalPageHeader } from "../../components/client/portal";
 import {
   SettingsActions,
   SettingsBlock,
@@ -312,17 +313,13 @@ export function ClientSettingsPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="portal-shell-tight">
       <SettingsToast message={toastMessage} variant={toastVariant} />
 
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Settings
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Manage account, profile, and app preferences.
-        </p>
-      </header>
+      <PortalPageHeader
+        title="Settings"
+        subtitle="Manage account, profile, and app preferences."
+      />
 
       <div className="md:hidden">
         <label
