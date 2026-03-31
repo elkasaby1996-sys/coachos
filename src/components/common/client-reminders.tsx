@@ -509,7 +509,8 @@ export function ClientReminders({ clientId, timezone }: ClientRemindersProps) {
           <div className="space-y-1">
             <SurfaceCardTitle>Reminders</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Keep urgent coach prompts and due items visible without crowding the page.
+              Keep urgent coach prompts and due items visible without crowding
+              the page.
             </SurfaceCardDescription>
           </div>
           <div className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-xs font-medium text-muted-foreground">

@@ -231,9 +231,9 @@ export function ClientProfilePage() {
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"identity" | "training" | "health">(
-    "identity",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "identity" | "training" | "health"
+  >("identity");
   const [formState, setFormState] = useState<ProfileFormState>({
     display_name: "",
     phone: "",
@@ -577,7 +577,9 @@ export function ClientProfilePage() {
         title="Profile"
         subtitle="Keep your profile current so your coach can tailor your plan."
         stateText={
-          profile ? `${completion.completed}/${completion.total} fields complete` : undefined
+          profile
+            ? `${completion.completed}/${completion.total} fields complete`
+            : undefined
         }
         actions={
           <>
@@ -674,7 +676,8 @@ export function ClientProfilePage() {
                         </Badge>
                       </div>
                       <p className="text-sm leading-6 text-muted-foreground">
-                        Complete the essentials so your coach has the right context for training, nutrition, and recovery decisions.
+                        Complete the essentials so your coach has the right
+                        context for training, nutrition, and recovery decisions.
                       </p>
                     </div>
 
@@ -699,9 +702,7 @@ export function ClientProfilePage() {
                 <SectionCard className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="field-label">
-                        Profile completion
-                      </p>
+                      <p className="field-label">Profile completion</p>
                       <p className="mt-1 text-2xl font-semibold text-foreground">
                         {completion.percent}%
                       </p>
@@ -761,7 +762,9 @@ export function ClientProfilePage() {
                 {identityFields.map((field) => (
                   <div key={field.label} className="space-y-1">
                     <p className="field-label">{field.label}</p>
-                    <p className="text-sm leading-6 text-foreground">{field.value}</p>
+                    <p className="text-sm leading-6 text-foreground">
+                      {field.value}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -782,7 +785,9 @@ export function ClientProfilePage() {
                     {field.label === "Training type" ? (
                       <Badge variant="secondary">{field.value}</Badge>
                     ) : (
-                      <p className="text-sm leading-6 text-foreground">{field.value}</p>
+                      <p className="text-sm leading-6 text-foreground">
+                        {field.value}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -801,7 +806,9 @@ export function ClientProfilePage() {
                 {healthFields.map((field) => (
                   <div key={field.label} className="space-y-1">
                     <p className="field-label">{field.label}</p>
-                    <p className="text-sm leading-6 text-foreground">{field.value}</p>
+                    <p className="text-sm leading-6 text-foreground">
+                      {field.value}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -819,7 +826,9 @@ export function ClientProfilePage() {
                 {preferenceFields.map((field) => (
                   <div key={field.label} className="space-y-1">
                     <p className="field-label">{field.label}</p>
-                    <p className="text-sm leading-6 text-foreground">{field.value}</p>
+                    <p className="text-sm leading-6 text-foreground">
+                      {field.value}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -860,7 +869,13 @@ export function ClientProfilePage() {
               </DialogDescription>
             </div>
           </DialogHeader>
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "identity" | "training" | "health")} className="px-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as "identity" | "training" | "health")
+            }
+            className="px-6"
+          >
             <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="identity">Identity</TabsTrigger>
               <TabsTrigger value="training">Training</TabsTrigger>

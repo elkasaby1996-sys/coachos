@@ -111,19 +111,19 @@ export function NotificationsPage() {
             notificationsError
               ? "warning"
               : unreadCount > 0
-              ? "info"
-              : allNotifications.length > 0
-                ? "success"
-                : "info"
+                ? "info"
+                : allNotifications.length > 0
+                  ? "success"
+                  : "info"
           }
           title={
             notificationsError
               ? "Notifications are partially unavailable"
               : unreadCount > 0
-              ? `${unreadCount} updates need your attention`
-              : allNotifications.length > 0
-                ? "You're all caught up"
-                : "No updates yet"
+                ? `${unreadCount} updates need your attention`
+                : allNotifications.length > 0
+                  ? "You're all caught up"
+                  : "No updates yet"
           }
           description={
             notificationsError
@@ -131,10 +131,10 @@ export function NotificationsPage() {
                 ? `${notificationsError.message} You can still review anything already loaded below.`
                 : "We could not refresh every notification feed, but anything already loaded is still available below."
               : unreadCount > 0
-              ? "Review anything that changes today's training, coach communication, or check-in timing."
-              : allNotifications.length > 0
-                ? "You're caught up, but recent coach activity and schedule changes are still available below."
-                : "Coach updates, reminders, and schedule changes will appear here as they happen."
+                ? "Review anything that changes today's training, coach communication, or check-in timing."
+                : allNotifications.length > 0
+                  ? "You're caught up, but recent coach activity and schedule changes are still available below."
+                  : "Coach updates, reminders, and schedule changes will appear here as they happen."
           }
         />
       ) : null}
@@ -193,7 +193,9 @@ export function NotificationsPage() {
                 className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
               >
                 <span>New</span>
-                <span className="text-xs text-muted-foreground">{unreadCount}</span>
+                <span className="text-xs text-muted-foreground">
+                  {unreadCount}
+                </span>
               </TabsTrigger>
             </TabsList>
 
@@ -269,7 +271,9 @@ export function NotificationsPage() {
                             onClick={() => query.fetchNextPage()}
                             disabled={query.isFetchingNextPage}
                           >
-                            {query.isFetchingNextPage ? "Loading..." : "Load more"}
+                            {query.isFetchingNextPage
+                              ? "Loading..."
+                              : "Load more"}
                           </Button>
                         </div>
                       ) : null}

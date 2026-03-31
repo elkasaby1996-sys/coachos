@@ -256,7 +256,10 @@ export function ClientProgressPage() {
     () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
     [clientQuery.data?.timezone],
   );
-  const startKey = useMemo(() => addDaysToDateString(todayKey, -55), [todayKey]);
+  const startKey = useMemo(
+    () => addDaysToDateString(todayKey, -55),
+    [todayKey],
+  );
   const cutoffKey = useMemo(
     () => addDaysToDateString(todayKey, timeframe === "4w" ? -27 : -55),
     [timeframe, todayKey],
@@ -344,7 +347,9 @@ export function ClientProgressPage() {
     baselineWeightQuery.error;
 
   const weightUnit = useMemo(() => {
-    const fromLogs = (habitsQuery.data ?? []).find((row) => row.weight_unit)?.weight_unit;
+    const fromLogs = (habitsQuery.data ?? []).find(
+      (row) => row.weight_unit,
+    )?.weight_unit;
     if (fromLogs) return fromLogs;
     return clientQuery.data?.unit_preference?.toLowerCase() === "imperial"
       ? "lb"
@@ -447,13 +452,21 @@ export function ClientProgressPage() {
         latestVolume: null,
       };
 
-      if (existing.firstWeight === null && typeof weight === "number" && weight > 0) {
+      if (
+        existing.firstWeight === null &&
+        typeof weight === "number" &&
+        weight > 0
+      ) {
         existing.firstWeight = weight;
       }
       if (typeof weight === "number" && weight > 0) {
         existing.latestWeight = weight;
       }
-      if (existing.firstVolume === null && typeof volume === "number" && volume > 0) {
+      if (
+        existing.firstVolume === null &&
+        typeof volume === "number" &&
+        volume > 0
+      ) {
         existing.firstVolume = volume;
       }
       if (typeof volume === "number" && volume > 0) {
@@ -656,7 +669,10 @@ export function ClientProgressPage() {
                 <div className="h-[16rem] w-full sm:h-[19rem]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={filteredWeightSeries}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="oklch(0.35 0.02 260 / 0.35)"
+                      />
                       <XAxis
                         dataKey="label"
                         tick={{ fontSize: 11, fill: axisColor }}
@@ -668,7 +684,11 @@ export function ClientProgressPage() {
                         axisLine={{ stroke: axisColor }}
                         tickLine={{ stroke: axisColor }}
                       />
-                      <Tooltip formatter={(value: number | string) => `${value} ${weightUnit}`} />
+                      <Tooltip
+                        formatter={(value: number | string) =>
+                          `${value} ${weightUnit}`
+                        }
+                      />
                       <Line
                         type="monotone"
                         dataKey="value"
@@ -719,7 +739,10 @@ export function ClientProgressPage() {
                 <div className="h-[16rem] w-full sm:h-[19rem]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={filteredLoadSeries}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="oklch(0.35 0.02 260 / 0.35)"
+                      />
                       <XAxis
                         dataKey="label"
                         tick={{ fontSize: 11, fill: axisColor }}
@@ -769,7 +792,9 @@ export function ClientProgressPage() {
               <SurfaceCardContent className="space-y-4">
                 <SectionCard className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-foreground">Sleep hours</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      Sleep hours
+                    </p>
                     <Badge variant="muted">
                       {filteredSleepSeries.length > 0
                         ? `${filteredSleepSeries[filteredSleepSeries.length - 1]?.value ?? "--"} hrs`
@@ -780,10 +805,17 @@ export function ClientProgressPage() {
                     <div className="h-32 w-full sm:h-40">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={filteredSleepSeries}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="oklch(0.35 0.02 260 / 0.35)"
+                          />
                           <XAxis dataKey="label" hide />
                           <YAxis hide />
-                          <Tooltip formatter={(value: number | string) => `${value} hrs`} />
+                          <Tooltip
+                            formatter={(value: number | string) =>
+                              `${value} hrs`
+                            }
+                          />
                           <Line
                             type="monotone"
                             dataKey="value"
@@ -806,7 +838,9 @@ export function ClientProgressPage() {
 
                 <SectionCard className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-foreground">Steps</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      Steps
+                    </p>
                     <Badge variant="muted">
                       {filteredStepsSeries.length > 0
                         ? `${filteredStepsSeries[filteredStepsSeries.length - 1]?.value ?? "--"}`
@@ -817,7 +851,10 @@ export function ClientProgressPage() {
                     <div className="h-32 w-full sm:h-40">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={filteredStepsSeries}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.35 0.02 260 / 0.35)" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="oklch(0.35 0.02 260 / 0.35)"
+                          />
                           <XAxis dataKey="label" hide />
                           <YAxis hide />
                           <Tooltip />
@@ -847,16 +884,22 @@ export function ClientProgressPage() {
               <SurfaceCardHeader className="pb-4">
                 <SurfaceCardTitle>Exercise changes</SurfaceCardTitle>
                 <SurfaceCardDescription>
-                  The strongest positive or negative movement across tracked exercises.
+                  The strongest positive or negative movement across tracked
+                  exercises.
                 </SurfaceCardDescription>
               </SurfaceCardHeader>
               <SurfaceCardContent>
                 {exerciseTrends.changes.length > 0 ? (
                   <div className="space-y-3">
                     {exerciseTrends.changes.map((item) => {
-                      const trendBase = item.volumeDelta ?? item.weightDelta ?? 0;
+                      const trendBase =
+                        item.volumeDelta ?? item.weightDelta ?? 0;
                       const TrendIcon =
-                        trendBase > 0 ? ArrowUpRight : trendBase < 0 ? ArrowDownRight : Minus;
+                        trendBase > 0
+                          ? ArrowUpRight
+                          : trendBase < 0
+                            ? ArrowDownRight
+                            : Minus;
 
                       return (
                         <SectionCard
@@ -879,7 +922,8 @@ export function ClientProgressPage() {
                               />
                             </div>
                             <p className="text-sm leading-6 text-muted-foreground">
-                              Compare your earliest and latest logged sets for a quick performance read.
+                              Compare your earliest and latest logged sets for a
+                              quick performance read.
                             </p>
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[18rem]">
@@ -937,7 +981,8 @@ export function ClientProgressPage() {
                       "Keep logging consistently to unlock clearer trend signals and stronger coach-facing insights."}
                   </p>
                   <p className="text-sm leading-6 text-muted-foreground">
-                    This summary updates from your baseline, habit logs, and completed workout set logs.
+                    This summary updates from your baseline, habit logs, and
+                    completed workout set logs.
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">

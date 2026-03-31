@@ -364,16 +364,15 @@ export function ClientHabitsPage() {
         minute: "2-digit",
       })
     : null;
-  const saveStateLabel =
-    !isEditable
-      ? "This date is locked."
-      : saveStatus === "saving"
-        ? "Saving changes..."
-        : isDirty
-          ? "Unsaved changes ready."
-          : lastSavedLabel
-            ? `Saved at ${lastSavedLabel}. No new changes.`
-            : "No changes yet.";
+  const saveStateLabel = !isEditable
+    ? "This date is locked."
+    : saveStatus === "saving"
+      ? "Saving changes..."
+      : isDirty
+        ? "Unsaved changes ready."
+        : lastSavedLabel
+          ? `Saved at ${lastSavedLabel}. No new changes.`
+          : "No changes yet.";
   const saveButtonLabel =
     saveStatus === "saving"
       ? "Saving..."
@@ -725,9 +724,7 @@ export function ClientHabitsPage() {
 
               <SectionCard className="space-y-3">
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    Notes
-                  </p>
+                  <p className="text-sm font-semibold text-foreground">Notes</p>
                   <p className="text-sm text-muted-foreground">
                     Add context that may help your coach interpret today&apos;s
                     log.

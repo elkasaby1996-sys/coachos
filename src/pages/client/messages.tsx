@@ -292,7 +292,9 @@ export function ClientMessagesPage() {
     ensureConversationMutation.isPending ||
     (Boolean(conversationId) && messagesQuery.isLoading);
   const conversationError =
-    clientQuery.error || ensureConversationMutation.error || messagesQuery.error;
+    clientQuery.error ||
+    ensureConversationMutation.error ||
+    messagesQuery.error;
   const hasMessages = messageRows.length > 0;
 
   return (
@@ -344,7 +346,9 @@ export function ClientMessagesPage() {
             </div>
             <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm lg:max-w-xs">
               <p className="font-semibold text-foreground">
-                {typingUsers.length > 0 ? "Coach is replying now" : "Conversation details"}
+                {typingUsers.length > 0
+                  ? "Coach is replying now"
+                  : "Conversation details"}
               </p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
                 {conversationContext}. Use this space for workout changes,
@@ -454,7 +458,7 @@ export function ClientMessagesPage() {
                 <div className="flex flex-col gap-3 md:flex-row md:items-end">
                   <textarea
                     aria-label="Message your coach"
-                    className={`form-control-compact flex-1 resize-y bg-background/80 transition-[min-height] duration-200 ${(composerFocused || messageInput.trim().length > 0) ? "min-h-[120px]" : "min-h-[58px]"}`}
+                    className={`form-control-compact flex-1 resize-y bg-background/80 transition-[min-height] duration-200 ${composerFocused || messageInput.trim().length > 0 ? "min-h-[120px]" : "min-h-[58px]"}`}
                     placeholder="Share your update, question, or request..."
                     value={messageInput}
                     onChange={(event) => setMessageInput(event.target.value)}

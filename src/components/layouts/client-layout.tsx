@@ -67,8 +67,8 @@ export function ClientLayout() {
   const onboardingSummary = onboardingQuery.data ?? null;
   const basicsGateRequired = Boolean(
     onboardingSummary &&
-      onboardingSummary.canEdit &&
-      !onboardingSummary.progress.basics.complete,
+    onboardingSummary.canEdit &&
+    !onboardingSummary.progress.basics.complete,
   );
   const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
   const routeLabel = useMemo(
@@ -91,10 +91,10 @@ export function ClientLayout() {
     (workspaceId ? null : "Workspace not found.");
   const shouldRenderOnboardingBanner = Boolean(
     onboardingSummary &&
-      onboardingSummary.onboarding.status !== "completed" &&
-      !isOnboardingRoute &&
-      shouldShowOnboardingBanner(location.pathname) &&
-      !isOnboardingBannerDismissed,
+    onboardingSummary.onboarding.status !== "completed" &&
+    !isOnboardingRoute &&
+    shouldShowOnboardingBanner(location.pathname) &&
+    !isOnboardingBannerDismissed,
   );
   const topStatusText = onboardingSummary
     ? onboardingSummary.onboarding.status === "completed"

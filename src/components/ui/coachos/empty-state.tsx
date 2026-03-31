@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  EmptyStateActionButton,
-  EmptyStateBlock,
-} from "../../client/portal";
+import { EmptyStateActionButton, EmptyStateBlock } from "../../client/portal";
 
 export function EmptyState({
   title,

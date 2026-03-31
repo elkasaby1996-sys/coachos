@@ -74,10 +74,7 @@ export const SurfaceCardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "flex flex-col gap-2 px-5 py-5 sm:px-6 sm:py-6",
-      className,
-    )}
+    className={cn("flex flex-col gap-2 px-5 py-5 sm:px-6 sm:py-6", className)}
     {...props}
   />
 ));
@@ -89,7 +86,10 @@ export const SurfaceCardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h2
     ref={ref}
-    className={cn("text-lg font-semibold tracking-tight text-foreground", className)}
+    className={cn(
+      "text-lg font-semibold tracking-tight text-foreground",
+      className,
+    )}
     {...props}
   />
 ));
@@ -141,7 +141,11 @@ type StatusBannerVariant =
 
 const bannerConfig: Record<
   StatusBannerVariant,
-  { icon: React.ComponentType<{ className?: string }>; root: string; iconBox: string }
+  {
+    icon: React.ComponentType<{ className?: string }>;
+    root: string;
+    iconBox: string;
+  }
 > = {
   success: {
     icon: CheckCircle2,
@@ -337,11 +341,10 @@ export function StepIndicator({
                 "surface-section flex w-full items-center gap-3 px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 step.state === "current" &&
                   "border-primary/45 bg-primary/10 shadow-[0_12px_36px_-28px_rgba(56,189,248,0.65)]",
-                step.state === "completed" &&
-                  "border-success/30 bg-success/10",
-                step.state === "upcoming" &&
-                  "text-muted-foreground",
-                isInteractive && "hover:border-border/90 hover:bg-background/55",
+                step.state === "completed" && "border-success/30 bg-success/10",
+                step.state === "upcoming" && "text-muted-foreground",
+                isInteractive &&
+                  "hover:border-border/90 hover:bg-background/55",
               )}
             >
               <span
@@ -355,13 +358,19 @@ export function StepIndicator({
                     "border-border/70 bg-background/60 text-muted-foreground",
                 )}
               >
-                {step.state === "completed" ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                {step.state === "completed" ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  index + 1
+                )}
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium capitalize tracking-[0.04em] text-muted-foreground">
                   {step.state}
                 </p>
-                <p className="text-sm font-medium text-foreground">{step.label}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {step.label}
+                </p>
               </div>
             </Component>
           </li>

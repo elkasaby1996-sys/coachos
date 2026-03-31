@@ -726,7 +726,8 @@ export function ClientOnboardingShell() {
                   Guided onboarding for your coaching workspace
                 </h1>
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                  Move through each step, save as you go, and submit once everything is ready for coach review.
+                  Move through each step, save as you go, and submit once
+                  everything is ready for coach review.
                 </p>
               </div>
             </div>
@@ -828,7 +829,11 @@ export function ClientOnboardingShell() {
                           : "border-border/70 bg-background/70 text-muted-foreground"
                     }`}
                   >
-                    {isComplete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                    {isComplete ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
@@ -854,7 +859,8 @@ export function ClientOnboardingShell() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <SurfaceCardTitle className="text-xl">
-                  {currentStepMeta?.title ?? getOnboardingStepTitle(currentStep)}
+                  {currentStepMeta?.title ??
+                    getOnboardingStepTitle(currentStep)}
                 </SurfaceCardTitle>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   {currentStepMeta?.description}
@@ -1755,7 +1761,8 @@ export function ClientOnboardingShell() {
                         : "Still missing items"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      The initial assessment must be submitted before this package can be sent.
+                      The initial assessment must be submitted before this
+                      package can be sent.
                     </p>
                   </SectionCard>
                   <SectionCard className="space-y-2 p-4">
@@ -1771,7 +1778,9 @@ export function ClientOnboardingShell() {
                     <p className="field-label">Review state</p>
                     <Badge
                       variant={
-                        progress["review-submit"].complete ? "success" : "warning"
+                        progress["review-submit"].complete
+                          ? "success"
+                          : "warning"
                       }
                     >
                       {summary.awaitingReview

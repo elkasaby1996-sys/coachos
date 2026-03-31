@@ -600,7 +600,8 @@ export function ClientHomePage() {
     );
   };
 
-  const checklistCompletedCount = Object.values(checklist).filter(Boolean).length;
+  const checklistCompletedCount =
+    Object.values(checklist).filter(Boolean).length;
   const trainingStatusVariant =
     summaryTrainingStatus === "completed"
       ? "success"
@@ -702,16 +703,22 @@ export function ClientHomePage() {
               <SurfaceCardTitle className="text-2xl">
                 {summaryTrainingTitle}
               </SurfaceCardTitle>
-              <SurfaceCardDescription>{summaryTrainingHint}</SurfaceCardDescription>
+              <SurfaceCardDescription>
+                {summaryTrainingHint}
+              </SurfaceCardDescription>
             </div>
-            <Badge variant={trainingStatusVariant}>{summaryTrainingBadgeLabel}</Badge>
+            <Badge variant={trainingStatusVariant}>
+              {summaryTrainingBadgeLabel}
+            </Badge>
           </div>
         </SurfaceCardHeader>
         <SurfaceCardContent className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.95fr)]">
           <SectionCard className="space-y-5">
             <div className="space-y-3">
               <p className="field-label">Today&apos;s focus</p>
-              <p className="text-base leading-7 text-foreground">{missionCopy}</p>
+              <p className="text-base leading-7 text-foreground">
+                {missionCopy}
+              </p>
             </div>
 
             {todayWorkout?.coach_note ? (
@@ -729,7 +736,8 @@ export function ClientHomePage() {
                   No workout scheduled yet
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Your coach hasn&apos;t scheduled a session for today yet. Use the fallback plan if you still want to train.
+                  Your coach hasn&apos;t scheduled a session for today yet. Use
+                  the fallback plan if you still want to train.
                 </p>
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                   {defaultPlan.map((item) => (
@@ -740,7 +748,9 @@ export function ClientHomePage() {
             ) : null}
 
             <div className="flex flex-wrap gap-3">
-              <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
+              <Button onClick={primaryAction.onClick}>
+                {primaryAction.label}
+              </Button>
               <Button
                 variant="secondary"
                 onClick={() => navigate("/app/messages")}
@@ -763,7 +773,9 @@ export function ClientHomePage() {
               <div className="space-y-3">
                 <div className="flex flex-col gap-3 border-b border-border/50 pb-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Training</p>
+                    <p className="text-sm font-medium text-foreground">
+                      Training
+                    </p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
                       {summaryTrainingTitle}
                     </p>
@@ -774,7 +786,9 @@ export function ClientHomePage() {
                 </div>
                 <div className="flex flex-col gap-3 border-b border-border/50 pb-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Checklist</p>
+                    <p className="text-sm font-medium text-foreground">
+                      Checklist
+                    </p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
                       {summaryHabitHint}
                     </p>
@@ -785,7 +799,9 @@ export function ClientHomePage() {
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Nutrition</p>
+                    <p className="text-sm font-medium text-foreground">
+                      Nutrition
+                    </p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
                       {summaryNutritionHint}
                     </p>
@@ -803,7 +819,8 @@ export function ClientHomePage() {
                 {consistencyStreak} days
               </p>
               <p className="text-sm leading-6 text-muted-foreground">
-                Keep your logging streak moving and today will compound into the rest of the week.
+                Keep your logging streak moving and today will compound into the
+                rest of the week.
               </p>
             </SectionCard>
           </div>
@@ -844,7 +861,9 @@ export function ClientHomePage() {
                     {summaryTrainingTitle}
                   </p>
                 </div>
-                <Badge variant={trainingStatusVariant}>{summaryTrainingBadgeLabel}</Badge>
+                <Badge variant={trainingStatusVariant}>
+                  {summaryTrainingBadgeLabel}
+                </Badge>
               </div>
               {todayTemplateInfo.workoutType ? (
                 <p className="text-sm text-muted-foreground">
@@ -855,7 +874,9 @@ export function ClientHomePage() {
                 {summaryTrainingHint}
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
+                <Button onClick={primaryAction.onClick}>
+                  {primaryAction.label}
+                </Button>
                 <Button
                   variant="secondary"
                   onClick={() => navigate("/app/messages")}
@@ -885,24 +906,34 @@ export function ClientHomePage() {
                   <div className="grid grid-cols-2 gap-4 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4 text-center sm:grid-cols-4">
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Calories</p>
-                      <p className="font-semibold">{Math.round(todayNutritionTotals.calories)}</p>
+                      <p className="font-semibold">
+                        {Math.round(todayNutritionTotals.calories)}
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Protein</p>
-                      <p className="font-semibold">{Math.round(todayNutritionTotals.protein_g)}</p>
+                      <p className="font-semibold">
+                        {Math.round(todayNutritionTotals.protein_g)}
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Carbs</p>
-                      <p className="font-semibold">{Math.round(todayNutritionTotals.carbs_g)}</p>
+                      <p className="font-semibold">
+                        {Math.round(todayNutritionTotals.carbs_g)}
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Fat</p>
-                      <p className="font-semibold">{Math.round(todayNutritionTotals.fat_g)}</p>
+                      <p className="font-semibold">
+                        {Math.round(todayNutritionTotals.fat_g)}
+                      </p>
                     </div>
                   </div>
                   <Button
                     className="w-full"
-                    onClick={() => navigate(`/app/nutrition/${todayNutrition.id}`)}
+                    onClick={() =>
+                      navigate(`/app/nutrition/${todayNutrition.id}`)
+                    }
                   >
                     View nutrition plan
                   </Button>
@@ -948,7 +979,9 @@ export function ClientHomePage() {
                     </div>
                   </div>
                   <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
-                    <p className="text-sm font-medium text-foreground">Coach note</p>
+                    <p className="text-sm font-medium text-foreground">
+                      Coach note
+                    </p>
                     <p className="mt-3 text-sm leading-6 text-foreground">
                       {targets?.coach_notes ??
                         "Today: protein first, hydrate, and don't skip steps."}
@@ -958,7 +991,9 @@ export function ClientHomePage() {
                     <Button
                       variant="secondary"
                       className="w-full"
-                      onClick={() => navigate(`/app/messages?draft=${nutritionRequestDraft}`)}
+                      onClick={() =>
+                        navigate(`/app/messages?draft=${nutritionRequestDraft}`)
+                      }
                     >
                       Ask for targets
                     </Button>
@@ -973,7 +1008,8 @@ export function ClientHomePage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>Today's checklist</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Tick off the daily basics so training, recovery, and habits stay visible.
+              Tick off the daily basics so training, recovery, and habits stay
+              visible.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
@@ -1056,7 +1092,10 @@ export function ClientHomePage() {
             {weeklyPlanQuery.isLoading ? (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
                 {Array.from({ length: 7 }).map((_, index) => (
-                  <Skeleton key={index} className="h-16 w-full rounded-[var(--radius-lg)]" />
+                  <Skeleton
+                    key={index}
+                    className="h-16 w-full rounded-[var(--radius-lg)]"
+                  />
                 ))}
               </div>
             ) : (
@@ -1096,7 +1135,8 @@ export function ClientHomePage() {
                       ? "rest day"
                       : workout?.status === "pending"
                         ? "planned"
-                        : (workout?.status ?? (workout ? "planned" : "rest day"));
+                        : (workout?.status ??
+                          (workout ? "planned" : "rest day"));
                     const statusLabel =
                       status === "completed"
                         ? "Completed"
@@ -1108,7 +1148,8 @@ export function ClientHomePage() {
                     const title = rowIsRestDay
                       ? "Rest day"
                       : (getWorkoutTemplateInfo(workout).name ??
-                        (workout as { workout_template_name?: string })?.workout_template_name ??
+                        (workout as { workout_template_name?: string })
+                          ?.workout_template_name ??
                         "Workout");
                     const statusVariant =
                       status === "completed"
@@ -1152,8 +1193,8 @@ export function ClientHomePage() {
                             <p className="text-xs text-muted-foreground">
                               {rowIsRestDay
                                 ? "Recovery focus"
-                                : (getWorkoutTemplateInfo(workout).workout_type_tag ??
-                                  "Workout")}
+                                : (getWorkoutTemplateInfo(workout)
+                                    .workout_type_tag ?? "Workout")}
                             </p>
                           </div>
                           {workout?.coach_note ? (

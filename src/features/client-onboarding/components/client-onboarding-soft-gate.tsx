@@ -98,7 +98,12 @@ export function ClientOnboardingSoftGate({
             </Link>
           </Button>
           {compact && onDismiss ? (
-            <Button variant="ghost" size="icon" onClick={onDismiss} aria-label="Dismiss onboarding banner">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDismiss}
+              aria-label="Dismiss onboarding banner"
+            >
               <X className="h-4 w-4" />
             </Button>
           ) : null}

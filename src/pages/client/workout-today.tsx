@@ -96,15 +96,14 @@ export function ClientWorkoutTodayPage() {
   });
 
   const workoutTemplate = getSingleRelation(
-    (workoutQuery.data as { workout_template?: unknown } | null)?.workout_template,
-  ) as
-    | {
-        id: string;
-        name: string | null;
-        description: string | null;
-        workout_type_tag: string | null;
-      }
-    | null;
+    (workoutQuery.data as { workout_template?: unknown } | null)
+      ?.workout_template,
+  ) as {
+    id: string;
+    name: string | null;
+    description: string | null;
+    workout_type_tag: string | null;
+  } | null;
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", workoutQuery.data?.id],
@@ -140,7 +139,8 @@ export function ClientWorkoutTodayPage() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "completed" | "skipped") => {
-      if (!workoutQuery.data?.id) throw new Error("No workout found for today.");
+      if (!workoutQuery.data?.id)
+        throw new Error("No workout found for today.");
       const payload =
         status === "completed"
           ? { status, completed_at: new Date().toISOString() }
@@ -155,7 +155,9 @@ export function ClientWorkoutTodayPage() {
       await queryClient.invalidateQueries({
         queryKey: ["assigned-workout-today", clientId, todayKey],
       });
-      await queryClient.invalidateQueries({ queryKey: ["assigned-workouts-week"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["assigned-workouts-week"],
+      });
     },
   });
 
@@ -172,7 +174,8 @@ export function ClientWorkoutTodayPage() {
         })
         .select("id")
         .maybeSingle();
-      if (error || !data?.id) throw error ?? new Error("Unable to start session.");
+      if (error || !data?.id)
+        throw error ?? new Error("Unable to start session.");
       return data.id;
     },
     onSuccess: (assignedWorkoutId) => {
@@ -320,10 +323,7 @@ export function ClientWorkoutTodayPage() {
                 <MessageCircle className="mr-2 h-4 w-4" />
                 Message your coach
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/app/home")}
-              >
+              <Button variant="ghost" onClick={() => navigate("/app/home")}>
                 Back to home
               </Button>
             </>
@@ -339,7 +339,9 @@ export function ClientWorkoutTodayPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
                     <SurfaceCardTitle>
-                      {workoutTemplate?.name ?? workout.workout_name ?? "Today’s workout"}
+                      {workoutTemplate?.name ??
+                        workout.workout_name ??
+                        "Today’s workout"}
                     </SurfaceCardTitle>
                     <SurfaceCardDescription>
                       {workoutTemplate?.description ??
@@ -369,18 +371,23 @@ export function ClientWorkoutTodayPage() {
                   </div>
                   <div className="space-y-1">
                     <p className="field-label">Scheduled date</p>
-                    <p className="text-sm text-foreground">{workout.scheduled_date}</p>
+                    <p className="text-sm text-foreground">
+                      {workout.scheduled_date}
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <p className="field-label">Completion</p>
                     <p className="text-sm text-foreground">
                       {workout.completed_at
-                        ? new Date(workout.completed_at).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })
+                        ? new Date(workout.completed_at).toLocaleString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            },
+                          )
                         : "Not completed yet"}
                     </p>
                   </div>
@@ -393,7 +400,8 @@ export function ClientWorkoutTodayPage() {
                         Exercise list
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Review the programmed exercises before you open the session.
+                        Review the programmed exercises before you open the
+                        session.
                       </p>
                     </div>
                     <Badge variant="muted">{exerciseRows.length} items</Badge>
@@ -402,13 +410,19 @@ export function ClientWorkoutTodayPage() {
                   {exerciseRows.length > 0 ? (
                     <div className="grid gap-3">
                       {exerciseRows.map((exercise, index) => {
-                        const exerciseInfo = getSingleRelation(exercise.exercise);
+                        const exerciseInfo = getSingleRelation(
+                          exercise.exercise,
+                        );
                         const details = [
                           exercise.sets ? `${exercise.sets} sets` : null,
                           exercise.reps ? `${exercise.reps} reps` : null,
-                          exercise.rest_seconds ? `Rest ${exercise.rest_seconds}s` : null,
+                          exercise.rest_seconds
+                            ? `Rest ${exercise.rest_seconds}s`
+                            : null,
                           exercise.tempo ? `Tempo ${exercise.tempo}` : null,
-                          typeof exercise.rpe === "number" ? `RPE ${exercise.rpe}` : null,
+                          typeof exercise.rpe === "number"
+                            ? `RPE ${exercise.rpe}`
+                            : null,
                         ].filter(Boolean);
 
                         return (
@@ -416,7 +430,8 @@ export function ClientWorkoutTodayPage() {
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="space-y-1">
                                 <p className="text-sm font-semibold text-foreground">
-                                  {index + 1}. {exerciseInfo?.name ?? "Exercise"}
+                                  {index + 1}.{" "}
+                                  {exerciseInfo?.name ?? "Exercise"}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {details.length > 0
@@ -476,7 +491,9 @@ export function ClientWorkoutTodayPage() {
                     <p className="field-label">Session actions</p>
                     <div className="grid gap-3">
                       <Button
-                        onClick={() => navigate(`/app/workout-run/${workout.id}`)}
+                        onClick={() =>
+                          navigate(`/app/workout-run/${workout.id}`)
+                        }
                       >
                         Start workout
                       </Button>
@@ -505,23 +522,32 @@ export function ClientWorkoutTodayPage() {
                 Ready to train?
               </p>
               <p className="text-sm text-muted-foreground">
-                Start the workout to log your session, or update the status here.
+                Start the workout to log your session, or update the status
+                here.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => navigate(`/app/workout-run/${workout.id}`)}>
+              <Button
+                onClick={() => navigate(`/app/workout-run/${workout.id}`)}
+              >
                 Start workout
               </Button>
               <Button
                 variant="secondary"
-                disabled={updateStatus.isPending || workout.status === "completed"}
+                disabled={
+                  updateStatus.isPending || workout.status === "completed"
+                }
                 onClick={() => updateStatus.mutate("completed")}
               >
-                {workout.status === "completed" ? "Completed" : "Mark as complete"}
+                {workout.status === "completed"
+                  ? "Completed"
+                  : "Mark as complete"}
               </Button>
               <Button
                 variant="ghost"
-                disabled={updateStatus.isPending || workout.status === "skipped"}
+                disabled={
+                  updateStatus.isPending || workout.status === "skipped"
+                }
                 onClick={() => updateStatus.mutate("skipped")}
               >
                 {workout.status === "skipped" ? "Skipped" : "Mark as skipped"}
