@@ -33,6 +33,7 @@ import { PageContainer } from "../common/page-container";
 import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
+import { PtMessageComposeProvider } from "../pt/pt-message-compose";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
@@ -783,11 +784,13 @@ export function PtLayout() {
             </PageContainer>
           </header>
 
-          <main className="min-w-0 flex-1 py-6">
-            <PageContainer className="flex w-full flex-col gap-6">
-              <Outlet />
-            </PageContainer>
-          </main>
+          <PtMessageComposeProvider>
+            <main className="min-w-0 flex-1 py-6">
+              <PageContainer className="flex w-full flex-col gap-6">
+                <Outlet />
+              </PageContainer>
+            </main>
+          </PtMessageComposeProvider>
         </div>
       </div>
 

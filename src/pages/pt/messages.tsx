@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   useInfiniteQuery,
   useMutation,
@@ -19,6 +19,7 @@ import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { formatRelativeTime } from "../../lib/relative-time";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -59,9 +60,14 @@ export function PtMessagesPage() {
   const { user } = useAuth();
   const { workspaceId } = useWorkspace();
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const initialClientId = useMemo(
     () => new URLSearchParams(location.search).get("client"),
+    [location.search],
+  );
+  const initialDraft = useMemo(
+    () => new URLSearchParams(location.search).get("draft") ?? "",
     [location.search],
   );
   const [selectedClientId, setSelectedClientId] = useState<string | null>(
@@ -70,6 +76,7 @@ export function PtMessagesPage() {
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
+  const [clientSearch, setClientSearch] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -81,6 +88,12 @@ export function PtMessagesPage() {
       setSelectedClientId(initialClientId);
     }
   }, [initialClientId]);
+
+  useEffect(() => {
+    if (initialDraft) {
+      setMessageDraft(initialDraft);
+    }
+  }, [initialDraft]);
 
   const clientsQuery = useQuery({
     queryKey: ["pt-messages-clients", workspaceId],
@@ -398,81 +411,198 @@ export function PtMessagesPage() {
     };
   }, [updateTyping]);
 
-  const clients = clientsQuery.data ?? [];
-  const selectedClient =
-    clients.find((client) => client.id === selectedClientId) ?? null;
+  const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
+  const clientInboxRows = useMemo(() => {
+    const query = clientSearch.trim().toLowerCase();
+    return clients
+      .map((client) => {
+        const conversation = conversationMap.get(client.id) ?? null;
+        const unreadCount = conversation
+          ? (unreadMap.get(conversation.id) ?? 0)
+          : 0;
+        const name = client.display_name?.trim()
+          ? client.display_name
+          : client.user_id
+            ? `Client ${client.user_id.slice(0, 6)}`
+            : "Client";
+        const preview =
+          conversation?.last_message_preview?.trim() ||
+          (conversation?.last_message_sender_role === "client"
+            ? "Client started a new thread."
+            : client.status?.trim()) ||
+          "No messages yet";
+        return {
+          client,
+          conversation,
+          unreadCount,
+          name,
+          preview,
+          lastActivityAt: conversation?.last_message_at ?? null,
+        };
+      })
+      .filter((row) => {
+        if (!query) return true;
+        return `${row.name} ${row.preview} ${row.client.status ?? ""}`
+          .toLowerCase()
+          .includes(query);
+      })
+      .sort((left, right) => {
+        if (left.unreadCount !== right.unreadCount) {
+          return right.unreadCount - left.unreadCount;
+        }
+        const leftTime = left.lastActivityAt
+          ? new Date(left.lastActivityAt).getTime()
+          : 0;
+        const rightTime = right.lastActivityAt
+          ? new Date(right.lastActivityAt).getTime()
+          : 0;
+        if (leftTime !== rightTime) {
+          return rightTime - leftTime;
+        }
+        return left.name.localeCompare(right.name);
+      });
+  }, [clientSearch, clients, conversationMap, unreadMap]);
+
+  const selectedConversationRow =
+    clientInboxRows.find((row) => row.client.id === selectedClientId) ?? null;
+  const selectedClient = selectedConversationRow?.client ?? null;
+  const unreadConversationCount = useMemo(
+    () => clientInboxRows.filter((row) => row.unreadCount > 0).length,
+    [clientInboxRows],
+  );
+  const activeThreadCount = useMemo(
+    () => clientInboxRows.filter((row) => row.conversation).length,
+    [clientInboxRows],
+  );
+  const suggestedReplies = [
+    "How are you feeling after today's session?",
+    "Quick check-in: anything we should adjust before the next workout?",
+    "Nice work staying on plan. Let me know how recovery feels today.",
+  ];
 
   return (
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Messages"
-        description="Stay responsive with a denser conversation layout that still matches the shared CoachOS system."
+        description="Keep client communication organized, easy to scan, and ready for quick coaching replies."
+        actions={
+          <Button variant="secondary" onClick={() => navigate("/pt/clients")}>
+            View clients
+          </Button>
+        }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <DashboardCard title="Clients" subtitle="Select a conversation.">
+      <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <DashboardCard
+          title="Inbox"
+          subtitle="Prioritize unread and recent client threads."
+        >
           {clientsQuery.isLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <Skeleton key={index} className="h-20 w-full" />
+                ))}
+              </div>
               {Array.from({ length: 6 }).map((_, index) => (
-                <Skeleton key={index} className="h-10 w-full" />
+                <Skeleton key={index} className="h-20 w-full" />
               ))}
             </div>
           ) : clients.length === 0 ? (
             <EmptyState
-              title="No clients yet"
-              description="Invite a client to start messaging."
+              title="No client inbox yet"
+              description="Invite a client and their conversation preview, unread state, and latest activity will appear here."
+              actionLabel="View clients"
+              onAction={() => navigate("/pt/clients")}
             />
           ) : (
-            <div className="space-y-2">
-              {clients.map((client) => {
-                const isActive = client.id === selectedClientId;
-                const name = client.display_name?.trim()
-                  ? client.display_name
-                  : client.user_id
-                    ? `Client ${client.user_id.slice(0, 6)}`
-                    : "Client";
-                const conversation = conversationMap.get(client.id);
-                const unreadCount = conversation
-                  ? (unreadMap.get(conversation.id) ?? 0)
-                  : 0;
-                return (
-                  <button
-                    key={client.id}
-                    type="button"
-                    onClick={() => setSelectedClientId(client.id)}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-2xl border border-border/60 px-3 py-2 text-left text-sm transition",
-                      isActive
-                        ? "border-primary/25 bg-primary/10"
-                        : "bg-background/40 hover:border-border hover:bg-background/65",
-                    )}
-                  >
-                    <div>
-                      <div className="font-semibold text-foreground">
-                        {name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {conversation?.last_message_preview ??
-                          client.status ??
-                          "active"}
-                      </div>
-                      {conversation?.last_message_at ? (
-                        <div className="text-[10px] text-muted-foreground">
-                          {formatTime(conversation.last_message_at)}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Unread threads
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-foreground">
+                    {unreadConversationCount}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Conversations with a client reply waiting.
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Active threads
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-foreground">
+                    {activeThreadCount}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Client conversations with recent message history.
+                  </div>
+                </div>
+              </div>
+
+              <Input
+                value={clientSearch}
+                onChange={(event) => setClientSearch(event.target.value)}
+                placeholder="Search client, status, or recent message"
+              />
+
+              {clientInboxRows.length === 0 ? (
+                <EmptyState
+                  title="No conversations match"
+                  description="Try a different client name or clear the search to review the full inbox."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {clientInboxRows.map((row) => {
+                    const isActive = row.client.id === selectedClientId;
+                    return (
+                      <button
+                        key={row.client.id}
+                        type="button"
+                        onClick={() => setSelectedClientId(row.client.id)}
+                        className={cn(
+                          "w-full rounded-[24px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                          isActive
+                            ? "border-primary/28 bg-primary/[0.08] shadow-[0_22px_52px_-38px_rgba(56,189,248,0.75)]"
+                            : "border-border/65 bg-background/35 hover:border-border hover:bg-background/55",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="truncate font-semibold text-foreground">
+                                {row.name}
+                              </div>
+                              {row.client.status ? (
+                                <span className="text-xs text-muted-foreground">
+                                  {row.client.status}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+                              {row.preview}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {row.lastActivityAt
+                                ? formatRelativeTime(row.lastActivityAt)
+                                : "No activity"}
+                            </span>
+                            {row.unreadCount > 0 ? (
+                              <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                                {row.unreadCount} new
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <StatusPill status={client.status ?? "active"} />
-                      {unreadCount ? (
-                        <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                          {unreadCount}
-                        </span>
-                      ) : null}
-                    </div>
-                  </button>
-                );
-              })}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </DashboardCard>
@@ -480,16 +610,55 @@ export function PtMessagesPage() {
         <DashboardCard
           title={
             selectedClient
-              ? `Chat with ${selectedClient.display_name ?? "Client"}`
-              : "Chat"
+              ? (selectedConversationRow?.name ??
+                selectedClient.display_name ??
+                "Client")
+              : "Conversation"
           }
-          subtitle={selectedClient ? "" : "Select a client to view messages."}
+          subtitle={
+            selectedClient
+              ? "Reply quickly, keep context visible, and stay close to the client workflow."
+              : "Select a client to open the coaching thread."
+          }
         >
           {!selectedClient ? (
-            <EmptyState
-              title="Select a client"
-              description="Choose a client to start chatting."
-            />
+            <div className="flex h-[560px] flex-col justify-between gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3 rounded-[20px] border border-border/70 bg-background/45 px-4 py-3">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">
+                      Inbox ready
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Select a client on the left to open the conversation and
+                      respond.
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {unreadConversationCount} unread
+                  </div>
+                </div>
+                <EmptyState
+                  title="Choose a conversation"
+                  description="Once a client is selected, you’ll see the message thread, quick reply composer, and recent thread context here."
+                />
+              </div>
+              <div className="rounded-[20px] border border-border/70 bg-background/45 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Quick reply ideas
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {suggestedReplies.map((prompt) => (
+                    <span
+                      key={prompt}
+                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground"
+                    >
+                      {prompt}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : messagesQuery.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -497,13 +666,105 @@ export function PtMessagesPage() {
               ))}
             </div>
           ) : (
-            <div className="flex h-[460px] flex-col">
+            <div className="flex h-[560px] flex-col gap-4">
+              <div className="rounded-[22px] border border-border/70 bg-background/45 px-4 py-3">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg font-semibold text-foreground">
+                        {selectedConversationRow?.name ?? "Client"}
+                      </h2>
+                      <StatusPill status={selectedClient.status ?? "active"} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedConversationRow?.conversation?.last_message_at
+                        ? `Last activity ${formatRelativeTime(
+                            selectedConversationRow.conversation
+                              .last_message_at,
+                          )}.`
+                        : "No prior thread history yet."}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        navigate(`/pt/clients/${selectedClient.id}`)
+                      }
+                    >
+                      Open client
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setMessageDraft(
+                          "Quick check-in: tell me how training and recovery are feeling today.",
+                        )
+                      }
+                    >
+                      Insert check-in prompt
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-border/65 bg-secondary/16 px-3 py-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Thread status
+                    </div>
+                    <div className="mt-1 text-sm text-foreground">
+                      {selectedConversationRow?.conversation
+                        ? "Active conversation"
+                        : "Ready to start"}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-border/65 bg-secondary/16 px-3 py-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Unread
+                    </div>
+                    <div className="mt-1 text-sm text-foreground">
+                      {selectedConversationRow?.unreadCount
+                        ? `${selectedConversationRow.unreadCount} client message${selectedConversationRow.unreadCount > 1 ? "s" : ""}`
+                        : "Nothing waiting"}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-border/65 bg-secondary/16 px-3 py-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Coaching context
+                    </div>
+                    <div className="mt-1 text-sm text-foreground">
+                      Keep replies short, clear, and tied to the client plan.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex-1 space-y-3 overflow-y-auto pr-2">
                 {messageRows.length === 0 ? (
-                  <EmptyState
-                    title="No messages yet"
-                    description="Send a message to start the conversation."
-                  />
+                  <div className="flex h-full flex-col justify-between rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
+                    <EmptyState
+                      title="No messages yet"
+                      description="Start the thread with a short coaching prompt so the client knows what to reply with next."
+                    />
+                    <div className="space-y-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Suggested starters
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestedReplies.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => setMessageDraft(prompt)}
+                            className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-border hover:bg-secondary/28 hover:text-foreground"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     {messagesQuery.hasNextPage ? (
@@ -532,7 +793,7 @@ export function PtMessagesPage() {
                               : "border-border/60 bg-secondary/45 text-foreground",
                           )}
                         >
-                          <div className="text-[10px] uppercase text-muted-foreground">
+                          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                             {isCoach
                               ? "Coach"
                               : (message.sender_name ?? "Client")}
@@ -553,35 +814,54 @@ export function PtMessagesPage() {
                 ) : null}
                 <div ref={scrollRef} />
               </div>
-              <div className="mt-4 flex items-center gap-2">
-                <Input
-                  value={messageDraft}
-                  onChange={(event) => setMessageDraft(event.target.value)}
-                  placeholder="Type a message"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      sendMutation.mutate();
-                    }
-                  }}
-                  onFocus={() => updateTyping(true)}
-                  onBlur={() => updateTyping(false)}
-                  onInput={() => {
-                    updateTyping(true);
-                    if (typingTimeoutRef.current) {
-                      window.clearTimeout(typingTimeoutRef.current);
-                    }
-                    typingTimeoutRef.current = window.setTimeout(() => {
-                      updateTyping(false);
-                    }, 1500);
-                  }}
-                />
-                <Button
-                  onClick={() => sendMutation.mutate()}
-                  disabled={!messageDraft.trim() || sendMutation.isPending}
-                >
-                  {sendMutation.isPending ? "Sending..." : "Send"}
-                </Button>
+              <div className="rounded-[22px] border border-border/70 bg-background/45 p-3">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {suggestedReplies.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => setMessageDraft(prompt)}
+                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-border hover:bg-secondary/28 hover:text-foreground"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-end gap-2">
+                  <textarea
+                    className="min-h-[88px] w-full resize-y rounded-[18px] border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={messageDraft}
+                    onChange={(event) => setMessageDraft(event.target.value)}
+                    placeholder="Write a coaching reply"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        sendMutation.mutate();
+                      }
+                    }}
+                    onFocus={() => updateTyping(true)}
+                    onBlur={() => updateTyping(false)}
+                    onInput={() => {
+                      updateTyping(true);
+                      if (typingTimeoutRef.current) {
+                        window.clearTimeout(typingTimeoutRef.current);
+                      }
+                      typingTimeoutRef.current = window.setTimeout(() => {
+                        updateTyping(false);
+                      }, 1500);
+                    }}
+                  />
+                  <Button
+                    onClick={() => sendMutation.mutate()}
+                    disabled={!messageDraft.trim() || sendMutation.isPending}
+                    className="min-w-[112px]"
+                  >
+                    {sendMutation.isPending ? "Sending..." : "Send"}
+                  </Button>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Press Enter to send. Shift+Enter adds a new line.
+                </div>
               </div>
             </div>
           )}

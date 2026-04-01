@@ -48,6 +48,18 @@ export function PtNutritionPage() {
     () => templatesQuery.data ?? [],
     [templatesQuery.data],
   );
+  const activeTemplateCount = useMemo(
+    () => templates.filter((template) => template.is_active).length,
+    [templates],
+  );
+  const totalWeeksPlanned = useMemo(
+    () =>
+      templates.reduce(
+        (sum, template) => sum + Math.max(1, template.duration_weeks ?? 1),
+        0,
+      ),
+    [templates],
+  );
   const filteredTemplates = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return templates;
@@ -206,6 +218,21 @@ export function PtNutritionPage() {
           value={templates.length}
           helper="Workspace"
         />
+        <StatCard
+          label="Active"
+          value={activeTemplateCount}
+          helper="Ready to assign"
+        />
+        <StatCard
+          label="Weeks built"
+          value={totalWeeksPlanned}
+          helper="Across all templates"
+        />
+        <StatCard
+          label="Search scope"
+          value={filteredTemplates.length}
+          helper={search.trim() ? "Matching the current search" : "Visible now"}
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -239,12 +266,72 @@ export function PtNutritionPage() {
           ))}
         </div>
       ) : filteredTemplates.length === 0 ? (
-        <EmptyState
-          title="No nutrition programs"
-          description="Create your first program, then build Breakfast/Lunch/Dinner/Snacks on the next page."
-          actionLabel="Create program"
-          onAction={() => setCreateOpen(true)}
-        />
+        templates.length === 0 ? (
+          <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <DashboardCard
+              title="Nutrition program system"
+              subtitle="Templates become reusable meal structures you can assign, duplicate, and evolve over time."
+            >
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Template structure
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-foreground">
+                    Weekly meal plan
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    Build repeating day structures with meals, macros, and notes
+                    by week.
+                  </div>
+                </div>
+                <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Assignment flow
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-foreground">
+                    Assign after planning
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    Use templates as the source of truth before you push a
+                    nutrition plan to a client.
+                  </div>
+                </div>
+                <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Program readiness
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-foreground">
+                    Macros and meals
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    Keep each template ready with meal blocks, notes, and macro
+                    targets.
+                  </div>
+                </div>
+              </div>
+            </DashboardCard>
+
+            <DashboardCard
+              title="Create your first nutrition program"
+              subtitle="Start with one intentional template so future plan variations stay organized."
+            >
+              <EmptyState
+                title="No nutrition programs"
+                description="Create your first program, then build Breakfast, Lunch, Dinner, and Snacks on the next page."
+                actionLabel="Create program"
+                onAction={() => setCreateOpen(true)}
+              />
+            </DashboardCard>
+          </div>
+        ) : (
+          <EmptyState
+            title="No programs match"
+            description="Try another search or clear the filter to review the full nutrition library."
+            actionLabel="Clear search"
+            onAction={() => setSearch("")}
+          />
+        )
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {filteredTemplates.map((template) => (

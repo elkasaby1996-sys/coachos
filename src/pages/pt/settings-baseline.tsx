@@ -355,7 +355,7 @@ export function PtBaselineTemplatesPage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Baseline Templates"
-        description="Create the performance markers clients will log during baseline."
+        description="Create the marker system clients will complete during baseline and that coaches will use for before-and-after comparison."
         actions={
           <>
             <Button asChild variant="secondary" size="sm">
@@ -367,6 +367,45 @@ export function PtBaselineTemplatesPage() {
           </>
         }
       />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Performance markers
+          </div>
+          <div className="mt-2 text-sm font-semibold text-foreground">
+            Strength, work capacity, movement quality
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Use number or text markers depending on the type of baseline signal
+            you want to collect.
+          </div>
+        </div>
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Template order
+          </div>
+          <div className="mt-2 text-sm font-semibold text-foreground">
+            Control the assessment flow
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Sort order controls how markers appear when the client completes the
+            baseline.
+          </div>
+        </div>
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Template usage
+          </div>
+          <div className="mt-2 text-sm font-semibold text-foreground">
+            Reusable assessment system
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Active templates stay available for future client baselines, while
+            inactive items stay out of the workflow.
+          </div>
+        </div>
+      </div>
 
       {statusMessage ? (
         <Alert
@@ -425,9 +464,62 @@ export function PtBaselineTemplatesPage() {
               </AlertDescription>
             </Alert>
           ) : templates.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-              No templates yet. Add your first baseline marker (e.g., Bench 1RM,
-              Pull-ups reps).
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-[24px] border border-dashed border-border bg-muted/20 p-5">
+                <div className="text-sm font-semibold text-foreground">
+                  No baseline templates yet
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Add your first marker so clients know exactly what they will
+                  record during the initial assessment.
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {[
+                    {
+                      title: "Performance",
+                      description:
+                        "Bench press 1RM, pull-up reps, vertical jump",
+                    },
+                    {
+                      title: "Body composition",
+                      description: "Weight, waist, body fat estimate",
+                    },
+                    {
+                      title: "Lifestyle",
+                      description: "Sleep quality, energy, pain notes",
+                    },
+                  ].map((group) => (
+                    <div
+                      key={group.title}
+                      className="rounded-[18px] border border-border/70 bg-background/45 p-4"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        {group.title}
+                      </div>
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        {group.description}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-[24px] border border-border/70 bg-background/35 p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Recommended first template
+                </div>
+                <div className="mt-3 rounded-[20px] border border-border/70 bg-background/45 p-4">
+                  <div className="text-sm font-semibold text-foreground">
+                    Bench Press 1RM
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    Number value • kg
+                  </div>
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    Clear units and short client instructions make the whole
+                    baseline feel more reliable.
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -454,8 +546,8 @@ export function PtBaselineTemplatesPage() {
                       ) : null}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Unit: {template.unit_label ?? "—"} · Order:{" "}
-                      {template.sort_order ?? "—"}
+                      Unit: {template.unit_label ?? "Not set"} · Order:{" "}
+                      {template.sort_order ?? "Not set"}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
