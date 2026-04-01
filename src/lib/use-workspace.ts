@@ -8,6 +8,7 @@ export function useWorkspace() {
   const { user } = useAuth();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceIds, setWorkspaceIds] = useState<string[]>([]);
+  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hasCached, setHasCached] = useState(false);
@@ -63,6 +64,7 @@ export function useWorkspace() {
       if (!user?.id) {
         setWorkspaceId(null);
         setWorkspaceIds([]);
+        setOwnerUserId(null);
         setHasCached(false);
         setLoading(false);
         if (typeof window !== "undefined") {
@@ -95,6 +97,19 @@ export function useWorkspace() {
           .map((member) => member.workspace_id)
           .filter((id): id is string => Boolean(id));
         if (memberWorkspaceIds.length > 0) {
+          const { data: workspaceData, error: workspaceError } =
+            await withTimeout(
+              supabase
+                .from("workspaces")
+                .select("id, owner_user_id")
+                .in("id", memberWorkspaceIds)
+                .returns<Array<{ id: string; owner_user_id: string | null }>>(),
+              8000,
+              "Workspace owner lookup timed out (8s).",
+            );
+
+          if (workspaceError) throw workspaceError;
+
           const cachedWorkspaceId =
             typeof window !== "undefined"
               ? window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)
@@ -106,9 +121,17 @@ export function useWorkspace() {
           if (!selectedWorkspaceId) {
             throw new Error("Workspace not found for this user.");
           }
+          const selectedWorkspace =
+            (workspaceData ?? []).find(
+              (workspace) => workspace.id === selectedWorkspaceId,
+            ) ?? null;
+          if (!selectedWorkspace?.owner_user_id) {
+            throw new Error("Workspace owner not found for this user.");
+          }
           if (mounted) {
             setWorkspaceIds(memberWorkspaceIds);
             setWorkspaceId(selectedWorkspaceId);
+            setOwnerUserId(selectedWorkspace.owner_user_id);
           }
           if (typeof window !== "undefined") {
             window.localStorage.setItem(
@@ -133,9 +156,28 @@ export function useWorkspace() {
         if (!clientData?.workspace_id) {
           throw new Error("Workspace not found for this user.");
         }
+        const { data: workspaceData, error: workspaceError } = await withTimeout(
+          supabase
+            .from("workspaces")
+            .select("id, owner_user_id")
+            .eq("id", clientData.workspace_id)
+            .maybeSingle(),
+          8000,
+          "Client workspace owner lookup timed out (8s).",
+        );
+
+        if (workspaceError) throw workspaceError;
+        const clientWorkspace = workspaceData as {
+          id: string;
+          owner_user_id: string | null;
+        } | null;
+        if (!clientWorkspace?.owner_user_id) {
+          throw new Error("Workspace owner not found for this user.");
+        }
         if (mounted) {
           setWorkspaceId(clientData.workspace_id);
           setWorkspaceIds([clientData.workspace_id]);
+          setOwnerUserId(clientWorkspace.owner_user_id);
         }
         if (typeof window !== "undefined") {
           window.localStorage.setItem(
@@ -148,6 +190,7 @@ export function useWorkspace() {
         if (mounted) {
           setWorkspaceId(null);
           setWorkspaceIds([]);
+          setOwnerUserId(null);
           if (typeof window !== "undefined") {
             window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
           }
@@ -172,6 +215,7 @@ export function useWorkspace() {
   return {
     workspaceId,
     workspaceIds,
+    ownerUserId,
     loading,
     error,
     switchWorkspace,
