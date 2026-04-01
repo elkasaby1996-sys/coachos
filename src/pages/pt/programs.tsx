@@ -90,6 +90,14 @@ export function PtProgramsPage() {
         : "Weeks TBD",
     }));
   }, [programsQuery.data]);
+  const activeProgramsCount = useMemo(
+    () => formattedPrograms.filter((program) => program.is_active).length,
+    [formattedPrograms],
+  );
+  const archivedProgramsCount = useMemo(
+    () => formattedPrograms.filter((program) => !program.is_active).length,
+    [formattedPrograms],
+  );
 
   const handleArchive = async (programId: string) => {
     setActionId(programId);
@@ -230,6 +238,42 @@ export function PtProgramsPage() {
         </Card>
       ) : null}
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Reusable programs
+          </div>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {formattedPrograms.length}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Multi-week systems you can reuse across clients.
+          </div>
+        </div>
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Active
+          </div>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {activeProgramsCount}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Available for current planning and assignment.
+          </div>
+        </div>
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Archived
+          </div>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {archivedProgramsCount}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Older systems kept for reference without cluttering planning.
+          </div>
+        </div>
+      </div>
+
       {workspaceLoading || programsQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
@@ -329,12 +373,74 @@ export function PtProgramsPage() {
           })}
         </div>
       ) : (
-        <EmptyState
-          title="No programs yet."
-          description="Create your first multi-week program to start assigning training blocks."
-          actionLabel="New Program"
-          onAction={() => navigate("/pt/programs/new")}
-        />
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <DashboardCard
+            title="Build your first reusable program"
+            subtitle="Programs become the repeatable training systems you assign, adapt, and archive over time."
+          >
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Reusable block
+                </div>
+                <div className="mt-2 text-sm font-semibold text-foreground">
+                  4-week Hypertrophy Base
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Clear title, duration, and progression notes so the structure
+                  is reusable.
+                </div>
+              </div>
+              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Assignment behavior
+                </div>
+                <div className="mt-2 text-sm font-semibold text-foreground">
+                  Build once, assign many
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Use the template as the planning source, then assign the right
+                  block to each client.
+                </div>
+              </div>
+              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Lifecycle
+                </div>
+                <div className="mt-2 text-sm font-semibold text-foreground">
+                  Active or archived
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Keep current systems ready to assign and move old ones out of
+                  the active planning lane.
+                </div>
+              </div>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard
+            title="Create flow"
+            subtitle="Start deliberately so the first program already fits the long-term library."
+          >
+            <div className="space-y-4">
+              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                <div className="text-sm font-semibold text-foreground">
+                  Recommended first step
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Create one repeatable training block with a clear purpose,
+                  then duplicate it when you need a variation.
+                </div>
+              </div>
+              <EmptyState
+                title="No programs yet"
+                description="Create your first multi-week program to start assigning structured training blocks."
+                actionLabel="New Program"
+                onAction={() => navigate("/pt/programs/new")}
+              />
+            </div>
+          </DashboardCard>
+        </div>
       )}
     </div>
   );

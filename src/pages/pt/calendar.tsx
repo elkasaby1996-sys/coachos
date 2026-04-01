@@ -264,6 +264,8 @@ export function PtCalendarPage() {
 
   const isLoading =
     clientsQuery.isLoading || checkinsQuery.isLoading || eventsQuery.isLoading;
+  const visibleCheckinsCount = (checkinsQuery.data ?? []).length;
+  const visibleEventsCount = (eventsQuery.data ?? []).length;
 
   return (
     <div className="space-y-6">
@@ -322,6 +324,18 @@ export function PtCalendarPage() {
             </div>
           </div>
 
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1">
+              {visibleCheckinsCount} check-ins in view
+            </span>
+            <span className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1">
+              {visibleEventsCount} coach events
+            </span>
+            <span className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1">
+              Submitted and reviewed days are highlighted
+            </span>
+          </div>
+
           <div className="mt-4 grid grid-cols-7 gap-3 text-xs text-muted-foreground">
             {"Sun Mon Tue Wed Thu Fri Sat".split(" ").map((day) => (
               <div key={day} className="text-center uppercase tracking-[0.2em]">
@@ -342,6 +356,7 @@ export function PtCalendarPage() {
                 const checkins = checkinsByDate.get(day.key) ?? [];
                 const events = eventsByDate.get(day.key) ?? [];
                 const isToday = day.key === todayKey;
+                const hasItems = checkins.length + events.length > 0;
                 const dayState = (
                   [
                     "overdue",
@@ -378,6 +393,13 @@ export function PtCalendarPage() {
                       "min-h-[160px] rounded-2xl border border-border/70 bg-background/40 p-3 text-left transition hover:border-border",
                       !day.inMonth && "opacity-50",
                       isToday && "border-accent/60 bg-accent/10",
+                      hasItems &&
+                        !isToday &&
+                        "border-border/80 bg-background/55 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.75)]",
+                      dayState === "submitted" &&
+                        "border-primary/30 bg-primary/[0.07]",
+                      dayState === "overdue" &&
+                        "border-destructive/35 bg-destructive/[0.06]",
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -458,12 +480,33 @@ export function PtCalendarPage() {
                         </button>
                       ))}
 
-                      {checkins.length + events.length === 0 ? (
-                        <div className="text-xs text-muted-foreground">
-                          No items
+                      {!hasItems ? (
+                        <div className="pt-10">
+                          <div className="h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
+                        </div>
+                      ) : checkins.length + events.length > 4 ? (
+                        <div className="text-[11px] text-muted-foreground">
+                          +{checkins.length + events.length - 4} more items
                         </div>
                       ) : null}
                     </div>
+
+                    {hasItems ? (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {checkins.length > 0 ? (
+                          <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                            {checkins.length} check-in
+                            {checkins.length > 1 ? "s" : ""}
+                          </span>
+                        ) : null}
+                        {events.length > 0 ? (
+                          <span className="rounded-full border border-border/70 bg-secondary/18 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {events.length} event
+                            {events.length > 1 ? "s" : ""}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -472,7 +515,10 @@ export function PtCalendarPage() {
         </DashboardCard>
 
         <div className="space-y-6">
-          <DashboardCard title="Notes" subtitle="Upcoming events overview.">
+          <DashboardCard
+            title="Upcoming focus"
+            subtitle="Quick view of the next scheduled items that may shape your week."
+          >
             {isLoading ? (
               <Skeleton className="h-20 w-full" />
             ) : (eventsQuery.data ?? []).length === 0 ? (

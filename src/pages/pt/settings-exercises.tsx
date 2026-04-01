@@ -236,6 +236,36 @@ export function PtExerciseLibraryPage() {
       return nameMatch && primaryMatch && tagsMatch;
     });
   }, [exercises, filters]);
+  const uniqueTags = useMemo(() => {
+    const tags = new Set<string>();
+    exercises.forEach((exercise) => {
+      (exercise.tags ?? []).forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).sort((left, right) => left.localeCompare(right));
+  }, [exercises]);
+  const populatedMuscleGroups = useMemo(() => {
+    const groups = new Set<string>();
+    exercises.forEach((exercise) => {
+      if (exercise.primary_muscle?.trim()) {
+        groups.add(exercise.primary_muscle.trim());
+      } else if (exercise.muscle_group?.trim()) {
+        groups.add(exercise.muscle_group.trim());
+      }
+    });
+    return Array.from(groups).sort((left, right) => left.localeCompare(right));
+  }, [exercises]);
+  const recentExerciseNames = useMemo(
+    () =>
+      [...exercises]
+        .sort(
+          (left, right) =>
+            new Date(right.created_at ?? 0).getTime() -
+            new Date(left.created_at ?? 0).getTime(),
+        )
+        .slice(0, 3)
+        .map((exercise) => exercise.name),
+    [exercises],
+  );
 
   return (
     <div className="space-y-6">
@@ -250,7 +280,7 @@ export function PtExerciseLibraryPage() {
       ) : null}
       <WorkspacePageHeader
         title="Exercise Library"
-        description="Build a reusable exercise library for your workspace."
+        description="Build the foundational movement library your workout system depends on."
         actions={<Button onClick={openCreate}>Add exercise</Button>}
       />
 
@@ -266,12 +296,51 @@ export function PtExerciseLibraryPage() {
         </Card>
       ) : null}
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Categories
+          </div>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {populatedMuscleGroups.length}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Primary muscles and movement groups represented in the library.
+          </div>
+        </div>
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Tags
+          </div>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {uniqueTags.length}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Searchable descriptors for equipment, style, and coaching cues.
+          </div>
+        </div>
+        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Recent additions
+          </div>
+          <div className="mt-2 text-sm font-semibold text-foreground">
+            {recentExerciseNames[0] ?? "Nothing added yet"}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {recentExerciseNames.length > 1
+              ? `${recentExerciseNames.length} recent items are ready for program building.`
+              : "New movements will show up here once the library is in use."}
+          </div>
+        </div>
+      </div>
+
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>Exercises</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Workspace-scoped movement library.
+              Use filters to find movements quickly while keeping the library
+              ready for workout building.
             </p>
           </div>
         </CardHeader>
@@ -312,9 +381,79 @@ export function PtExerciseLibraryPage() {
               {getErrorDetails(exercisesQuery.error).message}
             </div>
           ) : exercises.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-              No exercises yet. Add your first exercise to start building
-              templates.
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-4 rounded-[24px] border border-dashed border-border bg-muted/20 p-5">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">
+                    No exercises yet
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    Add your first exercise to start building workouts from a
+                    workspace-owned movement library.
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Categories
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {muscleGroups.slice(0, 5).map((group) => (
+                        <span
+                          key={group}
+                          className="rounded-full border border-border/70 bg-secondary/18 px-2.5 py-1 text-[11px] text-muted-foreground"
+                        >
+                          {group}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Tags
+                    </div>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      Examples: dumbbell, home gym, unilateral, power, warm-up.
+                    </div>
+                  </div>
+                  <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Recent additions
+                    </div>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      New movements will help keep program builders fast and
+                      consistent.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-[24px] border border-border/70 bg-background/35 p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Example item
+                </div>
+                <div className="mt-3 rounded-[20px] border border-border/70 bg-background/45 p-4">
+                  <div className="text-sm font-semibold text-foreground">
+                    Dumbbell Split Squat
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Legs • Dumbbells
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {["unilateral", "lower body", "strength"].map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-border/70 bg-secondary/18 px-2.5 py-1 text-[11px] text-muted-foreground"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    Exercises stored here become searchable building blocks
+                    inside workout templates and client assignments.
+                  </div>
+                </div>
+              </div>
             </div>
           ) : filteredExercises.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">

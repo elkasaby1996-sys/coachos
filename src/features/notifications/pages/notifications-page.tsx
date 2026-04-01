@@ -28,6 +28,41 @@ import {
 } from "../hooks/use-notifications";
 import type { NotificationFilter, NotificationRecord } from "../lib/types";
 
+const getPtNotificationPeriodLabel = (createdAt: string) => {
+  const created = new Date(createdAt);
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - 6);
+
+  if (created >= startOfToday) return "Today";
+  if (created >= startOfYesterday) return "Yesterday";
+  if (created >= startOfWeek) return "Last 7 days";
+  return "Earlier";
+};
+
+const groupPtNotifications = (rows: NotificationRecord[]) => {
+  const groups = new Map<string, NotificationRecord[]>();
+  rows.forEach((row) => {
+    const key = getPtNotificationPeriodLabel(row.created_at);
+    const existing = groups.get(key) ?? [];
+    existing.push(row);
+    groups.set(key, existing);
+  });
+  return ["Today", "Yesterday", "Last 7 days", "Earlier"]
+    .map((label) => ({
+      label,
+      rows: groups.get(label) ?? [],
+    }))
+    .filter((group) => group.rows.length > 0);
+};
+
 export function NotificationsPage() {
   const navigate = useNavigate();
   const { user, role } = useAuth();
@@ -52,6 +87,10 @@ export function NotificationsPage() {
     return allNotifications.filter((row) => !row.is_read).length;
   }, [allNotifications]);
   const notificationsError = allQuery.error ?? unreadQuery.error;
+  const highPriorityCount = useMemo(
+    () => allNotifications.filter((row) => row.priority === "high").length,
+    [allNotifications],
+  );
 
   const handleOpenNotification = async (notification: NotificationRecord) => {
     if (!notification.is_read) {
@@ -104,6 +143,44 @@ export function NotificationsPage() {
   return (
     <div className={isClientPortal ? "portal-shell-tight" : "space-y-6"}>
       {pageHeader}
+
+      {!isClientPortal ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Unread
+            </div>
+            <div className="mt-2 text-2xl font-semibold text-foreground">
+              {unreadCount}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Updates still waiting for review.
+            </div>
+          </div>
+          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              High priority
+            </div>
+            <div className="mt-2 text-2xl font-semibold text-foreground">
+              {highPriorityCount}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Notification rows marked urgent.
+            </div>
+          </div>
+          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Recent activity
+            </div>
+            <div className="mt-2 text-2xl font-semibold text-foreground">
+              {allNotifications.length}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Notifications currently loaded in the workspace inbox.
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isClientPortal ? (
         <StatusBanner
@@ -254,15 +331,58 @@ export function NotificationsPage() {
                         ) : undefined
                       }
                     />
-                  ) : (
+                  ) : isClientPortal ? (
                     <div className="space-y-3">
                       {rows.map((notification) => (
                         <NotificationItem
                           key={notification.id}
                           notification={notification}
-                          audience={isClientPortal ? "client" : "pt"}
+                          audience="client"
                           onClick={() => handleOpenNotification(notification)}
                         />
+                      ))}
+                      {query.hasNextPage ? (
+                        <div className="flex justify-center pt-2">
+                          <Button
+                            variant="secondary"
+                            onClick={() => query.fetchNextPage()}
+                            disabled={query.isFetchingNextPage}
+                          >
+                            {query.isFetchingNextPage
+                              ? "Loading..."
+                              : "Load more"}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      {groupPtNotifications(rows).map((group) => (
+                        <div key={group.label} className="space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold text-foreground">
+                                {group.label}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {group.rows.length} update
+                                {group.rows.length > 1 ? "s" : ""}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            {group.rows.map((notification) => (
+                              <NotificationItem
+                                key={notification.id}
+                                notification={notification}
+                                audience="pt"
+                                onClick={() =>
+                                  handleOpenNotification(notification)
+                                }
+                              />
+                            ))}
+                          </div>
+                        </div>
                       ))}
                       {query.hasNextPage ? (
                         <div className="flex justify-center pt-2">

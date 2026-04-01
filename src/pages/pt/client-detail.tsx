@@ -97,6 +97,7 @@ import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
+import { usePtMessageCompose } from "../../components/pt/pt-message-compose-context";
 import {
   buildPtOnboardingChecklist,
   getPtOnboardingStatusMeta,
@@ -516,6 +517,7 @@ export function PtClientDetailPage() {
   const { clientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openComposer } = usePtMessageCompose();
   const queryClient = useQueryClient();
   const initialTab = useMemo(() => {
     const params = new URLSearchParams(location.search);
