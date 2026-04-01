@@ -228,10 +228,10 @@ export function PtClientOnboardingTab({
 
   return (
     <>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
-        <div className="space-y-6">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
+        <div className="space-y-5">
           <Card className="border-border/70 bg-card/80">
-            <CardHeader className="space-y-3">
+            <CardHeader className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={onboardingStatusMeta.variant}>
                   {getOnboardingReviewBadgeLabel(onboarding.status)}
@@ -244,10 +244,10 @@ export function PtClientOnboardingTab({
               <p className="text-sm text-muted-foreground">
                 {isCompleted
                   ? "Onboarding is complete. This tab now acts as a read-only preview of the submitted intake and coach review."
-                  : "Review the intake, confirm the initial assessment, and move this client through the remaining onboarding actions."}
+                  : "Review the intake, confirm the initial assessment, and clear the remaining onboarding actions."}
               </p>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryBox
                 label="Client"
                 value={clientSnapshot?.display_name ?? "Client"}
@@ -292,10 +292,10 @@ export function PtClientOnboardingTab({
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="border-border/70 bg-card/80">
-              <CardHeader>
+              <CardHeader className="space-y-1 pb-2">
                 <CardTitle className="text-base">Basics</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
+              <CardContent className="grid gap-4 sm:grid-cols-2">
                 {[
                   ["Full name", onboarding.basics?.display_name],
                   ["Phone", onboarding.basics?.phone],
@@ -315,10 +315,10 @@ export function PtClientOnboardingTab({
 
             {intakeSections.map((section) => (
               <Card key={section.title} className="border-border/70 bg-card/80">
-                <CardHeader>
+                <CardHeader className="space-y-1 pb-2">
                   <CardTitle className="text-base">{section.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-3 sm:grid-cols-2">
+                <CardContent className="grid gap-4 sm:grid-cols-2">
                   {section.rows.map(([label, value]) => (
                     <FieldValue
                       key={`${section.title}-${label}`}
@@ -332,7 +332,7 @@ export function PtClientOnboardingTab({
           </div>
 
           <Card className="border-border/70 bg-card/80">
-            <CardHeader>
+            <CardHeader className="space-y-1">
               <CardTitle className="text-base">Initial assessment</CardTitle>
               <p className="text-sm text-muted-foreground">
                 Submitted baseline linked to this onboarding cycle.
@@ -465,17 +465,18 @@ export function PtClientOnboardingTab({
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No submitted baseline yet.
-                </p>
+                <EmptyState
+                  title="No initial assessment submitted yet"
+                  description="This client has not sent baseline measurements or photos yet. The initial assessment will appear here once the baseline is submitted."
+                />
               )}
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <Card className="border-border/70 bg-card/80">
-            <CardHeader>
+            <CardHeader className="space-y-1">
               <CardTitle className="text-base">
                 {isCompleted ? "Completion summary" : "Onboarding checklist"}
               </CardTitle>
@@ -485,11 +486,11 @@ export function PtClientOnboardingTab({
                   : "Completion requires the core onboarding items below. Program assignment and check-in setup now live in their own PT workflow surfaces outside onboarding."}
               </p>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3.5">
               {onboardingChecklist.map((item) => (
                 <div
                   key={item.key}
-                  className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/30 px-3 py-3"
+                  className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/30 px-4 py-3.5"
                 >
                   <div className="mt-0.5">
                     {item.complete ? (
@@ -507,7 +508,7 @@ export function PtClientOnboardingTab({
                         <Badge variant="muted">Optional</Badge>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {item.detail}
                     </p>
                   </div>
@@ -537,17 +538,17 @@ export function PtClientOnboardingTab({
           </Card>
 
           <Card className="border-border/70 bg-card/80">
-            <CardHeader>
+            <CardHeader className="space-y-1">
               <CardTitle className="text-base">
                 {isCompleted ? "Coach notes" : "Coach notes & actions"}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               {isCompleted ? (
                 <div className="space-y-3">
                   <div className="rounded-lg border border-border/60 bg-background/30 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      <p className="text-[11px] font-medium text-muted-foreground">
                         Coach review notes
                       </p>
                       {completedNotesEditing ? (
@@ -609,8 +610,8 @@ export function PtClientOnboardingTab({
                 </div>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase text-muted-foreground">
+                  <div className="space-y-2.5">
+                    <label className="text-[11px] font-medium text-muted-foreground">
                       Coach review notes
                     </label>
                     <textarea
@@ -622,32 +623,34 @@ export function PtClientOnboardingTab({
                       placeholder="Key coaching context, red flags, and activation notes..."
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={onSaveReviewNotes}
-                      disabled={onboardingReviewStatus === "saving"}
-                    >
-                      {onboardingReviewStatus === "saving"
-                        ? "Saving..."
-                        : "Save notes"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={onMarkReviewed}
-                      disabled={onboardingActionStatus === "saving"}
-                    >
-                      Mark reviewed
-                    </Button>
-                    <Button
-                      onClick={onComplete}
-                      disabled={
-                        onboardingActionStatus === "saving" ||
-                        !onboardingReadyForCompletion
-                      }
-                    >
-                      Complete onboarding
-                    </Button>
+                  <div className="rounded-xl border border-border/60 bg-background/25 p-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={onSaveReviewNotes}
+                        disabled={onboardingReviewStatus === "saving"}
+                      >
+                        {onboardingReviewStatus === "saving"
+                          ? "Saving..."
+                          : "Save notes"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={onMarkReviewed}
+                        disabled={onboardingActionStatus === "saving"}
+                      >
+                        Mark reviewed
+                      </Button>
+                      <Button
+                        onClick={onComplete}
+                        disabled={
+                          onboardingActionStatus === "saving" ||
+                          !onboardingReadyForCompletion
+                        }
+                      >
+                        Complete onboarding
+                      </Button>
+                    </div>
                   </div>
                 </>
               )}
@@ -705,11 +708,11 @@ function SummaryBox({
   detail?: string;
 }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background/35 p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-semibold">{value}</p>
+    <div className="rounded-xl border border-border/60 bg-background/35 p-3.5">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold">{value}</p>
       {detail ? (
-        <p className="text-xs text-muted-foreground">{detail}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
       ) : null}
     </div>
   );
@@ -717,10 +720,8 @@ function SummaryBox({
 
 function FieldValue({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </p>
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
       <p className="text-sm text-foreground">{toDisplayText(value)}</p>
     </div>
   );
