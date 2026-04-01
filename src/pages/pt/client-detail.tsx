@@ -2385,9 +2385,10 @@ export function PtClientDetailPage() {
   const handleQuickAction = useCallback(
     (message: string) => {
       if (!clientId) return;
-      openComposer({ clientId, draft: message });
+      const params = new URLSearchParams({ client: clientId, draft: message });
+      navigate(`/pt/messages?${params.toString()}`);
     },
-    [clientId, openComposer],
+    [clientId, navigate],
   );
   const openProfileEdit = useCallback(() => {
     if (!clientSnapshot) return;
