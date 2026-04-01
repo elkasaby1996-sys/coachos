@@ -470,10 +470,6 @@ export function PtMessagesPage() {
     () => clientInboxRows.filter((row) => row.unreadCount > 0).length,
     [clientInboxRows],
   );
-  const activeThreadCount = useMemo(
-    () => clientInboxRows.filter((row) => row.conversation).length,
-    [clientInboxRows],
-  );
   const suggestedReplies = [
     "How are you feeling after today's session?",
     "Quick check-in: anything we should adjust before the next workout?",
@@ -484,7 +480,6 @@ export function PtMessagesPage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Messages"
-        description="Keep client communication organized, easy to scan, and ready for quick coaching replies."
         actions={
           <Button variant="secondary" onClick={() => navigate("/pt/clients")}>
             View clients
@@ -493,17 +488,9 @@ export function PtMessagesPage() {
       />
 
       <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <DashboardCard
-          title="Inbox"
-          subtitle="Prioritize unread and recent client threads."
-        >
+        <DashboardCard title="Conversations">
           {clientsQuery.isLoading ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                {Array.from({ length: 2 }).map((_, index) => (
-                  <Skeleton key={index} className="h-20 w-full" />
-                ))}
-              </div>
               {Array.from({ length: 6 }).map((_, index) => (
                 <Skeleton key={index} className="h-20 w-full" />
               ))}
@@ -517,31 +504,6 @@ export function PtMessagesPage() {
             />
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Unread threads
-                  </div>
-                  <div className="mt-2 text-2xl font-semibold text-foreground">
-                    {unreadConversationCount}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Conversations with a client reply waiting.
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Active threads
-                  </div>
-                  <div className="mt-2 text-2xl font-semibold text-foreground">
-                    {activeThreadCount}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Client conversations with recent message history.
-                  </div>
-                </div>
-              </div>
-
               <Input
                 value={clientSearch}
                 onChange={(event) => setClientSearch(event.target.value)}
@@ -551,7 +513,7 @@ export function PtMessagesPage() {
               {clientInboxRows.length === 0 ? (
                 <EmptyState
                   title="No conversations match"
-                  description="Try a different client name or clear the search to review the full inbox."
+                  description="Try another client name."
                 />
               ) : (
                 <div className="space-y-2">
@@ -615,11 +577,6 @@ export function PtMessagesPage() {
                 "Client")
               : "Conversation"
           }
-          subtitle={
-            selectedClient
-              ? "Reply quickly, keep context visible, and stay close to the client workflow."
-              : "Select a client to open the coaching thread."
-          }
         >
           {!selectedClient ? (
             <div className="flex h-[560px] flex-col justify-between gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
@@ -627,11 +584,10 @@ export function PtMessagesPage() {
                 <div className="flex items-center justify-between gap-3 rounded-[20px] border border-border/70 bg-background/45 px-4 py-3">
                   <div>
                     <div className="text-sm font-semibold text-foreground">
-                      Inbox ready
+                      Thread ready
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Select a client on the left to open the conversation and
-                      respond.
+                      Select a client to open the thread.
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -640,7 +596,7 @@ export function PtMessagesPage() {
                 </div>
                 <EmptyState
                   title="Choose a conversation"
-                  description="Once a client is selected, you’ll see the message thread, quick reply composer, and recent thread context here."
+                  description="Select a client to open the thread."
                 />
               </div>
               <div className="rounded-[20px] border border-border/70 bg-background/45 p-4">
@@ -858,9 +814,6 @@ export function PtMessagesPage() {
                   >
                     {sendMutation.isPending ? "Sending..." : "Send"}
                   </Button>
-                </div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Press Enter to send. Shift+Enter adds a new line.
                 </div>
               </div>
             </div>

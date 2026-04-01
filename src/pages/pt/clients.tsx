@@ -231,7 +231,6 @@ export function PtClientsPage() {
 
       <WorkspacePageHeader
         title="Clients"
-        description="Work the roster by lifecycle, risk, and operational attention instead of scanning raw rows."
         actions={<InviteClientDialog trigger={<Button>+ Add Client</Button>} />}
       />
 
@@ -303,7 +302,7 @@ export function PtClientsPage() {
           <EmptyState
             centered
             title="No clients in this view yet"
-            description="Invite a new client or change the lifecycle and smart filters."
+            description="Invite a client or change the filters."
             action={
               <InviteClientDialog
                 trigger={

@@ -9,8 +9,6 @@ import {
   DashboardCard,
   EmptyState,
   Skeleton,
-  StatCard,
-  StatusPill,
 } from "../../components/ui/coachos";
 import {
   Dialog,
@@ -48,18 +46,6 @@ export function PtNutritionPage() {
     () => templatesQuery.data ?? [],
     [templatesQuery.data],
   );
-  const activeTemplateCount = useMemo(
-    () => templates.filter((template) => template.is_active).length,
-    [templates],
-  );
-  const totalWeeksPlanned = useMemo(
-    () =>
-      templates.reduce(
-        (sum, template) => sum + Math.max(1, template.duration_weeks ?? 1),
-        0,
-      ),
-    [templates],
-  );
   const filteredTemplates = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return templates;
@@ -67,6 +53,15 @@ export function PtNutritionPage() {
       `${t.name} ${t.description ?? ""}`.toLowerCase().includes(q),
     );
   }, [templates, search]);
+  const buildTemplateTags = (template: NutritionTemplate) => {
+    const tags = [
+      template.description?.trim() || null,
+      `${template.duration_weeks} wk`,
+      `${template.meal_count} meals`,
+      template.is_active ? "Active" : "Draft",
+    ].filter((value): value is string => Boolean(value));
+    return tags.slice(0, 3);
+  };
 
   const invalidateTemplates = async () => {
     await queryClient.invalidateQueries({
@@ -207,33 +202,7 @@ export function PtNutritionPage() {
 
   return (
     <PageContainer className="max-w-screen-2xl space-y-6">
-      <WorkspacePageHeader
-        title="Nutrition Programs"
-        description="Create multi-day nutrition plans that feel like part of the same system as workouts and check-ins."
-      />
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <StatCard
-          label="Programs"
-          value={templates.length}
-          helper="Workspace"
-        />
-        <StatCard
-          label="Active"
-          value={activeTemplateCount}
-          helper="Ready to assign"
-        />
-        <StatCard
-          label="Weeks built"
-          value={totalWeeksPlanned}
-          helper="Across all templates"
-        />
-        <StatCard
-          label="Search scope"
-          value={filteredTemplates.length}
-          helper={search.trim() ? "Matching the current search" : "Visible now"}
-        />
-      </div>
+      <WorkspacePageHeader title="Nutrition Programs" />
 
       <div className="flex flex-wrap items-center gap-2">
         <Input
@@ -267,67 +236,18 @@ export function PtNutritionPage() {
         </div>
       ) : filteredTemplates.length === 0 ? (
         templates.length === 0 ? (
-          <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <DashboardCard
-              title="Nutrition program system"
-              subtitle="Templates become reusable meal structures you can assign, duplicate, and evolve over time."
-            >
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Template structure
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">
-                    Weekly meal plan
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    Build repeating day structures with meals, macros, and notes
-                    by week.
-                  </div>
-                </div>
-                <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Assignment flow
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">
-                    Assign after planning
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    Use templates as the source of truth before you push a
-                    nutrition plan to a client.
-                  </div>
-                </div>
-                <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Program readiness
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">
-                    Macros and meals
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    Keep each template ready with meal blocks, notes, and macro
-                    targets.
-                  </div>
-                </div>
-              </div>
-            </DashboardCard>
-
-            <DashboardCard
-              title="Create your first nutrition program"
-              subtitle="Start with one intentional template so future plan variations stay organized."
-            >
-              <EmptyState
-                title="No nutrition programs"
-                description="Create your first program, then build Breakfast, Lunch, Dinner, and Snacks on the next page."
-                actionLabel="Create program"
-                onAction={() => setCreateOpen(true)}
-              />
-            </DashboardCard>
-          </div>
+          <DashboardCard title="No nutrition programs">
+            <EmptyState
+              title="Create the first program"
+              description="Start with one template."
+              actionLabel="Create program"
+              onAction={() => setCreateOpen(true)}
+            />
+          </DashboardCard>
         ) : (
           <EmptyState
             title="No programs match"
-            description="Try another search or clear the filter to review the full nutrition library."
+            description="Clear the search or try another name."
             actionLabel="Clear search"
             onAction={() => setSearch("")}
           />
@@ -339,17 +259,18 @@ export function PtNutritionPage() {
               key={template.id}
               title={template.name}
               subtitle={template.description ?? "No description"}
-              action={
-                <StatusPill
-                  status={template.is_active ? "active" : "inactive"}
-                />
-              }
             >
               <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  {template.duration_weeks} week
-                  {template.duration_weeks > 1 ? "s" : ""}
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  {buildTemplateTags(template).map((tag) => (
+                    <span
+                      key={`${template.id}-${tag}`}
+                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1 text-[11px] font-medium text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
                   <div>
                     <p className="text-muted-foreground">Cals</p>

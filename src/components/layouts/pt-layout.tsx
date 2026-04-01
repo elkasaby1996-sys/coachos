@@ -12,7 +12,6 @@ import {
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
-  LogOut,
   Menu,
   MessageCircle,
   Plus,
@@ -22,7 +21,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
@@ -67,105 +66,6 @@ const navItems = [
   { label: "Settings", to: "/settings/workspace", icon: Settings },
 ] as const;
 
-const workspaceRouteMeta = [
-  {
-    match: "/pt/dashboard",
-    title: "Dashboard",
-    description:
-      "Operational pulse across clients, check-ins, messages, and next actions.",
-  },
-  {
-    match: "/pt/clients/",
-    title: "Client Detail",
-    description:
-      "Daily coaching view with plans, messages, nutrition, and check-ins.",
-  },
-  {
-    match: "/pt/clients",
-    title: "Clients",
-    description:
-      "Scan your roster quickly, spot risk, and jump straight into execution.",
-  },
-  {
-    match: "/pt/programs/",
-    title: "Program Builder",
-    description:
-      "Build dense, week-by-week training structures without losing speed.",
-  },
-  {
-    match: "/pt/programs",
-    title: "Programs",
-    description:
-      "Create and manage reusable training blocks for active coaching work.",
-  },
-  {
-    match: "/pt/calendar",
-    title: "Calendar",
-    description:
-      "Track scheduled coaching activity, check-ins, and operational timing.",
-  },
-  {
-    match: "/pt/messages",
-    title: "Messages",
-    description:
-      "Stay close to client conversations without leaving the workspace flow.",
-  },
-  {
-    match: "/pt/templates/workouts/",
-    title: "Workout Template Builder",
-    description:
-      "Compose reusable workouts, exercise blocks, and assignment-ready sessions.",
-  },
-  {
-    match: "/pt/templates/workouts",
-    title: "Workouts",
-    description:
-      "Template library for fast programming and assignment workflows.",
-  },
-  {
-    match: "/pt/nutrition-programs/",
-    title: "Nutrition Builder",
-    description:
-      "Configure meal structures and nutrition plans for active client delivery.",
-  },
-  {
-    match: "/pt/nutrition-programs",
-    title: "Nutrition Programs",
-    description:
-      "Manage nutrition templates in the same system language as training plans.",
-  },
-  {
-    match: "/pt/checkins/templates",
-    title: "Check-in Templates",
-    description:
-      "Standardize weekly review prompts for faster, repeatable coaching.",
-  },
-  {
-    match: "/pt/checkins",
-    title: "Check-ins",
-    description:
-      "Review queue health, prioritize responses, and keep weekly follow-up moving.",
-  },
-  {
-    match: "/pt/settings/exercises",
-    title: "Exercise Library",
-    description:
-      "Maintain the exercise catalog that powers your workout builders.",
-  },
-  {
-    match: "/settings",
-    title: "Workspace Settings",
-    description:
-      "Workspace identity, defaults, account controls, and operational preferences.",
-  },
-  {
-    match: "/pt/notifications",
-    title: "Notifications",
-    description:
-      "Activity inbox for workspace events that need attention or awareness.",
-  },
-] as const;
-
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
 
 type WorkspaceSwitcherOption = {
@@ -200,13 +100,8 @@ function WorkspaceSwitcher({
           className="h-auto w-full items-start justify-between rounded-[20px] px-4 py-3 text-left"
           aria-label="Switch workspace"
         >
-          <span className="space-y-1">
-            <span className="block text-sm font-semibold text-foreground">
-              {workspaceDisplayName}
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              Operational layer
-            </span>
+          <span className="block text-sm font-semibold text-foreground">
+            {workspaceDisplayName}
           </span>
           <ChevronsUpDown className="mt-0.5 h-4 w-4 text-muted-foreground" />
         </Button>
@@ -243,7 +138,6 @@ function WorkspaceSwitcher({
 
 export function PtLayout() {
   const navigate = useNavigate();
-  const location = useLocation();
   const queryClient = useQueryClient();
   const {
     workspaceId,
@@ -287,10 +181,6 @@ export function PtLayout() {
   const activeWorkspace =
     workspaceOptions.find((workspace) => workspace.id === workspaceId) ?? null;
   const workspaceDisplayName = activeWorkspace?.name?.trim() || "PT Workspace";
-  const pageMeta =
-    workspaceRouteMeta.find((item) =>
-      location.pathname.startsWith(item.match),
-    ) ?? workspaceRouteMeta[0];
 
   const handleCreateWorkspace = async () => {
     const nextName = newWorkspaceName.trim();
@@ -436,7 +326,7 @@ export function PtLayout() {
           {!desktopNavCollapsed ? (
             <div className="mb-6 rounded-[26px] border border-border/70 bg-background/35 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                Workspace Layer
+                Workspace
               </p>
               <div className="mt-3 space-y-3">
                 <WorkspaceSwitcher
@@ -522,26 +412,6 @@ export function PtLayout() {
             })}
           </nav>
 
-          {!desktopNavCollapsed ? (
-            <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4 text-xs text-muted-foreground">
-              <p className="text-sm font-medium text-foreground">
-                Operational mode
-              </p>
-              <p className="mt-1 leading-5">
-                Built for queues, follow-ups, and fast client actions.
-              </p>
-              <Button
-                variant="ghost"
-                className="mt-3 w-full justify-between rounded-[18px] border border-border/70 bg-background/55"
-                size="sm"
-                disabled={isSigningOut}
-                onClick={signOut}
-              >
-                {isSigningOut ? "Logging out..." : "Log out"}
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : null}
         </aside>
 
         <div
@@ -578,7 +448,7 @@ export function PtLayout() {
 
           <div className="mb-8 rounded-[24px] border border-border/70 bg-background/35 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-              Workspace Layer
+              Workspace
             </p>
             <div className="mt-3 space-y-3">
               <WorkspaceSwitcher
@@ -639,30 +509,12 @@ export function PtLayout() {
             })}
           </nav>
 
-          <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4 text-xs text-muted-foreground">
-            <p className="text-sm font-medium text-foreground">
-              Operational mode
-            </p>
-            <p className="mt-1 leading-5">
-              Keep client actions here. Use PT Hub for business context.
-            </p>
-            <Button
-              variant="ghost"
-              className="mt-3 w-full justify-between rounded-[18px] border border-border/70 bg-background/55"
-              size="sm"
-              disabled={isSigningOut}
-              onClick={signOut}
-            >
-              {isSigningOut ? "Logging out..." : "Log out"}
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="border-b border-border/70 bg-background/55 py-4 backdrop-blur-xl">
-            <PageContainer className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3">
+            <PageContainer className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -672,25 +524,12 @@ export function PtLayout() {
                   <span className="sr-only">Open navigation</span>
                   <Menu className="h-5 w-5" />
                 </Button>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                      PT Workspace
-                    </span>
-                    <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Operational layer
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                      {workspaceDisplayName} / {pageMeta.title}
-                    </p>
-                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                      {pageMeta.title}
-                    </h1>
-                    <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                      {pageMeta.description}
-                    </p>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    Workspace
+                  </p>
+                  <div className="truncate text-sm font-semibold text-foreground">
+                    {workspaceDisplayName}
                   </div>
                 </div>
               </div>

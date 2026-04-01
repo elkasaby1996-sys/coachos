@@ -61,14 +61,6 @@ type QueueRow = {
   status: CheckinOperationalState;
 };
 
-const queuePriority: CheckinOperationalState[] = [
-  "submitted",
-  "overdue",
-  "due",
-  "upcoming",
-  "reviewed",
-];
-
 export function PtCheckinsQueuePage() {
   const navigate = useNavigate();
   const { workspaceId } = useWorkspace();
@@ -141,61 +133,26 @@ export function PtCheckinsQueuePage() {
   const submittedCount = queueRows.filter(
     (row) => row.status === "submitted",
   ).length;
-  const reviewedCount = queueRows.filter(
-    (row) => row.status === "reviewed",
-  ).length;
-
-  const nextPriorityRow = useMemo(() => {
-    for (const status of queuePriority) {
-      const match = queueRows.find((row) => row.status === status);
-      if (match) return match;
-    }
-    return null;
-  }, [queueRows]);
 
   const queueSections = useMemo(
     () => [
       {
-        key: "submitted" as const,
-        title: "Ready to review",
-        description:
-          "Client submissions that need coach review before the next decision.",
-        emptyTitle: "No submitted check-ins",
-        emptyDescription: "New client submissions will land here for review.",
+        key: "due-now" as const,
+        title: "Due now",
+        emptyTitle: "No check-ins due now",
+        emptyDescription: "Nothing needs immediate review.",
       },
       {
         key: "overdue" as const,
         title: "Overdue",
-        description:
-          "Clients who missed the expected submission window and may need follow-up.",
         emptyTitle: "No overdue check-ins",
         emptyDescription: "Nothing is overdue right now.",
       },
       {
-        key: "due" as const,
-        title: "Due now",
-        description:
-          "Current check-ins that are at the deadline and worth watching closely.",
-        emptyTitle: "No check-ins due now",
-        emptyDescription:
-          "There are no immediate due-date follow-ups at the moment.",
-      },
-      {
         key: "upcoming" as const,
-        title: "Due soon",
-        description:
-          "Upcoming check-ins scheduled in the near window so you can coach ahead.",
+        title: "Soon",
         emptyTitle: "No upcoming check-ins",
         emptyDescription: "Future scheduled check-ins will appear here.",
-      },
-      {
-        key: "reviewed" as const,
-        title: "Reviewed recently",
-        description:
-          "Recently completed reviews for quick reference and continuity.",
-        emptyTitle: "No recently reviewed check-ins",
-        emptyDescription:
-          "Reviewed check-ins will appear here once the queue starts moving.",
       },
     ],
     [],
@@ -224,7 +181,7 @@ export function PtCheckinsQueuePage() {
                 : "Scheduled";
         const urgencyLabel =
           row.status === "submitted"
-            ? "Review next"
+            ? "Submitted"
             : row.status === "overdue"
               ? "High urgency"
               : row.status === "due"
@@ -319,7 +276,6 @@ export function PtCheckinsQueuePage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Check-in Queue"
-        description={`Operational review queue from ${formatCheckinDate(queueStartDate)} to ${formatCheckinDate(queueEndDate)}.`}
         actions={
           <>
             <Button
@@ -340,27 +296,18 @@ export function PtCheckinsQueuePage() {
           {
             label: "Submitted",
             value: submittedCount,
-            helper: "Check-ins waiting for PT review.",
           },
           {
             label: "Overdue",
             value: overdueCount,
-            helper: "Clients who may need a follow-up.",
           },
           {
             label: "Due now",
             value: dueCount,
-            helper: "Current check-ins at the deadline.",
           },
           {
-            label: "Due soon",
+            label: "Soon",
             value: upcomingCount,
-            helper: "Upcoming check-ins still ahead of the window.",
-          },
-          {
-            label: "Reviewed",
-            value: reviewedCount,
-            helper: "Recently closed feedback cycles.",
           },
         ].map((card) => (
           <div
@@ -373,44 +320,20 @@ export function PtCheckinsQueuePage() {
             <div className="mt-2 text-2xl font-semibold text-foreground">
               {card.value}
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {card.helper}
-            </div>
           </div>
         ))}
       </div>
 
-      <DashboardCard
-        title="Review next"
-        subtitle="Start with the most actionable row, then work down through urgency."
-      >
-        {isLoading ? (
-          <Skeleton className="h-28 w-full" />
-        ) : nextPriorityRow ? (
-          renderQueueRows(
-            [nextPriorityRow],
-            nextPriorityRow.status === "submitted" ||
-              nextPriorityRow.status === "reviewed"
-              ? "Review"
-              : "Open",
-          )
-        ) : (
-          <EmptyState
-            title="No queue items yet"
-            description="As check-ins are scheduled, submitted, and reviewed, the next priority item will appear here."
-          />
-        )}
-      </DashboardCard>
-
       <div className="space-y-6">
         {queueSections.map((section) => {
-          const rows = queueRows.filter((row) => row.status === section.key);
+          const rows = queueRows.filter((row) => {
+            if (section.key === "due-now") {
+              return row.status === "submitted" || row.status === "due";
+            }
+            return row.status === section.key;
+          });
           return (
-            <DashboardCard
-              key={section.key}
-              title={section.title}
-              subtitle={section.description}
-            >
+            <DashboardCard key={section.key} title={section.title}>
               {isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, index) => (
@@ -425,10 +348,7 @@ export function PtCheckinsQueuePage() {
               ) : (
                 renderQueueRows(
                   rows,
-                  section.key === "submitted" || section.key === "reviewed"
-                    ? "Review"
-                    : "Open",
-                  section.key === "reviewed",
+                  section.key === "due-now" ? "Review" : "Open",
                 )
               )}
             </DashboardCard>

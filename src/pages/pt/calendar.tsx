@@ -87,6 +87,7 @@ export function PtCalendarPage() {
   const [monthCursor, setMonthCursor] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
+  const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CoachEventRow | null>(
@@ -264,18 +265,33 @@ export function PtCalendarPage() {
 
   const isLoading =
     clientsQuery.isLoading || checkinsQuery.isLoading || eventsQuery.isLoading;
-  const visibleCheckinsCount = (checkinsQuery.data ?? []).length;
-  const visibleEventsCount = (eventsQuery.data ?? []).length;
+  const selectedDateCheckins = useMemo(
+    () => checkinsByDate.get(selectedDateKey) ?? [],
+    [checkinsByDate, selectedDateKey],
+  );
+  const selectedDateEvents = useMemo(
+    () => eventsByDate.get(selectedDateKey) ?? [],
+    [eventsByDate, selectedDateKey],
+  );
+  const selectedDateLabel = useMemo(
+    () =>
+      new Date(`${selectedDateKey}T00:00:00`).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }),
+    [selectedDateKey],
+  );
 
   return (
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Coach Calendar"
-        description="Track check-ins due today, upcoming events, and operational timing without losing queue visibility."
+        description="Click a date to view scheduled items."
         actions={
           <Button
             onClick={() => {
-              setEventDate(todayKey);
+              setEventDate(selectedDateKey);
               setEventDialogOpen(true);
             }}
             className="gap-2"
@@ -288,10 +304,7 @@ export function PtCalendarPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <DashboardCard
-          title="Calendar"
-          subtitle="All check-ins and coaching events in one place."
-        >
+        <DashboardCard title="Calendar">
           <div className="flex items-center justify-between gap-2">
             <div className="text-lg font-semibold text-foreground">
               {monthLabel}
@@ -324,16 +337,8 @@ export function PtCalendarPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1">
-              {visibleCheckinsCount} check-ins in view
-            </span>
-            <span className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1">
-              {visibleEventsCount} coach events
-            </span>
-            <span className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1">
-              Submitted and reviewed days are highlighted
-            </span>
+          <div className="mt-4 text-sm text-muted-foreground">
+            Click a date to view scheduled items.
           </div>
 
           <div className="mt-4 grid grid-cols-7 gap-3 text-xs text-muted-foreground">
@@ -356,6 +361,7 @@ export function PtCalendarPage() {
                 const checkins = checkinsByDate.get(day.key) ?? [];
                 const events = eventsByDate.get(day.key) ?? [];
                 const isToday = day.key === todayKey;
+                const isSelected = day.key === selectedDateKey;
                 const hasItems = checkins.length + events.length > 0;
                 const dayState = (
                   [
@@ -376,23 +382,18 @@ export function PtCalendarPage() {
                     key={day.key}
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      setEventDate(day.key);
-                      setEventMode("create");
-                      setEditingEventId(null);
-                      setEventDialogOpen(true);
-                    }}
+                    onClick={() => setSelectedDateKey(day.key)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        setEventDate(day.key);
-                        setEventDialogOpen(true);
+                        setSelectedDateKey(day.key);
                       }
                     }}
                     className={cn(
                       "min-h-[160px] rounded-2xl border border-border/70 bg-background/40 p-3 text-left transition hover:border-border",
                       !day.inMonth && "opacity-50",
                       isToday && "border-accent/60 bg-accent/10",
+                      isSelected && "border-primary/40 bg-primary/[0.08]",
                       hasItems &&
                         !isToday &&
                         "border-border/80 bg-background/55 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.75)]",
@@ -516,19 +517,74 @@ export function PtCalendarPage() {
 
         <div className="space-y-6">
           <DashboardCard
-            title="Upcoming focus"
-            subtitle="Quick view of the next scheduled items that may shape your week."
+            title={selectedDateLabel}
+            subtitle="Events and assignments for this day."
+            action={
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setEventDate(selectedDateKey);
+                  setEventMode("create");
+                  setEditingEventId(null);
+                  setEventDialogOpen(true);
+                }}
+                disabled={!workspaceId}
+              >
+                Create event
+              </Button>
+            }
           >
             {isLoading ? (
-              <Skeleton className="h-20 w-full" />
-            ) : (eventsQuery.data ?? []).length === 0 ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : selectedDateCheckins.length === 0 && selectedDateEvents.length === 0 ? (
               <EmptyState
-                title="No events yet"
-                description="Create an event to block time for reviews or calls."
+                title="No items for this day"
+                description="Create an event or check another date."
               />
             ) : (
               <div className="space-y-3">
-                {(eventsQuery.data ?? []).slice(0, 5).map((row) => (
+                {selectedDateCheckins.map((row) => {
+                  const client = row.client_id ? clientMap.get(row.client_id) : null;
+                  const name = client?.display_name?.trim()
+                    ? client.display_name
+                    : "Client";
+                  const state = getCheckinOperationalState(row, todayKey);
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => {
+                        if (!row.client_id) return;
+                        navigate(
+                          state === "submitted" || state === "reviewed"
+                            ? `/pt/clients/${row.client_id}?tab=checkins&checkin=${row.id}`
+                            : `/pt/clients/${row.client_id}?tab=checkins`,
+                        );
+                      }}
+                      className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-left transition hover:border-border"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">
+                            {name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Check-in
+                          </div>
+                        </div>
+                        <StatusPill
+                          status={state}
+                          statusMap={checkinOperationalStatusMap}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+                {selectedDateEvents.map((row) => (
                   <button
                     key={row.id}
                     type="button"
@@ -542,7 +598,10 @@ export function PtCalendarPage() {
                       {row.title}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(row.starts_at).toLocaleString()}
+                      {new Date(row.starts_at).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </button>
                 ))}
