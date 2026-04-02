@@ -103,6 +103,34 @@ type CheckinRowWithState = CheckinRow & {
   state: string | null;
 };
 
+const buildMetricDelta = ({
+  delta,
+  suffix = "",
+  positiveIsGood = true,
+}: {
+  delta: number | null | undefined;
+  suffix?: string;
+  positiveIsGood?: boolean;
+}) => {
+  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
+  const rounded = Math.round(delta);
+  const prefix = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
+  const tone =
+    rounded === 0
+      ? "neutral"
+      : positiveIsGood
+        ? rounded > 0
+          ? "positive"
+          : "negative"
+        : rounded < 0
+          ? "positive"
+          : "negative";
+  return {
+    value: `${prefix}${Math.abs(rounded)}${suffix}`,
+    tone,
+  } as const;
+};
+
 export function PtDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -307,6 +335,14 @@ export function PtDashboardPage() {
   }, [assignedWorkouts]);
 
   const todayStr = useMemo(() => getTodayInTimezone(null), []);
+  const previousWeekStart = useMemo(
+    () => addDaysToDateString(todayStr, -13),
+    [todayStr],
+  );
+  const previousWeekEnd = useMemo(
+    () => addDaysToDateString(todayStr, -7),
+    [todayStr],
+  );
   const upcomingWindowEnd = useMemo(
     () => addDaysToDateString(todayStr, 7),
     [todayStr],
@@ -356,6 +392,39 @@ export function PtDashboardPage() {
         checkin.week_ending_saturday === todayStr,
     ).length;
   }, [checkinRows, todayStr]);
+  const activeClientsDelta = useMemo(() => {
+    const currentWindow = clients.filter((client) => {
+      const status = (client.status ?? "active").toLowerCase();
+      return status === "active" && client.created_at >= addDaysToDateString(todayStr, -6);
+    }).length;
+    const previousWindow = clients.filter((client) => {
+      const status = (client.status ?? "active").toLowerCase();
+      return (
+        status === "active" &&
+        client.created_at >= previousWeekStart &&
+        client.created_at <= previousWeekEnd
+      );
+    }).length;
+    return currentWindow - previousWindow;
+  }, [clients, previousWeekEnd, previousWeekStart, todayStr]);
+  const adherenceDelta = useMemo(() => {
+    const getWindowAdherence = (start: string, end: string) => {
+      const rows = assignedWorkouts.filter(
+        (row) =>
+          Boolean(row.scheduled_date) &&
+          (row.scheduled_date ?? "") >= start &&
+          (row.scheduled_date ?? "") <= end,
+      );
+      if (rows.length === 0) return null;
+      const completed = rows.filter((row) => row.status === "completed").length;
+      return Math.round((completed / rows.length) * 100);
+    };
+
+    const currentWindow = getWindowAdherence(addDaysToDateString(todayStr, -6), todayStr);
+    const previousWindow = getWindowAdherence(previousWeekStart, previousWeekEnd);
+    if (currentWindow === null || previousWindow === null) return null;
+    return currentWindow - previousWindow;
+  }, [assignedWorkouts, previousWeekEnd, previousWeekStart, todayStr]);
 
   const recentCheckins = useMemo(() => checkinRows.slice(0, 4), [checkinRows]);
 
@@ -581,12 +650,19 @@ export function PtDashboardPage() {
               value={activeClientsCount}
               helper="Active"
               icon={Sparkles}
+              delta={buildMetricDelta({
+                delta: activeClientsDelta,
+              })}
             />
             <StatCard
               label="Avg adherence"
               value={`${adherencePercent}%`}
               helper="7d"
               icon={Rocket}
+              delta={buildMetricDelta({
+                delta: adherenceDelta,
+                suffix: "%",
+              })}
             />
             <StatCard
               label="Unread messages"

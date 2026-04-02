@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CircleDot,
+  HeartPulse,
   Home,
   LineChart,
   LogOut,
@@ -29,6 +30,7 @@ const navItems = [
   { label: "Home", to: "/app/home", icon: Home },
   { label: "Habits", to: "/app/habits", icon: CalendarDays },
   { label: "Progress", to: "/app/progress", icon: LineChart },
+  { label: "Medical", to: "/app/medical", icon: HeartPulse },
   { label: "Messages", to: "/app/messages", icon: MessageCircle },
   { label: "Settings", to: "/app/settings", icon: UserCircle },
 ];
@@ -37,6 +39,7 @@ const getRouteLabel = (pathname: string) => {
   if (pathname.startsWith("/app/home")) return "Home";
   if (pathname.startsWith("/app/habits")) return "Habits";
   if (pathname.startsWith("/app/progress")) return "Progress";
+  if (pathname.startsWith("/app/medical")) return "Medical";
   if (pathname.startsWith("/app/messages")) return "Messages";
   if (pathname.startsWith("/app/notifications")) return "Notifications";
   if (pathname.startsWith("/app/profile")) return "Profile";
@@ -295,7 +298,7 @@ export function ClientLayout() {
             </PageContainer>
           </main>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
-            <PageContainer size="portal" className="grid grid-cols-5 gap-1">
+            <PageContainer size="portal" className="grid grid-cols-6 gap-1">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}

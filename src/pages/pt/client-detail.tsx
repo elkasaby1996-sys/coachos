@@ -35,13 +35,17 @@ import {
   ChevronUp,
   CheckCircle2,
   Dumbbell,
+  FileText,
   Flame,
+  FlaskConical,
+  HeartPulse,
   MessageCircle,
   Moon,
   MoreHorizontal,
   Pencil,
   Rocket,
   Sparkles,
+  Upload,
   XCircle,
 } from "lucide-react";
 import {
@@ -64,7 +68,6 @@ import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
   EmptyState,
-  MiniSparkline,
   StatCard,
   StatusPill,
 } from "../../components/ui/coachos";
@@ -111,6 +114,7 @@ const tabs = [
   "onboarding",
   "workout",
   "nutrition",
+  "medical",
   "logs",
   "progress",
   "checkins",
@@ -127,6 +131,7 @@ const workbenchTabs: Array<{
   { value: "baseline", label: "Baseline" },
   { value: "workout", label: "Workout" },
   { value: "nutrition", label: "Nutrition" },
+  { value: "medical", label: "Medical" },
   { value: "checkins", label: "Check-ins" },
   { value: "progress", label: "Progress" },
   { value: "habits", label: "Habits" },
@@ -141,6 +146,7 @@ const workbenchTabIcons: Record<
   onboarding: ClipboardCheck,
   workout: Rocket,
   nutrition: Apple,
+  medical: FileText,
   habits: Flame,
   progress: Sparkles,
   logs: CalendarDays,
@@ -188,6 +194,60 @@ const getInitials = (name: string | null | undefined) => {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
   return initials || "PT";
+};
+
+const sanitizeStorageFileName = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "medical-report";
+
+const formatFileSize = (value: number | null | undefined) => {
+  if (!value || value <= 0) return "Size unavailable";
+  if (value >= 1024 * 1024) {
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (value >= 1024) {
+    return `${Math.round(value / 1024)} KB`;
+  }
+  return `${value} B`;
+};
+
+const buildMetricDelta = ({
+  delta,
+  suffix = "",
+  decimals = 0,
+  positiveIsGood = true,
+}: {
+  delta: number | null | undefined;
+  suffix?: string;
+  decimals?: number;
+  positiveIsGood?: boolean;
+}) => {
+  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
+  const rounded =
+    decimals > 0
+      ? Number(delta.toFixed(decimals))
+      : Math.round(delta);
+  const absolute =
+    decimals > 0 ? Math.abs(rounded).toFixed(decimals) : Math.abs(rounded).toString();
+  const prefix = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
+  const tone =
+    rounded === 0
+      ? "neutral"
+      : positiveIsGood
+        ? rounded > 0
+          ? "positive"
+          : "negative"
+        : rounded < 0
+          ? "positive"
+          : "negative";
+  return {
+    value: `${prefix}${absolute}${suffix}`,
+    tone,
+  } as const;
 };
 
 const formatShortDate = (
@@ -1028,11 +1088,19 @@ export function PtClientDetailPage() {
     [clientQuery.data?.timezone],
   );
   const habitsStart = useMemo(
-    () => addDaysToDateString(habitsToday, -6),
+    () => addDaysToDateString(habitsToday, -13),
     [habitsToday],
   );
   const habitsWeekStart = useMemo(
     () => addDaysToDateString(habitsToday, -6),
+    [habitsToday],
+  );
+  const habitsPreviousWeekStart = useMemo(
+    () => addDaysToDateString(habitsToday, -13),
+    [habitsToday],
+  );
+  const habitsPreviousWeekEnd = useMemo(
+    () => addDaysToDateString(habitsToday, -7),
     [habitsToday],
   );
 
@@ -2233,7 +2301,13 @@ export function PtClientDetailPage() {
     const last7Logs = logs.filter(
       (log) => log.log_date >= habitsWeekStart && log.log_date <= habitsToday,
     );
+    const previous7Logs = logs.filter(
+      (log) =>
+        log.log_date >= habitsPreviousWeekStart &&
+        log.log_date <= habitsPreviousWeekEnd,
+    );
     const daysLogged = last7Logs.length;
+    const previousDaysLogged = previous7Logs.length;
     const avg = (values: Array<number | null | undefined>) => {
       const filtered = values.filter(
         (value) => typeof value === "number",
@@ -2246,6 +2320,10 @@ export function PtClientDetailPage() {
     const avgSteps = avg(last7Logs.map((log) => log.steps ?? null));
     const avgSleep = avg(last7Logs.map((log) => log.sleep_hours ?? null));
     const avgProtein = avg(last7Logs.map((log) => log.protein_g ?? null));
+    const previousAvgSteps = avg(previous7Logs.map((log) => log.steps ?? null));
+    const previousAvgProtein = avg(
+      previous7Logs.map((log) => log.protein_g ?? null),
+    );
 
     const weightLogs = [...last7Logs]
       .filter((log) => typeof log.weight_value === "number")
@@ -2260,16 +2338,34 @@ export function PtClientDetailPage() {
 
     return {
       daysLogged,
+      previousDaysLogged,
       avgSteps,
       avgSleep,
       avgProtein,
+      previousAvgSteps,
+      previousAvgProtein,
       weightChange,
       weightUnit,
     };
-  }, [habitsQuery.data, habitsToday, habitsWeekStart]);
+  }, [
+    habitsPreviousWeekEnd,
+    habitsPreviousWeekStart,
+    habitsQuery.data,
+    habitsToday,
+    habitsWeekStart,
+  ]);
 
   const habitStreak = useMemo(
     () => computeStreak(habitStreakDates, habitsToday, 30),
+    [habitStreakDates, habitsToday],
+  );
+  const previousHabitStreak = useMemo(
+    () =>
+      computeStreak(
+        habitStreakDates.filter((date) => date < habitsToday),
+        addDaysToDateString(habitsToday, -1),
+        30,
+      ),
     [habitStreakDates, habitsToday],
   );
   const lastHabitLogDate = useMemo(
@@ -2282,6 +2378,19 @@ export function PtClientDetailPage() {
     const daysLogged = habitTrends.daysLogged;
     return Math.round((daysLogged / 7) * 100);
   }, [habitTrends.daysLogged, habitsQuery.data]);
+  const previousAdherenceStat = useMemo(() => {
+    if (!habitsQuery.data) return null;
+    return Math.round((habitTrends.previousDaysLogged / 7) * 100);
+  }, [habitTrends.previousDaysLogged, habitsQuery.data]);
+  const adherenceDelta = useMemo(() => {
+    if (
+      typeof adherenceStat !== "number" ||
+      typeof previousAdherenceStat !== "number"
+    ) {
+      return null;
+    }
+    return adherenceStat - previousAdherenceStat;
+  }, [adherenceStat, previousAdherenceStat]);
 
   const lastCheckin = useMemo(() => {
     if (!checkinsRows || checkinsRows.length === 0) return null;
@@ -3690,8 +3799,8 @@ export function PtClientDetailPage() {
             className="lg:col-span-2"
           >
             {statsLoading ? (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, index) => (
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+                {Array.from({ length: 5 }).map((_, index) => (
                   <Card key={index} className="border-border/70 bg-card/80">
                     <CardHeader className="space-y-2">
                       <Skeleton className="h-3 w-24" />
@@ -3701,20 +3810,26 @@ export function PtClientDetailPage() {
                 ))}
               </div>
             ) : clientSnapshot ? (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
                 <StatCard
                   label="Adherence"
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
                   helper="Last 7 days"
                   icon={Sparkles}
-                  sparkline={<MiniSparkline />}
+                  delta={buildMetricDelta({
+                    delta: adherenceDelta,
+                    suffix: "%",
+                  })}
                 />
                 <StatCard
                   label="Consistency streak"
                   value={habitStreak > 0 ? `${habitStreak}d` : "--"}
                   helper="Habit streak"
                   icon={Rocket}
-                  sparkline={<MiniSparkline />}
+                  delta={buildMetricDelta({
+                    delta: habitStreak - previousHabitStreak,
+                    suffix: "d",
+                  })}
                 />
                 <StatCard
                   label="Check-in status"
@@ -3725,14 +3840,18 @@ export function PtClientDetailPage() {
                       : "No check-ins"
                   }
                   icon={CalendarDays}
-                  sparkline={<MiniSparkline />}
                 />
                 <StatCard
                   label="Last workout"
                   value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
                   helper={lastWorkoutStatus ?? "No workouts"}
                   icon={Sparkles}
-                  sparkline={<MiniSparkline />}
+                />
+                <StatCard
+                  label="Program lane"
+                  value={activeProgram?.program_template?.name ?? "--"}
+                  helper={activeProgram?.start_date ?? "No active program"}
+                  icon={Rocket}
                 />
               </div>
             ) : (
@@ -3893,33 +4012,6 @@ export function PtClientDetailPage() {
                 onValueChange={setActiveTab}
                 className="space-y-4"
               >
-                <div className="grid gap-2 lg:grid-cols-4">
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Command</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {nextActionItems[0]?.title ?? "Review client state"}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Risk Board</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {attentionItems[0]?.title ?? "No active blocker"}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Program Lane</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {activeProgram?.program_template?.name ??
-                        "No active program"}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Check-in Lane</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {nextDueSummary.value}
-                    </div>
-                  </div>
-                </div>
                 <div className="rounded-2xl border border-border/70 bg-card/70 p-2">
                   <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
                     {workbenchTabs.map((tab) => (
@@ -4016,6 +4108,12 @@ export function PtClientDetailPage() {
                     clientId={clientId ?? null}
                     workspaceId={workspaceQuery.data ?? null}
                     todayKey={todayKey}
+                  />
+                </TabsContent>
+                <TabsContent value="medical">
+                  <PtClientMedicalTab
+                    clientId={clientId ?? null}
+                    workspaceId={workspaceQuery.data ?? null}
                   />
                 </TabsContent>
                 <TabsContent value="habits">
@@ -7042,12 +7140,24 @@ function PtClientHabitsTab({
                 value={`${Number.isFinite(adherencePct) ? adherencePct : 0}%`}
                 helper="Logged days / 7"
                 icon={Sparkles}
+                delta={buildMetricDelta({
+                  delta:
+                    Number.isFinite(adherencePct) &&
+                    typeof previousAdherenceStat === "number"
+                      ? adherencePct - previousAdherenceStat
+                      : null,
+                  suffix: "%",
+                })}
               />
               <StatCard
                 label="Streak"
                 value={`${habitStreak} days`}
                 helper="Days logged in a row"
                 icon={Rocket}
+                delta={buildMetricDelta({
+                  delta: habitStreak - previousHabitStreak,
+                  suffix: "d",
+                })}
               />
               <StatCard
                 label="Avg steps / protein"
@@ -7062,6 +7172,21 @@ function PtClientHabitsTab({
                 }
                 helper="7-day averages"
                 icon={Flame}
+                delta={
+                  typeof avgSteps === "number" &&
+                  typeof habitTrends.previousAvgSteps === "number"
+                    ? buildMetricDelta({
+                        delta: avgSteps - habitTrends.previousAvgSteps,
+                        suffix: " steps",
+                      })
+                    : typeof avgProtein === "number" &&
+                        typeof habitTrends.previousAvgProtein === "number"
+                      ? buildMetricDelta({
+                          delta: avgProtein - habitTrends.previousAvgProtein,
+                          suffix: "g protein",
+                        })
+                      : null
+                }
               />
             </div>
           </div>
@@ -9103,6 +9228,631 @@ function PtClientNotesTab({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function PtClientMedicalTab({
+  clientId,
+  workspaceId,
+}: {
+  clientId: string | null;
+  workspaceId: string | null;
+}) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [historyTitle, setHistoryTitle] = useState("");
+  const [historyDate, setHistoryDate] = useState("");
+  const [historyNotes, setHistoryNotes] = useState("");
+  const [historyStatus, setHistoryStatus] = useState<"idle" | "saving" | "error">(
+    "idle",
+  );
+  const [historyMessage, setHistoryMessage] = useState<string | null>(null);
+  const [labName, setLabName] = useState("");
+  const [labValue, setLabValue] = useState("");
+  const [labUnit, setLabUnit] = useState("");
+  const [labDate, setLabDate] = useState("");
+  const [labNotes, setLabNotes] = useState("");
+  const [labStatus, setLabStatus] = useState<"idle" | "saving" | "error">(
+    "idle",
+  );
+  const [labMessage, setLabMessage] = useState<string | null>(null);
+  const [documentLabel, setDocumentLabel] = useState("");
+  const [documentDate, setDocumentDate] = useState("");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
+  const [documentMessage, setDocumentMessage] = useState<string | null>(null);
+  const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(
+    null,
+  );
+
+  const recordsQuery = useQuery({
+    queryKey: ["pt-client-medical-records", clientId, workspaceId],
+    enabled: !!clientId && !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_medical_records")
+        .select(
+          "id, entry_type, title, result_value, unit, observed_at, notes, created_at",
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("workspace_id", workspaceId ?? "")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const documentsQuery = useQuery({
+    queryKey: ["pt-client-medical-documents", clientId, workspaceId],
+    enabled: !!clientId && !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_medical_documents")
+        .select(
+          "id, label, file_name, mime_type, file_size, storage_path, observed_at, created_at",
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("workspace_id", workspaceId ?? "")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const historyEntries = useMemo(
+    () =>
+      (recordsQuery.data ?? []).filter(
+        (entry) => entry.entry_type === "history",
+      ),
+    [recordsQuery.data],
+  );
+
+  const labEntries = useMemo(
+    () =>
+      (recordsQuery.data ?? []).filter(
+        (entry) => entry.entry_type === "lab_result",
+      ),
+    [recordsQuery.data],
+  );
+
+  const handleSaveHistory = async () => {
+    const trimmedTitle = historyTitle.trim();
+    const trimmedNotes = historyNotes.trim();
+    if (!clientId || !workspaceId || !user?.id || trimmedTitle.length === 0) {
+      return;
+    }
+    setHistoryStatus("saving");
+    setHistoryMessage(null);
+    const { error } = await supabase.from("client_medical_records").insert({
+      client_id: clientId,
+      workspace_id: workspaceId,
+      entry_type: "history",
+      title: trimmedTitle,
+      observed_at: historyDate || null,
+      notes: trimmedNotes || null,
+      created_by: user.id,
+    });
+
+    if (error) {
+      setHistoryStatus("error");
+      setHistoryMessage(getErrorMessage(error));
+      return;
+    }
+
+    setHistoryTitle("");
+    setHistoryDate("");
+    setHistoryNotes("");
+    setHistoryStatus("idle");
+    setHistoryMessage("Medical history saved.");
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-medical-records", clientId, workspaceId],
+    });
+  };
+
+  const handleSaveLabResult = async () => {
+    const trimmedName = labName.trim();
+    const trimmedValue = labValue.trim();
+    const trimmedUnit = labUnit.trim();
+    const trimmedNotes = labNotes.trim();
+    if (
+      !clientId ||
+      !workspaceId ||
+      !user?.id ||
+      trimmedName.length === 0 ||
+      trimmedValue.length === 0
+    ) {
+      return;
+    }
+    setLabStatus("saving");
+    setLabMessage(null);
+    const { error } = await supabase.from("client_medical_records").insert({
+      client_id: clientId,
+      workspace_id: workspaceId,
+      entry_type: "lab_result",
+      title: trimmedName,
+      result_value: trimmedValue,
+      unit: trimmedUnit || null,
+      observed_at: labDate || null,
+      notes: trimmedNotes || null,
+      created_by: user.id,
+    });
+
+    if (error) {
+      setLabStatus("error");
+      setLabMessage(getErrorMessage(error));
+      return;
+    }
+
+    setLabName("");
+    setLabValue("");
+    setLabUnit("");
+    setLabDate("");
+    setLabNotes("");
+    setLabStatus("idle");
+    setLabMessage("Lab result saved.");
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-medical-records", clientId, workspaceId],
+    });
+  };
+
+  const handleUploadDocument = async () => {
+    if (!clientId || !workspaceId || !user?.id || !documentFile) return;
+    setDocumentStatus("saving");
+    setDocumentMessage(null);
+
+    const sanitizedFileName = sanitizeStorageFileName(documentFile.name);
+    const storagePath = `${clientId}/${crypto.randomUUID()}-${sanitizedFileName}`;
+    const { error: uploadError } = await supabase.storage
+      .from("medical_documents")
+      .upload(storagePath, documentFile, {
+        upsert: false,
+        contentType: documentFile.type || "application/octet-stream",
+      });
+
+    if (uploadError) {
+      setDocumentStatus("error");
+      setDocumentMessage(getErrorMessage(uploadError));
+      return;
+    }
+
+    const { error: insertError } = await supabase
+      .from("client_medical_documents")
+      .insert({
+        client_id: clientId,
+        workspace_id: workspaceId,
+        label: documentLabel.trim() || null,
+        file_name: documentFile.name,
+        mime_type: documentFile.type || null,
+        file_size: documentFile.size || null,
+        storage_path: storagePath,
+        observed_at: documentDate || null,
+        uploaded_by: user.id,
+      });
+
+    if (insertError) {
+      await supabase.storage.from("medical_documents").remove([storagePath]);
+      setDocumentStatus("error");
+      setDocumentMessage(getErrorMessage(insertError));
+      return;
+    }
+
+    setDocumentLabel("");
+    setDocumentDate("");
+    setDocumentFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setDocumentStatus("idle");
+    setDocumentMessage("Medical report uploaded.");
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-medical-documents", clientId, workspaceId],
+    });
+  };
+
+  const handleOpenDocument = async (documentRow: {
+    id: string;
+    storage_path: string | null;
+  }) => {
+    if (!documentRow.storage_path) return;
+    setOpeningDocumentId(documentRow.id);
+    const { data, error } = await supabase.storage
+      .from("medical_documents")
+      .createSignedUrl(documentRow.storage_path, 60 * 10);
+    setOpeningDocumentId(null);
+
+    if (error || !data?.signedUrl) {
+      setDocumentStatus("error");
+      setDocumentMessage(error ? getErrorMessage(error) : "Unable to open file.");
+      return;
+    }
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]">
+      <div className="space-y-6">
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HeartPulse className="h-4 w-4 text-primary" />
+              Medical history
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Record diagnoses, surgeries, medications, injuries, or anything
+              that should stay in the coaching workspace.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                History item
+              </label>
+              <Input
+                value={historyTitle}
+                onChange={(event) => setHistoryTitle(event.target.value)}
+                placeholder="Ex: Prior ACL reconstruction, thyroid medication, low back pain history"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Relevant date
+              </label>
+              <Input
+                type="date"
+                value={historyDate}
+                onChange={(event) => setHistoryDate(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Notes
+              </label>
+              <textarea
+                className="min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={historyNotes}
+                onChange={(event) => setHistoryNotes(event.target.value)}
+                placeholder="Capture context that should follow programming and check-in decisions."
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleSaveHistory}
+                disabled={
+                  historyStatus === "saving" || historyTitle.trim().length === 0
+                }
+              >
+                {historyStatus === "saving" ? "Saving..." : "Add history item"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {historyMessage ?? "Visible only in the client medical record."}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-primary" />
+              Add lab result
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Log individual test values without leaving the client workspace.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1.1fr)_120px_120px]">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Test name
+                </label>
+                <Input
+                  value={labName}
+                  onChange={(event) => setLabName(event.target.value)}
+                  placeholder="Ex: HbA1c, Vitamin D, LDL"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Value
+                </label>
+                <Input
+                  value={labValue}
+                  onChange={(event) => setLabValue(event.target.value)}
+                  placeholder="5.7"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Unit
+                </label>
+                <Input
+                  value={labUnit}
+                  onChange={(event) => setLabUnit(event.target.value)}
+                  placeholder="%"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Test date
+              </label>
+              <Input
+                type="date"
+                value={labDate}
+                onChange={(event) => setLabDate(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Notes
+              </label>
+              <textarea
+                className="min-h-[96px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={labNotes}
+                onChange={(event) => setLabNotes(event.target.value)}
+                placeholder="Optional context, trend notes, or coaching implications."
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleSaveLabResult}
+                disabled={
+                  labStatus === "saving" ||
+                  labName.trim().length === 0 ||
+                  labValue.trim().length === 0
+                }
+              >
+                {labStatus === "saving" ? "Saving..." : "Add test result"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {labMessage ?? "Name, value, and unit keep results scan-friendly."}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-4 w-4 text-primary" />
+              Upload report
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Attach a lab report, bloodwork PDF, or photo of medical results.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Label
+                </label>
+                <Input
+                  value={documentLabel}
+                  onChange={(event) => setDocumentLabel(event.target.value)}
+                  placeholder="Ex: March blood panel"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Report date
+                </label>
+                <Input
+                  type="date"
+                  value={documentDate}
+                  onChange={(event) => setDocumentDate(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                File
+              </label>
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,image/*"
+                onChange={(event) =>
+                  setDocumentFile(event.target.files?.[0] ?? null)
+                }
+              />
+            </div>
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+              Accepts PDF and image uploads. Files stay private and open through
+              signed URLs.
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleUploadDocument}
+                disabled={documentStatus === "saving" || !documentFile}
+              >
+                {documentStatus === "saving" ? "Uploading..." : "Upload report"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {documentMessage ??
+                  (documentFile
+                    ? `${documentFile.name} selected`
+                    : "Attach a PDF or image file.")}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-6">
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle>Medical history timeline</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Operational history that should shape programming and coaching
+              decisions.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recordsQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : recordsQuery.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                {getFriendlyErrorMessage()}
+              </div>
+            ) : historyEntries.length > 0 ? (
+              historyEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {entry.title}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {formatShortDate(entry.observed_at, "No date recorded")}
+                    </span>
+                  </div>
+                  {entry.notes ? (
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                      {entry.notes}
+                    </p>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <EmptyState
+                title="No medical history recorded"
+                description="Add history items here so key context stays attached to the client, not buried in messages."
+                icon={<HeartPulse className="h-5 w-5" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle>Lab results</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Structured test values stay easy to compare at a glance.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recordsQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : recordsQuery.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                {getFriendlyErrorMessage()}
+              </div>
+            ) : labEntries.length > 0 ? (
+              labEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {entry.title}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-foreground">
+                        {entry.result_value}
+                        {entry.unit ? ` ${entry.unit}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {formatShortDate(entry.observed_at, "No date recorded")}
+                    </span>
+                  </div>
+                  {entry.notes ? (
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                      {entry.notes}
+                    </p>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <EmptyState
+                title="No lab results yet"
+                description="Use structured values for labs you want to review quickly during programming and check-ins."
+                icon={<FlaskConical className="h-5 w-5" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle>Uploaded reports</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              File attachments for PDFs, scans, screenshots, and report photos.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {documentsQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : documentsQuery.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                {getFriendlyErrorMessage()}
+              </div>
+            ) : (documentsQuery.data ?? []).length > 0 ? (
+              (documentsQuery.data ?? []).map((documentRow) => (
+                <div
+                  key={documentRow.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/35 p-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {documentRow.label?.trim() || documentRow.file_name}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {documentRow.file_name}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>{formatFileSize(documentRow.file_size)}</span>
+                      <span>•</span>
+                      <span>
+                        {formatShortDate(
+                          documentRow.observed_at,
+                          formatShortDate(documentRow.created_at),
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleOpenDocument(documentRow)}
+                    disabled={openingDocumentId === documentRow.id}
+                  >
+                    {openingDocumentId === documentRow.id ? "Opening..." : "Open"}
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <EmptyState
+                title="No uploaded reports yet"
+                description="Upload bloodwork PDFs or result screenshots here so the medical record stays attached to the client."
+                icon={<FileText className="h-5 w-5" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

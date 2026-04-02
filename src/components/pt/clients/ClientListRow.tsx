@@ -1,8 +1,3 @@
-import {
-  getClientRiskFlagMeta,
-  normalizeClientRiskFlags,
-} from "../../../lib/client-lifecycle";
-import { Badge } from "../../ui/badge";
 import { StatusPill } from "../dashboard/StatusPill";
 
 const makeInitials = (name: string) =>
@@ -18,13 +13,8 @@ export function ClientListRow({
   program,
   summary,
   status,
-  onboardingStatus,
-  riskFlags,
   lastActivity,
-  healthLabel,
-  healthVariant = "muted",
   nextAction,
-  coachingSignal,
   pausedReason,
   churnReason,
   onClick,
@@ -33,19 +23,12 @@ export function ClientListRow({
   program: string;
   summary: string;
   status: string | null;
-  onboardingStatus?: string | null;
-  riskFlags?: string[] | null;
   lastActivity: string;
-  healthLabel: string;
-  healthVariant?: "success" | "warning" | "danger" | "muted" | "secondary";
   nextAction: string;
-  coachingSignal: string;
   pausedReason?: string | null;
   churnReason?: string | null;
   onClick: () => void;
 }) {
-  const normalizedRiskFlags = normalizeClientRiskFlags(riskFlags);
-  const visibleRiskFlags = normalizedRiskFlags.slice(0, 2);
   const secondaryLabel = pausedReason?.trim() || churnReason?.trim() || summary;
 
   return (
@@ -67,9 +50,9 @@ export function ClientListRow({
                     {name}
                   </div>
                   <StatusPill status={status ?? "active"} />
-                  {onboardingStatus && onboardingStatus !== "completed" ? (
-                    <StatusPill status={onboardingStatus} />
-                  ) : null}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Last activity {lastActivity}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {program}
@@ -84,61 +67,6 @@ export function ClientListRow({
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Open client workspace
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="ops-stat space-y-1">
-                <div className="ops-kicker">Health</div>
-                <Badge
-                  variant={healthVariant}
-                  className="w-fit px-2.5 py-1 text-[10px]"
-                >
-                  {healthLabel}
-                </Badge>
-              </div>
-
-              <div className="ops-stat space-y-1">
-                <div className="ops-kicker">Last Activity</div>
-                <div className="text-sm font-semibold text-foreground">
-                  {lastActivity}
-                </div>
-              </div>
-
-              <div className="ops-stat space-y-1">
-                <div className="ops-kicker">Coach Signal</div>
-                <div className="text-sm font-semibold text-foreground">
-                  {coachingSignal}
-                </div>
-              </div>
-
-              <div className="ops-stat space-y-1">
-                <div className="ops-kicker">Risk Board</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {visibleRiskFlags.map((flag) => {
-                    const meta = getClientRiskFlagMeta(flag);
-                    if (!meta) return null;
-                    return (
-                      <Badge
-                        key={flag}
-                        variant={meta.variant}
-                        className="px-2 py-0.5 text-[10px]"
-                      >
-                        {meta.shortLabel}
-                      </Badge>
-                    );
-                  })}
-                  {normalizedRiskFlags.length > visibleRiskFlags.length ? (
-                    <Badge variant="muted" className="px-2 py-0.5 text-[10px]">
-                      +{normalizedRiskFlags.length - visibleRiskFlags.length}
-                    </Badge>
-                  ) : null}
-                  {normalizedRiskFlags.length === 0 ? (
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Clear
-                    </span>
-                  ) : null}
                 </div>
               </div>
             </div>

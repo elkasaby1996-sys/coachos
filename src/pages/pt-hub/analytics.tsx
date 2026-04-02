@@ -10,6 +10,16 @@ import {
   usePtHubProfileReadiness,
 } from "../../features/pt-hub/lib/pt-hub";
 
+const buildMetricDelta = (delta: number | null | undefined, suffix = "") => {
+  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
+  const rounded = Math.round(delta);
+  return {
+    value: `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`,
+    tone:
+      rounded === 0 ? "neutral" : rounded > 0 ? "positive" : "negative",
+  } as const;
+};
+
 export function PtHubAnalyticsPage() {
   const analyticsQuery = usePtHubAnalytics();
   const readinessQuery = usePtHubProfileReadiness();
@@ -42,6 +52,10 @@ export function PtHubAnalyticsPage() {
           value={analytics?.applicationsThisMonth ?? 0}
           helper="Received in the last 30 days"
           icon={BarChart3}
+          delta={buildMetricDelta(
+            (analytics?.applicationsThisMonth ?? 0) -
+              (analytics?.applicationsPreviousWindow ?? 0),
+          )}
         />
         <StatCard
           surface="pt-hub"

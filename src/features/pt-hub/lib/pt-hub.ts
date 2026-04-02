@@ -693,9 +693,15 @@ export function usePtHubOverview() {
       const clients = clientsQuery.data ?? [];
       const startOfWeek = getDateDaysAgo(7);
       const startOfMonth = getDateDaysAgo(30);
+      const previousMonthStart = getDateDaysAgo(60);
       const monthlyLeads = leads.filter((lead) =>
         isLeadInDateWindow(lead.submittedAt, startOfMonth),
       );
+      const applicationsPreviousWindow = leads.filter((lead) => {
+        const parsed = new Date(lead.submittedAt);
+        if (Number.isNaN(parsed.getTime())) return false;
+        return parsed >= previousMonthStart && parsed < startOfMonth;
+      }).length;
 
       return {
         activeWorkspaces: workspaces.length,
@@ -716,6 +722,7 @@ export function usePtHubOverview() {
           isLeadInDateWindow(lead.submittedAt, startOfWeek),
         ).length,
         applicationsThisMonth: monthlyLeads.length,
+        applicationsPreviousWindow,
         readyForPublish: readinessQuery.data?.readyForPublish ?? false,
         missingSetupItems: readinessQuery.data?.missingItems ?? [],
         businessHealthLabel:
@@ -1027,6 +1034,7 @@ export function usePtHubAnalytics() {
         totalApplications: leads.length,
         applicationsThisWeek,
         applicationsThisMonth,
+        applicationsPreviousWindow,
         applicationConversionRate:
           leads.length > 0
             ? Math.round((acceptedApplications / leads.length) * 100)

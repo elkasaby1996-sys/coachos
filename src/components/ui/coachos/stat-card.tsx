@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Card, CardHeader, CardTitle } from "../card";
 import { cn } from "../../../lib/utils";
 
@@ -8,7 +7,7 @@ export function StatCard({
   helper,
   icon: Icon,
   accent,
-  sparkline,
+  delta,
   surface = "default",
   className,
 }: {
@@ -17,7 +16,10 @@ export function StatCard({
   helper?: string;
   icon?: React.ComponentType<{ className?: string }>;
   accent?: boolean;
-  sparkline?: ReactNode;
+  delta?: {
+    value: string;
+    tone?: "positive" | "negative" | "neutral";
+  } | null;
   surface?: "default" | "pt-hub";
   className?: string;
 }) {
@@ -73,8 +75,20 @@ export function StatCard({
               </p>
             ) : null}
           </div>
-          {sparkline ? (
-            <div className="hidden sm:block">{sparkline}</div>
+          {delta ? (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+                delta.tone === "positive" &&
+                  "border-success/30 bg-success/12 text-success",
+                delta.tone === "negative" &&
+                  "border-danger/30 bg-danger/12 text-danger",
+                (!delta.tone || delta.tone === "neutral") &&
+                  "border-border/70 bg-muted/28 text-muted-foreground",
+              )}
+            >
+              {delta.value}
+            </span>
           ) : null}
         </div>
       </CardHeader>
@@ -83,4 +97,4 @@ export function StatCard({
 }
 
 // Example:
-// <StatCard label="Momentum" value="4 workouts" helper="2 day streak" icon={Rocket} sparkline={<MiniSparkline />} />
+// <StatCard label="Momentum" value="4 workouts" helper="Last 7 days" icon={Rocket} delta={{ value: "+2", tone: "positive" }} />

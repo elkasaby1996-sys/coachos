@@ -156,39 +156,11 @@ export function PtClientsPage() {
         summary:
           client.has_overdue_checkin && (client.overdue_checkins_count ?? 0) > 0
             ? `${client.overdue_checkins_count} overdue check-in${(client.overdue_checkins_count ?? 0) > 1 ? "s" : ""}`
-            : client.goal?.trim() || "Operationally healthy",
+            : client.goal?.trim() || "",
         riskFlags: client.risk_flags ?? [],
         lastActivityLabel: lastActivityRaw
           ? formatRelativeTime(lastActivityRaw)
           : "No recent activity",
-        health:
-          client.has_overdue_checkin && (client.overdue_checkins_count ?? 0) > 0
-            ? {
-                label: "Check-in overdue",
-                variant: "danger" as const,
-              }
-            : (() => {
-                const riskMeta = getClientRiskFlagMeta(client.risk_flags?.[0]);
-                if (riskMeta) {
-                  return {
-                    label: riskMeta.shortLabel,
-                    variant: riskMeta.variant,
-                  };
-                }
-                if (lifecycleState === "paused") {
-                  return { label: "Paused", variant: "warning" as const };
-                }
-                if (lifecycleState === "at_risk") {
-                  return {
-                    label: "Needs attention",
-                    variant: "danger" as const,
-                  };
-                }
-                return {
-                  label: "Operationally clear",
-                  variant: "success" as const,
-                };
-              })(),
         nextAction: client.onboarding_incomplete
           ? "Finish onboarding review"
           : client.has_overdue_checkin &&
@@ -320,13 +292,8 @@ export function PtClientsPage() {
                 program={client.program}
                 summary={client.summary}
                 status={client.lifecycleState}
-                onboardingStatus={client.onboarding_status}
-                riskFlags={client.riskFlags}
                 lastActivity={client.lastActivityLabel}
-                healthLabel={client.health.label}
-                healthVariant={client.health.variant}
                 nextAction={client.nextAction}
-                coachingSignal={client.coachingSignal}
                 pausedReason={client.paused_reason}
                 churnReason={client.churn_reason}
                 onClick={() =>
