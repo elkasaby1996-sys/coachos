@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -233,6 +233,11 @@ export function PtCalendarPage() {
   });
 
   const monthLabel = useMemo(() => getMonthLabel(monthCursor), [monthCursor]);
+  const handleReturnToToday = useCallback(() => {
+    const todayDate = new Date(`${todayKey}T00:00:00`);
+    setMonthCursor(new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
+    setSelectedDateKey(todayKey);
+  }, [todayKey]);
   const isSavingEvent = createEventMutation.isPending;
 
   const clientMap = useMemo(() => {
@@ -310,6 +315,18 @@ export function PtCalendarPage() {
               {monthLabel}
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleReturnToToday}
+                disabled={
+                  selectedDateKey === todayKey &&
+                  getMonthStartKey(monthCursor) ===
+                    getMonthStartKey(new Date(`${todayKey}T00:00:00`))
+                }
+              >
+                Today
+              </Button>
               <Button
                 size="icon"
                 variant="secondary"
@@ -404,7 +421,14 @@ export function PtCalendarPage() {
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-foreground">
+                      <span
+                        className={cn(
+                          "flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-sm font-semibold",
+                          isToday
+                            ? "border-primary/45 bg-primary/16 text-primary"
+                            : "border-border/70 bg-background/60 text-foreground",
+                        )}
+                      >
                         {day.key.slice(-2)}
                       </span>
                       {dayState ? (
@@ -540,7 +564,8 @@ export function PtCalendarPage() {
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </div>
-            ) : selectedDateCheckins.length === 0 && selectedDateEvents.length === 0 ? (
+            ) : selectedDateCheckins.length === 0 &&
+              selectedDateEvents.length === 0 ? (
               <EmptyState
                 title="No items for this day"
                 description="Create an event or check another date."
@@ -548,7 +573,9 @@ export function PtCalendarPage() {
             ) : (
               <div className="space-y-3">
                 {selectedDateCheckins.map((row) => {
-                  const client = row.client_id ? clientMap.get(row.client_id) : null;
+                  const client = row.client_id
+                    ? clientMap.get(row.client_id)
+                    : null;
                   const name = client?.display_name?.trim()
                     ? client.display_name
                     : "Client";

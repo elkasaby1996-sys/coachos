@@ -41,9 +41,13 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(180deg,oklch(var(--popover)/0.98),oklch(var(--popover)/0.94))] p-1.5 text-popover-foreground shadow-[0_20px_60px_-40px_rgba(0,0,0,0.85)]",
+      "z-50 min-w-[8rem] overflow-hidden rounded-2xl border border-border/70 p-1.5 text-popover-foreground",
       className,
     )}
+    style={{
+      background: "var(--popover-bg)",
+      boxShadow: "var(--popover-shadow)",
+    }}
     {...props}
   />
 ));
@@ -59,9 +63,13 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[12rem] overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(180deg,oklch(var(--popover)/0.98),oklch(var(--popover)/0.94))] p-1.5 text-popover-foreground shadow-[0_20px_60px_-40px_rgba(0,0,0,0.85)]",
+        "z-50 min-w-[12rem] overflow-hidden rounded-2xl border border-border/70 p-1.5 text-popover-foreground",
         className,
       )}
+      style={{
+        background: "var(--popover-bg)",
+        boxShadow: "var(--popover-shadow)",
+      }}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -81,7 +89,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-xl px-3 py-2 text-sm outline-none transition-colors focus:bg-secondary/80 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-xl px-3 py-2 text-sm outline-none transition-colors focus:bg-muted/85 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       inset && "pl-8",
       className,
     )}

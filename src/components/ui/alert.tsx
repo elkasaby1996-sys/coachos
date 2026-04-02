@@ -9,7 +9,7 @@ export function Alert({
     <div
       role="alert"
       className={cn(
-        "rounded-[22px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.88))] px-4 py-3 text-sm text-foreground shadow-card",
+        "surface-panel rounded-[22px] px-4 py-3 text-sm text-foreground",
         className,
       )}
       {...props}

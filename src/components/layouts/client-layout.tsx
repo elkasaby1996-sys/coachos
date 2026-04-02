@@ -157,12 +157,12 @@ export function ClientLayout() {
   return (
     <div className="min-h-screen bg-background [background:var(--portal-page-bg)]">
       <div className="flex min-h-screen w-full">
-        <aside className="hidden w-20 flex-col border-r border-border/70 bg-card/80 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
+        <aside className="theme-sidebar-surface hidden w-20 flex-col border-r border-border/70 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
           <div className="mb-8 flex items-center justify-between">
             <span className="hidden text-lg font-semibold tracking-tight xl:inline">
               CoachOS
             </span>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-background/55 text-sm font-semibold text-foreground xl:hidden">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-card/72 text-sm font-semibold text-foreground xl:hidden">
               C
             </span>
           </div>
@@ -176,7 +176,7 @@ export function ClientLayout() {
                 className={({ isActive }) =>
                   cn(
                     "flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm text-muted-foreground hover:bg-muted xl:justify-start",
-                    isActive && "bg-muted text-foreground",
+                    isActive && "bg-card/82 text-foreground",
                   )
                 }
               >
@@ -201,7 +201,7 @@ export function ClientLayout() {
           </Button>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-border/60 bg-background/60 py-3.5 backdrop-blur-xl">
+          <header className="theme-topbar border-b border-border/60 py-3.5 backdrop-blur-xl">
             <PageContainer
               size="portal"
               className="flex flex-wrap items-center justify-between gap-3"
@@ -294,7 +294,7 @@ export function ClientLayout() {
               )}
             </PageContainer>
           </main>
-          <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 bg-card/92 py-2 backdrop-blur-xl md:hidden">
+          <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
             <PageContainer size="portal" className="grid grid-cols-5 gap-1">
               {navItems.map((item) => (
                 <NavLink
@@ -304,7 +304,7 @@ export function ClientLayout() {
                   className={({ isActive }) =>
                     cn(
                       "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-[11px] text-muted-foreground transition",
-                      isActive && "bg-background/65 text-foreground",
+                      isActive && "bg-card/82 text-foreground",
                     )
                   }
                 >

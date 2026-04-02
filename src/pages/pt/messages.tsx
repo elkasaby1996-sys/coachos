@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { SendHorizontal } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -571,29 +572,29 @@ export function PtMessagesPage() {
 
         <DashboardCard
           title={
-            selectedClient
-              ? (selectedConversationRow?.name ??
-                selectedClient.display_name ??
-                "Client")
-              : "Conversation"
+            selectedClient ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-lg font-semibold text-foreground">
+                  {selectedConversationRow?.name ?? "Client"}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-auto px-2 py-1 text-xs"
+                  onClick={() => navigate(`/pt/clients/${selectedClient.id}`)}
+                >
+                  Open profile
+                </Button>
+                <StatusPill status={selectedClient.status ?? "active"} />
+              </div>
+            ) : (
+              "Conversation"
+            )
           }
         >
           {!selectedClient ? (
             <div className="flex h-[560px] flex-col justify-between gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3 rounded-[20px] border border-border/70 bg-background/45 px-4 py-3">
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">
-                      Thread ready
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Select a client to open the thread.
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {unreadConversationCount} unread
-                  </div>
-                </div>
                 <EmptyState
                   title="Choose a conversation"
                   description="Select a client to open the thread."
@@ -623,78 +624,13 @@ export function PtMessagesPage() {
             </div>
           ) : (
             <div className="flex h-[560px] flex-col gap-4">
-              <div className="rounded-[22px] border border-border/70 bg-background/45 px-4 py-3">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg font-semibold text-foreground">
-                        {selectedConversationRow?.name ?? "Client"}
-                      </h2>
-                      <StatusPill status={selectedClient.status ?? "active"} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedConversationRow?.conversation?.last_message_at
-                        ? `Last activity ${formatRelativeTime(
-                            selectedConversationRow.conversation
-                              .last_message_at,
-                          )}.`
-                        : "No prior thread history yet."}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() =>
-                        navigate(`/pt/clients/${selectedClient.id}`)
-                      }
-                    >
-                      Open client
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        setMessageDraft(
-                          "Quick check-in: tell me how training and recovery are feeling today.",
-                        )
-                      }
-                    >
-                      Insert check-in prompt
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-border/65 bg-secondary/16 px-3 py-2.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Thread status
-                    </div>
-                    <div className="mt-1 text-sm text-foreground">
-                      {selectedConversationRow?.conversation
-                        ? "Active conversation"
-                        : "Ready to start"}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-border/65 bg-secondary/16 px-3 py-2.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Unread
-                    </div>
-                    <div className="mt-1 text-sm text-foreground">
-                      {selectedConversationRow?.unreadCount
-                        ? `${selectedConversationRow.unreadCount} client message${selectedConversationRow.unreadCount > 1 ? "s" : ""}`
-                        : "Nothing waiting"}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-border/65 bg-secondary/16 px-3 py-2.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Coaching context
-                    </div>
-                    <div className="mt-1 text-sm text-foreground">
-                      Keep replies short, clear, and tied to the client plan.
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                {selectedConversationRow?.conversation?.last_message_at
+                  ? `Last activity ${formatRelativeTime(
+                      selectedConversationRow.conversation.last_message_at,
+                    )}.`
+                  : "No prior thread history yet."}
+              </p>
 
               <div className="flex-1 space-y-3 overflow-y-auto pr-2">
                 {messageRows.length === 0 ? (
@@ -743,20 +679,27 @@ export function PtMessagesPage() {
                         <div
                           key={message.id}
                           className={cn(
-                            "max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
-                            isCoach
-                              ? "ml-auto border-primary/20 bg-primary/12 text-foreground"
-                              : "border-border/60 bg-secondary/45 text-foreground",
+                            "flex",
+                            isCoach ? "justify-end" : "justify-start",
                           )}
                         >
-                          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                            {isCoach
-                              ? "Coach"
-                              : (message.sender_name ?? "Client")}
-                          </div>
-                          <div>{message.body ?? ""}</div>
-                          <div className="mt-1 text-[10px] text-muted-foreground">
-                            {formatTime(message.created_at)}
+                          <div
+                            className={cn(
+                              "w-fit max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
+                              isCoach
+                                ? "border-primary/20 bg-primary/12 text-foreground"
+                                : "border-border/60 bg-secondary/45 text-foreground",
+                            )}
+                          >
+                            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                              {isCoach
+                                ? "Coach"
+                                : (message.sender_name ?? "Client")}
+                            </div>
+                            <div>{message.body ?? ""}</div>
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              {formatTime(message.created_at)}
+                            </div>
                           </div>
                         </div>
                       );
@@ -771,21 +714,9 @@ export function PtMessagesPage() {
                 <div ref={scrollRef} />
               </div>
               <div className="rounded-[22px] border border-border/70 bg-background/45 p-3">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {suggestedReplies.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      onClick={() => setMessageDraft(prompt)}
-                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-border hover:bg-secondary/28 hover:text-foreground"
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-end gap-2">
+                <div className="flex items-stretch gap-2">
                   <textarea
-                    className="min-h-[88px] w-full resize-y rounded-[18px] border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="h-12 min-h-12 w-full resize-none rounded-[16px] border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={messageDraft}
                     onChange={(event) => setMessageDraft(event.target.value)}
                     placeholder="Write a coaching reply"
@@ -810,9 +741,14 @@ export function PtMessagesPage() {
                   <Button
                     onClick={() => sendMutation.mutate()}
                     disabled={!messageDraft.trim() || sendMutation.isPending}
-                    className="min-w-[112px]"
+                    className="h-12 w-12 shrink-0 rounded-[16px] px-0"
+                    aria-label={
+                      sendMutation.isPending
+                        ? "Sending message"
+                        : "Send message"
+                    }
                   >
-                    {sendMutation.isPending ? "Sending..." : "Send"}
+                    <SendHorizontal className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

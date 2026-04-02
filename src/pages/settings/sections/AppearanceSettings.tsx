@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Switch } from "../../../components/ui/switch";
+import {
+  AVAILABLE_THEME_PREFERENCES,
+  LIGHT_MODE_ENABLED,
+} from "../../../lib/theme";
 import { useThemePreference } from "../../../lib/use-theme-preference";
 import {
   SettingsActions,
@@ -88,10 +92,14 @@ export function AppearanceSettings() {
         >
           <SettingsRow
             label="Theme"
-            hint="Default mode is dark unless explicitly changed."
+            hint={
+              LIGHT_MODE_ENABLED
+                ? "Default mode is dark unless explicitly changed."
+                : "Light mode is temporarily disabled while the theme system is being corrected."
+            }
           >
             <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
-              {(["system", "dark", "light"] as const).map((theme) => (
+              {AVAILABLE_THEME_PREFERENCES.map((theme) => (
                 <Button
                   key={theme}
                   type="button"

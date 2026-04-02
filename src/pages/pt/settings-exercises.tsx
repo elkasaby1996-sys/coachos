@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import {
   Dialog,
@@ -37,12 +42,15 @@ type ExerciseRow = {
   id: string;
   owner_user_id: string;
   name: string;
+  category: string | null;
   muscle_group: string | null;
   primary_muscle: string | null;
   secondary_muscles: string[] | null;
   equipment: string | null;
   video_url: string | null;
+  instructions: string | null;
   notes: string | null;
+  cues: string | null;
   is_unilateral: boolean | null;
   tags: string[] | null;
   created_at: string | null;
@@ -153,22 +161,55 @@ const joinParagraphs = (values: string[]) =>
     .filter(Boolean)
     .join("\n\n");
 
+const splitParagraphs = (value: string | null | undefined) =>
+  (value ?? "")
+    .split(/\n+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const getExerciseContextChips = (exercise: {
+  category?: string | null;
+  muscle_group?: string | null;
+  primary_muscle?: string | null;
+  tags?: string[] | null;
+  is_unilateral?: boolean | null;
+}) =>
+  Array.from(
+    new Set(
+      [
+        exercise.primary_muscle,
+        exercise.muscle_group,
+        exercise.category,
+        ...(exercise.tags ?? []),
+        exercise.is_unilateral ? "Unilateral" : null,
+      ].filter((value): value is string => Boolean(value?.trim())),
+    ),
+  ).slice(0, 4);
+
 const datasetPageSize = 24;
 
 export function PtExerciseLibraryPage() {
   const queryClient = useQueryClient();
-  const { workspaceId, ownerUserId, loading: workspaceLoading, error: workspaceError } =
-    useWorkspace();
+  const {
+    workspaceId,
+    ownerUserId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<ExerciseRow | null>(null);
   const [form, setForm] = useState<ExerciseFormState>(emptyForm);
-  const [filters, setFilters] = useState({ name: "", primary_muscle: "", tag: "" });
+  const [filters, setFilters] = useState({
+    name: "",
+    primary_muscle: "",
+    tag: "",
+  });
   const [datasetSearch, setDatasetSearch] =
     useState<DatasetSearchState>(emptyDatasetSearch);
-  const [datasetResults, setDatasetResults] = useState<ExerciseDatasetExercise[]>(
-    [],
-  );
+  const [datasetResults, setDatasetResults] = useState<
+    ExerciseDatasetExercise[]
+  >([]);
   const [datasetLoading, setDatasetLoading] = useState(false);
   const [datasetError, setDatasetError] = useState<string | null>(null);
   const [datasetCursor, setDatasetCursor] = useState<string | null>(null);
@@ -201,7 +242,9 @@ export function PtExerciseLibraryPage() {
         .eq("id", workspaceId ?? "")
         .maybeSingle();
       if (error) throw error;
-      return (data as { owner_user_id: string | null } | null)?.owner_user_id ?? null;
+      return (
+        (data as { owner_user_id: string | null } | null)?.owner_user_id ?? null
+      );
     },
   });
 
@@ -214,7 +257,7 @@ export function PtExerciseLibraryPage() {
       const { data, error } = await supabase
         .from("exercises")
         .select(
-          "id, owner_user_id, name, muscle_group, primary_muscle, secondary_muscles, equipment, video_url, notes, is_unilateral, tags, created_at, source, source_exercise_id",
+          "id, owner_user_id, name, category, muscle_group, primary_muscle, secondary_muscles, equipment, video_url, instructions, notes, cues, is_unilateral, tags, created_at, source, source_exercise_id",
         )
         .eq("owner_user_id", libraryOwnerUserId ?? "")
         .order("name");
@@ -246,7 +289,8 @@ export function PtExerciseLibraryPage() {
     return exercises.filter((exercise) => {
       const nameMatch =
         !nameFilter || exercise.name.toLowerCase().includes(nameFilter);
-      const primaryValue = exercise.primary_muscle ?? exercise.muscle_group ?? "";
+      const primaryValue =
+        exercise.primary_muscle ?? exercise.muscle_group ?? "";
       const primaryMatch =
         !primaryFilter || primaryValue.toLowerCase().includes(primaryFilter);
       const tags = exercise.tags ?? [];
@@ -284,7 +328,9 @@ export function PtExerciseLibraryPage() {
 
   const handleSave = async () => {
     if (!libraryOwnerUserId) {
-      setActionError("Shared library owner could not be resolved for this workspace.");
+      setActionError(
+        "Shared library owner could not be resolved for this workspace.",
+      );
       return;
     }
     if (!form.name.trim()) {
@@ -324,7 +370,9 @@ export function PtExerciseLibraryPage() {
 
     setActionStatus("idle");
     setModalOpen(false);
-    await queryClient.invalidateQueries({ queryKey: ["exercise-library", libraryOwnerUserId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["exercise-library", libraryOwnerUserId],
+    });
     setToastMessage("Exercise saved");
   };
 
@@ -332,7 +380,10 @@ export function PtExerciseLibraryPage() {
     if (!selected || !libraryOwnerUserId) return;
     setActionStatus("saving");
     setActionError(null);
-    const { error } = await supabase.from("exercises").delete().eq("id", selected.id);
+    const { error } = await supabase
+      .from("exercises")
+      .delete()
+      .eq("id", selected.id);
     if (error) {
       const details = getErrorDetails(error);
       setActionError(`${details.code}: ${details.message}`);
@@ -343,7 +394,9 @@ export function PtExerciseLibraryPage() {
     setActionStatus("idle");
     setDeleteOpen(false);
     setSelected(null);
-    await queryClient.invalidateQueries({ queryKey: ["exercise-library", libraryOwnerUserId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["exercise-library", libraryOwnerUserId],
+    });
   };
 
   const loadDefaultDataset = async () => {
@@ -406,7 +459,9 @@ export function PtExerciseLibraryPage() {
 
   const handleImportExercise = async (exercise: ExerciseDatasetExercise) => {
     if (!libraryOwnerUserId) {
-      setDatasetError("Shared library owner could not be resolved for this workspace.");
+      setDatasetError(
+        "Shared library owner could not be resolved for this workspace.",
+      );
       return;
     }
     if (existingSourceIds.has(exercise.id)) {
@@ -414,7 +469,9 @@ export function PtExerciseLibraryPage() {
       return;
     }
     if (existingNames.has(normalizeName(exercise.name))) {
-      setDatasetError("That exercise name already exists in this shared library.");
+      setDatasetError(
+        "That exercise name already exists in this shared library.",
+      );
       return;
     }
 
@@ -435,7 +492,9 @@ export function PtExerciseLibraryPage() {
         : null,
       video_url: exercise.videoUrl,
       notes: exercise.overview,
-      cues: exercise.exerciseTips.length ? joinParagraphs(exercise.exerciseTips) : null,
+      cues: exercise.exerciseTips.length
+        ? joinParagraphs(exercise.exerciseTips)
+        : null,
       tags: Array.from(
         new Set(
           [exercise.bodyPart, exercise.target, exercise.equipment]
@@ -461,7 +520,9 @@ export function PtExerciseLibraryPage() {
     }
 
     setImportingId(null);
-    await queryClient.invalidateQueries({ queryKey: ["exercise-library", libraryOwnerUserId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["exercise-library", libraryOwnerUserId],
+    });
     setToastMessage("Exercise imported");
   };
 
@@ -470,7 +531,9 @@ export function PtExerciseLibraryPage() {
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
           <Alert className="border-border bg-muted/90">
-            <AlertDescription className="text-sm">{toastMessage}</AlertDescription>
+            <AlertDescription className="text-sm">
+              {toastMessage}
+            </AlertDescription>
           </Alert>
         </div>
       ) : null}
@@ -486,7 +549,8 @@ export function PtExerciseLibraryPage() {
             <CardTitle>Workspace error</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {getErrorDetails(workspaceError).code}: {getErrorDetails(workspaceError).message}
+            {getErrorDetails(workspaceError).code}:{" "}
+            {getErrorDetails(workspaceError).message}
           </CardContent>
         </Card>
       ) : null}
@@ -499,73 +563,74 @@ export function PtExerciseLibraryPage() {
           {!exerciseDatasetConfigured ? (
             <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
               Set `VITE_EXERCISE_DATASET_BASE_URL` to enable imports. Optional:
-              `VITE_EXERCISE_DATASET_API_KEY`, `VITE_EXERCISE_DATASET_API_KEY_HEADER`,
+              `VITE_EXERCISE_DATASET_API_KEY`,
+              `VITE_EXERCISE_DATASET_API_KEY_HEADER`,
               `VITE_EXERCISE_DATASET_API_HOST`.
             </div>
           ) : null}
-            <div className="grid gap-2 md:grid-cols-4">
-              <Input
-                placeholder="Name"
-                value={datasetSearch.name}
-                onChange={(event) =>
-                  setDatasetSearch((prev) => ({
-                    ...prev,
-                    name: event.target.value,
-                  }))
-                }
-              />
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={datasetSearch.bodyPart}
-                onChange={(event) =>
-                  setDatasetSearch((prev) => ({
-                    ...prev,
-                    bodyPart: event.target.value,
-                  }))
-                }
-              >
-                <option value="">All body parts</option>
-                {datasetBodyPartOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={datasetSearch.equipment}
-                onChange={(event) =>
-                  setDatasetSearch((prev) => ({
-                    ...prev,
-                    equipment: event.target.value,
-                  }))
-                }
-              >
-                <option value="">All equipment</option>
-                {datasetEquipmentOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={datasetSearch.target}
-                onChange={(event) =>
-                  setDatasetSearch((prev) => ({
-                    ...prev,
-                    target: event.target.value,
-                  }))
-                }
-              >
-                <option value="">All targets</option>
-                {datasetTargetOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="grid gap-2 md:grid-cols-4">
+            <Input
+              placeholder="Name"
+              value={datasetSearch.name}
+              onChange={(event) =>
+                setDatasetSearch((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }))
+              }
+            />
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={datasetSearch.bodyPart}
+              onChange={(event) =>
+                setDatasetSearch((prev) => ({
+                  ...prev,
+                  bodyPart: event.target.value,
+                }))
+              }
+            >
+              <option value="">All body parts</option>
+              {datasetBodyPartOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={datasetSearch.equipment}
+              onChange={(event) =>
+                setDatasetSearch((prev) => ({
+                  ...prev,
+                  equipment: event.target.value,
+                }))
+              }
+            >
+              <option value="">All equipment</option>
+              {datasetEquipmentOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={datasetSearch.target}
+              onChange={(event) =>
+                setDatasetSearch((prev) => ({
+                  ...prev,
+                  target: event.target.value,
+                }))
+              }
+            >
+              <option value="">All targets</option>
+              {datasetTargetOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
@@ -578,39 +643,126 @@ export function PtExerciseLibraryPage() {
             </Button>
           </div>
           {datasetError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{datasetError}</div>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {datasetError}
+            </div>
           ) : null}
           {filteredDatasetResults.length > 0 ? (
             <div className="space-y-4">
               <div className="grid gap-3 xl:grid-cols-2">
                 {filteredDatasetResults.map((exercise) => {
                   const sourceImported = existingSourceIds.has(exercise.id);
-                  const nameExists = existingNames.has(normalizeName(exercise.name));
+                  const nameExists = existingNames.has(
+                    normalizeName(exercise.name),
+                  );
                   const importDisabled = sourceImported || nameExists;
                   const statusLabel = sourceImported
                     ? "Already imported"
                     : nameExists
                       ? "Name already used"
                       : "Import";
+                  const contextChips = Array.from(
+                    new Set(
+                      [
+                        exercise.target,
+                        exercise.bodyPart,
+                        exercise.equipment,
+                        ...exercise.secondaryMuscles,
+                      ].filter((value): value is string =>
+                        Boolean(value?.trim()),
+                      ),
+                    ),
+                  ).slice(0, 4);
+                  const cues = exercise.exerciseTips.slice(0, 2);
+                  const instruction =
+                    exercise.instructions[0] ?? exercise.overview;
 
                   return (
-                    <div key={exercise.id} className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+                    <div key={exercise.id} className="ops-surface-strong p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-foreground">{exercise.name}</div>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="ops-kicker">Dataset movement</div>
+                            <div className="mt-1 text-base font-semibold text-foreground">
+                              {exercise.name}
+                            </div>
+                          </div>
                           <div className="mt-1 text-xs text-muted-foreground">
                             {exercise.target ?? exercise.bodyPart ?? "Other"}
-                            {exercise.equipment ? ` • ${exercise.equipment}` : ""}
+                            {exercise.equipment
+                              ? ` • ${exercise.equipment}`
+                              : ""}
                           </div>
                         </div>
                         <Button
                           size="sm"
                           variant={importDisabled ? "secondary" : "default"}
-                          disabled={importDisabled || importingId === exercise.id}
+                          disabled={
+                            importDisabled || importingId === exercise.id
+                          }
                           onClick={() => handleImportExercise(exercise)}
                         >
-                          {importingId === exercise.id ? "Importing..." : statusLabel}
+                          {importingId === exercise.id
+                            ? "Importing..."
+                            : statusLabel}
                         </Button>
+                      </div>
+                      <div className="mt-4 grid gap-2 md:grid-cols-3">
+                        <div className="ops-stat">
+                          <div className="ops-kicker">Movement</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">
+                            {exercise.bodyPart ?? "General pattern"}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {contextChips.map((chip) => (
+                              <span
+                                key={chip}
+                                className="ops-chip text-muted-foreground"
+                              >
+                                {chip}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="ops-stat">
+                          <div className="ops-kicker">Muscles</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">
+                            {[
+                              exercise.target,
+                              ...exercise.secondaryMuscles.slice(0, 2),
+                            ]
+                              .filter(Boolean)
+                              .join(", ") || "General"}
+                          </div>
+                        </div>
+                        <div className="ops-stat">
+                          <div className="ops-kicker">Usage</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">
+                            {exercise.equipment
+                              ? `${exercise.equipment} setup`
+                              : "Flexible setup"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid gap-2 lg:grid-cols-[1.1fr_0.9fr]">
+                        <div className="ops-stat">
+                          <div className="ops-kicker">Coach Cues</div>
+                          <div className="mt-2 space-y-1 text-sm text-foreground">
+                            {cues.length > 0 ? (
+                              cues.map((cue) => <div key={cue}>• {cue}</div>)
+                            ) : (
+                              <div>
+                                {instruction ?? "No cue text from source."}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ops-stat">
+                          <div className="ops-kicker">Use Context</div>
+                          <div className="mt-2 text-sm text-foreground">
+                            {instruction ?? "Imported movement reference."}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -635,69 +787,136 @@ export function PtExerciseLibraryPage() {
           ) : null}
           <div className="h-px bg-border/60" />
           <div className="grid gap-2 sm:grid-cols-3">
-            <Input placeholder="Filter by name" value={filters.name} onChange={(event) => setFilters((prev) => ({ ...prev, name: event.target.value }))} />
-            <Input placeholder="Filter by primary muscle" value={filters.primary_muscle} onChange={(event) => setFilters((prev) => ({ ...prev, primary_muscle: event.target.value }))} />
-            <Input placeholder="Filter by tag" value={filters.tag} onChange={(event) => setFilters((prev) => ({ ...prev, tag: event.target.value }))} />
+            <Input
+              placeholder="Filter by name"
+              value={filters.name}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, name: event.target.value }))
+              }
+            />
+            <Input
+              placeholder="Filter by primary muscle"
+              value={filters.primary_muscle}
+              onChange={(event) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  primary_muscle: event.target.value,
+                }))
+              }
+            />
+            <Input
+              placeholder="Filter by tag"
+              value={filters.tag}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, tag: event.target.value }))
+              }
+            />
           </div>
-          {workspaceLoading || ownerScopeQuery.isLoading || libraryQuery.isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading exercises...</div>
+          {workspaceLoading ||
+          ownerScopeQuery.isLoading ||
+          libraryQuery.isLoading ? (
+            <div className="text-sm text-muted-foreground">
+              Loading exercises...
+            </div>
           ) : ownerScopeQuery.error || libraryQuery.error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              {getErrorDetails(ownerScopeQuery.error ?? libraryQuery.error).code}: {getErrorDetails(ownerScopeQuery.error ?? libraryQuery.error).message}
+              {
+                getErrorDetails(ownerScopeQuery.error ?? libraryQuery.error)
+                  .code
+              }
+              :{" "}
+              {
+                getErrorDetails(ownerScopeQuery.error ?? libraryQuery.error)
+                  .message
+              }
             </div>
           ) : exercises.length === 0 ? (
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-4 rounded-[24px] border border-dashed border-border bg-muted/20 p-5">
-                <div>
-                  <div className="text-sm font-semibold text-foreground">No exercises yet</div>
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold text-foreground">
+                    No exercises yet
+                  </div>
                   <div className="mt-1 text-sm text-muted-foreground">
-                    Add or import exercises to start building from a shared owner library.
+                    Add or import exercises to start building from a shared
+                    owner library.
                   </div>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Categories</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Categories
+                    </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {muscleGroups.slice(0, 5).map((group) => (
-                        <span key={group} className="rounded-full border border-border/70 bg-secondary/18 px-2.5 py-1 text-[11px] text-muted-foreground">
+                        <span
+                          key={group}
+                          className="rounded-full border border-border/70 bg-secondary/18 px-2.5 py-1 text-[11px] text-muted-foreground"
+                        >
                           {group}
                         </span>
                       ))}
                     </div>
                   </div>
                   <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tags</div>
-                    <div className="mt-2 text-sm text-muted-foreground">Examples: dumbbell, home gym, unilateral, power.</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Tags
+                    </div>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      Examples: dumbbell, home gym, unilateral, power.
+                    </div>
                   </div>
                   <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Shared scope</div>
-                    <div className="mt-2 text-sm text-muted-foreground">Owned workspaces reuse the same exercise rows.</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Shared scope
+                    </div>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      Owned workspaces reuse the same exercise rows.
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="rounded-[24px] border border-border/70 bg-background/35 p-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Example item</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Example item
+                </div>
                 <div className="mt-3 rounded-[20px] border border-border/70 bg-background/45 p-4">
-                  <div className="text-sm font-semibold text-foreground">Dumbbell Split Squat</div>
-                  <div className="mt-1 text-xs text-muted-foreground">Legs • Dumbbells</div>
+                  <div className="text-sm font-semibold text-foreground">
+                    Dumbbell Split Squat
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Legs • Dumbbells
+                  </div>
                 </div>
               </div>
             </div>
           ) : filteredExercises.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">No exercises match those filters.</div>
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+              No exercises match those filters.
+            </div>
           ) : (
             filteredExercises.map((exercise) => (
-              <div key={exercise.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
-                <div>
-                  <p className="text-sm font-semibold">{exercise.name}</p>
+              <div key={exercise.id} className="ops-surface-strong p-4">
+                <div className="space-y-3">
+                  <div>
+                    <div className="ops-kicker">Library movement</div>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                      {exercise.name}
+                    </p>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {exercise.primary_muscle ?? exercise.muscle_group ?? "Other"}
+                    {exercise.primary_muscle ??
+                      exercise.muscle_group ??
+                      "Other"}
                     {exercise.equipment ? ` • ${exercise.equipment}` : ""}
                   </p>
                   {exercise.tags && exercise.tags.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {exercise.tags.map((tag) => (
-                        <span key={tag} className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <span
+                          key={tag}
+                          className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                        >
                           {tag}
                         </span>
                       ))}
@@ -705,7 +924,13 @@ export function PtExerciseLibraryPage() {
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => openEdit(exercise)}>Edit</Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => openEdit(exercise)}
+                  >
+                    Edit
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -718,69 +943,186 @@ export function PtExerciseLibraryPage() {
                     Delete
                   </Button>
                 </div>
+                <div className="mt-4 grid gap-2 md:grid-cols-3">
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Movement</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {exercise.category ?? exercise.muscle_group ?? "General"}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Muscles</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {[
+                        exercise.primary_muscle ?? exercise.muscle_group,
+                        ...(exercise.secondary_muscles ?? []).slice(0, 2),
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "General"}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Equipment</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {exercise.equipment ?? "Open setup"}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 lg:grid-cols-[1.1fr_0.9fr]">
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Coach Cues</div>
+                    <div className="mt-2 space-y-1 text-sm text-foreground">
+                      {splitParagraphs(exercise.cues).slice(0, 2).length > 0 ? (
+                        splitParagraphs(exercise.cues)
+                          .slice(0, 2)
+                          .map((cue) => <div key={cue}>• {cue}</div>)
+                      ) : (
+                        <div>
+                          {splitParagraphs(exercise.instructions)[0] ??
+                            exercise.notes ??
+                            "No cues added yet."}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Use Context</div>
+                    <div className="mt-2 text-sm text-foreground">
+                      {exercise.notes ??
+                        exercise.tags?.slice(0, 3).join(", ") ??
+                        "Shared library movement."}
+                    </div>
+                  </div>
+                </div>
               </div>
             ))
           )}
         </CardContent>
       </Card>
 
-      <Dialog open={modalOpen} onOpenChange={(open) => {
-        setModalOpen(open);
-        if (!open) {
-          setActionError(null);
-          setActionStatus("idle");
-        }
-      }}>
+      <Dialog
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) {
+            setActionError(null);
+            setActionStatus("idle");
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>{selected ? "Edit exercise" : "Add exercise"}</DialogTitle>
-            <DialogDescription>Define movement defaults for the shared library.</DialogDescription>
+            <DialogTitle>
+              {selected ? "Edit exercise" : "Add exercise"}
+            </DialogTitle>
+            <DialogDescription>
+              Define movement defaults for the shared library.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Name</label>
-              <Input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="e.g., Bench Press" />
+              <label className="text-xs font-semibold text-muted-foreground">
+                Name
+              </label>
+              <Input
+                value={form.name}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+                placeholder="e.g., Bench Press"
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Muscle group</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Muscle group
+              </label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={form.muscle_group}
-                onChange={(event) => setForm((prev) => ({ ...prev, muscle_group: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    muscle_group: event.target.value,
+                  }))
+                }
               >
                 <option value="">Select group</option>
                 {muscleGroups.map((group) => (
-                  <option key={group} value={group}>{group}</option>
+                  <option key={group} value={group}>
+                    {group}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Secondary muscles (comma-separated)</label>
-              <Input value={form.secondary_muscles} onChange={(event) => setForm((prev) => ({ ...prev, secondary_muscles: event.target.value }))} placeholder="e.g., Triceps, Shoulders" />
+              <label className="text-xs font-semibold text-muted-foreground">
+                Secondary muscles (comma-separated)
+              </label>
+              <Input
+                value={form.secondary_muscles}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    secondary_muscles: event.target.value,
+                  }))
+                }
+                placeholder="e.g., Triceps, Shoulders"
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Equipment</label>
-              <Input value={form.equipment} onChange={(event) => setForm((prev) => ({ ...prev, equipment: event.target.value }))} placeholder="e.g., Barbell" />
+              <label className="text-xs font-semibold text-muted-foreground">
+                Equipment
+              </label>
+              <Input
+                value={form.equipment}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    equipment: event.target.value,
+                  }))
+                }
+                placeholder="e.g., Barbell"
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">Video URL</label>
-              <Input value={form.video_url} onChange={(event) => setForm((prev) => ({ ...prev, video_url: event.target.value }))} placeholder="https://" />
+              <label className="text-xs font-semibold text-muted-foreground">
+                Video URL
+              </label>
+              <Input
+                value={form.video_url}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    video_url: event.target.value,
+                  }))
+                }
+                placeholder="https://"
+              />
             </div>
             <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
               <input
                 type="checkbox"
                 className="h-4 w-4"
                 checked={form.is_unilateral}
-                onChange={(event) => setForm((prev) => ({ ...prev, is_unilateral: event.target.checked }))}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    is_unilateral: event.target.checked,
+                  }))
+                }
               />
               Unilateral movement
             </label>
             {actionError ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{actionError}</div>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {actionError}
+              </div>
             ) : null}
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
             <Button disabled={actionStatus === "saving"} onClick={handleSave}>
               {actionStatus === "saving" ? "Saving..." : "Save"}
             </Button>
@@ -793,15 +1135,24 @@ export function PtExerciseLibraryPage() {
           <DialogHeader>
             <DialogTitle>Delete exercise</DialogTitle>
             <DialogDescription>
-              This removes the exercise from the shared library and dependent template rows.
+              This removes the exercise from the shared library and dependent
+              template rows.
             </DialogDescription>
           </DialogHeader>
           {actionError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">{actionError}</div>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              {actionError}
+            </div>
           ) : null}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-            <Button variant="secondary" disabled={actionStatus === "saving"} onClick={handleDelete}>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={actionStatus === "saving"}
+              onClick={handleDelete}
+            >
               {actionStatus === "saving" ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>

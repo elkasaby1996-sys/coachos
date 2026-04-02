@@ -282,11 +282,11 @@ export function PtLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.06),transparent_24%),linear-gradient(180deg,rgba(13,18,29,1),rgba(10,14,23,1))]">
+    <div className="theme-shell-canvas min-h-screen">
       <div className="flex min-h-screen">
         <aside
           className={cn(
-            "hidden border-r border-border/70 bg-[linear-gradient(180deg,rgba(15,20,32,0.98),rgba(9,13,22,1))] py-6 md:flex md:flex-col",
+            "theme-sidebar-surface hidden border-r border-border/70 py-6 md:flex md:flex-col",
             desktopNavCollapsed ? "w-24 px-3" : "w-[296px] px-4",
           )}
         >
@@ -324,7 +324,7 @@ export function PtLayout() {
           </div>
 
           {!desktopNavCollapsed ? (
-            <div className="mb-6 rounded-[26px] border border-border/70 bg-background/35 p-4">
+            <div className="surface-section mb-6 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
                 Workspace
               </p>
@@ -342,7 +342,7 @@ export function PtLayout() {
                 />
                 <Button
                   variant="ghost"
-                  className="w-full justify-between rounded-[20px] border border-border/70 bg-background/55 px-4"
+                  className="w-full justify-between rounded-[20px] border border-border/70 bg-card/70 px-4"
                   onClick={() => navigate("/pt-hub")}
                 >
                   <span className="space-y-0.5 text-left">
@@ -359,7 +359,7 @@ export function PtLayout() {
             </div>
           ) : (
             <div className="mb-6 flex justify-center">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/45 text-sm font-semibold text-foreground">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/65 text-sm font-semibold text-foreground">
                 PT
               </div>
             </div>
@@ -375,12 +375,12 @@ export function PtLayout() {
                   title={desktopNavCollapsed ? item.label : undefined}
                   className={({ isActive }) =>
                     cn(
-                      "group relative flex items-center rounded-2xl border border-transparent text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-background/42 hover:text-foreground",
+                      "group relative flex items-center rounded-2xl border border-transparent text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
                       desktopNavCollapsed
                         ? "justify-center px-2 py-2.5"
                         : "gap-3 px-3 py-2.5",
                       isActive &&
-                        "border-border/70 bg-background/62 text-foreground",
+                        "border-border/70 bg-card/72 text-foreground",
                     )
                   }
                 >
@@ -399,7 +399,7 @@ export function PtLayout() {
                           "flex h-9 w-9 items-center justify-center rounded-xl border",
                           isActive
                             ? "border-primary/20 bg-primary/10 text-primary"
-                            : "border-border/70 bg-background/55 text-muted-foreground group-hover:text-primary",
+                            : "border-border/70 bg-card/65 text-muted-foreground group-hover:text-primary",
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -416,7 +416,7 @@ export function PtLayout() {
 
         <div
           className={cn(
-            "fixed inset-0 z-40 bg-background/70 backdrop-blur-sm transition md:hidden",
+            "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition md:hidden",
             mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
           )}
           aria-hidden={!mobileNavOpen}
@@ -425,7 +425,7 @@ export function PtLayout() {
 
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-border/70 bg-[linear-gradient(180deg,rgba(15,20,32,0.99),rgba(9,13,22,1))] px-4 py-6 transition md:hidden",
+            "theme-sidebar-surface fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-border/70 px-4 py-6 transition md:hidden",
             mobileNavOpen && "translate-x-0",
           )}
         >
@@ -446,7 +446,7 @@ export function PtLayout() {
             </Button>
           </div>
 
-          <div className="mb-8 rounded-[24px] border border-border/70 bg-background/35 p-4">
+          <div className="surface-section mb-8 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
               Workspace
             </p>
@@ -465,7 +465,7 @@ export function PtLayout() {
               />
               <Button
                 variant="ghost"
-                className="w-full justify-between rounded-[20px] border border-border/70 bg-background/55 px-4"
+                className="w-full justify-between rounded-[20px] border border-border/70 bg-card/70 px-4"
                 onClick={() => {
                   setMobileNavOpen(false);
                   navigate("/pt-hub");
@@ -494,13 +494,12 @@ export function PtLayout() {
                   onClick={() => setMobileNavOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      "group flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-background/42 hover:text-foreground",
-                      isActive &&
-                        "border-border/70 bg-background/62 text-foreground",
+                      "group flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
+                      isActive && "border-border/70 bg-card/72 text-foreground",
                     )
                   }
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted-foreground group-hover:text-primary">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-card/65 text-muted-foreground group-hover:text-primary">
                     <Icon className="h-4 w-4" />
                   </span>
                   {item.label}
@@ -512,7 +511,7 @@ export function PtLayout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-border/70 bg-background/55 py-4 backdrop-blur-xl">
+          <header className="theme-topbar border-b border-border/70 py-4 backdrop-blur-xl">
             <PageContainer className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <Button
@@ -539,7 +538,7 @@ export function PtLayout() {
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search clients, programs, tags..."
-                    className="h-9 rounded-full border-border/60 bg-background/50 pl-8 text-[13px] shadow-none"
+                    className="h-9 rounded-full border-border/60 bg-card/65 pl-8 text-[13px] shadow-none"
                     aria-label="Search clients"
                   />
                 </div>
@@ -593,7 +592,7 @@ export function PtLayout() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full border border-border/70 bg-background/65 text-sm font-semibold"
+                      className="rounded-full border border-border/70 bg-card/75 text-sm font-semibold"
                       aria-label="Profile menu"
                     >
                       {userInitial}

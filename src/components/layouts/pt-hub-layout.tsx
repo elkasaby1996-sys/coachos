@@ -115,8 +115,8 @@ function sidebarLinkClasses(isActive: boolean) {
   return cn(
     "group relative flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-medium transition-colors",
     isActive
-      ? "border-border/80 bg-background/75 text-foreground"
-      : "border-transparent text-muted-foreground hover:border-border/60 hover:bg-background/45 hover:text-foreground",
+      ? "border-border/80 bg-card/78 text-foreground"
+      : "border-transparent text-muted-foreground hover:border-border/60 hover:bg-card/45 hover:text-foreground",
   );
 }
 
@@ -144,9 +144,9 @@ export function PtHubLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.08),transparent_26%),linear-gradient(180deg,rgba(8,11,18,1),rgba(11,15,24,1))]">
+    <div className="theme-shell-canvas min-h-screen">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[306px] border-r border-border/70 bg-[linear-gradient(180deg,rgba(15,20,32,0.98),rgba(9,13,22,1))] px-5 py-6 md:flex md:flex-col">
+        <aside className="theme-sidebar-surface hidden w-[306px] border-r border-border/70 px-5 py-6 md:flex md:flex-col">
           <SidebarContent
             latestWorkspaceName={latestWorkspace?.name ?? null}
             onOpenWorkspace={() => {
@@ -161,7 +161,7 @@ export function PtHubLayout() {
 
         <div
           className={cn(
-            "fixed inset-0 z-40 bg-background/70 backdrop-blur-sm transition md:hidden",
+            "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition md:hidden",
             mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
           )}
           onClick={() => setMobileOpen(false)}
@@ -169,7 +169,7 @@ export function PtHubLayout() {
         />
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-[306px] border-r border-border/70 bg-[linear-gradient(180deg,rgba(15,20,32,0.99),rgba(9,13,22,1))] px-5 py-6 transition md:hidden",
+            "theme-sidebar-surface fixed inset-y-0 left-0 z-50 w-[306px] border-r border-border/70 px-5 py-6 transition md:hidden",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -203,7 +203,7 @@ export function PtHubLayout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-border/70 bg-background/55 backdrop-blur-xl">
+          <div className="theme-topbar border-b border-border/70 backdrop-blur-xl">
             <PageContainer className="max-w-[1560px] py-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
@@ -251,7 +251,7 @@ export function PtHubLayout() {
                     Open workspace
                     <ArrowUpRight className="h-4 w-4" />
                   </Button>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-sm font-semibold text-foreground">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card/82 text-sm font-semibold text-foreground">
                     {userInitial}
                   </div>
                 </div>
@@ -285,9 +285,9 @@ function SidebarContent({
 }) {
   return (
     <>
-      <div className="mb-8">
+          <div className="mb-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-background/50 text-primary">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-card/65 text-primary">
             <Building2 className="h-5 w-5" />
           </div>
           <div>
@@ -301,7 +301,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <div className="mb-6 rounded-[28px] border border-border/70 bg-background/35 p-5">
+      <div className="surface-panel mb-6 rounded-[28px] p-5">
         <div className="space-y-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
             Business Layer
@@ -314,7 +314,7 @@ function SidebarContent({
           </p>
         </div>
 
-        <div className="mt-5 rounded-[24px] border border-border/70 bg-background/70 p-4">
+        <div className="surface-section mt-5 p-4">
           <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
             Workspace layer
           </p>
@@ -366,7 +366,7 @@ function SidebarContent({
                             "flex h-10 w-10 items-center justify-center rounded-xl border",
                             isActive
                               ? "border-primary/20 bg-primary/10 text-primary"
-                              : "border-border/70 bg-background/60 text-muted-foreground group-hover:text-primary",
+                              : "border-border/70 bg-card/68 text-muted-foreground group-hover:text-primary",
                           )}
                         >
                           <Icon className="h-4 w-4" />
@@ -387,7 +387,7 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4">
+      <div className="surface-section mt-6 p-4">
         <p className="text-sm font-medium text-foreground">Session</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Use PT Hub first. Open a workspace only when you need operational

@@ -9,13 +9,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-primary/40 bg-primary text-primary-foreground shadow-[0_10px_30px_-18px_oklch(0.75_0.18_195/0.6)] hover:border-primary/50 hover:bg-primary/92 focus-visible:shadow-[0_0_0_1px_oklch(var(--ring)/0.4),0_0_0_4px_oklch(var(--ring)/0.18)]",
+          "border-primary/40 bg-primary text-primary-foreground shadow-[0_10px_30px_-18px_oklch(var(--accent)/0.6)] hover:border-primary/50 hover:bg-[oklch(var(--accent-hover))] focus-visible:shadow-[0_0_0_1px_oklch(var(--ring)/0.4),0_0_0_4px_oklch(var(--ring)/0.18)]",
         secondary:
           "border-border/80 bg-secondary/58 text-secondary-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] hover:border-border hover:bg-secondary/78 focus-visible:bg-secondary/78",
         ghost:
-          "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/62 hover:text-foreground focus-visible:border-border/70 focus-visible:bg-background/62 focus-visible:text-foreground",
+          "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-card/62 hover:text-foreground focus-visible:border-border/70 focus-visible:bg-card/62 focus-visible:text-foreground",
         accent:
-          "border-accent/40 bg-accent/90 text-accent-foreground shadow-[0_10px_28px_-20px_oklch(0.75_0.18_195/0.65)] hover:bg-accent focus-visible:shadow-[0_0_0_1px_oklch(var(--ring)/0.4),0_0_0_4px_oklch(var(--ring)/0.18)]",
+          "border-accent/40 bg-accent/90 text-accent-foreground shadow-[0_10px_28px_-20px_oklch(var(--accent)/0.65)] hover:bg-[oklch(var(--accent-hover))] focus-visible:shadow-[0_0_0_1px_oklch(var(--ring)/0.4),0_0_0_4px_oklch(var(--ring)/0.18)]",
       },
       size: {
         default: "h-10 px-4",

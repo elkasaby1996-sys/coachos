@@ -12,6 +12,7 @@ import { supabase } from "../../lib/supabase";
 import {
   applyTheme,
   getStoredThemePreference,
+  normalizeThemePreference,
   nextThemePreference,
   THEME_STORAGE_KEY,
   type ResolvedTheme,
@@ -55,7 +56,7 @@ const toThemePreference = (value: unknown): ThemePreference | null => {
 
 function getStoredPreference(): ThemePreference {
   const stored = getStoredThemePreference("dark");
-  return toThemePreference(stored) ?? "dark";
+  return normalizeThemePreference(toThemePreference(stored) ?? "dark");
 }
 
 function getStoredCompactDensity(): boolean {
@@ -138,7 +139,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const row = data?.[0];
     if (!row) return;
 
-    const dbThemePreference = toThemePreference(row.theme_preference) ?? "dark";
+    const dbThemePreference = normalizeThemePreference(
+      toThemePreference(row.theme_preference) ?? "dark",
+    );
     setThemePreferenceState(dbThemePreference);
     if (typeof row.compact_density === "boolean") {
       setCompactDensityState(row.compact_density);
@@ -184,17 +187,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       persist?: boolean;
     }) => {
       const nextTheme = payload.themePreference ?? themePreference;
+      const normalizedTheme = normalizeThemePreference(nextTheme);
       const nextCompact =
         typeof payload.compactDensity === "boolean"
           ? payload.compactDensity
           : compactDensity;
       const persist = payload.persist ?? true;
 
-      setThemePreferenceState(nextTheme);
+      setThemePreferenceState(normalizedTheme);
       setCompactDensityState(nextCompact);
 
       if (persist) {
-        await persistAppearance(nextTheme, nextCompact);
+        await persistAppearance(normalizedTheme, nextCompact);
       }
     },
     [compactDensity, persistAppearance, themePreference],

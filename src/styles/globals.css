@@ -12,31 +12,110 @@
 @layer base {
   :root {
     color-scheme: light;
-    --background: 0.97 0.005 255;
-    --foreground: 0.22 0.02 255;
-    --card: 0.99 0.004 255;
-    --card-foreground: 0.22 0.02 255;
-    --popover: 1 0.003 255;
-    --popover-foreground: 0.22 0.02 255;
-    --primary: 0.58 0.14 205;
-    --primary-foreground: 0.98 0.005 255;
-    --secondary: 0.94 0.01 255;
-    --secondary-foreground: 0.28 0.02 255;
+    --bg-canvas: 0.97 0.005 255;
+    --bg-sidebar: 0.952 0.007 255;
+    --bg-surface: 0.988 0.004 255;
+    --bg-surface-elevated: 1 0.003 255;
+    --bg-muted: 0.95 0.008 255;
+    --bg-input: 0.966 0.007 255;
+    --text-primary: 0.22 0.02 255;
+    --text-secondary: 0.34 0.018 255;
+    --text-muted: 0.5 0.016 255;
+    --text-on-accent: 0.985 0.004 255;
+    --border-subtle: 0.92 0.008 255;
+    --border-default: 0.88 0.01 255;
+    --border-strong: 0.8 0.014 255;
     --accent: 0.62 0.14 202;
-    --accent-foreground: 0.98 0.005 255;
-    --muted: 0.95 0.008 255;
-    --muted-foreground: 0.46 0.018 255;
-    --border: 0.88 0.01 255;
-    --input: 0.92 0.01 255;
-    --ring: 0.62 0.14 202;
+    --accent-hover: 0.58 0.14 202;
     --success: 0.66 0.16 155;
     --warning: 0.76 0.14 90;
     --danger: 0.62 0.2 25;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --accent-foreground: var(--text-on-accent);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
     --chart-1: 0.62 0.14 202;
     --chart-2: 0.62 0.12 165;
     --chart-3: 0.55 0.1 230;
     --chart-4: 0.76 0.14 90;
     --chart-5: 0.62 0.2 25;
+    --shell-canvas:
+      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 26%),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-canvas)),
+        oklch(var(--bg-sidebar))
+      );
+    --sidebar-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-sidebar) / 0.98),
+      oklch(var(--bg-sidebar) / 0.94)
+    );
+    --surface-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.98),
+      oklch(var(--bg-surface) / 0.92)
+    );
+    --surface-strong-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.95)
+    );
+    --surface-portal-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.95)
+    );
+    --section-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.74),
+      oklch(var(--bg-muted) / 0.72)
+    );
+    --dashed-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.85),
+      oklch(var(--bg-muted) / 0.82)
+    );
+    --popover-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.94)
+    );
+    --dialog-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.93)
+    );
+    --topbar-bg: oklch(var(--bg-surface) / 0.78);
+    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.92);
+    --overlay-bg: oklch(var(--bg-canvas) / 0.72);
+    --surface-shadow: 0 24px 70px -52px oklch(0.32 0.02 255 / 0.16);
+    --surface-strong-shadow: 0 24px 70px -52px oklch(0.28 0.02 255 / 0.18);
+    --surface-portal-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.4),
+      0 26px 70px -48px oklch(0.3 0.02 255 / 0.22);
+    --popover-shadow: 0 20px 60px -40px oklch(0.32 0.02 255 / 0.22);
+    --dialog-shadow: 0 28px 80px -50px oklch(0.3 0.02 255 / 0.24);
+    --sticky-shadow: 0 24px 60px -40px oklch(0.3 0.02 255 / 0.22);
+    --skeleton-shimmer: linear-gradient(
+      110deg,
+      transparent,
+      oklch(var(--text-primary) / 0.05),
+      transparent
+    );
+    --portal-page-bg: var(--shell-canvas);
     --radius: 0.75rem;
     --radius-lg: 1rem;
     --radius-xl: 1.5rem;
@@ -45,63 +124,218 @@
 
   .light {
     color-scheme: light;
-    --background: 0.97 0.005 255;
-    --foreground: 0.22 0.02 255;
-    --card: 0.99 0.004 255;
-    --card-foreground: 0.22 0.02 255;
-    --popover: 1 0.003 255;
-    --popover-foreground: 0.22 0.02 255;
-    --primary: 0.58 0.14 205;
-    --primary-foreground: 0.98 0.005 255;
-    --secondary: 0.94 0.01 255;
-    --secondary-foreground: 0.28 0.02 255;
+    --bg-canvas: 0.97 0.005 255;
+    --bg-sidebar: 0.952 0.007 255;
+    --bg-surface: 0.988 0.004 255;
+    --bg-surface-elevated: 1 0.003 255;
+    --bg-muted: 0.95 0.008 255;
+    --bg-input: 0.966 0.007 255;
+    --text-primary: 0.22 0.02 255;
+    --text-secondary: 0.34 0.018 255;
+    --text-muted: 0.5 0.016 255;
+    --text-on-accent: 0.985 0.004 255;
+    --border-subtle: 0.92 0.008 255;
+    --border-default: 0.88 0.01 255;
+    --border-strong: 0.8 0.014 255;
     --accent: 0.62 0.14 202;
-    --accent-foreground: 0.98 0.005 255;
-    --muted: 0.95 0.008 255;
-    --muted-foreground: 0.46 0.018 255;
-    --border: 0.88 0.01 255;
-    --input: 0.92 0.01 255;
-    --ring: 0.62 0.14 202;
+    --accent-hover: 0.58 0.14 202;
     --success: 0.66 0.16 155;
     --warning: 0.76 0.14 90;
     --danger: 0.62 0.2 25;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --accent-foreground: var(--text-on-accent);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
     --chart-1: 0.62 0.14 202;
     --chart-2: 0.62 0.12 165;
     --chart-3: 0.55 0.1 230;
     --chart-4: 0.76 0.14 90;
     --chart-5: 0.62 0.2 25;
+    --shell-canvas:
+      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 26%),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-canvas)),
+        oklch(var(--bg-sidebar))
+      );
+    --sidebar-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-sidebar) / 0.98),
+      oklch(var(--bg-sidebar) / 0.94)
+    );
+    --surface-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.98),
+      oklch(var(--bg-surface) / 0.92)
+    );
+    --surface-strong-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.95)
+    );
+    --surface-portal-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.95)
+    );
+    --section-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.74),
+      oklch(var(--bg-muted) / 0.72)
+    );
+    --dashed-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.85),
+      oklch(var(--bg-muted) / 0.82)
+    );
+    --popover-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.94)
+    );
+    --dialog-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.93)
+    );
+    --topbar-bg: oklch(var(--bg-surface) / 0.78);
+    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.92);
+    --overlay-bg: oklch(var(--bg-canvas) / 0.72);
+    --surface-shadow: 0 24px 70px -52px oklch(0.32 0.02 255 / 0.16);
+    --surface-strong-shadow: 0 24px 70px -52px oklch(0.28 0.02 255 / 0.18);
+    --surface-portal-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.4),
+      0 26px 70px -48px oklch(0.3 0.02 255 / 0.22);
+    --popover-shadow: 0 20px 60px -40px oklch(0.32 0.02 255 / 0.22);
+    --dialog-shadow: 0 28px 80px -50px oklch(0.3 0.02 255 / 0.24);
+    --sticky-shadow: 0 24px 60px -40px oklch(0.3 0.02 255 / 0.22);
+    --skeleton-shimmer: linear-gradient(
+      110deg,
+      transparent,
+      oklch(var(--text-primary) / 0.05),
+      transparent
+    );
+    --portal-page-bg: var(--shell-canvas);
   }
 
   .dark {
     color-scheme: dark;
-    --background: 0.12 0.01 260;
-    --foreground: 0.95 0 0;
-    --card: 0.18 0.01 260;
-    --card-foreground: 0.95 0 0;
-    --popover: 0.2 0.01 260;
-    --popover-foreground: 0.95 0 0;
-    --primary: 0.75 0.18 195;
-    --primary-foreground: 0.12 0.01 260;
-    --secondary: 0.22 0.01 260;
-    --secondary-foreground: 0.95 0 0;
+    --bg-canvas: 0.12 0.01 260;
+    --bg-sidebar: 0.16 0.011 260;
+    --bg-surface: 0.18 0.01 260;
+    --bg-surface-elevated: 0.21 0.012 260;
+    --bg-muted: 0.22 0.01 260;
+    --bg-input: 0.24 0.01 260;
+    --text-primary: 0.95 0 0;
+    --text-secondary: 0.84 0.004 255;
+    --text-muted: 0.68 0 0;
+    --text-on-accent: 0.12 0.01 260;
+    --border-subtle: 0.24 0.01 260;
+    --border-default: 0.28 0.01 260;
+    --border-strong: 0.36 0.014 260;
     --accent: 0.75 0.18 195;
-    --accent-foreground: 0.12 0.01 260;
-    --muted: 0.2 0.01 260;
-    --muted-foreground: 0.68 0 0;
-    --border: 0.28 0.01 260;
-    --input: 0.24 0.01 260;
-    --ring: 0.75 0.18 195;
+    --accent-hover: 0.78 0.18 195;
     --success: 0.7 0.18 155;
     --warning: 0.8 0.15 85;
     --danger: 0.65 0.2 25;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --accent-foreground: var(--text-on-accent);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
     --chart-1: 0.75 0.18 195;
     --chart-2: 0.68 0.14 160;
     --chart-3: 0.62 0.08 210;
     --chart-4: 0.8 0.15 85;
     --chart-5: 0.65 0.2 25;
-    --portal-page-bg:
-      radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 28%),
-      linear-gradient(180deg, rgba(12, 18, 30, 0.92), rgba(9, 13, 22, 0.98));
+    --shell-canvas:
+      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 24%),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-canvas)),
+        oklch(0.1 0.01 260)
+      );
+    --sidebar-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-sidebar) / 0.98),
+      oklch(var(--bg-canvas) / 0.98)
+    );
+    --surface-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.96),
+      oklch(var(--bg-surface) / 0.86)
+    );
+    --surface-strong-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.9)
+    );
+    --surface-portal-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.92)
+    );
+    --section-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.42),
+      oklch(var(--bg-surface) / 0.28)
+    );
+    --dashed-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-muted) / 0.28),
+      oklch(var(--bg-surface) / 0.2)
+    );
+    --popover-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.92)
+    );
+    --dialog-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.9)
+    );
+    --topbar-bg: oklch(var(--bg-surface) / 0.72);
+    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.94);
+    --overlay-bg: oklch(var(--bg-canvas) / 0.72);
+    --surface-shadow: 0 24px 70px -52px oklch(0 0 0 / 0.52);
+    --surface-strong-shadow: 0 24px 70px -52px oklch(0 0 0 / 0.72);
+    --surface-portal-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.18),
+      0 26px 70px -48px oklch(0 0 0 / 0.78);
+    --popover-shadow: 0 20px 60px -40px oklch(0 0 0 / 0.72);
+    --dialog-shadow: 0 28px 80px -50px oklch(0 0 0 / 0.82);
+    --sticky-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.8);
+    --skeleton-shimmer: linear-gradient(
+      110deg,
+      transparent,
+      oklch(var(--text-primary) / 0.08),
+      transparent
+    );
+    --portal-page-bg: var(--shell-canvas);
   }
 
   * {
@@ -124,7 +358,9 @@
 
   select,
   textarea {
-    @apply rounded-2xl border border-input bg-secondary text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] transition-colors;
+    @apply rounded-2xl border border-input text-sm text-foreground transition-colors;
+    background-color: oklch(var(--bg-input) / 0.9);
+    box-shadow: inset 0 1px 0 oklch(var(--bg-surface-elevated) / 0.6);
   }
 
   select {
@@ -150,59 +386,110 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .bg-canvas {
+    background-color: oklch(var(--bg-canvas));
+  }
+
+  .bg-sidebar {
+    background-color: oklch(var(--bg-sidebar));
+  }
+
+  .bg-surface {
+    background-color: oklch(var(--bg-surface));
+  }
+
+  .bg-surface-elevated {
+    background-color: oklch(var(--bg-surface-elevated));
+  }
+
+  .bg-muted-surface {
+    background-color: oklch(var(--bg-muted));
+  }
+
+  .bg-input-surface {
+    background-color: oklch(var(--bg-input));
+  }
+
+  .text-primary-theme {
+    color: oklch(var(--text-primary));
+  }
+
+  .text-secondary-theme {
+    color: oklch(var(--text-secondary));
+  }
+
+  .text-muted-theme {
+    color: oklch(var(--text-muted));
+  }
+
+  .border-subtle-theme {
+    border-color: oklch(var(--border-subtle));
+  }
+
+  .border-default-theme {
+    border-color: oklch(var(--border-default));
+  }
+
+  .border-strong-theme {
+    border-color: oklch(var(--border-strong));
+  }
 }
 
 @layer components {
+  .theme-shell-canvas {
+    background: var(--shell-canvas);
+  }
+
+  .theme-sidebar-surface {
+    background: var(--sidebar-bg);
+  }
+
+  .theme-topbar {
+    background-color: var(--topbar-bg);
+  }
+
+  .theme-overlay {
+    background-color: var(--overlay-bg);
+  }
+
   .surface-panel {
-    @apply rounded-[26px] border shadow-card;
-    border-color: oklch(var(--border) / 0.7);
-    background: linear-gradient(
-      180deg,
-      oklch(var(--card) / 0.94),
-      oklch(var(--card) / 0.84)
-    );
+    @apply rounded-[26px] border;
+    border-color: oklch(var(--border-default) / 0.72);
+    background: var(--surface-bg);
+    box-shadow: var(--surface-shadow);
   }
 
   .surface-panel-strong {
-    @apply rounded-[28px] border shadow-[0_24px_70px_-52px_rgba(0,0,0,0.85)];
-    border-color: oklch(var(--border) / 0.7);
-    background: linear-gradient(
-      180deg,
-      rgba(18, 24, 38, 0.9),
-      rgba(11, 15, 25, 0.9)
-    );
+    @apply rounded-[28px] border;
+    border-color: oklch(var(--border-default) / 0.72);
+    background: var(--surface-strong-bg);
+    box-shadow: var(--surface-strong-shadow);
   }
 
   .surface-panel-portal {
-    @apply rounded-[var(--radius-xl)] border shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_26px_70px_-48px_rgba(0,0,0,0.92)];
-    border-color: oklch(var(--border) / 0.82);
-    background: linear-gradient(
-      180deg,
-      rgba(24, 31, 47, 0.96),
-      rgba(15, 20, 31, 0.92)
-    );
+    @apply rounded-[var(--radius-xl)] border;
+    border-color: oklch(var(--border-default) / 0.82);
+    background: var(--surface-portal-bg);
+    box-shadow: var(--surface-portal-shadow);
   }
 
   .surface-subtle {
     @apply rounded-2xl border;
-    border-color: oklch(var(--border) / 0.7);
-    background-color: oklch(var(--background) / 0.45);
+    border-color: oklch(var(--border-subtle) / 0.85);
+    background-color: oklch(var(--bg-muted) / 0.5);
   }
 
   .surface-section {
     @apply rounded-[var(--radius-lg)] border;
-    border-color: oklch(var(--border) / 0.72);
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.045),
-      rgba(255, 255, 255, 0.025)
-    );
+    border-color: oklch(var(--border-default) / 0.72);
+    background: var(--section-bg);
   }
 
   .surface-dashed {
     @apply rounded-[24px] border border-dashed;
-    border-color: oklch(var(--border) / 0.7);
-    background-color: oklch(var(--muted) / 0.18);
+    border-color: oklch(var(--border-default) / 0.7);
+    background: var(--dashed-bg);
   }
 
   .portal-shell {
@@ -223,7 +510,7 @@
 
   .form-control-compact {
     @apply h-10 rounded-xl bg-background px-3 text-sm shadow-none;
-    background-color: oklch(var(--background) / 0.7);
+    background-color: oklch(var(--bg-input) / 0.78);
   }
 
   textarea.form-control-compact {
@@ -236,14 +523,14 @@
 
   .workspace-filter-chip {
     @apply h-9 rounded-full border px-4 text-xs font-medium text-muted-foreground transition-colors;
-    border-color: oklch(var(--input) / 0.75);
-    background-color: oklch(var(--secondary) / 0.4);
+    border-color: oklch(var(--border-default) / 0.75);
+    background-color: oklch(var(--bg-muted) / 0.6);
   }
 
   .workspace-filter-chip:hover {
-    border-color: oklch(var(--border));
-    background-color: oklch(var(--secondary) / 0.7);
-    color: oklch(var(--foreground));
+    border-color: oklch(var(--border-strong));
+    background-color: oklch(var(--bg-surface) / 0.9);
+    color: oklch(var(--text-primary));
   }
 
   .portal-meta-text {
@@ -253,6 +540,41 @@
   .portal-kicker {
     @apply text-xs font-medium tracking-[0.08em] text-muted-foreground;
     text-transform: uppercase;
+  }
+
+  .ops-kicker {
+    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .ops-surface {
+    @apply rounded-[22px] border;
+    border-color: oklch(var(--border-default) / 0.72);
+    background: var(--section-bg);
+  }
+
+  .ops-surface-strong {
+    @apply rounded-[24px] border;
+    border-color: oklch(var(--border-default) / 0.8);
+    background: var(--surface-strong-bg);
+    box-shadow: var(--surface-strong-shadow);
+  }
+
+  .ops-stat {
+    @apply rounded-[18px] border px-3 py-3;
+    border-color: oklch(var(--border-default) / 0.68);
+    background-color: oklch(var(--bg-surface) / 0.5);
+  }
+
+  .ops-chip {
+    @apply inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium;
+    border-color: oklch(var(--border-default) / 0.68);
+    background-color: oklch(var(--bg-surface) / 0.58);
+  }
+
+  .ops-chip-strong {
+    @apply inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold;
+    border-color: oklch(var(--border-strong) / 0.78);
+    background-color: oklch(var(--bg-surface-elevated) / 0.72);
   }
 }
 

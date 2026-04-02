@@ -15,7 +15,7 @@ export function DashboardCard({
   className,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   action?: ReactNode;
   className?: string;

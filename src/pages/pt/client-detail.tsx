@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Dumbbell,
   Flame,
   MessageCircle,
   Moon,
@@ -655,6 +656,7 @@ export function PtClientDetailPage() {
   const [reviewPhotoPreview, setReviewPhotoPreview] =
     useState<CheckinPhotoRow | null>(null);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [attentionFlagDialogOpen, setAttentionFlagDialogOpen] = useState(false);
   const [profileEditStatus, setProfileEditStatus] = useState<"idle" | "saving">(
     "idle",
   );
@@ -2408,6 +2410,55 @@ export function PtClientDetailPage() {
     lastCheckin ??
     clientSnapshot?.updated_at ??
     null;
+  const clientAttentionReasons = useMemo(() => {
+    const reasons: Array<{ id: string; title: string; helper: string }> = [];
+
+    if (onboardingSnapshot && onboardingSnapshot.status !== "completed") {
+      reasons.push({
+        id: "onboarding",
+        title: "Onboarding is incomplete",
+        helper: onboardingStatusMeta.description,
+      });
+    }
+
+    if (
+      clientRiskFlags.includes("low_adherence_trend") ||
+      (typeof adherenceStat === "number" && adherenceStat < 60)
+    ) {
+      reasons.push({
+        id: "adherence",
+        title: "Adherence is low",
+        helper:
+          typeof adherenceStat === "number"
+            ? `Adherence is currently ${adherenceStat}% across the last 7 days.`
+            : "Recent client adherence has dropped below the expected level.",
+      });
+    }
+
+    const inactivityDays = latestClientActivityAt
+      ? diffDays(latestClientActivityAt, todayKey)
+      : null;
+    if (inactivityDays === null || inactivityDays >= 3) {
+      reasons.push({
+        id: "portal-inactive",
+        title: "No recent portal activity",
+        helper:
+          inactivityDays === null
+            ? "No recent client activity has been captured yet."
+            : `The client has been inactive for ${inactivityDays} days.`,
+      });
+    }
+
+    return reasons;
+  }, [
+    adherenceStat,
+    clientRiskFlags,
+    latestClientActivityAt,
+    onboardingSnapshot,
+    onboardingStatusMeta.description,
+    todayKey,
+  ]);
+  const hasClientAttentionFlag = clientAttentionReasons.length > 0;
   const nextDueSummary = pendingCheckin
     ? {
         title: "Next due check-in",
@@ -2433,52 +2484,6 @@ export function PtClientDetailPage() {
             ? `Program active from ${activeProgram.start_date ?? "--"}`
             : "Assign a plan, workout, or check-in schedule.",
         };
-  const recentActivityItems = useMemo(() => {
-    const coachItems = (coachActivityQuery.data ?? [])
-      .slice(0, 4)
-      .map((row) => ({
-        id: row.id,
-        title: getCoachActionLabel(row.action),
-        helper: row.created_at
-          ? formatRelativeTime(row.created_at)
-          : "Recently",
-      }));
-
-    if (coachItems.length > 0) return coachItems;
-
-    const fallbackItems = [
-      clientOperationalQuery.data?.last_client_reply_at
-        ? {
-            id: "reply",
-            title: "Client replied",
-            helper: formatRelativeTime(
-              clientOperationalQuery.data.last_client_reply_at,
-            ),
-          }
-        : null,
-      lastWorkout
-        ? {
-            id: "workout",
-            title: "Workout activity logged",
-            helper: formatRelativeTime(lastWorkout),
-          }
-        : null,
-      lastCheckin
-        ? {
-            id: "checkin",
-            title: "Check-in activity",
-            helper: formatRelativeTime(lastCheckin),
-          }
-        : null,
-    ].filter(Boolean);
-
-    return fallbackItems;
-  }, [
-    clientOperationalQuery.data?.last_client_reply_at,
-    coachActivityQuery.data,
-    lastCheckin,
-    lastWorkout,
-  ]);
   const attentionItems = useMemo(() => {
     const items: Array<{
       id: string;
@@ -3317,10 +3322,6 @@ export function PtClientDetailPage() {
     coachActivityQuery.isLoading ||
     habitsQuery.isLoading ||
     checkinsQuery.isLoading;
-  const focusLoading =
-    upcomingQuery.isLoading ||
-    checkinsQuery.isLoading ||
-    coachActivityQuery.isLoading;
 
   return (
     <DashboardShell>
@@ -3356,11 +3357,11 @@ export function PtClientDetailPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
+          <Card className="ops-surface-strong backdrop-blur">
             <CardContent className="space-y-5 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex flex-wrap items-start gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-border/70 bg-background/70 text-sm font-semibold text-foreground">
                     {getInitials(clientSnapshot?.display_name)}
                   </div>
                   <div className="space-y-2">
@@ -3377,6 +3378,16 @@ export function PtClientDetailPage() {
                       />
                       {onboardingSnapshot ? (
                         <StatusPill status={onboardingSnapshot.status} />
+                      ) : null}
+                      {hasClientAttentionFlag ? (
+                        <button
+                          type="button"
+                          onClick={() => setAttentionFlagDialogOpen(true)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-200 transition hover:border-amber-300/40 hover:bg-amber-500/15"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          Attention
+                        </button>
                       ) : null}
                       {clientRiskFlags.slice(0, 2).map((flag) => {
                         const meta = getClientRiskFlagMeta(flag);
@@ -3395,16 +3406,25 @@ export function PtClientDetailPage() {
                         clientSnapshot?.timezone,
                       ]
                         .filter(Boolean)
-                        .join("  -  ") || "Client coaching view"}
-                      {joinedLabel ? `  -  Joined ${joinedLabel}` : ""}
+                        .join(" • ") || "Client coaching view"}
+                      {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
                     </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="ops-chip text-muted-foreground">
+                        Next due: {nextDueSummary.value}
+                      </span>
+                      <span className="ops-chip text-muted-foreground">
+                        Last touch: {lastSeen ?? "No recent activity"}
+                      </span>
+                      <span className="ops-chip text-muted-foreground">
+                        Program:{" "}
+                        {activeProgram?.program_template?.name ?? "None"}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    className="shadow-[0_0_30px_rgba(34,211,238,0.15)]"
-                    onClick={() => handleQuickAction("")}
-                  >
+                  <Button onClick={() => handleQuickAction("")}>
                     Message client
                   </Button>
                   <Button
@@ -3468,9 +3488,9 @@ export function PtClientDetailPage() {
               </div>
 
               {!isOverviewCollapsed ? (
-                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="ops-surface p-4">
                   <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Lifecycle
                       </span>
@@ -3491,7 +3511,7 @@ export function PtClientDetailPage() {
                         ) : null}
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Onboarding
                       </span>
@@ -3499,7 +3519,7 @@ export function PtClientDetailPage() {
                         {onboardingStatusMeta.label}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Goal
                       </span>
@@ -3507,7 +3527,7 @@ export function PtClientDetailPage() {
                         {clientSnapshot?.goal ?? "Not set"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Training
                       </span>
@@ -3515,7 +3535,7 @@ export function PtClientDetailPage() {
                         {clientSnapshot?.training_type ?? "Not set"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Timezone
                       </span>
@@ -3523,7 +3543,7 @@ export function PtClientDetailPage() {
                         {clientSnapshot?.timezone ?? "Not set"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Joined
                       </span>
@@ -3531,7 +3551,7 @@ export function PtClientDetailPage() {
                         {joinedLabel ?? "--"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Active program
                       </span>
@@ -3539,7 +3559,7 @@ export function PtClientDetailPage() {
                         {activeProgram?.program_template?.name ?? "None"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Program start
                       </span>
@@ -3547,7 +3567,7 @@ export function PtClientDetailPage() {
                         {activeProgram?.start_date ?? "--"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Check-in status
                       </span>
@@ -3555,7 +3575,7 @@ export function PtClientDetailPage() {
                         {checkinStatus ?? "--"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Last workout
                       </span>
@@ -3563,7 +3583,7 @@ export function PtClientDetailPage() {
                         {lastWorkoutStatus ?? "--"}
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
+                    <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Risk signals
                       </span>
@@ -3604,99 +3624,10 @@ export function PtClientDetailPage() {
           </Card>
         )}
 
-        {clientSnapshot ? (
-          focusLoading ? (
-            <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.95fr)]">
-                <Skeleton className="h-16 w-full rounded-xl" />
-                <Skeleton className="h-16 w-full rounded-xl" />
-                <Skeleton className="h-16 w-full rounded-xl" />
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/80">
-              <div className="grid gap-px bg-border/60 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.95fr)]">
-                <div className="bg-card/90 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 rounded-full border border-amber-400/30 bg-amber-500/10 p-2 text-amber-200">
-                      <AlertTriangle className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Attention needed
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {attentionItems[0]?.title ?? "No active blockers"}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {attentionItems[0]?.helper ??
-                          "This client does not have an urgent PT blocker right now."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-card/90 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Next action
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {nextActionItems[0]?.title ?? "Open the workbench"}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {nextActionItems[0]?.helper ??
-                          "Choose the next coaching action from the tabs below."}
-                      </p>
-                    </div>
-                    {nextActionItems[0] ? (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="shrink-0"
-                        onClick={nextActionItems[0].onAction}
-                      >
-                        {nextActionItems[0].actionLabel}
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="bg-card/90 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Recent status
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">
-                      {onboardingStatusMeta.label}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {completion.percent}% ready
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {nextDueSummary.value}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {nextDueSummary.helper}
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {latestClientActivityAt
-                      ? `Latest activity ${formatRelativeTime(latestClientActivityAt)}`
-                      : "No recent activity captured yet."}
-                    {recentActivityItems[0]?.title
-                      ? ` - ${recentActivityItems[0].title}`
-                      : ""}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )
-        ) : null}
-
         <div className="grid gap-7 lg:grid-cols-3">
           <DashboardCard
-            title="Todo List"
-            subtitle="Create tasks for this client."
+            title="Coach Queue"
+            subtitle="Utility actions and follow-ups tied to this client."
             className="lg:col-span-1"
           >
             <div className="space-y-4">
@@ -3754,8 +3685,8 @@ export function PtClientDetailPage() {
           </DashboardCard>
 
           <DashboardCard
-            title="Metrics"
-            subtitle="Snapshot of recent progress."
+            title="Live Client Signals"
+            subtitle="Secondary signals supporting the coaching decision."
             className="lg:col-span-2"
           >
             {statsLoading ? (
@@ -3845,10 +3776,6 @@ export function PtClientDetailPage() {
             overrideError={overrideError}
             setOverrideError={setOverrideError}
             onSaveOverride={handleSaveOverride}
-            onAssign={(dateKey) => {
-              setScheduledDate(dateKey);
-              setActiveTab("workout");
-            }}
             onReschedule={handleRescheduleWorkout}
             onDelete={handleOpenDeleteDialog}
             onStatusChange={handleStatusUpdate}
@@ -3936,8 +3863,9 @@ export function PtClientDetailPage() {
 
         <div>
           <DashboardCard
-            title="Client Workbench"
-            className="bg-card/90"
+            title="Coaching Workspace"
+            subtitle="Primary operational surface for planning, review, and intervention."
+            className="ops-surface-strong"
             action={
               <Button
                 variant="ghost"
@@ -3965,6 +3893,33 @@ export function PtClientDetailPage() {
                 onValueChange={setActiveTab}
                 className="space-y-4"
               >
+                <div className="grid gap-2 lg:grid-cols-4">
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Command</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {nextActionItems[0]?.title ?? "Review client state"}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Risk Board</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {attentionItems[0]?.title ?? "No active blocker"}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Program Lane</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {activeProgram?.program_template?.name ??
+                        "No active program"}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Check-in Lane</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {nextDueSummary.value}
+                    </div>
+                  </div>
+                </div>
                 <div className="rounded-2xl border border-border/70 bg-card/70 p-2">
                   <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
                     {workbenchTabs.map((tab) => (
@@ -5088,6 +5043,43 @@ export function PtClientDetailPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={attentionFlagDialogOpen}
+        onOpenChange={setAttentionFlagDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Client attention reasons</DialogTitle>
+            <DialogDescription>
+              This client is currently flagged because one or more attention
+              conditions are active.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {clientAttentionReasons.map((reason) => (
+              <div
+                key={reason.id}
+                className="rounded-lg border border-border/60 bg-muted/20 p-3"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full border border-amber-400/30 bg-amber-500/10 p-1.5 text-amber-200">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-foreground">
+                      {reason.title}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {reason.helper}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={profileEditOpen} onOpenChange={setProfileEditOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
@@ -5209,7 +5201,6 @@ function PtClientScheduleCard({
   overrideError,
   setOverrideError,
   onSaveOverride,
-  onAssign,
   onReschedule,
   onDelete,
   onStatusChange,
@@ -5238,11 +5229,11 @@ function PtClientScheduleCard({
   overrideError: string | null;
   setOverrideError: (value: string | null) => void;
   onSaveOverride: () => void;
-  onAssign: (dateKey: string) => void;
   onReschedule: (id: string, dateKey: string) => void;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: "completed" | "skipped") => void;
 }) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedKey, setSelectedKey] = useState(scheduleStartKey);
   const [editOpen, setEditOpen] = useState(false);
@@ -5251,6 +5242,12 @@ function PtClientScheduleCard({
   const [dayNote, setDayNote] = useState("");
   const [dayNoteStatus, setDayNoteStatus] = useState<"idle" | "saving">("idle");
   const [dayNoteMessage, setDayNoteMessage] = useState<string | null>(null);
+  const [addWorkoutStatus, setAddWorkoutStatus] = useState<
+    "idle" | "saving"
+  >("idle");
+  const [addWorkoutMessage, setAddWorkoutMessage] = useState<
+    string | null
+  >(null);
   const [nutritionAssignOpen, setNutritionAssignOpen] = useState(false);
   const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(
     null,
@@ -5434,14 +5431,36 @@ function PtClientScheduleCard({
     );
   }, [nutritionAssignDate, scheduleStartKey, selectedRow?.key]);
   const selectedWorkout = selectedRow?.workout ?? null;
-  const selectedStatus =
+  const selectedNutritionMeals =
+    (
+      selectedRow?.nutrition as {
+        meals?: Array<{
+          calories?: number | null;
+          logs?: Array<{ is_completed?: boolean }>;
+        }>;
+      } | null
+    )?.meals ?? [];
+  const selectedNutritionCaloriesTotal = selectedNutritionMeals.reduce(
+    (sum, meal) => sum + (meal.calories ?? 0),
+    0,
+  );
+  const selectedCheckinState = !selectedRow?.checkin
+    ? null
+    : selectedRow.checkin.reviewed_at
+      ? "reviewed"
+      : selectedRow.checkin.submitted_at
+        ? "submitted"
+        : "due";
+  const selectedHasScheduledWorkout = Boolean(
+    selectedWorkout && selectedWorkout.day_type !== "rest",
+  );
+  const selectedDayTypeLabel = selectedHasScheduledWorkout
+    ? "Workout"
+    : "Rest day";
+  const selectedWorkoutTemplateLabel =
     selectedWorkout?.day_type === "rest"
-      ? "rest day"
-      : (selectedWorkout?.status ?? (selectedWorkout ? "planned" : "rest day"));
-  const selectedTitle =
-    selectedWorkout?.day_type === "rest"
-      ? "Rest day"
-      : (selectedWorkout?.workout_template?.name ?? "Workout");
+      ? ""
+      : (selectedWorkout?.workout_template?.name ?? "");
 
   const weeklyWorkouts = weekRows.filter(
     (row) => row.workout && row.workout.day_type !== "rest",
@@ -5494,6 +5513,28 @@ function PtClientScheduleCard({
     setDayNoteMessage(null);
   }, [selectedKey, selectedWorkout?.coach_note]);
 
+  const invalidateScheduleData = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: [
+        "pt-client-schedule-week",
+        clientId,
+        workspaceId,
+        scheduleStartKey,
+        scheduleEndKey,
+      ],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-week-plan", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workout-today", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["assigned-workouts-upcoming", clientId],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+  };
+
   const handleSaveDayNote = async () => {
     if (!selectedWorkout?.id) {
       setDayNoteMessage("Assign a workout or rest day before saving a note.");
@@ -5514,21 +5555,7 @@ function PtClientScheduleCard({
       return;
     }
 
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "pt-client-schedule-week",
-        clientId,
-        workspaceId,
-        scheduleStartKey,
-        scheduleEndKey,
-      ],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-week-plan", clientId],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workout-today", clientId],
-    });
+    await invalidateScheduleData();
 
     setDayNoteStatus("idle");
     setDayNoteMessage(
@@ -5537,6 +5564,41 @@ function PtClientScheduleCard({
         : "Note removed from the client view.",
     );
   };
+
+  const handleAddWorkout = async () => {
+    if (!workspaceId) {
+      setAddWorkoutMessage("Workspace not found.");
+      return;
+    }
+
+    setAddWorkoutStatus("saving");
+    setAddWorkoutMessage(null);
+
+    const { data, error } = await supabase
+      .from("workout_templates")
+      .insert({
+        workspace_id: workspaceId,
+        name: `Workout ${selectedKey}`,
+        workout_type: "bodybuilding",
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      setAddWorkoutStatus("idle");
+      setAddWorkoutMessage(getErrorMessage(error));
+      return;
+    }
+
+    setAddWorkoutStatus("idle");
+    setDayDrawerOpen(false);
+    if (data?.id) {
+      navigate(
+        `/pt/templates/workouts/${data.id}?clientId=${clientId ?? ""}&date=${selectedKey}`,
+      );
+    }
+  };
+
   const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
 
   const formatLabel = (key: string) => {
@@ -5603,26 +5665,26 @@ function PtClientScheduleCard({
       ) : (
         <div className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-              <div className="text-muted-foreground">Completed</div>
+            <div className="ops-stat text-xs">
+              <div className="ops-kicker">Completed</div>
               <div className="text-sm font-semibold text-foreground">
                 {weeklyCompleted}
               </div>
             </div>
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-              <div className="text-muted-foreground">Skipped</div>
+            <div className="ops-stat text-xs">
+              <div className="ops-kicker">Skipped</div>
               <div className="text-sm font-semibold text-foreground">
                 {weeklyMissed}
               </div>
             </div>
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-              <div className="text-muted-foreground">Planned</div>
+            <div className="ops-stat text-xs">
+              <div className="ops-kicker">Planned</div>
               <div className="text-sm font-semibold text-foreground">
                 {weeklyPlanned}
               </div>
             </div>
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-              <div className="text-muted-foreground">Rest</div>
+            <div className="ops-stat text-xs">
+              <div className="ops-kicker">Rest</div>
               <div className="text-sm font-semibold text-foreground">
                 {weeklyRest}
               </div>
@@ -5642,6 +5704,10 @@ function PtClientScheduleCard({
               const nutritionCompleted = nutritionMeals.filter((meal) =>
                 (meal.logs ?? []).some((log) => Boolean(log.is_completed)),
               ).length;
+              const nutritionCaloriesTotal = nutritionMeals.reduce(
+                (sum, meal) => sum + (meal.calories ?? 0),
+                0,
+              );
               const nutritionStatus = !nutrition
                 ? null
                 : nutritionMeals.length > 0 &&
@@ -5649,12 +5715,7 @@ function PtClientScheduleCard({
                   ? "completed"
                   : "planned";
               const isRestDay = workout?.day_type === "rest";
-              const status = isRestDay
-                ? "rest day"
-                : (workout?.status ?? (workout ? "planned" : "rest day"));
-              const title = isRestDay
-                ? "Rest day"
-                : (workout?.workout_template?.name ?? "Workout");
+              const hasScheduledWorkout = Boolean(workout && !isRestDay);
               const isSelected = row.key === selectedKey;
               const isToday = row.key === todayKey;
               const isPast = row.key < todayKey;
@@ -5664,13 +5725,23 @@ function PtClientScheduleCard({
               const hasPendingCheckin = Boolean(
                 checkin && !checkin.submitted_at,
               );
-              const hasScheduledWorkout = Boolean(workout && !isRestDay);
               const isLowInfoRestDay =
                 !hasScheduledWorkout &&
                 !checkin &&
                 !nutrition &&
                 !workout?.coach_note;
+              const dayTypeLabel = hasScheduledWorkout ? "Workout" : "Rest day";
+              const workoutTemplateLabel = isRestDay
+                ? ""
+                : (workout?.workout_template?.name ?? "");
               const isStreak = streakKeys.has(row.key);
+              const checkinState = !checkin
+                ? null
+                : checkin.reviewed_at
+                  ? "reviewed"
+                  : checkin.submitted_at
+                    ? "submitted"
+                    : "due";
               return (
                 <div
                   key={row.key}
@@ -5688,7 +5759,7 @@ function PtClientScheduleCard({
                     }
                   }}
                   className={cn(
-                    "group min-h-[180px] w-full rounded-2xl border border-border/70 bg-background/40 px-4 py-4 text-left transition hover:border-border",
+                    "group ops-surface-strong min-h-[220px] w-full px-4 py-4 text-left transition hover:border-border",
                     isSelected
                       ? "border-primary/55 bg-primary/12 shadow-[0_0_0_1px_oklch(var(--primary)/0.24),0_18px_32px_-24px_oklch(var(--primary)/0.8)]"
                       : hasSubmittedCheckin
@@ -5709,9 +5780,21 @@ function PtClientScheduleCard({
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="uppercase tracking-[0.2em]">
-                        {formatWeekday(row.key)} {formatDayNumber(row.key)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="uppercase tracking-[0.2em]">
+                          {formatWeekday(row.key)}
+                        </span>
+                        <span
+                          className={cn(
+                            "flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[11px] font-semibold tracking-normal",
+                            isToday
+                              ? "border-primary/45 bg-primary/16 text-primary"
+                              : "border-border/60 bg-background/55 text-foreground",
+                          )}
+                        >
+                          {formatDayNumber(row.key)}
+                        </span>
+                      </div>
                       {isStreak ? (
                         <Flame className="h-4 w-4 text-amber-300" />
                       ) : null}
@@ -5724,119 +5807,66 @@ function PtClientScheduleCard({
                           isLowInfoRestDay ? "text-sm" : "text-base",
                         )}
                       >
-                        {workout ? title : "Rest day"}
+                        {dayTypeLabel}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {isRestDay
-                          ? isLowInfoRestDay
-                            ? "Recovery"
-                            : "Planned rest day"
-                          : (workout?.workout_template?.workout_type_tag ??
-                            "Workout")}
-                      </p>
+                      {workoutTemplateLabel ? (
+                        <p className="text-sm text-muted-foreground">
+                          {workoutTemplateLabel}
+                        </p>
+                      ) : null}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusPill status={status} />
-                      {hasScheduledWorkout && !isSkipped ? (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Scheduled
-                        </Badge>
-                      ) : null}
-                      {isSkipped ? (
-                        <AlertTriangle className="h-4 w-4 text-amber-300" />
-                      ) : null}
-                      {isRestDay ? (
-                        <Moon className="h-4 w-4 text-sky-200" />
-                      ) : null}
-                      {workout?.coach_note ? (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Coach note
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        const meals =
-                          (
-                            nutrition as {
-                              meals?: Array<{
-                                id: string;
-                                meal_name: string | null;
-                                calories: number | null;
-                                protein_g: number | null;
-                                carbs_g: number | null;
-                                fat_g: number | null;
-                                logs?: Array<{ is_completed?: boolean }>;
-                              }>;
-                            } | null
-                          )?.meals ?? [];
-                        setNutritionDayDate(row.key);
-                        setNutritionDayMeals(meals);
-                        setNutritionDayOpen(true);
-                      }}
-                      className="w-full rounded-md border border-border/60 bg-muted/20 px-2 py-1 text-left text-xs"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground">Nutrition</span>
-                        {nutritionStatus ? (
-                          <StatusPill status={nutritionStatus} />
-                        ) : null}
+                    <div className="grid gap-2">
+                      <div className="ops-stat py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
+                            title="Workout"
+                            aria-label="Workout"
+                          >
+                            <Dumbbell className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="text-sm font-semibold text-foreground">
+                            {workoutTemplateLabel || "Rest"}
+                          </span>
+                        </div>
                       </div>
-                    </button>
-
-                    {checkin ? (
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={checkin.submitted_at ? "success" : "warning"}
-                          className="text-[10px] uppercase"
-                        >
-                          {checkin.submitted_at
-                            ? "Check-in submitted"
-                            : "Check-in due"}
-                        </Badge>
+                      <div className="ops-stat py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
+                            title="Nutrition"
+                            aria-label="Nutrition"
+                          >
+                            <Apple className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="text-sm font-semibold text-foreground">
+                            {nutrition
+                              ? `${Math.round(nutritionCaloriesTotal)} kcal`
+                              : "None"}
+                          </span>
+                        </div>
                       </div>
-                    ) : null}
-
-                    <div className="flex items-center gap-2 text-muted-foreground opacity-0 transition group-hover:opacity-100">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (workout?.id) {
-                            setEditDate(row.key);
-                            setEditOpen(true);
-                          } else {
-                            onAssign(row.key);
-                          }
-                        }}
-                        className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setDayDrawerOpen(true);
-                        }}
-                        className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setNutritionAssignDate(row.key);
-                          setNutritionAssignOpen(true);
-                        }}
-                        className="rounded-full border border-border/60 bg-background/50 p-1.5 text-xs"
-                      >
-                        <Apple className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="ops-stat py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
+                            title="Check-in"
+                            aria-label="Check-in"
+                          >
+                            <ClipboardCheck className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="text-sm font-semibold text-foreground">
+                            {checkinState === "reviewed"
+                              ? "Reviewed"
+                              : checkinState === "submitted"
+                                ? "Ready"
+                                : checkinState === "due"
+                                  ? "Due"
+                                  : "None"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -5887,19 +5917,73 @@ function PtClientScheduleCard({
           <DialogHeader>
             <DialogTitle>Day details</DialogTitle>
             <DialogDescription>
-              {formatLabel(selectedRow.key)} - {selectedTitle}
+              {formatLabel(selectedRow.key)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Status
-                </span>
-                <StatusPill status={selectedStatus} />
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Day status
               </div>
               <div className="mt-2 text-base font-semibold text-foreground">
-                {selectedTitle}
+                {selectedDayTypeLabel}
+              </div>
+              {selectedWorkoutTemplateLabel ? (
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {selectedWorkoutTemplateLabel}
+                </div>
+              ) : null}
+              <div className="mt-3 grid gap-2">
+                <div className="ops-stat py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
+                      title="Workout"
+                      aria-label="Workout"
+                    >
+                      <Dumbbell className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {selectedWorkoutTemplateLabel || "Rest"}
+                    </span>
+                  </div>
+                </div>
+                <div className="ops-stat py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
+                      title="Nutrition"
+                      aria-label="Nutrition"
+                    >
+                      <Apple className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {selectedRow?.nutrition
+                        ? `${Math.round(selectedNutritionCaloriesTotal)} kcal`
+                        : "None"}
+                    </span>
+                  </div>
+                </div>
+                <div className="ops-stat py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
+                      title="Check-in"
+                      aria-label="Check-in"
+                    >
+                      <ClipboardCheck className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {selectedCheckinState === "reviewed"
+                        ? "Reviewed"
+                        : selectedCheckinState === "submitted"
+                          ? "Ready"
+                          : selectedCheckinState === "due"
+                            ? "Due"
+                            : "None"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -5910,7 +5994,7 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "completed")
                 }
-                disabled={!selectedWorkout}
+                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Mark complete
@@ -5921,7 +6005,7 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "skipped")
                 }
-                disabled={!selectedWorkout}
+                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 Mark missed
@@ -5938,11 +6022,11 @@ function PtClientScheduleCard({
                 onChange={(event) => setDayNote(event.target.value)}
                 placeholder="Add a coaching note the client can see for this day."
               />
-              <div className="text-xs text-muted-foreground">
-                {selectedWorkout
-                  ? "Visible to the client in their schedule."
-                  : "Assign a workout or rest day to save a note."}
-              </div>
+              {selectedWorkout ? (
+                <div className="text-xs text-muted-foreground">
+                  Visible to the client in their schedule.
+                </div>
+              ) : null}
               {dayNoteMessage ? (
                 <div className="text-xs text-muted-foreground">
                   {dayNoteMessage}
@@ -5953,33 +6037,34 @@ function PtClientScheduleCard({
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="secondary"
-                onClick={() => {
-                  if (selectedWorkout) {
-                    setEditDate(selectedRow.key);
-                    setEditOpen(true);
-                  } else {
-                    onAssign(selectedRow.key);
-                  }
-                }}
+                onClick={handleAddWorkout}
+                disabled={addWorkoutStatus === "saving"}
               >
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit workout
+                <Dumbbell className="mr-2 h-4 w-4" />
+                {addWorkoutStatus === "saving" ? "Opening..." : "Add workout"}
               </Button>
+              {addWorkoutMessage ? (
+                <div className="w-full text-xs text-muted-foreground">
+                  {addWorkoutMessage}
+                </div>
+              ) : null}
+              {selectedWorkout ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    onDelete(selectedWorkout.id);
+                    setDayDrawerOpen(false);
+                  }}
+                >
+                  Remove day
+                </Button>
+              ) : null}
               <Button
                 variant="ghost"
                 onClick={handleSaveDayNote}
                 disabled={!selectedWorkout || dayNoteStatus === "saving"}
               >
                 {dayNoteStatus === "saving" ? "Saving..." : "Save note"}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setNutritionAssignDate(selectedRow.key);
-                  setNutritionAssignOpen(true);
-                }}
-              >
-                Assign nutrition program
               </Button>
               <Button variant="ghost" onClick={() => setDayDrawerOpen(false)}>
                 Close

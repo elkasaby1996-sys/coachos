@@ -27,11 +27,11 @@ export function StatCard({
     <Card
       className={cn(
         isPtHub
-          ? "rounded-[28px] border-border/70 bg-[linear-gradient(180deg,rgba(18,24,38,0.82),rgba(11,15,25,0.86))] shadow-[0_20px_60px_-48px_rgba(0,0,0,0.9)]"
+          ? "surface-panel-strong rounded-[28px] border-border/70"
           : "border-border/70 bg-card/80",
         accent &&
           (isPtHub
-            ? "border-primary/30 bg-[linear-gradient(180deg,rgba(20,29,44,0.92),rgba(11,16,28,0.9))]"
+            ? "border-primary/30 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))]"
             : "border-primary/40 bg-card/90 shadow-glow"),
         className,
       )}
