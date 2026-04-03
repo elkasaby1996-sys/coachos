@@ -21,7 +21,7 @@ export function PtHubSettingsPage() {
         <PtHubPageHeader
           eyebrow="PT Hub Settings"
           title="Account settings"
-          description="Loading trainer business settings..."
+          description="Loading your PT Hub settings..."
         />
       </section>
     );
@@ -31,8 +31,8 @@ export function PtHubSettingsPage() {
     <section className="space-y-6">
       <PtHubPageHeader
         eyebrow="PT Hub Settings"
-        title="Account and business preferences"
-        description="Trainer-level settings belong here, separate from workspace-specific configuration inside the coaching dashboard."
+        title="Account and app settings"
+        description="Manage your account details and PT Hub preferences."
       />
 
       {message ? (

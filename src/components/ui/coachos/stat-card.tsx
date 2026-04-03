@@ -29,24 +29,35 @@ export function StatCard({
     <Card
       className={cn(
         isPtHub
-          ? "surface-panel-strong rounded-[28px] border-border/70"
+          ? "surface-panel relative overflow-hidden rounded-[28px] border-border/70 backdrop-blur-xl"
           : "border-border/70 bg-card/80",
         accent &&
           (isPtHub
-            ? "border-primary/30 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))]"
+            ? "border-primary/25"
             : "border-primary/40 bg-card/90 shadow-glow"),
         className,
       )}
     >
-      <CardHeader className={cn("space-y-2", isPtHub && "px-5 py-5")}>
+      {isPtHub ? (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.1),transparent_48%)]",
+            accent &&
+              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.12),transparent_48%)]",
+          )}
+        />
+      ) : null}
+      <CardHeader
+        className={cn("space-y-2", isPtHub && "relative px-5 py-5 sm:px-6")}
+      >
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="uppercase tracking-[0.22em]">{label}</span>
+          <span className="font-semibold uppercase tracking-[0.18em]">{label}</span>
           {Icon ? (
             <span
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-xl border",
+                "flex h-9 w-9 items-center justify-center rounded-full border",
                 isPtHub
-                  ? "border-border/70 bg-background/45 text-primary"
+                  ? "border-primary/16 bg-background/18 text-primary backdrop-blur-lg"
                   : "border-transparent text-primary",
               )}
             >
@@ -59,7 +70,7 @@ export function StatCard({
             <CardTitle
               className={cn(
                 "text-2xl font-semibold tracking-tight",
-                isPtHub && "text-[1.85rem]",
+                isPtHub && "text-[2.15rem] uppercase tracking-[0.01em]",
               )}
             >
               {value}
@@ -68,7 +79,7 @@ export function StatCard({
               <p
                 className={cn(
                   "text-xs text-muted-foreground",
-                  isPtHub && "mt-1 text-sm",
+                  isPtHub && "mt-1 text-sm leading-5",
                 )}
               >
                 {helper}

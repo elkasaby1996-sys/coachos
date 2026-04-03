@@ -1,4 +1,4 @@
-import { CreditCard, FileText, Landmark, Wallet } from "lucide-react";
+import { FileText, Landmark, ReceiptText, Wallet } from "lucide-react";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Badge } from "../../components/ui/badge";
@@ -16,35 +16,35 @@ export function PtHubPaymentsPage() {
     <section className="space-y-6">
       <PtHubPageHeader
         eyebrow="Payments"
-        title="CoachOS billing and revenue structure"
-        description="This page separates your platform subscription from your future trainer-business revenue tooling. Billing is intentionally honest about what is and is not connected yet."
+        title="Billing and revenue"
+        description="Review your CoachOS plan, invoices, and revenue tracking."
       />
 
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
-          label="Subscription Plan"
+          label="Platform Plan"
           value={subscription?.planName ?? "CoachOS Pro"}
           helper={
             subscription?.billingConnected
               ? "Live billing"
-              : "Subscription placeholder"
+              : "Billing not connected yet"
           }
-          icon={CreditCard}
+          icon={Wallet}
           accent
         />
         <StatCard
           surface="pt-hub"
-          label="Billing Status"
+          label="Billing State"
           value={subscription?.billingStatus ?? "Billing placeholder"}
-          helper="Platform subscription state"
+          helper="Status of your CoachOS plan"
           icon={Landmark}
         />
         <StatCard
           surface="pt-hub"
           label="Monthly Revenue"
           value={revenue?.monthlyRevenueLabel ?? "Not connected"}
-          helper="Trainer business revenue tracking"
+          helper="Revenue tracking for your coaching business"
           icon={Wallet}
         />
         <StatCard
@@ -54,17 +54,17 @@ export function PtHubPaymentsPage() {
           helper={
             invoices.some((invoice) => !invoice.placeholder)
               ? "Connected history"
-              : "Placeholder history"
+              : "No live invoice history yet"
           }
-          icon={FileText}
+          icon={ReceiptText}
         />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_380px]">
         <div className="space-y-6">
           <PtHubSectionCard
-            title="CoachOS subscription"
-            description="Platform-level billing information for the trainer account."
+            title="Billing Overview"
+            description="The key billing details for this account."
           >
             <div className="grid gap-4 md:grid-cols-2">
               <PaymentDetail
@@ -87,18 +87,21 @@ export function PtHubPaymentsPage() {
                 }
               />
             </div>
+            <div className="mt-5 rounded-[22px] border border-border/60 bg-background/28 px-4 py-4 text-sm text-muted-foreground">
+              Your CoachOS subscription is visible here, but billing sync and client billing are not fully live yet.
+            </div>
           </PtHubSectionCard>
 
           <PtHubSectionCard
-            title="Invoice history"
-            description="Invoice records will populate here once subscription billing is integrated."
+            title="Invoices"
+            description="Your invoice history appears here when billing is connected."
           >
             {invoices.some((invoice) => !invoice.placeholder) ? (
               <div className="space-y-3">
                 {invoices.map((invoice) => (
                   <div
                     key={invoice.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/40 px-4 py-3"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/34 px-4 py-3"
                   >
                     <div>
                       <p className="text-sm font-medium text-foreground">
@@ -121,70 +124,47 @@ export function PtHubPaymentsPage() {
               </div>
             ) : (
               <EmptyState
-                title="Invoice history not connected yet"
-                description="CoachOS subscription billing has not been wired to a live processor yet, so invoices are intentionally placeholder-only."
+                title="Invoices are not connected yet"
+                description="Billing is not fully connected yet, so invoice history is placeholder-only for now."
               />
             )}
           </PtHubSectionCard>
-
-          <PtHubSectionCard
-            title="Trainer business revenue"
-            description="A structure for future PT-side monetization tracking without pretending client billing is already integrated."
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <PaymentDetail
-                label="Monthly revenue"
-                value={revenue?.monthlyRevenueLabel ?? "Not connected"}
-              />
-              <PaymentDetail
-                label="Trailing revenue"
-                value={revenue?.trailingRevenueLabel ?? "Not connected"}
-              />
-              <PaymentDetail
-                label="Active paying clients"
-                value={revenue?.activePayingClientsLabel ?? "Not connected"}
-              />
-              <PaymentDetail
-                label="Potential active client base"
-                value={String(revenue?.potentialActiveClients ?? 0)}
-              />
-            </div>
-          </PtHubSectionCard>
         </div>
 
-        <div className="space-y-6">
-          <PtHubSectionCard
-            title="Package pricing"
-            description="A placeholder for future productized offers, packages, or service tiers."
-          >
+        <PtHubSectionCard
+          title="Revenue Outlook"
+          description="Current revenue placeholders and future billing notes."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <PaymentDetail
+              label="Monthly revenue"
+              value={revenue?.monthlyRevenueLabel ?? "Not connected"}
+            />
+            <PaymentDetail
+              label="Trailing revenue"
+              value={revenue?.trailingRevenueLabel ?? "Not connected"}
+            />
+            <PaymentDetail
+              label="Active paying clients"
+              value={revenue?.activePayingClientsLabel ?? "Not connected"}
+            />
+            <PaymentDetail
+              label="Potential active client base"
+              value={String(revenue?.potentialActiveClients ?? 0)}
+            />
+          </div>
+          <div className="mt-5 space-y-3">
             <p className="text-sm text-muted-foreground">
               {subscription?.packagePricingLabel ||
                 revenue?.packagePricingLabel ||
-                "Package pricing will live here once client billing and checkout infrastructure are introduced."}
+                "Offer pricing will appear here once client billing and checkout are introduced."}
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <Badge variant="muted">Not yet connected</Badge>
-              <Badge variant="secondary">Phase 3 structure</Badge>
+              <Badge variant="secondary">Future billing tools</Badge>
             </div>
-          </PtHubSectionCard>
-
-          <PtHubSectionCard
-            title="Billing clarity"
-            description="What this page means today."
-          >
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>
-                CoachOS subscription information is structured here, but live
-                billing events and invoice sync are not connected yet.
-              </p>
-              <p>
-                Revenue widgets are deliberate placeholders so the PT Hub can
-                grow into a trainer business platform without fabricating money
-                data.
-              </p>
-            </div>
-          </PtHubSectionCard>
-        </div>
+          </div>
+        </PtHubSectionCard>
       </div>
     </section>
   );

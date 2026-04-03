@@ -25,18 +25,19 @@ export function PtHubSectionCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden rounded-[28px] border border-border/70 bg-[linear-gradient(180deg,rgba(18,24,38,0.86),rgba(11,15,25,0.9))] shadow-[0_24px_70px_-52px_rgba(0,0,0,0.85)]",
+        "surface-panel relative overflow-hidden rounded-[28px] border-border/70 backdrop-blur-xl",
         className,
       )}
     >
-      <CardHeader className="space-y-0 border-b border-border/60 px-5 py-4 sm:px-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.08),transparent_40%,oklch(var(--bg-surface)/0.05))]" />
+      <CardHeader className="relative space-y-0 px-5 py-4 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle className="text-base font-semibold tracking-tight text-foreground">
+            <CardTitle className="text-xl font-semibold uppercase tracking-[0.03em] text-foreground">
               {title}
             </CardTitle>
             {description ? (
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              <p className="max-w-xl text-sm leading-5 text-muted-foreground">
                 {description}
               </p>
             ) : null}
@@ -47,7 +48,7 @@ export function PtHubSectionCard({
         </div>
       </CardHeader>
       <CardContent
-        className={cn("space-y-5 px-5 py-5 sm:px-6", contentClassName)}
+        className={cn("relative space-y-5 px-5 py-5 sm:px-6", contentClassName)}
       >
         {children}
       </CardContent>

@@ -22,11 +22,11 @@ export function PtHubReadinessPanel({
 
   return (
     <PtHubSectionCard
-      title={compact ? "Marketplace readiness" : "Profile readiness"}
+      title={compact ? "Profile readiness" : "Public profile readiness"}
       description={
         compact
-          ? "How close your trainer profile is to future marketplace publishing."
-          : "A publish-readiness system for the future public trainer profile."
+          ? "How close your public trainer page is to being ready to share."
+          : "A checklist for getting your public trainer page ready to share."
       }
     >
       <div className="space-y-4">
@@ -47,7 +47,7 @@ export function PtHubReadinessPanel({
             </p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-background/40 p-3 text-primary">
-            <Sparkles className="h-5 w-5" />
+            <Sparkles className="h-5 w-5 [stroke-width:1.7]" />
           </div>
         </div>
 
@@ -62,8 +62,8 @@ export function PtHubReadinessPanel({
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
               {readiness.readyForPublish
-                ? "Your profile has the essentials needed for a publish-ready state."
-                : `${readiness.missingItems.length} item(s) still need attention before publish readiness.`}
+                ? "Your profile has the key details needed to go live."
+                : `${readiness.missingItems.length} item(s) still need attention before you share it.`}
             </p>
             {!readiness.readyForPublish ? (
               <div className="flex flex-wrap gap-2">
@@ -85,9 +85,9 @@ export function PtHubReadinessPanel({
                 >
                   <div className="flex items-start gap-3">
                     {item.complete ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-success [stroke-width:1.7]" />
                     ) : (
-                      <CircleDashed className="mt-0.5 h-4 w-4 text-warning" />
+                      <CircleDashed className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />
                     )}
                     <div>
                       <p className="text-sm font-medium text-foreground">
@@ -110,14 +110,13 @@ export function PtHubReadinessPanel({
             {!readiness.readyForPublish ? (
               <div className="space-y-3 rounded-[24px] border border-warning/30 bg-warning/10 p-4">
                 <div className="flex items-start gap-3">
-                  <CircleAlert className="mt-0.5 h-4 w-4 text-warning" />
+                  <CircleAlert className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Quick wins
+                      Fastest upgrades
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Focus on the items below to move fastest toward publish
-                      readiness.
+                      Work through these first to get your public profile ready faster.
                     </p>
                   </div>
                 </div>

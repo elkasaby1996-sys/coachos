@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Search, UsersRound } from "lucide-react";
+import { ChevronRight, MessageSquarePlus, Search, UsersRound } from "lucide-react";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
@@ -32,10 +32,11 @@ export function PtHubLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<PTLeadStatus | "all">("all");
   const [selectedLead, setSelectedLead] = useState<PTLead | null>(null);
   const [saving, setSaving] = useState(false);
+  const deferredSearchValue = useDeferredValue(searchValue);
 
   const leads = useMemo(() => leadsQuery.data ?? [], [leadsQuery.data]);
   const filteredLeads = useMemo(() => {
-    const normalizedSearch = searchValue.trim().toLowerCase();
+    const normalizedSearch = deferredSearchValue.trim().toLowerCase();
     return leads.filter((lead) => {
       const matchesStatus =
         statusFilter === "all" ? true : lead.status === statusFilter;
@@ -57,7 +58,7 @@ export function PtHubLeadsPage() {
         : true;
       return matchesStatus && matchesSearch;
     });
-  }, [leads, searchValue, statusFilter]);
+  }, [deferredSearchValue, leads, statusFilter]);
 
   const stats = useMemo(
     () => ({
@@ -79,9 +80,9 @@ export function PtHubLeadsPage() {
   return (
     <section className="space-y-6">
       <PtHubPageHeader
-        eyebrow="Leads and Applications"
-        title="Manage inbound interest"
-        description='Use PT Hub as your CRM inbox for "Apply to Work With Me" submissions. Review fit, capture notes, and move leads forward without dropping into coaching operations.'
+        eyebrow="Leads"
+        title="Review new inquiries"
+        description='See "Apply to Work With Me" submissions and decide who to follow up with next.'
       />
 
       <div className="grid gap-4 xl:grid-cols-4">
@@ -89,19 +90,19 @@ export function PtHubLeadsPage() {
           surface="pt-hub"
           label="Total Leads"
           value={stats.total}
-          helper="All opportunities in PT Hub"
-          icon={UsersRound}
+          helper="All inquiries in PT Hub"
+          icon={MessageSquarePlus}
           accent
         />
         <StatCard
           surface="pt-hub"
           label="New"
           value={stats.fresh}
-          helper="Needs first review"
+          helper="Waiting for review"
         />
         <StatCard
           surface="pt-hub"
-          label="Active Pipeline"
+          label="In Progress"
           value={stats.activePipeline}
           helper="Reviewed, contacted, or booked"
         />
@@ -109,16 +110,16 @@ export function PtHubLeadsPage() {
           surface="pt-hub"
           label="Accepted"
           value={stats.accepted}
-          helper="Qualified or converted"
+          helper="Accepted or converted"
         />
       </div>
 
       <PtHubSectionCard
-        title="Leads inbox"
-        description="Search, segment, and open a lead for notes and status actions."
+        title="Lead Inbox"
+        description="Search, filter, and open any inquiry."
         contentClassName="space-y-6"
       >
-        <div className="rounded-[24px] border border-border/60 bg-background/35 p-4">
+        <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -126,7 +127,7 @@ export function PtHubLeadsPage() {
                 className="pl-9"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search name, contact, goal, budget, or notes"
+                placeholder="Search name, contact, goal, or notes"
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -150,25 +151,25 @@ export function PtHubLeadsPage() {
             title="No leads found"
             description={
               leads.length === 0
-                ? "Applications from public profiles and future marketplace surfaces will collect here once prospects start reaching out."
-                : "No leads match the current search and status filters."
+                ? "New inquiries will appear here when someone applies to work with you."
+                : "No leads match the current filters."
             }
-            icon={<UsersRound className="h-5 w-5" />}
+            icon={<MessageSquarePlus className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
-          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/20">
-            <div className="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] gap-4 border-b border-border/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+          <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
+            <div className="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
               <span>Lead</span>
               <span>Goal and interest</span>
               <span>Submitted</span>
               <span>Status</span>
             </div>
-            <div className="divide-y divide-border/60">
+            <div className="space-y-2">
               {filteredLeads.map((lead) => (
                 <button
                   key={lead.id}
                   type="button"
-                  className="grid w-full gap-4 px-5 py-4 text-left transition-colors hover:bg-background/35 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] lg:items-center"
+                  className="grid w-full gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] lg:items-center"
                   onClick={() => setSelectedLead(lead)}
                 >
                   <div className="space-y-2">
@@ -176,7 +177,7 @@ export function PtHubLeadsPage() {
                       <p className="text-sm font-medium text-foreground">
                         {lead.fullName}
                       </p>
-                      <span className="rounded-full border border-border/60 px-2 py-0.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      <span className="rounded-full border border-border/70 bg-background/72 px-2 py-0.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                         {lead.sourceLabel}
                       </span>
                     </div>
@@ -208,7 +209,7 @@ export function PtHubLeadsPage() {
 
                   <div className="flex items-center justify-between gap-3 lg:justify-end">
                     <PtHubLeadStatusBadge status={lead.status} />
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground [stroke-width:1.7]" />
                   </div>
                 </button>
               ))}

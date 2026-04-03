@@ -1,4 +1,4 @@
-import { BarChart3, Eye, TrendingUp, Users2 } from "lucide-react";
+import { Globe, MessageSquarePlus, Sparkles, TrendingUp, UsersRound } from "lucide-react";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Badge } from "../../components/ui/badge";
@@ -29,29 +29,29 @@ export function PtHubAnalyticsPage() {
     <section className="space-y-6">
       <PtHubPageHeader
         eyebrow="Analytics"
-        title="Track business-level performance"
-        description="PT Hub analytics focus on trainer business signals, not workspace task execution. Where public-marketplace metrics are not live yet, the page stays explicit about placeholders."
+        title="Track business performance"
+        description="See how your profile, leads, and clients are performing."
       />
 
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
-          label="Profile Views"
+          label="Profile Reach"
           value={analytics?.profileViewsLabel ?? "Not live yet"}
           helper={
             analytics?.profileViewsConnected
-              ? "Live public traffic"
-              : "Public page not connected"
+              ? "Visits to your public profile"
+              : "Profile traffic not connected"
           }
-          icon={Eye}
+          icon={Globe}
           accent
         />
         <StatCard
           surface="pt-hub"
-          label="Applications"
+          label="Leads"
           value={analytics?.applicationsThisMonth ?? 0}
           helper="Received in the last 30 days"
-          icon={BarChart3}
+          icon={MessageSquarePlus}
           delta={buildMetricDelta(
             (analytics?.applicationsThisMonth ?? 0) -
               (analytics?.applicationsPreviousWindow ?? 0),
@@ -68,40 +68,46 @@ export function PtHubAnalyticsPage() {
           surface="pt-hub"
           label="Active Clients"
           value={analytics?.activeClients ?? 0}
-          helper="Across all owned workspaces"
-          icon={Users2}
+          helper="Across all coaching spaces"
+          icon={UsersRound}
         />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_380px]">
+        <PtHubSectionCard
+          title="Performance Summary"
+          description="The most useful business signals in one place."
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <MetricBox
+              label="Leads this week"
+              value={String(analytics?.applicationsThisWeek ?? 0)}
+            />
+            <MetricBox
+              label="Leads this month"
+              value={String(analytics?.applicationsThisMonth ?? 0)}
+            />
+            <MetricBox
+              label="Trend"
+              value={analytics?.growthTrendLabel ?? "No growth signal yet"}
+              detail="Compared with the previous 30 days"
+            />
+            <MetricBox
+              label="Proof assets"
+              value={analytics?.testimonialCountLabel ?? "Placeholder"}
+              detail="Testimonials and transformations are still placeholder data"
+            />
+          </div>
+        </PtHubSectionCard>
+
         <div className="space-y-6">
-          <PtHubSectionCard
-            title="Business metrics"
-            description="Current trainer-level analytics from the PT Hub."
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <MetricBox
-                label="Applications this week"
-                value={String(analytics?.applicationsThisWeek ?? 0)}
-              />
-              <MetricBox
-                label="Applications this month"
-                value={String(analytics?.applicationsThisMonth ?? 0)}
-              />
-              <MetricBox
-                label="Testimonials"
-                value={analytics?.testimonialCountLabel ?? "Placeholder"}
-              />
-              <MetricBox
-                label="Transformations"
-                value={analytics?.transformationsCountLabel ?? "Placeholder"}
-              />
-            </div>
-          </PtHubSectionCard>
+          {readinessQuery.data ? (
+            <PtHubReadinessPanel readiness={readinessQuery.data} compact />
+          ) : null}
 
           <PtHubSectionCard
-            title="Clients by workspace"
-            description="Cross-workspace client distribution inside the PT Hub."
+            title="Clients by Coaching Space"
+            description="How your clients are spread across spaces."
           >
             {analytics?.clientsByWorkspace.length ? (
               <div className="space-y-3">
@@ -115,7 +121,7 @@ export function PtHubAnalyticsPage() {
                   return (
                     <div
                       key={item.workspaceId}
-                      className="rounded-2xl border border-border/60 bg-background/40 p-4"
+                      className="rounded-2xl border border-border/60 bg-background/34 p-4"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -140,49 +146,10 @@ export function PtHubAnalyticsPage() {
               </div>
             ) : (
               <EmptyState
-                title="No workspace client breakdown yet"
-                description="Once clients exist across your owned workspaces, the PT Hub will summarize their distribution here."
+                title="No client breakdown yet"
+                description="Once clients are added, PT Hub will show how they are distributed across your coaching spaces."
               />
             )}
-          </PtHubSectionCard>
-
-          <PtHubSectionCard
-            title="Recent growth trend"
-            description="A simple trend read based on current lead flow."
-          >
-            <div className="rounded-2xl border border-border/60 bg-background/40 p-5">
-              <p className="text-lg font-semibold text-foreground">
-                {analytics?.growthTrendLabel ?? "No growth signal yet"}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This compares recent application flow against the previous
-                30-day window. It stays intentionally lightweight until deeper
-                analytics instrumentation exists.
-              </p>
-            </div>
-          </PtHubSectionCard>
-        </div>
-
-        <div className="space-y-6">
-          {readinessQuery.data ? (
-            <PtHubReadinessPanel readiness={readinessQuery.data} compact />
-          ) : null}
-
-          <PtHubSectionCard
-            title="Analytics notes"
-            description="What is real today versus placeholder."
-          >
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>
-                Applications, conversion rate, active clients, and workspace
-                breakdown are derived from real PT Hub and CoachOS data.
-              </p>
-              <p>
-                Profile views, testimonials, and transformations remain
-                placeholder metrics until the public website and proof surfaces
-                exist.
-              </p>
-            </div>
           </PtHubSectionCard>
         </div>
       </div>
@@ -190,15 +157,29 @@ export function PtHubAnalyticsPage() {
   );
 }
 
-function MetricBox({ label, value }: { label: string; value: string }) {
+function MetricBox({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="rounded-2xl border border-border/60 bg-background/34 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
         {label}
-      </p>
-      <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">
-        {value}
-      </p>
+        </p>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/16 bg-background/18 text-primary backdrop-blur-lg">
+          <Sparkles className="h-3.5 w-3.5 [stroke-width:1.7]" />
+        </span>
+      </div>
+      <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</p>
+      {detail ? (
+        <p className="mt-2 text-sm text-muted-foreground">{detail}</p>
+      ) : null}
     </div>
   );
 }

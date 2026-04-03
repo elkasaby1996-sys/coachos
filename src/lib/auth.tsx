@@ -91,7 +91,10 @@ async function resolveRole(userId: string): Promise<{
   clientMember: unknown;
 }> {
   let workspaceLookupTimedOut = false;
-  let workspaceMember: { data: unknown; error: unknown } = {
+  let workspaceMember: {
+    data: Array<{ workspace_id: string | null; role: string | null }> | null;
+    error: unknown;
+  } = {
     data: null,
     error: null,
   };
@@ -102,7 +105,7 @@ async function resolveRole(userId: string): Promise<{
         .from("workspace_members")
         .select("workspace_id, role")
         .eq("user_id", userId)
-        .maybeSingle(),
+        .limit(25),
       WORKSPACE_LOOKUP_TIMEOUT_MS,
       `Workspace membership lookup timed out (${Math.round(WORKSPACE_LOOKUP_TIMEOUT_MS / 1000)}s).`,
     );
@@ -124,17 +127,21 @@ async function resolveRole(userId: string): Promise<{
   }
 
   if (workspaceMember.error) throw workspaceMember.error;
-  const workspaceRole =
-    (workspaceMember.data as { role?: string } | null)?.role ?? null;
-  if (workspaceRole && workspaceRole.startsWith("pt")) {
+  const workspaceRows = workspaceMember.data ?? [];
+  const ptWorkspaceMember =
+    workspaceRows.find((member) => member.role?.startsWith("pt")) ?? null;
+  if (ptWorkspaceMember) {
     return {
       role: "pt",
-      workspaceMember: workspaceMember.data,
+      workspaceMember: ptWorkspaceMember,
       clientMember: null,
     };
   }
 
-  let clientMember: { data: unknown; error: unknown } = {
+  let clientMember: {
+    data: Array<{ id: string; workspace_id: string | null }> | null;
+    error: unknown;
+  } = {
     data: null,
     error: null,
   };
@@ -148,7 +155,7 @@ async function resolveRole(userId: string): Promise<{
           .from("clients")
           .select("id, workspace_id")
           .eq("user_id", userId)
-          .maybeSingle(),
+          .limit(25),
         timeoutMs,
         `Client lookup timed out (${Math.round(timeoutMs / 1000)}s).`,
       );
@@ -186,11 +193,12 @@ async function resolveRole(userId: string): Promise<{
       clientMember: clientMember.data,
     };
   }
-  if (clientMember.data) {
+  const clientRows = clientMember.data ?? [];
+  if (clientRows.length > 0) {
     return {
       role: "client",
-      workspaceMember: workspaceMember.data,
-      clientMember: clientMember.data,
+      workspaceMember: ptWorkspaceMember,
+      clientMember: clientRows[0],
     };
   }
 
@@ -218,8 +226,8 @@ async function resolveRole(userId: string): Promise<{
 
   return {
     role: "none",
-    workspaceMember: workspaceMember.data,
-    clientMember: clientMember.data,
+    workspaceMember: ptWorkspaceMember,
+    clientMember: null,
   };
 }
 

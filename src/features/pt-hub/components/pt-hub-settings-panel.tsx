@@ -54,8 +54,8 @@ export function PtHubSettingsPanel({
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
       <div className="space-y-6">
         <PtHubSectionCard
-          title="Account info"
-          description="Identity and default business settings for the trainer layer."
+          title="Coach account"
+          description="Identity and base operating settings for the business-side PT Hub."
         >
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Account email">
@@ -85,8 +85,8 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
 
         <PtHubSectionCard
-          title="Contact info"
-          description="Business-facing contact details used for future public and billing flows."
+          title="Brand contacts"
+          description="Public-facing and billing-ready contact details for your coaching brand."
         >
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Contact email">
@@ -126,8 +126,8 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
 
         <PtHubSectionCard
-          title="Notification preferences"
-          description="Keep PT Hub communication focused on the signals you actually need."
+          title="Signal preferences"
+          description="Keep PT Hub communication focused on the business signals that matter."
         >
           <div className="space-y-4">
             <PreferenceRow
@@ -161,7 +161,7 @@ export function PtHubSettingsPanel({
       <div className="space-y-6">
         <PtHubSectionCard
           title="Profile visibility"
-          description="Publishing intent and future marketplace discoverability start here."
+          description="Control how exposed your coach brand is while launch infrastructure evolves."
         >
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -185,26 +185,26 @@ export function PtHubSettingsPanel({
               ))}
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
-              A profile must be set to Ready to list before PT Hub will allow
-              publishing.
+              Set the profile to Ready to list when the brand, offer, and proof
+              are aligned enough for public traffic.
             </p>
           </div>
         </PtHubSectionCard>
 
         <PtHubSectionCard
           title="Security"
-          description="Authentication management still lives in the existing account flow."
+          description="Authentication controls still live in the existing account flow."
         >
           <div className="rounded-[22px] border border-warning/30 bg-warning/10 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 text-warning" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  Password and deeper auth controls are external
+                  Password and deeper authentication controls are external
                 </p>
                 <p className="text-sm leading-6 text-muted-foreground">
                   Password reset and advanced authentication settings still
-                  route through the existing account settings experience.
+                  route through the main CoachOS account settings flow.
                 </p>
               </div>
             </div>
@@ -212,8 +212,8 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
 
         <PtHubSectionCard
-          title="Subscription"
-          description="Billing stays honest here without pretending live infrastructure exists where it does not."
+          title="Platform subscription"
+          description="Billing stays explicit here without inventing live infrastructure where it does not exist."
         >
           <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
             <div className="flex items-start justify-between gap-4">
@@ -232,7 +232,7 @@ export function PtHubSettingsPanel({
 
         <PtHubSectionCard
           title="Save changes"
-          description="Keep trainer-level business settings current before moving back into workspace operations."
+          description="Lock in PT Hub operating preferences before returning to delivery work."
         >
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
@@ -252,8 +252,8 @@ export function PtHubSettingsPanel({
                   </p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
                     {hasChanges
-                      ? "Review and save the business-layer preferences before leaving this page."
-                      : "Your PT Hub settings are currently aligned with the saved account state."}
+                      ? "Review and save your PT Hub operating preferences before leaving this page."
+                      : "Your PT Hub settings are aligned with the saved account state."}
                   </p>
                 </div>
               </div>

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubProfileEditor } from "../../features/pt-hub/components/pt-hub-profile-editor";
@@ -35,8 +34,8 @@ export function PtHubProfilePage() {
     return (
       <section className="space-y-6">
         <PtHubPageHeader
-          eyebrow="Public Profile Manager"
-          title="Trainer profile editor"
+          eyebrow="Coach Profile"
+          title="Coach profile"
           description="Loading your PT Hub profile..."
         />
       </section>
@@ -46,12 +45,11 @@ export function PtHubProfilePage() {
   return (
     <section className="space-y-6">
       <PtHubPageHeader
-        eyebrow="Public Profile Manager"
-        title="Shape the future public trainer profile"
-        description="Manage the content, discoverability, and publishing state for the public coach profile from PT Hub, while keeping marketplace rollout incremental."
+        eyebrow="Coach Profile"
+        title="Edit your coach profile"
+        description="Update the public trainer page clients will see."
         actions={
           <>
-            <Badge variant="muted">Supabase-backed</Badge>
             {publicationQuery.data.publicUrl ? (
               <Button asChild variant="ghost">
                 <a
@@ -59,7 +57,7 @@ export function PtHubProfilePage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Public URL
+                  Open public page
                 </a>
               </Button>
             ) : null}
@@ -103,7 +101,7 @@ export function PtHubProfilePage() {
             await queryClient.invalidateQueries({
               queryKey: ["public-pt-profile"],
             });
-            setMessage("PT Hub profile saved.");
+            setMessage("Coach profile saved.");
             window.setTimeout(() => setMessage(null), 2200);
           } finally {
             setSaving(false);
@@ -128,8 +126,8 @@ export function PtHubProfilePage() {
             });
             setMessage(
               nextPublished
-                ? "Public coach profile published."
-                : "Public coach profile unpublished.",
+                ? "Coach profile published."
+                : "Coach profile unpublished.",
             );
             window.setTimeout(() => setMessage(null), 2600);
           } finally {

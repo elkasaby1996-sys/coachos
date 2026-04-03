@@ -11,3 +11,5 @@ tsconfig.tsbuildinfo
 supabase/.temp
 supabase/.branches/
 supabase/snippets/
+*.pyc
+__pycache__/

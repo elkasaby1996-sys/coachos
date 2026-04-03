@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Search, Users2 } from "lucide-react";
+import { useDeferredValue, useMemo, useState } from "react";
+import { Search, UsersRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
@@ -29,6 +29,7 @@ export function PtHubClientsPage() {
   const [workspaceFilter, setWorkspaceFilter] = useState<string>("all");
   const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
   const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
+  const deferredSearchValue = useDeferredValue(searchValue);
 
   const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
   const workspaces = useMemo(
@@ -38,7 +39,7 @@ export function PtHubClientsPage() {
   const stats = getPtClientBaseStats(clients);
 
   const filteredClients = useMemo(() => {
-    const normalizedSearch = searchValue.trim().toLowerCase();
+    const normalizedSearch = deferredSearchValue.trim().toLowerCase();
     return clients.filter((client) => {
       const matchesWorkspace =
         workspaceFilter === "all"
@@ -67,7 +68,13 @@ export function PtHubClientsPage() {
         matchesWorkspace && matchesLifecycle && matchesSegment && matchesSearch
       );
     });
-  }, [clients, lifecycleFilter, searchValue, segmentFilter, workspaceFilter]);
+  }, [
+    clients,
+    deferredSearchValue,
+    lifecycleFilter,
+    segmentFilter,
+    workspaceFilter,
+  ]);
 
   const openClientWorkspace = (client: PTClientSummary) => {
     switchWorkspace(client.workspaceId);
@@ -77,9 +84,9 @@ export function PtHubClientsPage() {
   return (
     <section className="space-y-6">
       <PtHubPageHeader
-        eyebrow="Client Base"
-        title="Monitor the client portfolio across workspaces"
-        description="This is the trainer-level business view of your client base. It gives you portfolio visibility without duplicating workspace-specific client operations."
+        eyebrow="Clients"
+        title="Manage your clients"
+        description="View every client across your coaching spaces."
       />
 
       <div className="grid gap-4 xl:grid-cols-4">
@@ -87,42 +94,42 @@ export function PtHubClientsPage() {
           surface="pt-hub"
           label="Total Clients"
           value={stats.totalClients}
-          helper="Across owned workspaces"
-          icon={Users2}
+          helper="Across all coaching spaces"
+          icon={UsersRound}
           accent
         />
         <StatCard
           surface="pt-hub"
           label="Active"
           value={stats.activeClients}
-          helper="Currently coached"
+          helper="Currently in training"
         />
         <StatCard
           surface="pt-hub"
           label="At Risk"
           value={stats.atRiskClients}
-          helper="Flagged for coach attention"
+          helper="Needs your attention"
         />
         <StatCard
           surface="pt-hub"
           label="Onboarding Incomplete"
           value={stats.onboardingIncompleteClients}
-          helper="Not fully activated yet"
+          helper="Setup still incomplete"
         />
         <StatCard
           surface="pt-hub"
           label="Paused"
           value={stats.pausedClients}
-          helper="Intentional hold or retention risk"
+          helper="Currently paused"
         />
       </div>
 
       <PtHubSectionCard
-        title="Client portfolio"
-        description="Search by client, workspace, goal, or status and jump directly back into the correct coaching context."
+        title="Client List"
+        description="Search by client, goal, coaching space, or status."
         contentClassName="space-y-6"
       >
-        <div className="rounded-[24px] border border-border/60 bg-background/35 p-4">
+        <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -130,7 +137,7 @@ export function PtHubClientsPage() {
                 className="pl-9"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search clients, goals, or workspace"
+                placeholder="Search clients, goals, or coaching space"
               />
             </div>
             <select
@@ -138,7 +145,7 @@ export function PtHubClientsPage() {
               value={workspaceFilter}
               onChange={(event) => setWorkspaceFilter(event.target.value)}
             >
-              <option value="all">All workspaces</option>
+              <option value="all">All coaching spaces</option>
               {workspaces.map((workspace) => (
                 <option key={workspace.id} value={workspace.id}>
                   {workspace.name}
@@ -179,13 +186,13 @@ export function PtHubClientsPage() {
 
         {filteredClients.length === 0 ? (
           <EmptyState
-            title="No clients found"
-            description={
-              clients.length === 0
-                ? "No client records exist across your owned workspaces yet."
-                : "No clients match the current workspace, lifecycle, segment, and search filters."
+          title="No clients found"
+          description={
+            clients.length === 0
+                ? "You do not have any client records yet."
+                : "No clients match the current filters."
             }
-            icon={<Users2 className="h-5 w-5" />}
+            icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
           <PtHubClientTable

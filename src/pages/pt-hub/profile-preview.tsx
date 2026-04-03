@@ -20,8 +20,8 @@ export function PtHubProfilePreviewPage() {
     <section className="space-y-6">
       <PtHubPageHeader
         eyebrow="Profile Preview"
-        title="Preview the future public trainer profile"
-        description="This is the internal PT Hub preview of the live public coach profile layout, so you can refine positioning before sharing the public URL."
+        title="Preview your public profile"
+        description="See how your public trainer page will look before you share it."
         actions={
           <>
             {publicationQuery.data?.publicUrl ? (
@@ -52,13 +52,10 @@ export function PtHubProfilePreviewPage() {
                   Preview context
                 </p>
                 <p className="mt-2 text-base font-medium text-foreground">
-                  This preview uses the same public-facing coach layout clients
-                  will see later.
+                  This uses the same public profile layout potential clients will see.
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Use it to tighten positioning, reduce empty areas, and check
-                  whether your proof and CTA sections feel convincing before
-                  sharing a public link.
+                  Use it to check your messaging, proof, and calls to action before sharing your page.
                 </p>
               </div>
             </div>
@@ -67,7 +64,7 @@ export function PtHubProfilePreviewPage() {
         </div>
       ) : (
         <div className="rounded-[28px] border border-border/70 bg-card/80 p-8 text-sm text-muted-foreground">
-          No profile data yet. Add profile content first to render the preview.
+          No profile data yet. Add profile details first to see the preview.
         </div>
       )}
     </section>

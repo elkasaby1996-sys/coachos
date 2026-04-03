@@ -4,6 +4,7 @@
 @import "@fontsource/geist-sans/700.css";
 @import "@fontsource/geist-mono/400.css";
 @import "@fontsource/geist-mono/500.css";
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -338,6 +339,81 @@
     --portal-page-bg: var(--shell-canvas);
   }
 
+  .pt-hub-theme {
+    color-scheme: dark;
+    --bg-canvas: 0.085 0.004 185;
+    --bg-sidebar: 0.12 0.006 180;
+    --bg-surface: 0.155 0.008 178;
+    --bg-surface-elevated: 0.195 0.01 176;
+    --bg-muted: 0.18 0.008 176;
+    --bg-input: 0.17 0.008 176;
+    --text-primary: 0.962 0.003 160;
+    --text-secondary: 0.842 0.004 165;
+    --text-muted: 0.69 0.005 168;
+    --text-on-accent: 0.95 0.004 165;
+    --border-subtle: 0.24 0.008 176;
+    --border-default: 0.3 0.01 174;
+    --border-strong: 0.38 0.014 172;
+    --accent: 0.62 0.06 164;
+    --accent-hover: 0.67 0.07 164;
+    --success: 0.68 0.07 156;
+    --warning: 0.74 0.03 95;
+    --danger: 0.63 0.03 25;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --accent-foreground: var(--text-on-accent);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
+    --chart-1: 0.62 0.06 164;
+    --chart-2: 0.56 0.03 170;
+    --chart-3: 0.73 0.018 165;
+    --chart-4: 0.49 0.022 174;
+    --chart-5: 0.67 0.045 152;
+    --shell-canvas:
+      radial-gradient(circle at 14% 18%, oklch(var(--accent) / 0.08), transparent 28%),
+      radial-gradient(circle at 84% 16%, oklch(var(--chart-2) / 0.05), transparent 24%),
+      radial-gradient(circle at 68% 78%, oklch(var(--success) / 0.045), transparent 22%),
+      linear-gradient(180deg, oklch(0.085 0.004 185), oklch(0.06 0.004 185));
+    --sidebar-bg:
+      linear-gradient(180deg, oklch(var(--bg-sidebar) / 0.58), oklch(0.13 0.008 180 / 0.44));
+    --surface-bg:
+      linear-gradient(180deg, oklch(var(--bg-surface) / 0.52), oklch(0.155 0.01 178 / 0.34));
+    --surface-strong-bg:
+      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.58), oklch(var(--bg-surface) / 0.4));
+    --surface-portal-bg:
+      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.62), oklch(var(--bg-surface) / 0.42));
+    --section-bg:
+      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.42), oklch(var(--bg-surface) / 0.28));
+    --dashed-bg:
+      linear-gradient(180deg, oklch(var(--bg-muted) / 0.28), oklch(var(--bg-surface) / 0.18));
+    --popover-bg:
+      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.66), oklch(var(--bg-surface) / 0.48));
+    --dialog-bg:
+      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.68), oklch(var(--bg-surface) / 0.5));
+    --topbar-bg: oklch(var(--bg-surface-elevated) / 0.54);
+    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.66);
+    --overlay-bg: oklch(0.048 0.008 180 / 0.78);
+    --surface-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.5);
+    --surface-strong-shadow: 0 28px 70px -42px oklch(0 0 0 / 0.62);
+    --surface-portal-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.28),
+      0 26px 70px -44px oklch(0 0 0 / 0.72);
+    --popover-shadow: 0 20px 60px -40px oklch(0 0 0 / 0.74);
+    --dialog-shadow: 0 28px 80px -50px oklch(0 0 0 / 0.8);
+    --sticky-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.74);
+  }
+
   * {
     @apply border-border;
   }
@@ -454,21 +530,35 @@
   }
 
   .surface-panel {
-    @apply rounded-[26px] border;
-    border-color: oklch(var(--border-default) / 0.72);
-    background: var(--surface-bg);
-    box-shadow: var(--surface-shadow);
+    @apply rounded-[26px] border backdrop-blur-xl;
+    border-color: oklch(var(--border-strong) / 0.7);
+    background:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.7),
+        oklch(var(--bg-surface) / 0.58)
+      );
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 0.04),
+      0 26px 70px -46px oklch(0 0 0 / 0.82);
   }
 
   .surface-panel-strong {
-    @apply rounded-[28px] border;
-    border-color: oklch(var(--border-default) / 0.72);
-    background: var(--surface-strong-bg);
-    box-shadow: var(--surface-strong-shadow);
+    @apply rounded-[28px] border backdrop-blur-2xl;
+    border-color: oklch(var(--border-strong) / 0.78);
+    background:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.78),
+        oklch(var(--bg-surface) / 0.64)
+      );
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 0.05),
+      0 30px 84px -50px oklch(0 0 0 / 0.88);
   }
 
   .surface-panel-portal {
-    @apply rounded-[var(--radius-xl)] border;
+    @apply rounded-[var(--radius-xl)] border backdrop-blur-2xl;
     border-color: oklch(var(--border-default) / 0.82);
     background: var(--surface-portal-bg);
     box-shadow: var(--surface-portal-shadow);
@@ -576,6 +666,137 @@
     border-color: oklch(var(--border-strong) / 0.78);
     background-color: oklch(var(--bg-surface-elevated) / 0.72);
   }
+
+  .pt-hub-theme {
+    font-family: "DM Sans", "Geist Sans", sans-serif;
+  }
+
+  .pt-hub-theme h1,
+  .pt-hub-theme h2,
+  .pt-hub-theme h3,
+  .pt-hub-theme h4,
+  .pt-hub-theme h5,
+  .pt-hub-theme h6 {
+    font-family: "Plus Jakarta Sans", "DM Sans", "Geist Sans", sans-serif;
+    letter-spacing: 0.01em;
+  }
+
+  .pt-hub-theme .theme-shell-canvas {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .pt-hub-theme .theme-shell-canvas::before {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    background:
+      radial-gradient(circle at 18% 22%, oklch(var(--accent) / 0.12), transparent 22%),
+      radial-gradient(circle at 78% 18%, oklch(var(--chart-2) / 0.08), transparent 20%),
+      radial-gradient(circle at 72% 78%, oklch(var(--success) / 0.07), transparent 18%),
+      radial-gradient(circle at 28% 82%, oklch(var(--chart-4) / 0.05), transparent 18%);
+    filter: blur(92px) saturate(90%);
+    animation: pt-hub-aurora-shift 24s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: -2;
+  }
+
+  .pt-hub-theme .theme-shell-canvas::after {
+    content: "";
+    position: absolute;
+    inset: -10%;
+    background-image:
+      linear-gradient(oklch(var(--border-subtle) / 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(var(--border-subtle) / 0.1) 1px, transparent 1px);
+    background-size: 84px 84px;
+    mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.8), transparent 86%);
+    opacity: 0.32;
+    transform-origin: center;
+    animation: pt-hub-grid-float 26s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .pt-hub-theme .surface-panel,
+  .pt-hub-theme .surface-panel-strong,
+  .pt-hub-theme .surface-panel-portal {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pt-hub-theme .surface-panel::before,
+  .pt-hub-theme .surface-panel-strong::before,
+  .pt-hub-theme .surface-panel-portal::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: linear-gradient(90deg, oklch(var(--accent)), oklch(var(--chart-2)), oklch(var(--success)));
+    opacity: 0.18;
+    pointer-events: none;
+  }
+
+  .pt-hub-theme .surface-panel::after,
+  .pt-hub-theme .surface-panel-strong::after,
+  .pt-hub-theme .surface-panel-portal::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    background:
+      linear-gradient(180deg, oklch(1 0 0 / 0.1), transparent 22%, transparent 72%, oklch(1 0 0 / 0.02)),
+      radial-gradient(circle at top left, oklch(1 0 0 / 0.07), transparent 26%);
+    pointer-events: none;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.8));
+  }
+
+  .pt-hub-theme .surface-section,
+  .pt-hub-theme .surface-subtle {
+    background: linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.34), oklch(var(--bg-surface) / 0.22));
+  }
+
+  .pt-hub-theme .pt-hub-bg-orb {
+    filter: blur(72px);
+    opacity: 0.28;
+    mix-blend-mode: screen;
+    will-change: transform;
+    animation: pt-hub-orb-float 18s ease-in-out infinite;
+  }
+
+  .pt-hub-theme .pt-hub-bg-orb-primary {
+    background: radial-gradient(circle, oklch(var(--accent) / 0.2), transparent 66%);
+  }
+
+  .pt-hub-theme .pt-hub-bg-orb-secondary {
+    background: radial-gradient(circle, oklch(var(--chart-2) / 0.16), transparent 68%);
+    animation-duration: 22s;
+    animation-delay: -6s;
+  }
+
+  .pt-hub-theme .pt-hub-bg-orb-success {
+    background: radial-gradient(circle, oklch(var(--success) / 0.14), transparent 70%);
+    animation-duration: 20s;
+    animation-delay: -10s;
+  }
+
+  .pt-hub-theme .pt-hub-bg-wave {
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 20% 50%, oklch(var(--accent) / 0.06), transparent 18%),
+      radial-gradient(circle at 50% 45%, oklch(var(--chart-2) / 0.05), transparent 22%),
+      radial-gradient(circle at 78% 55%, oklch(var(--success) / 0.04), transparent 18%);
+    filter: blur(58px);
+    opacity: 0.26;
+    transform-origin: center;
+    will-change: transform;
+    animation: pt-hub-wave-drift 26s ease-in-out infinite;
+  }
+
+  .pt-hub-theme .pt-hub-bg-wave-delayed {
+    animation-delay: -12s;
+    opacity: 0.18;
+  }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -595,5 +816,56 @@
   }
   100% {
     background-position: 200% 0;
+  }
+}
+
+@keyframes pt-hub-aurora-shift {
+  0% {
+    transform: translate3d(-2%, -1%, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(3%, 2%, 0) scale(1.06) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-1%, 4%, 0) scale(1.02) rotate(-6deg);
+  }
+}
+
+@keyframes pt-hub-grid-float {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-2%, 1.5%, 0) rotate(1.2deg) scale(1.03);
+  }
+  100% {
+    transform: translate3d(2%, -1.5%, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes pt-hub-orb-float {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(8%, 6%, 0) scale(1.08);
+  }
+  66% {
+    transform: translate3d(-6%, 10%, 0) scale(0.96);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes pt-hub-wave-drift {
+  0% {
+    transform: translate3d(-2%, 0, 0) rotate(-4deg) scaleX(1);
+  }
+  50% {
+    transform: translate3d(3%, 4%, 0) rotate(3deg) scaleX(1.08);
+  }
+  100% {
+    transform: translate3d(-1%, -2%, 0) rotate(-2deg) scaleX(0.98);
   }
 }

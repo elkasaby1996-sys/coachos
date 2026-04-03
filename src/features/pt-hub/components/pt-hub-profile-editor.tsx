@@ -142,12 +142,12 @@ export function PtHubProfileEditor({
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
                   <p className="text-sm font-medium text-foreground">
-                    Editor priorities
+                    Launch priorities
                   </p>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">
                   Complete the next few high-signal items inside the editor to
-                  strengthen publish readiness.
+                  strengthen your public launch setup.
                 </p>
               </div>
               <Badge variant="secondary">
@@ -188,7 +188,7 @@ export function PtHubProfileEditor({
         <TabsContent value="identity" className="space-y-5">
           <PtHubSectionCard
             title="Profile media"
-            description="Keep the public-facing visual system deliberate. Upload storage can wire in later without changing the editor structure."
+            description="Shape the hero media for a sharper public-facing coaching brand. Upload storage can wire in later without changing this editor."
             contentClassName="space-y-4"
           >
             <div className="grid gap-4 md:grid-cols-2">
@@ -213,7 +213,7 @@ export function PtHubProfileEditor({
                   Profile photo
                 </p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Use a square headshot for the public-facing coach identity.
+                  Use a sharp square headshot that feels premium and performance-led.
                 </p>
                 <Input
                   className="mt-4"
@@ -246,8 +246,7 @@ export function PtHubProfileEditor({
                   Banner image
                 </p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Wide visual used in the public profile hero and future
-                  marketplace listing.
+                  Wide visual used in the public profile hero and future coach discovery surfaces.
                 </p>
                 <Input
                   className="mt-4"
@@ -265,8 +264,8 @@ export function PtHubProfileEditor({
           </PtHubSectionCard>
 
           <PtHubSectionCard
-            title="Identity"
-            description="This is the internal PT Hub editor for your future public-facing profile."
+            title="Brand identity"
+            description="This editor shapes how your coaching brand looks, sounds, and positions itself publicly."
           >
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -347,7 +346,7 @@ export function PtHubProfileEditor({
         <TabsContent value="expertise" className="space-y-5">
           <PtHubSectionCard
             title="Positioning and proof"
-            description="Clarify what you help with, the proof behind it, and how you coach."
+            description="Clarify who you coach, what outcomes you drive, and why clients should trust the process."
           >
             <div className="grid gap-5 lg:grid-cols-2">
               <div className="space-y-4">
@@ -421,7 +420,7 @@ export function PtHubProfileEditor({
               </label>
               <p className="text-sm text-muted-foreground">
                 Describe how you coach, communicate, and keep clients
-                accountable.
+                accountable from week one to peak adherence.
               </p>
             </div>
             <textarea
@@ -441,7 +440,7 @@ export function PtHubProfileEditor({
         <TabsContent value="marketplace" className="space-y-5">
           <PtHubSectionCard
             title="Public route"
-            description="This slug powers the public profile URL and future shareable coach page."
+            description="This slug powers the public profile URL and future shareable coach landing page."
           >
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -487,7 +486,7 @@ export function PtHubProfileEditor({
 
           <PtHubSectionCard
             title="Discoverability"
-            description="These fields prepare the profile for future marketplace filtering without building the full directory yet."
+            description="These fields prepare the profile for filtering, search, and coach discovery without changing the existing feature set."
           >
             <div className="grid gap-6">
               <div className="space-y-3">
@@ -573,7 +572,7 @@ export function PtHubProfileEditor({
                         Marketplace visibility
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Controls future directory discoverability.
+                        Controls future coach-directory discoverability.
                       </p>
                     </div>
                     <Switch
@@ -595,7 +594,7 @@ export function PtHubProfileEditor({
         <TabsContent value="social" className="space-y-5">
           <PtHubSectionCard
             title="Social links"
-            description="Keep these destination links clean and intentional. The future public page will reuse them."
+            description="Keep destination links clean and intentional. The future public page will reuse them directly."
           >
             <div className="space-y-4">
               {form.socialLinks.map((link) => (
@@ -634,10 +633,10 @@ export function PtHubProfileEditor({
         <TabsContent value="preview" className="space-y-5">
           <PtHubSectionCard
             title="Public profile preview"
-            description="Use the dedicated preview page for the full live layout. This tab keeps a lightweight editorial snapshot inside the editor."
+            description="Use the dedicated preview page for the full layout. This tab keeps a fast editorial snapshot inside the editor."
           >
             <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/70">
-              <div className="h-40 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.35),transparent_42%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(8,12,22,1))]" />
+              <div className="h-40 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.4),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.18),transparent_34%),linear-gradient(135deg,rgba(44,24,16,0.95),rgba(20,14,11,1))]" />
               <div className="space-y-4 p-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -682,7 +681,7 @@ export function PtHubProfileEditor({
 
         <PtHubSectionCard
           title="Preview and save"
-          description="Use the internal preview while editing, then save the latest profile changes."
+          description="Use the internal preview while editing, then save the latest brand updates."
         >
           <div className="space-y-3">
             <Button asChild variant="secondary" className="w-full">
