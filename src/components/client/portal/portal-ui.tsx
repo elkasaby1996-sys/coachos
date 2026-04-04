@@ -349,8 +349,7 @@ export function StepIndicator({
                   "border-primary/45 bg-primary/10 shadow-[0_12px_36px_-28px_oklch(var(--accent)/0.45)]",
                 step.state === "completed" && "border-success/30 bg-success/10",
                 step.state === "upcoming" && "text-muted-foreground",
-                isInteractive &&
-                  "hover:border-border/90 hover:bg-card/55",
+                isInteractive && "hover:border-border/90 hover:bg-card/55",
               )}
             >
               <span

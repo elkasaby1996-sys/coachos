@@ -319,8 +319,7 @@ export function PtDashboardPage() {
   const activeClientsCount = useMemo(
     () =>
       clients.filter(
-        (client) =>
-          (client.status ?? "active").toLowerCase() === "active",
+        (client) => (client.status ?? "active").toLowerCase() === "active",
       ).length,
     [clients],
   );
@@ -395,7 +394,10 @@ export function PtDashboardPage() {
   const activeClientsDelta = useMemo(() => {
     const currentWindow = clients.filter((client) => {
       const status = (client.status ?? "active").toLowerCase();
-      return status === "active" && client.created_at >= addDaysToDateString(todayStr, -6);
+      return (
+        status === "active" &&
+        client.created_at >= addDaysToDateString(todayStr, -6)
+      );
     }).length;
     const previousWindow = clients.filter((client) => {
       const status = (client.status ?? "active").toLowerCase();
@@ -420,8 +422,14 @@ export function PtDashboardPage() {
       return Math.round((completed / rows.length) * 100);
     };
 
-    const currentWindow = getWindowAdherence(addDaysToDateString(todayStr, -6), todayStr);
-    const previousWindow = getWindowAdherence(previousWeekStart, previousWeekEnd);
+    const currentWindow = getWindowAdherence(
+      addDaysToDateString(todayStr, -6),
+      todayStr,
+    );
+    const previousWindow = getWindowAdherence(
+      previousWeekStart,
+      previousWeekEnd,
+    );
     if (currentWindow === null || previousWindow === null) return null;
     return currentWindow - previousWindow;
   }, [assignedWorkouts, previousWeekEnd, previousWeekStart, todayStr]);
@@ -617,15 +625,15 @@ export function PtDashboardPage() {
   )
     ? "Clients Needing Attention"
     : "Client Overview";
-  const priorityClientRows = clientRows.slice(0, clientRows.length === 1 ? 1 : 6);
+  const priorityClientRows = clientRows.slice(
+    0,
+    clientRows.length === 1 ? 1 : 6,
+  );
   const showSingleClientCard = priorityClientRows.length === 1;
 
   return (
     <div className="space-y-6">
-      <WorkspacePageHeader
-        title="Coach Dashboard"
-        className="py-2.5 sm:py-3"
-      />
+      <WorkspacePageHeader title="Coach Dashboard" className="py-2.5 sm:py-3" />
 
       {loadError ? (
         <Card className="border-destructive/40">
@@ -810,8 +818,8 @@ export function PtDashboardPage() {
                 <div className="space-y-2.5">
                   {recentCheckins.map((row) => {
                     const clientName =
-                      clients.find((item) => item.id === row.client_id)?.display_name ??
-                      "Client";
+                      clients.find((item) => item.id === row.client_id)
+                        ?.display_name ?? "Client";
                     const dueLabel = row.due
                       ? new Date(row.due).toLocaleDateString("en-US", {
                           month: "short",
@@ -869,7 +877,11 @@ export function PtDashboardPage() {
                   ))}
                 </div>
               ) : messageRows.length > 0 ? (
-                <div className={messageRows.length <= 2 ? "space-y-2" : "space-y-2.5"}>
+                <div
+                  className={
+                    messageRows.length <= 2 ? "space-y-2" : "space-y-2.5"
+                  }
+                >
                   {messageRows.map((message) => (
                     <button
                       key={message.id}
@@ -932,28 +944,31 @@ export function PtDashboardPage() {
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     Due now
                   </p>
-                  <p className="mt-1 text-xl font-semibold">{checkinDueNowCount}</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {checkinDueNowCount}
+                  </p>
                 </div>
                 <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     Overdue
                   </p>
-                  <p className="mt-1 text-xl font-semibold">{checkinOverdueCount}</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {checkinOverdueCount}
+                  </p>
                 </div>
                 <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     Due soon
                   </p>
-                  <p className="mt-1 text-xl font-semibold">{checkinSoonCount}</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {checkinSoonCount}
+                  </p>
                 </div>
               </div>
             )}
           </DashboardCard>
 
-          <DashboardCard
-            title="To-Do list"
-            className="border-border/80"
-          >
+          <DashboardCard title="To-Do list" className="border-border/80">
             <div className="space-y-3">
               <div className="surface-subtle flex items-center gap-2 px-2 py-2">
                 <Input
@@ -1038,10 +1053,8 @@ export function PtDashboardPage() {
               )}
             </div>
           </DashboardCard>
-
         </div>
       </div>
     </div>
   );
 }
-

@@ -52,12 +52,12 @@
     --chart-4: 0.76 0.14 90;
     --chart-5: 0.62 0.2 25;
     --shell-canvas:
-      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 26%),
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-canvas)),
-        oklch(var(--bg-sidebar))
-      );
+      radial-gradient(
+        circle at top left,
+        oklch(var(--accent) / 0.08),
+        transparent 26%
+      ),
+      linear-gradient(180deg, oklch(var(--bg-canvas)), oklch(var(--bg-sidebar)));
     --sidebar-bg: linear-gradient(
       180deg,
       oklch(var(--bg-sidebar) / 0.98),
@@ -164,12 +164,12 @@
     --chart-4: 0.76 0.14 90;
     --chart-5: 0.62 0.2 25;
     --shell-canvas:
-      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 26%),
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-canvas)),
-        oklch(var(--bg-sidebar))
-      );
+      radial-gradient(
+        circle at top left,
+        oklch(var(--accent) / 0.08),
+        transparent 26%
+      ),
+      linear-gradient(180deg, oklch(var(--bg-canvas)), oklch(var(--bg-sidebar)));
     --sidebar-bg: linear-gradient(
       180deg,
       oklch(var(--bg-sidebar) / 0.98),
@@ -272,12 +272,12 @@
     --chart-4: 0.8 0.15 85;
     --chart-5: 0.65 0.2 25;
     --shell-canvas:
-      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 24%),
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-canvas)),
-        oklch(0.1 0.01 260)
-      );
+      radial-gradient(
+        circle at top left,
+        oklch(var(--accent) / 0.08),
+        transparent 24%
+      ),
+      linear-gradient(180deg, oklch(var(--bg-canvas)), oklch(0.1 0.01 260));
     --sidebar-bg: linear-gradient(
       180deg,
       oklch(var(--bg-sidebar) / 0.98),

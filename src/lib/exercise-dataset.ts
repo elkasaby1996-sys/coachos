@@ -1,13 +1,16 @@
 const datasetBaseUrl = (import.meta.env.VITE_EXERCISE_DATASET_BASE_URL ?? "")
   .trim()
   .replace(/\/+$/, "");
-const datasetApiKey = (import.meta.env.VITE_EXERCISE_DATASET_API_KEY ?? "")
-  .trim();
+const datasetApiKey = (
+  import.meta.env.VITE_EXERCISE_DATASET_API_KEY ?? ""
+).trim();
 const datasetApiKeyHeader =
-  (import.meta.env.VITE_EXERCISE_DATASET_API_KEY_HEADER ?? "x-api-key").trim() ||
-  "x-api-key";
-const datasetApiHost = (import.meta.env.VITE_EXERCISE_DATASET_API_HOST ?? "")
-  .trim();
+  (
+    import.meta.env.VITE_EXERCISE_DATASET_API_KEY_HEADER ?? "x-api-key"
+  ).trim() || "x-api-key";
+const datasetApiHost = (
+  import.meta.env.VITE_EXERCISE_DATASET_API_HOST ?? ""
+).trim();
 
 export type ExerciseDatasetSearchFilters = {
   name: string;
@@ -173,9 +176,11 @@ const normalizeExercise = (value: unknown): ExerciseDatasetExercise | null => {
     bodyPart: normalizeFriendlyLabel(
       firstText(record.bodyPart, record.bodyParts, record.category),
     ),
-    target: normalizeFriendlyLabel(firstText(record.target, record.targetMuscles)),
-    secondaryMuscles: readStringList(record.secondaryMuscles).map((item) =>
-      normalizeFriendlyLabel(item) ?? item,
+    target: normalizeFriendlyLabel(
+      firstText(record.target, record.targetMuscles),
+    ),
+    secondaryMuscles: readStringList(record.secondaryMuscles).map(
+      (item) => normalizeFriendlyLabel(item) ?? item,
     ),
     equipment: normalizeEquipmentLabel(
       firstText(record.equipment, record.equipments),
@@ -257,7 +262,9 @@ const matchesSearch = (exercise: ExerciseDatasetExercise, search: string) =>
   (exercise.bodyPart ?? "").toLowerCase().includes(search) ||
   (exercise.target ?? "").toLowerCase().includes(search) ||
   (exercise.equipment ?? "").toLowerCase().includes(search) ||
-  exercise.secondaryMuscles.some((item) => item.toLowerCase().includes(search)) ||
+  exercise.secondaryMuscles.some((item) =>
+    item.toLowerCase().includes(search),
+  ) ||
   exercise.keywords.some((item) => item.toLowerCase().includes(search));
 
 export const exerciseDatasetConfigured = Boolean(datasetBaseUrl);
@@ -285,7 +292,10 @@ export function filterExerciseDataset(
     ) {
       return false;
     }
-    if (targetFilter && !(exercise.target ?? "").toLowerCase().includes(targetFilter)) {
+    if (
+      targetFilter &&
+      !(exercise.target ?? "").toLowerCase().includes(targetFilter)
+    ) {
       return false;
     }
     return true;
@@ -313,7 +323,9 @@ export async function searchExerciseDataset(
     );
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Exercise dataset search failed.";
+      error instanceof Error
+        ? error.message
+        : "Exercise dataset search failed.";
     if (message.includes("(403)")) {
       throw new Error(
         "The dataset provider rejected this request. Check the provider plan, key, and route configuration.",

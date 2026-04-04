@@ -156,15 +156,16 @@ export function useWorkspace() {
         if (!clientData?.workspace_id) {
           throw new Error("Workspace not found for this user.");
         }
-        const { data: workspaceData, error: workspaceError } = await withTimeout(
-          supabase
-            .from("workspaces")
-            .select("id, owner_user_id")
-            .eq("id", clientData.workspace_id)
-            .maybeSingle(),
-          8000,
-          "Client workspace owner lookup timed out (8s).",
-        );
+        const { data: workspaceData, error: workspaceError } =
+          await withTimeout(
+            supabase
+              .from("workspaces")
+              .select("id, owner_user_id")
+              .eq("id", clientData.workspace_id)
+              .maybeSingle(),
+            8000,
+            "Client workspace owner lookup timed out (8s).",
+          );
 
         if (workspaceError) throw workspaceError;
         const clientWorkspace = workspaceData as {

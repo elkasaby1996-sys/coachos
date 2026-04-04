@@ -379,8 +379,7 @@ export function PtLayout() {
                       desktopNavCollapsed
                         ? "justify-center px-2 py-2.5"
                         : "gap-3 px-3 py-2.5",
-                      isActive &&
-                        "border-border/70 bg-card/72 text-foreground",
+                      isActive && "border-border/70 bg-card/72 text-foreground",
                     )
                   }
                 >
@@ -411,7 +410,6 @@ export function PtLayout() {
               );
             })}
           </nav>
-
         </aside>
 
         <div
@@ -507,7 +505,6 @@ export function PtLayout() {
               );
             })}
           </nav>
-
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">

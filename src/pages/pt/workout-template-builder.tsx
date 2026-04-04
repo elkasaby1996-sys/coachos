@@ -292,9 +292,8 @@ export function PtWorkoutTemplateBuilderPage() {
     null,
   );
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
-  const [createExerciseForm, setCreateExerciseForm] = useState<LibraryExerciseForm>(
-    emptyLibraryExerciseForm,
-  );
+  const [createExerciseForm, setCreateExerciseForm] =
+    useState<LibraryExerciseForm>(emptyLibraryExerciseForm);
   const [createExerciseError, setCreateExerciseError] = useState<string | null>(
     null,
   );
@@ -354,7 +353,9 @@ export function PtWorkoutTemplateBuilderPage() {
         .eq("id", workspaceId ?? "")
         .maybeSingle();
       if (error) throw error;
-      return (data as { owner_user_id: string | null } | null)?.owner_user_id ?? null;
+      return (
+        (data as { owner_user_id: string | null } | null)?.owner_user_id ?? null
+      );
     },
   });
 
@@ -475,7 +476,9 @@ export function PtWorkoutTemplateBuilderPage() {
   const handleAddExercise = async () => {
     if (!templateId || selectedExerciseIds.length === 0) return;
     if (!libraryOwnerUserId) {
-      setActionError("Shared library owner could not be resolved for this workspace.");
+      setActionError(
+        "Shared library owner could not be resolved for this workspace.",
+      );
       return;
     }
     setActionStatus("saving");
@@ -495,7 +498,8 @@ export function PtWorkoutTemplateBuilderPage() {
       if (selectedExerciseId.startsWith("dataset:")) {
         const datasetId = selectedExerciseId.replace("dataset:", "");
         const datasetExercise =
-          datasetExercises.find((exercise) => exercise.id === datasetId) ?? null;
+          datasetExercises.find((exercise) => exercise.id === datasetId) ??
+          null;
         if (!datasetExercise) continue;
 
         const existingMatch =
@@ -1359,7 +1363,8 @@ export function PtWorkoutTemplateBuilderPage() {
                   {getErrorDetails(exercisesQuery.error).code}:{" "}
                   {getErrorDetails(exercisesQuery.error).message}
                 </div>
-              ) : filteredExercises.length > 0 || datasetExercises.length > 0 ? (
+              ) : filteredExercises.length > 0 ||
+                datasetExercises.length > 0 ? (
                 <>
                   {filteredExercises.map((exercise) => {
                     const selectionKey = `library:${exercise.id}`;
@@ -1439,7 +1444,9 @@ export function PtWorkoutTemplateBuilderPage() {
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {exercise.target ?? exercise.bodyPart ?? "Other"}
-                            {exercise.equipment ? ` - ${exercise.equipment}` : ""}
+                            {exercise.equipment
+                              ? ` - ${exercise.equipment}`
+                              : ""}
                           </div>
                         </button>
                       );

@@ -30,8 +30,7 @@ const buildMetricDelta = (delta: number | null | undefined, suffix = "") => {
   const rounded = Math.round(delta);
   return {
     value: `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`,
-    tone:
-      rounded === 0 ? "neutral" : rounded > 0 ? "positive" : "negative",
+    tone: rounded === 0 ? "neutral" : rounded > 0 ? "positive" : "negative",
   } as const;
 };
 

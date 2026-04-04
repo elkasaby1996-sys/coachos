@@ -89,9 +89,9 @@ export function ClientMedicalPage() {
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyDate, setHistoryDate] = useState("");
   const [historyNotes, setHistoryNotes] = useState("");
-  const [historyStatus, setHistoryStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
+  const [historyStatus, setHistoryStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [historyMessage, setHistoryMessage] = useState<string | null>(null);
   const [labName, setLabName] = useState("");
   const [labValue, setLabValue] = useState("");
@@ -166,7 +166,9 @@ export function ClientMedicalPage() {
 
   const historyEntries = useMemo(
     () =>
-      (recordsQuery.data ?? []).filter((entry) => entry.entry_type === "history"),
+      (recordsQuery.data ?? []).filter(
+        (entry) => entry.entry_type === "history",
+      ),
     [recordsQuery.data],
   );
 
@@ -181,7 +183,12 @@ export function ClientMedicalPage() {
   const handleSaveHistory = async () => {
     const trimmedTitle = historyTitle.trim();
     const trimmedNotes = historyNotes.trim();
-    if (!clientId || !workspaceId || !session?.user?.id || trimmedTitle.length === 0) {
+    if (
+      !clientId ||
+      !workspaceId ||
+      !session?.user?.id ||
+      trimmedTitle.length === 0
+    ) {
       return;
     }
     setHistoryStatus("saving");
@@ -259,7 +266,8 @@ export function ClientMedicalPage() {
   };
 
   const handleUploadDocument = async () => {
-    if (!clientId || !workspaceId || !session?.user?.id || !documentFile) return;
+    if (!clientId || !workspaceId || !session?.user?.id || !documentFile)
+      return;
     setDocumentStatus("saving");
     setDocumentMessage(null);
 
@@ -320,7 +328,9 @@ export function ClientMedicalPage() {
 
     if (error || !data?.signedUrl) {
       setDocumentStatus("error");
-      setDocumentMessage(error ? getErrorMessage(error) : "Unable to open file.");
+      setDocumentMessage(
+        error ? getErrorMessage(error) : "Unable to open file.",
+      );
       return;
     }
 
@@ -400,10 +410,13 @@ export function ClientMedicalPage() {
                       historyTitle.trim().length === 0
                     }
                   >
-                    {historyStatus === "saving" ? "Saving..." : "Add history item"}
+                    {historyStatus === "saving"
+                      ? "Saving..."
+                      : "Add history item"}
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    {historyMessage ?? "This updates your coach's medical view too."}
+                    {historyMessage ??
+                      "This updates your coach's medical view too."}
                   </span>
                 </div>
               </SectionCard>
@@ -489,7 +502,8 @@ export function ClientMedicalPage() {
                     {labStatus === "saving" ? "Saving..." : "Add test result"}
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    {labMessage ?? "These results appear on the PT medical tab."}
+                    {labMessage ??
+                      "These results appear on the PT medical tab."}
                   </span>
                 </div>
               </SectionCard>
@@ -553,7 +567,9 @@ export function ClientMedicalPage() {
                     onClick={handleUploadDocument}
                     disabled={documentStatus === "saving" || !documentFile}
                   >
-                    {documentStatus === "saving" ? "Uploading..." : "Upload report"}
+                    {documentStatus === "saving"
+                      ? "Uploading..."
+                      : "Upload report"}
                   </Button>
                   <span className="text-xs text-muted-foreground">
                     {documentMessage ??
@@ -717,7 +733,9 @@ export function ClientMedicalPage() {
                       onClick={() => handleOpenDocument(documentRow)}
                       disabled={openingDocumentId === documentRow.id}
                     >
-                      {openingDocumentId === documentRow.id ? "Opening..." : "Open"}
+                      {openingDocumentId === documentRow.id
+                        ? "Opening..."
+                        : "Open"}
                     </Button>
                   </SectionCard>
                 ))

@@ -285,7 +285,7 @@ function SidebarContent({
 }) {
   return (
     <>
-          <div className="mb-8">
+      <div className="mb-8">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-card/65 text-primary">
             <Building2 className="h-5 w-5" />

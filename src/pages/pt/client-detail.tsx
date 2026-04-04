@@ -228,11 +228,11 @@ const buildMetricDelta = ({
 }) => {
   if (typeof delta !== "number" || Number.isNaN(delta)) return null;
   const rounded =
-    decimals > 0
-      ? Number(delta.toFixed(decimals))
-      : Math.round(delta);
+    decimals > 0 ? Number(delta.toFixed(decimals)) : Math.round(delta);
   const absolute =
-    decimals > 0 ? Math.abs(rounded).toFixed(decimals) : Math.abs(rounded).toString();
+    decimals > 0
+      ? Math.abs(rounded).toFixed(decimals)
+      : Math.abs(rounded).toString();
   const prefix = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
   const tone =
     rounded === 0
@@ -5340,12 +5340,12 @@ function PtClientScheduleCard({
   const [dayNote, setDayNote] = useState("");
   const [dayNoteStatus, setDayNoteStatus] = useState<"idle" | "saving">("idle");
   const [dayNoteMessage, setDayNoteMessage] = useState<string | null>(null);
-  const [addWorkoutStatus, setAddWorkoutStatus] = useState<
-    "idle" | "saving"
-  >("idle");
-  const [addWorkoutMessage, setAddWorkoutMessage] = useState<
-    string | null
-  >(null);
+  const [addWorkoutStatus, setAddWorkoutStatus] = useState<"idle" | "saving">(
+    "idle",
+  );
+  const [addWorkoutMessage, setAddWorkoutMessage] = useState<string | null>(
+    null,
+  );
   const [nutritionAssignOpen, setNutritionAssignOpen] = useState(false);
   const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(
     null,
@@ -6092,7 +6092,9 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "completed")
                 }
-                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
+                disabled={
+                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                }
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Mark complete
@@ -6103,7 +6105,9 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "skipped")
                 }
-                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
+                disabled={
+                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                }
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 Mark missed
@@ -9245,9 +9249,9 @@ function PtClientMedicalTab({
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyDate, setHistoryDate] = useState("");
   const [historyNotes, setHistoryNotes] = useState("");
-  const [historyStatus, setHistoryStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
+  const [historyStatus, setHistoryStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [historyMessage, setHistoryMessage] = useState<string | null>(null);
   const [labName, setLabName] = useState("");
   const [labValue, setLabValue] = useState("");
@@ -9466,7 +9470,9 @@ function PtClientMedicalTab({
 
     if (error || !data?.signedUrl) {
       setDocumentStatus("error");
-      setDocumentMessage(error ? getErrorMessage(error) : "Unable to open file.");
+      setDocumentMessage(
+        error ? getErrorMessage(error) : "Unable to open file.",
+      );
       return;
     }
 
@@ -9613,7 +9619,8 @@ function PtClientMedicalTab({
                 {labStatus === "saving" ? "Saving..." : "Add test result"}
               </Button>
               <span className="text-xs text-muted-foreground">
-                {labMessage ?? "Name, value, and unit keep results scan-friendly."}
+                {labMessage ??
+                  "Name, value, and unit keep results scan-friendly."}
               </span>
             </div>
           </CardContent>
@@ -9839,7 +9846,9 @@ function PtClientMedicalTab({
                     onClick={() => handleOpenDocument(documentRow)}
                     disabled={openingDocumentId === documentRow.id}
                   >
-                    {openingDocumentId === documentRow.id ? "Opening..." : "Open"}
+                    {openingDocumentId === documentRow.id
+                      ? "Opening..."
+                      : "Open"}
                   </Button>
                 </div>
               ))
