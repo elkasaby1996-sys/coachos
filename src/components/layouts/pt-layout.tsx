@@ -268,7 +268,7 @@ function getHeaderPillClassName(isLightMode: boolean) {
   return cn(
     "group flex h-[54px] min-w-[204px] items-center gap-2.5 rounded-[18px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[214px]",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16 hover:bg-[linear-gradient(180deg,rgba(238,243,247,0.78),rgba(223,232,239,0.68))]"
+      ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.74))]"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))]",
   );
 }
@@ -277,7 +277,7 @@ function getHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-[13px] border text-foreground transition-colors duration-200",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(246,249,251,0.46),rgba(230,237,243,0.38))] text-[rgb(79,143,170)] shadow-[inset_0_1px_0_rgba(255,255,255,0.44),0_14px_28px_-24px_rgba(15,23,42,0.14)] group-hover:text-slate-900"
+      ? "border-[oklch(var(--border-default)/0.62)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.62),oklch(var(--bg-muted)/0.44))] text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.38),0_14px_28px_-24px_oklch(0.28_0.02_190/0.12)] group-hover:text-[oklch(var(--text-primary))]"
       : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_28px_-24px_rgba(0,0,0,0.82)] group-hover:text-foreground",
   );
 }
@@ -286,7 +286,7 @@ function getHeaderPillChevronClassName(isLightMode: boolean) {
   return cn(
     "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
     isLightMode
-      ? "border-slate-900/8 bg-white/22 text-[rgb(79,143,170)] group-hover:border-primary/16 group-hover:text-slate-800"
+      ? "border-[oklch(var(--border-default)/0.62)] bg-[oklch(var(--bg-surface-elevated)/0.62)] text-primary group-hover:border-primary/16 group-hover:text-[oklch(var(--text-primary))]"
       : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
   );
 }
@@ -295,7 +295,7 @@ function getHeaderUtilityButtonClassName(isLightMode: boolean) {
   return cn(
     "inline-flex h-[54px] items-center justify-center gap-2 rounded-[18px] border px-4 text-sm font-medium backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] text-slate-900 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16"
+      ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
   );
 }
@@ -304,7 +304,7 @@ function getHeaderBellButtonClassName(isLightMode: boolean) {
   return cn(
     "h-[54px] w-[54px] rounded-[18px] border backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] text-slate-900 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16"
+      ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
   );
 }
@@ -319,10 +319,10 @@ function sidebarLinkClasses(
     collapsed ? "justify-center px-2.5 py-2.5" : "px-3.5 py-3",
     isActive
       ? isLightMode
-        ? "translate-x-1 border-primary/26 bg-[linear-gradient(180deg,rgba(236,242,246,0.72),rgba(221,230,238,0.6))] text-slate-900 shadow-[0_22px_54px_-36px_rgba(15,23,42,0.14)]"
+        ? "translate-x-1 border-primary/24 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.78),oklch(var(--bg-surface)/0.64))] text-[oklch(var(--text-primary))] shadow-[0_22px_54px_-36px_oklch(0.28_0.02_190/0.14)]"
         : "translate-x-1 border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] text-foreground shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]"
       : isLightMode
-        ? "border-transparent bg-transparent text-slate-800 hover:border-border/80 hover:bg-white/24 hover:text-slate-950"
+        ? "border-transparent bg-transparent text-[oklch(var(--text-secondary))] hover:border-[oklch(var(--border-default)/0.75)] hover:bg-[oklch(var(--bg-surface-elevated)/0.34)] hover:text-[oklch(var(--text-primary))]"
         : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
   );
 }
@@ -371,7 +371,7 @@ function SidebarNav({
                           isActive
                             ? "border-primary/20 bg-primary/10 text-primary"
                             : isLightMode
-                              ? "border-slate-400/40 bg-[linear-gradient(180deg,rgba(245,248,246,0.34),rgba(228,235,231,0.22))] text-slate-600 group-hover:border-primary/22 group-hover:text-primary"
+                              ? "border-[oklch(var(--border-default)/0.56)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.42),oklch(var(--bg-muted)/0.26))] text-[oklch(var(--text-muted))] group-hover:border-primary/22 group-hover:text-primary"
                               : "border-border/70 bg-background/75 text-muted-foreground group-hover:border-primary/20 group-hover:text-primary",
                         )}
                       >
@@ -381,7 +381,9 @@ function SidebarNav({
                         <div className="min-w-0">
                           <p
                             className={cn(
-                              isLightMode ? "text-slate-900" : "text-inherit",
+                              isLightMode
+                                ? "text-[oklch(var(--text-primary))]"
+                                : "text-inherit",
                             )}
                           >
                             {item.label}
@@ -390,7 +392,7 @@ function SidebarNav({
                             className={cn(
                               "text-xs leading-4.5",
                               isLightMode
-                                ? "text-slate-600"
+                                ? "text-[oklch(var(--text-muted))]"
                                 : "text-muted-foreground",
                             )}
                           >
@@ -835,7 +837,7 @@ export function PtLayout() {
                 className={cn(
                   "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
                   isLightMode
-                    ? "shadow-[0_28px_76px_-56px_rgba(15,23,42,0.16)]"
+                    ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
                     : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
                 )}
               >
@@ -844,7 +846,7 @@ export function PtLayout() {
                   className={cn(
                     "pointer-events-none absolute inset-x-6 top-0 h-px",
                     isLightMode
-                      ? "bg-[linear-gradient(90deg,transparent,rgba(15,23,42,0.12),transparent)]"
+                      ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]"
                       : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
                   )}
                 />

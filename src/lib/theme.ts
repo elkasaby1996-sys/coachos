@@ -1,7 +1,7 @@
 export type ThemePreference = "system" | "dark" | "light";
 export type ResolvedTheme = "dark" | "light";
 export const THEME_STORAGE_KEY = "coachos-theme-preference";
-export const LIGHT_MODE_ENABLED = false;
+export const LIGHT_MODE_ENABLED = true;
 export const AVAILABLE_THEME_PREFERENCES = LIGHT_MODE_ENABLED
   ? (["system", "dark", "light"] as const)
   : (["dark"] as const);
