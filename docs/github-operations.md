@@ -1,6 +1,6 @@
 # GitHub Operations Guide
 
-This document describes the recommended GitHub label, milestone, and release hygiene for CoachOS.
+This document describes the recommended GitHub label, milestone, and release hygiene for Repsync.
 
 ## Label Taxonomy
 

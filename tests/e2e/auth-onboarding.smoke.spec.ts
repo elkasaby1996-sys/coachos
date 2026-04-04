@@ -6,7 +6,7 @@ test.describe("Smoke: auth and onboarding", () => {
     await page.goto("/login");
 
     await page
-      .getByPlaceholder("you@coachos.com")
+      .getByPlaceholder("you@repsync.com")
       .fill(`invalid-${Date.now()}@example.com`);
     await page.getByPlaceholder("Enter password").fill("wrong-password");
     await page.getByRole("button", { name: /^sign in$/i }).click();

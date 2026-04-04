@@ -90,7 +90,7 @@ const DEFAULT_SETTINGS: PTAccountSettingsDraft = {
   weeklyDigest: true,
   productUpdates: false,
   profileVisibility: "draft",
-  subscriptionPlan: "CoachOS Pro",
+  subscriptionPlan: "Repsync Pro",
   subscriptionStatus: "Billing placeholder",
 };
 

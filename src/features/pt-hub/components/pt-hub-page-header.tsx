@@ -17,28 +17,29 @@ export function PtHubPageHeader({
   return (
     <div
       className={cn(
-        "surface-panel-strong relative overflow-hidden rounded-[30px] border-border/70 px-5 py-5 sm:px-6 sm:py-6 lg:flex lg:flex-row lg:items-end lg:justify-between",
+        "surface-panel-strong relative overflow-hidden rounded-[32px] border-border/70 px-5 py-5 shadow-[0_30px_84px_-52px_rgba(0,0,0,0.9)] sm:px-6 sm:py-6 lg:flex lg:flex-row lg:items-end lg:justify-between",
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),linear-gradient(135deg,transparent,oklch(var(--success)/0.08))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-2)/0.1),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--success)/0.08))]" />
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)]" />
       <div className="relative space-y-3">
         {eyebrow ? (
-          <p className="inline-flex items-center rounded-full border border-primary/25 bg-primary/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+          <p className="pt-hub-chip px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
             {eyebrow}
           </p>
         ) : null}
         <div className="space-y-2">
-          <h2 className="text-3xl font-semibold uppercase tracking-[0.02em] text-foreground sm:text-[2.15rem]">
+          <h2 className="text-balance text-[2.35rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.8rem]">
             {title}
           </h2>
-          <p className="max-w-2xl text-sm leading-5 text-muted-foreground sm:text-[0.92rem]">
+          <p className="max-w-2xl text-[0.98rem] leading-6 text-muted-foreground sm:text-[1rem]">
             {description}
           </p>
         </div>
       </div>
       {actions ? (
-        <div className="relative flex flex-wrap items-center gap-2 rounded-[22px] border border-border/70 bg-background/55 p-2 shadow-[inset_0_1px_0_oklch(var(--border-subtle)/0.18)]">
+        <div className="pt-hub-action-shelf relative mt-4 flex flex-wrap items-center gap-2 rounded-[24px] p-2 lg:mt-0">
           {actions}
         </div>
       ) : null}

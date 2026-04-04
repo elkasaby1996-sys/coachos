@@ -41,7 +41,7 @@ export function PublicCoachProfilePage() {
           <Button asChild variant="ghost">
             <Link to="/">
               <ArrowLeft className="h-4 w-4" />
-              Back to CoachOS
+              Back to Repsync
             </Link>
           </Button>
           <EmptyState
@@ -64,7 +64,7 @@ export function PublicCoachProfilePage() {
           >
             <Link to="/">
               <ArrowLeft className="h-4 w-4" />
-              CoachOS
+              Repsync
             </Link>
           </Button>
         </div>

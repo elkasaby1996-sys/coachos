@@ -23,7 +23,7 @@ export function LoginPage() {
   return (
     <AuthComponent
       mode="signin"
-      brandName="CoachOS"
+      brandName="Repsync"
       logo={
         <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
           <Dumbbell className="h-4 w-4" />

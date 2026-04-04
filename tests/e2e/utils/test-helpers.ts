@@ -56,7 +56,7 @@ export async function signInWithEmail(
       return;
     }
     const emailByLabel = page.getByLabel(/email/i);
-    const emailByPlaceholder = page.getByPlaceholder("you@coachos.com");
+    const emailByPlaceholder = page.getByPlaceholder("you@repsync.com");
     const passwordByLabel = page.getByLabel(/password/i);
     const passwordByPlaceholder = page.getByPlaceholder("Enter password");
     const emailByRole = page.getByRole("textbox", { name: /email/i }).first();

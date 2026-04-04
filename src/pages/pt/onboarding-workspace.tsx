@@ -73,7 +73,7 @@ export function PtWorkspaceOnboardingPage() {
         <CardHeader>
           <CardTitle>Create your workspace</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Set up your PT workspace to continue into CoachOS.
+            Set up your PT workspace to continue into Repsync.
           </p>
         </CardHeader>
         <CardContent>

@@ -4,9 +4,9 @@ import { Button } from "../ui/button";
 import { LIGHT_MODE_ENABLED } from "../../lib/theme";
 
 export function ThemeToggle() {
-  if (!LIGHT_MODE_ENABLED) return null;
-
   const { themePreference, cycleThemePreference } = useTheme();
+
+  if (!LIGHT_MODE_ENABLED) return null;
 
   const icon =
     themePreference === "system" ? (

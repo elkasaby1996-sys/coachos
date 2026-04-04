@@ -23,8 +23,28 @@ export default defineConfig({
             return "vendor-backend-observability";
           }
 
-          if (id.includes("framer-motion") || id.includes("recharts")) {
-            return "vendor-visuals";
+          if (id.includes("/node_modules/three/")) {
+            return "vendor-three";
+          }
+
+          if (id.includes("framer-motion")) {
+            return "vendor-motion";
+          }
+
+          if (id.includes("recharts")) {
+            return "vendor-charts";
+          }
+
+          if (
+            id.includes("react-hook-form") ||
+            id.includes("@hookform/resolvers") ||
+            id.includes("/node_modules/zod/")
+          ) {
+            return "vendor-forms";
+          }
+
+          if (id.includes("canvas-confetti")) {
+            return "vendor-effects";
           }
 
           if (

@@ -1,6 +1,6 @@
 # Command reference
 
-This document gathers the regularly used git commands plus the Supabase/app scripts I keep restarting when working on CoachOS. The git list is drawn from the entries in `docs/session-journal.md`, so you can trace each command back to an actual session log if you need examples.
+This document gathers the regularly used git commands plus the Supabase/app scripts I keep restarting when working on Repsync. The git list is drawn from the entries in `docs/session-journal.md`, so you can trace each command back to an actual session log if you need examples.
 
 ## Git commands we've been using
 

@@ -1,4 +1,4 @@
-# CoachOS Session Journal
+# Repsync Session Journal
 
 This file is the canonical cross-session handoff for this repo. It is intended to be read at the start of work and updated at the end of any meaningful work session.
 
@@ -44,7 +44,7 @@ When working in this repository, every agent or human contributor should treat t
   - `On-Boarding-baseline-MVP-bootstrap` (temporary branch created during branch hygiene cleanup)
   - `On-Boarding-baseline-MVP`
 - Goal:
-  - get this machine into a usable CoachOS development state
+  - get this machine into a usable Repsync development state
   - align the local workflow with the user's other PC
   - review onboarding/baseline behavior
   - implement the backend/schema MVP for onboarding without rebuilding baseline
@@ -1291,3 +1291,46 @@ When working in this repository, every agent or human contributor should treat t
 - Next step:
   - commit and push `UI-CLient-design`
   - open a PR for visual review and compare the updated client portal against the prior docs screenshots
+
+## 2026-04-04 11:57 +03:00 - Repsync PT Hub Design System Finalization
+
+- Branch:
+  - current working branch not captured in-session
+- Goal:
+  - finalize the PT Hub design direction and convert it into reusable documentation for the rest of the app
+- Changes made:
+  - generated and then curated a persistent Repsync design-system source of truth under `design-system/repsync/`
+  - replaced the noisy auto-generated master guidance with a Repsync-specific system covering:
+    - dark and light theme intent
+    - typography
+    - surface rules
+    - motion rules
+    - operational dashboard hierarchy
+    - anti-patterns and delivery checklist
+  - added a PT Hub page override doc that captures:
+    - shell behavior
+    - header/nav/dropdown rules
+    - background motion rules
+    - reusable PT Hub building blocks
+  - added a practical rollout playbook for extending the same UI language to the rest of the application
+  - linked the new design docs from `README.md` and `CONTRIBUTING.md`
+- Files changed:
+  - `CONTRIBUTING.md`
+  - `README.md`
+  - `design-system/repsync/MASTER.md`
+  - `design-system/repsync/pages/pt-hub.md`
+  - `docs/repsync-ui-playbook.md`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `python .codex/skills/ui-ux-pro-max/scripts/search.py "fitness saas operational dashboard premium liquid glass dark teal mineral light" --design-system --persist -p "Repsync" --page "pt-hub"`
+  - `python .codex/skills/ui-ux-pro-max/scripts/search.py "dashboard accessibility hierarchy glass motion" --domain ux`
+  - `python .codex/skills/ui-ux-pro-max/scripts/search.py "dashboard theming glass state layout" --stack react`
+  - `npm run lint`
+  - `npm run build`
+- Struggles / mistakes / blockers:
+  - the raw persisted design-system output was not directly usable and needed manual cleanup to match the actual shipped PT Hub direction
+- Repo state at end:
+  - Repsync now has a reusable design-system doc set for future UI work
+  - the docs reflect the current PT Hub direction more accurately than the raw skill output
+- Next step:
+  - apply the same system page-by-page across PT pages, settings, client detail pages, and public/auth surfaces

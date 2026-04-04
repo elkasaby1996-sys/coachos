@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Building,
   Check,
@@ -7,8 +7,10 @@ import {
   LogOut,
   Menu,
   MessageSquarePlus,
+  Moon,
   PanelsTopLeft,
   SlidersHorizontal,
+  Sun,
   UserRound,
   UsersRound,
   Wallet,
@@ -53,7 +55,9 @@ const hubNavGroups = [
   },
   {
     label: "Account",
-    items: [{ label: "Settings", to: "/pt-hub/settings", icon: SlidersHorizontal }],
+    items: [
+      { label: "Settings", to: "/pt-hub/settings", icon: SlidersHorizontal },
+    ],
   },
 ] as const;
 
@@ -76,38 +80,31 @@ const routeMeta: Record<string, { title: string; description: string }> = {
   },
   "/pt-hub/profile": {
     title: "Coach Profile",
-    description:
-      "Update the public trainer page clients will see.",
+    description: "Update the public trainer page clients will see.",
   },
   "/pt-hub/profile/preview": {
     title: "Profile Preview",
-    description:
-      "Preview your public trainer page before sharing it.",
+    description: "Preview your public trainer page before sharing it.",
   },
   "/pt-hub/leads": {
     title: "Leads",
-    description:
-      "Review new inquiries and follow up faster.",
+    description: "Review new inquiries and follow up faster.",
   },
   "/pt-hub/clients": {
     title: "Clients",
-    description:
-      "See every client across your coaching spaces.",
+    description: "See every client across your coaching spaces.",
   },
   "/pt-hub/workspaces": {
     title: "Coaching Spaces",
-    description:
-      "Open, create, and manage your coaching spaces.",
+    description: "Open, create, and manage your coaching spaces.",
   },
   "/pt-hub/payments": {
     title: "Payments",
-    description:
-      "Check billing, invoices, and revenue at a glance.",
+    description: "Check billing, invoices, and revenue at a glance.",
   },
   "/pt-hub/analytics": {
     title: "Analytics",
-    description:
-      "Track inquiries, conversions, and client growth.",
+    description: "Track inquiries, conversions, and client growth.",
   },
   "/pt-hub/settings": {
     title: "Account Settings",
@@ -117,21 +114,155 @@ const routeMeta: Record<string, { title: string; description: string }> = {
 };
 
 const defaultRouteMeta = routeMeta["/pt-hub"]!;
-const ptHubDropdownContentClassName =
-  "w-60 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,18,16,0.96),rgba(8,10,9,0.94))] p-2 text-foreground shadow-[0_32px_80px_-42px_rgba(0,0,0,0.96)] backdrop-blur-3xl";
-const ptHubDropdownItemClassName =
-  "rounded-[16px] px-3 py-2.5 text-sm text-foreground focus:bg-[rgba(255,255,255,0.06)] focus:text-foreground data-[highlighted]:bg-[rgba(255,255,255,0.06)] data-[highlighted]:text-foreground";
-const ptHubHeaderPillClassName =
-  "hidden h-[60px] w-[240px] items-center gap-3 rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,22,20,0.94),rgba(10,13,12,0.9))] px-3 py-2 text-left shadow-[0_24px_54px_-38px_rgba(0,0,0,0.9)] backdrop-blur-2xl transition-all duration-200 hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(20,26,23,0.96),rgba(12,16,14,0.92))] sm:flex";
-const ptHubHeaderPillIconClassName =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]";
+const PT_HUB_THEME_STORAGE_KEY = "coachos-pt-hub-theme-mode";
 
-function sidebarLinkClasses(isActive: boolean) {
+type PtHubThemeMode = "dark" | "light";
+
+function getPtHubDropdownContentClassName(isLightMode: boolean) {
   return cn(
-    "group relative flex items-start gap-3 rounded-[20px] border px-3 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+    "w-60 rounded-[22px] border p-1.5 text-foreground backdrop-blur-3xl",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(236,241,245,0.78),rgba(220,228,235,0.68))] shadow-[0_26px_62px_-36px_rgba(15,23,42,0.16)]"
+      : "border-white/10 bg-[linear-gradient(180deg,rgba(16,20,18,0.94),rgba(9,12,11,0.92))] shadow-[0_30px_72px_-40px_rgba(0,0,0,0.92)]",
+  );
+}
+
+function getPtHubDropdownItemClassName(isLightMode: boolean) {
+  return cn(
+    "group rounded-[14px] px-3 py-2.5 text-sm text-foreground transition-colors duration-200 focus:text-foreground data-[highlighted]:text-foreground",
+    isLightMode
+      ? "bg-transparent focus:bg-slate-900/[0.05] data-[highlighted]:bg-slate-900/[0.05]"
+      : "bg-transparent focus:bg-white/[0.05] data-[highlighted]:bg-white/[0.05]",
+  );
+}
+
+function getPtHubDropdownLabelClassName(isLightMode: boolean) {
+  return cn("px-3 py-2", isLightMode ? "" : "");
+}
+
+function getPtHubDropdownSeparatorClassName(isLightMode: boolean) {
+  return cn(
+    "-mx-1 my-1.5 h-px",
+    isLightMode ? "bg-slate-900/[0.08]" : "bg-white/[0.08]",
+  );
+}
+
+function getPtHubDropdownUtilityRowClassName(isLightMode: boolean) {
+  return cn(
+    "flex items-center justify-between gap-3 rounded-[14px] px-3 py-2.5 text-sm text-foreground",
+    isLightMode ? "bg-[rgba(255,255,255,0.18)]" : "bg-white/[0.03]",
+  );
+}
+
+function getPtHubDropdownGlyphClassName(isLightMode: boolean) {
+  return cn(
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-200",
+    isLightMode ? "text-slate-600" : "text-primary",
+  );
+}
+
+function getPtHubHeaderPillClassName(isLightMode: boolean) {
+  return cn(
+    "group hidden h-[58px] w-[236px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16 hover:bg-[linear-gradient(180deg,rgba(238,243,247,0.78),rgba(223,232,239,0.68))] hover:shadow-[0_24px_54px_-34px_rgba(15,23,42,0.18),0_0_0_1px_rgba(79,143,170,0.08),inset_0_1px_0_rgba(255,255,255,0.44)]"
+      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))] hover:shadow-[0_24px_52px_-34px_rgba(0,0,0,0.88),0_0_0_1px_rgba(116,201,164,0.08),inset_0_1px_0_rgba(255,255,255,0.08)]",
+  );
+}
+
+function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
+  return cn(
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border text-foreground transition-colors duration-200",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(246,249,251,0.46),rgba(230,237,243,0.38))] text-[rgb(79,143,170)] shadow-[inset_0_1px_0_rgba(255,255,255,0.44),0_14px_28px_-24px_rgba(15,23,42,0.14)] group-hover:text-slate-900"
+      : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_28px_-24px_rgba(0,0,0,0.82)] group-hover:text-foreground",
+  );
+}
+
+function getPtHubHeaderPillChevronClassName(isLightMode: boolean) {
+  return cn(
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
+    isLightMode
+      ? "border-slate-900/8 bg-white/22 text-[rgb(79,143,170)] group-hover:border-primary/16 group-hover:text-slate-800"
+      : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
+  );
+}
+
+function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
+  return cn(
+    "group relative flex items-start gap-3 rounded-[22px] border px-3.5 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
     isActive
-      ? "border-primary/25 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.94))] text-foreground shadow-[0_20px_48px_-34px_oklch(var(--accent)/0.38)]"
-      : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
+      ? isLightMode
+        ? "translate-x-1 border-primary/26 bg-[linear-gradient(180deg,rgba(236,242,246,0.72),rgba(221,230,238,0.6))] text-slate-900 shadow-[0_22px_54px_-36px_rgba(15,23,42,0.14)]"
+        : "translate-x-1 border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] text-foreground shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]"
+      : isLightMode
+        ? "border-transparent bg-transparent text-slate-800 hover:border-border/80 hover:bg-white/24 hover:text-slate-950"
+        : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
+  );
+}
+
+function PtHubThemeToggle({
+  mode,
+  onToggle,
+}: {
+  mode: PtHubThemeMode;
+  onToggle: () => void;
+}) {
+  const isLightMode = mode === "light";
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isLightMode}
+      onClick={onToggle}
+      aria-label={
+        isLightMode
+          ? "Switch PT Hub to dark mode"
+          : "Switch PT Hub to light mode"
+      }
+      className={cn(
+        "group relative inline-flex h-[30px] w-[92px] items-center rounded-full border px-1 backdrop-blur-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
+        isLightMode
+          ? "border-black/10 bg-[linear-gradient(180deg,rgba(232,239,235,0.72),rgba(216,225,219,0.62))] text-foreground shadow-[0_16px_32px_-24px_rgba(15,23,42,0.18)]"
+          : "border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-foreground shadow-[0_16px_30px_-24px_rgba(0,0,0,0.78)]",
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none absolute top-1/2 h-[22px] w-[42px] -translate-y-1/2 rounded-full transition-all duration-200",
+          isLightMode
+            ? "left-[45px] border border-slate-900/85 bg-slate-900 shadow-[0_10px_18px_-12px_rgba(15,23,42,0.5)]"
+            : "left-1 border border-white/12 bg-[linear-gradient(180deg,oklch(var(--accent)),oklch(var(--chart-2)))] shadow-[0_10px_18px_-12px_oklch(var(--accent)/0.6)]",
+        )}
+      />
+      <span
+        className={cn(
+          "pointer-events-none absolute inset-[3px] rounded-full",
+          isLightMode
+            ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.04))]"
+            : "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01))]",
+        )}
+      />
+      <span className="relative z-10 grid w-full grid-cols-2 items-center">
+        <span
+          className={cn(
+            "flex h-[22px] items-center justify-center transition-colors duration-200",
+            isLightMode ? "text-foreground/45" : "text-slate-950",
+          )}
+        >
+          <Moon className="h-3.5 w-3.5" />
+        </span>
+        <span
+          className={cn(
+            "flex h-[22px] items-center justify-center transition-colors duration-200",
+            isLightMode ? "text-white" : "text-foreground/45",
+          )}
+        >
+          <Sun className="h-3.5 w-3.5" />
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -143,18 +274,62 @@ export function PtHubLayout() {
   const workspacesQuery = usePtHubWorkspaces();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
+  const [isScrollActive, setIsScrollActive] = useState(false);
 
   const meta = routeMeta[location.pathname] ?? defaultRouteMeta;
   const workspaces = workspacesQuery.data ?? [];
   const latestWorkspace = workspaces[0] ?? null;
   const currentWorkspace =
-    workspaces.find((workspace) => workspace.id === workspaceId) ?? latestWorkspace;
+    workspaces.find((workspace) => workspace.id === workspaceId) ??
+    latestWorkspace;
   const breadcrumbSegments = ["PT Hub", meta.title];
   const userInitial = (
     user?.email?.charAt(0) ||
     user?.phone?.charAt(0) ||
     "P"
   ).toUpperCase();
+  const isLightMode = themeMode === "light";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedTheme = window.localStorage.getItem(PT_HUB_THEME_STORAGE_KEY);
+    if (storedTheme === "dark" || storedTheme === "light") {
+      setThemeMode(storedTheme);
+      return;
+    }
+
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    setThemeMode(prefersDark ? "dark" : "light");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PT_HUB_THEME_STORAGE_KEY, themeMode);
+  }, [themeMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let scrollTimeout = 0;
+    const handleScroll = () => {
+      setIsScrollActive(true);
+      window.clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        setIsScrollActive(false);
+      }, 90);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   const signOut = async () => {
     setIsSigningOut(true);
@@ -163,8 +338,14 @@ export function PtHubLayout() {
   };
 
   return (
-    <div className="pt-hub-theme theme-shell-canvas relative min-h-screen overflow-hidden">
-      <PtHubAnimatedBackground />
+    <div
+      className={cn(
+        "pt-hub-theme theme-shell-canvas relative min-h-screen overflow-hidden",
+        isScrollActive && "pt-hub-scroll-active",
+        themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
+      )}
+    >
+      <PtHubAnimatedBackground mode={themeMode} scrollActive={isScrollActive} />
 
       <div
         className={cn(
@@ -184,7 +365,7 @@ export function PtHubLayout() {
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <div>
               <p className="text-xl font-semibold uppercase tracking-[0.06em] text-foreground">
-                CoachOS PT Hub
+                Repsync PT Hub
               </p>
               <p className="text-sm text-muted-foreground">Trainer workspace</p>
             </div>
@@ -200,27 +381,51 @@ export function PtHubLayout() {
             className="min-h-0"
             onLogout={signOut}
             isSigningOut={isSigningOut}
+            themeMode={themeMode}
             onNavigate={() => setMobileOpen(false)}
           />
         </div>
       </aside>
 
-      <PageContainer className="relative py-4 sm:py-5 lg:py-6">
+      <PageContainer className="relative z-10 py-4 sm:py-5 lg:py-6">
         <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-6">
           <aside className="hidden lg:block">
             <div className="sticky top-5">
-              <div className="surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[32px] border-border/70">
+              <div
+                className={cn(
+                  "surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[34px] border-border/70",
+                  isLightMode
+                    ? "shadow-[0_30px_72px_-52px_rgba(15,23,42,0.14)]"
+                    : "shadow-[0_40px_100px_-64px_rgba(0,0,0,0.98)]",
+                )}
+              >
                 <SidebarContent
                   onLogout={signOut}
                   isSigningOut={isSigningOut}
+                  themeMode={themeMode}
                 />
               </div>
             </div>
           </aside>
 
           <div className="min-w-0 space-y-5">
-            <header className="surface-panel-strong relative overflow-hidden rounded-[32px] border-border/70 px-4 py-4 sm:px-5 lg:px-6">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_36%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-2)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--success)/0.05))]" />
+            <header
+              className={cn(
+                "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
+                isLightMode
+                  ? "shadow-[0_28px_76px_-56px_rgba(15,23,42,0.16)]"
+                  : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
+              )}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.2),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-2)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--success)/0.06))]" />
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-6 top-0 h-px",
+                  isLightMode
+                    ? "bg-[linear-gradient(90deg,transparent,rgba(15,23,42,0.12),transparent)]"
+                    : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)]",
+                )}
+              />
               <div className="relative flex flex-wrap items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
                   <Button
@@ -234,20 +439,28 @@ export function PtHubLayout() {
                   </Button>
                   <div className="min-w-0 space-y-3">
                     <div className="space-y-1.5">
-                      <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
+                      <nav
+                        aria-label="Breadcrumb"
+                        className="text-xs text-muted-foreground"
+                      >
                         <ol className="flex flex-wrap items-center gap-2 uppercase tracking-[0.22em]">
                           {breadcrumbSegments.map((segment, index) => (
-                            <li key={segment} className="flex items-center gap-2">
-                              {index > 0 ? <span aria-hidden="true">/</span> : null}
+                            <li
+                              key={segment}
+                              className="flex items-center gap-2"
+                            >
+                              {index > 0 ? (
+                                <span aria-hidden="true">/</span>
+                              ) : null}
                               <span>{segment}</span>
                             </li>
                           ))}
                         </ol>
                       </nav>
-                      <p className="text-[2rem] font-semibold uppercase tracking-[0.03em] text-foreground">
+                      <p className="text-[2.15rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.45rem]">
                         {meta.title}
                       </p>
-                      <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
+                      <p className="max-w-2xl text-[0.95rem] leading-6 text-muted-foreground">
                         {meta.description}
                       </p>
                     </div>
@@ -259,28 +472,40 @@ export function PtHubLayout() {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className={ptHubHeaderPillClassName}
+                        className={getPtHubHeaderPillClassName(isLightMode)}
                       >
-                        <div className={ptHubHeaderPillIconClassName}>
+                        <div
+                          className={getPtHubHeaderPillIconClassName(
+                            isLightMode,
+                          )}
+                        >
                           {userInitial}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="max-w-[150px] truncate text-sm font-medium text-foreground">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                            Profile
+                          </p>
+                          <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {user?.email ?? "Trainer account"}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            Trainer account
-                          </p>
                         </div>
-                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground [stroke-width:1.7]" />
+                        <span
+                          className={getPtHubHeaderPillChevronClassName(
+                            isLightMode,
+                          )}
+                        >
+                          <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                        </span>
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="end"
                       sideOffset={10}
-                      className={ptHubDropdownContentClassName}
+                      className={getPtHubDropdownContentClassName(isLightMode)}
                     >
-                      <DropdownMenuLabel className="px-3 py-2">
+                      <DropdownMenuLabel
+                        className={getPtHubDropdownLabelClassName(isLightMode)}
+                      >
                         <span className="block text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/75">
                           Account
                         </span>
@@ -288,23 +513,79 @@ export function PtHubLayout() {
                           {user?.email ?? "Trainer account"}
                         </span>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator
+                        className={getPtHubDropdownSeparatorClassName(
+                          isLightMode,
+                        )}
+                      />
+                      <div
+                        className={getPtHubDropdownUtilityRowClassName(
+                          isLightMode,
+                        )}
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className={getPtHubDropdownGlyphClassName(
+                              isLightMode,
+                            )}
+                          >
+                            <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                          </span>
+                          <span className="truncate font-medium text-foreground">
+                            Theme
+                          </span>
+                        </div>
+                        <PtHubThemeToggle
+                          mode={themeMode}
+                          onToggle={() =>
+                            setThemeMode((current) =>
+                              current === "dark" ? "light" : "dark",
+                            )
+                          }
+                        />
+                      </div>
+                      <DropdownMenuSeparator
+                        className={getPtHubDropdownSeparatorClassName(
+                          isLightMode,
+                        )}
+                      />
                       <DropdownMenuItem
-                        className={cn("mt-1", ptHubDropdownItemClassName)}
+                        className={cn(
+                          "mt-1",
+                          getPtHubDropdownItemClassName(isLightMode),
+                        )}
                         onClick={() => navigate("/pt-hub/settings")}
                       >
-                        <SlidersHorizontal className="mr-2 h-4 w-4 [stroke-width:1.7]" />
-                        Settings
+                        <span
+                          className={cn(
+                            "mr-3",
+                            getPtHubDropdownGlyphClassName(isLightMode),
+                          )}
+                        >
+                          <SlidersHorizontal className="h-4 w-4 [stroke-width:1.7]" />
+                        </span>
+                        <span className="font-medium text-foreground">
+                          Settings
+                        </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        className={ptHubDropdownItemClassName}
+                        className={getPtHubDropdownItemClassName(isLightMode)}
                         disabled={isSigningOut}
                         onClick={() => {
                           void signOut();
                         }}
                       >
-                        <LogOut className="mr-2 h-4 w-4 [stroke-width:1.7]" />
-                        {isSigningOut ? "Signing out..." : "Sign out"}
+                        <span
+                          className={cn(
+                            "mr-3",
+                            getPtHubDropdownGlyphClassName(isLightMode),
+                          )}
+                        >
+                          <LogOut className="h-4 w-4 [stroke-width:1.7]" />
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {isSigningOut ? "Signing out..." : "Sign out"}
+                        </span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -314,63 +595,112 @@ export function PtHubLayout() {
                         type="button"
                         disabled={workspaces.length === 0}
                         className={cn(
-                          ptHubHeaderPillClassName,
-                          workspaces.length === 0 && "cursor-not-allowed opacity-50",
+                          getPtHubHeaderPillClassName(isLightMode),
+                          workspaces.length === 0 &&
+                            "cursor-not-allowed opacity-50",
                         )}
                       >
-                        <div className={ptHubHeaderPillIconClassName}>
+                        <div
+                          className={getPtHubHeaderPillIconClassName(
+                            isLightMode,
+                          )}
+                        >
                           <Building className="h-4 w-4 [stroke-width:1.7]" />
                         </div>
-                        <div className="min-w-0 flex-1 text-left">
-                          <p className="max-w-[150px] truncate text-sm font-medium text-foreground">
-                            Open workspace
+                        <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                            Coaching space
                           </p>
-                          <p className="max-w-[150px] truncate text-xs text-muted-foreground">
+                          <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {currentWorkspace?.name ?? "No workspace selected"}
                           </p>
                         </div>
-                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground [stroke-width:1.7]" />
+                        <span
+                          className={getPtHubHeaderPillChevronClassName(
+                            isLightMode,
+                          )}
+                        >
+                          <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                        </span>
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="end"
                       sideOffset={10}
-                      className={cn(ptHubDropdownContentClassName, "w-72")}
+                      className={cn(
+                        getPtHubDropdownContentClassName(isLightMode),
+                        "w-72",
+                      )}
                     >
-                      <DropdownMenuLabel className="px-3 py-2">
+                      <DropdownMenuLabel
+                        className={getPtHubDropdownLabelClassName(isLightMode)}
+                      >
                         <span className="block text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/75">
                           Coaching Spaces
                         </span>
-                        <span className="mt-1 block text-sm font-medium text-foreground">
-                          Choose a workspace to open
-                        </span>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator
+                        className={getPtHubDropdownSeparatorClassName(
+                          isLightMode,
+                        )}
+                      />
+                      <DropdownMenuItem
+                        className={cn(
+                          "mt-1 px-3 py-3",
+                          getPtHubDropdownItemClassName(isLightMode),
+                        )}
+                        onClick={() => navigate("/pt-hub")}
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <span
+                            className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
+                              isLightMode ? "text-slate-600" : "text-primary",
+                            )}
+                          >
+                            <PanelsTopLeft className="h-4 w-4 [stroke-width:1.7]" />
+                          </span>
+                          <p className="truncate font-medium text-foreground">
+                            Repsync PT Hub
+                          </p>
+                        </div>
+                        {location.pathname.startsWith("/pt-hub") ? (
+                          <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
+                        ) : null}
+                      </DropdownMenuItem>
                       {workspaces.map((workspace) => (
                         <DropdownMenuItem
                           key={workspace.id}
-                          className={cn("mt-1 px-3 py-3", ptHubDropdownItemClassName)}
+                          className={cn(
+                            "mt-1 px-3 py-3",
+                            getPtHubDropdownItemClassName(isLightMode),
+                          )}
                           onClick={() => {
                             switchWorkspace(workspace.id);
                             navigate("/pt/dashboard");
                           }}
                         >
                           <div className="flex min-w-0 flex-1 items-center gap-3">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border border-white/10 bg-[rgba(255,255,255,0.04)] text-muted-foreground">
+                            <span
+                              className={cn(
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
+                                isLightMode ? "text-slate-600" : "text-primary",
+                              )}
+                            >
                               <Building className="h-4 w-4 [stroke-width:1.7]" />
                             </span>
-                            <div className="min-w-0">
-                              <p className="truncate font-medium text-foreground">
-                                {workspace.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {workspace.clientCount ?? 0} clients
-                              </p>
-                            </div>
+                            <p className="truncate font-medium text-foreground">
+                              {workspace.name}
+                            </p>
                           </div>
-                          {workspace.id === currentWorkspace?.id ? (
-                            <Check className="ml-3 h-4 w-4 shrink-0 text-primary [stroke-width:1.9]" />
-                          ) : null}
+                          <div className="ml-3 flex shrink-0 items-center gap-2">
+                            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                              {workspace.clientCount ?? 0}
+                            </span>
+                            {workspace.id === currentWorkspace?.id ? (
+                              <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
+                            ) : null}
+                          </div>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
@@ -393,13 +723,17 @@ function SidebarContent({
   className,
   onLogout,
   isSigningOut,
+  themeMode,
   onNavigate,
 }: {
   className?: string;
   onLogout: () => Promise<void>;
   isSigningOut: boolean;
+  themeMode: PtHubThemeMode;
   onNavigate?: () => void;
 }) {
+  const isLightMode = themeMode === "light";
+
   return (
     <div className={cn("flex h-full min-h-0 flex-col px-5 py-5", className)}>
       <div className="space-y-4 border-b border-border/60 pb-5">
@@ -408,10 +742,20 @@ function SidebarContent({
             <Building className="h-5 w-5 [stroke-width:1.7]" />
           </div>
           <div className="min-w-0 space-y-1">
-            <p className="text-lg font-semibold tracking-tight text-foreground">
-              CoachOS PT Hub
+            <p
+              className={cn(
+                "text-[1.15rem] font-semibold uppercase tracking-[0.05em]",
+                isLightMode ? "text-slate-950" : "text-foreground",
+              )}
+            >
+              Repsync PT Hub
             </p>
-            <p className="text-sm leading-5 text-muted-foreground">
+            <p
+              className={cn(
+                "text-sm leading-5",
+                isLightMode ? "text-slate-600" : "text-muted-foreground",
+              )}
+            >
               Manage clients, inquiries, and your public profile.
             </p>
           </div>
@@ -421,7 +765,12 @@ function SidebarContent({
       <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:flex lg:flex-col lg:justify-center lg:gap-6">
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
-            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground/80">
+            <p
+              className={cn(
+                "px-2 text-[10px] font-semibold uppercase tracking-[0.32em]",
+                isLightMode ? "text-slate-500" : "text-muted-foreground/80",
+              )}
+            >
               {group.label}
             </p>
             <div className="space-y-1">
@@ -433,29 +782,34 @@ function SidebarContent({
                     to={item.to}
                     end={"end" in item ? item.end : undefined}
                     onClick={onNavigate}
-                    className={({ isActive }) => sidebarLinkClasses(isActive)}
+                    className={({ isActive }) => sidebarLinkClasses(isActive, isLightMode)}
                   >
                     {({ isActive }) => (
                       <>
                         <span
                           className={cn(
-                            "absolute left-0 top-3 h-7 w-1 rounded-full transition-opacity",
-                            isActive ? "bg-primary opacity-100" : "opacity-0",
-                          )}
-                        />
-                        <span
-                          className={cn(
                             "flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
                             isActive
                               ? "border-primary/20 bg-primary/10 text-primary"
-                              : "border-border/70 bg-background/75 text-muted-foreground group-hover:border-primary/20 group-hover:text-primary",
+                              : isLightMode
+                                ? "border-slate-400/40 bg-[linear-gradient(180deg,rgba(245,248,246,0.34),rgba(228,235,231,0.22))] text-slate-600 group-hover:border-primary/22 group-hover:text-primary"
+                                : "border-border/70 bg-background/75 text-muted-foreground group-hover:border-primary/20 group-hover:text-primary",
                           )}
                         >
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <div className="min-w-0">
-                          <p>{item.label}</p>
-                          <p className="text-xs leading-4.5 text-muted-foreground">
+                          <p className={cn(isLightMode ? "text-slate-900" : "text-inherit")}>
+                            {item.label}
+                          </p>
+                          <p
+                            className={cn(
+                              "text-xs leading-4.5",
+                              isLightMode
+                                ? "text-slate-600"
+                                : "text-muted-foreground",
+                            )}
+                          >
                             {navDescriptions[item.label]}
                           </p>
                         </div>

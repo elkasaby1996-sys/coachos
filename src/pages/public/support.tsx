@@ -1,6 +1,6 @@
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
-const supportEmail = "support@coachos.com";
+const supportEmail = "support@repsync.com";
 
 export function SupportPage() {
   return (

@@ -1,5 +1,4 @@
 import { cn } from "../../lib/utils";
-import { motion } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
 import { LIGHT_MODE_ENABLED } from "../../lib/theme";
 
@@ -42,31 +41,23 @@ export function ThemeModeSwitch({
         )}
       />
 
-      <motion.div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-5 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-inner"
-        initial={false}
-        animate={{
-          backgroundColor: checked
-            ? "oklch(var(--primary) / 0.28)"
-            : "oklch(var(--muted) / 0.8)",
-        }}
-        transition={{ duration: 0.25 }}
+      <div
+        className={cn(
+          "pointer-events-none absolute left-1/2 top-1/2 h-5 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-inner transition-colors duration-300",
+          checked ? "bg-primary/28" : "bg-muted/80",
+        )}
       >
-        <motion.div
-          className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full border border-border/70 shadow-md"
-          initial={false}
-          animate={{
-            x: checked ? 20 : 0,
-            backgroundColor: checked
-              ? "oklch(var(--primary))"
-              : "oklch(var(--muted-foreground) / 0.5)",
-          }}
-          transition={{ type: "spring", stiffness: 520, damping: 32 }}
-          whileTap={{ scale: 0.9 }}
+        <div
+          className={cn(
+            "absolute left-0.5 top-0.5 h-4 w-4 rounded-full border border-border/70 shadow-md transition-[transform,background-color] duration-300 ease-out",
+            checked
+              ? "translate-x-5 bg-primary"
+              : "translate-x-0 bg-muted-foreground/50",
+          )}
         >
           <div className="absolute left-1 top-0.5 h-1 w-1.5 rounded-full bg-white/35 blur-[1px]" />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </button>
   );
 }

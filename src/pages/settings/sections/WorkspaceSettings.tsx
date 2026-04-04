@@ -97,7 +97,7 @@ export function WorkspaceSettings() {
       <SettingsToast message={toastMessage} variant={toastVariant} />
       <SettingsPageShell
         title="Workspace"
-        description="Control workspace branding details clients see across CoachOS."
+        description="Control workspace branding details clients see across Repsync."
       >
         <SettingsBlock
           title="Branding"

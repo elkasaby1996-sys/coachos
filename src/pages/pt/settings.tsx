@@ -495,7 +495,7 @@ export function PtSettingsPage() {
                 </label>
                 <p className="text-xs text-muted-foreground">
                   Used when a client has no direct override. If no default is
-                  set, CoachOS falls back to the latest active template.
+                  set, Repsync falls back to the latest active template.
                 </p>
                 <select
                   className="w-full"

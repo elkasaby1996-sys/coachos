@@ -8,11 +8,11 @@ export function TermsPage() {
           Terms of Service
         </h1>
         <p className="mt-3">
-          By using CoachOS, you agree to use the product lawfully and not misuse
+          By using Repsync, you agree to use the product lawfully and not misuse
           accounts, data, or platform resources.
         </p>
         <p className="mt-3">
-          CoachOS is provided as-is. You are responsible for reviewing outputs
+          Repsync is provided as-is. You are responsible for reviewing outputs
           before relying on them in training or health contexts.
         </p>
         <p className="mt-3">

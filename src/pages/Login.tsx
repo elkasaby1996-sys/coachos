@@ -49,7 +49,7 @@ export function LoginPage() {
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Sign in to your CoachOS workspace.
+            Sign in to your Repsync workspace.
           </p>
         </CardHeader>
         <CardContent>
@@ -61,7 +61,7 @@ export function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@coachos.com"
+                placeholder="you@repsync.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required

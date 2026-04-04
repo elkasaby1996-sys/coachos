@@ -95,7 +95,7 @@ export function AccountSettings() {
         >
           <SettingsRow
             label="Email"
-            hint="Read-only identity used to access CoachOS."
+            hint="Read-only identity used to access Repsync."
           >
             <Input
               value={session?.user?.email ?? "No email"}

@@ -298,7 +298,7 @@ export function PtLayout() {
                 </div>
                 <div className={cn(desktopNavCollapsed && "hidden")}>
                   <span className="text-lg font-semibold tracking-tight text-foreground">
-                    CoachOS
+                    Repsync
                   </span>
                   <p className="text-xs text-muted-foreground">PT Workspace</p>
                 </div>
@@ -432,7 +432,7 @@ export function PtLayout() {
           <div className="mb-6 flex items-center justify-between">
             <div>
               <span className="text-lg font-semibold tracking-tight text-foreground">
-                CoachOS
+                Repsync
               </span>
               <p className="text-xs text-muted-foreground">PT Workspace</p>
             </div>

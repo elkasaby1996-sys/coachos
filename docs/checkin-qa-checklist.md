@@ -1,6 +1,6 @@
 # Check-in QA Checklist
 
-Use this checklist for the final CoachOS check-in MVP hardening pass.
+Use this checklist for the final Repsync check-in MVP hardening pass.
 
 ## 1. PT template setup
 

@@ -6,7 +6,7 @@ export function PrivacyPage() {
       <div className="rounded-2xl border border-border/70 bg-card/85 p-6 text-sm text-muted-foreground shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl sm:p-8">
         <h1 className="font-serif text-3xl text-foreground">Privacy Policy</h1>
         <p className="mt-3">
-          CoachOS stores account, training, and check-in data to provide
+          Repsync stores account, training, and check-in data to provide
           coaching workflows. Access is restricted by role-based policies in
           Supabase.
         </p>
@@ -18,9 +18,9 @@ export function PrivacyPage() {
           For privacy requests, contact{" "}
           <a
             className="text-foreground underline"
-            href="mailto:support@coachos.com"
+            href="mailto:support@repsync.com"
           >
-            support@coachos.com
+            support@repsync.com
           </a>
           .
         </p>

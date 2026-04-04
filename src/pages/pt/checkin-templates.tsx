@@ -861,7 +861,7 @@ export function PtCheckinTemplatesPage() {
                 <AlertTitle>Protected template definition</AlertTitle>
                 <AlertDescription>
                   This template already has active assignments or scheduled
-                  check-ins. If you change the question structure, CoachOS will
+                  check-ins. If you change the question structure, Repsync will
                   save a new version so historical submissions stay intact.
                 </AlertDescription>
               </Alert>

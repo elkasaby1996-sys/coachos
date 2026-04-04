@@ -1,6 +1,6 @@
 # Ops Runbook
 
-This runbook is for day-to-day technical support and incident handling for CoachOS.
+This runbook is for day-to-day technical support and incident handling for Repsync.
 
 ## Scope
 

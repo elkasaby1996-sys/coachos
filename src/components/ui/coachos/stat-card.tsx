@@ -29,7 +29,7 @@ export function StatCard({
     <Card
       className={cn(
         isPtHub
-          ? "surface-panel relative overflow-hidden rounded-[28px] border-border/70 backdrop-blur-xl"
+          ? "surface-panel relative overflow-hidden rounded-[30px] border-border/70 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl"
           : "border-border/70 bg-card/80",
         accent &&
           (isPtHub
@@ -41,23 +41,25 @@ export function StatCard({
       {isPtHub ? (
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.1),transparent_48%)]",
+            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.12),transparent_48%)]",
             accent &&
-              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.12),transparent_48%)]",
+              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.22),transparent_32%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.14),transparent_48%)]",
           )}
         />
       ) : null}
       <CardHeader
-        className={cn("space-y-2", isPtHub && "relative px-5 py-5 sm:px-6")}
+        className={cn("space-y-3", isPtHub && "relative px-5 py-5 sm:px-6")}
       >
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-semibold uppercase tracking-[0.18em]">{label}</span>
+          <span className="font-semibold uppercase tracking-[0.22em]">
+            {label}
+          </span>
           {Icon ? (
             <span
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full border",
+                "flex h-10 w-10 items-center justify-center rounded-[16px] border",
                 isPtHub
-                  ? "border-primary/16 bg-background/18 text-primary backdrop-blur-lg"
+                  ? "border-primary/20 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.42))] text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] backdrop-blur-lg"
                   : "border-transparent text-primary",
               )}
             >
@@ -70,7 +72,7 @@ export function StatCard({
             <CardTitle
               className={cn(
                 "text-2xl font-semibold tracking-tight",
-                isPtHub && "text-[2.15rem] uppercase tracking-[0.01em]",
+                isPtHub && "text-[2.5rem] uppercase tracking-[0.04em]",
               )}
             >
               {value}
@@ -79,7 +81,7 @@ export function StatCard({
               <p
                 className={cn(
                   "text-xs text-muted-foreground",
-                  isPtHub && "mt-1 text-sm leading-5",
+                  isPtHub && "mt-1 text-[0.95rem] leading-5",
                 )}
               >
                 {helper}
@@ -89,7 +91,7 @@ export function StatCard({
           {delta ? (
             <span
               className={cn(
-                "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+                "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-[0.08em]",
                 delta.tone === "positive" &&
                   "border-success/30 bg-success/12 text-success",
                 delta.tone === "negative" &&

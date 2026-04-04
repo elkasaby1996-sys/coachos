@@ -17,14 +17,14 @@ export function PtHubPaymentsPage() {
       <PtHubPageHeader
         eyebrow="Payments"
         title="Billing and revenue"
-        description="Review your CoachOS plan, invoices, and revenue tracking."
+        description="Review your Repsync plan, invoices, and revenue tracking."
       />
 
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
           label="Platform Plan"
-          value={subscription?.planName ?? "CoachOS Pro"}
+          value={subscription?.planName ?? "Repsync Pro"}
           helper={
             subscription?.billingConnected
               ? "Live billing"
@@ -37,7 +37,7 @@ export function PtHubPaymentsPage() {
           surface="pt-hub"
           label="Billing State"
           value={subscription?.billingStatus ?? "Billing placeholder"}
-          helper="Status of your CoachOS plan"
+          helper="Status of your Repsync plan"
           icon={Landmark}
         />
         <StatCard
@@ -69,7 +69,7 @@ export function PtHubPaymentsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <PaymentDetail
                 label="Current plan"
-                value={subscription?.planName ?? "CoachOS Pro"}
+                value={subscription?.planName ?? "Repsync Pro"}
               />
               <PaymentDetail
                 label="Billing status"
@@ -88,7 +88,7 @@ export function PtHubPaymentsPage() {
               />
             </div>
             <div className="mt-5 rounded-[22px] border border-border/60 bg-background/28 px-4 py-4 text-sm text-muted-foreground">
-              Your CoachOS subscription is visible here, but billing sync and client billing are not fully live yet.
+              Your Repsync subscription is visible here, but billing sync and client billing are not fully live yet.
             </div>
           </PtHubSectionCard>
 

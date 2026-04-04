@@ -163,7 +163,7 @@ export function ClientLayout() {
         <aside className="theme-sidebar-surface hidden w-20 flex-col border-r border-border/70 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
           <div className="mb-8 flex items-center justify-between">
             <span className="hidden text-lg font-semibold tracking-tight xl:inline">
-              CoachOS
+              Repsync
             </span>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-card/72 text-sm font-semibold text-foreground xl:hidden">
               C
@@ -213,7 +213,7 @@ export function ClientLayout() {
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <PanelTop className="hidden h-4 w-4 text-primary sm:inline-flex" />
                   <PanelLeftClose className="h-4 w-4 text-primary md:hidden" />
-                  <span>CoachOS client workspace</span>
+                  <span>Repsync client workspace</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                   <span>{routeLabel}</span>

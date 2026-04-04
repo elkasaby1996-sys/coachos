@@ -139,7 +139,7 @@ const GitHubIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function AuthComponent({
   mode,
-  brandName = "CoachOS",
+  brandName = "Repsync",
   logo = <DefaultLogo />,
   title,
   subtitle,
@@ -169,7 +169,7 @@ export function AuthComponent({
   const headerSubtitle =
     subtitle ??
     (isSignUp
-      ? "Create your CoachOS account and continue to workspace setup."
+      ? "Create your Repsync account and continue to workspace setup."
       : "Sign in to manage clients and training plans.");
   const mainCtaLabel =
     primaryLabel ?? (isSignUp ? "Create account" : "Sign in");
@@ -325,7 +325,7 @@ export function AuthComponent({
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@coachos.com"
+                placeholder="you@repsync.com"
                 className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                 autoComplete="email"
               />

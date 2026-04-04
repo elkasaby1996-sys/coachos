@@ -148,7 +148,7 @@ export function PtHubSettingsPanel({
             />
             <PreferenceRow
               label="Product updates"
-              hint="Non-critical CoachOS updates and release notes."
+              hint="Non-critical Repsync updates and release notes."
               checked={form.productUpdates}
               onCheckedChange={(checked) =>
                 setForm((prev) => ({ ...prev, productUpdates: checked }))
@@ -204,7 +204,7 @@ export function PtHubSettingsPanel({
                 </p>
                 <p className="text-sm leading-6 text-muted-foreground">
                   Password reset and advanced authentication settings still
-                  route through the main CoachOS account settings flow.
+                  route through the main Repsync account settings flow.
                 </p>
               </div>
             </div>

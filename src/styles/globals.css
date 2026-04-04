@@ -1,4 +1,11 @@
 @import "@fontsource/geist-sans/400.css";
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow/700.css";
+@import "@fontsource/barlow-condensed/500.css";
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
 @import "@fontsource/geist-sans/500.css";
 @import "@fontsource/geist-sans/600.css";
 @import "@fontsource/geist-sans/700.css";
@@ -53,12 +60,12 @@
     --chart-4: 0.76 0.14 90;
     --chart-5: 0.62 0.2 25;
     --shell-canvas:
-      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 26%),
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-canvas)),
-        oklch(var(--bg-sidebar))
-      );
+      radial-gradient(
+        circle at top left,
+        oklch(var(--accent) / 0.08),
+        transparent 26%
+      ),
+      linear-gradient(180deg, oklch(var(--bg-canvas)), oklch(var(--bg-sidebar)));
     --sidebar-bg: linear-gradient(
       180deg,
       oklch(var(--bg-sidebar) / 0.98),
@@ -165,12 +172,12 @@
     --chart-4: 0.76 0.14 90;
     --chart-5: 0.62 0.2 25;
     --shell-canvas:
-      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 26%),
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-canvas)),
-        oklch(var(--bg-sidebar))
-      );
+      radial-gradient(
+        circle at top left,
+        oklch(var(--accent) / 0.08),
+        transparent 26%
+      ),
+      linear-gradient(180deg, oklch(var(--bg-canvas)), oklch(var(--bg-sidebar)));
     --sidebar-bg: linear-gradient(
       180deg,
       oklch(var(--bg-sidebar) / 0.98),
@@ -273,12 +280,12 @@
     --chart-4: 0.8 0.15 85;
     --chart-5: 0.65 0.2 25;
     --shell-canvas:
-      radial-gradient(circle at top left, oklch(var(--accent) / 0.08), transparent 24%),
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-canvas)),
-        oklch(0.1 0.01 260)
-      );
+      radial-gradient(
+        circle at top left,
+        oklch(var(--accent) / 0.08),
+        transparent 24%
+      ),
+      linear-gradient(180deg, oklch(var(--bg-canvas)), oklch(0.1 0.01 260));
     --sidebar-bg: linear-gradient(
       180deg,
       oklch(var(--bg-sidebar) / 0.98),
@@ -339,24 +346,24 @@
     --portal-page-bg: var(--shell-canvas);
   }
 
-  .pt-hub-theme {
+  .pt-hub-theme.pt-hub-theme-dark {
     color-scheme: dark;
-    --bg-canvas: 0.085 0.004 185;
-    --bg-sidebar: 0.12 0.006 180;
-    --bg-surface: 0.155 0.008 178;
-    --bg-surface-elevated: 0.195 0.01 176;
-    --bg-muted: 0.18 0.008 176;
-    --bg-input: 0.17 0.008 176;
+    --bg-canvas: 0.072 0.006 192;
+    --bg-sidebar: 0.106 0.008 188;
+    --bg-surface: 0.148 0.01 182;
+    --bg-surface-elevated: 0.188 0.012 178;
+    --bg-muted: 0.17 0.01 180;
+    --bg-input: 0.165 0.01 180;
     --text-primary: 0.962 0.003 160;
-    --text-secondary: 0.842 0.004 165;
-    --text-muted: 0.69 0.005 168;
+    --text-secondary: 0.87 0.005 168;
+    --text-muted: 0.74 0.006 170;
     --text-on-accent: 0.95 0.004 165;
-    --border-subtle: 0.24 0.008 176;
-    --border-default: 0.3 0.01 174;
-    --border-strong: 0.38 0.014 172;
-    --accent: 0.62 0.06 164;
-    --accent-hover: 0.67 0.07 164;
-    --success: 0.68 0.07 156;
+    --border-subtle: 0.27 0.01 178;
+    --border-default: 0.34 0.014 176;
+    --border-strong: 0.43 0.018 174;
+    --accent: 0.69 0.09 160;
+    --accent-hover: 0.73 0.1 160;
+    --success: 0.72 0.082 154;
     --warning: 0.74 0.03 95;
     --danger: 0.63 0.03 25;
     --background: var(--bg-canvas);
@@ -375,43 +382,212 @@
     --border: var(--border-default);
     --input: var(--bg-input);
     --ring: var(--accent);
-    --chart-1: 0.62 0.06 164;
-    --chart-2: 0.56 0.03 170;
-    --chart-3: 0.73 0.018 165;
-    --chart-4: 0.49 0.022 174;
-    --chart-5: 0.67 0.045 152;
+    --chart-1: 0.69 0.09 160;
+    --chart-2: 0.66 0.05 196;
+    --chart-3: 0.78 0.025 160;
+    --chart-4: 0.55 0.028 210;
+    --chart-5: 0.69 0.055 152;
     --shell-canvas:
-      radial-gradient(circle at 14% 18%, oklch(var(--accent) / 0.08), transparent 28%),
-      radial-gradient(circle at 84% 16%, oklch(var(--chart-2) / 0.05), transparent 24%),
-      radial-gradient(circle at 68% 78%, oklch(var(--success) / 0.045), transparent 22%),
-      linear-gradient(180deg, oklch(0.085 0.004 185), oklch(0.06 0.004 185));
-    --sidebar-bg:
-      linear-gradient(180deg, oklch(var(--bg-sidebar) / 0.58), oklch(0.13 0.008 180 / 0.44));
+      radial-gradient(
+        circle at 12% 16%,
+        oklch(var(--accent) / 0.14),
+        transparent 26%
+      ),
+      radial-gradient(
+        circle at 84% 12%,
+        oklch(var(--chart-2) / 0.1),
+        transparent 24%
+      ),
+      radial-gradient(
+        circle at 74% 82%,
+        oklch(var(--success) / 0.085),
+        transparent 26%
+      ),
+      linear-gradient(
+        160deg,
+        oklch(0.088 0.008 194),
+        oklch(0.056 0.007 188) 58%,
+        oklch(0.044 0.006 184)
+      );
+    --sidebar-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-sidebar) / 0.74),
+      oklch(0.122 0.01 184 / 0.56)
+    );
     --surface-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface) / 0.52), oklch(0.155 0.01 178 / 0.34));
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.5),
+        oklch(var(--bg-surface) / 0.32)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.06), transparent 34%);
     --surface-strong-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.58), oklch(var(--bg-surface) / 0.4));
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.68),
+        oklch(var(--bg-surface) / 0.44)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 38%);
     --surface-portal-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.62), oklch(var(--bg-surface) / 0.42));
-    --section-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.42), oklch(var(--bg-surface) / 0.28));
-    --dashed-bg:
-      linear-gradient(180deg, oklch(var(--bg-muted) / 0.28), oklch(var(--bg-surface) / 0.18));
-    --popover-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.66), oklch(var(--bg-surface) / 0.48));
-    --dialog-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.68), oklch(var(--bg-surface) / 0.5));
-    --topbar-bg: oklch(var(--bg-surface-elevated) / 0.54);
-    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.66);
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.66),
+        oklch(var(--bg-surface) / 0.46)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 38%);
+    --section-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.46),
+      oklch(var(--bg-surface) / 0.26)
+    );
+    --dashed-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-muted) / 0.28),
+      oklch(var(--bg-surface) / 0.18)
+    );
+    --popover-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.72),
+      oklch(var(--bg-surface) / 0.5)
+    );
+    --dialog-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.74),
+      oklch(var(--bg-surface) / 0.5)
+    );
+    --topbar-bg: oklch(var(--bg-surface-elevated) / 0.58);
+    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.7);
     --overlay-bg: oklch(0.048 0.008 180 / 0.78);
-    --surface-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.5);
-    --surface-strong-shadow: 0 28px 70px -42px oklch(0 0 0 / 0.62);
+    --surface-shadow: 0 26px 70px -42px oklch(0 0 0 / 0.58);
+    --surface-strong-shadow: 0 32px 80px -44px oklch(0 0 0 / 0.7);
     --surface-portal-shadow:
-      0 0 0 1px oklch(var(--border-subtle) / 0.28),
-      0 26px 70px -44px oklch(0 0 0 / 0.72);
-    --popover-shadow: 0 20px 60px -40px oklch(0 0 0 / 0.74);
-    --dialog-shadow: 0 28px 80px -50px oklch(0 0 0 / 0.8);
-    --sticky-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.74);
+      0 0 0 1px oklch(var(--border-subtle) / 0.32),
+      0 28px 76px -44px oklch(0 0 0 / 0.76);
+    --popover-shadow: 0 20px 60px -40px oklch(0 0 0 / 0.78);
+    --dialog-shadow: 0 28px 80px -50px oklch(0 0 0 / 0.82);
+    --sticky-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.78);
+  }
+
+  .pt-hub-theme.pt-hub-theme-light {
+    color-scheme: light;
+    --bg-canvas: 0.906 0.009 188;
+    --bg-sidebar: 0.878 0.011 186;
+    --bg-surface: 0.936 0.007 186;
+    --bg-surface-elevated: 0.952 0.006 186;
+    --bg-muted: 0.862 0.012 184;
+    --bg-input: 0.918 0.008 186;
+    --text-primary: 0.23 0.018 198;
+    --text-secondary: 0.34 0.015 196;
+    --text-muted: 0.47 0.012 194;
+    --text-on-accent: 0.985 0.002 180;
+    --border-subtle: 0.79 0.01 186;
+    --border-default: 0.71 0.012 184;
+    --border-strong: 0.62 0.016 182;
+    --accent: 0.58 0.085 188;
+    --accent-hover: 0.54 0.092 188;
+    --success: 0.69 0.1 154;
+    --warning: 0.74 0.04 92;
+    --danger: 0.62 0.18 26;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --accent-foreground: var(--text-on-accent);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
+    --chart-1: 0.58 0.085 188;
+    --chart-2: 0.62 0.055 206;
+    --chart-3: 0.6 0.035 194;
+    --chart-4: 0.73 0.05 92;
+    --chart-5: 0.63 0.05 214;
+    --shell-canvas:
+      radial-gradient(
+        circle at 14% 16%,
+        oklch(var(--accent) / 0.16),
+        transparent 26%
+      ),
+      radial-gradient(
+        circle at 84% 18%,
+        oklch(var(--chart-2) / 0.12),
+        transparent 24%
+      ),
+      radial-gradient(
+        circle at 70% 82%,
+        oklch(var(--chart-3) / 0.1),
+        transparent 24%
+      ),
+      linear-gradient(
+        165deg,
+        oklch(0.936 0.01 190),
+        oklch(var(--bg-canvas)) 46%,
+        oklch(0.864 0.012 186)
+      );
+    --sidebar-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-sidebar) / 0.78),
+      oklch(0.842 0.011 184 / 0.66)
+    );
+    --surface-bg:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.82),
+        oklch(var(--bg-surface) / 0.68)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.26), transparent 42%);
+    --surface-strong-bg:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.88),
+        oklch(var(--bg-surface) / 0.72)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.3), transparent 44%);
+    --surface-portal-bg:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.9),
+        oklch(var(--bg-surface) / 0.76)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.28), transparent 42%);
+    --section-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.72),
+      oklch(var(--bg-muted) / 0.58)
+    );
+    --dashed-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.74),
+      oklch(var(--bg-muted) / 0.56)
+    );
+    --popover-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.9),
+      oklch(var(--bg-surface) / 0.78)
+    );
+    --dialog-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.92),
+      oklch(var(--bg-surface) / 0.8)
+    );
+    --topbar-bg: oklch(var(--bg-surface-elevated) / 0.52);
+    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.68);
+    --overlay-bg: oklch(0.78 0.012 176 / 0.42);
+    --surface-shadow: 0 24px 70px -52px oklch(0.28 0.02 190 / 0.18);
+    --surface-strong-shadow: 0 26px 74px -52px oklch(0.26 0.02 188 / 0.22);
+    --surface-portal-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.52),
+      0 28px 76px -48px oklch(0.28 0.02 188 / 0.22);
+    --popover-shadow: 0 22px 62px -42px oklch(0.26 0.02 188 / 0.24);
+    --dialog-shadow: 0 28px 80px -50px oklch(0.24 0.02 188 / 0.26);
+    --sticky-shadow: 0 24px 60px -40px oklch(0.28 0.02 188 / 0.2);
   }
 
   * {
@@ -532,12 +708,11 @@
   .surface-panel {
     @apply rounded-[26px] border backdrop-blur-xl;
     border-color: oklch(var(--border-strong) / 0.7);
-    background:
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-surface-elevated) / 0.7),
-        oklch(var(--bg-surface) / 0.58)
-      );
+    background: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.7),
+      oklch(var(--bg-surface) / 0.58)
+    );
     box-shadow:
       0 0 0 1px oklch(1 0 0 / 0.04),
       0 26px 70px -46px oklch(0 0 0 / 0.82);
@@ -546,12 +721,11 @@
   .surface-panel-strong {
     @apply rounded-[28px] border backdrop-blur-2xl;
     border-color: oklch(var(--border-strong) / 0.78);
-    background:
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-surface-elevated) / 0.78),
-        oklch(var(--bg-surface) / 0.64)
-      );
+    background: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.78),
+      oklch(var(--bg-surface) / 0.64)
+    );
     box-shadow:
       0 0 0 1px oklch(1 0 0 / 0.05),
       0 30px 84px -50px oklch(0 0 0 / 0.88);
@@ -668,7 +842,7 @@
   }
 
   .pt-hub-theme {
-    font-family: "DM Sans", "Geist Sans", sans-serif;
+    font-family: "Barlow", "DM Sans", "Geist Sans", sans-serif;
   }
 
   .pt-hub-theme h1,
@@ -677,8 +851,10 @@
   .pt-hub-theme h4,
   .pt-hub-theme h5,
   .pt-hub-theme h6 {
-    font-family: "Plus Jakarta Sans", "DM Sans", "Geist Sans", sans-serif;
-    letter-spacing: 0.01em;
+    font-family:
+      "Barlow Condensed", "Plus Jakarta Sans", "DM Sans", "Geist Sans",
+      sans-serif;
+    letter-spacing: 0.03em;
   }
 
   .pt-hub-theme .theme-shell-canvas {
@@ -686,16 +862,37 @@
     isolation: isolate;
   }
 
+  .pt-hub-theme .theme-shell-canvas > * {
+    position: relative;
+    z-index: 0;
+  }
+
   .pt-hub-theme .theme-shell-canvas::before {
     content: "";
     position: absolute;
     inset: -18%;
     background:
-      radial-gradient(circle at 18% 22%, oklch(var(--accent) / 0.12), transparent 22%),
-      radial-gradient(circle at 78% 18%, oklch(var(--chart-2) / 0.08), transparent 20%),
-      radial-gradient(circle at 72% 78%, oklch(var(--success) / 0.07), transparent 18%),
-      radial-gradient(circle at 28% 82%, oklch(var(--chart-4) / 0.05), transparent 18%);
-    filter: blur(92px) saturate(90%);
+      radial-gradient(
+        circle at 18% 22%,
+        oklch(var(--accent) / 0.16),
+        transparent 22%
+      ),
+      radial-gradient(
+        circle at 78% 18%,
+        oklch(var(--chart-2) / 0.1),
+        transparent 20%
+      ),
+      radial-gradient(
+        circle at 72% 78%,
+        oklch(var(--success) / 0.09),
+        transparent 18%
+      ),
+      radial-gradient(
+        circle at 28% 82%,
+        oklch(var(--chart-4) / 0.06),
+        transparent 18%
+      );
+    filter: blur(108px) saturate(105%);
     animation: pt-hub-aurora-shift 24s ease-in-out infinite alternate;
     pointer-events: none;
     z-index: -2;
@@ -707,14 +904,31 @@
     inset: -10%;
     background-image:
       linear-gradient(oklch(var(--border-subtle) / 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(var(--border-subtle) / 0.1) 1px, transparent 1px);
+      linear-gradient(
+        90deg,
+        oklch(var(--border-subtle) / 0.1) 1px,
+        transparent 1px
+      );
     background-size: 84px 84px;
-    mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.8), transparent 86%);
-    opacity: 0.32;
+    mask-image: radial-gradient(
+      circle at center,
+      rgba(0, 0, 0, 0.8),
+      transparent 86%
+    );
+    opacity: 0.26;
     transform-origin: center;
     animation: pt-hub-grid-float 26s linear infinite;
     pointer-events: none;
     z-index: -1;
+  }
+
+  .pt-hub-theme.pt-hub-theme-light .theme-shell-canvas::before {
+    opacity: 0.62;
+    filter: blur(124px) saturate(92%);
+  }
+
+  .pt-hub-theme.pt-hub-theme-light .theme-shell-canvas::after {
+    opacity: 0.14;
   }
 
   .pt-hub-theme .surface-panel,
@@ -722,6 +936,29 @@
   .pt-hub-theme .surface-panel-portal {
     position: relative;
     overflow: hidden;
+    transition:
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      background 220ms ease,
+      transform 220ms ease;
+  }
+
+  .pt-hub-theme.pt-hub-scroll-active .theme-shell-canvas::before {
+    opacity: 0.74;
+    filter: blur(96px) saturate(102%);
+  }
+
+  .pt-hub-theme.pt-hub-scroll-active .theme-shell-canvas::after {
+    opacity: 0.2;
+  }
+
+  .pt-hub-theme.pt-hub-scroll-active .surface-panel,
+  .pt-hub-theme.pt-hub-scroll-active .surface-panel-strong,
+  .pt-hub-theme.pt-hub-scroll-active .surface-panel-portal {
+    backdrop-filter: blur(14px);
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 0.03),
+      0 20px 46px -34px oklch(0 0 0 / 0.48);
   }
 
   .pt-hub-theme .surface-panel::before,
@@ -731,7 +968,12 @@
     position: absolute;
     inset: 0 0 auto 0;
     height: 4px;
-    background: linear-gradient(90deg, oklch(var(--accent)), oklch(var(--chart-2)), oklch(var(--success)));
+    background: linear-gradient(
+      90deg,
+      oklch(var(--accent)),
+      oklch(var(--chart-2)),
+      oklch(var(--success))
+    );
     opacity: 0.18;
     pointer-events: none;
   }
@@ -744,59 +986,201 @@
     inset: 1px;
     border-radius: inherit;
     background:
-      linear-gradient(180deg, oklch(1 0 0 / 0.1), transparent 22%, transparent 72%, oklch(1 0 0 / 0.02)),
+      linear-gradient(
+        180deg,
+        oklch(1 0 0 / 0.1),
+        transparent 22%,
+        transparent 72%,
+        oklch(1 0 0 / 0.02)
+      ),
       radial-gradient(circle at top left, oklch(1 0 0 / 0.07), transparent 26%);
     pointer-events: none;
-    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.8));
+    mask-image: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.95),
+      rgba(0, 0, 0, 0.8)
+    );
   }
 
   .pt-hub-theme .surface-section,
   .pt-hub-theme .surface-subtle {
-    background: linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.34), oklch(var(--bg-surface) / 0.22));
+    background: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.34),
+      oklch(var(--bg-surface) / 0.22)
+    );
+  }
+
+  .pt-hub-theme .pt-hub-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid oklch(var(--border-strong) / 0.68);
+    background: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.68),
+      oklch(var(--bg-surface) / 0.44)
+    );
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.08),
+      0 14px 30px -24px oklch(0 0 0 / 0.72);
+  }
+
+  .pt-hub-theme .pt-hub-action-shelf {
+    border: 1px solid oklch(var(--border-strong) / 0.72);
+    background: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.64),
+      oklch(var(--bg-surface) / 0.44)
+    );
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.08),
+      0 20px 48px -36px oklch(0 0 0 / 0.76);
+    backdrop-filter: blur(24px);
+  }
+
+  .pt-hub-theme .pt-hub-interactive {
+    transition:
+      transform 220ms ease,
+      border-color 220ms ease,
+      background-color 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  @media (hover: hover) {
+    .pt-hub-theme .pt-hub-interactive:hover {
+      transform: translateY(-2px);
+      border-color: oklch(var(--border-strong) / 0.9);
+      box-shadow: 0 26px 54px -38px oklch(var(--accent) / 0.22);
+    }
   }
 
   .pt-hub-theme .pt-hub-bg-orb {
     filter: blur(72px);
-    opacity: 0.28;
+    opacity: 0.34;
     mix-blend-mode: screen;
     will-change: transform;
-    animation: pt-hub-orb-float 18s ease-in-out infinite;
+    animation: pt-hub-orb-float 15s ease-in-out infinite;
   }
 
   .pt-hub-theme .pt-hub-bg-orb-primary {
-    background: radial-gradient(circle, oklch(var(--accent) / 0.2), transparent 66%);
+    background: radial-gradient(
+      circle,
+      oklch(var(--accent) / 0.2),
+      transparent 66%
+    );
   }
 
   .pt-hub-theme .pt-hub-bg-orb-secondary {
-    background: radial-gradient(circle, oklch(var(--chart-2) / 0.16), transparent 68%);
-    animation-duration: 22s;
-    animation-delay: -6s;
+    background: radial-gradient(
+      circle,
+      oklch(var(--chart-2) / 0.16),
+      transparent 68%
+    );
+    animation-duration: 18s;
+    animation-delay: -5s;
   }
 
   .pt-hub-theme .pt-hub-bg-orb-success {
-    background: radial-gradient(circle, oklch(var(--success) / 0.14), transparent 70%);
-    animation-duration: 20s;
-    animation-delay: -10s;
+    background: radial-gradient(
+      circle,
+      oklch(var(--success) / 0.14),
+      transparent 70%
+    );
+    animation-duration: 16s;
+    animation-delay: -8s;
   }
 
   .pt-hub-theme .pt-hub-bg-wave {
     border-radius: 999px;
     background:
-      radial-gradient(circle at 20% 50%, oklch(var(--accent) / 0.06), transparent 18%),
-      radial-gradient(circle at 50% 45%, oklch(var(--chart-2) / 0.05), transparent 22%),
-      radial-gradient(circle at 78% 55%, oklch(var(--success) / 0.04), transparent 18%);
+      radial-gradient(
+        circle at 20% 50%,
+        oklch(var(--accent) / 0.06),
+        transparent 18%
+      ),
+      radial-gradient(
+        circle at 50% 45%,
+        oklch(var(--chart-2) / 0.05),
+        transparent 22%
+      ),
+      radial-gradient(
+        circle at 78% 55%,
+        oklch(var(--success) / 0.04),
+        transparent 18%
+      );
     filter: blur(58px);
-    opacity: 0.26;
+    opacity: 0.32;
     transform-origin: center;
     will-change: transform;
-    animation: pt-hub-wave-drift 26s ease-in-out infinite;
+    animation: pt-hub-wave-drift 20s ease-in-out infinite;
   }
 
   .pt-hub-theme .pt-hub-bg-wave-delayed {
-    animation-delay: -12s;
-    opacity: 0.18;
+    animation-delay: -8s;
+    opacity: 0.24;
   }
 
+  .pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb {
+    filter: blur(88px);
+    opacity: 0.18;
+    mix-blend-mode: normal;
+  }
+
+  .pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb-primary {
+    background: radial-gradient(
+      circle,
+      oklch(var(--accent) / 0.12),
+      transparent 68%
+    );
+  }
+
+  .pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb-secondary {
+    background: radial-gradient(
+      circle,
+      oklch(var(--chart-2) / 0.1),
+      transparent 70%
+    );
+  }
+
+  .pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb-success {
+    background: radial-gradient(
+      circle,
+      oklch(var(--chart-5) / 0.08),
+      transparent 72%
+    );
+  }
+
+  .pt-hub-theme.pt-hub-theme-light .pt-hub-bg-wave {
+    background:
+      radial-gradient(
+        circle at 20% 50%,
+        oklch(var(--accent) / 0.03),
+        transparent 18%
+      ),
+      radial-gradient(
+        circle at 50% 45%,
+        oklch(var(--chart-2) / 0.028),
+        transparent 22%
+      ),
+      radial-gradient(
+        circle at 78% 55%,
+        oklch(var(--chart-5) / 0.022),
+        transparent 18%
+      );
+    filter: blur(72px);
+    opacity: 0.14;
+  }
+
+  .pt-hub-theme.pt-hub-theme-light .pt-hub-bg-wave-delayed {
+    opacity: 0.1;
+  }
+
+  .pt-hub-theme.pt-hub-scroll-active .pt-hub-bg-orb,
+  .pt-hub-theme.pt-hub-scroll-active .pt-hub-bg-wave {
+    opacity: 0.24;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

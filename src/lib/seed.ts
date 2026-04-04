@@ -1,11 +1,11 @@
 export const seedWorkspace = {
-  name: "CoachOS Demo",
-  invite_code: "COACHOS-DEMO",
+  name: "Repsync Demo",
+  invite_code: "REPSYNC-DEMO",
 };
 
 export const seedClients = [
-  { name: "Avery Johnson", email: "avery@coachos.dev" },
-  { name: "Morgan Lee", email: "morgan@coachos.dev" },
+  { name: "Avery Johnson", email: "avery@repsync.dev" },
+  { name: "Morgan Lee", email: "morgan@repsync.dev" },
 ];
 
 export const seedTemplates = [
@@ -41,12 +41,12 @@ export const seedTemplates = [
 
 export const seedAssignedWorkouts = [
   {
-    client_email: "avery@coachos.dev",
+    client_email: "avery@repsync.dev",
     template_name: "Upper Power",
     date: "2024-04-08",
   },
   {
-    client_email: "morgan@coachos.dev",
+    client_email: "morgan@repsync.dev",
     template_name: "AMRAP 16",
     date: "2024-04-09",
   },
