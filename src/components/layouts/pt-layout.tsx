@@ -39,6 +39,7 @@ import { LoadingScreen } from "../common/bootstrap-gate";
 import { PageContainer } from "../common/page-container";
 import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
+import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { PtMessageComposeProvider } from "../pt/pt-message-compose";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
@@ -675,23 +676,26 @@ export function PtLayout() {
 
   if (errorMessage) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Workspace error</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>{errorMessage}</p>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => window.location.reload()}>
-                Retry
-              </Button>
-              <Button size="sm" variant="secondary" onClick={signOut}>
-                Sign out
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden">
+        <AppShellBackgroundLayer />
+        <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Workspace error</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>{errorMessage}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+                <Button size="sm" variant="secondary" onClick={signOut}>
+                  Sign out
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -699,17 +703,11 @@ export function PtLayout() {
   return (
     <div
       className={cn(
-        "pt-workspace-theme theme-shell-canvas relative min-h-screen overflow-hidden",
+        "pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden",
         isLightMode ? "pt-workspace-theme-light" : "pt-workspace-theme-dark",
       )}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="pt-workspace-bg-orb pt-workspace-bg-orb-primary absolute left-[-8%] top-[3%] h-[24rem] w-[24rem] rounded-full" />
-        <div className="pt-workspace-bg-orb pt-workspace-bg-orb-secondary absolute right-[-6%] top-[14%] h-[20rem] w-[20rem] rounded-full" />
-        <div className="pt-workspace-bg-orb pt-workspace-bg-orb-success absolute bottom-[8%] left-[18%] h-[18rem] w-[18rem] rounded-full" />
-        <div className="pt-workspace-bg-wave absolute left-[12%] top-[22%] h-[14rem] w-[72%]" />
-        <div className="pt-workspace-bg-wave pt-workspace-bg-wave-delayed absolute bottom-[4%] right-[4%] h-[12rem] w-[62%]" />
-      </div>
+      <AppShellBackgroundLayer />
       <div
         className={cn(
           "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition lg:hidden",

@@ -1,5 +1,6 @@
 import { cn } from "../../lib/utils";
 import { Link } from "react-router-dom";
+import { AppShellBackgroundLayer } from "./app-shell-background";
 
 interface AuthBackdropProps {
   children: React.ReactNode;
@@ -13,15 +14,14 @@ export function AuthBackdrop({
   contentClassName,
 }: AuthBackdropProps) {
   return (
-    <div className="theme-shell-canvas relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,oklch(var(--accent)/0.12),transparent_20%),radial-gradient(circle_at_82%_16%,oklch(var(--chart-3)/0.12),transparent_22%),radial-gradient(circle_at_50%_105%,oklch(var(--bg-sidebar)/0.92),transparent_38%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,oklch(var(--bg-canvas)/0.84)_100%)]" />
+    <div className="pt-hub-theme pt-hub-theme-dark theme-shell-canvas relative isolate flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
+      <AppShellBackgroundLayer />
 
       <div className={cn("relative z-10 w-full", contentClassName)}>
         {children}
       </div>
 
-      <nav className="pointer-events-auto absolute bottom-4 z-20 flex items-center gap-4 text-xs text-muted-foreground">
+      <nav className="pointer-events-auto absolute bottom-4 z-20 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
         <Link className="transition-colors hover:text-foreground" to="/privacy">
           Privacy
         </Link>

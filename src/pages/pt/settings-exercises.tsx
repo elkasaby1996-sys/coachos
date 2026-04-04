@@ -580,7 +580,7 @@ export function PtExerciseLibraryPage() {
               }
             />
             <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full app-field px-3 text-sm"
               value={datasetSearch.bodyPart}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -597,7 +597,7 @@ export function PtExerciseLibraryPage() {
               ))}
             </select>
             <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full app-field px-3 text-sm"
               value={datasetSearch.equipment}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -614,7 +614,7 @@ export function PtExerciseLibraryPage() {
               ))}
             </select>
             <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full app-field px-3 text-sm"
               value={datasetSearch.target}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -1037,7 +1037,7 @@ export function PtExerciseLibraryPage() {
                 Muscle group
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={form.muscle_group}
                 onChange={(event) =>
                   setForm((prev) => ({

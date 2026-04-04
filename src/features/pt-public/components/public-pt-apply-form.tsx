@@ -81,7 +81,7 @@ export function PublicPtApplyForm({
           disabled={preview}
         />
         <textarea
-          className="min-h-[120px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+          className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
           value={form.goalSummary}
           onChange={(event) =>
             setForm((prev) => ({ ...prev, goalSummary: event.target.value }))

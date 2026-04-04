@@ -4,17 +4,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import {
   AlertCircle,
   ArrowLeft,
-  ArrowRight,
+  ArrowUpRight,
   Eye,
   EyeOff,
   Loader2,
   Lock,
   Mail,
   PartyPopper,
+  Smartphone,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { AuthBackdrop } from "../common/auth-backdrop";
+import { Link } from "react-router-dom";
 
 export type AuthMode = "signin" | "signup";
 
@@ -38,6 +40,9 @@ export interface AuthComponentProps {
     password: string;
   }) => Promise<AuthSubmitResult | void>;
   onGoogle?: () => Promise<AuthSubmitResult | void>;
+  onApple?: () => Promise<AuthSubmitResult | void>;
+  onFacebook?: () => Promise<AuthSubmitResult | void>;
+  onPhone?: () => Promise<AuthSubmitResult | void>;
   onGithub?: () => Promise<AuthSubmitResult | void>;
 }
 
@@ -59,7 +64,7 @@ const glassButtonVariants = cva(
 const glassButtonTextVariants = cva("relative block select-none", {
   variants: {
     size: {
-      default: "px-5 py-3",
+      default: "px-5 py-3.5",
       icon: "flex h-10 w-10 items-center justify-center",
     },
   },
@@ -73,21 +78,23 @@ interface GlassButtonProps
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof glassButtonVariants> {
   contentClassName?: string;
+  srLabel?: string;
 }
 
 const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, children, size, contentClassName, ...props }, ref) => {
+  ({ className, children, size, contentClassName, srLabel, ...props }, ref) => {
     return (
       <button
         ref={ref}
         className={cn(
-          "group relative overflow-hidden border border-border/70 bg-card/75 shadow-[0_10px_28px_-18px_oklch(var(--primary)/0.45)] backdrop-blur-md",
+          "group relative overflow-hidden border border-white/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.2),rgba(255,255,255,0.09))] shadow-[0_20px_44px_-28px_rgba(0,0,0,0.52),inset_0_1px_0_rgba(255,255,255,0.24)] backdrop-blur-2xl",
           glassButtonVariants({ size }),
           className,
         )}
         {...props}
       >
-        <span className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.02)_42%,transparent_70%)] opacity-90" />
+        <span className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/12 to-primary/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <span
           className={cn(
             "relative z-10 text-foreground",
@@ -97,12 +104,16 @@ const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
         >
           {children}
         </span>
+        {srLabel ? <span className="sr-only">{srLabel}</span> : null}
       </button>
     );
   },
 );
 
 GlassButton.displayName = "GlassButton";
+
+const authFieldShellClassName =
+  "mt-1.5 flex items-center gap-3 rounded-full border px-4 py-3 shadow-[var(--field-glass-shadow)] backdrop-blur-2xl transition-[border-color,background-image,box-shadow] [border-color:var(--field-glass-border)] [background-color:oklch(var(--bg-surface)/0.18)] [background-image:var(--field-glass-bg)] focus-within:[border-color:var(--field-glass-border-focus)] focus-within:[background-image:var(--field-glass-bg-focus)] focus-within:shadow-[var(--field-glass-shadow-focus)]";
 
 const DefaultLogo = () => (
   <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
@@ -137,6 +148,25 @@ const GitHubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const AppleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M16.7 12.8c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.7-1.7-3.2-1.7-1.4-.1-2.7.8-3.4.8s-1.8-.8-3-.8c-1.6 0-3 .9-3.8 2.2-1.6 2.8-.4 6.9 1.2 9.2.8 1.1 1.7 2.4 2.9 2.3 1.2-.1 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2-.9 2.8-2 .9-1.2 1.3-2.4 1.4-2.5-.1 0-2.8-1.1-2.8-4.1Zm-2.2-6.5c.6-.7 1.1-1.7 1-2.7-.9 0-1.9.6-2.6 1.3-.6.7-1.1 1.7-1 2.7 1 .1 1.9-.5 2.6-1.3Z" />
+  </svg>
+);
+
+const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4h1.5V5.5c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.9v2h-2.5V14h2.5v7h3Z" />
+  </svg>
+);
+
+type SocialProviderButton = {
+  id: "google" | "apple" | "facebook" | "phone" | "github";
+  label: string;
+  action: (() => Promise<AuthSubmitResult | void>) | undefined;
+  icon: React.ReactNode;
+};
+
 export function AuthComponent({
   mode,
   brandName = "Repsync",
@@ -148,6 +178,9 @@ export function AuthComponent({
   secondaryLinkLabel,
   onEmailPasswordSubmit,
   onGoogle,
+  onApple,
+  onFacebook,
+  onPhone,
   onGithub,
 }: AuthComponentProps) {
   const [email, setEmail] = useState("");
@@ -156,7 +189,7 @@ export function AuthComponent({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [busyAction, setBusyAction] = useState<
-    "none" | "email" | "google" | "github"
+    "none" | "email" | "google" | "apple" | "facebook" | "phone" | "github"
   >("none");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -176,7 +209,7 @@ export function AuthComponent({
 
   const runAction = useCallback(
     async (
-      action: "email" | "google" | "github",
+      action: "email" | "google" | "apple" | "facebook" | "phone" | "github",
       fn: () => Promise<AuthSubmitResult | void>,
     ) => {
       setBusyAction(action);
@@ -235,54 +268,72 @@ export function AuthComponent({
   };
 
   const socialButtons = useMemo(() => {
-    const hasSocial = Boolean(onGoogle || onGithub);
+    const hasSocial = Boolean(
+      onGoogle || onApple || onFacebook || onPhone || onGithub,
+    );
     if (!hasSocial) return null;
+    const socialProviders = [
+      {
+        id: "google",
+        label: "Continue with Google",
+        action: onGoogle,
+        icon: <GoogleIcon className="h-4 w-4" />,
+      },
+      {
+        id: "apple",
+        label: "Continue with Apple",
+        action: onApple,
+        icon: <AppleIcon className="h-4 w-4" />,
+      },
+      {
+        id: "facebook",
+        label: "Continue with Facebook",
+        action: onFacebook,
+        icon: <FacebookIcon className="h-4 w-4" />,
+      },
+      {
+        id: "phone",
+        label: "Continue with phone",
+        action: onPhone,
+        icon: <Smartphone className="h-4 w-4" />,
+      },
+      {
+        id: "github",
+        label: "Continue with GitHub",
+        action: onGithub,
+        icon: <GitHubIcon className="h-4 w-4" />,
+      },
+    ] satisfies SocialProviderButton[];
 
     return (
-      <div
-        className={cn(
-          "grid w-full gap-3",
-          onGoogle && onGithub ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1",
-        )}
-      >
-        {onGoogle ? (
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {socialProviders
+          .filter((provider) => Boolean(provider.action))
+          .map((provider) => (
           <GlassButton
+            key={provider.id}
             type="button"
-            onClick={() => runAction("google", onGoogle)}
+            size="icon"
+            srLabel={provider.label}
+            onClick={() =>
+              provider.action
+                ? runAction(provider.id, provider.action)
+                : undefined
+            }
             disabled={busyAction !== "none"}
-            className="w-full"
+            className="h-11 w-11 rounded-2xl border-white/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] shadow-[0_18px_36px_-24px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.2)] hover:border-white/24"
+            contentClassName="flex h-11 w-11 items-center justify-center"
           >
-            <span className="inline-flex items-center gap-2">
-              {busyAction === "google" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <GoogleIcon className="h-4 w-4" />
-              )}
-              Continue with Google
-            </span>
+            {busyAction === provider.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              provider.icon
+            )}
           </GlassButton>
-        ) : null}
-
-        {onGithub ? (
-          <GlassButton
-            type="button"
-            onClick={() => runAction("github", onGithub)}
-            disabled={busyAction !== "none"}
-            className="w-full"
-          >
-            <span className="inline-flex items-center gap-2">
-              {busyAction === "github" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <GitHubIcon className="h-4 w-4" />
-              )}
-              Continue with GitHub
-            </span>
-          </GlassButton>
-        ) : null}
+        ))}
       </div>
     );
-  }, [busyAction, onGithub, onGoogle, runAction]);
+  }, [busyAction, onApple, onFacebook, onGithub, onGoogle, onPhone, runAction]);
 
   return (
     <AuthBackdrop
@@ -295,154 +346,189 @@ export function AuthComponent({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="auth-shell-card max-w-[30rem]"
+        className="mx-auto w-full max-w-[30rem] rounded-[28px] border border-white/18 bg-[linear-gradient(180deg,rgba(18,26,23,0.42),rgba(10,14,13,0.28))] px-6 py-6 shadow-[0_34px_110px_-54px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.24)] backdrop-blur-[34px] sm:px-7 sm:py-7"
       >
-        <div className="mb-6 space-y-2 text-center">
-          <h1 className="auth-shell-title">
-            {headerTitle}
-          </h1>
-          <p className="auth-shell-subtitle">{headerSubtitle}</p>
-        </div>
+        <div className="relative">
+            {isSignUp && secondaryLinkHref ? (
+              <div className="mb-4">
+                <Link
+                  to={secondaryLinkHref}
+                  className="group inline-flex items-center gap-2 text-sm font-medium text-white/68 transition-[color,transform] duration-200 hover:-translate-x-0.5 hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                  Back to sign in
+                </Link>
+              </div>
+            ) : null}
 
-        {socialButtons}
-
-        {socialButtons ? (
-          <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Or with email
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-        ) : null}
-
-        <form onSubmit={onSubmitEmail} className="space-y-4">
-          <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Email
-            <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/78 px-3 py-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@repsync.com"
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                autoComplete="email"
-              />
+            <div className="mb-6 space-y-3 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/22 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08))] shadow-[0_16px_36px_-24px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.24)] backdrop-blur-2xl">
+                {logo}
+              </div>
+              <div className="space-y-2">
+                <h1 className="auth-shell-title text-3xl font-semibold tracking-tight text-foreground sm:text-[2.15rem]">
+                  {headerTitle}
+                </h1>
+                <p className="auth-shell-subtitle mx-auto max-w-sm text-sm leading-6 text-muted-foreground">
+                  {headerSubtitle}
+                </p>
+              </div>
             </div>
-          </label>
 
-          <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Password
-            <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/78 px-3 py-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
-              <Lock className="h-4 w-4 text-muted-foreground" />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={
-                  isSignUp ? "At least 6 characters" : "Enter password"
-                }
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                autoComplete={isSignUp ? "new-password" : "current-password"}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </label>
+            {socialButtons}
 
-          <AnimatePresence>
-            {isSignUp ? (
-              <motion.label
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
-              >
-                Confirm password
-                <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/78 px-3 py-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
+            {socialButtons ? (
+              <div className="my-5 flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                  Or with email
+                </span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+            ) : null}
+
+            <form onSubmit={onSubmitEmail} className="space-y-4">
+              <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Email
+                <div className={authFieldShellClassName}>
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@repsync.com"
+                    className="field-reset w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                    autoComplete="email"
+                  />
+                </div>
+              </label>
+
+              <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Password
+                <div className={authFieldShellClassName}>
                   <Lock className="h-4 w-4 text-muted-foreground" />
                   <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Re-enter password"
-                    className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                    autoComplete="new-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder={
+                      isSignUp ? "At least 6 characters" : "Enter password"
+                    }
+                    className="field-reset w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {showConfirmPassword ? (
+                    {showPassword ? (
                       <EyeOff className="h-4 w-4" />
                     ) : (
                       <Eye className="h-4 w-4" />
                     )}
                   </button>
                 </div>
-              </motion.label>
-            ) : null}
-          </AnimatePresence>
+              </label>
 
-          {error ? (
-            <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <span className="inline-flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                {error}
-              </span>
-            </div>
-          ) : null}
+              <AnimatePresence>
+                {isSignUp ? (
+                  <motion.label
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+                  >
+                    Confirm password
+                    <div className={authFieldShellClassName}>
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        placeholder="Re-enter password"
+                        className="field-reset w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </motion.label>
+                ) : null}
+              </AnimatePresence>
 
-          {notice ? (
-            <div className="rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-              {notice}
-            </div>
-          ) : null}
-
-          {success ? (
-            <div className="rounded-xl border border-primary/50 bg-primary/10 px-3 py-2 text-sm text-primary">
-              <span className="inline-flex items-center gap-2">
-                <PartyPopper className="h-4 w-4" />
-                Done. Redirecting...
-              </span>
-            </div>
-          ) : null}
-
-          <GlassButton
-            type="submit"
-            className="w-full"
-            disabled={busyAction !== "none"}
-          >
-            <span className="inline-flex items-center gap-2">
-              {busyAction === "email" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+              {!isSignUp ? (
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">
+                    Use your workspace email and existing password.
+                  </span>
+                  <Link
+                    to="/support"
+                    className="shrink-0 text-primary transition-colors hover:text-primary/80"
+                  >
+                    Need help?
+                  </Link>
+                </div>
               ) : null}
-              {mainCtaLabel}
-              <ArrowRight className="h-4 w-4" />
-            </span>
-          </GlassButton>
 
-          {secondaryLinkHref && secondaryLinkLabel ? (
-            <a
-              href={secondaryLinkHref}
-              className="inline-flex w-full items-center justify-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {secondaryLinkLabel}
-            </a>
-          ) : null}
-        </form>
+              {error ? (
+                <div className="rounded-xl border border-white/14 bg-[linear-gradient(180deg,rgba(120,29,29,0.28),rgba(120,29,29,0.14))] px-3 py-2.5 text-sm text-red-200 backdrop-blur-xl">
+                  <span className="inline-flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    {error}
+                  </span>
+                </div>
+              ) : null}
+
+              {notice ? (
+                <div className="rounded-xl border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.05))] px-3 py-2.5 text-sm text-muted-foreground backdrop-blur-xl">
+                  {notice}
+                </div>
+              ) : null}
+
+              {success ? (
+                <div className="rounded-xl border border-white/14 bg-[linear-gradient(180deg,rgba(34,197,94,0.24),rgba(34,197,94,0.1))] px-3 py-2.5 text-sm text-emerald-100 backdrop-blur-xl">
+                  <span className="inline-flex items-center gap-2">
+                    <PartyPopper className="h-4 w-4" />
+                    Done. Redirecting...
+                  </span>
+                </div>
+              ) : null}
+
+              <GlassButton
+                type="submit"
+                className="w-full border-white/22 bg-[linear-gradient(180deg,rgba(255,255,255,0.24),rgba(255,255,255,0.1))] shadow-[0_22px_46px_-28px_rgba(0,0,0,0.54),inset_0_1px_0_rgba(255,255,255,0.28)] hover:border-white/30"
+                disabled={busyAction !== "none"}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {busyAction === "email" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  {mainCtaLabel}
+                  <ArrowUpRight className="h-4 w-4" />
+                </span>
+              </GlassButton>
+
+              {secondaryLinkHref && secondaryLinkLabel ? (
+                <Link
+                  to={secondaryLinkHref}
+                  className="inline-flex w-full items-center justify-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {secondaryLinkLabel}
+                </Link>
+              ) : null}
+            </form>
+        </div>
       </motion.div>
     </AuthBackdrop>
   );

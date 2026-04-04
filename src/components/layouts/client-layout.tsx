@@ -14,6 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
+import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
 import { Button } from "../ui/button";
@@ -118,30 +119,33 @@ export function ClientLayout() {
 
   if (errorMessage) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Workspace error</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>{errorMessage}</p>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => window.location.reload()}>
-                Retry
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  window.location.reload();
-                }}
-              >
-                Sign out
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]">
+        <AppShellBackgroundLayer />
+        <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Workspace error</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>{errorMessage}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    window.location.reload();
+                  }}
+                >
+                  Sign out
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -158,8 +162,9 @@ export function ClientLayout() {
   };
 
   return (
-    <div className="theme-shell-canvas min-h-screen [background:var(--portal-page-bg)]">
-      <div className="flex min-h-screen w-full">
+    <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]">
+      <AppShellBackgroundLayer />
+      <div className="relative z-10 flex min-h-screen w-full">
         <aside className="theme-sidebar-surface hidden w-20 flex-col border-r border-border/70 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
           <div className="mb-8 flex items-center justify-between">
             <div className="hidden xl:block">

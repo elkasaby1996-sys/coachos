@@ -1161,7 +1161,7 @@ export function PtCheckinTemplatesPage() {
                                 Question type
                               </label>
                               <select
-                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                className="h-10 w-full app-field px-3 text-sm"
                                 value={question.type}
                                 onChange={(event) =>
                                   setQuestionDraft(question.id, (current) => ({

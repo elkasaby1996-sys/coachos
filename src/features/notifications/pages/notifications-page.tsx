@@ -87,10 +87,6 @@ export function NotificationsPage() {
     return allNotifications.filter((row) => !row.is_read).length;
   }, [allNotifications]);
   const notificationsError = allQuery.error ?? unreadQuery.error;
-  const highPriorityCount = useMemo(
-    () => allNotifications.filter((row) => row.priority === "high").length,
-    [allNotifications],
-  );
 
   const handleOpenNotification = async (notification: NotificationRecord) => {
     if (!notification.is_read) {
@@ -127,7 +123,7 @@ export function NotificationsPage() {
   ) : (
     <WorkspacePageHeader
       title="Notifications"
-      description="Activity across clients, messages, invites, and schedule changes in a denser operational inbox."
+      description="Review client activity, coach communication, invites, and schedule changes in one notification center."
       actions={
         <Button
           variant="secondary"
@@ -143,44 +139,6 @@ export function NotificationsPage() {
   return (
     <div className={isClientPortal ? "portal-shell-tight" : "space-y-6"}>
       {pageHeader}
-
-      {!isClientPortal ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Unread
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {unreadCount}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Updates still waiting for review.
-            </div>
-          </div>
-          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              High priority
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {highPriorityCount}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Notification rows marked urgent.
-            </div>
-          </div>
-          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Recent activity
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {allNotifications.length}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Notifications currently loaded in the workspace inbox.
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {isClientPortal ? (
         <StatusBanner
@@ -221,12 +179,12 @@ export function NotificationsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
               <SurfaceCardTitle className="text-xl">
-                {isClientPortal ? "Recent updates" : "Inbox"}
+                {isClientPortal ? "Recent updates" : "Notifications"}
               </SurfaceCardTitle>
               <SurfaceCardDescription>
                 {isClientPortal
                   ? "Open anything that changes what you should do next."
-                  : "Review operational activity across the workspace."}
+                  : "Track the latest workspace activity and open anything that needs attention."}
               </SurfaceCardDescription>
             </div>
             {isClientPortal ? (
@@ -246,7 +204,24 @@ export function NotificationsPage() {
                       : "This feed will populate as coach updates and reminders are created."}
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm lg:min-w-[14rem]">
+                <p className="font-semibold text-foreground">
+                  {unreadCount > 0
+                    ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
+                    : allNotifications.length > 0
+                      ? "Everything reviewed"
+                      : "No notifications yet"}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {unreadCount > 0
+                    ? "Use Unread to clear anything new first, then switch back to All for the full activity stream."
+                    : allNotifications.length > 0
+                      ? "Use All to revisit recent workspace activity whenever you need context."
+                      : "Client, invite, and schedule activity will appear here as it happens."}
+                </p>
+              </div>
+            )}
           </div>
         </SurfaceCardHeader>
 

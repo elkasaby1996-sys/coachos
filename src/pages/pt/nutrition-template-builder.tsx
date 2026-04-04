@@ -566,7 +566,7 @@ export function PtNutritionTemplateBuilderPage() {
               onChange={(e) => setFat(e.target.value)}
             />
             <textarea
-              className="sm:col-span-2 min-h-[100px] rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              className="sm:col-span-2 min-h-[100px] app-field px-3 py-2 text-sm"
               placeholder="Recipe text"
               value={recipeText}
               onChange={(e) => setRecipeText(e.target.value)}

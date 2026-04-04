@@ -192,7 +192,7 @@ export function PublicProfileSettings() {
             hint="Tell prospects what outcomes you help create."
           >
             <textarea
-              className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
               value={form.bio}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, bio: event.target.value }))
@@ -244,7 +244,7 @@ export function PublicProfileSettings() {
                   trainingMode: event.target.value as TrainingMode,
                 }))
               }
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full app-field px-3 text-sm"
             >
               <option value="online">Online</option>
               <option value="in_person">In-person</option>

@@ -4176,7 +4176,7 @@ export function PtClientDetailPage() {
                               Template
                             </label>
                             <select
-                              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                              className="h-10 w-full app-field px-3 text-sm"
                               value={checkinTemplateId}
                               onChange={(event) =>
                                 setCheckinTemplateId(event.target.value)
@@ -4200,7 +4200,7 @@ export function PtClientDetailPage() {
                                 Frequency
                               </label>
                               <select
-                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                className="h-10 w-full app-field px-3 text-sm"
                                 value={checkinFrequency}
                                 onChange={(event) =>
                                   setCheckinFrequency(event.target.value)
@@ -4440,7 +4440,7 @@ export function PtClientDetailPage() {
               </label>
               <input
                 type="date"
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={editDate}
                 onChange={(event) => setEditDate(event.target.value)}
               />
@@ -4450,7 +4450,7 @@ export function PtClientDetailPage() {
                 Workout template
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={editTemplateId}
                 onChange={(event) => setEditTemplateId(event.target.value)}
               >
@@ -4470,7 +4470,7 @@ export function PtClientDetailPage() {
                 Status
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={editStatus}
                 onChange={(event) =>
                   setEditStatus(
@@ -5095,7 +5095,7 @@ export function PtClientDetailPage() {
                     : "Churn reason"}
                 </label>
                 <textarea
-                  className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
                   value={lifecycleReason}
                   onChange={(event) => {
                     setLifecycleReason(event.target.value);
@@ -5223,7 +5223,7 @@ export function PtClientDetailPage() {
                 Training type
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={profileEditForm.training_type}
                 onChange={(event) =>
                   setProfileEditForm((prev) => ({
@@ -6188,7 +6188,7 @@ function PtClientScheduleCard({
               onChange={(event) => setNutritionAssignDate(event.target.value)}
             />
             <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full app-field px-3 text-sm"
               value={nutritionTemplateId}
               onChange={(event) => setNutritionTemplateId(event.target.value)}
             >
@@ -6380,7 +6380,7 @@ function PtClientScheduleCard({
                 Workout template
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={overrideTemplateId}
                 disabled={overrideIsRest}
                 onChange={(event) => {
@@ -7649,7 +7649,7 @@ function PtClientPlanTab({
                       Program
                     </label>
                     <select
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      className="h-10 w-full app-field px-3 text-sm"
                       value={selectedProgramId}
                       onChange={(event) => onProgramChange(event.target.value)}
                     >
@@ -7670,7 +7670,7 @@ function PtClientPlanTab({
                     </label>
                     <input
                       type="date"
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      className="h-10 w-full app-field px-3 text-sm"
                       value={programStartDate}
                       onChange={(event) =>
                         onProgramDateChange(event.target.value)
@@ -7817,7 +7817,7 @@ function PtClientPlanTab({
                       Workout template
                     </label>
                     <select
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      className="h-10 w-full app-field px-3 text-sm"
                       value={selectedTemplateId}
                       onChange={(event) => onTemplateChange(event.target.value)}
                     >
@@ -7838,7 +7838,7 @@ function PtClientPlanTab({
                     </label>
                     <input
                       type="date"
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      className="h-10 w-full app-field px-3 text-sm"
                       value={scheduledDate}
                       onChange={(event) => onDateChange(event.target.value)}
                     />
@@ -8212,7 +8212,7 @@ function PtClientNutritionTab({
                   Nutrition program
                 </label>
                 <select
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full app-field px-3 text-sm"
                   value={selectedNutritionProgramId}
                   onChange={(event) =>
                     setSelectedNutritionProgramId(event.target.value)
@@ -8235,7 +8235,7 @@ function PtClientNutritionTab({
                 </label>
                 <input
                   type="date"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full app-field px-3 text-sm"
                   value={nutritionProgramStartDate}
                   onChange={(event) =>
                     setNutritionProgramStartDate(event.target.value)

@@ -59,6 +59,15 @@ export function PtSignupPage() {
 
         return { notice: "Redirecting to Google..." };
       }}
+      onApple={async () => {
+        return { notice: "Apple signup will be wired next." };
+      }}
+      onFacebook={async () => {
+        return { notice: "Facebook signup will be wired next." };
+      }}
+      onPhone={async () => {
+        return { notice: "Phone signup will be wired next." };
+      }}
     />
   );
 }

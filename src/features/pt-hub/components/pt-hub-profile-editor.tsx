@@ -332,7 +332,7 @@ export function PtHubProfileEditor({
                 Short bio
               </label>
               <textarea
-                className="min-h-[160px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                className="min-h-[160px] w-full app-field px-3 py-2 text-sm"
                 value={form.shortBio}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, shortBio: event.target.value }))
@@ -424,7 +424,7 @@ export function PtHubProfileEditor({
               </p>
             </div>
             <textarea
-              className="min-h-[180px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+              className="min-h-[180px] w-full app-field px-3 py-2 text-sm"
               value={form.coachingStyle}
               onChange={(event) =>
                 setForm((prev) => ({

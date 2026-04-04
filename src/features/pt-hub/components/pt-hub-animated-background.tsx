@@ -611,7 +611,7 @@ export function PtHubAnimatedBackground({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      className="pointer-events-none absolute inset-0 -z-20 overflow-hidden"
       aria-hidden="true"
     >
       {reduceMotion ? (

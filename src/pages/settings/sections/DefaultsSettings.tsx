@@ -143,7 +143,7 @@ export function DefaultsSettings() {
                 <select
                   value={defaultTemplateId}
                   onChange={(event) => setDefaultTemplateId(event.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full app-field px-3 text-sm"
                 >
                   <option value="">No default template</option>
                   {templatesQuery.data?.map((template) => (

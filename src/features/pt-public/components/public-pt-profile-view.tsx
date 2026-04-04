@@ -41,7 +41,7 @@ export function PublicPtProfileView({
   const title = profile.displayName || profile.fullName || "Coach";
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_26%),radial-gradient(circle_at_top_right,rgba(37,99,235,0.1),transparent_20%),linear-gradient(180deg,rgba(7,10,18,1),rgba(10,15,26,1))] text-foreground">
+    <div className="min-h-screen text-foreground">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="overflow-hidden rounded-[36px] border border-border/70 bg-[linear-gradient(180deg,rgba(11,16,27,0.96),rgba(8,12,21,0.98))] shadow-[0_40px_120px_-60px_rgba(37,99,235,0.45)]">
           <div className="relative overflow-hidden border-b border-border/60">

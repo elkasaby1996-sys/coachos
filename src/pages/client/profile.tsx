@@ -941,7 +941,7 @@ export function ClientProfilePage() {
                     Country
                   </label>
                   <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    className="h-10 w-full app-field px-3 text-sm"
                     value={formState.location}
                     onChange={(event) =>
                       handleCountryChange(event.target.value)
@@ -966,7 +966,7 @@ export function ClientProfilePage() {
                     Units
                   </label>
                   <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    className="h-10 w-full app-field px-3 text-sm"
                     value={formState.unit_preference}
                     onChange={(event) =>
                       setFormState((prev) => ({
@@ -1003,7 +1003,7 @@ export function ClientProfilePage() {
                     Gender
                   </label>
                   <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    className="h-10 w-full app-field px-3 text-sm"
                     value={formState.gender}
                     onChange={(event) =>
                       setFormState((prev) => ({
@@ -1061,7 +1061,7 @@ export function ClientProfilePage() {
                     Goal
                   </label>
                   <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    className="h-10 w-full app-field px-3 text-sm"
                     value={formState.goal}
                     onChange={(event) =>
                       setFormState((prev) => ({

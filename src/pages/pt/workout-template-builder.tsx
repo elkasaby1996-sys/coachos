@@ -1637,7 +1637,7 @@ export function PtWorkoutTemplateBuilderPage() {
                 Superset group
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={form.superset_group}
                 onChange={(event) =>
                   setForm((prev) => ({

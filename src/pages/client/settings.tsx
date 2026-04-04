@@ -334,7 +334,7 @@ export function ClientSettingsPage() {
         </label>
         <select
           id="client-settings-section-select"
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+          className="h-10 w-full app-field px-3 text-sm"
           value={activeSection}
           onChange={(event) =>
             setActiveSection(

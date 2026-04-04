@@ -1055,7 +1055,7 @@ export function ClientWorkoutRunPage() {
                     Exercise / Superset
                   </label>
                   <select
-                    className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                    className="mt-2 h-11 w-full app-field px-3 text-sm"
                     value={activeBlockId ?? ""}
                     onChange={(event) => setActiveBlockId(event.target.value)}
                   >
@@ -1155,7 +1155,7 @@ export function ClientWorkoutRunPage() {
                                     {previousLabel}
                                   </div>
                                   <input
-                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                    className="h-9 app-field px-2 text-sm"
                                     type="number"
                                     inputMode="decimal"
                                     placeholder="Weight"
@@ -1171,7 +1171,7 @@ export function ClientWorkoutRunPage() {
                                     disabled={!workoutSession}
                                   />
                                   <input
-                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                    className="h-9 app-field px-2 text-sm"
                                     type="number"
                                     inputMode="numeric"
                                     placeholder="Reps"
@@ -1187,7 +1187,7 @@ export function ClientWorkoutRunPage() {
                                     disabled={!workoutSession}
                                   />
                                   <input
-                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                    className="h-9 app-field px-2 text-sm"
                                     type="number"
                                     inputMode="decimal"
                                     placeholder="RPE"
@@ -1324,7 +1324,7 @@ export function ClientWorkoutRunPage() {
                 Notes to coach
               </label>
               <textarea
-                className="min-h-[120px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
                 placeholder="Optional notes for your coach..."
                 value={finishNotes}
                 onChange={(event) => setFinishNotes(event.target.value)}

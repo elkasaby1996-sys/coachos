@@ -630,7 +630,7 @@ export function PtBaselineTemplatesPage() {
                 Value type
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={formState.value_type}
                 onChange={(event) =>
                   setFormState((prev) => ({

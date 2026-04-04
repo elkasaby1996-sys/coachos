@@ -141,7 +141,7 @@ export function PtHubClientsPage() {
               />
             </div>
             <select
-              className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+              className="h-10 app-field px-3 text-sm"
               value={workspaceFilter}
               onChange={(event) => setWorkspaceFilter(event.target.value)}
             >
@@ -153,7 +153,7 @@ export function PtHubClientsPage() {
               ))}
             </select>
             <select
-              className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+              className="h-10 app-field px-3 text-sm"
               value={lifecycleFilter}
               onChange={(event) => setLifecycleFilter(event.target.value)}
             >
@@ -167,7 +167,7 @@ export function PtHubClientsPage() {
               <option value="churned">Churned</option>
             </select>
             <select
-              className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+              className="h-10 app-field px-3 text-sm"
               value={segmentFilter}
               onChange={(event) =>
                 setSegmentFilter(event.target.value as ClientSegmentKey)

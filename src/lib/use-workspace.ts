@@ -156,28 +156,13 @@ export function useWorkspace() {
         if (!clientData?.workspace_id) {
           throw new Error("Workspace not found for this user.");
         }
-        const { data: workspaceData, error: workspaceError } = await withTimeout(
-          supabase
-            .from("workspaces")
-            .select("id, owner_user_id")
-            .eq("id", clientData.workspace_id)
-            .maybeSingle(),
-          8000,
-          "Client workspace owner lookup timed out (8s).",
-        );
-
-        if (workspaceError) throw workspaceError;
-        const clientWorkspace = workspaceData as {
-          id: string;
-          owner_user_id: string | null;
-        } | null;
-        if (!clientWorkspace?.owner_user_id) {
-          throw new Error("Workspace owner not found for this user.");
-        }
         if (mounted) {
           setWorkspaceId(clientData.workspace_id);
           setWorkspaceIds([clientData.workspace_id]);
-          setOwnerUserId(clientWorkspace.owner_user_id);
+          // Client users can read their own client row, but current workspaces
+          // RLS only grants read access to workspace_members. The client portal
+          // only requires workspace_id, so avoid hard-failing on owner lookup.
+          setOwnerUserId(null);
         }
         if (typeof window !== "undefined") {
           window.localStorage.setItem(

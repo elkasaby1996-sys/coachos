@@ -816,7 +816,7 @@ export function ClientWorkoutDetailPage() {
                                   {member.exercise.name}
                                 </div>
                                 <input
-                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  className="h-9 app-field px-2 text-sm"
                                   type="number"
                                   inputMode="numeric"
                                   placeholder="Reps"
@@ -834,7 +834,7 @@ export function ClientWorkoutDetailPage() {
                                   }
                                 />
                                 <input
-                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  className="h-9 app-field px-2 text-sm"
                                   type="number"
                                   inputMode="decimal"
                                   placeholder="Weight"
@@ -852,7 +852,7 @@ export function ClientWorkoutDetailPage() {
                                   }
                                 />
                                 <input
-                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  className="h-9 app-field px-2 text-sm"
                                   type="number"
                                   inputMode="decimal"
                                   placeholder="RPE"
@@ -906,7 +906,7 @@ export function ClientWorkoutDetailPage() {
                         Set {setIndex + 1}
                       </div>
                       <input
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 app-field px-2 text-sm"
                         type="number"
                         inputMode="numeric"
                         placeholder="Reps"
@@ -922,7 +922,7 @@ export function ClientWorkoutDetailPage() {
                         onBlur={() => saveSet(exerciseIndex, setIndex)}
                       />
                       <input
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 app-field px-2 text-sm"
                         type="number"
                         inputMode="decimal"
                         placeholder="Weight"
@@ -938,7 +938,7 @@ export function ClientWorkoutDetailPage() {
                         onBlur={() => saveSet(exerciseIndex, setIndex)}
                       />
                       <input
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 app-field px-2 text-sm"
                         type="number"
                         inputMode="decimal"
                         placeholder="RPE"

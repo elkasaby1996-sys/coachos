@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
@@ -46,6 +47,15 @@ export function SignupRolePage() {
   return (
     <AuthBackdrop contentClassName="max-w-2xl">
       <div className="auth-shell-card max-w-2xl">
+        <div className="mb-4">
+          <Link
+            to="/login"
+            className="group inline-flex items-center gap-2 text-sm font-medium text-white/68 transition-[color,transform] duration-200 hover:-translate-x-0.5 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+            Back to sign in
+          </Link>
+        </div>
         <div className="space-y-2 text-center">
           <h1 className="auth-shell-title">Create your account</h1>
           <p className="auth-shell-subtitle">

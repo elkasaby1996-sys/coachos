@@ -31,7 +31,7 @@ import { cn } from "../../lib/utils";
 import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
-import { PtHubAnimatedBackground } from "../../features/pt-hub/components/pt-hub-animated-background";
+import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { supabase } from "../../lib/supabase";
 
 const hubNavGroups = [
@@ -340,12 +340,12 @@ export function PtHubLayout() {
   return (
     <div
       className={cn(
-        "pt-hub-theme theme-shell-canvas relative min-h-screen overflow-hidden",
+        "pt-hub-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden",
         isScrollActive && "pt-hub-scroll-active",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
       )}
     >
-      <PtHubAnimatedBackground mode={themeMode} scrollActive={isScrollActive} />
+      <AppShellBackgroundLayer />
 
       <div
         className={cn(

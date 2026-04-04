@@ -133,7 +133,7 @@ export function PtHubLeadDetailDialog({
                       Add note
                     </label>
                     <textarea
-                      className="min-h-[120px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                      className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
                       value={noteBody}
                       onChange={(event) => setNoteBody(event.target.value)}
                       placeholder="Add outreach details, qualification notes, objections, or next steps."
@@ -163,7 +163,7 @@ export function PtHubLeadDetailDialog({
                       Update status
                     </label>
                     <select
-                      className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                      className="h-10 w-full app-field px-3 text-sm"
                       value={nextStatus}
                       onChange={(event) =>
                         setNextStatus(event.target.value as PTLeadStatus)

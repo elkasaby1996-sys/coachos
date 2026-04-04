@@ -70,6 +70,15 @@ export function LoginPage() {
 
         return { notice: "Redirecting to Google..." };
       }}
+      onApple={async () => {
+        return { notice: "Apple sign-in will be wired next." };
+      }}
+      onFacebook={async () => {
+        return { notice: "Facebook sign-in will be wired next." };
+      }}
+      onPhone={async () => {
+        return { notice: "Phone sign-in will be wired next." };
+      }}
     />
   );
 }
