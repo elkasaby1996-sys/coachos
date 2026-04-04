@@ -11,6 +11,7 @@ import { ClientListRow } from "../../components/pt/clients/ClientListRow";
 import { EmptyState } from "../../components/ui/coachos";
 import { useAuth } from "../../lib/auth";
 import {
+  getClientRiskFlagMeta,
   matchesClientSegment,
   normalizeClientLifecycleState,
   type ClientSegmentKey,
@@ -152,14 +153,33 @@ export function PtClientsPage() {
         lifecycleState,
         name: client.display_name?.trim() || "Client",
         program: client.tags?.[0] ?? client.goal ?? "No program assigned",
-        week:
+        summary:
           client.has_overdue_checkin && (client.overdue_checkins_count ?? 0) > 0
             ? `${client.overdue_checkins_count} overdue check-in${(client.overdue_checkins_count ?? 0) > 1 ? "s" : ""}`
-            : client.goal?.trim() || "Operationally healthy",
+            : client.goal?.trim() || "",
         riskFlags: client.risk_flags ?? [],
         lastActivityLabel: lastActivityRaw
           ? formatRelativeTime(lastActivityRaw)
           : "No recent activity",
+        nextAction: client.onboarding_incomplete
+          ? "Finish onboarding review"
+          : client.has_overdue_checkin &&
+              (client.overdue_checkins_count ?? 0) > 0
+            ? `Review ${client.overdue_checkins_count} overdue check-in${(client.overdue_checkins_count ?? 0) > 1 ? "s" : ""}`
+            : client.risk_flags?.includes("no_recent_reply")
+              ? "Message for response"
+              : lifecycleState === "paused"
+                ? "Confirm pause plan"
+                : "Review latest training",
+        coachingSignal: client.risk_flags?.includes("low_adherence_trend")
+          ? "Adherence trending down"
+          : client.risk_flags?.includes("inactive_client")
+            ? "Client activity has gone quiet"
+            : client.risk_flags?.includes("missed_checkins")
+              ? "Check-in cadence broken"
+              : client.goal?.trim()
+                ? `Goal: ${client.goal.trim()}`
+                : `Focus: ${client.tags?.[0] ?? "No block assigned"}`,
       };
     });
   }, [clients]);
@@ -172,7 +192,7 @@ export function PtClientsPage() {
         ? [
             client.name,
             client.program,
-            client.week,
+            client.summary,
             client.lifecycleState,
             ...(client.riskFlags ?? []),
             client.onboarding_status ?? "",
@@ -231,7 +251,6 @@ export function PtClientsPage() {
 
       <WorkspacePageHeader
         title="Clients"
-        description="Work the roster by lifecycle, risk, and operational attention instead of scanning raw rows."
         actions={<InviteClientDialog trigger={<Button>+ Add Client</Button>} />}
       />
 
@@ -271,11 +290,10 @@ export function PtClientsPage() {
                 key={client.id}
                 name={client.name}
                 program={client.program}
-                week={client.week}
+                summary={client.summary}
                 status={client.lifecycleState}
-                onboardingStatus={client.onboarding_status}
-                riskFlags={client.riskFlags}
                 lastActivity={client.lastActivityLabel}
+                nextAction={client.nextAction}
                 pausedReason={client.paused_reason}
                 churnReason={client.churn_reason}
                 onClick={() =>
@@ -303,7 +321,7 @@ export function PtClientsPage() {
           <EmptyState
             centered
             title="No clients in this view yet"
-            description="Invite a new client or change the lifecycle and smart filters."
+            description="Invite a client or change the filters."
             action={
               <InviteClientDialog
                 trigger={

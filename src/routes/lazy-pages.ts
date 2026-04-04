@@ -282,6 +282,11 @@ export const ClientProgressPage = lazy(() =>
     default: m.ClientProgressPage,
   })),
 );
+export const ClientMedicalPage = lazy(() =>
+  import("../pages/client/medical").then((m) => ({
+    default: m.ClientMedicalPage,
+  })),
+);
 export const ClientNutritionDayPage = lazy(() =>
   import("../pages/client/nutrition-day").then((m) => ({
     default: m.ClientNutritionDayPage,

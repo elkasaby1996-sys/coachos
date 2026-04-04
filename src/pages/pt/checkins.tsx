@@ -61,14 +61,6 @@ type QueueRow = {
   status: CheckinOperationalState;
 };
 
-const queuePriority: CheckinOperationalState[] = [
-  "submitted",
-  "overdue",
-  "due",
-  "upcoming",
-  "reviewed",
-];
-
 export function PtCheckinsQueuePage() {
   const navigate = useNavigate();
   const { workspaceId } = useWorkspace();
@@ -141,61 +133,26 @@ export function PtCheckinsQueuePage() {
   const submittedCount = queueRows.filter(
     (row) => row.status === "submitted",
   ).length;
-  const reviewedCount = queueRows.filter(
-    (row) => row.status === "reviewed",
-  ).length;
-
-  const nextPriorityRow = useMemo(() => {
-    for (const status of queuePriority) {
-      const match = queueRows.find((row) => row.status === status);
-      if (match) return match;
-    }
-    return null;
-  }, [queueRows]);
 
   const queueSections = useMemo(
     () => [
       {
-        key: "submitted" as const,
-        title: "Ready to review",
-        description:
-          "Client submissions that need coach review before the next decision.",
-        emptyTitle: "No submitted check-ins",
-        emptyDescription: "New client submissions will land here for review.",
+        key: "due-now" as const,
+        title: "Due now",
+        emptyTitle: "No check-ins due now",
+        emptyDescription: "Nothing needs immediate review.",
       },
       {
         key: "overdue" as const,
         title: "Overdue",
-        description:
-          "Clients who missed the expected submission window and may need follow-up.",
         emptyTitle: "No overdue check-ins",
         emptyDescription: "Nothing is overdue right now.",
       },
       {
-        key: "due" as const,
-        title: "Due now",
-        description:
-          "Current check-ins that are at the deadline and worth watching closely.",
-        emptyTitle: "No check-ins due now",
-        emptyDescription:
-          "There are no immediate due-date follow-ups at the moment.",
-      },
-      {
         key: "upcoming" as const,
-        title: "Due soon",
-        description:
-          "Upcoming check-ins scheduled in the near window so you can coach ahead.",
+        title: "Soon",
         emptyTitle: "No upcoming check-ins",
         emptyDescription: "Future scheduled check-ins will appear here.",
-      },
-      {
-        key: "reviewed" as const,
-        title: "Reviewed recently",
-        description:
-          "Recently completed reviews for quick reference and continuity.",
-        emptyTitle: "No recently reviewed check-ins",
-        emptyDescription:
-          "Reviewed check-ins will appear here once the queue starts moving.",
       },
     ],
     [],
@@ -224,7 +181,7 @@ export function PtCheckinsQueuePage() {
                 : "Scheduled";
         const urgencyLabel =
           row.status === "submitted"
-            ? "Review next"
+            ? "Submitted"
             : row.status === "overdue"
               ? "High urgency"
               : row.status === "due"
@@ -232,67 +189,106 @@ export function PtCheckinsQueuePage() {
                 : row.status === "upcoming"
                   ? "Upcoming"
                   : "Resolved";
+        const readinessLabel =
+          row.status === "submitted"
+            ? "Ready for PT review"
+            : row.status === "overdue"
+              ? "Waiting on client"
+              : row.status === "due"
+                ? "Due today"
+                : "Scheduled ahead";
+        const missingItems =
+          row.status === "submitted"
+            ? ["Coach review"]
+            : row.status === "overdue"
+              ? ["Submission", "Client follow-up"]
+              : row.status === "due"
+                ? ["Submission"]
+                : ["No missing items"];
         return (
           <div
             key={row.checkin.id}
             className={cn(
-              "rounded-[22px] border border-border/65 bg-background/35 px-4 py-4 transition hover:border-border hover:bg-background/50",
+              "ops-surface-strong px-4 py-4 transition hover:border-border hover:bg-card/95",
               subdued && "bg-secondary/14",
             )}
           >
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="min-w-0 space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-base font-semibold text-foreground">
-                    {name}
-                  </span>
-                  <StatusPill
-                    status={row.status}
-                    statusMap={checkinOperationalStatusMap}
-                  />
-                  <span className="rounded-full border border-border/70 bg-secondary/18 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                    {urgencyLabel}
-                  </span>
-                </div>
-                <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
-                      Due date
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-base font-semibold text-foreground">
+                        {name}
+                      </span>
+                      <StatusPill
+                        status={row.status}
+                        statusMap={checkinOperationalStatusMap}
+                      />
+                      <span className="ops-chip text-muted-foreground">
+                        {urgencyLabel}
+                      </span>
                     </div>
-                    <div className="mt-1 text-foreground">
+                    <div className="text-sm text-muted-foreground">
+                      Week ending{" "}
                       {formatCheckinDate(row.checkin.week_ending_saturday)}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
-                      Submission
+
+                  <div className="ops-stat min-w-[180px] space-y-1 xl:w-[220px]">
+                    <div className="ops-kicker">Direct Action</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {row.status === "submitted"
+                        ? "Open review and leave feedback"
+                        : row.status === "overdue"
+                          ? "Follow up before it slips"
+                          : row.status === "due"
+                            ? "Monitor for submission"
+                            : "Keep in upcoming queue"}
                     </div>
-                    <div className="mt-1 text-foreground">
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Due State</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {formatCheckinDate(row.checkin.week_ending_saturday)}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Review Readiness</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {readinessLabel}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Missing Items</div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {missingItems.map((item) => (
+                        <span
+                          key={item}
+                          className="ops-chip text-muted-foreground"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="ops-stat">
+                    <div className="ops-kicker">Latest Movement</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {recentLabel}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
                       {row.checkin.submitted_at
                         ? formatCheckinDateTime(row.checkin.submitted_at)
-                        : row.status === "overdue"
-                          ? "Missing submission"
-                          : row.status === "due"
-                            ? "Awaiting submission"
-                            : "Not due yet"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
-                      Recent status
-                    </div>
-                    <div className="mt-1 text-foreground">{recentLabel}</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
-                      Client state
-                    </div>
-                    <div className="mt-1 text-foreground">
-                      {row.client.status ?? "No client status"}
+                        : (row.client.status ?? "No client status")}
                     </div>
                   </div>
                 </div>
               </div>
+
               <div className="flex shrink-0 items-center gap-2">
                 <Button
                   size="sm"
@@ -319,7 +315,6 @@ export function PtCheckinsQueuePage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Check-in Queue"
-        description={`Operational review queue from ${formatCheckinDate(queueStartDate)} to ${formatCheckinDate(queueEndDate)}.`}
         actions={
           <>
             <Button
@@ -340,77 +335,39 @@ export function PtCheckinsQueuePage() {
           {
             label: "Submitted",
             value: submittedCount,
-            helper: "Check-ins waiting for PT review.",
           },
           {
             label: "Overdue",
             value: overdueCount,
-            helper: "Clients who may need a follow-up.",
           },
           {
             label: "Due now",
             value: dueCount,
-            helper: "Current check-ins at the deadline.",
           },
           {
-            label: "Due soon",
+            label: "Soon",
             value: upcomingCount,
-            helper: "Upcoming check-ins still ahead of the window.",
-          },
-          {
-            label: "Reviewed",
-            value: reviewedCount,
-            helper: "Recently closed feedback cycles.",
           },
         ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4"
-          >
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {card.label}
-            </div>
+          <div key={card.label} className="ops-surface px-4 py-4">
+            <div className="ops-kicker">{card.label}</div>
             <div className="mt-2 text-2xl font-semibold text-foreground">
               {card.value}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {card.helper}
             </div>
           </div>
         ))}
       </div>
 
-      <DashboardCard
-        title="Review next"
-        subtitle="Start with the most actionable row, then work down through urgency."
-      >
-        {isLoading ? (
-          <Skeleton className="h-28 w-full" />
-        ) : nextPriorityRow ? (
-          renderQueueRows(
-            [nextPriorityRow],
-            nextPriorityRow.status === "submitted" ||
-              nextPriorityRow.status === "reviewed"
-              ? "Review"
-              : "Open",
-          )
-        ) : (
-          <EmptyState
-            title="No queue items yet"
-            description="As check-ins are scheduled, submitted, and reviewed, the next priority item will appear here."
-          />
-        )}
-      </DashboardCard>
-
       <div className="space-y-6">
         {queueSections.map((section) => {
-          const rows = queueRows.filter((row) => row.status === section.key);
+          const rows = queueRows.filter((row) => {
+            if (section.key === "due-now") {
+              return row.status === "submitted" || row.status === "due";
+            }
+            return row.status === section.key;
+          });
           return (
-            <DashboardCard
-              key={section.key}
-              title={section.title}
-              subtitle={section.description}
-            >
+            <DashboardCard key={section.key} title={section.title}>
               {isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, index) => (
@@ -425,10 +382,7 @@ export function PtCheckinsQueuePage() {
               ) : (
                 renderQueueRows(
                   rows,
-                  section.key === "submitted" || section.key === "reviewed"
-                    ? "Review"
-                    : "Open",
-                  section.key === "reviewed",
+                  section.key === "due-now" ? "Review" : "Open",
                 )
               )}
             </DashboardCard>

@@ -17,6 +17,10 @@ import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useAuth } from "../../lib/auth";
 import { refreshWorkspaceNameAcrossApp } from "../../lib/workspace-query";
+import {
+  AVAILABLE_THEME_PREFERENCES,
+  LIGHT_MODE_ENABLED,
+} from "../../lib/theme";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 
 export function PtSettingsPage() {
@@ -395,34 +399,25 @@ export function PtSettingsPage() {
         <CardHeader>
           <CardTitle>Appearance</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Select your default color theme and density preference.
+            {LIGHT_MODE_ENABLED
+              ? "Select your default color theme and density preference."
+              : "Dark mode is currently the only available theme while the shared theme system is being corrected."}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">Theme</p>
             <div className="inline-flex items-center rounded-2xl border border-border/70 bg-secondary/35 p-1">
-              <Button
-                size="sm"
-                variant={appearanceTheme === "system" ? "default" : "ghost"}
-                onClick={() => setAppearanceTheme("system")}
-              >
-                System
-              </Button>
-              <Button
-                size="sm"
-                variant={appearanceTheme === "dark" ? "default" : "ghost"}
-                onClick={() => setAppearanceTheme("dark")}
-              >
-                Dark
-              </Button>
-              <Button
-                size="sm"
-                variant={appearanceTheme === "light" ? "default" : "ghost"}
-                onClick={() => setAppearanceTheme("light")}
-              >
-                Light
-              </Button>
+              {AVAILABLE_THEME_PREFERENCES.map((theme) => (
+                <Button
+                  key={theme}
+                  size="sm"
+                  variant={appearanceTheme === theme ? "default" : "ghost"}
+                  onClick={() => setAppearanceTheme(theme)}
+                >
+                  {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                </Button>
+              ))}
             </div>
           </div>
 

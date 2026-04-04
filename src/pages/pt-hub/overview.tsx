@@ -25,6 +25,15 @@ import {
 import { formatRelativeTime } from "../../lib/relative-time";
 import { useWorkspace } from "../../lib/use-workspace";
 
+const buildMetricDelta = (delta: number | null | undefined, suffix = "") => {
+  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
+  const rounded = Math.round(delta);
+  return {
+    value: `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`,
+    tone: rounded === 0 ? "neutral" : rounded > 0 ? "positive" : "negative",
+  } as const;
+};
+
 export function PtHubOverviewPage() {
   const navigate = useNavigate();
   const { switchWorkspace } = useWorkspace();
@@ -140,6 +149,10 @@ export function PtHubOverviewPage() {
           value={stats?.applicationsThisMonth ?? 0}
           helper={`${stats?.applicationsThisWeek ?? 0} this week`}
           icon={ClipboardList}
+          delta={buildMetricDelta(
+            (stats?.applicationsThisMonth ?? 0) -
+              (stats?.applicationsPreviousWindow ?? 0),
+          )}
         />
         <StatCard
           surface="pt-hub"

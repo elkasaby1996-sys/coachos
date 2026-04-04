@@ -1,6 +1,7 @@
 import { cn } from "../../lib/utils";
 import { motion } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
+import { LIGHT_MODE_ENABLED } from "../../lib/theme";
 
 interface ThemeModeSwitchProps {
   checked: boolean;
@@ -13,6 +14,8 @@ export function ThemeModeSwitch({
   onToggle,
   className,
 }: ThemeModeSwitchProps) {
+  if (!LIGHT_MODE_ENABLED) return null;
+
   return (
     <button
       type="button"

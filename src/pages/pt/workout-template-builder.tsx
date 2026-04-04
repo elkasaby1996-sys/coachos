@@ -36,6 +36,11 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
+import {
+  exerciseDatasetConfigured,
+  searchExerciseDataset,
+  type ExerciseDatasetExercise,
+} from "../../lib/exercise-dataset";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { GripVertical } from "lucide-react";
@@ -71,6 +76,7 @@ type ExerciseRow = {
   equipment: string | null;
   video_url: string | null;
   tags: string[] | null;
+  source_exercise_id?: string | null;
 };
 
 type TemplateExerciseRow = {
@@ -111,6 +117,13 @@ type BulkTemplateExerciseForm = {
   rpe: string;
 };
 
+type LibraryExerciseForm = {
+  name: string;
+  muscle_group: string;
+  equipment: string;
+  video_url: string;
+};
+
 const emptyExerciseForm: TemplateExerciseForm = {
   sets: "",
   reps: "",
@@ -128,6 +141,13 @@ const emptyBulkExerciseForm: BulkTemplateExerciseForm = {
   rest_seconds: "",
   tempo: "",
   rpe: "",
+};
+
+const emptyLibraryExerciseForm: LibraryExerciseForm = {
+  name: "",
+  muscle_group: "",
+  equipment: "",
+  video_url: "",
 };
 
 const isUuid = (value: string | undefined | null) =>
@@ -259,8 +279,9 @@ export function PtWorkoutTemplateBuilderPage() {
   const templateId = isUuid(id) ? id : null;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, ownerUserId } = useWorkspace();
   const [addOpen, setAddOpen] = useState(false);
+  const [createExerciseOpen, setCreateExerciseOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
@@ -271,7 +292,24 @@ export function PtWorkoutTemplateBuilderPage() {
     null,
   );
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
+  const [createExerciseForm, setCreateExerciseForm] =
+    useState<LibraryExerciseForm>(emptyLibraryExerciseForm);
+  const [createExerciseError, setCreateExerciseError] = useState<string | null>(
+    null,
+  );
+  const [createExerciseStatus, setCreateExerciseStatus] = useState<
+    "idle" | "saving"
+  >("idle");
   const [search, setSearch] = useState("");
+  const [datasetExercises, setDatasetExercises] = useState<
+    ExerciseDatasetExercise[]
+  >([]);
+  const [datasetSearchError, setDatasetSearchError] = useState<string | null>(
+    null,
+  );
+  const [datasetSearchStatus, setDatasetSearchStatus] = useState<
+    "idle" | "loading"
+  >("idle");
   const [selectedRow, setSelectedRow] = useState<TemplateExerciseRow | null>(
     null,
   );
@@ -305,16 +343,34 @@ export function PtWorkoutTemplateBuilderPage() {
     },
   });
 
+  const ownerScopeQuery = useQuery({
+    queryKey: ["workspace-owner", workspaceId],
+    enabled: !!workspaceId && !ownerUserId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("owner_user_id")
+        .eq("id", workspaceId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return (
+        (data as { owner_user_id: string | null } | null)?.owner_user_id ?? null
+      );
+    },
+  });
+
+  const libraryOwnerUserId = ownerUserId ?? ownerScopeQuery.data ?? null;
+
   const exercisesQuery = useQuery({
-    queryKey: ["exercise-library", workspaceId],
-    enabled: !!workspaceId,
+    queryKey: ["exercise-library", libraryOwnerUserId],
+    enabled: !!libraryOwnerUserId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercises")
         .select(
-          "id, name, muscle_group, primary_muscle, equipment, video_url, tags",
+          "id, name, muscle_group, primary_muscle, equipment, video_url, tags, source_exercise_id",
         )
-        .eq("workspace_id", workspaceId ?? "")
+        .eq("owner_user_id", libraryOwnerUserId ?? "")
         .order("name");
       if (error) throw error;
       return (data ?? []) as ExerciseRow[];
@@ -378,8 +434,53 @@ export function PtWorkoutTemplateBuilderPage() {
     );
   }, [exercises, search]);
 
+  useEffect(() => {
+    if (!addOpen || !exerciseDatasetConfigured) return;
+    if (!search.trim()) {
+      setDatasetExercises([]);
+      setDatasetSearchError(null);
+      setDatasetSearchStatus("idle");
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      setDatasetSearchStatus("loading");
+      setDatasetSearchError(null);
+      try {
+        const result = await searchExerciseDataset({
+          name: search,
+          bodyPart: "",
+          equipment: "",
+          target: "",
+          limit: 10,
+          cursor: null,
+        });
+        if (!active) return;
+        setDatasetExercises(result.exercises);
+        setDatasetSearchStatus("idle");
+      } catch (error) {
+        if (!active) return;
+        const details = getErrorDetails(error);
+        setDatasetSearchError(`${details.code}: ${details.message}`);
+        setDatasetSearchStatus("idle");
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [addOpen, search]);
+
   const handleAddExercise = async () => {
     if (!templateId || selectedExerciseIds.length === 0) return;
+    if (!libraryOwnerUserId) {
+      setActionError(
+        "Shared library owner could not be resolved for this workspace.",
+      );
+      return;
+    }
     setActionStatus("saving");
     setActionError(null);
 
@@ -391,7 +492,77 @@ export function PtWorkoutTemplateBuilderPage() {
       (acc, row) => Math.max(acc, row.sort_order ?? 0),
       0,
     );
-    const payload = selectedExerciseIds.map((exerciseId, index) => ({
+    const resolvedExerciseIds: string[] = [];
+
+    for (const selectedExerciseId of selectedExerciseIds) {
+      if (selectedExerciseId.startsWith("dataset:")) {
+        const datasetId = selectedExerciseId.replace("dataset:", "");
+        const datasetExercise =
+          datasetExercises.find((exercise) => exercise.id === datasetId) ??
+          null;
+        if (!datasetExercise) continue;
+
+        const existingMatch =
+          exercises.find(
+            (exercise) =>
+              exercise.source_exercise_id === datasetExercise.id ||
+              (exercise.name ?? "").trim().toLowerCase() ===
+                datasetExercise.name.trim().toLowerCase(),
+          ) ?? null;
+
+        if (existingMatch?.id) {
+          resolvedExerciseIds.push(existingMatch.id);
+          continue;
+        }
+
+        const { data, error } = await supabase
+          .from("exercises")
+          .insert({
+            owner_user_id: libraryOwnerUserId,
+            name: datasetExercise.name,
+            muscle_group: datasetExercise.bodyPart,
+            primary_muscle: datasetExercise.target,
+            secondary_muscles: datasetExercise.secondaryMuscles.length
+              ? datasetExercise.secondaryMuscles
+              : null,
+            equipment: datasetExercise.equipment,
+            video_url: datasetExercise.videoUrl,
+            tags: Array.from(
+              new Set(
+                [
+                  datasetExercise.bodyPart,
+                  datasetExercise.target,
+                  datasetExercise.equipment,
+                ]
+                  .map((value) => value?.trim())
+                  .filter((value): value is string => Boolean(value)),
+              ),
+            ),
+            source: "exercise_dataset",
+            source_exercise_id: datasetExercise.id,
+            source_payload: datasetExercise.raw,
+          })
+          .select("id")
+          .single();
+
+        if (error) {
+          const details = getErrorDetails(error);
+          setActionError(`${details.code}: ${details.message}`);
+          setActionStatus("idle");
+          return;
+        }
+
+        const createdId = (data as { id: string } | null)?.id ?? null;
+        if (createdId) {
+          resolvedExerciseIds.push(createdId);
+        }
+        continue;
+      }
+
+      resolvedExerciseIds.push(selectedExerciseId.replace("library:", ""));
+    }
+
+    const payload = resolvedExerciseIds.map((exerciseId, index) => ({
       workout_template_id: templateId,
       exercise_id: exerciseId,
       sort_order: maxSort + (index + 1) * 10,
@@ -411,9 +582,69 @@ export function PtWorkoutTemplateBuilderPage() {
     setActionStatus("idle");
     setAddOpen(false);
     setSelectedExerciseIds([]);
+    setDatasetExercises([]);
+    setDatasetSearchError(null);
+    await queryClient.invalidateQueries({
+      queryKey: ["exercise-library", libraryOwnerUserId],
+    });
     await queryClient.invalidateQueries({
       queryKey: ["workout-template-exercises", templateId],
     });
+  };
+
+  const handleCreateExercise = async () => {
+    if (!libraryOwnerUserId) {
+      setCreateExerciseError(
+        "Shared library owner could not be resolved for this workspace.",
+      );
+      return;
+    }
+    if (!createExerciseForm.name.trim()) {
+      setCreateExerciseError("Exercise name is required.");
+      return;
+    }
+
+    setCreateExerciseStatus("saving");
+    setCreateExerciseError(null);
+
+    const { data, error } = await supabase
+      .from("exercises")
+      .insert({
+        owner_user_id: libraryOwnerUserId,
+        name: createExerciseForm.name.trim(),
+        muscle_group: createExerciseForm.muscle_group.trim() || null,
+        equipment: createExerciseForm.equipment.trim() || null,
+        video_url: createExerciseForm.video_url.trim() || null,
+        source: "manual",
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      const details = getErrorDetails(error);
+      setCreateExerciseError(
+        details.code === "23505"
+          ? "An exercise with this name already exists in the shared library."
+          : `${details.code}: ${details.message}`,
+      );
+      setCreateExerciseStatus("idle");
+      return;
+    }
+
+    const createdId = (data as { id: string } | null)?.id ?? null;
+    await queryClient.invalidateQueries({
+      queryKey: ["exercise-library", libraryOwnerUserId],
+    });
+    if (createdId) {
+      setSelectedExerciseIds((prev) =>
+        prev.includes(`library:${createdId}`)
+          ? prev
+          : [...prev, `library:${createdId}`],
+      );
+    }
+    setCreateExerciseStatus("idle");
+    setCreateExerciseOpen(false);
+    setCreateExerciseForm(emptyLibraryExerciseForm);
   };
 
   const openEdit = (row: TemplateExerciseRow) => {
@@ -1078,6 +1309,9 @@ export function PtWorkoutTemplateBuilderPage() {
           if (!open) {
             setSearch("");
             setSelectedExerciseIds([]);
+            setDatasetExercises([]);
+            setDatasetSearchError(null);
+            setDatasetSearchStatus("idle");
             setActionError(null);
           }
         }}
@@ -1090,11 +1324,23 @@ export function PtWorkoutTemplateBuilderPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input
-              placeholder="Search exercises"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="Search exercises"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setCreateExerciseError(null);
+                  setCreateExerciseOpen(true);
+                }}
+              >
+                Create new
+              </Button>
+            </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{selectedExerciseIds.length} selected</span>
               {selectedExerciseIds.length > 0 ? (
@@ -1117,45 +1363,105 @@ export function PtWorkoutTemplateBuilderPage() {
                   {getErrorDetails(exercisesQuery.error).code}:{" "}
                   {getErrorDetails(exercisesQuery.error).message}
                 </div>
-              ) : filteredExercises.length > 0 ? (
-                filteredExercises.map((exercise) => (
-                  <button
-                    type="button"
-                    key={exercise.id}
-                    onClick={() =>
-                      setSelectedExerciseIds((prev) =>
-                        prev.includes(exercise.id)
-                          ? prev.filter((id) => id !== exercise.id)
-                          : [...prev, exercise.id],
-                      )
-                    }
-                    className={
-                      selectedExerciseIds.includes(exercise.id)
-                        ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
-                        : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
-                    }
-                  >
-                    <div className="font-medium">{exercise.name}</div>
+              ) : filteredExercises.length > 0 ||
+                datasetExercises.length > 0 ? (
+                <>
+                  {filteredExercises.map((exercise) => {
+                    const selectionKey = `library:${exercise.id}`;
+                    return (
+                      <button
+                        type="button"
+                        key={selectionKey}
+                        onClick={() =>
+                          setSelectedExerciseIds((prev) =>
+                            prev.includes(selectionKey)
+                              ? prev.filter((id) => id !== selectionKey)
+                              : [...prev, selectionKey],
+                          )
+                        }
+                        className={
+                          selectedExerciseIds.includes(selectionKey)
+                            ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
+                            : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
+                        }
+                      >
+                        <div className="font-medium">{exercise.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {exercise.primary_muscle ??
+                            exercise.muscle_group ??
+                            "Other"}
+                          {exercise.equipment ? ` - ${exercise.equipment}` : ""}
+                        </div>
+                        {exercise.tags && exercise.tags.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {exercise.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                  {datasetExercises
+                    .filter(
+                      (exercise) =>
+                        !exercises.some(
+                          (item) =>
+                            item.source_exercise_id === exercise.id ||
+                            (item.name ?? "").trim().toLowerCase() ===
+                              exercise.name.trim().toLowerCase(),
+                        ),
+                    )
+                    .map((exercise) => {
+                      const selectionKey = `dataset:${exercise.id}`;
+                      return (
+                        <button
+                          type="button"
+                          key={selectionKey}
+                          onClick={() =>
+                            setSelectedExerciseIds((prev) =>
+                              prev.includes(selectionKey)
+                                ? prev.filter((id) => id !== selectionKey)
+                                : [...prev, selectionKey],
+                            )
+                          }
+                          className={
+                            selectedExerciseIds.includes(selectionKey)
+                              ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
+                              : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
+                          }
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-medium">{exercise.name}</div>
+                            <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                              API
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {exercise.target ?? exercise.bodyPart ?? "Other"}
+                            {exercise.equipment
+                              ? ` - ${exercise.equipment}`
+                              : ""}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  {datasetSearchStatus === "loading" ? (
                     <div className="text-xs text-muted-foreground">
-                      {exercise.primary_muscle ??
-                        exercise.muscle_group ??
-                        "Other"}
-                      {exercise.equipment ? ` - ${exercise.equipment}` : ""}
+                      Searching API exercises...
                     </div>
-                    {exercise.tags && exercise.tags.length > 0 ? (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {exercise.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </button>
-                ))
+                  ) : null}
+                  {datasetSearchError ? (
+                    <div className="text-xs text-destructive">
+                      {datasetSearchError}
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <div className="text-xs text-muted-foreground">
                   No matching exercises.
@@ -1183,6 +1489,109 @@ export function PtWorkoutTemplateBuilderPage() {
                 : selectedExerciseIds.length > 1
                   ? `Add ${selectedExerciseIds.length} exercises`
                   : "Add exercise"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={createExerciseOpen}
+        onOpenChange={(open) => {
+          setCreateExerciseOpen(open);
+          if (!open) {
+            setCreateExerciseError(null);
+            setCreateExerciseStatus("idle");
+            setCreateExerciseForm(emptyLibraryExerciseForm);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Create exercise</DialogTitle>
+            <DialogDescription>
+              Add a new exercise to the shared library without leaving this
+              template.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Name
+              </label>
+              <Input
+                value={createExerciseForm.name}
+                onChange={(event) =>
+                  setCreateExerciseForm((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="e.g., Bench Press"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Muscle group
+              </label>
+              <Input
+                value={createExerciseForm.muscle_group}
+                onChange={(event) =>
+                  setCreateExerciseForm((prev) => ({
+                    ...prev,
+                    muscle_group: event.target.value,
+                  }))
+                }
+                placeholder="e.g., Chest"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Equipment
+              </label>
+              <Input
+                value={createExerciseForm.equipment}
+                onChange={(event) =>
+                  setCreateExerciseForm((prev) => ({
+                    ...prev,
+                    equipment: event.target.value,
+                  }))
+                }
+                placeholder="e.g., Barbell"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Video URL
+              </label>
+              <Input
+                value={createExerciseForm.video_url}
+                onChange={(event) =>
+                  setCreateExerciseForm((prev) => ({
+                    ...prev,
+                    video_url: event.target.value,
+                  }))
+                }
+                placeholder="https://"
+              />
+            </div>
+            {createExerciseError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {createExerciseError}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setCreateExerciseOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={createExerciseStatus === "saving"}
+              onClick={handleCreateExercise}
+            >
+              {createExerciseStatus === "saving" ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

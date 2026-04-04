@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
 export function WorkspacePageHeader({
-  eyebrow = "PT Workspace",
+  eyebrow,
   title,
   description,
   actions,
@@ -10,28 +10,32 @@ export function WorkspacePageHeader({
 }: {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   actions?: ReactNode;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "surface-panel flex flex-col gap-3 px-5 py-4 sm:px-6 sm:py-4 lg:flex-row lg:items-end lg:justify-between",
+        "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
         className,
       )}
     >
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/85">
-          {eyebrow}
-        </p>
+        {eyebrow ? (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/85">
+            {eyebrow}
+          </p>
+        ) : null}
         <div className="space-y-1">
           <h1 className="text-[1.82rem] font-semibold tracking-tight text-foreground">
             {title}
           </h1>
-          <p className="max-w-3xl text-sm leading-5 text-muted-foreground">
-            {description}
-          </p>
+          {description ? (
+            <p className="max-w-3xl text-sm leading-5 text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
         </div>
       </div>
       {actions ? (

@@ -67,6 +67,7 @@ export interface PTOverviewStats {
   activeClients: number;
   applicationsThisWeek: number;
   applicationsThisMonth: number;
+  applicationsPreviousWindow: number;
   profileCompletionPercent: number;
   subscriptionStatus: string;
   latestWorkspaceId: string | null;
@@ -232,6 +233,7 @@ export interface PTAnalyticsSnapshot {
   totalApplications: number;
   applicationsThisWeek: number;
   applicationsThisMonth: number;
+  applicationsPreviousWindow: number;
   applicationConversionRate: number;
   activeClients: number;
   profileCompletionPercent: number;

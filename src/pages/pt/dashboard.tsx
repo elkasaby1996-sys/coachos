@@ -1,11 +1,8 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowUpRight,
   CalendarDays,
-  ClipboardCheck,
   MessageCircle,
-  Plus,
   Rocket,
   Sparkles,
   Trash2,
@@ -17,9 +14,7 @@ import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatCard } from "../../components/pt/dashboard/StatCard";
-import { ClientRow } from "../../components/pt/dashboard/ClientRow";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
-import { MiniSparkline } from "../../components/pt/dashboard/MiniSparkline";
 import { EmptyState } from "../../components/ui/coachos";
 import {
   Card,
@@ -27,7 +22,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -73,12 +67,6 @@ type MessageRow = {
   preview: string | null;
 };
 
-type TaskItem = {
-  id: string;
-  label: string;
-  done: boolean;
-};
-
 type CoachTodo = {
   id: string;
   title: string;
@@ -89,6 +77,58 @@ type CoachTodo = {
 type OnboardingRow = {
   client_id: string;
   status: ClientOnboardingStatus;
+};
+
+type AttentionTone = "neutral" | "warning" | "danger";
+
+type ClientAttentionRow = {
+  id: string;
+  name: string;
+  lifecycle: string;
+  lifecycleTone: AttentionTone;
+  onboardingLabel: string | null;
+  onboardingStatus: ClientOnboardingStatus | null;
+  checkinState: string | null;
+  attentionLabel: string;
+  attentionTone: AttentionTone;
+  attentionScore: number;
+  lastActivityLabel: string;
+  adherenceValue: number | null;
+  nextActionLabel: string;
+  signalLabel: string;
+};
+
+type CheckinRowWithState = CheckinRow & {
+  due: string | null;
+  state: string | null;
+};
+
+const buildMetricDelta = ({
+  delta,
+  suffix = "",
+  positiveIsGood = true,
+}: {
+  delta: number | null | undefined;
+  suffix?: string;
+  positiveIsGood?: boolean;
+}) => {
+  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
+  const rounded = Math.round(delta);
+  const prefix = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
+  const tone =
+    rounded === 0
+      ? "neutral"
+      : positiveIsGood
+        ? rounded > 0
+          ? "positive"
+          : "negative"
+        : rounded < 0
+          ? "positive"
+          : "negative";
+  return {
+    value: `${prefix}${Math.abs(rounded)}${suffix}`,
+    tone,
+  } as const;
 };
 
 export function PtDashboardPage() {
@@ -116,12 +156,6 @@ export function PtDashboardPage() {
   const [todoDraft, setTodoDraft] = useState("");
   const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
   const [todoEdits, setTodoEdits] = useState<Record<string, string>>({});
-  const [tasks, setTasks] = useState<TaskItem[]>([
-    { id: "task-1", label: "Review check-ins", done: false },
-    { id: "task-2", label: "Reply to messages", done: false },
-    { id: "task-3", label: "Adjust active programs", done: false },
-    { id: "task-4", label: "Prep next week", done: false },
-  ]);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -184,7 +218,7 @@ export function PtDashboardPage() {
       }
     };
 
-    loadDashboard();
+    void loadDashboard();
   }, [cachedWorkspaceId, messagesEnabled, user?.id, workspaceLoading]);
 
   useEffect(() => {
@@ -256,6 +290,32 @@ export function PtDashboardPage() {
     setTodoBusyId(null);
   };
 
+  const normalizeLabel = (value: string | null | undefined) => {
+    if (!value?.trim()) return "Active";
+    const normalized = value.trim().toLowerCase();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
+  const dayDiffFromNow = (value: string | null | undefined) => {
+    if (!value) return null;
+    const ms = Date.parse(value);
+    if (Number.isNaN(ms)) return null;
+    const now = new Date();
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).getTime();
+    return Math.max(0, Math.floor((today - ms) / (1000 * 60 * 60 * 24)));
+  };
+
+  const toneClassName = (tone: AttentionTone) =>
+    tone === "danger"
+      ? "border-destructive/30 text-destructive"
+      : tone === "warning"
+        ? "border-amber-300/40 text-amber-200"
+        : "border-border text-muted-foreground";
+
   const activeClientsCount = useMemo(
     () =>
       clients.filter(
@@ -273,127 +333,307 @@ export function PtDashboardPage() {
     return planned === 0 ? 0 : Math.round((completed / planned) * 100);
   }, [assignedWorkouts]);
 
+  const todayStr = useMemo(() => getTodayInTimezone(null), []);
+  const previousWeekStart = useMemo(
+    () => addDaysToDateString(todayStr, -13),
+    [todayStr],
+  );
+  const previousWeekEnd = useMemo(
+    () => addDaysToDateString(todayStr, -7),
+    [todayStr],
+  );
+  const upcomingWindowEnd = useMemo(
+    () => addDaysToDateString(todayStr, 7),
+    [todayStr],
+  );
+
+  const checkinRows = useMemo(() => {
+    return checkins
+      .map((row) => {
+        const due = row.week_ending_saturday ?? row.created_at;
+        return {
+          ...row,
+          due,
+          state: due ? getCheckinOperationalState(row, todayStr) : null,
+        } as CheckinRowWithState;
+      })
+      .filter((row) => Boolean(row.due))
+      .sort((a, b) => {
+        const dueA = a.due ?? "";
+        const dueB = b.due ?? "";
+        return dueA.localeCompare(dueB);
+      });
+  }, [checkins, todayStr]);
+
+  const checkinDueNowCount = useMemo(
+    () => checkinRows.filter((row) => row.state === "due").length,
+    [checkinRows],
+  );
+  const checkinOverdueCount = useMemo(
+    () => checkinRows.filter((row) => row.state === "overdue").length,
+    [checkinRows],
+  );
+  const checkinSoonCount = useMemo(
+    () =>
+      checkinRows.filter((row) => {
+        if (!row.due) return false;
+        if (row.state !== "upcoming") return false;
+        return row.due <= upcomingWindowEnd;
+      }).length,
+    [checkinRows, upcomingWindowEnd],
+  );
+
   const checkinsTodayCount = useMemo(() => {
-    if (checkins.length === 0) return 0;
-    const todayStr = getTodayInTimezone(null);
-    return checkins.filter(
+    if (checkinRows.length === 0) return 0;
+    return checkinRows.filter(
       (checkin) =>
         getCheckinOperationalState(checkin, todayStr) === "due" &&
         checkin.week_ending_saturday === todayStr,
     ).length;
-  }, [checkins]);
-
-  const upcomingCheckins = useMemo(() => {
-    const todayStr = getTodayInTimezone(null);
-    const end = addDaysToDateString(todayStr, 7);
-    return checkins
-      .map((row) => ({
-        ...row,
-        due: row.week_ending_saturday ?? row.created_at ?? todayStr,
-        state: getCheckinOperationalState(row, todayStr),
-      }))
-      .filter(
+  }, [checkinRows, todayStr]);
+  const activeClientsDelta = useMemo(() => {
+    const currentWindow = clients.filter((client) => {
+      const status = (client.status ?? "active").toLowerCase();
+      return (
+        status === "active" &&
+        client.created_at >= addDaysToDateString(todayStr, -6)
+      );
+    }).length;
+    const previousWindow = clients.filter((client) => {
+      const status = (client.status ?? "active").toLowerCase();
+      return (
+        status === "active" &&
+        client.created_at >= previousWeekStart &&
+        client.created_at <= previousWeekEnd
+      );
+    }).length;
+    return currentWindow - previousWindow;
+  }, [clients, previousWeekEnd, previousWeekStart, todayStr]);
+  const adherenceDelta = useMemo(() => {
+    const getWindowAdherence = (start: string, end: string) => {
+      const rows = assignedWorkouts.filter(
         (row) =>
-          row.due &&
-          row.due >= todayStr &&
-          row.due <= end &&
-          (row.state === "due" || row.state === "upcoming"),
-      )
-      .sort((a, b) => a.due.localeCompare(b.due))
-      .slice(0, 5);
-  }, [checkins]);
-
-  const clientRows = useMemo(
-    () =>
-      clients.map((client) => {
-        const name = client.display_name?.trim()
-          ? client.display_name
-          : `Client ${client.user_id.slice(0, 6)}`;
-        const onboardingStatus =
-          onboardingRows.find((row) => row.client_id === client.id)?.status ??
-          null;
-        return {
-          id: client.id,
-          name,
-          status: client.status ?? "active",
-          onboardingStatus,
-          joined: client.created_at
-            ? formatRelativeTime(client.created_at)
-            : "Recently",
-          adherence: adherencePercent ? `${adherencePercent}%` : "—",
-        };
-      }),
-    [clients, adherencePercent, onboardingRows],
-  );
-
-  const onboardingCounts = useMemo(() => {
-    return {
-      inProgress: onboardingRows.filter(
-        (row) => row.status === "invited" || row.status === "in_progress",
-      ).length,
-      reviewQueue: onboardingRows.filter(
-        (row) =>
-          row.status === "review_needed" ||
-          row.status === "submitted" ||
-          row.status === "partially_activated",
-      ).length,
-      completed: onboardingRows.filter((row) => row.status === "completed")
-        .length,
+          Boolean(row.scheduled_date) &&
+          (row.scheduled_date ?? "") >= start &&
+          (row.scheduled_date ?? "") <= end,
+      );
+      if (rows.length === 0) return null;
+      const completed = rows.filter((row) => row.status === "completed").length;
+      return Math.round((completed / rows.length) * 100);
     };
-  }, [onboardingRows]);
 
-  const onboardingQueueClients = useMemo(
-    () =>
-      clientRows.filter(
-        (client) =>
-          client.onboardingStatus === "review_needed" ||
-          client.onboardingStatus === "submitted" ||
-          client.onboardingStatus === "partially_activated",
-      ),
-    [clientRows],
-  );
-
-  const toggleTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, done: !task.done } : task,
-      ),
+    const currentWindow = getWindowAdherence(
+      addDaysToDateString(todayStr, -6),
+      todayStr,
     );
-  };
+    const previousWindow = getWindowAdherence(
+      previousWeekStart,
+      previousWeekEnd,
+    );
+    if (currentWindow === null || previousWindow === null) return null;
+    return currentWindow - previousWindow;
+  }, [assignedWorkouts, previousWeekEnd, previousWeekStart, todayStr]);
 
-  const visibleClients = clientRows.slice(0, 6);
+  const recentCheckins = useMemo(() => checkinRows.slice(0, 4), [checkinRows]);
+
+  const workoutStatsByClient = useMemo(() => {
+    const stats = new Map<string, { total: number; completed: number }>();
+    for (const row of assignedWorkouts) {
+      if (!row.client_id) continue;
+      const current = stats.get(row.client_id) ?? {
+        total: 0,
+        completed: 0,
+      };
+      current.total += 1;
+      if (row.status === "completed") current.completed += 1;
+      stats.set(row.client_id, current);
+    }
+    return stats;
+  }, [assignedWorkouts]);
+
+  const clientRows = useMemo(() => {
+    const latestByClient = new Map<string, CheckinRowWithState>();
+    for (const row of checkinRows) {
+      if (!row.client_id) continue;
+      const existing = latestByClient.get(row.client_id);
+      if (!existing) {
+        latestByClient.set(row.client_id, row);
+        continue;
+      }
+      const existingDue = existing.week_ending_saturday ?? existing.created_at;
+      const candidateDue = row.week_ending_saturday ?? row.created_at;
+      if (!existingDue || !candidateDue) continue;
+      if (candidateDue > existingDue) {
+        latestByClient.set(row.client_id, row);
+      }
+    }
+
+    const rows = clients.map((client) => {
+      const name = client.display_name?.trim()
+        ? client.display_name
+        : `Client ${client.user_id.slice(0, 6)}`;
+      const lifecycle = normalizeLabel(client.status);
+      const lifecycleTone: AttentionTone =
+        (client.status ?? "active").toLowerCase() === "active"
+          ? "neutral"
+          : "warning";
+      const onboardingStatus =
+        onboardingRows.find((row) => row.client_id === client.id)?.status ??
+        null;
+      const onboardingLabel =
+        onboardingStatus && onboardingStatus !== "completed"
+          ? normalizeLabel(onboardingStatus.replace("_", " "))
+          : null;
+
+      const latestCheckin = latestByClient.get(client.id);
+      const checkinState = latestCheckin ? latestCheckin.state : null;
+
+      const activityCandidates = [
+        latestCheckin?.submitted_at,
+        latestCheckin?.created_at,
+        client.created_at,
+      ].filter((value): value is string => Boolean(value));
+      const lastActivityIso =
+        activityCandidates
+          .slice()
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ??
+        null;
+
+      const lastActivityLabel = lastActivityIso
+        ? `Last ${formatRelativeTime(lastActivityIso)}`
+        : "No activity";
+      const inactivityDays = dayDiffFromNow(lastActivityIso);
+
+      const workoutStats = workoutStatsByClient.get(client.id);
+      const adherenceValue =
+        workoutStats && workoutStats.total > 0
+          ? Math.round((workoutStats.completed / workoutStats.total) * 100)
+          : null;
+
+      let attentionLabel = "Healthy";
+      let attentionTone: AttentionTone = "neutral";
+      let attentionScore = 0;
+
+      if (
+        onboardingStatus === "review_needed" ||
+        onboardingStatus === "submitted"
+      ) {
+        attentionLabel = "Onboarding review";
+        attentionTone = "danger";
+        attentionScore = 95;
+      } else if (
+        onboardingStatus === "partially_activated" ||
+        onboardingStatus === "in_progress" ||
+        onboardingStatus === "invited"
+      ) {
+        attentionLabel = "Onboarding";
+        attentionTone = "warning";
+        attentionScore = 40;
+      } else if (checkinState === "overdue") {
+        attentionLabel = "Check-in overdue";
+        attentionTone = "danger";
+        attentionScore = 70;
+      } else if (checkinState === "due") {
+        attentionLabel = "Check-in due";
+        attentionTone = "warning";
+        attentionScore = 55;
+      } else if (checkinState === "upcoming") {
+        attentionLabel = "Upcoming check-in";
+        attentionTone = "neutral";
+        attentionScore = 20;
+      } else if (inactivityDays !== null && inactivityDays >= 30) {
+        attentionLabel = "Long idle gap";
+        attentionTone = "warning";
+        attentionScore = 35;
+      } else if (inactivityDays !== null && inactivityDays >= 14) {
+        attentionLabel = "Recent inactivity";
+        attentionTone = "neutral";
+        attentionScore = 15;
+      }
+
+      if (lifecycleTone === "warning" && attentionScore < 20) {
+        attentionLabel = "Lifecycle review";
+        attentionTone = "warning";
+        attentionScore = Math.max(attentionScore, 20);
+      }
+      if (adherenceValue !== null && adherenceValue < 50) {
+        attentionLabel = "Adherence low";
+        attentionTone = "warning";
+        attentionScore = Math.max(attentionScore, 25);
+      }
+
+      const nextActionLabel =
+        onboardingStatus === "review_needed" || onboardingStatus === "submitted"
+          ? "Review onboarding"
+          : onboardingStatus === "partially_activated" ||
+              onboardingStatus === "in_progress" ||
+              onboardingStatus === "invited"
+            ? "Finish onboarding"
+            : checkinState === "overdue"
+              ? "Review check-in"
+              : checkinState === "due"
+                ? "Prompt check-in"
+                : adherenceValue !== null && adherenceValue < 50
+                  ? "Adjust plan"
+                  : inactivityDays !== null && inactivityDays >= 14
+                    ? "Reach out"
+                    : "Open profile";
+
+      const signalLabel =
+        adherenceValue !== null
+          ? `${adherenceValue}% adherence`
+          : onboardingLabel
+            ? onboardingLabel
+            : checkinState === "overdue"
+              ? "Overdue check-in"
+              : checkinState === "due"
+                ? "Check-in due"
+                : inactivityDays !== null && inactivityDays >= 14
+                  ? `${inactivityDays}d idle`
+                  : attentionLabel;
+
+      return {
+        id: client.id,
+        name,
+        lifecycle,
+        lifecycleTone,
+        onboardingLabel,
+        onboardingStatus,
+        checkinState,
+        attentionLabel,
+        attentionTone,
+        attentionScore,
+        lastActivityLabel,
+        adherenceValue,
+        nextActionLabel,
+        signalLabel,
+      } as ClientAttentionRow;
+    });
+
+    return rows.sort((a, b) => {
+      if (b.attentionScore !== a.attentionScore) {
+        return b.attentionScore - a.attentionScore;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [checkinRows, clients, onboardingRows, workoutStatsByClient]);
+
   const messageRows = messages.slice(0, 5);
-  const quickActions = [
-    {
-      id: "program",
-      label: "New program",
-      helper: "Build a new training block",
-      icon: Plus,
-      onClick: () => navigate("/pt/programs/new"),
-    },
-    {
-      id: "reports",
-      label: "Reports",
-      helper: "Jump into performance review",
-      icon: Rocket,
-      onClick: () => navigate("/pt/reports"),
-    },
-    {
-      id: "message",
-      label: "Message",
-      helper: "Open the conversation flow",
-      icon: MessageCircle,
-      onClick: () => navigate("/pt/messages"),
-    },
-  ] as const;
+
+  const clientPanelTitle = clientRows.some(
+    (row) => row.attentionTone !== "neutral" || row.onboardingStatus !== null,
+  )
+    ? "Clients Needing Attention"
+    : "Client Overview";
+  const priorityClientRows = clientRows.slice(
+    0,
+    clientRows.length === 1 ? 1 : 6,
+  );
+  const showSingleClientCard = priorityClientRows.length === 1;
 
   return (
     <div className="space-y-6">
-      <WorkspacePageHeader
-        title="Coach Dashboard"
-        description="Track client activity, queues, and the next coaching action."
-        className="py-3.5 sm:py-4"
-      />
+      <WorkspacePageHeader title="Coach Dashboard" className="py-2.5 sm:py-3" />
 
       {loadError ? (
         <Card className="border-destructive/40">
@@ -406,108 +646,53 @@ export function PtDashboardPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, index) => (
+          Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-28 w-full" />
           ))
         ) : (
           <>
             <StatCard
-              label="Active clients"
+              label="Clients"
               value={activeClientsCount}
-              helper="Roster size"
+              helper="Active"
               icon={Sparkles}
-              sparkline={<MiniSparkline />}
+              delta={buildMetricDelta({
+                delta: activeClientsDelta,
+              })}
             />
             <StatCard
               label="Avg adherence"
               value={`${adherencePercent}%`}
-              helper="Last 7 days"
+              helper="7d"
               icon={Rocket}
-              sparkline={<MiniSparkline />}
+              delta={buildMetricDelta({
+                delta: adherenceDelta,
+                suffix: "%",
+              })}
             />
             <StatCard
               label="Unread messages"
               value={unreadCount}
-              helper="Needs replies"
+              helper="Unread"
               icon={MessageCircle}
-              sparkline={<MiniSparkline />}
-            />
-            <StatCard
-              label="Review queue"
-              value={onboardingCounts.reviewQueue}
-              helper="Needs onboarding review"
-              icon={ClipboardCheck}
-              sparkline={<MiniSparkline />}
             />
             <StatCard
               label="Check-ins today"
               value={checkinsTodayCount}
-              helper="Due now"
+              helper="Due"
               icon={CalendarDays}
-              sparkline={<MiniSparkline />}
             />
           </>
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-12">
-        <div className="space-y-4 xl:col-span-8">
+      <div className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.7fr)_320px]">
+        <div className="space-y-4">
           <DashboardCard
-            title="Client Overview"
-            subtitle="Recent activity and adherence"
-            action={
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/pt/clients")}
-              >
-                View all
-              </Button>
-            }
-          >
-            {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Skeleton key={index} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : visibleClients.length > 0 ? (
-              <div className="space-y-2">
-                {visibleClients.map((client) => (
-                  <ClientRow
-                    key={client.id}
-                    name={client.name}
-                    joined={client.joined}
-                    adherence={client.adherence}
-                    status={client.status}
-                    onboardingStatus={client.onboardingStatus}
-                    onClick={() =>
-                      navigate(
-                        client.onboardingStatus &&
-                          client.onboardingStatus !== "completed"
-                          ? `/pt/clients/${client.id}?tab=onboarding`
-                          : `/pt/clients/${client.id}`,
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                title="No clients yet"
-                description="Invite your first client to get started."
-              />
-            )}
-          </DashboardCard>
-        </div>
-
-        <div className="space-y-4 xl:col-span-4">
-          <DashboardCard
-            title="Onboarding Queue"
-            subtitle="Intake and activation states across the workspace"
-            className="border-primary/10"
+            className="self-start"
+            title={clientPanelTitle}
             action={
               <Button
                 variant="ghost"
@@ -520,72 +705,222 @@ export function PtDashboardPage() {
           >
             {isLoading ? (
               <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <Skeleton key={index} className="h-10 w-full" />
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : priorityClientRows.length > 0 ? (
+              <div className={showSingleClientCard ? "space-y-3" : "space-y-2"}>
+                {priorityClientRows.map((client) => (
+                  <button
+                    key={client.id}
+                    type="button"
+                    onClick={() => navigate(`/pt/clients/${client.id}`)}
+                    className={`surface-subtle group flex w-full items-start justify-between gap-3 text-left transition hover:border-border hover:bg-background/70 ${
+                      showSingleClientCard
+                        ? "rounded-2xl px-4 py-4"
+                        : "px-3 py-2.5"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-foreground">
+                          {client.name}
+                        </p>
+                        <span className="shrink-0 text-xs font-medium text-primary">
+                          Open
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
+                            client.lifecycleTone,
+                          )}`}
+                        >
+                          {client.lifecycle}
+                        </span>
+                        {client.onboardingLabel ? (
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
+                              "warning",
+                            )}`}
+                          >
+                            {client.onboardingLabel}
+                          </span>
+                        ) : null}
+                        {client.checkinState ? (
+                          <StatusPill
+                            status={client.checkinState}
+                            statusMap={checkinOperationalStatusMap}
+                          />
+                        ) : null}
+                      </div>
+                      <div
+                        className={`mt-2 grid gap-1.5 ${
+                          showSingleClientCard
+                            ? "text-xs sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+                            : "text-[11px] sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+                        } text-muted-foreground`}
+                      >
+                        <span>{client.lastActivityLabel}</span>
+                        <span>{client.signalLabel}</span>
+                        <span>Next: {client.nextActionLabel}</span>
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
+                        client.attentionTone,
+                      )}`}
+                    >
+                      {client.attentionLabel}
+                    </span>
+                  </button>
                 ))}
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="surface-subtle rounded-2xl px-3 py-3 text-sm">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                      In progress
-                    </p>
-                    <p className="mt-1 text-xl font-semibold">
-                      {onboardingCounts.inProgress}
-                    </p>
-                  </div>
-                  <div className="surface-subtle rounded-2xl px-3 py-3 text-sm">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                      Review queue
-                    </p>
-                    <p className="mt-1 text-xl font-semibold">
-                      {onboardingCounts.reviewQueue}
-                    </p>
-                  </div>
-                  <div className="surface-subtle rounded-2xl px-3 py-3 text-sm">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                      Completed
-                    </p>
-                    <p className="mt-1 text-xl font-semibold">
-                      {onboardingCounts.completed}
-                    </p>
-                  </div>
-                </div>
-                {onboardingQueueClients.length > 0 ? (
-                  <div className="space-y-2">
-                    {onboardingQueueClients.slice(0, 4).map((client) => (
-                      <button
-                        key={client.id}
-                        type="button"
-                        onClick={() =>
-                          navigate(`/pt/clients/${client.id}?tab=onboarding`)
-                        }
-                        className="surface-subtle flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:border-border hover:bg-background/70"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{client.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Joined {client.joined}
-                          </p>
-                        </div>
-                        <StatusPill status={client.onboardingStatus} />
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState
-                    title="No onboarding queue"
-                    description="No clients currently need onboarding review."
+              <EmptyState
+                title="No clients yet"
+                description="Invite one to build the client queue."
+                action={
+                  <InviteClientDialog
+                    trigger={
+                      <Button size="sm" onClick={() => {}}>
+                        Invite client
+                      </Button>
+                    }
                   />
-                )}
-              </div>
+                }
+                className="px-5 py-6"
+              />
             )}
           </DashboardCard>
 
+          <div className="grid gap-4 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <DashboardCard
+              title="Recent Check-ins"
+              action={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/pt/checkins")}
+                >
+                  Open queue
+                </Button>
+              }
+            >
+              {isLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : recentCheckins.length > 0 ? (
+                <div className="space-y-2.5">
+                  {recentCheckins.map((row) => {
+                    const clientName =
+                      clients.find((item) => item.id === row.client_id)
+                        ?.display_name ?? "Client";
+                    const dueLabel = row.due
+                      ? new Date(row.due).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "Soon";
+                    return (
+                      <button
+                        key={row.id}
+                        type="button"
+                        onClick={() => navigate("/pt/checkins")}
+                        className="surface-subtle flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:border-border hover:bg-background/70"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{clientName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Due {dueLabel}
+                          </p>
+                        </div>
+                        {row.state ? (
+                          <StatusPill
+                            status={row.state}
+                            statusMap={checkinOperationalStatusMap}
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyState
+                  title="No check-ins right now"
+                  description="No queued check-ins."
+                  className="px-5 py-5"
+                />
+              )}
+            </DashboardCard>
+
+            <DashboardCard
+              title="Recent Messages"
+              action={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/pt/messages")}
+                >
+                  Open inbox
+                </Button>
+              }
+            >
+              {isLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-14 w-full" />
+                  ))}
+                </div>
+              ) : messageRows.length > 0 ? (
+                <div
+                  className={
+                    messageRows.length <= 2 ? "space-y-2" : "space-y-2.5"
+                  }
+                >
+                  {messageRows.map((message) => (
+                    <button
+                      key={message.id}
+                      type="button"
+                      onClick={() => navigate("/pt/messages")}
+                      className={`surface-subtle flex w-full items-start justify-between gap-3 text-left transition hover:border-border hover:bg-background/70 ${
+                        messageRows.length <= 2 ? "px-3 py-2" : "px-3 py-2.5"
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">
+                          {message.sender_name ?? "Client"}
+                        </p>
+                        <p className="line-clamp-2 text-xs text-muted-foreground">
+                          {message.preview ?? "No preview available"}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {message.created_at
+                          ? formatRelativeTime(message.created_at)
+                          : "Recently"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="No messages yet"
+                  description="Start the thread from a client profile."
+                  className="px-5 py-5"
+                />
+              )}
+            </DashboardCard>
+          </div>
+        </div>
+
+        <div className="space-y-4">
           <DashboardCard
-            title="Upcoming Check-ins"
-            subtitle="Queue for the next 7 days"
+            title="Queue"
             className="border-primary/10"
             action={
               <Button
@@ -593,285 +928,132 @@ export function PtDashboardPage() {
                 size="sm"
                 onClick={() => navigate("/pt/checkins")}
               >
-                View queue
+                Open check-ins
               </Button>
             }
           >
             {isLoading ? (
               <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, index) => (
+                {Array.from({ length: 3 }).map((_, index) => (
                   <Skeleton key={index} className="h-10 w-full" />
                 ))}
               </div>
-            ) : upcomingCheckins.length > 0 ? (
-              <div className="space-y-2.5">
-                {upcomingCheckins.map((row) => {
-                  const client = clients.find(
-                    (item) => item.id === row.client_id,
-                  );
-                  const name = client?.display_name?.trim()
-                    ? client.display_name
-                    : "Client";
-                  const dueDate = row.due ? new Date(row.due) : null;
-                  const dueLabel = dueDate
-                    ? dueDate.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })
-                    : "Soon";
-                  return (
-                    <div
-                      key={row.id}
-                      className="surface-subtle flex items-center justify-between gap-3 px-3 py-2.5"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Check-in queue
-                        </p>
-                        <p className="text-sm font-medium">{name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Check-in due
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <StatusPill
-                          status={row.state}
-                          statusMap={checkinOperationalStatusMap}
-                        />
-                        <Badge variant="secondary" className="text-[10px]">
-                          {dueLabel}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             ) : (
-              <EmptyState
-                title="No check-ins scheduled"
-                description="Nothing upcoming in the next 7 days."
-              />
+              <div className="surface-subtle grid grid-cols-3 gap-2 rounded-[1.35rem] p-2">
+                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Due now
+                  </p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {checkinDueNowCount}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Overdue
+                  </p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {checkinOverdueCount}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Due soon
+                  </p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {checkinSoonCount}
+                  </p>
+                </div>
+              </div>
             )}
           </DashboardCard>
 
-          <DashboardCard
-            title="Today's Tasks"
-            subtitle="Checklist for quick wins"
-            className="border-border/80"
-          >
-            <div className="space-y-2.5">
-              {tasks.map((task) => (
-                <label
-                  key={task.id}
-                  className="surface-subtle flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
+          <DashboardCard title="To-Do list" className="border-border/80">
+            <div className="space-y-3">
+              <div className="surface-subtle flex items-center gap-2 px-2 py-2">
+                <Input
+                  value={todoDraft}
+                  onChange={(event) => setTodoDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void addTodo();
+                    }
+                  }}
+                  placeholder="Add a new task"
+                  className="h-9 border-transparent bg-transparent shadow-none"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => void addTodo()}
+                  disabled={!todoDraft.trim()}
                 >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={() => toggleTask(task.id)}
-                      className="h-4 w-4 accent-primary"
-                    />
-                    <span
-                      className={
-                        task.done ? "line-through text-muted-foreground" : ""
-                      }
-                    >
-                      {task.label}
-                    </span>
-                  </div>
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    Action
-                  </span>
-                </label>
-              ))}
+                  Add
+                </Button>
+              </div>
+              {coachTodos.length === 0 ? (
+                <EmptyState
+                  title="No tasks yet"
+                  description="Add the next action."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {coachTodos.map((todo) => {
+                    const draft = todoEdits[todo.id] ?? todo.title;
+                    return (
+                      <div
+                        key={todo.id}
+                        className="surface-subtle flex items-center gap-2 px-3 py-2.5 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={todo.is_done}
+                          onChange={() => void toggleTodo(todo)}
+                          className="h-4 w-4 accent-primary"
+                          disabled={todoBusyId === todo.id}
+                        />
+                        <input
+                          value={draft}
+                          onChange={(event) =>
+                            setTodoEdits((prev) => ({
+                              ...prev,
+                              [todo.id]: event.target.value,
+                            }))
+                          }
+                          onBlur={() => {
+                            if (draft !== todo.title) {
+                              void updateTodoTitle(todo, draft);
+                            }
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void updateTodoTitle(todo, draft);
+                            }
+                          }}
+                          className={`w-full bg-transparent text-sm outline-none ${
+                            todo.is_done
+                              ? "text-muted-foreground line-through"
+                              : "text-foreground"
+                          }`}
+                          disabled={todoBusyId === todo.id}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => void deleteTodo(todo)}
+                          disabled={todoBusyId === todo.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </DashboardCard>
         </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <DashboardCard title="Recent Messages" subtitle="Latest 5 threads">
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : messageRows.length > 0 ? (
-            <div className="space-y-2">
-              {messageRows.map((message) => (
-                <div
-                  key={message.id}
-                  className="surface-subtle flex items-start justify-between gap-3 px-3 py-2"
-                >
-                  <div>
-                    <p className="text-sm font-medium">
-                      {message.sender_name ?? "Client"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {message.preview ?? "No preview available"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {message.created_at
-                        ? formatRelativeTime(message.created_at)
-                        : "Recently"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="No messages yet"
-              description="New client conversations will show up here."
-            />
-          )}
-        </DashboardCard>
-
-        <DashboardCard title="Quick Actions" subtitle="Operational shortcuts">
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={action.onClick}
-                  className="surface-subtle group flex min-h-[88px] items-start justify-between px-4 py-3 text-left text-sm transition hover:border-border hover:bg-background/70"
-                >
-                  <div className="space-y-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-primary">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="space-y-1">
-                      <p className="font-medium text-foreground">
-                        {action.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {action.helper}
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
-                </button>
-              );
-            })}
-            <InviteClientDialog
-              trigger={
-                <button
-                  type="button"
-                  className="surface-subtle group flex min-h-[88px] items-start justify-between px-4 py-3 text-left text-sm transition hover:border-border hover:bg-background/70"
-                >
-                  <div className="space-y-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/75 text-primary">
-                      <ClipboardCheck className="h-4 w-4" />
-                    </span>
-                    <div className="space-y-1">
-                      <p className="font-medium text-foreground">
-                        Invite client
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Bring a new client into the workspace
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
-                </button>
-              }
-            />
-          </div>
-        </DashboardCard>
-
-        <DashboardCard
-          title="To-Do list"
-          subtitle="Utility list for coach tasks"
-          className="border-border/80"
-        >
-          <div className="space-y-3">
-            <div className="surface-subtle flex items-center gap-2 px-2 py-2">
-              <Input
-                value={todoDraft}
-                onChange={(event) => setTodoDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void addTodo();
-                  }
-                }}
-                placeholder="Add a new task"
-                className="h-9 border-transparent bg-transparent shadow-none"
-              />
-              <Button
-                size="sm"
-                onClick={() => void addTodo()}
-                disabled={!todoDraft.trim()}
-              >
-                Add
-              </Button>
-            </div>
-            {coachTodos.length === 0 ? (
-              <EmptyState
-                title="No tasks yet"
-                description="Add a coach task to keep your next action visible."
-              />
-            ) : (
-              <div className="space-y-2">
-                {coachTodos.map((todo) => {
-                  const draft = todoEdits[todo.id] ?? todo.title;
-                  return (
-                    <div
-                      key={todo.id}
-                      className="surface-subtle flex items-center gap-2 px-3 py-2.5 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={todo.is_done}
-                        onChange={() => void toggleTodo(todo)}
-                        className="h-4 w-4 accent-primary"
-                        disabled={todoBusyId === todo.id}
-                      />
-                      <input
-                        value={draft}
-                        onChange={(event) =>
-                          setTodoEdits((prev) => ({
-                            ...prev,
-                            [todo.id]: event.target.value,
-                          }))
-                        }
-                        onBlur={() => {
-                          if (draft !== todo.title) {
-                            void updateTodoTitle(todo, draft);
-                          }
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            void updateTodoTitle(todo, draft);
-                          }
-                        }}
-                        className={`w-full bg-transparent text-sm outline-none ${
-                          todo.is_done
-                            ? "text-muted-foreground line-through"
-                            : "text-foreground"
-                        }`}
-                        disabled={todoBusyId === todo.id}
-                      />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => void deleteTodo(todo)}
-                        disabled={todoBusyId === todo.id}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </DashboardCard>
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ import {
   ClientHabitsPage,
   ClientHomePage,
   ClientLayout,
+  ClientMedicalPage,
   ClientMessagesPage,
   ClientNutritionDayPage,
   ClientOnboardingPage,
@@ -378,6 +379,7 @@ export function App() {
           <Route path="profile" element={<ClientProfilePage />} />
           <Route path="habits" element={<ClientHabitsPage />} />
           <Route path="progress" element={<ClientProgressPage />} />
+          <Route path="medical" element={<ClientMedicalPage />} />
           <Route path="baseline" element={<ClientBaselinePage />} />
           <Route
             path="nutrition/:assigned_nutrition_day_id"

@@ -1,24 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
@@ -107,6 +101,7 @@ export function PtWorkoutTemplatesPage() {
       setCreateError("Template name is required.");
       return;
     }
+
     setCreateStatus("saving");
     setCreateError(null);
 
@@ -142,6 +137,7 @@ export function PtWorkoutTemplatesPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+
     setDeleteStatus("deleting");
     setDeleteError(null);
 
@@ -149,6 +145,7 @@ export function PtWorkoutTemplatesPage() {
       .from("workout_templates")
       .delete()
       .eq("id", deleteTarget.id);
+
     if (error) {
       const details = getErrorDetails(error);
       setDeleteError(`${details.code}: ${details.message}`);
@@ -168,7 +165,7 @@ export function PtWorkoutTemplatesPage() {
     () => templatesQuery.data ?? [],
     [templatesQuery.data],
   );
-  const sharedTemplates: string[] = [];
+
   const formattedTemplates = useMemo(
     () =>
       templates.map((template) => ({
@@ -180,9 +177,17 @@ export function PtWorkoutTemplatesPage() {
             })
           : "Recently",
         workoutTypeLabel: formatWorkoutTypeTag(template.workout_type_tag),
+        badgeTags: [
+          formatWorkoutTypeTag(template.workout_type_tag),
+          template.workout_type?.trim() || null,
+          "Template",
+        ].filter((value, index, list): value is string => {
+          return Boolean(value) && list.indexOf(value) === index;
+        }),
       })),
     [templates],
   );
+
   const workoutTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
     templates.forEach((template) => {
@@ -224,6 +229,13 @@ export function PtWorkoutTemplatesPage() {
     setSearchParams(params, { replace: true });
   };
 
+  const clearFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+    setSortBy("newest");
+    setSearchParams(new URLSearchParams(), { replace: true });
+  };
+
   const filteredTemplates = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const typeKey = typeFilter.toLowerCase();
@@ -232,8 +244,9 @@ export function PtWorkoutTemplatesPage() {
         template.workout_type_tag?.trim() ||
         template.workout_type?.trim() ||
         "";
-      if (typeFilter !== "all" && typeValue.toLowerCase() !== typeKey)
+      if (typeFilter !== "all" && typeValue.toLowerCase() !== typeKey) {
         return false;
+      }
       if (!query) return true;
       const name = template.name?.toLowerCase() ?? "";
       const desc = template.description?.toLowerCase() ?? "";
@@ -259,157 +272,89 @@ export function PtWorkoutTemplatesPage() {
   }, [formattedTemplates, searchQuery, typeFilter, sortBy]);
 
   return (
-    <div className="space-y-8">
+    <PageContainer className="max-w-screen-2xl space-y-6">
       <WorkspacePageHeader
-        title="Templates Library"
-        description="Manage workout templates, programs, and the exercise library in one tighter operational surface."
-        actions={
-          <Button onClick={() => setCreateOpen(true)}>Create template</Button>
-        }
+        title="Workout Templates"
+        description="Manage the workout template library in the same operational layout as nutrition programs."
       />
 
-      <Card className="rounded-[24px] border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))]">
-        <CardHeader className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            <Badge variant="secondary" className="text-[10px]">
-              Workouts
-            </Badge>
-            <Badge variant="muted" className="text-[10px]">
-              Programs
-            </Badge>
-            <Badge variant="muted" className="text-[10px]">
-              Exercises
-            </Badge>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-56">
-              <Input
-                placeholder="Search templates..."
-                className="h-9 rounded-full bg-secondary/40 pl-10"
-                value={searchQuery}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setSearchQuery(next);
-                  updateParams({ q: next });
-                }}
-              />
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                ⌕
-              </span>
-            </div>
-            <select
-              className="workspace-filter-chip w-auto"
-              value={typeFilter}
-              onChange={(event) => {
-                const next = event.target.value;
-                setTypeFilter(next);
-                updateParams({ type: next });
-              }}
-            >
-              <option value="all">All workout types</option>
-              {workoutTypeOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-            <select
-              className="workspace-filter-chip w-auto"
-              value={sortBy}
-              onChange={(event) => {
-                const next = event.target.value;
-                setSortBy(next);
-                updateParams({ sort: next });
-              }}
-            >
-              <option value="newest">Sort by newest</option>
-              <option value="name">Sort by name</option>
-            </select>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {workspaceLoading || templatesQuery.isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-20 w-full" />
-              ))}
-            </div>
-          ) : workspaceError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              {getErrorDetails(workspaceError).code}:{" "}
-              {getErrorDetails(workspaceError).message}
-            </div>
-          ) : templatesQuery.error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              {getErrorDetails(templatesQuery.error).code}:{" "}
-              {getErrorDetails(templatesQuery.error).message}
-            </div>
-          ) : filteredTemplates.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredTemplates.map((template, index) => (
-                <DashboardCard
-                  key={template.id}
-                  title={template.name ?? "Workout template"}
-                  subtitle={template.workoutTypeLabel}
-                  className="h-full border-border/70 bg-background/40"
-                  action={
-                    <Button asChild size="sm" variant="secondary">
-                      <Link to={`/pt/templates/workouts/${template.id}/edit`}>
-                        Edit
-                      </Link>
-                    </Button>
-                  }
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/70 text-xs font-semibold text-foreground">
-                        {template.name?.trim()?.[0]?.toUpperCase() ?? "W"}
-                      </div>
-                      <span className="text-xs text-warning">★</span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {template.description ?? "No description"}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="muted" className="text-[10px] uppercase">
-                        {template.workoutTypeLabel}
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {index + 4} exercises
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-border/70 pt-3 text-xs text-muted-foreground">
-                      <span>Used {index + 8} times</span>
-                      <span>{template.updated}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="ghost" className="flex-1">
-                        Assign
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="flex-1"
-                        onClick={() => {
-                          setDeleteTarget(template);
-                          setDeleteError(null);
-                          setDeleteOpen(true);
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </DashboardCard>
-              ))}
-            </div>
-          ) : (
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          className="w-full sm:w-72"
+          placeholder="Search templates"
+          value={searchQuery}
+          onChange={(event) => {
+            const next = event.target.value;
+            setSearchQuery(next);
+            updateParams({ q: next });
+          }}
+        />
+        <select
+          className="workspace-filter-chip w-full sm:w-auto"
+          value={typeFilter}
+          onChange={(event) => {
+            const next = event.target.value;
+            setTypeFilter(next);
+            updateParams({ type: next });
+          }}
+        >
+          <option value="all">All workout types</option>
+          {workoutTypeOptions.map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </select>
+        <select
+          className="workspace-filter-chip w-full sm:w-auto"
+          value={sortBy}
+          onChange={(event) => {
+            const next = event.target.value;
+            setSortBy(next);
+            updateParams({ sort: next });
+          }}
+        >
+          <option value="newest">Sort by newest</option>
+          <option value="name">Sort by name</option>
+        </select>
+        <Button
+          onClick={() => {
+            setCreateError(null);
+            setCreateOpen(true);
+          }}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          New template
+        </Button>
+      </div>
+
+      {workspaceError ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {getErrorDetails(workspaceError).code}:{" "}
+          {getErrorDetails(workspaceError).message}
+        </div>
+      ) : null}
+
+      {templatesQuery.error ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {getErrorDetails(templatesQuery.error).code}:{" "}
+          {getErrorDetails(templatesQuery.error).message}
+        </div>
+      ) : null}
+
+      {workspaceLoading || templatesQuery.isLoading ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-52 w-full" />
+          ))}
+        </div>
+      ) : filteredTemplates.length === 0 ? (
+        templates.length === 0 ? (
+          <DashboardCard title="No workout templates">
             <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
-              <p className="text-sm font-semibold">No templates found.</p>
+              <p className="text-sm font-semibold">Create the first template</p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Try adjusting filters or create a new template.
+                Start with one workout template.
               </p>
               <Button
                 className="mt-4"
@@ -419,32 +364,87 @@ export function PtWorkoutTemplatesPage() {
                 Create template
               </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
-      <Card className="mt-6 border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle>Shared template packs</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Import curated templates or build your own pack.
-          </p>
-        </CardHeader>
-        <CardContent>
-          {sharedTemplates.length === 0 ? (
+          </DashboardCard>
+        ) : (
+          <DashboardCard title="No templates match">
             <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
-              <p className="text-sm font-semibold">No shared templates yet.</p>
+              <p className="text-sm font-semibold">No templates match</p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Create a new pack to streamline programming.
+                Clear the search or try another filter.
               </p>
-              <Button className="mt-4" size="sm">
-                Create pack
+              <Button className="mt-4" size="sm" onClick={clearFilters}>
+                Clear filters
               </Button>
             </div>
-          ) : (
-            <div>Template packs</div>
-          )}
-        </CardContent>
-      </Card>
+          </DashboardCard>
+        )
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {filteredTemplates.map((template) => (
+            <DashboardCard
+              key={template.id}
+              title={template.name ?? "Workout template"}
+              subtitle={template.description ?? "No description"}
+            >
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {template.badgeTags.map((tag) => (
+                    <span
+                      key={`${template.id}-${tag}`}
+                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1 text-[11px] font-medium text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
+                  <div>
+                    <p className="text-muted-foreground">Type</p>
+                    <p className="font-semibold">{template.workoutTypeLabel}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Format</p>
+                    <p className="font-semibold">
+                      {template.workout_type?.trim() || "--"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Status</p>
+                    <p className="font-semibold">Ready</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Updated</p>
+                    <p className="font-semibold">{template.updated}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() =>
+                      navigate(`/pt/templates/workouts/${template.id}`)
+                    }
+                  >
+                    Open builder
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setDeleteTarget(template);
+                      setDeleteError(null);
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 className="mr-1 h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </DashboardCard>
+          ))}
+        </div>
+      )}
 
       <Dialog
         open={createOpen}
@@ -459,9 +459,6 @@ export function PtWorkoutTemplatesPage() {
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Create template</DialogTitle>
-            <DialogDescription>
-              Start a new workout template for your workspace.
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
@@ -517,7 +514,9 @@ export function PtWorkoutTemplatesPage() {
               Cancel
             </Button>
             <Button disabled={createStatus === "saving"} onClick={handleCreate}>
-              {createStatus === "saving" ? "Creating..." : "Create"}
+              {createStatus === "saving"
+                ? "Creating..."
+                : "Create + Open Builder"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -537,10 +536,6 @@ export function PtWorkoutTemplatesPage() {
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>Delete template</DialogTitle>
-            <DialogDescription>
-              This will delete the template and remove it from assigned workouts
-              and program days.
-            </DialogDescription>
           </DialogHeader>
           {deleteError ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
@@ -561,6 +556,6 @@ export function PtWorkoutTemplatesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

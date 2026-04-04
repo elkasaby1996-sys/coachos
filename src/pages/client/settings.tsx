@@ -15,6 +15,10 @@ import {
 } from "../settings/sections/shared";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
+import {
+  AVAILABLE_THEME_PREFERENCES,
+  LIGHT_MODE_ENABLED,
+} from "../../lib/theme";
 import { useThemePreference } from "../../lib/use-theme-preference";
 import { cn } from "../../lib/utils";
 
@@ -469,20 +473,28 @@ export function ClientSettingsPage() {
             >
               <SettingsBlock title="Interface preferences" noBorder>
                 <SettingsRow label="Theme">
-                  <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
-                    {(["system", "dark", "light"] as const).map((theme) => (
-                      <Button
-                        key={theme}
-                        type="button"
-                        size="sm"
-                        variant={
-                          appearanceTheme === theme ? "default" : "ghost"
-                        }
-                        onClick={() => setAppearanceTheme(theme)}
-                      >
-                        {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                      </Button>
-                    ))}
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
+                      {AVAILABLE_THEME_PREFERENCES.map((theme) => (
+                        <Button
+                          key={theme}
+                          type="button"
+                          size="sm"
+                          variant={
+                            appearanceTheme === theme ? "default" : "ghost"
+                          }
+                          onClick={() => setAppearanceTheme(theme)}
+                        >
+                          {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                        </Button>
+                      ))}
+                    </div>
+                    {!LIGHT_MODE_ENABLED ? (
+                      <p className="text-xs text-muted-foreground">
+                        Light mode is temporarily disabled while the shared
+                        theme system is being corrected.
+                      </p>
+                    ) : null}
                   </div>
                 </SettingsRow>
                 <SettingsRow

@@ -41,7 +41,7 @@ export function SettingsLayout() {
 
       <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden md:block">
-          <nav className="sticky top-24 rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))] p-2">
+          <nav className="surface-panel sticky top-24 rounded-[24px] p-2">
             {settingsNavItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -53,12 +53,12 @@ export function SettingsLayout() {
                     cn(
                       "flex items-start gap-3 rounded-2xl px-3 py-3 transition",
                       isActive
-                        ? "border border-border/70 bg-background/70 text-foreground"
-                        : "border border-transparent text-muted-foreground hover:border-border/60 hover:bg-background/55 hover:text-foreground",
+                        ? "border border-border/70 bg-card/72 text-foreground"
+                        : "border border-transparent text-muted-foreground hover:border-border/60 hover:bg-card/55 hover:text-foreground",
                     )
                   }
                 >
-                  <span className="mt-0.5 rounded-xl border border-border/70 bg-background/75 p-1.5">
+                  <span className="mt-0.5 rounded-xl border border-border/70 bg-card/78 p-1.5">
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="space-y-1">

@@ -12,7 +12,6 @@ import {
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
-  LogOut,
   Menu,
   MessageCircle,
   Plus,
@@ -22,7 +21,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
@@ -67,105 +66,6 @@ const navItems = [
   { label: "Settings", to: "/settings/workspace", icon: Settings },
 ] as const;
 
-const workspaceRouteMeta = [
-  {
-    match: "/pt/dashboard",
-    title: "Dashboard",
-    description:
-      "Operational pulse across clients, check-ins, messages, and next actions.",
-  },
-  {
-    match: "/pt/clients/",
-    title: "Client Detail",
-    description:
-      "Daily coaching view with plans, messages, nutrition, and check-ins.",
-  },
-  {
-    match: "/pt/clients",
-    title: "Clients",
-    description:
-      "Scan your roster quickly, spot risk, and jump straight into execution.",
-  },
-  {
-    match: "/pt/programs/",
-    title: "Program Builder",
-    description:
-      "Build dense, week-by-week training structures without losing speed.",
-  },
-  {
-    match: "/pt/programs",
-    title: "Programs",
-    description:
-      "Create and manage reusable training blocks for active coaching work.",
-  },
-  {
-    match: "/pt/calendar",
-    title: "Calendar",
-    description:
-      "Track scheduled coaching activity, check-ins, and operational timing.",
-  },
-  {
-    match: "/pt/messages",
-    title: "Messages",
-    description:
-      "Stay close to client conversations without leaving the workspace flow.",
-  },
-  {
-    match: "/pt/templates/workouts/",
-    title: "Workout Template Builder",
-    description:
-      "Compose reusable workouts, exercise blocks, and assignment-ready sessions.",
-  },
-  {
-    match: "/pt/templates/workouts",
-    title: "Workouts",
-    description:
-      "Template library for fast programming and assignment workflows.",
-  },
-  {
-    match: "/pt/nutrition-programs/",
-    title: "Nutrition Builder",
-    description:
-      "Configure meal structures and nutrition plans for active client delivery.",
-  },
-  {
-    match: "/pt/nutrition-programs",
-    title: "Nutrition Programs",
-    description:
-      "Manage nutrition templates in the same system language as training plans.",
-  },
-  {
-    match: "/pt/checkins/templates",
-    title: "Check-in Templates",
-    description:
-      "Standardize weekly review prompts for faster, repeatable coaching.",
-  },
-  {
-    match: "/pt/checkins",
-    title: "Check-ins",
-    description:
-      "Review queue health, prioritize responses, and keep weekly follow-up moving.",
-  },
-  {
-    match: "/pt/settings/exercises",
-    title: "Exercise Library",
-    description:
-      "Maintain the exercise catalog that powers your workout builders.",
-  },
-  {
-    match: "/settings",
-    title: "Workspace Settings",
-    description:
-      "Workspace identity, defaults, account controls, and operational preferences.",
-  },
-  {
-    match: "/pt/notifications",
-    title: "Notifications",
-    description:
-      "Activity inbox for workspace events that need attention or awareness.",
-  },
-] as const;
-
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
 
 type WorkspaceSwitcherOption = {
@@ -200,13 +100,8 @@ function WorkspaceSwitcher({
           className="h-auto w-full items-start justify-between rounded-[20px] px-4 py-3 text-left"
           aria-label="Switch workspace"
         >
-          <span className="space-y-1">
-            <span className="block text-sm font-semibold text-foreground">
-              {workspaceDisplayName}
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              Operational layer
-            </span>
+          <span className="block text-sm font-semibold text-foreground">
+            {workspaceDisplayName}
           </span>
           <ChevronsUpDown className="mt-0.5 h-4 w-4 text-muted-foreground" />
         </Button>
@@ -243,7 +138,6 @@ function WorkspaceSwitcher({
 
 export function PtLayout() {
   const navigate = useNavigate();
-  const location = useLocation();
   const queryClient = useQueryClient();
   const {
     workspaceId,
@@ -287,10 +181,6 @@ export function PtLayout() {
   const activeWorkspace =
     workspaceOptions.find((workspace) => workspace.id === workspaceId) ?? null;
   const workspaceDisplayName = activeWorkspace?.name?.trim() || "PT Workspace";
-  const pageMeta =
-    workspaceRouteMeta.find((item) =>
-      location.pathname.startsWith(item.match),
-    ) ?? workspaceRouteMeta[0];
 
   const handleCreateWorkspace = async () => {
     const nextName = newWorkspaceName.trim();
@@ -392,11 +282,11 @@ export function PtLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.06),transparent_24%),linear-gradient(180deg,rgba(13,18,29,1),rgba(10,14,23,1))]">
+    <div className="theme-shell-canvas min-h-screen">
       <div className="flex min-h-screen">
         <aside
           className={cn(
-            "hidden border-r border-border/70 bg-[linear-gradient(180deg,rgba(15,20,32,0.98),rgba(9,13,22,1))] py-6 md:flex md:flex-col",
+            "theme-sidebar-surface hidden border-r border-border/70 py-6 md:flex md:flex-col",
             desktopNavCollapsed ? "w-24 px-3" : "w-[296px] px-4",
           )}
         >
@@ -434,9 +324,9 @@ export function PtLayout() {
           </div>
 
           {!desktopNavCollapsed ? (
-            <div className="mb-6 rounded-[26px] border border-border/70 bg-background/35 p-4">
+            <div className="surface-section mb-6 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                Workspace Layer
+                Workspace
               </p>
               <div className="mt-3 space-y-3">
                 <WorkspaceSwitcher
@@ -452,7 +342,7 @@ export function PtLayout() {
                 />
                 <Button
                   variant="ghost"
-                  className="w-full justify-between rounded-[20px] border border-border/70 bg-background/55 px-4"
+                  className="w-full justify-between rounded-[20px] border border-border/70 bg-card/70 px-4"
                   onClick={() => navigate("/pt-hub")}
                 >
                   <span className="space-y-0.5 text-left">
@@ -469,7 +359,7 @@ export function PtLayout() {
             </div>
           ) : (
             <div className="mb-6 flex justify-center">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/45 text-sm font-semibold text-foreground">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/65 text-sm font-semibold text-foreground">
                 PT
               </div>
             </div>
@@ -485,12 +375,11 @@ export function PtLayout() {
                   title={desktopNavCollapsed ? item.label : undefined}
                   className={({ isActive }) =>
                     cn(
-                      "group relative flex items-center rounded-2xl border border-transparent text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-background/42 hover:text-foreground",
+                      "group relative flex items-center rounded-2xl border border-transparent text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
                       desktopNavCollapsed
                         ? "justify-center px-2 py-2.5"
                         : "gap-3 px-3 py-2.5",
-                      isActive &&
-                        "border-border/70 bg-background/62 text-foreground",
+                      isActive && "border-border/70 bg-card/72 text-foreground",
                     )
                   }
                 >
@@ -509,7 +398,7 @@ export function PtLayout() {
                           "flex h-9 w-9 items-center justify-center rounded-xl border",
                           isActive
                             ? "border-primary/20 bg-primary/10 text-primary"
-                            : "border-border/70 bg-background/55 text-muted-foreground group-hover:text-primary",
+                            : "border-border/70 bg-card/65 text-muted-foreground group-hover:text-primary",
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -521,32 +410,11 @@ export function PtLayout() {
               );
             })}
           </nav>
-
-          {!desktopNavCollapsed ? (
-            <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4 text-xs text-muted-foreground">
-              <p className="text-sm font-medium text-foreground">
-                Operational mode
-              </p>
-              <p className="mt-1 leading-5">
-                Built for queues, follow-ups, and fast client actions.
-              </p>
-              <Button
-                variant="ghost"
-                className="mt-3 w-full justify-between rounded-[18px] border border-border/70 bg-background/55"
-                size="sm"
-                disabled={isSigningOut}
-                onClick={signOut}
-              >
-                {isSigningOut ? "Logging out..." : "Log out"}
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : null}
         </aside>
 
         <div
           className={cn(
-            "fixed inset-0 z-40 bg-background/70 backdrop-blur-sm transition md:hidden",
+            "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition md:hidden",
             mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
           )}
           aria-hidden={!mobileNavOpen}
@@ -555,7 +423,7 @@ export function PtLayout() {
 
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-border/70 bg-[linear-gradient(180deg,rgba(15,20,32,0.99),rgba(9,13,22,1))] px-4 py-6 transition md:hidden",
+            "theme-sidebar-surface fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-border/70 px-4 py-6 transition md:hidden",
             mobileNavOpen && "translate-x-0",
           )}
         >
@@ -576,9 +444,9 @@ export function PtLayout() {
             </Button>
           </div>
 
-          <div className="mb-8 rounded-[24px] border border-border/70 bg-background/35 p-4">
+          <div className="surface-section mb-8 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-              Workspace Layer
+              Workspace
             </p>
             <div className="mt-3 space-y-3">
               <WorkspaceSwitcher
@@ -595,7 +463,7 @@ export function PtLayout() {
               />
               <Button
                 variant="ghost"
-                className="w-full justify-between rounded-[20px] border border-border/70 bg-background/55 px-4"
+                className="w-full justify-between rounded-[20px] border border-border/70 bg-card/70 px-4"
                 onClick={() => {
                   setMobileNavOpen(false);
                   navigate("/pt-hub");
@@ -624,13 +492,12 @@ export function PtLayout() {
                   onClick={() => setMobileNavOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      "group flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-background/42 hover:text-foreground",
-                      isActive &&
-                        "border-border/70 bg-background/62 text-foreground",
+                      "group flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
+                      isActive && "border-border/70 bg-card/72 text-foreground",
                     )
                   }
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-muted-foreground group-hover:text-primary">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-card/65 text-muted-foreground group-hover:text-primary">
                     <Icon className="h-4 w-4" />
                   </span>
                   {item.label}
@@ -638,31 +505,12 @@ export function PtLayout() {
               );
             })}
           </nav>
-
-          <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4 text-xs text-muted-foreground">
-            <p className="text-sm font-medium text-foreground">
-              Operational mode
-            </p>
-            <p className="mt-1 leading-5">
-              Keep client actions here. Use PT Hub for business context.
-            </p>
-            <Button
-              variant="ghost"
-              className="mt-3 w-full justify-between rounded-[18px] border border-border/70 bg-background/55"
-              size="sm"
-              disabled={isSigningOut}
-              onClick={signOut}
-            >
-              {isSigningOut ? "Logging out..." : "Log out"}
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-border/70 bg-background/55 py-4 backdrop-blur-xl">
-            <PageContainer className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3">
+          <header className="theme-topbar border-b border-border/70 py-4 backdrop-blur-xl">
+            <PageContainer className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -672,25 +520,12 @@ export function PtLayout() {
                   <span className="sr-only">Open navigation</span>
                   <Menu className="h-5 w-5" />
                 </Button>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                      PT Workspace
-                    </span>
-                    <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Operational layer
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                      {workspaceDisplayName} / {pageMeta.title}
-                    </p>
-                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                      {pageMeta.title}
-                    </h1>
-                    <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                      {pageMeta.description}
-                    </p>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    Workspace
+                  </p>
+                  <div className="truncate text-sm font-semibold text-foreground">
+                    {workspaceDisplayName}
                   </div>
                 </div>
               </div>
@@ -700,7 +535,7 @@ export function PtLayout() {
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search clients, programs, tags..."
-                    className="h-9 rounded-full border-border/60 bg-background/50 pl-8 text-[13px] shadow-none"
+                    className="h-9 rounded-full border-border/60 bg-card/65 pl-8 text-[13px] shadow-none"
                     aria-label="Search clients"
                   />
                 </div>
@@ -754,7 +589,7 @@ export function PtLayout() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full border border-border/70 bg-background/65 text-sm font-semibold"
+                      className="rounded-full border border-border/70 bg-card/75 text-sm font-semibold"
                       aria-label="Profile menu"
                     >
                       {userInitial}
