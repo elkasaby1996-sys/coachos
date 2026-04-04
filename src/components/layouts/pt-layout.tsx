@@ -1,4 +1,10 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Apple,
@@ -6,12 +12,14 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronsUpDown,
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
+  LogOut,
   Menu,
   MessageCircle,
   Plus,
@@ -21,7 +29,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
@@ -33,6 +41,7 @@ import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { PtMessageComposeProvider } from "../pt/pt-message-compose";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
@@ -53,19 +62,6 @@ import {
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 
-const navItems = [
-  { label: "Dashboard", to: "/pt/dashboard", icon: LayoutDashboard },
-  { label: "Clients", to: "/pt/clients", icon: Users },
-  { label: "Programs", to: "/pt/programs", icon: CalendarDays },
-  { label: "Calendar", to: "/pt/calendar", icon: CalendarDays },
-  { label: "Messages", to: "/pt/messages", icon: MessageCircle },
-  { label: "Workouts", to: "/pt/templates/workouts", icon: Dumbbell },
-  { label: "Nutrition Programs", to: "/pt/nutrition-programs", icon: Apple },
-  { label: "Exercise Library", to: "/pt/settings/exercises", icon: BookOpen },
-  { label: "Check-ins", to: "/pt/checkins", icon: ClipboardList },
-  { label: "Settings", to: "/settings/workspace", icon: Settings },
-] as const;
-
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
 
 type WorkspaceSwitcherOption = {
@@ -73,71 +69,350 @@ type WorkspaceSwitcherOption = {
   name: string | null;
 };
 
-function WorkspaceSwitcher({
-  workspaceDisplayName,
-  workspaceSwitcherQuery,
-  workspaceOptions,
-  workspaceId,
-  switchWorkspace,
-  onCreateWorkspace,
-  onSwitched,
+type SearchResult =
+  | {
+      id: string;
+      type: "route";
+      label: string;
+      meta: string;
+      href: string;
+    }
+  | {
+      id: string;
+      type: "client";
+      label: string;
+      meta: string;
+      href: string;
+    }
+  | {
+      id: string;
+      type: "program";
+      label: string;
+      meta: string;
+      href: string;
+    }
+  | {
+      id: string;
+      type: "workout";
+      label: string;
+      meta: string;
+      href: string;
+    }
+  | {
+      id: string;
+      type: "checkin";
+      label: string;
+      meta: string;
+      href: string;
+    };
+
+type PtNavItem = {
+  label: string;
+  description: string;
+  to: string;
+  icon: ComponentType<{ className?: string }>;
+};
+
+const ptNavGroups: Array<{
+  label: string;
+  items: PtNavItem[];
+}> = [
+  {
+    label: "Operate",
+    items: [
+      {
+        label: "Dashboard",
+        description: "Track coaching activity and daily priorities.",
+        to: "/pt/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        label: "Clients",
+        description: "Manage your roster, notes, and client detail views.",
+        to: "/pt/clients",
+        icon: Users,
+      },
+      {
+        label: "Messages",
+        description: "Stay on top of conversations and follow-ups.",
+        to: "/pt/messages",
+        icon: MessageCircle,
+      },
+      {
+        label: "Calendar",
+        description: "Review sessions, planning, and weekly schedule flow.",
+        to: "/pt/calendar",
+        icon: CalendarDays,
+      },
+      {
+        label: "Check-ins",
+        description: "Monitor readiness, responses, and coaching feedback.",
+        to: "/pt/checkins",
+        icon: ClipboardList,
+      },
+    ],
+  },
+  {
+    label: "Build",
+    items: [
+      {
+        label: "Programs",
+        description: "Create, edit, and assign structured programs.",
+        to: "/pt/programs",
+        icon: CalendarDays,
+      },
+      {
+        label: "Workouts",
+        description: "Shape workout templates and exercise flow.",
+        to: "/pt/templates/workouts",
+        icon: Dumbbell,
+      },
+      {
+        label: "Nutrition Programs",
+        description: "Manage nutrition planning and meal structure.",
+        to: "/pt/nutrition-programs",
+        icon: Apple,
+      },
+      {
+        label: "Exercise Library",
+        description: "Review and organize reusable exercise assets.",
+        to: "/pt/settings/exercises",
+        icon: BookOpen,
+      },
+    ],
+  },
+  {
+    label: "Control",
+    items: [
+      {
+        label: "Settings",
+        description: "Adjust workspace defaults and account controls.",
+        to: "/settings/workspace",
+        icon: Settings,
+      },
+    ],
+  },
+];
+
+const ptSearchRoutes: SearchResult[] = [
+  {
+    id: "route-dashboard",
+    type: "route",
+    label: "Dashboard",
+    meta: "Workspace overview",
+    href: "/pt/dashboard",
+  },
+  {
+    id: "route-clients",
+    type: "route",
+    label: "Clients",
+    meta: "Roster and client detail",
+    href: "/pt/clients",
+  },
+  {
+    id: "route-programs",
+    type: "route",
+    label: "Programs",
+    meta: "Program templates and planning",
+    href: "/pt/programs",
+  },
+  {
+    id: "route-workouts",
+    type: "route",
+    label: "Workouts",
+    meta: "Workout templates",
+    href: "/pt/templates/workouts",
+  },
+  {
+    id: "route-checkins",
+    type: "route",
+    label: "Check-in Templates",
+    meta: "Template library and assignments",
+    href: "/pt/checkins/templates",
+  },
+  {
+    id: "route-calendar",
+    type: "route",
+    label: "Calendar",
+    meta: "Coach calendar",
+    href: "/pt/calendar",
+  },
+  {
+    id: "route-messages",
+    type: "route",
+    label: "Messages",
+    meta: "Client conversations",
+    href: "/pt/messages",
+  },
+  {
+    id: "route-settings",
+    type: "route",
+    label: "Settings",
+    meta: "Workspace settings",
+    href: "/settings/workspace",
+  },
+];
+
+function getPtRouteTitle(pathname: string) {
+  if (pathname.startsWith("/settings/")) return "Settings";
+  if (pathname.startsWith("/pt/clients/")) return "Client Detail";
+
+  const matchedItem = [...ptNavGroups.flatMap((group) => group.items)]
+    .sort((a, b) => b.to.length - a.to.length)
+    .find((item) => pathname.startsWith(item.to));
+
+  return matchedItem?.label ?? "PT Workspace";
+}
+
+function getHeaderPillClassName(isLightMode: boolean) {
+  return cn(
+    "group flex h-[54px] min-w-[204px] items-center gap-2.5 rounded-[18px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[214px]",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16 hover:bg-[linear-gradient(180deg,rgba(238,243,247,0.78),rgba(223,232,239,0.68))]"
+      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))]",
+  );
+}
+
+function getHeaderPillIconClassName(isLightMode: boolean) {
+  return cn(
+    "flex h-8 w-8 shrink-0 items-center justify-center rounded-[13px] border text-foreground transition-colors duration-200",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(246,249,251,0.46),rgba(230,237,243,0.38))] text-[rgb(79,143,170)] shadow-[inset_0_1px_0_rgba(255,255,255,0.44),0_14px_28px_-24px_rgba(15,23,42,0.14)] group-hover:text-slate-900"
+      : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_28px_-24px_rgba(0,0,0,0.82)] group-hover:text-foreground",
+  );
+}
+
+function getHeaderPillChevronClassName(isLightMode: boolean) {
+  return cn(
+    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
+    isLightMode
+      ? "border-slate-900/8 bg-white/22 text-[rgb(79,143,170)] group-hover:border-primary/16 group-hover:text-slate-800"
+      : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
+  );
+}
+
+function getHeaderUtilityButtonClassName(isLightMode: boolean) {
+  return cn(
+    "inline-flex h-[54px] items-center justify-center gap-2 rounded-[18px] border px-4 text-sm font-medium backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] text-slate-900 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16"
+      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
+  );
+}
+
+function getHeaderBellButtonClassName(isLightMode: boolean) {
+  return cn(
+    "h-[54px] w-[54px] rounded-[18px] border backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] text-slate-900 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16"
+      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
+  );
+}
+
+function sidebarLinkClasses(
+  isActive: boolean,
+  isLightMode: boolean,
+  collapsed: boolean,
+) {
+  return cn(
+    "group relative flex items-start gap-3 rounded-[22px] border text-sm font-medium transition-all duration-200",
+    collapsed ? "justify-center px-2.5 py-2.5" : "px-3.5 py-3",
+    isActive
+      ? isLightMode
+        ? "translate-x-1 border-primary/26 bg-[linear-gradient(180deg,rgba(236,242,246,0.72),rgba(221,230,238,0.6))] text-slate-900 shadow-[0_22px_54px_-36px_rgba(15,23,42,0.14)]"
+        : "translate-x-1 border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] text-foreground shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]"
+      : isLightMode
+        ? "border-transparent bg-transparent text-slate-800 hover:border-border/80 hover:bg-white/24 hover:text-slate-950"
+        : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
+  );
+}
+
+function SidebarNav({
+  collapsed,
+  isLightMode,
+  onNavigate,
 }: {
-  workspaceDisplayName: string;
-  workspaceSwitcherQuery: {
-    isLoading: boolean;
-  };
-  workspaceOptions: WorkspaceSwitcherOption[];
-  workspaceId: string | null;
-  switchWorkspace: (workspaceId: string) => void;
-  onCreateWorkspace: () => void;
-  onSwitched?: () => void;
+  collapsed: boolean;
+  isLightMode: boolean;
+  onNavigate?: () => void;
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="secondary"
-          className="h-auto w-full items-start justify-between rounded-[20px] px-4 py-3 text-left"
-          aria-label="Switch workspace"
-        >
-          <span className="block text-sm font-semibold text-foreground">
-            {workspaceDisplayName}
-          </span>
-          <ChevronsUpDown className="mt-0.5 h-4 w-4 text-muted-foreground" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {workspaceSwitcherQuery.isLoading ? (
-          <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
-        ) : workspaceOptions.length === 0 ? (
-          <DropdownMenuItem disabled>No workspaces found</DropdownMenuItem>
-        ) : (
-          workspaceOptions.map((workspace) => (
-            <DropdownMenuItem
-              key={workspace.id}
-              onClick={() => {
-                switchWorkspace(workspace.id);
-                onSwitched?.();
-              }}
+    <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:flex lg:flex-col lg:justify-center lg:gap-6">
+      {ptNavGroups.map((group) => (
+        <div key={group.label} className="space-y-2.5">
+          {!collapsed ? (
+            <p
+              className={cn(
+                "px-2 text-[10px] font-semibold uppercase tracking-[0.32em]",
+                isLightMode ? "text-slate-500" : "text-muted-foreground/80",
+              )}
             >
-              {workspace.name?.trim() || "PT Workspace"}
-              {workspace.id === workspaceId ? " (Current)" : ""}
-            </DropdownMenuItem>
-          ))
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onCreateWorkspace}>
-          Create new workspace
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+              {group.label}
+            </p>
+          ) : null}
+          <div className="space-y-1">
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  title={collapsed ? item.label : undefined}
+                  onClick={onNavigate}
+                  className={({ isActive }) =>
+                    sidebarLinkClasses(isActive, isLightMode, collapsed)
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
+                          isActive
+                            ? "border-primary/20 bg-primary/10 text-primary"
+                            : isLightMode
+                              ? "border-slate-400/40 bg-[linear-gradient(180deg,rgba(245,248,246,0.34),rgba(228,235,231,0.22))] text-slate-600 group-hover:border-primary/22 group-hover:text-primary"
+                              : "border-border/70 bg-background/75 text-muted-foreground group-hover:border-primary/20 group-hover:text-primary",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 [stroke-width:1.7]" />
+                      </span>
+                      {!collapsed ? (
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              isLightMode ? "text-slate-900" : "text-inherit",
+                            )}
+                          >
+                            {item.label}
+                          </p>
+                          <p
+                            className={cn(
+                              "text-xs leading-4.5",
+                              isLightMode
+                                ? "text-slate-600"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {item.description}
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
   );
 }
 
 export function PtLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const {
     workspaceId,
@@ -149,6 +424,8 @@ export function PtLayout() {
   } = useWorkspace();
   const { authError, user } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const isLightMode = resolvedTheme === "light";
+  const pageTitle = getPtRouteTitle(location.pathname);
   const errorMessage =
     error?.message ??
     authError?.message ??
@@ -162,6 +439,11 @@ export function PtLayout() {
     string | null
   >(null);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearchInput, setDebouncedSearchInput] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchHighlightIndex, setSearchHighlightIndex] = useState(0);
+  const searchShellRef = useRef<HTMLDivElement | null>(null);
   const workspaceSwitcherQuery = useQuery({
     queryKey: ["pt-workspace-switcher", user?.id, workspaceIds],
     enabled: workspaceIds.length > 0,
@@ -177,10 +459,134 @@ export function PtLayout() {
       return rows;
     },
   });
-  const workspaceOptions = workspaceSwitcherQuery.data ?? [];
-  const activeWorkspace =
-    workspaceOptions.find((workspace) => workspace.id === workspaceId) ?? null;
-  const workspaceDisplayName = activeWorkspace?.name?.trim() || "PT Workspace";
+  const workspaces = workspaceSwitcherQuery.data ?? [];
+  const currentWorkspace =
+    workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
+  const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
+  const normalizedSearch = debouncedSearchInput.trim().toLowerCase();
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearchInput(searchInput);
+    }, 180);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!searchShellRef.current?.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, [searchOpen]);
+
+  const searchQuery = useQuery({
+    queryKey: ["pt-header-search", workspaceId, normalizedSearch],
+    enabled: Boolean(workspaceId && normalizedSearch.length >= 2),
+    queryFn: async () => {
+      const wildcard = `%${normalizedSearch}%`;
+
+      const [clientsResult, programsResult, workoutsResult, checkinsResult] =
+        await Promise.all([
+          supabase
+            .from("clients")
+            .select("id, display_name, goal")
+            .eq("workspace_id", workspaceId ?? "")
+            .or(`display_name.ilike.${wildcard},goal.ilike.${wildcard}`)
+            .limit(5),
+          supabase
+            .from("program_templates")
+            .select("id, name, description")
+            .eq("workspace_id", workspaceId ?? "")
+            .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
+            .limit(5),
+          supabase
+            .from("workout_templates")
+            .select("id, name, workout_type_tag")
+            .eq("workspace_id", workspaceId ?? "")
+            .or(`name.ilike.${wildcard},workout_type_tag.ilike.${wildcard}`)
+            .limit(5),
+          supabase
+            .from("checkin_templates")
+            .select("id, name, description")
+            .eq("workspace_id", workspaceId ?? "")
+            .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
+            .limit(5),
+        ]);
+
+      if (clientsResult.error) throw clientsResult.error;
+      if (programsResult.error) throw programsResult.error;
+      if (workoutsResult.error) throw workoutsResult.error;
+      if (checkinsResult.error) throw checkinsResult.error;
+
+      const routeMatches = ptSearchRoutes.filter((item) =>
+        `${item.label} ${item.meta}`.toLowerCase().includes(normalizedSearch),
+      );
+
+      const clientResults: SearchResult[] = (clientsResult.data ?? []).map(
+        (client) => ({
+          id: `client-${client.id}`,
+          type: "client",
+          label: client.display_name?.trim() || "Client",
+          meta: client.goal?.trim() || "Client record",
+          href: `/pt/clients/${client.id}`,
+        }),
+      );
+
+      const programResults: SearchResult[] = (programsResult.data ?? []).map(
+        (program) => ({
+          id: `program-${program.id}`,
+          type: "program",
+          label: program.name?.trim() || "Program",
+          meta: program.description?.trim() || "Program template",
+          href: `/pt/programs/${program.id}/edit`,
+        }),
+      );
+
+      const workoutResults: SearchResult[] = (workoutsResult.data ?? []).map(
+        (workout) => ({
+          id: `workout-${workout.id}`,
+          type: "workout",
+          label: workout.name?.trim() || "Workout template",
+          meta: workout.workout_type_tag?.trim() || "Workout template",
+          href: `/pt/templates/workouts/${workout.id}`,
+        }),
+      );
+
+      const checkinResults: SearchResult[] = (checkinsResult.data ?? []).map(
+        (template) => ({
+          id: `checkin-${template.id}`,
+          type: "checkin",
+          label: template.name?.trim() || "Check-in template",
+          meta: template.description?.trim() || "Check-in template",
+          href: "/pt/checkins/templates",
+        }),
+      );
+
+      return [
+        ...routeMatches,
+        ...clientResults,
+        ...programResults,
+        ...workoutResults,
+        ...checkinResults,
+      ].slice(0, 10);
+    },
+  });
+
+  const searchResults = useMemo(() => {
+    if (normalizedSearch.length === 0) return ptSearchRoutes.slice(0, 6);
+    return searchQuery.data ?? [];
+  }, [normalizedSearch.length, searchQuery.data]);
+
+  useEffect(() => {
+    setSearchHighlightIndex(0);
+  }, [normalizedSearch, searchResults.length]);
 
   const handleCreateWorkspace = async () => {
     const nextName = newWorkspaceName.trim();
@@ -234,6 +640,13 @@ export function PtLayout() {
     navigate("/login", { replace: true });
   };
 
+  const handleSearchSelect = (result: SearchResult) => {
+    setSearchInput("");
+    setDebouncedSearchInput("");
+    setSearchOpen(false);
+    navigate(result.href);
+  };
+
   const userInitial = (
     user?.email?.charAt(0) ||
     user?.phone?.charAt(0) ||
@@ -282,355 +695,447 @@ export function PtLayout() {
   }
 
   return (
-    <div className="theme-shell-canvas min-h-screen">
-      <div className="flex min-h-screen">
-        <aside
-          className={cn(
-            "theme-sidebar-surface hidden border-r border-border/70 py-6 md:flex md:flex-col",
-            desktopNavCollapsed ? "w-24 px-3" : "w-[296px] px-4",
-          )}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <div className={cn(desktopNavCollapsed && "mx-auto")}>
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/40 text-primary">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <div className={cn(desktopNavCollapsed && "hidden")}>
-                  <span className="text-lg font-semibold tracking-tight text-foreground">
-                    Repsync
-                  </span>
-                  <p className="text-xs text-muted-foreground">PT Workspace</p>
-                </div>
-              </div>
-            </div>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={() => setDesktopNavCollapsed((prev) => !prev)}
-              aria-label={
-                desktopNavCollapsed
-                  ? "Expand navigation"
-                  : "Collapse navigation"
-              }
-            >
-              {desktopNavCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+    <div
+      className={cn(
+        "pt-workspace-theme theme-shell-canvas relative min-h-screen overflow-hidden",
+        isLightMode ? "pt-workspace-theme-light" : "pt-workspace-theme-dark",
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="pt-workspace-bg-orb pt-workspace-bg-orb-primary absolute left-[-8%] top-[3%] h-[24rem] w-[24rem] rounded-full" />
+        <div className="pt-workspace-bg-orb pt-workspace-bg-orb-secondary absolute right-[-6%] top-[14%] h-[20rem] w-[20rem] rounded-full" />
+        <div className="pt-workspace-bg-orb pt-workspace-bg-orb-success absolute bottom-[8%] left-[18%] h-[18rem] w-[18rem] rounded-full" />
+        <div className="pt-workspace-bg-wave absolute left-[12%] top-[22%] h-[14rem] w-[72%]" />
+        <div className="pt-workspace-bg-wave pt-workspace-bg-wave-delayed absolute bottom-[4%] right-[4%] h-[12rem] w-[62%]" />
+      </div>
+      <div
+        className={cn(
+          "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition lg:hidden",
+          mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden={!mobileNavOpen}
+        onClick={() => setMobileNavOpen(false)}
+      />
 
-          {!desktopNavCollapsed ? (
-            <div className="surface-section mb-6 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                Workspace
-              </p>
-              <div className="mt-3 space-y-3">
-                <WorkspaceSwitcher
-                  workspaceDisplayName={workspaceDisplayName}
-                  workspaceSwitcherQuery={workspaceSwitcherQuery}
-                  workspaceOptions={workspaceOptions}
-                  workspaceId={workspaceId}
-                  switchWorkspace={switchWorkspace}
-                  onCreateWorkspace={() => {
-                    setCreateWorkspaceError(null);
-                    setCreateWorkspaceOpen(true);
-                  }}
-                />
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between rounded-[20px] border border-border/70 bg-card/70 px-4"
-                  onClick={() => navigate("/pt-hub")}
-                >
-                  <span className="space-y-0.5 text-left">
-                    <span className="block text-sm font-medium text-foreground">
-                      PT Hub
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      Business/admin
-                    </span>
-                  </span>
-                  <ArrowUpRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="mb-6 flex justify-center">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/65 text-sm font-semibold text-foreground">
-                PT
-              </div>
-            </div>
-          )}
-
-          <nav className="flex flex-1 flex-col gap-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  title={desktopNavCollapsed ? item.label : undefined}
-                  className={({ isActive }) =>
-                    cn(
-                      "group relative flex items-center rounded-2xl border border-transparent text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
-                      desktopNavCollapsed
-                        ? "justify-center px-2 py-2.5"
-                        : "gap-3 px-3 py-2.5",
-                      isActive &&
-                        "border-border/70 bg-card/72 text-foreground",
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {!desktopNavCollapsed ? (
-                        <span
-                          className={cn(
-                            "absolute left-0 top-3 h-8 w-1 rounded-full transition-opacity",
-                            isActive ? "bg-primary opacity-100" : "opacity-0",
-                          )}
-                        />
-                      ) : null}
-                      <span
-                        className={cn(
-                          "flex h-9 w-9 items-center justify-center rounded-xl border",
-                          isActive
-                            ? "border-primary/20 bg-primary/10 text-primary"
-                            : "border-border/70 bg-card/65 text-muted-foreground group-hover:text-primary",
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      {!desktopNavCollapsed ? item.label : null}
-                    </>
-                  )}
-                </NavLink>
-              );
-            })}
-          </nav>
-
-        </aside>
-
-        <div
-          className={cn(
-            "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition md:hidden",
-            mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-          aria-hidden={!mobileNavOpen}
-          onClick={() => setMobileNavOpen(false)}
-        />
-
-        <aside
-          className={cn(
-            "theme-sidebar-surface fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-border/70 px-4 py-6 transition md:hidden",
-            mobileNavOpen && "translate-x-0",
-          )}
-        >
-          <div className="mb-6 flex items-center justify-between">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[320px] max-w-[calc(100vw-1rem)] p-3 transition lg:hidden",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <div className="surface-panel-strong flex h-full flex-col overflow-hidden rounded-[32px] border-border/70">
+          <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <div>
-              <span className="text-lg font-semibold tracking-tight text-foreground">
-                Repsync
-              </span>
-              <p className="text-xs text-muted-foreground">PT Workspace</p>
+              <p className="text-xl font-semibold uppercase tracking-[0.06em] text-foreground">
+                Repsync PT
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Coaching workspace
+              </p>
             </div>
             <Button
-              size="icon"
               variant="ghost"
+              size="icon"
               onClick={() => setMobileNavOpen(false)}
             >
-              <span className="sr-only">Close navigation</span>
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
-
-          <div className="surface-section mb-8 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-              Workspace
-            </p>
-            <div className="mt-3 space-y-3">
-              <WorkspaceSwitcher
-                workspaceDisplayName={workspaceDisplayName}
-                workspaceSwitcherQuery={workspaceSwitcherQuery}
-                workspaceOptions={workspaceOptions}
-                workspaceId={workspaceId}
-                switchWorkspace={switchWorkspace}
-                onCreateWorkspace={() => {
-                  setCreateWorkspaceError(null);
-                  setCreateWorkspaceOpen(true);
-                }}
-                onSwitched={() => setMobileNavOpen(false)}
-              />
-              <Button
-                variant="ghost"
-                className="w-full justify-between rounded-[20px] border border-border/70 bg-card/70 px-4"
-                onClick={() => {
-                  setMobileNavOpen(false);
-                  navigate("/pt-hub");
-                }}
-              >
-                <span className="space-y-0.5 text-left">
-                  <span className="block text-sm font-medium text-foreground">
-                    PT Hub
-                  </span>
-                  <span className="block text-xs text-muted-foreground">
-                    Business/admin
-                  </span>
-                </span>
-                <ArrowUpRight className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex h-full min-h-0 flex-col px-5 py-5">
+            <SidebarNav
+              collapsed={false}
+              isLightMode={isLightMode}
+              onNavigate={() => setMobileNavOpen(false)}
+            />
           </div>
+        </div>
+      </aside>
 
-          <nav className="flex flex-1 flex-col gap-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileNavOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      "group flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
-                      isActive && "border-border/70 bg-card/72 text-foreground",
-                    )
-                  }
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-card/65 text-muted-foreground group-hover:text-primary">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  {item.label}
-                </NavLink>
-              );
-            })}
-          </nav>
-
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="theme-topbar border-b border-border/70 py-4 backdrop-blur-xl">
-            <PageContainer className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden"
-                  onClick={() => setMobileNavOpen(true)}
-                >
-                  <span className="sr-only">Open navigation</span>
-                  <Menu className="h-5 w-5" />
-                </Button>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    Workspace
-                  </p>
-                  <div className="truncate text-sm font-semibold text-foreground">
-                    {workspaceDisplayName}
+      <PageContainer className="relative z-10 py-4 sm:py-5 lg:py-6">
+        <div
+          className={cn(
+            "grid gap-5 xl:gap-6",
+            desktopNavCollapsed
+              ? "lg:grid-cols-[104px_minmax(0,1fr)]"
+              : "lg:grid-cols-[296px_minmax(0,1fr)]",
+          )}
+        >
+          <aside className="hidden lg:block">
+            <div className="sticky top-5">
+              <div className="surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[34px] border-border/70">
+                <div className="flex h-full min-h-0 flex-col px-4 py-5">
+                  <div
+                    className={cn(
+                      "mb-4 flex items-center",
+                      desktopNavCollapsed
+                        ? "justify-center"
+                        : "justify-between gap-3",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex items-center gap-3",
+                        desktopNavCollapsed && "justify-center",
+                      )}
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-primary/16 bg-background/22 text-primary backdrop-blur-xl">
+                        <Sparkles className="h-5 w-5 [stroke-width:1.7]" />
+                      </div>
+                      {!desktopNavCollapsed ? (
+                        <div className="min-w-0">
+                          <p className="text-[1.1rem] font-semibold uppercase tracking-[0.05em] text-foreground">
+                            Repsync PT
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Coaching workspace
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                    {!desktopNavCollapsed ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="secondary"
+                        className="rounded-full border border-border/70 bg-card/68"
+                        onClick={() => setDesktopNavCollapsed(true)}
+                        aria-label="Collapse navigation"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                    ) : null}
                   </div>
-                </div>
-              </div>
-
-              <div className="flex flex-1 items-center gap-3 md:max-w-[27rem] xl:max-w-[32rem]">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search clients, programs, tags..."
-                    className="h-9 rounded-full border-border/60 bg-card/65 pl-8 text-[13px] shadow-none"
-                    aria-label="Search clients"
+                  {desktopNavCollapsed ? (
+                    <div className="mb-4 flex justify-center">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="secondary"
+                        className="rounded-full border border-border/70 bg-card/68"
+                        onClick={() => setDesktopNavCollapsed(false)}
+                        aria-label="Expand navigation"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : null}
+                  <SidebarNav
+                    collapsed={desktopNavCollapsed}
+                    isLightMode={isLightMode}
                   />
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  className="gap-2"
-                  onClick={() => navigate("/pt-hub")}
-                >
-                  <Building2 className="h-4 w-4" />
-                  PT Hub
-                </Button>
-                <InviteClientDialog
-                  trigger={
-                    <Button
-                      className="gap-2 rounded-full px-4"
-                      variant="default"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Invite client
-                    </Button>
-                  }
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="secondary"
-                      className="gap-2 rounded-full px-4"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Quick actions
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <InviteClientDialog
-                      trigger={
-                        <DropdownMenuItem>Invite client</DropdownMenuItem>
-                      }
-                    />
-                    <DropdownMenuItem>Create template</DropdownMenuItem>
-                    <DropdownMenuItem>Assign workout</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <NotificationBell viewAllHref="/pt/notifications" />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full border border-border/70 bg-card/75 text-sm font-semibold"
-                      aria-label="Profile menu"
-                    >
-                      {userInitial}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52">
-                    <DropdownMenuLabel>Profile</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => navigate("/settings/workspace")}
-                    >
-                      Settings
-                    </DropdownMenuItem>
-                    <div className="px-2 py-1.5">
-                      <ThemeModeSwitch
-                        checked={resolvedTheme === "dark"}
-                        onToggle={toggleTheme}
-                      />
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem disabled={isSigningOut} onClick={signOut}>
-                      {isSigningOut ? "Logging out..." : "Log out"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </PageContainer>
-          </header>
+            </div>
+          </aside>
 
           <PtMessageComposeProvider>
-            <main className="min-w-0 flex-1 py-6">
-              <PageContainer className="flex w-full flex-col gap-6">
-                <Outlet />
-              </PageContainer>
-            </main>
+            <WorkspaceHeaderModeProvider value="shell">
+              <div className="min-w-0 space-y-5">
+              <header
+                className={cn(
+                  "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
+                  isLightMode
+                    ? "shadow-[0_28px_76px_-56px_rgba(15,23,42,0.16)]"
+                    : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
+                )}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--chart-2)/0.06))]" />
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-x-6 top-0 h-px",
+                    isLightMode
+                      ? "bg-[linear-gradient(90deg,transparent,rgba(15,23,42,0.12),transparent)]"
+                      : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
+                  )}
+                />
+                <div className="relative space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="lg:hidden"
+                        onClick={() => setMobileNavOpen(true)}
+                      >
+                        <Menu className="h-5 w-5 [stroke-width:1.7]" />
+                        <span className="sr-only">Open PT navigation</span>
+                      </Button>
+                      <p className="truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]">
+                        {pageTitle}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <NotificationBell
+                        viewAllHref="/pt/notifications"
+                        buttonClassName={getHeaderBellButtonClassName(
+                          isLightMode,
+                        )}
+                        iconClassName="h-[18px] w-[18px]"
+                      />
+
+                      <InviteClientDialog
+                        trigger={
+                          <Button
+                            className={getHeaderUtilityButtonClassName(
+                              isLightMode,
+                            )}
+                            variant="ghost"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Invite client
+                          </Button>
+                        }
+                      />
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className={getHeaderPillClassName(isLightMode)}
+                            aria-label="Workspace menu"
+                          >
+                            <div className={getHeaderPillIconClassName(isLightMode)}>
+                              <Building2 className="h-4 w-4 [stroke-width:1.7]" />
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                                Workspace
+                              </p>
+                              <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                {workspaceDisplayName}
+                              </p>
+                            </div>
+                            <span className={getHeaderPillChevronClassName(isLightMode)}>
+                              <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                            </span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          sideOffset={10}
+                          className="w-72"
+                        >
+                          <DropdownMenuLabel>Active workspace</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => navigate("/pt-hub")}>
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
+                                <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-foreground">
+                                  Repsync PT Hub
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Business and admin workspace
+                                </p>
+                              </div>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {workspaceSwitcherQuery.isLoading ? (
+                            <DropdownMenuItem disabled>
+                              Loading workspaces...
+                            </DropdownMenuItem>
+                          ) : workspaces.length === 0 ? (
+                            <DropdownMenuItem disabled>
+                              No workspaces found
+                            </DropdownMenuItem>
+                          ) : (
+                            workspaces.map((workspace) => (
+                              <DropdownMenuItem
+                                key={workspace.id}
+                                onClick={() => {
+                                  switchWorkspace(workspace.id);
+                                  navigate("/pt/dashboard");
+                                }}
+                              >
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
+                                    <Building2 className="h-4 w-4 [stroke-width:1.7]" />
+                                  </span>
+                                  <p className="truncate font-medium text-foreground">
+                                    {workspace.name?.trim() || "PT Workspace"}
+                                  </p>
+                                </div>
+                                {workspace.id === workspaceId ? (
+                                  <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
+                                ) : null}
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setCreateWorkspaceError(null);
+                              setCreateWorkspaceOpen(true);
+                            }}
+                          >
+                            <Plus className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                            Create workspace
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className={getHeaderPillClassName(isLightMode)}
+                            aria-label="Profile menu"
+                          >
+                            <div className={getHeaderPillIconClassName(isLightMode)}>
+                              {userInitial}
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-0.5">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                                Profile
+                              </p>
+                              <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                {user?.email ?? "Trainer account"}
+                              </p>
+                            </div>
+                            <span className={getHeaderPillChevronClassName(isLightMode)}>
+                              <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                            </span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={10} className="w-56">
+                          <DropdownMenuLabel>Profile</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => navigate("/settings/workspace")}
+                          >
+                            <Settings className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                            Settings
+                          </DropdownMenuItem>
+                          <div className="flex items-center justify-between px-3 py-2">
+                            <span className="text-sm font-medium text-foreground">
+                              Theme
+                            </span>
+                            <ThemeModeSwitch
+                              checked={resolvedTheme === "dark"}
+                              onToggle={toggleTheme}
+                            />
+                          </div>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem disabled={isSigningOut} onClick={signOut}>
+                            <LogOut className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                            {isSigningOut ? "Signing out..." : "Sign out"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div
+                      ref={searchShellRef}
+                      className="relative w-full lg:max-w-[32rem]"
+                    >
+                      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search clients, programs, tags..."
+                        className="h-11 rounded-full border-border/70 bg-card/72 pl-9 text-[13px] shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]"
+                        aria-label="Search clients"
+                        value={searchInput}
+                        onChange={(event) => {
+                          setSearchInput(event.target.value);
+                          setSearchOpen(true);
+                        }}
+                        onFocus={() => setSearchOpen(true)}
+                        onKeyDown={(event) => {
+                          if (!searchResults.length) return;
+
+                          if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            setSearchOpen(true);
+                            setSearchHighlightIndex((current) =>
+                              Math.min(current + 1, searchResults.length - 1),
+                            );
+                          }
+
+                          if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            setSearchHighlightIndex((current) =>
+                              Math.max(current - 1, 0),
+                            );
+                          }
+
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            const selected =
+                              searchResults[searchHighlightIndex] ??
+                              searchResults[0];
+                            if (selected) {
+                              handleSearchSelect(selected);
+                            }
+                          }
+
+                          if (event.key === "Escape") {
+                            setSearchOpen(false);
+                          }
+                        }}
+                      />
+                      {searchOpen ? (
+                        <div className="absolute inset-x-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[24px] border border-border/75 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
+                          {searchQuery.isLoading ? (
+                            <div className="px-3 py-3 text-sm text-muted-foreground">
+                              Searching workspace...
+                            </div>
+                          ) : searchResults.length === 0 ? (
+                            <div className="px-3 py-3 text-sm text-muted-foreground">
+                              No matching results.
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              {searchResults.map((result, index) => (
+                                <button
+                                  key={result.id}
+                                  type="button"
+                                  className={cn(
+                                    "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
+                                    index === searchHighlightIndex
+                                      ? "bg-card/80 text-foreground"
+                                      : "text-foreground/90 hover:bg-card/72",
+                                  )}
+                                  onMouseEnter={() =>
+                                    setSearchHighlightIndex(index)
+                                  }
+                                  onClick={() => handleSearchSelect(result)}
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium text-foreground">
+                                      {result.label}
+                                    </p>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {result.meta}
+                                    </p>
+                                  </div>
+                                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                    {result.type}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <main className="min-w-0">
+                <div className="grid gap-6">
+                  <Outlet />
+                </div>
+              </main>
+              </div>
+            </WorkspaceHeaderModeProvider>
           </PtMessageComposeProvider>
         </div>
-      </div>
+      </PageContainer>
 
       <Dialog open={createWorkspaceOpen} onOpenChange={setCreateWorkspaceOpen}>
         <DialogContent className="w-[92vw] max-w-[460px]">
@@ -638,14 +1143,11 @@ export function PtLayout() {
             <DialogTitle>Create workspace</DialogTitle>
             <DialogDescription>
               Add another workspace to this PT account, then switch between them
-              from the workspace card.
+              from the workspace menu.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <label
-              htmlFor="create-workspace-name"
-              className="field-label block"
-            >
+            <label htmlFor="create-workspace-name" className="field-label block">
               Workspace name
             </label>
             <Input

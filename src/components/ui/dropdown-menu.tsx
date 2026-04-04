@@ -41,7 +41,7 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-2xl border border-border/70 p-1.5 text-popover-foreground",
+      "z-50 min-w-[10rem] overflow-hidden rounded-[24px] border border-border/75 p-2 text-popover-foreground backdrop-blur-2xl",
       className,
     )}
     style={{
@@ -63,7 +63,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[12rem] overflow-hidden rounded-2xl border border-border/70 p-1.5 text-popover-foreground",
+        "z-50 min-w-[13rem] overflow-hidden rounded-[24px] border border-border/75 p-2 text-popover-foreground backdrop-blur-2xl",
         className,
       )}
       style={{
@@ -89,7 +89,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-xl px-3 py-2 text-sm outline-none transition-colors focus:bg-muted/85 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex min-h-[2.75rem] cursor-default select-none items-center rounded-[18px] px-3 py-2 text-sm font-medium outline-none transition-[background-color,color,border-color] focus:bg-card/76 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       inset && "pl-8",
       className,
     )}
@@ -147,7 +147,7 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground",
+      "px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground",
       inset && "pl-8",
       className,
     )}
@@ -162,7 +162,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1.5 h-px bg-border/80", className)}
+    className={cn("-mx-1 my-2 h-px bg-border/70", className)}
     {...props}
   />
 ));

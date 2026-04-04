@@ -158,14 +158,19 @@ export function ClientLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background [background:var(--portal-page-bg)]">
+    <div className="theme-shell-canvas min-h-screen [background:var(--portal-page-bg)]">
       <div className="flex min-h-screen w-full">
         <aside className="theme-sidebar-surface hidden w-20 flex-col border-r border-border/70 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
           <div className="mb-8 flex items-center justify-between">
-            <span className="hidden text-lg font-semibold tracking-tight xl:inline">
-              Repsync
-            </span>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-card/72 text-sm font-semibold text-foreground xl:hidden">
+            <div className="hidden xl:block">
+              <span className="text-lg font-semibold tracking-tight text-foreground">
+                Repsync
+              </span>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Client workspace
+              </p>
+            </div>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-[18px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.52))] text-sm font-semibold text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] xl:hidden">
               C
             </span>
           </div>
@@ -178,20 +183,34 @@ export function ClientLayout() {
                 title={item.label}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm text-muted-foreground hover:bg-muted xl:justify-start",
-                    isActive && "bg-card/82 text-foreground",
+                    "group flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
+                    isActive &&
+                      "border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.56))] text-foreground shadow-[0_18px_42px_-34px_oklch(0_0_0/0.8)]",
                   )
                 }
               >
-                <item.icon className="h-4 w-4" />
-                <span className="hidden xl:inline">{item.label}</span>
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-[16px] border transition-colors",
+                        isActive
+                          ? "border-primary/20 bg-primary/10 text-primary"
+                          : "border-border/70 bg-card/65 text-muted-foreground group-hover:border-border/90 group-hover:text-primary",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </span>
+                    <span className="hidden xl:inline">{item.label}</span>
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
           <Button
             variant="secondary"
             size="sm"
-            className="mt-4 w-full justify-center gap-2 xl:justify-start"
+            className="mt-4 w-full justify-center gap-2 rounded-full border border-border/70 bg-card/72 xl:justify-start"
             onClick={handleSignOut}
             disabled={isSigningOut}
             aria-label="Log out"
@@ -204,7 +223,7 @@ export function ClientLayout() {
           </Button>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="theme-topbar border-b border-border/60 py-3.5 backdrop-blur-xl">
+          <header className="theme-topbar border-b border-border/60 py-3.5">
             <PageContainer
               size="portal"
               className="flex flex-wrap items-center justify-between gap-3"
@@ -220,7 +239,7 @@ export function ClientLayout() {
                   {shouldShowTopStatusText ? (
                     <>
                       <span className="hidden text-border sm:inline">|</span>
-                      <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 text-foreground/80">
                         <CircleDot className="h-3.5 w-3.5 text-primary" />
                         {topStatusText}
                       </span>
@@ -232,9 +251,9 @@ export function ClientLayout() {
                 <NotificationBell viewAllHref="/app/notifications" />
                 <ThemeToggle />
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="icon"
-                  className="md:hidden"
+                  className="rounded-full border border-border/70 bg-card/72 md:hidden"
                   onClick={handleSignOut}
                   disabled={isSigningOut}
                   aria-label="Log out"
@@ -306,13 +325,23 @@ export function ClientLayout() {
                   aria-label={item.label}
                   className={({ isActive }) =>
                     cn(
-                      "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-[11px] text-muted-foreground transition",
-                      isActive && "bg-card/82 text-foreground",
+                      "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-[20px] border border-transparent px-1 text-center text-[11px] font-medium text-muted-foreground transition",
+                      isActive &&
+                        "border-border/70 bg-card/82 text-foreground shadow-[0_16px_36px_-30px_oklch(0_0_0/0.72)]",
                     )
                   }
                 >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5",
+                          isActive ? "text-primary" : "text-current",
+                        )}
+                      />
+                      {item.label}
+                    </>
+                  )}
                 </NavLink>
               ))}
             </PageContainer>

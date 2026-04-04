@@ -23,7 +23,7 @@ export function PublicCoachProfilePage() {
 
   if (profileQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-background px-4 py-10 text-foreground">
+      <div className="theme-shell-canvas min-h-screen px-4 py-10 text-foreground">
         <div className="mx-auto max-w-5xl">
           <EmptyState
             title="Loading coach profile"
@@ -36,7 +36,7 @@ export function PublicCoachProfilePage() {
 
   if (profileQuery.error || !profileQuery.data) {
     return (
-      <div className="min-h-screen bg-background px-4 py-10 text-foreground">
+      <div className="theme-shell-canvas min-h-screen px-4 py-10 text-foreground">
         <div className="mx-auto max-w-3xl space-y-4">
           <Button asChild variant="ghost">
             <Link to="/">
@@ -59,8 +59,8 @@ export function PublicCoachProfilePage() {
         <div className="mx-auto max-w-7xl">
           <Button
             asChild
-            variant="ghost"
-            className="bg-background/40 backdrop-blur"
+            variant="secondary"
+            className="rounded-full border border-border/70 bg-card/72 backdrop-blur-xl"
           >
             <Link to="/">
               <ArrowLeft className="h-4 w-4" />
@@ -72,7 +72,7 @@ export function PublicCoachProfilePage() {
 
       {error ? (
         <div className="absolute inset-x-0 top-20 z-10 px-4 sm:px-6">
-          <div className="mx-auto max-w-xl rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <div className="mx-auto max-w-xl rounded-[22px] border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning backdrop-blur-xl">
             {error}
           </div>
         </div>

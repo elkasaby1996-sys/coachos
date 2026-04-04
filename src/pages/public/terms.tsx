@@ -3,10 +3,8 @@ import { AuthBackdrop } from "../../components/common/auth-backdrop";
 export function TermsPage() {
   return (
     <AuthBackdrop contentClassName="max-w-3xl">
-      <div className="rounded-2xl border border-border/70 bg-card/85 p-6 text-sm text-muted-foreground shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl sm:p-8">
-        <h1 className="font-serif text-3xl text-foreground">
-          Terms of Service
-        </h1>
+      <div className="auth-shell-card max-w-3xl text-sm text-muted-foreground sm:p-8">
+        <h1 className="auth-shell-title">Terms of Service</h1>
         <p className="mt-3">
           By using Repsync, you agree to use the product lawfully and not misuse
           accounts, data, or platform resources.

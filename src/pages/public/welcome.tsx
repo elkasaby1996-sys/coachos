@@ -5,12 +5,10 @@ import { AuthBackdrop } from "../../components/common/auth-backdrop";
 export function WelcomePage() {
   return (
     <AuthBackdrop contentClassName="max-w-xl">
-      <div className="relative z-10 w-full max-w-xl rounded-2xl border border-border/70 bg-card/85 p-6 shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl">
+      <div className="auth-shell-card max-w-xl">
         <div className="space-y-2 text-center">
-          <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
-            Welcome to Repsync
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="auth-shell-title">Welcome to Repsync</h1>
+          <p className="auth-shell-subtitle">
             Choose how you want to continue.
           </p>
         </div>

@@ -45,18 +45,16 @@ export function SignupRolePage() {
 
   return (
     <AuthBackdrop contentClassName="max-w-2xl">
-      <div className="relative z-10 w-full max-w-2xl rounded-2xl border border-border/70 bg-card/85 p-6 shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl">
+      <div className="auth-shell-card max-w-2xl">
         <div className="space-y-2 text-center">
-          <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
-            Create your account
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="auth-shell-title">Create your account</h1>
+          <p className="auth-shell-subtitle">
             Select your role to continue.
           </p>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-border/70 bg-background/55 p-4">
+          <div className="surface-section p-4">
             <h3 className="text-base font-semibold text-foreground">
               I am a PT
             </h3>
@@ -68,10 +66,7 @@ export function SignupRolePage() {
             </Button>
           </div>
 
-          <form
-            className="rounded-xl border border-border/70 bg-background/55 p-4"
-            onSubmit={onContinueClient}
-          >
+          <form className="surface-section p-4" onSubmit={onContinueClient}>
             <h3 className="text-base font-semibold text-foreground">
               I am a client
             </h3>

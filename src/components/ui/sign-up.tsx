@@ -295,13 +295,13 @@ export function AuthComponent({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="relative z-10 w-full max-w-[30rem] rounded-2xl border border-border/70 bg-card/85 p-6 shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl"
+        className="auth-shell-card max-w-[30rem]"
       >
         <div className="mb-6 space-y-2 text-center">
-          <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
+          <h1 className="auth-shell-title">
             {headerTitle}
           </h1>
-          <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
+          <p className="auth-shell-subtitle">{headerSubtitle}</p>
         </div>
 
         {socialButtons}
@@ -317,9 +317,9 @@ export function AuthComponent({
         ) : null}
 
         <form onSubmit={onSubmitEmail} className="space-y-4">
-          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Email
-            <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-2.5">
+            <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/78 px-3 py-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <input
                 type="email"
@@ -332,9 +332,9 @@ export function AuthComponent({
             </div>
           </label>
 
-          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Password
-            <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-2.5">
+            <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/78 px-3 py-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
               <Lock className="h-4 w-4 text-muted-foreground" />
               <input
                 type={showPassword ? "text" : "password"}
@@ -366,10 +366,10 @@ export function AuthComponent({
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
               >
                 Confirm password
-                <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-2.5">
+                <div className="mt-1.5 flex items-center gap-2 rounded-full border border-border/70 bg-background/78 px-3 py-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
                   <Lock className="h-4 w-4 text-muted-foreground" />
                   <input
                     type={showConfirmPassword ? "text" : "password"}

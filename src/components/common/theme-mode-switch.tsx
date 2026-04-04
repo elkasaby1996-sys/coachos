@@ -22,7 +22,7 @@ export function ThemeModeSwitch({
       aria-label={checked ? "Switch to light mode" : "Switch to dark mode"}
       aria-pressed={checked}
       className={cn(
-        "relative flex h-9 w-full max-w-[92px] items-center justify-between rounded-lg border border-border/70 bg-card/70 px-2 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border",
+        "relative flex h-9 w-full max-w-[92px] items-center justify-between rounded-full border border-border/75 bg-card/72 px-2 text-muted-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] backdrop-blur-xl transition-colors hover:border-border",
         className,
       )}
     >

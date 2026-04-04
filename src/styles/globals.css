@@ -690,15 +690,83 @@
 
 @layer components {
   .theme-shell-canvas {
+    position: relative;
+    isolation: isolate;
     background: var(--shell-canvas);
+  }
+
+  .theme-shell-canvas > * {
+    position: relative;
+    z-index: 0;
+  }
+
+  .theme-shell-canvas::before {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    background:
+      radial-gradient(
+        circle at 14% 18%,
+        oklch(var(--accent) / 0.1),
+        transparent 24%
+      ),
+      radial-gradient(
+        circle at 82% 14%,
+        oklch(var(--chart-3) / 0.08),
+        transparent 20%
+      ),
+      radial-gradient(
+        circle at 72% 78%,
+        oklch(var(--chart-2) / 0.06),
+        transparent 20%
+      );
+    filter: blur(100px) saturate(104%);
+    opacity: 0.92;
+    pointer-events: none;
+    z-index: -2;
+  }
+
+  .theme-shell-canvas::after {
+    content: "";
+    position: absolute;
+    inset: -8%;
+    background-image:
+      linear-gradient(oklch(var(--border-subtle) / 0.08) 1px, transparent 1px),
+      linear-gradient(
+        90deg,
+        oklch(var(--border-subtle) / 0.08) 1px,
+        transparent 1px
+      );
+    background-size: 92px 92px;
+    mask-image: radial-gradient(
+      circle at center,
+      rgba(0, 0, 0, 0.78),
+      transparent 86%
+    );
+    opacity: 0.22;
+    pointer-events: none;
+    z-index: -1;
   }
 
   .theme-sidebar-surface {
     background: var(--sidebar-bg);
+    box-shadow:
+      inset -1px 0 0 oklch(1 0 0 / 0.03),
+      0 24px 70px -56px oklch(0 0 0 / 0.84);
+    backdrop-filter: blur(28px);
   }
 
   .theme-topbar {
-    background-color: var(--topbar-bg);
+    position: relative;
+    background: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.74),
+      oklch(var(--bg-surface) / 0.58)
+    );
+    box-shadow:
+      inset 0 -1px 0 oklch(var(--border-default) / 0.44),
+      0 14px 38px -34px oklch(0 0 0 / 0.72);
+    backdrop-filter: blur(24px);
   }
 
   .theme-overlay {
@@ -707,32 +775,38 @@
 
   .surface-panel {
     @apply rounded-[26px] border backdrop-blur-xl;
+    position: relative;
+    overflow: hidden;
     border-color: oklch(var(--border-strong) / 0.7);
     background: linear-gradient(
       180deg,
-      oklch(var(--bg-surface-elevated) / 0.7),
-      oklch(var(--bg-surface) / 0.58)
+      oklch(var(--bg-surface-elevated) / 0.76),
+      oklch(var(--bg-surface) / 0.62)
     );
     box-shadow:
-      0 0 0 1px oklch(1 0 0 / 0.04),
-      0 26px 70px -46px oklch(0 0 0 / 0.82);
+      0 0 0 1px oklch(1 0 0 / 0.05),
+      0 30px 76px -50px oklch(0 0 0 / 0.84);
   }
 
   .surface-panel-strong {
     @apply rounded-[28px] border backdrop-blur-2xl;
+    position: relative;
+    overflow: hidden;
     border-color: oklch(var(--border-strong) / 0.78);
     background: linear-gradient(
       180deg,
-      oklch(var(--bg-surface-elevated) / 0.78),
-      oklch(var(--bg-surface) / 0.64)
+      oklch(var(--bg-surface-elevated) / 0.82),
+      oklch(var(--bg-surface) / 0.66)
     );
     box-shadow:
       0 0 0 1px oklch(1 0 0 / 0.05),
-      0 30px 84px -50px oklch(0 0 0 / 0.88);
+      0 34px 90px -54px oklch(0 0 0 / 0.88);
   }
 
   .surface-panel-portal {
     @apply rounded-[var(--radius-xl)] border backdrop-blur-2xl;
+    position: relative;
+    overflow: hidden;
     border-color: oklch(var(--border-default) / 0.82);
     background: var(--surface-portal-bg);
     box-shadow: var(--surface-portal-shadow);
@@ -741,19 +815,73 @@
   .surface-subtle {
     @apply rounded-2xl border;
     border-color: oklch(var(--border-subtle) / 0.85);
-    background-color: oklch(var(--bg-muted) / 0.5);
+    background: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.42),
+      oklch(var(--bg-muted) / 0.44)
+    );
   }
 
   .surface-section {
     @apply rounded-[var(--radius-lg)] border;
     border-color: oklch(var(--border-default) / 0.72);
     background: var(--section-bg);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.04),
+      0 18px 44px -40px oklch(0 0 0 / 0.76);
   }
 
   .surface-dashed {
     @apply rounded-[24px] border border-dashed;
     border-color: oklch(var(--border-default) / 0.7);
     background: var(--dashed-bg);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04);
+  }
+
+  .surface-panel,
+  .surface-panel-strong,
+  .surface-panel-portal {
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease,
+      background 200ms ease,
+      transform 200ms ease;
+  }
+
+  .surface-panel::before,
+  .surface-panel-strong::before,
+  .surface-panel-portal::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      oklch(var(--accent) / 0.48),
+      oklch(var(--chart-3) / 0.32),
+      transparent
+    );
+    opacity: 0.38;
+    pointer-events: none;
+  }
+
+  .surface-panel::after,
+  .surface-panel-strong::after,
+  .surface-panel-portal::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    background:
+      linear-gradient(
+        180deg,
+        oklch(1 0 0 / 0.08),
+        transparent 18%,
+        transparent 78%,
+        oklch(1 0 0 / 0.02)
+      ),
+      radial-gradient(circle at top left, oklch(1 0 0 / 0.06), transparent 24%);
+    pointer-events: none;
   }
 
   .portal-shell {
@@ -841,7 +969,62 @@
     background-color: oklch(var(--bg-surface-elevated) / 0.72);
   }
 
+  .auth-shell-card {
+    @apply relative z-10 w-full rounded-[28px] border px-6 py-6 sm:px-7 sm:py-7;
+    border-color: oklch(var(--border-strong) / 0.72);
+    background:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.84),
+        oklch(var(--bg-surface) / 0.74)
+      ),
+      radial-gradient(
+        circle at top right,
+        oklch(var(--accent) / 0.08),
+        transparent 28%
+      );
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 0.04),
+      0 34px 90px -56px oklch(0 0 0 / 0.84);
+    backdrop-filter: blur(28px);
+  }
+
+  .auth-shell-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      oklch(var(--accent) / 0.46),
+      oklch(var(--chart-3) / 0.26),
+      transparent
+    );
+    opacity: 0.42;
+    pointer-events: none;
+  }
+
+  .auth-shell-title {
+    font-family:
+      "Barlow Condensed", "Plus Jakarta Sans", "DM Sans", "Geist Sans",
+      sans-serif;
+    font-size: clamp(2.15rem, 4vw, 3rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 0.96;
+    text-transform: uppercase;
+    color: oklch(var(--text-primary));
+  }
+
+  .auth-shell-subtitle {
+    @apply text-sm leading-6 text-muted-foreground sm:text-[15px];
+  }
+
   .pt-hub-theme {
+    font-family: "Barlow", "DM Sans", "Geist Sans", sans-serif;
+  }
+
+  .pt-workspace-theme {
     font-family: "Barlow", "DM Sans", "Geist Sans", sans-serif;
   }
 
@@ -851,6 +1034,18 @@
   .pt-hub-theme h4,
   .pt-hub-theme h5,
   .pt-hub-theme h6 {
+    font-family:
+      "Barlow Condensed", "Plus Jakarta Sans", "DM Sans", "Geist Sans",
+      sans-serif;
+    letter-spacing: 0.03em;
+  }
+
+  .pt-workspace-theme h1,
+  .pt-workspace-theme h2,
+  .pt-workspace-theme h3,
+  .pt-workspace-theme h4,
+  .pt-workspace-theme h5,
+  .pt-workspace-theme h6 {
     font-family:
       "Barlow Condensed", "Plus Jakarta Sans", "DM Sans", "Geist Sans",
       sans-serif;
@@ -1180,6 +1375,126 @@
   .pt-hub-theme.pt-hub-scroll-active .pt-hub-bg-orb,
   .pt-hub-theme.pt-hub-scroll-active .pt-hub-bg-wave {
     opacity: 0.24;
+  }
+
+  .pt-workspace-theme .pt-workspace-bg-orb {
+    filter: blur(76px);
+    opacity: 0.28;
+    mix-blend-mode: screen;
+    will-change: transform;
+    animation: pt-hub-orb-float 17s ease-in-out infinite;
+  }
+
+  .pt-workspace-theme .pt-workspace-bg-orb-primary {
+    background: radial-gradient(
+      circle,
+      oklch(var(--accent) / 0.18),
+      transparent 66%
+    );
+  }
+
+  .pt-workspace-theme .pt-workspace-bg-orb-secondary {
+    background: radial-gradient(
+      circle,
+      oklch(var(--chart-3) / 0.14),
+      transparent 68%
+    );
+    animation-duration: 19s;
+    animation-delay: -6s;
+  }
+
+  .pt-workspace-theme .pt-workspace-bg-orb-success {
+    background: radial-gradient(
+      circle,
+      oklch(var(--chart-2) / 0.12),
+      transparent 70%
+    );
+    animation-duration: 16s;
+    animation-delay: -9s;
+  }
+
+  .pt-workspace-theme .pt-workspace-bg-wave {
+    border-radius: 999px;
+    background:
+      radial-gradient(
+        circle at 20% 50%,
+        oklch(var(--accent) / 0.05),
+        transparent 18%
+      ),
+      radial-gradient(
+        circle at 50% 45%,
+        oklch(var(--chart-3) / 0.045),
+        transparent 22%
+      ),
+      radial-gradient(
+        circle at 78% 55%,
+        oklch(var(--chart-2) / 0.035),
+        transparent 18%
+      );
+    filter: blur(62px);
+    opacity: 0.26;
+    transform-origin: center;
+    will-change: transform;
+    animation: pt-hub-wave-drift 22s ease-in-out infinite;
+  }
+
+  .pt-workspace-theme .pt-workspace-bg-wave-delayed {
+    animation-delay: -10s;
+    opacity: 0.2;
+  }
+
+  .pt-workspace-theme.pt-workspace-theme-light .pt-workspace-bg-orb {
+    filter: blur(88px);
+    opacity: 0.16;
+    mix-blend-mode: normal;
+  }
+
+  .pt-workspace-theme.pt-workspace-theme-light .pt-workspace-bg-orb-primary {
+    background: radial-gradient(
+      circle,
+      oklch(var(--accent) / 0.1),
+      transparent 68%
+    );
+  }
+
+  .pt-workspace-theme.pt-workspace-theme-light .pt-workspace-bg-orb-secondary {
+    background: radial-gradient(
+      circle,
+      oklch(var(--chart-3) / 0.08),
+      transparent 70%
+    );
+  }
+
+  .pt-workspace-theme.pt-workspace-theme-light .pt-workspace-bg-orb-success {
+    background: radial-gradient(
+      circle,
+      oklch(var(--chart-2) / 0.07),
+      transparent 72%
+    );
+  }
+
+  .pt-workspace-theme.pt-workspace-theme-light .pt-workspace-bg-wave {
+    background:
+      radial-gradient(
+        circle at 20% 50%,
+        oklch(var(--accent) / 0.026),
+        transparent 18%
+      ),
+      radial-gradient(
+        circle at 50% 45%,
+        oklch(var(--chart-3) / 0.024),
+        transparent 22%
+      ),
+      radial-gradient(
+        circle at 78% 55%,
+        oklch(var(--chart-2) / 0.02),
+        transparent 18%
+      );
+    opacity: 0.12;
+  }
+
+  .pt-workspace-theme.pt-workspace-theme-light .pt-workspace-bg-wave-delayed {
+    opacity: 0.08;
   }
 }
 

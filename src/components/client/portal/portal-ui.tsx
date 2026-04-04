@@ -40,8 +40,9 @@ export function PortalPageHeader({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-muted-foreground sm:text-[15px] sm:leading-7">
             {subtitle ? <p className="max-w-3xl">{subtitle}</p> : null}
             {stateText ? (
-              <span className="inline-flex max-w-full items-center rounded-full border border-border/70 bg-card/60 px-2.5 py-1 text-[12px] font-medium text-foreground/80">
-                {stateText}
+              <span className="inline-flex max-w-full items-center gap-2 text-sm font-medium text-foreground/80">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary/80" />
+                <span>{stateText}</span>
               </span>
             ) : null}
           </div>
@@ -74,7 +75,10 @@ export const SurfaceCardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col gap-2 px-5 py-5 sm:px-6 sm:py-6", className)}
+    className={cn(
+      "flex flex-col gap-2 px-5 py-5 sm:px-6 sm:py-6",
+      className,
+    )}
     {...props}
   />
 ));
@@ -87,7 +91,7 @@ export const SurfaceCardTitle = React.forwardRef<
   <h2
     ref={ref}
     className={cn(
-      "text-lg font-semibold tracking-tight text-foreground",
+      "text-lg font-semibold tracking-tight text-foreground sm:text-[1.15rem]",
       className,
     )}
     {...props}
@@ -125,7 +129,7 @@ export const SectionCard = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("surface-section p-4 sm:p-5", className)}
+    className={cn("surface-section p-4 shadow-none sm:p-5", className)}
     {...props}
   />
 ));
@@ -202,7 +206,7 @@ export function StatusBanner({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 rounded-[var(--radius-lg)] border px-4 py-4 sm:flex-row sm:items-start sm:justify-between",
+        "flex flex-col gap-4 rounded-[22px] border px-4 py-4 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] sm:flex-row sm:items-start sm:justify-between",
         config.root,
         className,
       )}
@@ -210,7 +214,7 @@ export function StatusBanner({
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/60",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-border/60",
             config.iconBox,
           )}
         >
@@ -261,7 +265,7 @@ export function EmptyStateBlock({
     >
       <div
         className={cn(
-          "mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-card/70 text-primary",
+          "mb-4 flex h-12 w-12 items-center justify-center rounded-[18px] border border-border/70 bg-card/70 text-primary",
           centered && "mx-auto",
         )}
       >
@@ -350,7 +354,7 @@ export function StepIndicator({
                 step.state === "completed" && "border-success/30 bg-success/10",
                 step.state === "upcoming" && "text-muted-foreground",
                 isInteractive &&
-                  "hover:border-border/90 hover:bg-card/55",
+                  "hover:-translate-y-0.5 hover:border-border/90 hover:bg-card/55",
               )}
             >
               <span

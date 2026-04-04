@@ -30,11 +30,11 @@ export function StatCard({
       className={cn(
         isPtHub
           ? "surface-panel relative overflow-hidden rounded-[30px] border-border/70 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl"
-          : "border-border/70 bg-card/80",
+          : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
         accent &&
           (isPtHub
             ? "border-primary/25"
-            : "border-primary/40 bg-card/90 shadow-glow"),
+            : "border-primary/35 shadow-[0_26px_60px_-42px_oklch(var(--accent)/0.24)]"),
         className,
       )}
     >
@@ -46,7 +46,15 @@ export function StatCard({
               "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.22),transparent_32%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.14),transparent_48%)]",
           )}
         />
-      ) : null}
+      ) : (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_30%),linear-gradient(180deg,oklch(1_0_0/0.05),transparent_44%)]",
+            accent &&
+              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_28%),linear-gradient(180deg,oklch(1_0_0/0.06),transparent_44%)]",
+          )}
+        />
+      )}
       <CardHeader
         className={cn("space-y-3", isPtHub && "relative px-5 py-5 sm:px-6")}
       >
@@ -60,7 +68,7 @@ export function StatCard({
                 "flex h-10 w-10 items-center justify-center rounded-[16px] border",
                 isPtHub
                   ? "border-primary/20 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.42))] text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] backdrop-blur-lg"
-                  : "border-transparent text-primary",
+                  : "border-border/70 bg-card/70 text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] backdrop-blur-md",
               )}
             >
               <Icon className="h-4 w-4" />

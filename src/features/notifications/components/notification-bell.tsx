@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu";
 import { useAuth } from "../../../lib/auth";
+import { cn } from "../../../lib/utils";
 import { NotificationPanel } from "./notification-panel";
 import {
   useMarkAllNotificationsRead,
@@ -24,7 +25,15 @@ import { useNotificationRealtime } from "../hooks/use-notification-realtime";
 import { useSyncNotificationReminders } from "../hooks/use-sync-notification-reminders";
 import type { NotificationRecord } from "../lib/types";
 
-export function NotificationBell({ viewAllHref }: { viewAllHref: string }) {
+export function NotificationBell({
+  viewAllHref,
+  buttonClassName,
+  iconClassName,
+}: {
+  viewAllHref: string;
+  buttonClassName?: string;
+  iconClassName?: string;
+}) {
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const [open, setOpen] = useState(false);
@@ -81,10 +90,10 @@ export function NotificationBell({ viewAllHref }: { viewAllHref: string }) {
           <Button
             variant="ghost"
             size="icon"
-            className="relative"
+            className={cn("relative", buttonClassName)}
             aria-label="Notifications"
           >
-            <Bell className="h-4 w-4" />
+            <Bell className={cn("h-4 w-4", iconClassName)} />
             {unreadCount > 0 ? (
               <>
                 <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-accent" />

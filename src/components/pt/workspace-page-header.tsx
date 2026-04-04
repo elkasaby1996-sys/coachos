@@ -1,5 +1,27 @@
-import type { ReactNode } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+} from "react";
 import { cn } from "../../lib/utils";
+
+const WorkspaceHeaderModeContext = createContext<"default" | "shell">(
+  "default",
+);
+
+export function WorkspaceHeaderModeProvider({
+  children,
+  value,
+}: {
+  children: ReactNode;
+  value: "default" | "shell";
+}) {
+  return (
+    <WorkspaceHeaderModeContext.Provider value={value}>
+      {children}
+    </WorkspaceHeaderModeContext.Provider>
+  );
+}
 
 export function WorkspacePageHeader({
   eyebrow,
@@ -14,6 +36,18 @@ export function WorkspacePageHeader({
   actions?: ReactNode;
   className?: string;
 }) {
+  const mode = useContext(WorkspaceHeaderModeContext);
+
+  if (mode === "shell") {
+    if (!actions) return null;
+
+    return (
+      <div className={cn("flex flex-wrap items-center gap-2", className)}>
+        {actions}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
