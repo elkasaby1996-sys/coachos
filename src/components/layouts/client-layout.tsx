@@ -11,7 +11,7 @@ import {
   PanelTop,
   UserCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
@@ -66,7 +66,7 @@ export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { workspaceId, loading, error } = useWorkspace();
-  const { authError } = useAuth();
+  const { authError, hasWorkspaceMembership } = useAuth();
   const onboardingQuery = useClientOnboarding();
   const onboardingSummary = onboardingQuery.data ?? null;
   const basicsGateRequired = Boolean(
@@ -92,7 +92,7 @@ export function ClientLayout() {
   const errorMessage =
     error?.message ??
     authError?.message ??
-    (workspaceId ? null : "Workspace not found.");
+    null;
   const shouldRenderOnboardingBanner = Boolean(
     onboardingSummary &&
     onboardingSummary.onboarding.status !== "completed" &&
@@ -113,8 +113,18 @@ export function ClientLayout() {
       : false,
   );
 
+  useEffect(() => {
+    if (!loading && !hasWorkspaceMembership) {
+      navigate("/no-workspace", { replace: true });
+    }
+  }, [hasWorkspaceMembership, loading, navigate]);
+
   if (loading) {
     return <LoadingScreen message="Loading..." />;
+  }
+
+  if (!hasWorkspaceMembership) {
+    return <LoadingScreen message="Redirecting..." />;
   }
 
   if (errorMessage) {

@@ -8,23 +8,90 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import {
+  ensurePtProfile,
+  getUserDisplayName,
+  updatePtProfile,
+} from "../../lib/account-profiles";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
 export function PtWorkspaceOnboardingPage() {
   const navigate = useNavigate();
-  const { session, loading, role, refreshRole } = useAuth();
+  const {
+    accountType,
+    hasWorkspaceMembership,
+    loading,
+    ptProfile,
+    refreshRole,
+    session,
+  } = useAuth();
   const [workspaceName, setWorkspaceName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session?.user?.email) {
+    if (!session?.user?.id || workspaceName) return;
+    let active = true;
+
+    const load = async () => {
       const local = window.localStorage.getItem("coachos_pt_workspace_name");
-      if (local && !workspaceName) setWorkspaceName(local);
-    }
-  }, [session?.user?.email, workspaceName]);
+      if (local) {
+        setWorkspaceName(local);
+      }
+
+      try {
+        const storedFullName =
+          window.localStorage.getItem("coachos_pt_signup_full_name") ??
+          getUserDisplayName(session.user);
+        const storedCountry =
+          window.localStorage.getItem("coachos_pt_signup_country") ?? "";
+        const storedCity =
+          window.localStorage.getItem("coachos_pt_signup_city") ?? "";
+        const storedPhone =
+          window.localStorage.getItem("coachos_pt_signup_phone") ?? "";
+
+        const ensuredProfile =
+          ptProfile ??
+          (await ensurePtProfile({
+            userId: session.user.id,
+            fullName: storedFullName,
+          }));
+
+        if (
+          storedFullName ||
+          storedCountry ||
+          storedCity ||
+          storedPhone ||
+          !ensuredProfile.onboarding_completed_at
+        ) {
+          await updatePtProfile(session.user.id, {
+            full_name: storedFullName || ensuredProfile.full_name,
+            phone: storedPhone || ensuredProfile.phone,
+            location_country: storedCountry || ensuredProfile.location_country,
+            location_city: storedCity || ensuredProfile.location_city,
+            onboarding_completed_at:
+              ensuredProfile.onboarding_completed_at ?? new Date().toISOString(),
+          });
+        }
+
+        if (!active) return;
+      } catch (nextError) {
+        if (!active) return;
+        setError(
+          nextError instanceof Error
+            ? nextError.message
+            : "Unable to load your PT profile.",
+        );
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [ptProfile, session?.user, workspaceName]);
 
   if (loading) {
     return (
@@ -35,8 +102,10 @@ export function PtWorkspaceOnboardingPage() {
   }
 
   if (!session) return <Navigate to="/login" replace />;
-  if (role === "client") return <Navigate to="/app/home" replace />;
-  if (role === "pt") return <Navigate to="/pt-hub" replace />;
+  if (accountType === "client") return <Navigate to="/app/home" replace />;
+  if (hasWorkspaceMembership) {
+    return <Navigate to="/pt-hub" replace />;
+  }
 
   const handleCreateWorkspace = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -56,6 +125,10 @@ export function PtWorkspaceOnboardingPage() {
 
       window.localStorage.removeItem("coachos_pt_workspace_name");
       window.localStorage.removeItem("coachos_signup_intent");
+      window.localStorage.removeItem("coachos_pt_signup_full_name");
+      window.localStorage.removeItem("coachos_pt_signup_country");
+      window.localStorage.removeItem("coachos_pt_signup_city");
+      window.localStorage.removeItem("coachos_pt_signup_phone");
       await refreshRole?.();
       navigate("/pt-hub", { replace: true });
     } catch (err) {

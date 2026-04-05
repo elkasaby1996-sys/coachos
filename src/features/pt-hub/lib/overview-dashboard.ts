@@ -22,6 +22,7 @@ export interface PtHubOverviewMetric {
   label: string;
   value: string | number;
   helper: string;
+  href?: string;
   delta?: {
     value: string;
     tone: MetricTone;
@@ -66,12 +67,14 @@ export interface PtHubOverviewDashboardModel {
   mode: PtHubOverviewMode;
   modeLabel: string;
   modeDescription: string;
+  setupCompletionPercent: number;
   metrics: PtHubOverviewMetric[];
   actionItems: PtHubOverviewActionItem[];
   launchChecklist: PtHubOverviewChecklistItem[];
   quickActions: PtHubOverviewQuickAction[];
   pipelineSummary: PtHubOverviewSummaryItem[];
   clientHealthSummary: PtHubOverviewSummaryItem[];
+  businessSummary: PtHubOverviewSummaryItem[];
   billingSummary: PtHubOverviewSummaryItem[];
   clientsNeedingAttentionCount: number;
   latestCoachingSpace: PTWorkspaceSummary | null;
@@ -102,6 +105,26 @@ function buildMetricDelta(
   };
 }
 
+function buildEarningsMetric(
+  revenue: PTRevenueSnapshot | null | undefined,
+): PtHubOverviewMetric {
+  const revenueConnected = revenue?.revenueConnected === true;
+
+  return {
+    id: "monthly-earnings",
+    label: "Monthly earnings",
+    value: revenue?.monthlyRevenueLabel ?? "Not connected",
+    helper: revenueConnected
+      ? "Live earnings tracked from connected payments"
+      : "Connect payments to track earnings live",
+    href: "/pt-hub/payments",
+    delta: {
+      value: revenueConnected ? "Live" : "Pending",
+      tone: revenueConnected ? "positive" : "neutral",
+    },
+  };
+}
+
 function formatCount(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -126,6 +149,16 @@ function getProfileCompletion(
     stats?.profileCompletionPercent ??
     0
   );
+}
+
+function getBusinessSetupCompletionPercent(params: {
+  readiness: PTProfileReadiness | null | undefined;
+  workspaces: PTWorkspaceSummary[];
+}) {
+  const readinessPercent = params.readiness?.completionPercent ?? 0;
+  const workspacePercent = params.workspaces.length > 0 ? 100 : 0;
+
+  return Math.round((readinessPercent + workspacePercent) / 2);
 }
 
 function getUnrepliedLeadCount(leads: PTLead[]) {
@@ -197,40 +230,49 @@ function buildMetrics(params: {
     (params.stats?.applicationsThisMonth ?? 0) -
       (params.stats?.applicationsPreviousWindow ?? 0),
   );
+  const businessSetupCompletionPercent = getBusinessSetupCompletionPercent({
+    readiness: params.readiness,
+    workspaces: params.workspaces,
+  });
+  const hasIncompleteBusinessSetup = businessSetupCompletionPercent < 100;
 
   if (params.mode === "activation") {
-    const publishBlockerCount =
-      (params.readiness?.checklist.filter((item) => !item.complete).length ??
-        0) + (params.publicationState?.isPublished ? 0 : 1);
-
-    return [
-      {
-        id: "profile-readiness",
-        label: "Profile readiness",
-        value: `${params.profileCompletionPercent}%`,
-        helper: "How close the public profile is to launch-ready",
-        accent: true,
-      },
-      {
-        id: "launch-blockers",
-        label: "Launch blockers",
-        value: publishBlockerCount,
-        helper: "Remaining items before the profile is fully live",
-      },
+    const activationMetrics: Array<PtHubOverviewMetric | null> = [
+      hasIncompleteBusinessSetup
+        ? {
+            id: "business-setup",
+            label: "Business setup",
+            value: `${businessSetupCompletionPercent}%`,
+            helper:
+              "How close the business foundation is to being ready for real demand",
+            accent: true,
+          }
+        : null,
       {
         id: "coaching-spaces",
         label: "Coaching spaces",
         value: params.workspaces.length,
-        helper: "Create the first coaching space before you start coaching clients",
+        helper: "Spaces ready to receive and coach clients",
+      },
+      {
+        id: "active-clients",
+        label: "Active clients",
+        value: params.clientStats.activeClients,
+        helper: "Clients already inside active coaching delivery",
       },
       {
         id: "new-leads-month",
         label: "New leads this month",
         value: params.stats?.applicationsThisMonth ?? 0,
-        helper: "Early demand signal from your public profile",
+        helper: "Early demand signal for the coaching business",
         delta: applicationsDelta,
       },
-    ] satisfies PtHubOverviewMetric[];
+      buildEarningsMetric(params.revenue),
+    ];
+
+    return activationMetrics.filter(
+      (metric): metric is PtHubOverviewMetric => metric !== null,
+    );
   }
 
   return [
@@ -253,110 +295,43 @@ function buildMetrics(params: {
       value: params.clientStats.overdueCheckinClients,
       helper: "Clients waiting on a check-in follow-up",
     },
-    params.revenue?.revenueConnected
-      ? {
-          id: "monthly-revenue",
-          label: "Monthly revenue",
-          value: params.revenue.monthlyRevenueLabel,
-          helper: "Live billing revenue for this month",
-        }
-      : {
-          id: "new-leads-month",
-          label: "New leads this month",
-          value: params.stats?.applicationsThisMonth ?? 0,
-          helper: "30-day lead flow into your business",
-          delta: applicationsDelta,
-        },
+    {
+      id: "new-leads-month",
+      label: "New leads this month",
+      value: params.stats?.applicationsThisMonth ?? 0,
+      helper: "30-day lead flow into your business",
+      delta: applicationsDelta,
+    },
+    buildEarningsMetric(params.revenue),
   ] satisfies PtHubOverviewMetric[];
 }
 
-function buildActivationActions(params: {
+function buildActionItems(params: {
   readiness: PTProfileReadiness | null | undefined;
   publicationState: PTPublicationState | null | undefined;
   workspaces: PTWorkspaceSummary[];
   leads: PTLead[];
-}): PtHubOverviewActionItem[] {
-  const actionItems: Array<PtHubOverviewActionItem & { priority: number }> = [];
-  const incompleteChecklist =
-    params.readiness?.checklist.filter((item) => !item.complete) ?? [];
-
-  if (incompleteChecklist.length > 0) {
-    actionItems.push({
-      id: "profile-blockers",
-      label: "Finish profile setup",
-      badge: formatCount(incompleteChecklist.length, "blocker"),
-      description:
-        "Complete the missing profile basics so prospects can trust the page and take action.",
-      href: "/pt-hub/profile",
-      ctaLabel: "Complete profile",
-      tone: "danger",
-      priority: 100,
-    });
-  }
-
-  if (!params.publicationState?.isPublished) {
-    actionItems.push({
-      id: "publish-profile",
-      label: "Publish your public profile",
-      badge: params.publicationState?.canPublish ? "Ready to publish" : "Draft",
-      description: params.publicationState?.canPublish
-        ? "Your page has the key details needed to go live and start attracting leads."
-        : "Finish the setup blockers first, then publish the profile so people can find you.",
-      href: "/pt-hub/profile",
-      ctaLabel: params.publicationState?.canPublish
-        ? "Publish profile"
-        : "Review blockers",
-      tone: params.publicationState?.canPublish ? "warning" : "danger",
-      priority: 90,
-    });
-  }
-
-  if (params.workspaces.length === 0) {
-    actionItems.push({
-      id: "create-coaching-space",
-      label: "Create your first coaching space",
-      badge: "Not created",
-      description:
-        "Set up the first coaching space so clients have somewhere to land once they convert.",
-      href: "/pt-hub/workspaces",
-      ctaLabel: "Create coaching space",
-      tone: "warning",
-      priority: 80,
-    });
-  }
-
-  if (params.leads.length === 0) {
-    actionItems.push({
-      id: "start-lead-flow",
-      label: "Start lead flow",
-      badge: "No leads yet",
-      description:
-        "Open the public profile preview, sanity-check the page, and start sharing it to bring in the first inquiry.",
-      href: "/pt-hub/profile/preview",
-      ctaLabel: "Open preview",
-      tone: "neutral",
-      priority: 70,
-    });
-  }
-
-  return actionItems
-    .sort((left, right) => right.priority - left.priority)
-    .map(({ priority, ...item }) => item);
-}
-
-function buildOperatingActions(params: {
-  leads: PTLead[];
   clientStats: ReturnType<typeof getPtClientBaseStats>;
   clientsNeedingAttentionCount: number;
-  readiness: PTProfileReadiness | null | undefined;
-  publicationState: PTPublicationState | null | undefined;
   subscription: PTSubscriptionSummary | null | undefined;
 }): PtHubOverviewActionItem[] {
-  const actionItems: Array<PtHubOverviewActionItem & { priority: number }> = [];
+  const actionItems = new Map<
+    string,
+    PtHubOverviewActionItem & { priority: number }
+  >();
+  const incompleteChecklist =
+    params.readiness?.checklist.filter((item) => !item.complete) ?? [];
   const unrepliedLeadCount = getUnrepliedLeadCount(params.leads);
 
+  const upsertAction = (item: PtHubOverviewActionItem & { priority: number }) => {
+    const existing = actionItems.get(item.id);
+    if (!existing || existing.priority < item.priority) {
+      actionItems.set(item.id, item);
+    }
+  };
+
   if (unrepliedLeadCount > 0) {
-    actionItems.push({
+    upsertAction({
       id: "unreplied-leads",
       label: "Reply to new leads",
       badge: formatCount(unrepliedLeadCount, "lead"),
@@ -370,35 +345,35 @@ function buildOperatingActions(params: {
   }
 
   if (params.clientStats.overdueCheckinClients > 0) {
-    actionItems.push({
+    upsertAction({
       id: "overdue-checkins",
       label: "Review overdue check-ins",
       badge: formatCount(params.clientStats.overdueCheckinClients, "client"),
       description:
-        "Some clients are overdue for a check-in review or follow-up and need attention today.",
+        "Some clients are overdue for a check-in review or follow-up across your workspaces and need attention today.",
       href: "/pt-hub/clients",
       ctaLabel: "Review clients",
       tone: "danger",
-      priority: 95,
+      priority: 96,
     });
   }
 
   if (params.clientStats.atRiskClients > 0) {
-    actionItems.push({
+    upsertAction({
       id: "at-risk-clients",
       label: "Check at-risk clients",
       badge: formatCount(params.clientStats.atRiskClients, "client"),
       description:
-        "These clients are carrying risk signals such as missed check-ins, low responsiveness, or inactivity.",
+        "These clients are carrying risk signals such as missed check-ins, low responsiveness, or inactivity across the business.",
       href: "/pt-hub/clients",
       ctaLabel: "View client health",
       tone: "warning",
-      priority: 90,
+      priority: 92,
     });
   }
 
   if (params.clientStats.onboardingIncompleteClients > 0) {
-    actionItems.push({
+    upsertAction({
       id: "incomplete-onboarding",
       label: "Finish client onboarding",
       badge: formatCount(
@@ -406,28 +381,70 @@ function buildOperatingActions(params: {
         "client",
       ),
       description:
-        "A few clients are still missing setup steps, which makes delivery and accountability harder to manage.",
+        "Some clients are still missing onboarding steps, which makes delivery and accountability harder to manage.",
       href: "/pt-hub/clients",
       ctaLabel: "Open clients",
       tone: "warning",
-      priority: 82,
+      priority: 84,
+    });
+  }
+
+  if (incompleteChecklist.length > 0) {
+    upsertAction({
+      id: "profile-blockers",
+      label: "Finish profile setup",
+      badge: formatCount(incompleteChecklist.length, "blocker"),
+      description:
+        "Finish the missing coach-page basics so your public presence supports the business instead of holding it back.",
+      href: "/pt-hub/profile",
+      ctaLabel: "Open profile setup",
+      tone: "danger",
+      priority: 88,
     });
   }
 
   if (!params.publicationState?.isPublished) {
-    const blockerCount =
-      params.readiness?.checklist.filter((item) => !item.complete).length ?? 0;
-    actionItems.push({
+    upsertAction({
       id: "publish-profile",
-      label: "Finish publishing your profile",
-      badge:
-        blockerCount > 0 ? formatCount(blockerCount, "blocker") : "Unpublished",
-      description:
-        "The public profile is still not fully live, which limits how new leads can discover and contact you.",
+      label: "Publish your public profile",
+      badge: params.publicationState?.canPublish ? "Ready to publish" : "Draft",
+      description: params.publicationState?.canPublish
+        ? "Your coach page is ready to go live so the business can start collecting real inquiries."
+        : "Finish the key setup blockers first, then publish the coach page so people can discover you.",
       href: "/pt-hub/profile",
-      ctaLabel: "Finish profile",
-      tone: blockerCount > 0 ? "warning" : "neutral",
-      priority: 74,
+      ctaLabel: params.publicationState?.canPublish
+        ? "Publish coach page"
+        : "Review setup",
+      tone: params.publicationState?.canPublish ? "warning" : "danger",
+      priority: 82,
+    });
+  }
+
+  if (params.workspaces.length === 0) {
+    upsertAction({
+      id: "create-coaching-space",
+      label: "Create your first coaching space",
+      badge: "Not created",
+      description:
+        "Set up the first coaching space so the business has a delivery home for new and active clients.",
+      href: "/pt-hub/workspaces",
+      ctaLabel: "Create coaching space",
+      tone: "warning",
+      priority: 80,
+    });
+  }
+
+  if (params.leads.length === 0) {
+    upsertAction({
+      id: "start-lead-flow",
+      label: "Start lead flow",
+      badge: "No leads yet",
+      description:
+        "Review the coach page, make sure the positioning is clear, and start sharing it to bring in the first inquiry.",
+      href: "/pt-hub/profile/preview",
+      ctaLabel: "Review coach page",
+      tone: "neutral",
+      priority: 64,
     });
   }
 
@@ -435,7 +452,7 @@ function buildOperatingActions(params: {
     params.clientStats.activeClients > 0 &&
     params.subscription?.billingConnected === false
   ) {
-    actionItems.push({
+    upsertAction({
       id: "billing-manual",
       label: "Billing is still manual",
       badge: params.subscription.billingStatus || "Manual",
@@ -448,8 +465,8 @@ function buildOperatingActions(params: {
     });
   }
 
-  if (actionItems.length === 0 && params.clientsNeedingAttentionCount > 0) {
-    actionItems.push({
+  if (actionItems.size === 0 && params.clientsNeedingAttentionCount > 0) {
+    upsertAction({
       id: "client-attention",
       label: "Review client health",
       badge: formatCount(params.clientsNeedingAttentionCount, "client"),
@@ -462,7 +479,7 @@ function buildOperatingActions(params: {
     });
   }
 
-  return actionItems
+  return Array.from(actionItems.values())
     .sort((left, right) => right.priority - left.priority)
     .map(({ priority, ...item }) => item);
 }
@@ -536,18 +553,6 @@ function buildLaunchChecklist(params: {
 function buildQuickActions(): PtHubOverviewQuickAction[] {
   return [
     {
-      id: "coach-profile",
-      label: "Coach profile",
-      description: "Edit your positioning, visuals, and profile details.",
-      href: "/pt-hub/profile",
-    },
-    {
-      id: "profile-preview",
-      label: "Public preview",
-      description: "See the exact page prospects will visit.",
-      href: "/pt-hub/profile/preview",
-    },
-    {
       id: "coaching-spaces",
       label: "Coaching spaces",
       description: "Create or open the spaces where coaching delivery happens.",
@@ -558,6 +563,18 @@ function buildQuickActions(): PtHubOverviewQuickAction[] {
       label: "Lead inbox",
       description: "Review inquiries and move them into the pipeline.",
       href: "/pt-hub/leads",
+    },
+    {
+      id: "clients",
+      label: "Clients",
+      description: "Check onboarding, risk, and delivery follow-up.",
+      href: "/pt-hub/clients",
+    },
+    {
+      id: "coach-profile",
+      label: "Coach profile",
+      description: "Refine positioning, visuals, and public trust signals.",
+      href: "/pt-hub/profile",
     },
   ];
 }
@@ -629,6 +646,54 @@ function buildClientHealthSummary(params: {
   ] satisfies PtHubOverviewSummaryItem[];
 }
 
+function buildBusinessSummary(params: {
+  stats: PTOverviewStats | null | undefined;
+  workspaces: PTWorkspaceSummary[];
+  readiness: PTProfileReadiness | null | undefined;
+  publicationState: PTPublicationState | null | undefined;
+  leads: PTLead[];
+}) {
+  const latestWorkspace = params.workspaces[0] ?? null;
+  const unpublishedBlockers =
+    params.readiness?.checklist.filter((item) => !item.complete).length ?? 0;
+
+  return [
+    {
+      id: "business-state",
+      label: "Business state",
+      value: params.stats?.businessHealthLabel ?? "Setup in progress",
+      detail: "A quick read on whether the business is still being set up or already building momentum.",
+    },
+    {
+      id: "workspace-system",
+      label: "Workspace system",
+      value: formatCount(params.workspaces.length, "space"),
+      detail: latestWorkspace
+        ? `Latest workspace: ${latestWorkspace.name}`
+        : "Create the first coaching space so clients have a real delivery home.",
+    },
+    {
+      id: "coach-page",
+      label: "Coach page",
+      value: params.publicationState?.isPublished ? "Live" : "Draft",
+      detail: params.publicationState?.isPublished
+        ? "Your public-facing page is live and can support inbound lead flow."
+        : "The public-facing page is not live yet, so discovery and lead capture are still limited.",
+    },
+    {
+      id: "profile-readiness",
+      label: "Profile readiness",
+      value: `${params.readiness?.completionPercent ?? 0}%`,
+      detail:
+        unpublishedBlockers > 0
+          ? `${unpublishedBlockers} profile item(s) still need attention.`
+          : params.leads.length > 0
+            ? "The coach page is ready to support real demand."
+            : "The coach page is in a healthy place and ready to support lead generation.",
+    },
+  ] satisfies PtHubOverviewSummaryItem[];
+}
+
 function buildBillingSummary(params: {
   subscription: PTSubscriptionSummary | null | undefined;
   revenue: PTRevenueSnapshot | null | undefined;
@@ -681,6 +746,10 @@ export function getPtHubOverviewDashboardModel(
     params.profile,
     params.stats,
   );
+  const setupCompletionPercent = getBusinessSetupCompletionPercent({
+    readiness: params.readiness,
+    workspaces,
+  });
   const isPublished = Boolean(params.publicationState?.isPublished);
   const mode = getOverviewMode({
     leads,
@@ -694,11 +763,12 @@ export function getPtHubOverviewDashboardModel(
   return {
     mode,
     modeLabel:
-      mode === "activation" ? "Launch checklist" : "Operating dashboard",
+      mode === "activation" ? "Business foundations" : "Operating dashboard",
     modeDescription:
       mode === "activation"
-        ? "Focus on the few setup moves that get the business ready to take its first real leads and clients."
+        ? "Build the business foundation across workspace setup, coach-page trust, and lead readiness."
         : "Focus on the next decisions that keep leads moving, clients healthy, and delivery on track.",
+    setupCompletionPercent,
     metrics: buildMetrics({
       mode,
       workspaces,
@@ -711,22 +781,15 @@ export function getPtHubOverviewDashboardModel(
       publicationState: params.publicationState,
       revenue: params.revenue,
     }),
-    actionItems:
-      mode === "activation"
-        ? buildActivationActions({
-            readiness: params.readiness,
-            publicationState: params.publicationState,
-            workspaces,
-            leads,
-          })
-        : buildOperatingActions({
-            leads,
-            clientStats,
-            clientsNeedingAttentionCount,
-            readiness: params.readiness,
-            publicationState: params.publicationState,
-            subscription: params.subscription,
-          }),
+    actionItems: buildActionItems({
+      readiness: params.readiness,
+      publicationState: params.publicationState,
+      workspaces,
+      leads,
+      clientStats,
+      clientsNeedingAttentionCount,
+      subscription: params.subscription,
+    }),
     launchChecklist: buildLaunchChecklist({
       readiness: params.readiness,
       publicationState: params.publicationState,
@@ -742,6 +805,13 @@ export function getPtHubOverviewDashboardModel(
     clientHealthSummary: buildClientHealthSummary({
       clientStats,
       clientsNeedingAttentionCount,
+    }),
+    businessSummary: buildBusinessSummary({
+      stats: params.stats,
+      workspaces,
+      readiness: params.readiness,
+      publicationState: params.publicationState,
+      leads,
     }),
     billingSummary: buildBillingSummary({
       subscription: params.subscription,

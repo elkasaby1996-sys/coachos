@@ -318,21 +318,21 @@ function getRendererConfig(quality: BackgroundQualityTier) {
   switch (quality) {
     case "high":
       return {
-        antialias: true,
-        pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        antialias: false,
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
         enablePointerTracking: true,
       };
     case "medium":
       return {
         antialias: false,
-        pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
-        enablePointerTracking: true,
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 1.25),
+        enablePointerTracking: false,
       };
     default:
       return {
         antialias: false,
         pixelRatio: 1,
-        enablePointerTracking: true,
+        enablePointerTracking: false,
       };
   }
 }
@@ -409,7 +409,7 @@ export function PtHubAnimatedBackground({
           canvas,
           alpha: true,
           antialias: rendererConfig.antialias,
-          powerPreference: "high-performance",
+          powerPreference: "default",
           failIfMajorPerformanceCaveat: false,
         });
         renderer.setPixelRatio(rendererConfig.pixelRatio);

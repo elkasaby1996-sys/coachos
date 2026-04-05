@@ -10,6 +10,7 @@ import {
   AccountSettings,
   AppearanceSettings,
   BillingSettings,
+  ClientAccountOnboardingPage,
   ClientBaselinePage,
   ClientCheckinPage,
   ClientHabitsPage,
@@ -25,6 +26,7 @@ import {
   ClientWorkoutRunPage,
   ClientWorkoutSummaryPage,
   ClientWorkoutTodayPage,
+  ClientSignupPage,
   DangerZoneSettings,
   DefaultsSettings,
   HealthPage,
@@ -74,7 +76,7 @@ import {
 } from "./lazy-pages";
 
 // ✅ assumes your AuthProvider exports this hook
-import { useAuth } from "../lib/auth";
+import { getAuthenticatedRedirectPath, useAuth } from "../lib/auth";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 
 function FullPageLoader() {
@@ -110,6 +112,63 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
  * - "none"
  * If your app uses different strings, adjust below.
  */
+function getClientAccountOnboardingPath(inviteToken: string | null) {
+  if (!inviteToken) return "/client/onboarding/account";
+  return `/client/onboarding/account?invite=${encodeURIComponent(inviteToken)}`;
+}
+
+function getProtectedRedirect(params: {
+  pathname: string;
+  allow: Array<"pt" | "client">;
+  accountType: "pt" | "client" | "unknown";
+  hasWorkspaceMembership: boolean;
+  ptWorkspaceComplete: boolean;
+  ptProfileComplete: boolean;
+  clientAccountComplete: boolean;
+  clientWorkspaceOnboardingHardGateRequired: boolean;
+  pendingInviteToken: string | null;
+}) {
+  if (params.accountType === "pt") {
+    if (!params.ptWorkspaceComplete) {
+      return "/pt/onboarding/workspace";
+    }
+    if (!params.allow.includes("pt")) {
+      return "/pt-hub";
+    }
+    return null;
+  }
+
+  if (params.accountType === "client") {
+    if (!params.clientAccountComplete) {
+      return getClientAccountOnboardingPath(params.pendingInviteToken);
+    }
+    if (!params.hasWorkspaceMembership) {
+      return "/no-workspace";
+    }
+    if (
+      params.clientWorkspaceOnboardingHardGateRequired &&
+      !params.pathname.startsWith("/app/onboarding")
+    ) {
+      return "/app/onboarding";
+    }
+    if (!params.allow.includes("client")) {
+      return "/app/home";
+    }
+    return null;
+  }
+
+  return getAuthenticatedRedirectPath({
+    accountType: params.accountType,
+    hasWorkspaceMembership: params.hasWorkspaceMembership,
+    ptWorkspaceComplete: params.ptWorkspaceComplete,
+    ptProfileComplete: params.ptProfileComplete,
+    clientAccountComplete: params.clientAccountComplete,
+    clientWorkspaceOnboardingHardGateRequired:
+      params.clientWorkspaceOnboardingHardGateRequired,
+    pendingInviteToken: params.pendingInviteToken,
+  });
+}
+
 function RequireRole({
   allow,
   children,
@@ -117,56 +176,58 @@ function RequireRole({
   allow: Array<"pt" | "client">;
   children: React.ReactNode;
 }) {
-  const { role, loading } = useAuth();
-  const wantsPt = allow.includes("pt");
+  const {
+    accountType,
+    clientAccountComplete,
+    clientWorkspaceOnboardingHardGateRequired,
+    hasWorkspaceMembership,
+    loading,
+    pendingInviteToken,
+    ptProfileComplete,
+    ptWorkspaceComplete,
+  } = useAuth();
+  const location = useLocation();
 
   return (
     <BootstrapGate>
-      {loading ? (
-        <FullPageLoader />
-      ) : !role || role === "none" ? (
-        wantsPt ? (
-          <Navigate to="/pt/onboarding/workspace" replace />
+      {loading ? <FullPageLoader /> : (() => {
+        const redirect = getProtectedRedirect({
+          pathname: location.pathname,
+          allow,
+          accountType,
+          hasWorkspaceMembership,
+          ptWorkspaceComplete,
+          ptProfileComplete,
+          clientAccountComplete,
+          clientWorkspaceOnboardingHardGateRequired,
+          pendingInviteToken,
+        });
+        return redirect ? (
+          <Navigate to={redirect} replace />
         ) : (
-          <Navigate to="/no-workspace" replace />
-        )
-      ) : !(role === "pt" || role === "client") || !allow.includes(role) ? (
-        role === "pt" ? (
-          <Navigate to="/pt-hub" replace />
-        ) : role === "client" ? (
-          <Navigate to="/app/home" replace />
-        ) : (
-          <Navigate to="/no-workspace" replace />
-        )
-      ) : (
-        <>{children}</>
-      )}
+          <>{children}</>
+        );
+      })()}
     </BootstrapGate>
   );
 }
 
 function IndexRedirect() {
-  const { session, role, loading } = useAuth();
+  const {
+    bootstrapPath,
+    loading,
+    session,
+  } = useAuth();
 
   if (loading) return <FullPageLoader />;
 
   if (!session) return <WelcomePage />;
 
-  if (role === "none") {
-    if (window.localStorage.getItem("coachos_signup_intent") === "pt") {
-      return <Navigate to="/pt/onboarding/workspace" replace />;
-    }
-    return <Navigate to="/no-workspace" replace />;
-  }
-
-  if (role === "pt") return <Navigate to="/pt-hub" replace />;
-  if (role === "client") return <Navigate to="/app/home" replace />;
-
-  return <Navigate to="/no-workspace" replace />;
+  return <Navigate to={bootstrapPath ?? "/no-workspace"} replace />;
 }
 
 function LoginGate() {
-  const { session, role, loading } = useAuth();
+  const { bootstrapPath, loading, session } = useAuth();
   const location = useLocation();
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const redirectTarget =
@@ -180,12 +241,7 @@ function LoginGate() {
   // If already logged in, don't allow staying on /login
   if (session) {
     if (redirectTarget) return <Navigate to={redirectTarget} replace />;
-    if (role === "pt") return <Navigate to="/pt-hub" replace />;
-    if (role === "client") return <Navigate to="/app/home" replace />;
-    if (window.localStorage.getItem("coachos_signup_intent") === "pt") {
-      return <Navigate to="/pt/onboarding/workspace" replace />;
-    }
-    return <Navigate to="/no-workspace" replace />;
+    return <Navigate to={bootstrapPath ?? "/no-workspace"} replace />;
   }
 
   return <LoginPage />;
@@ -207,6 +263,7 @@ export function App() {
         <Route path="/login" element={<LoginGate />} />
         <Route path="/signup" element={<SignupRolePage />} />
         <Route path="/signup/pt" element={<PtSignupPage />} />
+        <Route path="/signup/client" element={<ClientSignupPage />} />
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route path="/join/:code" element={<LegacyJoinRedirect />} />
         <Route path="/coach/:slug" element={<PublicCoachProfilePage />} />
@@ -228,6 +285,22 @@ export function App() {
           element={
             <RequireAuth>
               <PtWorkspaceOnboardingPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/pt/onboarding/profile"
+          element={
+            <RequireAuth>
+              <Navigate to="/pt-hub" replace />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/client/onboarding/account"
+          element={
+            <RequireAuth>
+              <ClientAccountOnboardingPage />
             </RequireAuth>
           }
         />

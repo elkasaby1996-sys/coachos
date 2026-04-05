@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ImageIcon, Save, Sparkles } from "lucide-react";
+import { ImageIcon, Plus, Save, Sparkles, Upload, X } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -13,6 +13,7 @@ import {
 } from "../../../components/ui/tabs";
 import type { StoredProfileDraft } from "../lib/pt-hub";
 import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
+import { uploadPtProfileMedia } from "../lib/pt-profile-media";
 import type {
   PTAvailabilityMode,
   PTCoachingMode,
@@ -23,6 +24,7 @@ import type {
 import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
 import { PtHubReadinessPanel } from "./pt-hub-readiness-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
+import { useAuth } from "../../../lib/auth";
 
 const coachingModeOptions: Array<{
   value: PTCoachingMode;
@@ -51,6 +53,64 @@ function inputToList(value: string) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function createTransformationDraft() {
+  return {
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `transformation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: "",
+    summary: "",
+    beforeImageUrl: null,
+    afterImageUrl: null,
+  };
+}
+
+function UploadButton({
+  label,
+  uploading,
+  disabled,
+  accept = "image/jpeg,image/png,image/webp",
+  onFileSelected,
+}: {
+  label: string;
+  uploading: boolean;
+  disabled?: boolean;
+  accept?: string;
+  onFileSelected: (file: File) => Promise<void> | void;
+}) {
+  return (
+    <label className="block">
+      <input
+        type="file"
+        accept={accept}
+        className="sr-only"
+        disabled={disabled || uploading}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = "";
+          if (!file) return;
+          void onFileSelected(file);
+        }}
+      />
+      <span className="inline-flex">
+        <Button
+          type="button"
+          variant="secondary"
+          className="gap-2"
+          disabled={disabled || uploading}
+          asChild
+        >
+          <span>
+            <Upload className="h-4 w-4" />
+            {uploading ? "Uploading..." : label}
+          </span>
+        </Button>
+      </span>
+    </label>
+  );
 }
 
 function createDraft(profile: PTProfile): StoredProfileDraft {
@@ -95,6 +155,7 @@ export function PtHubProfileEditor({
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
+  const { user } = useAuth();
   const [form, setForm] = useState<StoredProfileDraft>(createDraft(profile));
   const [specialtiesInput, setSpecialtiesInput] = useState(
     listToInput(profile.specialties),
@@ -102,11 +163,15 @@ export function PtHubProfileEditor({
   const [certificationsInput, setCertificationsInput] = useState(
     listToInput(profile.certifications),
   );
+  const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   useEffect(() => {
     setForm(createDraft(profile));
     setSpecialtiesInput(listToInput(profile.specialties));
     setCertificationsInput(listToInput(profile.certifications));
+    setMediaError(null);
+    setUploadingTarget(null);
   }, [profile]);
 
   const toggleValue = <TValue extends string>(
@@ -123,6 +188,81 @@ export function PtHubProfileEditor({
   const quickWins = readiness.checklist
     .filter((item) => !item.complete)
     .slice(0, 4);
+  const mediaBusy = Boolean(uploadingTarget);
+
+  const updateTransformation = (
+    transformationId: string,
+    patch: Partial<StoredProfileDraft["transformations"][number]>,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      transformations: prev.transformations.map((item) =>
+        item.id === transformationId ? { ...item, ...patch } : item,
+      ),
+    }));
+  };
+
+  const handleMediaUpload = async (params: {
+    file: File;
+    kind:
+      | "profile-photo"
+      | "banner"
+      | "transformation-before"
+      | "transformation-after";
+    targetKey: string;
+    transformationId?: string;
+  }) => {
+    if (!user?.id) {
+      setMediaError("Please sign in again before uploading media.");
+      return;
+    }
+
+    setUploadingTarget(params.targetKey);
+    setMediaError(null);
+    try {
+      const { publicUrl } = await uploadPtProfileMedia({
+        userId: user.id,
+        file: params.file,
+        kind: params.kind,
+        transformationId: params.transformationId,
+      });
+
+      setForm((prev) => {
+        if (params.kind === "profile-photo") {
+          return { ...prev, profilePhotoUrl: publicUrl };
+        }
+        if (params.kind === "banner") {
+          return { ...prev, bannerImageUrl: publicUrl };
+        }
+        return {
+          ...prev,
+          transformations: prev.transformations.map((item) =>
+            item.id === params.transformationId
+              ? {
+                  ...item,
+                  beforeImageUrl:
+                    params.kind === "transformation-before"
+                      ? publicUrl
+                      : item.beforeImageUrl,
+                  afterImageUrl:
+                    params.kind === "transformation-after"
+                      ? publicUrl
+                      : item.afterImageUrl,
+                }
+              : item,
+          ),
+        };
+      });
+    } catch (error) {
+      setMediaError(
+        error instanceof Error
+          ? error.message
+          : "Unable to upload profile media.",
+      );
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.34fr)_340px]">
@@ -185,10 +325,16 @@ export function PtHubProfileEditor({
           </div>
         ) : null}
 
+        {mediaError ? (
+          <div className="mt-5 rounded-[22px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {mediaError}
+          </div>
+        ) : null}
+
         <TabsContent value="identity" className="space-y-5">
           <PtHubSectionCard
             title="Profile media"
-            description="Shape the hero media for a sharper public-facing coaching brand. Upload storage can wire in later without changing this editor."
+            description="Upload the hero media that powers your public coach page, preview, and future discovery surfaces."
             contentClassName="space-y-4"
           >
             <div className="grid gap-4 md:grid-cols-2">
@@ -215,9 +361,36 @@ export function PtHubProfileEditor({
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   Use a sharp square headshot that feels premium and performance-led.
                 </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <UploadButton
+                    label="Upload photo"
+                    uploading={uploadingTarget === "profile-photo"}
+                    disabled={mediaBusy && uploadingTarget !== "profile-photo"}
+                    onFileSelected={async (file) =>
+                      handleMediaUpload({
+                        file,
+                        kind: "profile-photo",
+                        targetKey: "profile-photo",
+                      })
+                    }
+                  />
+                  {form.profilePhotoUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="gap-2"
+                      onClick={() =>
+                        setForm((prev) => ({ ...prev, profilePhotoUrl: null }))
+                      }
+                    >
+                      <X className="h-4 w-4" />
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
                 <Input
                   className="mt-4"
-                  placeholder="Image URL or upload wiring later"
+                  placeholder="Or paste a public image URL"
                   value={form.profilePhotoUrl ?? ""}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -248,9 +421,36 @@ export function PtHubProfileEditor({
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   Wide visual used in the public profile hero and future coach discovery surfaces.
                 </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <UploadButton
+                    label="Upload banner"
+                    uploading={uploadingTarget === "banner"}
+                    disabled={mediaBusy && uploadingTarget !== "banner"}
+                    onFileSelected={async (file) =>
+                      handleMediaUpload({
+                        file,
+                        kind: "banner",
+                        targetKey: "banner",
+                      })
+                    }
+                  />
+                  {form.bannerImageUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="gap-2"
+                      onClick={() =>
+                        setForm((prev) => ({ ...prev, bannerImageUrl: null }))
+                      }
+                    >
+                      <X className="h-4 w-4" />
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
                 <Input
                   className="mt-4"
-                  placeholder="Banner image URL or upload wiring later"
+                  placeholder="Or paste a public banner URL"
                   value={form.bannerImageUrl ?? ""}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -434,6 +634,230 @@ export function PtHubProfileEditor({
               }
               placeholder="Structured, high-touch, feedback-driven, and deeply habit-focused."
             />
+
+            <div className="space-y-4 pt-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">
+                    Transformation proof
+                  </label>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add before-and-after stories with real media so the public profile has visual proof.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      transformations: [
+                        ...prev.transformations,
+                        createTransformationDraft(),
+                      ],
+                    }))
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                  Add transformation
+                </Button>
+              </div>
+
+              {form.transformations.length > 0 ? (
+                <div className="space-y-4">
+                  {form.transformations.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="rounded-[22px] border border-border/60 bg-background/35 p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-foreground">
+                          Transformation {index + 1}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="gap-2"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              transformations: prev.transformations.filter(
+                                (entry) => entry.id !== item.id,
+                              ),
+                            }))
+                          }
+                        >
+                          <X className="h-4 w-4" />
+                          Remove
+                        </Button>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">
+                            Title
+                          </label>
+                          <Input
+                            value={item.title}
+                            onChange={(event) =>
+                              updateTransformation(item.id, {
+                                title: event.target.value,
+                              })
+                            }
+                            placeholder="12-week strength and body recomposition"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">
+                            Summary
+                          </label>
+                          <Input
+                            value={item.summary}
+                            onChange={(event) =>
+                              updateTransformation(item.id, {
+                                summary: event.target.value,
+                              })
+                            }
+                            placeholder="Lost 8kg while building visible strength and consistency."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                        <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/55 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            Before photo
+                          </p>
+                          <div className="flex h-40 items-center justify-center overflow-hidden rounded-[18px] border border-border/60 bg-background/70">
+                            {item.beforeImageUrl ? (
+                              <img
+                                src={item.beforeImageUrl}
+                                alt={item.title || "Before transformation"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <ImageIcon className="h-4 w-4" />
+                                Before preview
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <UploadButton
+                              label="Upload before"
+                              uploading={uploadingTarget === `${item.id}-before`}
+                              disabled={
+                                mediaBusy &&
+                                uploadingTarget !== `${item.id}-before`
+                              }
+                              onFileSelected={async (file) =>
+                                handleMediaUpload({
+                                  file,
+                                  kind: "transformation-before",
+                                  targetKey: `${item.id}-before`,
+                                  transformationId: item.id,
+                                })
+                              }
+                            />
+                            {item.beforeImageUrl ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={() =>
+                                  updateTransformation(item.id, {
+                                    beforeImageUrl: null,
+                                  })
+                                }
+                              >
+                                <X className="h-4 w-4" />
+                                Remove
+                              </Button>
+                            ) : null}
+                          </div>
+                          <Input
+                            value={item.beforeImageUrl ?? ""}
+                            onChange={(event) =>
+                              updateTransformation(item.id, {
+                                beforeImageUrl: event.target.value || null,
+                              })
+                            }
+                            placeholder="Or paste a public before-photo URL"
+                          />
+                        </div>
+
+                        <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/55 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            After photo
+                          </p>
+                          <div className="flex h-40 items-center justify-center overflow-hidden rounded-[18px] border border-border/60 bg-background/70">
+                            {item.afterImageUrl ? (
+                              <img
+                                src={item.afterImageUrl}
+                                alt={item.title || "After transformation"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <ImageIcon className="h-4 w-4" />
+                                After preview
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <UploadButton
+                              label="Upload after"
+                              uploading={uploadingTarget === `${item.id}-after`}
+                              disabled={
+                                mediaBusy &&
+                                uploadingTarget !== `${item.id}-after`
+                              }
+                              onFileSelected={async (file) =>
+                                handleMediaUpload({
+                                  file,
+                                  kind: "transformation-after",
+                                  targetKey: `${item.id}-after`,
+                                  transformationId: item.id,
+                                })
+                              }
+                            />
+                            {item.afterImageUrl ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={() =>
+                                  updateTransformation(item.id, {
+                                    afterImageUrl: null,
+                                  })
+                                }
+                              >
+                                <X className="h-4 w-4" />
+                                Remove
+                              </Button>
+                            ) : null}
+                          </div>
+                          <Input
+                            value={item.afterImageUrl ?? ""}
+                            onChange={(event) =>
+                              updateTransformation(item.id, {
+                                afterImageUrl: event.target.value || null,
+                              })
+                            }
+                            placeholder="Or paste a public after-photo URL"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
+                  Add transformation stories here to showcase before-and-after proof on your public coach page.
+                </div>
+              )}
+            </div>
           </PtHubSectionCard>
         </TabsContent>
 
@@ -689,11 +1113,15 @@ export function PtHubProfileEditor({
             </Button>
             <Button
               className="w-full"
-              disabled={saving || !hasChanges}
+              disabled={saving || mediaBusy || !hasChanges}
               onClick={() => onSave(form)}
             >
               <Save className="h-4 w-4" />
-              {saving ? "Saving..." : "Save profile"}
+              {mediaBusy
+                ? "Finish uploads first"
+                : saving
+                  ? "Saving..."
+                  : "Save profile"}
             </Button>
           </div>
         </PtHubSectionCard>

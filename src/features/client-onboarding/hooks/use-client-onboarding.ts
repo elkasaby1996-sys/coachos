@@ -78,17 +78,19 @@ export function useClientOnboarding() {
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, display_name, phone, location, location_country, timezone, gender, unit_preference, goal, injuries, limitations, equipment, days_per_week, gym_name, email, training_type",
+          "id, workspace_id, display_name, full_name, phone, location, location_country, timezone, gender, sex, unit_preference, goal, injuries, limitations, equipment, days_per_week, gym_name, email, training_type, avatar_url, photo_url, date_of_birth, dob, height_value, height_unit, height_cm, weight_value_current, weight_unit, current_weight, account_onboarding_completed_at",
         )
         .eq("user_id", userId)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
 
       if (clientError) throw clientError;
-      if (!clientData?.id || !clientData.workspace_id) {
+      const clientRows =
+        ((clientData ?? []) as ClientOnboardingClientProfile[]).filter(Boolean);
+      const client =
+        clientRows.find((row) => Boolean(row.workspace_id)) ?? clientRows[0] ?? null;
+      if (!client?.id || !client.workspace_id) {
         return null as ClientOnboardingSummary | null;
       }
-
-      const client = clientData as ClientOnboardingClientProfile;
 
       const { error: ensureError } = await supabase.rpc(
         "ensure_workspace_client_onboarding",

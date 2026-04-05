@@ -231,20 +231,38 @@ export function PublicPtProfileView({
                         <div className="space-y-3">
                           {profile.transformations.map((item) => (
                             <div
-                              key={`${item.title}-${item.summary}`}
+                              key={item.id}
                               className="rounded-[22px] bg-background/45 p-4"
                             >
-                              <p className="text-sm font-medium text-foreground">
-                                {item.title}
-                              </p>
-                              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                {item.summary}
-                              </p>
+                              {item.beforeImageUrl || item.afterImageUrl ? (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <TransformationImage
+                                    label="Before"
+                                    src={item.beforeImageUrl}
+                                    title={item.title}
+                                  />
+                                  <TransformationImage
+                                    label="After"
+                                    src={item.afterImageUrl}
+                                    title={item.title}
+                                  />
+                                </div>
+                              ) : null}
+                              {item.title ? (
+                                <p className="mt-3 text-sm font-medium text-foreground">
+                                  {item.title}
+                                </p>
+                              ) : null}
+                              {item.summary ? (
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                  {item.summary}
+                                </p>
+                              ) : null}
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <PlaceholderText text="Transformations will appear here once that proof system is built." />
+                        <PlaceholderText text="Transformation stories will show here once you add them in PT Hub." />
                       )}
                     </div>
                   </div>
@@ -339,4 +357,35 @@ function SectionHeader({ title, icon }: { title: string; icon?: ReactNode }) {
 
 function PlaceholderText({ text }: { text: string }) {
   return <p className="text-sm leading-6 text-muted-foreground">{text}</p>;
+}
+
+function TransformationImage({
+  label,
+  src,
+  title,
+}: {
+  label: string;
+  src: string | null;
+  title: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="overflow-hidden rounded-[18px] border border-border/60 bg-background/65">
+        {src ? (
+          <img
+            src={src}
+            alt={title ? `${title} ${label.toLowerCase()}` : label}
+            className="h-44 w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-44 items-center justify-center text-xs text-muted-foreground">
+            {label} photo not added yet
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

@@ -7,25 +7,34 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
+import {
+  extractInviteToken,
+  getPendingInviteToken,
+  persistPendingInviteToken,
+} from "../../lib/account-profiles";
 import { useAuth } from "../../lib/auth";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
 export function NoWorkspacePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { loading, session } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
+  const signupIntent =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("coachos_signup_intent")
+      : null;
+  const {
+    accountType,
+    clientAccountComplete,
+    hasWorkspaceMembership,
+    loading,
+    pendingInviteToken,
+    ptWorkspaceComplete,
+    session,
+  } = useAuth();
+  const [inviteCode, setInviteCode] = useState(
+    pendingInviteToken ?? getPendingInviteToken() ?? "",
+  );
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,8 +43,65 @@ export function NoWorkspacePage() {
       if (location.pathname !== "/login") {
         navigate("/login", { replace: true });
       }
+      return;
     }
-  }, [loading, location.pathname, navigate, session]);
+    if (accountType === "pt" && !ptWorkspaceComplete) {
+      navigate("/pt/onboarding/workspace", { replace: true });
+      return;
+    }
+    if (accountType === "pt" && ptWorkspaceComplete) {
+      navigate("/pt-hub", { replace: true });
+      return;
+    }
+    if (accountType === "unknown" && signupIntent === "pt") {
+      navigate("/pt/onboarding/workspace", { replace: true });
+      return;
+    }
+    if (accountType === "unknown" && ptWorkspaceComplete) {
+      navigate("/pt-hub", { replace: true });
+      return;
+    }
+    if (accountType === "client" && !clientAccountComplete) {
+      navigate(
+        pendingInviteToken
+          ? `/client/onboarding/account?invite=${encodeURIComponent(
+              pendingInviteToken,
+            )}`
+          : "/client/onboarding/account",
+        { replace: true },
+      );
+      return;
+    }
+    if (accountType === "unknown" && signupIntent === "client") {
+      navigate(
+        pendingInviteToken
+          ? `/client/onboarding/account?invite=${encodeURIComponent(
+              pendingInviteToken,
+            )}`
+          : "/client/onboarding/account",
+        { replace: true },
+      );
+      return;
+    }
+    if (
+      (accountType === "client" || accountType === "unknown") &&
+      clientAccountComplete &&
+      hasWorkspaceMembership
+    ) {
+      navigate("/app/home", { replace: true });
+    }
+  }, [
+    accountType,
+    clientAccountComplete,
+    hasWorkspaceMembership,
+    loading,
+    location.pathname,
+    navigate,
+    pendingInviteToken,
+    ptWorkspaceComplete,
+    session,
+    signupIntent,
+  ]);
 
   if (loading) {
     return (
@@ -56,78 +122,66 @@ export function NoWorkspacePage() {
 
   const handleInviteSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmedCode = inviteCode.trim();
-    if (!trimmedCode) {
-      setInviteError("Please enter an invite code.");
+    const normalizedToken = extractInviteToken(inviteCode);
+    if (!normalizedToken) {
+      setInviteError("Please enter a valid invite token or link.");
       return;
     }
     setInviteError(null);
-    setIsDialogOpen(false);
-    setInviteCode("");
-    navigate(`/invite/${trimmedCode}`);
+    persistPendingInviteToken(normalizedToken);
+    setInviteCode(normalizedToken);
+    navigate(`/invite/${normalizedToken}`);
   };
 
   return (
     <AuthBackdrop contentClassName="max-w-md">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>No workspace found</CardTitle>
+          <CardTitle>
+            {accountType === "client"
+              ? "You're not connected to a coach yet"
+              : "No workspace found"}
+          </CardTitle>
           <p className="text-sm text-muted-foreground">
-            We couldn't match your account to a workspace yet. Join a coach with
-            an invite code or create your own PT workspace to continue.
+            {accountType === "client"
+              ? "Paste an invite token or full invite link whenever you're ready to join a coach."
+              : "We couldn't match your account to a workspace yet. Join a coach with an invite code or create your own PT workspace to continue."}
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Button asChild variant="secondary">
             <Link to="/login">Back to login</Link>
           </Button>
-          <Button asChild>
-            <Link to="/pt/onboarding/workspace">Create PT workspace</Link>
-          </Button>
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (open) {
-                setInviteError(null);
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button variant="ghost">Use an invite code</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Enter invite code</DialogTitle>
-                <DialogDescription>
-                  Paste the invite code your coach provided to continue.
-                </DialogDescription>
-              </DialogHeader>
-              <form className="space-y-4" onSubmit={handleInviteSubmit}>
-                <Input
-                  autoFocus
-                  placeholder="Invite code"
-                  value={inviteCode}
-                  onChange={(event) => setInviteCode(event.target.value)}
-                />
-                {inviteError ? (
-                  <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-                    {inviteError}
-                  </div>
-                ) : null}
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">Continue</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {accountType !== "client" ? (
+            <Button asChild>
+              <Link to="/pt/onboarding/workspace">Create PT workspace</Link>
+            </Button>
+          ) : null}
+          {accountType === "client" ? (
+            <form className="space-y-3 rounded-2xl border border-border/70 bg-secondary/20 p-4" onSubmit={handleInviteSubmit}>
+              <p className="text-sm font-medium text-foreground">
+                Join with an invite
+              </p>
+              <Input
+                autoFocus
+                placeholder="Paste invite token or full invite link"
+                value={inviteCode}
+                onChange={(event) => setInviteCode(event.target.value)}
+              />
+              {inviteError ? (
+                <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {inviteError}
+                </div>
+              ) : null}
+              <Button className="w-full" type="submit">
+                Continue
+              </Button>
+            </form>
+          ) : (
+            <Button variant="ghost" onClick={() => navigate("/login")}>
+              Use an invite code
+            </Button>
+          )}
         </CardContent>
       </Card>
     </AuthBackdrop>

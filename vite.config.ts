@@ -7,18 +7,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("/src/pages/pt/")) {
-            return "pages-pt";
-          }
-
-          if (id.includes("/src/pages/client/")) {
-            return "pages-client";
-          }
-
-          if (id.includes("/src/pages/public/")) {
-            return "pages-public";
-          }
-
           if (id.includes("@supabase/") || id.includes("@sentry/")) {
             return "vendor-backend-observability";
           }

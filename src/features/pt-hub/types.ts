@@ -250,8 +250,11 @@ export interface PTPublicTestimonial {
 }
 
 export interface PTPublicTransformation {
+  id: string;
   title: string;
   summary: string;
+  beforeImageUrl: string | null;
+  afterImageUrl: string | null;
 }
 
 export interface PTPublicProfile {

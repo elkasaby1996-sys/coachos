@@ -41,8 +41,8 @@ function getActionToneClassName(tone: PtHubOverviewActionItem["tone"]) {
 export function PtHubOverviewLoadingState() {
   return (
     <section className="space-y-7" aria-label="Loading overview dashboard">
-      <div className="grid gap-4 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
+      <div className="grid gap-4 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`metric-skeleton-${index}`}
             className="surface-panel relative overflow-hidden rounded-[30px] border border-border/70 px-5 py-5 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl sm:px-6"
@@ -54,29 +54,15 @@ export function PtHubOverviewLoadingState() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_380px]">
-        <div className="surface-panel-strong rounded-[34px] border border-border/70 px-5 py-5 shadow-[0_34px_92px_-56px_rgba(0,0,0,0.98)] backdrop-blur-xl sm:px-6 sm:py-6">
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-10 w-72 rounded-2xl" />
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton
-                  key={`action-skeleton-${index}`}
-                  className="h-24 w-full rounded-[28px]"
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[0_26px_70px_-44px_rgba(0,0,0,0.82)] backdrop-blur-xl sm:px-6">
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-8 w-44 rounded-xl" />
-            {Array.from({ length: 3 }).map((_, index) => (
+      <div className="surface-panel-strong rounded-[34px] border border-border/70 px-5 py-5 shadow-[0_34px_92px_-56px_rgba(0,0,0,0.98)] backdrop-blur-xl sm:px-6 sm:py-6">
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-72 rounded-2xl" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton
-                key={`activity-skeleton-${index}`}
-                className="h-20 w-full rounded-[24px]"
+                key={`action-skeleton-${index}`}
+                className="h-24 w-full rounded-[28px]"
               />
             ))}
           </div>
@@ -100,6 +86,21 @@ export function PtHubOverviewLoadingState() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-6">
+        <div className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[0_26px_70px_-44px_rgba(0,0,0,0.82)] backdrop-blur-xl sm:px-6">
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-8 w-44 rounded-xl" />
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton
+                key={`bottom-skeleton-${index}`}
+                className="h-20 w-full rounded-[24px]"
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -139,8 +140,8 @@ export function PtHubActionCenter({
 }) {
   const helperText =
     mode === "activation"
-      ? "Clear the blockers that keep your coaching space from going live."
-      : null;
+      ? "Live priorities across setup, lead flow, and every coaching workspace."
+      : "Live priorities across the PT Hub, client delivery, and every coaching workspace.";
 
   return (
     <div className="surface-panel-strong relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[0_34px_92px_-56px_rgba(0,0,0,0.98)] backdrop-blur-xl sm:px-6 sm:py-6">
@@ -149,19 +150,13 @@ export function PtHubActionCenter({
 
       <div className="relative space-y-4">
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/90">
-            Action center
-          </p>
+          <p className="pt-hub-kicker">Action center</p>
           <h2 className="text-balance text-[2.05rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.55rem]">
-            {mode === "activation"
-              ? "Needs attention before launch."
-              : "Needs attention now."}
+            Everything that needs attention.
           </h2>
-          {helperText ? (
-            <p className="max-w-2xl text-[0.95rem] leading-6 text-muted-foreground">
-              {helperText}
-            </p>
-          ) : null}
+          <p className="max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
+            {helperText}
+          </p>
         </div>
 
         {items.length > 0 ? (
@@ -169,7 +164,7 @@ export function PtHubActionCenter({
             {items.map((item) => (
               <article
                 key={item.id}
-                className="pt-hub-interactive group grid gap-4 rounded-[24px] border border-transparent bg-transparent px-4 py-4 first:pt-1 sm:px-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center hover:bg-background/20"
+                className="pt-hub-interactive group grid gap-4 rounded-[24px] border border-transparent bg-transparent px-4 py-4 first:pt-1 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center hover:bg-background/20"
               >
                 <div className="min-w-0 space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -185,7 +180,7 @@ export function PtHubActionCenter({
                       {item.badge}
                     </span>
                   </div>
-                  <p className="max-w-2xl text-[0.95rem] leading-6 text-muted-foreground">
+                  <p className="max-w-4xl text-[0.95rem] leading-6 text-muted-foreground">
                     {item.description}
                   </p>
                 </div>
@@ -212,7 +207,7 @@ export function PtHubActionCenter({
                 <p className="text-[1rem] font-medium uppercase tracking-[0.04em] text-foreground">
                   Nothing urgent right now
                 </p>
-                <p className="mt-2 max-w-2xl text-[0.95rem] leading-6 text-muted-foreground">
+                <p className="mt-2 max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
                   You are caught up on the biggest blockers. Use the sections
                   below to keep momentum moving and look for the next growth
                   opportunity.
@@ -264,11 +259,11 @@ export function PtHubRecentActivityCard({
       ) : (
         <EmptyState
           title="Activity will build as you use the hub"
-          description="Profile progress, lead movement, and coaching space changes will surface here once the business starts moving."
+          description="Lead movement, client activity, and workspace changes will surface here once the business starts moving."
           icon={<Sparkles className="h-5 w-5 [stroke-width:1.7]" />}
           action={
             <Button asChild variant="secondary">
-              <Link to="/pt-hub/profile">Open coach profile</Link>
+              <Link to="/pt-hub/workspaces">Open coaching spaces</Link>
             </Button>
           }
           className="rounded-[26px] border-border/70 bg-background/34"
@@ -281,12 +276,16 @@ export function PtHubRecentActivityCard({
 export function PtHubLaunchChecklistCard({
   items,
   completionPercent,
+  title = "Launch checklist",
+  description,
 }: {
   items: PtHubOverviewChecklistItem[];
   completionPercent: number;
+  title?: string;
+  description?: string;
 }) {
   return (
-    <PtHubSectionCard title="Launch checklist">
+    <PtHubSectionCard title={title} description={description}>
       <div className="space-y-4">
         <div className="rounded-[20px] border border-border/55 bg-background/24 px-4 py-4 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -345,11 +344,15 @@ export function PtHubLaunchChecklistCard({
 
 export function PtHubQuickActionsCard({
   actions,
+  title = "Quick actions",
+  description,
 }: {
   actions: PtHubOverviewQuickAction[];
+  title?: string;
+  description?: string;
 }) {
   return (
-    <PtHubSectionCard title="Quick actions">
+    <PtHubSectionCard title={title} description={description}>
       <div className="-mx-1 divide-y divide-border/60">
         {actions.map((action) => (
           <Link

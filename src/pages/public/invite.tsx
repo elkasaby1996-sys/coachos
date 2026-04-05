@@ -27,6 +27,14 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import {
+  clearPendingInviteToken,
+  ensureClientProfile,
+  getUserAvatarUrl,
+  getUserDisplayName,
+  isClientAccountComplete,
+  persistPendingInviteToken,
+} from "../../lib/account-profiles";
+import {
   signInWithOAuth,
   signInWithOtpEmail,
   signInWithOtpPhone,
@@ -65,7 +73,7 @@ function getErrorMessage(err: unknown): string {
 export function InvitePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { session, loading, refreshRole } = useAuth();
+  const { accountType, loading, refreshRole, session } = useAuth();
   const [activeTab, setActiveTab] = useState<InviteTab>("social");
   const [inviteLoading, setInviteLoading] = useState(true);
   const [invite, setInvite] = useState<VerifyInviteRow | null>(null);
@@ -135,6 +143,7 @@ export function InvitePage() {
 
   useEffect(() => {
     if (!session?.user || !invite?.is_valid || !tokenValue) return;
+    if (accountType === "pt") return;
     if (acceptingInviteRef.current) return;
     const accept = async () => {
       acceptingInviteRef.current = true;
@@ -142,11 +151,31 @@ export function InvitePage() {
       setError(null);
       setNotice(null);
       try {
+        persistPendingInviteToken(tokenValue);
+        const clientProfile = await ensureClientProfile({
+          userId: session.user.id,
+          fullName:
+            window.localStorage.getItem("coachos_client_signup_name") ??
+            getUserDisplayName(session.user),
+          avatarUrl: getUserAvatarUrl(session.user),
+          email: session.user.email ?? null,
+        });
+        if (!isClientAccountComplete(clientProfile)) {
+          navigate(
+            `/client/onboarding/account?invite=${encodeURIComponent(tokenValue)}`,
+            { replace: true },
+          );
+          acceptingInviteRef.current = false;
+          setBusyAction(null);
+          return;
+        }
+
         const { error: acceptError } = await supabase.rpc("accept_invite", {
           p_token: tokenValue,
         });
         if (acceptError) throw acceptError;
         setNotice("Invite accepted. Redirecting...");
+        clearPendingInviteToken();
         await refreshRole?.();
         navigate("/app/onboarding", { replace: true });
       } catch (err) {
@@ -157,7 +186,14 @@ export function InvitePage() {
       }
     };
     accept();
-  }, [session?.user, invite?.is_valid, tokenValue, navigate, refreshRole]);
+  }, [
+    accountType,
+    session?.user,
+    invite?.is_valid,
+    tokenValue,
+    navigate,
+    refreshRole,
+  ]);
 
   const isRateLimited = (message: string) =>
     message.toLowerCase().includes("rate limit");
@@ -337,7 +373,12 @@ export function InvitePage() {
               </Alert>
             ) : null}
 
-            {session?.user ? (
+            {session?.user && accountType === "pt" ? (
+              <div className="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+                This account is set up as a coach. Sign out and use a client
+                account to accept this invite.
+              </div>
+            ) : session?.user ? (
               <div className="rounded-xl border border-border/70 bg-secondary/40 p-3 text-sm">
                 Signed in as{" "}
                 <span className="font-medium">

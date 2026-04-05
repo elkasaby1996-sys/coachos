@@ -32,6 +32,11 @@ export const PtSignupPage = lazy(() =>
     default: m.PtSignupPage,
   })),
 );
+export const ClientSignupPage = lazy(() =>
+  import("../pages/public/client-signup").then((m) => ({
+    default: m.ClientSignupPage,
+  })),
+);
 export const WelcomePage = lazy(() =>
   import("../pages/public/welcome").then((m) => ({ default: m.WelcomePage })),
 );
@@ -231,6 +236,11 @@ export const NotificationsPage = lazy(() =>
 
 export const ClientHomePage = lazy(() =>
   import("../pages/client/home").then((m) => ({ default: m.ClientHomePage })),
+);
+export const ClientAccountOnboardingPage = lazy(() =>
+  import("../pages/client/client-account-onboarding").then((m) => ({
+    default: m.ClientAccountOnboardingPage,
+  })),
 );
 export const ClientWorkoutDetailPage = lazy(() =>
   import("../pages/client/workout-detail").then((m) => ({
