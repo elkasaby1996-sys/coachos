@@ -56,21 +56,19 @@ const queryClient = new QueryClient({
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    {window.location.pathname === "/health" ? (
-      <HealthPage />
-    ) : (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <BrowserRouter>
-              <ErrorBoundary fallback={<p>Something went wrong.</p>}>
-                <App />
-              </ErrorBoundary>
-            </BrowserRouter>
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    )}
-  </React.StrictMode>,
+  window.location.pathname === "/health" ? (
+    <HealthPage />
+  ) : (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <ErrorBoundary fallback={<p>Something went wrong.</p>}>
+              <App />
+            </ErrorBoundary>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  ),
 );

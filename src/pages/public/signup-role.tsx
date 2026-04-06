@@ -1,48 +1,38 @@
-import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
-
-function extractInviteToken(input: string): string {
-  const value = input.trim();
-  if (!value) return "";
-
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    try {
-      const url = new URL(value);
-      const parts = url.pathname.split("/").filter(Boolean);
-      const inviteIndex = parts.findIndex(
-        (p) => p === "invite" || p === "join",
-      );
-      if (inviteIndex >= 0 && parts[inviteIndex + 1]) {
-        return parts[inviteIndex + 1] ?? "";
-      }
-      return "";
-    } catch {
-      return "";
-    }
-  }
-
-  return value;
-}
+import { Button } from "../../components/ui/button";
+import { getAuthenticatedRedirectPath, useAuth } from "../../lib/auth";
 
 export function SignupRolePage() {
-  const navigate = useNavigate();
-  const [inviteInput, setInviteInput] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const {
+    accountType,
+    clientAccountComplete,
+    clientWorkspaceOnboardingHardGateRequired,
+    hasWorkspaceMembership,
+    loading,
+    pendingInviteToken,
+    ptProfileComplete,
+    ptWorkspaceComplete,
+    session,
+  } = useAuth();
 
-  const onContinueClient = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const token = extractInviteToken(inviteInput);
-    if (!token) {
-      setError("Enter a valid invite code or invite link.");
-      return;
-    }
-    setError(null);
-    navigate(`/invite/${token}`);
-  };
+  if (!loading && session) {
+    return (
+      <Navigate
+        to={getAuthenticatedRedirectPath({
+          accountType,
+          hasWorkspaceMembership,
+          ptWorkspaceComplete,
+          ptProfileComplete,
+          clientAccountComplete,
+          clientWorkspaceOnboardingHardGateRequired,
+          pendingInviteToken,
+        })}
+        replace
+      />
+    );
+  }
 
   return (
     <AuthBackdrop contentClassName="max-w-2xl">
@@ -59,47 +49,39 @@ export function SignupRolePage() {
         <div className="space-y-2 text-center">
           <h1 className="auth-shell-title">Create your account</h1>
           <p className="auth-shell-subtitle">
-            Select your role to continue.
+            Pick the path that matches how you'll use Repsync.
           </p>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="surface-section p-4">
             <h3 className="text-base font-semibold text-foreground">
-              I am a PT
+              I'm a Coach
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Coaches can create a new account and set up their workspace.
+              Create a PT account, set up your workspace, and finish your coach profile.
             </p>
             <Button asChild className="mt-4 h-11 w-full">
-              <Link to="/signup/pt">Continue as PT</Link>
+              <Link to="/signup/pt">Continue as coach</Link>
             </Button>
           </div>
 
-          <form className="surface-section p-4" onSubmit={onContinueClient}>
+          <div className="surface-section p-4">
             <h3 className="text-base font-semibold text-foreground">
-              I am a client
+              I'm a Client
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Clients must join using an invite code or invite link from their
-              PT.
+              Create your account now and connect to a coach later when you have an invite.
             </p>
-            <Input
-              className="mt-4 h-11 border-border/70 bg-background/80"
-              placeholder="Paste invite code or full invite link"
-              value={inviteInput}
-              onChange={(event) => setInviteInput(event.target.value)}
-            />
-            {error ? (
-              <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </div>
-            ) : null}
-            <Button className="mt-3 h-11 w-full" type="submit">
-              Continue with invite
+            <Button asChild className="mt-4 h-11 w-full">
+              <Link to="/signup/client">Continue as client</Link>
             </Button>
-          </form>
+          </div>
         </div>
+
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          Already have an invite link? Open it directly, or sign in and paste it on the no-workspace screen later.
+        </p>
       </div>
     </AuthBackdrop>
   );

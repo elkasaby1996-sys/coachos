@@ -2,17 +2,16 @@ import {
   Building,
   MessageSquarePlus,
   Sparkles,
-  UserRound,
   UsersRound,
   Wallet,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import {
   PtHubActionCenter,
   PtHubLaunchChecklistCard,
   PtHubOverviewErrorState,
   PtHubOverviewLoadingState,
-  PtHubQuickActionsCard,
   PtHubRecentActivityCard,
   PtHubSummaryCard,
   type PtHubOverviewActivityItem,
@@ -36,17 +35,27 @@ import type {
   PTWorkspaceSummary,
 } from "../../features/pt-hub/types";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { cn } from "../../lib/utils";
 
 const metricIconMap = {
-  "profile-readiness": UserRound,
-  "launch-blockers": Sparkles,
+  "business-setup": Sparkles,
   "coaching-spaces": Building,
+  "active-clients": UsersRound,
   "new-leads-month": MessageSquarePlus,
   "awaiting-response": MessageSquarePlus,
   "clients-needing-attention": UsersRound,
   "checkins-overdue": UsersRound,
   "monthly-revenue": Wallet,
+  "monthly-earnings": Wallet,
 } as const;
+
+function getMetricGridClassName(metricCount: number) {
+  if (metricCount >= 5) return "xl:grid-cols-5";
+  if (metricCount === 4) return "xl:grid-cols-4";
+  if (metricCount === 3) return "lg:grid-cols-3";
+  if (metricCount === 2) return "sm:grid-cols-2";
+  return "grid-cols-1";
+}
 
 export function PtHubOverviewPage() {
   const overviewQuery = usePtHubOverview();
@@ -127,14 +136,17 @@ export function PtHubOverviewPage() {
     readiness,
     profilePublished: publicationState?.isPublished ?? false,
   });
+  const showBusinessSetup = dashboardModel.setupCompletionPercent < 100;
+  const metricGridClassName = getMetricGridClassName(
+    dashboardModel.metrics.length,
+  );
 
   return (
     <section className="space-y-7">
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className={cn("grid gap-4", metricGridClassName)}>
         {dashboardModel.metrics.map((metric) => {
           const Icon = metricIconMap[metric.id as keyof typeof metricIconMap];
-
-          return (
+          const card = (
             <StatCard
               key={metric.id}
               surface="pt-hub"
@@ -144,59 +156,75 @@ export function PtHubOverviewPage() {
               icon={Icon}
               accent={metric.accent}
               delta={metric.delta}
+              className="h-full"
             />
+          );
+
+          if (!metric.href) return card;
+
+          return (
+            <Link key={metric.id} to={metric.href} className="block h-full">
+              {card}
+            </Link>
           );
         })}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_380px]">
-        <PtHubActionCenter
-          items={dashboardModel.actionItems}
-          mode={dashboardModel.mode}
+      <PtHubActionCenter
+        items={dashboardModel.actionItems}
+        mode={dashboardModel.mode}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <PtHubSummaryCard
+          title="Lead pipeline"
+          description="What is coming into the business and where follow-up is needed."
+          items={dashboardModel.pipelineSummary}
+          isEmpty={leads.length === 0}
+          emptyState={{
+            title: "No leads in the pipeline yet",
+            description:
+              "A clear coach page and a shareable public presence are the fastest way to create the first real lead flow.",
+            href: "/pt-hub/profile/preview",
+            ctaLabel: "Open public preview",
+          }}
+        />
+        <PtHubSummaryCard
+          title="Client delivery"
+          description="A quick read on who needs support, follow-up, or onboarding help."
+          items={dashboardModel.clientHealthSummary}
+          isEmpty={clients.length === 0}
+          emptyState={{
+            title: "No clients to review yet",
+            description:
+              "Once clients join, this section will surface onboarding gaps, overdue check-ins, and risk signals.",
+            href: "/pt-hub/workspaces",
+            ctaLabel: "Open coaching spaces",
+          }}
         />
         <PtHubRecentActivityCard items={recentActivityItems} />
       </div>
 
-      {dashboardModel.mode === "activation" ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
+      {showBusinessSetup ? (
+        <div className="grid gap-6">
           <PtHubLaunchChecklistCard
+            title="Business setup"
+            description="Finish the foundation across workspace, coach page, and first-demand readiness."
             items={dashboardModel.launchChecklist}
-            completionPercent={readiness?.completionPercent ?? 0}
+            completionPercent={dashboardModel.setupCompletionPercent}
           />
-          <PtHubQuickActionsCard actions={dashboardModel.quickActions} />
         </div>
-      ) : (
-        <div className="grid gap-6 xl:grid-cols-3">
+      ) : null}
+
+      {dashboardModel.mode !== "activation" ? (
+        <div className="grid gap-6">
           <PtHubSummaryCard
-            title="Lead pipeline"
-            items={dashboardModel.pipelineSummary}
-            isEmpty={leads.length === 0}
-            emptyState={{
-              title: "No leads in the pipeline yet",
-              description:
-                "A live public profile and a shareable coach page are the fastest way to create the first real lead flow.",
-              href: "/pt-hub/profile/preview",
-              ctaLabel: "Open public preview",
-            }}
-          />
-          <PtHubSummaryCard
-            title="Client health"
-            items={dashboardModel.clientHealthSummary}
-            isEmpty={clients.length === 0}
-            emptyState={{
-              title: "No clients to review yet",
-              description:
-                "Once clients join, this section will surface onboarding gaps, overdue check-ins, and risk signals.",
-              href: "/pt-hub/workspaces",
-              ctaLabel: "Open coaching spaces",
-            }}
-          />
-          <PtHubSummaryCard
-            title="Billing snapshot"
+            title="Revenue and billing"
+            description="Commercial health for the coaching business."
             items={dashboardModel.billingSummary}
           />
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

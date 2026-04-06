@@ -48,6 +48,7 @@ import {
 } from "../lib/client-onboarding";
 import {
   getOnboardingSectionForStep,
+  saveClientCanonicalBasics,
   saveClientOnboardingDraft,
   submitClientOnboarding,
   updateClientOnboardingStepState,
@@ -282,10 +283,11 @@ export function ClientOnboardingShell() {
     setDraft({
       basics: {
         display_name:
+          summary.client.full_name ??
           summary.onboarding.basics?.display_name ??
           summary.client.display_name ??
           "",
-        phone: summary.onboarding.basics?.phone ?? summary.client.phone ?? "",
+        phone: summary.client.phone ?? summary.onboarding.basics?.phone ?? "",
         email:
           summary.onboarding.basics?.email ??
           summary.client.email ??
@@ -308,10 +310,57 @@ export function ClientOnboardingShell() {
               "",
           ),
         gender:
-          summary.onboarding.basics?.gender ?? summary.client.gender ?? "",
+          summary.client.sex ??
+          summary.client.gender ??
+          summary.onboarding.basics?.gender ??
+          "",
         unit_preference:
           summary.onboarding.basics?.unit_preference ??
           summary.client.unit_preference ??
+          "",
+        date_of_birth:
+          summary.client.date_of_birth ??
+          summary.client.dob ??
+          summary.onboarding.basics?.date_of_birth ??
+          "",
+        height_value:
+          summary.client.height_value !== null &&
+          summary.client.height_value !== undefined
+            ? String(summary.client.height_value)
+            : summary.client.height_cm !== null &&
+                summary.client.height_cm !== undefined
+              ? String(summary.client.height_cm)
+              : summary.onboarding.basics?.height_value !== null &&
+                  summary.onboarding.basics?.height_value !== undefined
+                ? String(summary.onboarding.basics?.height_value)
+                : "",
+        height_unit:
+          summary.client.height_unit ??
+          (summary.client.height_cm !== null &&
+          summary.client.height_cm !== undefined
+            ? "cm"
+            : null) ??
+          summary.onboarding.basics?.height_unit ??
+          "cm",
+        weight_value_current:
+          summary.client.weight_value_current !== null &&
+          summary.client.weight_value_current !== undefined
+            ? String(summary.client.weight_value_current)
+            : summary.client.current_weight !== null &&
+                summary.client.current_weight !== undefined
+              ? String(summary.client.current_weight)
+              : summary.onboarding.basics?.weight_value_current !== null &&
+                  summary.onboarding.basics?.weight_value_current !== undefined
+                ? String(summary.onboarding.basics?.weight_value_current)
+                : "",
+        weight_unit:
+          summary.client.weight_unit ??
+          summary.onboarding.basics?.weight_unit ??
+          (summary.client.unit_preference === "imperial" ? "lb" : "kg"),
+        avatar_url:
+          summary.client.avatar_url ??
+          summary.client.photo_url ??
+          summary.onboarding.basics?.avatar_url ??
           "",
       },
       goals: {
@@ -468,6 +517,21 @@ export function ClientOnboardingShell() {
           progress,
           currentStep,
         });
+
+        if (currentStep === "basics") {
+          await saveClientCanonicalBasics({
+            clientId: summary.client.id,
+            fullName: draft.basics.display_name,
+            phone: draft.basics.phone,
+            dateOfBirth: draft.basics.date_of_birth,
+            sex: draft.basics.gender,
+            avatarUrl: draft.basics.avatar_url,
+            heightValue: draft.basics.height_value,
+            heightUnit: draft.basics.height_unit,
+            weightValueCurrent: draft.basics.weight_value_current,
+            weightUnit: draft.basics.weight_unit,
+          });
+        }
 
         await saveClientOnboardingDraft({
           onboardingId: summary.onboarding.id,
@@ -638,11 +702,25 @@ export function ClientOnboardingShell() {
       values: [
         ["Full name", draft.basics.display_name],
         ["Phone", draft.basics.phone],
+        ["Date of birth", draft.basics.date_of_birth],
+        ["Sex / gender", draft.basics.gender],
+        [
+          "Height",
+          draft.basics.height_value
+            ? `${draft.basics.height_value} ${draft.basics.height_unit}`
+            : "",
+        ],
+        [
+          "Current weight",
+          draft.basics.weight_value_current
+            ? `${draft.basics.weight_value_current} ${draft.basics.weight_unit}`
+            : "",
+        ],
         ["Email", draft.basics.email],
         ["Location", draft.basics.location],
         ["Timezone", draft.basics.timezone],
-        ["Gender", draft.basics.gender],
         ["Units", draft.basics.unit_preference],
+        ["Avatar URL", draft.basics.avatar_url],
       ],
     },
     {
@@ -979,10 +1057,69 @@ export function ClientOnboardingShell() {
                 <StepField label="Email" required>
                   <Input
                     value={draft.basics.email}
-                    disabled
-                    readOnly
+                    onChange={(event) =>
+                      setDraft((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              basics: {
+                                ...prev.basics,
+                                email: event.target.value,
+                              },
+                            }
+                          : prev,
+                      )
+                    }
+                    disabled={!summary.canEdit}
                     placeholder="you@example.com"
                   />
+                </StepField>
+                <StepField label="Date of birth" required>
+                  <Input
+                    type="date"
+                    value={draft.basics.date_of_birth}
+                    onChange={(event) =>
+                      setDraft((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              basics: {
+                                ...prev.basics,
+                                date_of_birth: event.target.value,
+                              },
+                            }
+                          : prev,
+                      )
+                    }
+                    disabled={!summary.canEdit}
+                  />
+                </StepField>
+                <StepField label="Sex / gender" required>
+                  <select
+                    className={selectClassName}
+                    value={draft.basics.gender}
+                    onChange={(event) =>
+                      setDraft((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              basics: {
+                                ...prev.basics,
+                                gender: event.target.value,
+                              },
+                            }
+                          : prev,
+                      )
+                    }
+                    disabled={!summary.canEdit}
+                  >
+                    <option value="">Select</option>
+                    {genderOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </StepField>
                 <StepField label="Location" required>
                   <select
@@ -1022,35 +1159,118 @@ export function ClientOnboardingShell() {
                     placeholder="Asia/Riyadh"
                   />
                 </StepField>
-                <StepField label="Gender" optional>
-                  <select
-                    className={selectClassName}
-                    value={draft.basics.gender}
-                    onChange={(event) =>
-                      setDraft((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              basics: {
-                                ...prev.basics,
-                                gender: event.target.value,
-                              },
-                            }
-                          : prev,
-                      )
-                    }
-                    disabled={!summary.canEdit}
-                  >
-                    <option value="">Select gender</option>
-                    {genderOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                <StepField label="Height" required>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={draft.basics.height_value}
+                      onChange={(event) =>
+                        setDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                basics: {
+                                  ...prev.basics,
+                                  height_value: event.target.value,
+                                },
+                              }
+                            : prev,
+                        )
+                      }
+                      disabled={!summary.canEdit}
+                    />
+                    <select
+                      className={selectClassName}
+                      value={draft.basics.height_unit}
+                      onChange={(event) =>
+                        setDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                basics: {
+                                  ...prev.basics,
+                                  height_unit: event.target.value,
+                                },
+                              }
+                            : prev,
+                        )
+                      }
+                      disabled={!summary.canEdit}
+                    >
+                      <option value="cm">cm</option>
+                      <option value="in">in</option>
+                    </select>
+                  </div>
+                </StepField>
+                <StepField label="Current weight" required>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={draft.basics.weight_value_current}
+                      onChange={(event) =>
+                        setDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                basics: {
+                                  ...prev.basics,
+                                  weight_value_current: event.target.value,
+                                },
+                              }
+                            : prev,
+                        )
+                      }
+                      disabled={!summary.canEdit}
+                    />
+                    <select
+                      className={selectClassName}
+                      value={draft.basics.weight_unit}
+                      onChange={(event) =>
+                        setDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                basics: {
+                                  ...prev.basics,
+                                  weight_unit: event.target.value,
+                                },
+                              }
+                            : prev,
+                        )
+                      }
+                      disabled={!summary.canEdit}
+                    >
+                      <option value="kg">kg</option>
+                      <option value="lb">lb</option>
+                    </select>
+                  </div>
                 </StepField>
                 <div className="md:col-span-2">
-                  <StepField label="Unit preference" required>
+                  <StepField label="Avatar URL" optional>
+                    <Input
+                      value={draft.basics.avatar_url}
+                      onChange={(event) =>
+                        setDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                basics: {
+                                  ...prev.basics,
+                                  avatar_url: event.target.value,
+                                },
+                              }
+                            : prev,
+                        )
+                      }
+                      disabled={!summary.canEdit}
+                      placeholder="https://..."
+                    />
+                  </StepField>
+                </div>
+                <div className="md:col-span-2">
+                  <StepField label="Unit preference" optional>
                     <select
                       className={selectClassName}
                       value={draft.basics.unit_preference}

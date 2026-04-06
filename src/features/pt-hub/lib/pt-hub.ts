@@ -265,6 +265,16 @@ function normalizeSocialLinks(raw?: unknown) {
   });
 }
 
+function createTransformationId(seed: string, index: number) {
+  const normalizedSeed = seed
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalizedSeed ? `${normalizedSeed}-${index + 1}` : `transformation-${index + 1}`;
+}
+
 function normalizeTestimonials(raw?: unknown) {
   const source = Array.isArray(raw) ? raw : [];
   return source
@@ -289,20 +299,43 @@ function normalizeTransformations(raw?: unknown) {
   const source = Array.isArray(raw) ? raw : [];
   return source
     .filter((item) => item && typeof item === "object")
-    .map((item) => {
+    .map((item, index) => {
       const transformation = item as Record<string, unknown>;
+      const title =
+        typeof transformation.title === "string"
+          ? transformation.title.trim()
+          : "";
+      const summary =
+        typeof transformation.summary === "string"
+          ? transformation.summary.trim()
+          : "";
+      const beforeImageUrl =
+        typeof transformation.beforeImageUrl === "string"
+          ? transformation.beforeImageUrl.trim() || null
+          : null;
+      const afterImageUrl =
+        typeof transformation.afterImageUrl === "string"
+          ? transformation.afterImageUrl.trim() || null
+          : null;
+
       return {
-        title:
-          typeof transformation.title === "string"
-            ? transformation.title.trim()
-            : "",
-        summary:
-          typeof transformation.summary === "string"
-            ? transformation.summary.trim()
-            : "",
+        id:
+          typeof transformation.id === "string" && transformation.id.trim()
+            ? transformation.id.trim()
+            : createTransformationId(title || summary, index),
+        title,
+        summary,
+        beforeImageUrl,
+        afterImageUrl,
       } satisfies PTPublicTransformation;
     })
-    .filter((item) => item.title && item.summary);
+    .filter(
+      (item) =>
+        item.title ||
+        item.summary ||
+        item.beforeImageUrl ||
+        item.afterImageUrl,
+    );
 }
 
 export function slugifyValue(value: string) {
@@ -971,6 +1004,7 @@ export function usePtHubPayments() {
 export function usePtHubAnalytics() {
   const leadsQuery = usePtHubLeads();
   const clientsQuery = usePtHubClients();
+  const profileQuery = usePtHubProfile();
   const readinessQuery = usePtHubProfileReadiness();
 
   return useQuery({
@@ -978,9 +1012,11 @@ export function usePtHubAnalytics() {
       "pt-hub-analytics",
       leadsQuery.data,
       clientsQuery.data,
+      profileQuery.data,
       readinessQuery.data,
     ],
     enabled:
+      profileQuery.isSuccess &&
       leadsQuery.isSuccess &&
       clientsQuery.isSuccess &&
       readinessQuery.isSuccess,
@@ -1043,8 +1079,10 @@ export function usePtHubAnalytics() {
           isLifecycleCoached(client.lifecycleState),
         ).length,
         profileCompletionPercent: readinessQuery.data?.completionPercent ?? 0,
-        testimonialCountLabel: "Placeholder",
-        transformationsCountLabel: "Placeholder",
+        testimonialCountLabel: String(profileQuery.data?.testimonials.length ?? 0),
+        transformationsCountLabel: String(
+          profileQuery.data?.transformations.length ?? 0,
+        ),
         growthTrendLabel,
         clientsByWorkspace: Array.from(clientsByWorkspace.values()).sort(
           (a, b) => b.clientCount - a.clientCount,
@@ -1278,7 +1316,21 @@ export async function savePtHubProfile(params: {
     banner_image_url: params.profile.bannerImageUrl?.trim() || null,
     social_links: normalizeSocialLinks(params.profile.socialLinks),
     testimonials: params.profile.testimonials,
-    transformations: params.profile.transformations,
+    transformations: params.profile.transformations
+      .map((item, index) => ({
+        id: item.id?.trim() || createTransformationId(item.title, index),
+        title: item.title.trim(),
+        summary: item.summary.trim(),
+        beforeImageUrl: item.beforeImageUrl?.trim() || null,
+        afterImageUrl: item.afterImageUrl?.trim() || null,
+      }))
+      .filter(
+        (item) =>
+          item.title ||
+          item.summary ||
+          item.beforeImageUrl ||
+          item.afterImageUrl,
+      ),
   };
 
   const { error } = await supabase.from("pt_hub_profiles").upsert(

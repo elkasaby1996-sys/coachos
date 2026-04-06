@@ -24,6 +24,7 @@ export function PtHubProfilePage() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
 
   if (
     !profileQuery.data ||
@@ -69,7 +70,13 @@ export function PtHubProfilePage() {
       />
 
       {message ? (
-        <div className="rounded-[24px] border border-success/20 bg-success/10 px-4 py-3 text-sm text-success">
+        <div
+          className={
+            messageTone === "success"
+              ? "rounded-[24px] border border-success/20 bg-success/10 px-4 py-3 text-sm text-success"
+              : "rounded-[24px] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          }
+        >
           {message}
         </div>
       ) : null}
@@ -101,8 +108,16 @@ export function PtHubProfilePage() {
             await queryClient.invalidateQueries({
               queryKey: ["public-pt-profile"],
             });
+            setMessageTone("success");
             setMessage("Coach profile saved.");
             window.setTimeout(() => setMessage(null), 2200);
+          } catch (error) {
+            setMessageTone("error");
+            setMessage(
+              error instanceof Error
+                ? error.message
+                : "Unable to save coach profile.",
+            );
           } finally {
             setSaving(false);
           }
@@ -124,12 +139,20 @@ export function PtHubProfilePage() {
             await queryClient.invalidateQueries({
               queryKey: ["public-pt-profile"],
             });
+            setMessageTone("success");
             setMessage(
               nextPublished
                 ? "Coach profile published."
                 : "Coach profile unpublished.",
             );
             window.setTimeout(() => setMessage(null), 2600);
+          } catch (error) {
+            setMessageTone("error");
+            setMessage(
+              error instanceof Error
+                ? error.message
+                : "Unable to update publication state.",
+            );
           } finally {
             setPublishing(false);
           }

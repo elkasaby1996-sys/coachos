@@ -154,6 +154,138 @@
     --portal-page-gap: 1.5rem;
   }
 
+  :root {
+    color-scheme: dark;
+    --bg-canvas: 0.12 0.01 260;
+    --bg-sidebar: 0.16 0.011 260;
+    --bg-surface: 0.18 0.01 260;
+    --bg-surface-elevated: 0.21 0.012 260;
+    --bg-muted: 0.22 0.01 260;
+    --bg-input: 0.24 0.01 260;
+    --text-primary: 0.95 0 0;
+    --text-secondary: 0.84 0.004 255;
+    --text-muted: 0.68 0 0;
+    --text-on-accent: 0.12 0.01 260;
+    --border-subtle: 0.24 0.01 260;
+    --border-default: 0.28 0.01 260;
+    --border-strong: 0.36 0.014 260;
+    --accent: 0.75 0.18 195;
+    --accent-hover: 0.78 0.18 195;
+    --success: 0.7 0.18 155;
+    --warning: 0.8 0.15 85;
+    --danger: 0.65 0.2 25;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --accent-foreground: var(--text-on-accent);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
+    --chart-1: 0.75 0.18 195;
+    --chart-2: 0.74 0.14 155;
+    --chart-3: 0.66 0.11 245;
+    --chart-4: 0.8 0.15 85;
+    --chart-5: 0.65 0.2 25;
+    --shell-canvas:
+      radial-gradient(
+        circle at top left,
+        oklch(var(--accent) / 0.16),
+        transparent 24%
+      ),
+      linear-gradient(180deg, oklch(var(--bg-canvas)), oklch(var(--bg-sidebar)));
+    --sidebar-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-sidebar) / 0.98),
+      oklch(var(--bg-sidebar) / 0.94)
+    );
+    --surface-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.98),
+      oklch(var(--bg-muted) / 0.96)
+    );
+    --surface-strong-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.96)
+    );
+    --surface-portal-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.95)
+    );
+    --section-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.72),
+      oklch(var(--bg-surface) / 0.62)
+    );
+    --dashed-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.72),
+      oklch(var(--bg-sidebar) / 0.64)
+    );
+    --popover-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.96)
+    );
+    --dialog-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.95)
+    );
+    --topbar-bg: oklch(var(--bg-sidebar) / 0.74);
+    --sticky-bar-bg: oklch(var(--bg-surface) / 0.9);
+    --overlay-bg: oklch(0.08 0.01 260 / 0.72);
+    --surface-shadow: 0 24px 70px -52px oklch(0.02 0 0 / 0.55);
+    --surface-strong-shadow: 0 26px 76px -50px oklch(0.02 0 0 / 0.6);
+    --surface-portal-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.55),
+      0 28px 80px -48px oklch(0.02 0 0 / 0.62);
+    --popover-shadow: 0 22px 64px -40px oklch(0.02 0 0 / 0.6);
+    --dialog-shadow: 0 28px 84px -50px oklch(0.02 0 0 / 0.65);
+    --sticky-shadow: 0 22px 56px -40px oklch(0.02 0 0 / 0.56);
+    --skeleton-shimmer: linear-gradient(
+      110deg,
+      transparent,
+      oklch(var(--text-primary) / 0.08),
+      transparent
+    );
+    --portal-page-bg: var(--shell-canvas);
+    --field-glass-bg:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.9),
+        oklch(var(--bg-surface) / 0.74)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.05), transparent 48%);
+    --field-glass-bg-focus:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.96),
+        oklch(var(--bg-surface) / 0.78)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 46%);
+    --field-glass-border: oklch(var(--border-subtle) / 0.9);
+    --field-glass-border-focus: oklch(var(--accent) / 0.42);
+    --field-glass-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.04),
+      0 18px 36px -28px oklch(0.02 0 0 / 0.32);
+    --field-glass-shadow-focus:
+      inset 0 1px 0 oklch(1 0 0 / 0.06),
+      0 22px 42px -28px oklch(0.02 0 0 / 0.36);
+    --field-glass-ring: oklch(var(--accent) / 0.22);
+    --field-glass-placeholder: oklch(var(--text-muted) / 0.94);
+  }
+
   .light {
     color-scheme: light;
     --bg-canvas: 0.97 0.005 255;
@@ -1292,6 +1424,11 @@
 
   .ops-kicker {
     @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .pt-hub-kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.22em];
+    color: oklch(var(--foreground) / 0.82);
   }
 
   .ops-surface {

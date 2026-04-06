@@ -9,31 +9,120 @@ import React, {
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import {
+  type AccountType,
+  type ClientProfileRow,
+  type PtProfileRow,
+  getCanonicalPtProfile,
+  getPendingInviteToken,
+  isClientAccountComplete,
+  isPtProfileComplete,
+} from "./account-profiles";
 import { supabase, supabaseConfigured } from "./supabase";
 
 export type AppRole = "pt" | "client" | "none";
 
-interface AuthContextValue {
+type AuthBootstrapState = {
+  accountType: AccountType;
+  role: AppRole;
+  hasWorkspaceMembership: boolean;
+  ptWorkspaceComplete: boolean;
+  ptProfileComplete: boolean;
+  clientAccountComplete: boolean;
+  clientWorkspaceOnboardingHardGateRequired: boolean;
+  pendingInviteToken: string | null;
+  activeWorkspaceId: string | null;
+  activeClientId: string | null;
+  ptProfile: PtProfileRow | null;
+  clientProfile: ClientProfileRow | null;
+  bootstrapPath: string | null;
+};
+
+interface AuthContextValue extends AuthBootstrapState {
   user: User | null;
   session: Session | null;
   loading: boolean;
   authError: Error | null;
-  role: AppRole;
   refreshRole?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-const ROLE_LOOKUP_TIMEOUT_CODE = "ROLE_LOOKUP_TIMEOUT";
-const ROLE_STORAGE_KEY = "coachos_cached_role";
-const WORKSPACE_LOOKUP_TIMEOUT_MS = 2_500;
-const CLIENT_LOOKUP_TIMEOUT_STEPS_MS = [1_500, 3_000] as const;
 const SESSION_LOAD_TIMEOUT_MS = 30_000;
+const LOOKUP_TIMEOUT_MS = 3_000;
+const BOOTSTRAP_CACHE_PREFIX = "coachos_auth_bootstrap_v1";
+const PT_PROFILE_SELECT = [
+  "id",
+  "user_id",
+  "workspace_id",
+  "display_name",
+  "full_name",
+  "phone",
+  "avatar_url",
+  "coach_business_name",
+  "headline",
+  "bio",
+  "location_country",
+  "location_city",
+  "languages",
+  "specialties",
+  "starting_price",
+  "onboarding_completed_at",
+  "created_at",
+  "updated_at",
+].join(", ");
+const CLIENT_PROFILE_SELECT = [
+  "id",
+  "workspace_id",
+  "user_id",
+  "status",
+  "display_name",
+  "full_name",
+  "phone",
+  "email",
+  "avatar_url",
+  "photo_url",
+  "date_of_birth",
+  "dob",
+  "sex",
+  "gender",
+  "height_value",
+  "height_unit",
+  "height_cm",
+  "weight_value_current",
+  "weight_unit",
+  "current_weight",
+  "unit_preference",
+  "location",
+  "location_country",
+  "timezone",
+  "goal",
+  "injuries",
+  "limitations",
+  "equipment",
+  "days_per_week",
+  "gym_name",
+  "training_type",
+  "account_onboarding_completed_at",
+  "created_at",
+].join(", ");
 
-function getCachedRole(): AppRole {
-  if (typeof window === "undefined") return "none";
-  const value = window.localStorage.getItem(ROLE_STORAGE_KEY);
-  return value === "pt" || value === "client" ? value : "none";
-}
+type WorkspaceMembershipRow = {
+  workspace_id: string | null;
+  role: string | null;
+};
+
+type RedirectState = Pick<
+  AuthBootstrapState,
+  | "accountType"
+  | "hasWorkspaceMembership"
+  | "ptWorkspaceComplete"
+  | "ptProfileComplete"
+  | "clientAccountComplete"
+  | "clientWorkspaceOnboardingHardGateRequired"
+  | "pendingInviteToken"
+>;
+
+type CachedBootstrapState = Omit<AuthBootstrapState, "bootstrapPath">;
 
 function withTimeout<T>(
   promise: PromiseLike<T>,
@@ -59,175 +148,446 @@ async function ensureFreshSession(
 ): Promise<Session | null> {
   if (!session) return null;
   const expiresAtMs = (session.expires_at ?? 0) * 1000;
-  const now = Date.now();
-  if (expiresAtMs === 0 || expiresAtMs - now > 30_000) {
+  if (expiresAtMs === 0 || expiresAtMs - Date.now() > 30_000) {
     return session;
   }
 
   try {
     const { data, error } = await withTimeout(
       supabase.auth.refreshSession(),
-      10000,
+      10_000,
       "Session refresh timed out (10s).",
     );
-    if (error || !data.session) {
-      // Keep the current session when refresh transiently fails.
-      // Forced sign-out here can bounce users to /login during active flows.
-      console.warn("Session refresh failed; retaining current session.", error);
-      return session;
-    }
+    if (error || !data.session) return session;
     return data.session;
-  } catch (error) {
-    console.warn(
-      "Session refresh timed out/failed; retaining current session.",
-    );
+  } catch {
     return session;
   }
 }
 
-async function resolveRole(userId: string): Promise<{
-  role: AppRole;
-  workspaceMember: unknown;
-  clientMember: unknown;
-}> {
-  let workspaceLookupTimedOut = false;
-  let workspaceMember: {
-    data: Array<{ workspace_id: string | null; role: string | null }> | null;
-    error: unknown;
-  } = {
-    data: null,
-    error: null,
-  };
+function isInvalidRefreshTokenError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("invalid refresh token") ||
+    normalized.includes("refresh token not found")
+  );
+}
+
+async function clearBrokenLocalSession() {
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch {
+    // Ignore cleanup failures; the important part is clearing app state.
+  }
+}
+
+function getCurrentPathname() {
+  if (typeof window === "undefined") return "/";
+  return window.location.pathname;
+}
+
+function getBootstrapCacheKey(userId: string) {
+  return `${BOOTSTRAP_CACHE_PREFIX}:${userId}`;
+}
+
+function readCachedBootstrapState(
+  userId: string,
+  pathname: string,
+): AuthBootstrapState | null {
+  if (typeof window === "undefined") return null;
 
   try {
-    workspaceMember = await withTimeout(
+    const raw = window.localStorage.getItem(getBootstrapCacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedBootstrapState | null;
+    if (!parsed) return null;
+
+    return {
+      ...parsed,
+      bootstrapPath: getBootstrapPath(parsed, pathname),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedBootstrapState(
+  userId: string,
+  state: Omit<AuthBootstrapState, "bootstrapPath">,
+) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      getBootstrapCacheKey(userId),
+      JSON.stringify(state),
+    );
+  } catch {
+    // Ignore storage write issues.
+  }
+}
+
+function clearCachedBootstrapState(userId: string | null | undefined) {
+  if (typeof window === "undefined" || !userId) return;
+  window.localStorage.removeItem(getBootstrapCacheKey(userId));
+}
+
+function getActiveWorkspaceIdFromStorage() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("coachos_workspace_id");
+}
+
+function getSignupIntentFallback(): AccountType {
+  if (typeof window === "undefined") return "unknown";
+  const intent = window.localStorage.getItem("coachos_signup_intent");
+  if (intent === "pt" || intent === "client") return intent;
+  return "unknown";
+}
+
+function logLookupWarning(label: string, error: unknown) {
+  if (typeof console === "undefined") return;
+  console.warn(`[auth] ${label} lookup failed`, error);
+}
+
+async function safeLookup<T>(
+  label: string,
+  promise: PromiseLike<{ data: T | null; error: unknown }>,
+  fallback: T,
+) {
+  try {
+    const { data, error } = await withTimeout(
+      promise,
+      LOOKUP_TIMEOUT_MS,
+      `${label} lookup timed out (${Math.round(LOOKUP_TIMEOUT_MS / 1000)}s).`,
+    );
+    if (error) throw error;
+    return (data ?? fallback) as T;
+  } catch (error) {
+    logLookupWarning(label, error);
+    return fallback;
+  }
+}
+
+function resolveAccountType(params: {
+  ptProfile: PtProfileRow | null;
+  clientRows: ClientProfileRow[];
+  workspaceRows: WorkspaceMembershipRow[];
+  pathname: string;
+  signupIntent: AccountType;
+}): AccountType {
+  const hasPtProfile = Boolean(params.ptProfile);
+  const hasClientRows = params.clientRows.length > 0;
+  const hasPtWorkspace = params.workspaceRows.some((member) =>
+    member.role?.startsWith("pt"),
+  );
+  const hasClientWorkspace = params.clientRows.some((row) => row.workspace_id);
+
+  if (hasPtProfile && !hasClientRows) return "pt";
+  if (!hasPtProfile && hasClientRows) return "client";
+  if (hasPtWorkspace && !hasClientRows) return "pt";
+  if (hasClientWorkspace && !hasPtProfile && !hasPtWorkspace) return "client";
+  if (!hasPtProfile && !hasClientRows && params.signupIntent !== "unknown") {
+    return params.signupIntent;
+  }
+  if (hasPtWorkspace) return "pt";
+  if (hasClientWorkspace) return "client";
+  if (!hasPtProfile && !hasClientRows) return "unknown";
+
+  if (params.pathname.startsWith("/pt")) return "pt";
+  if (
+    params.pathname.startsWith("/app") ||
+    params.pathname.startsWith("/client") ||
+    params.pathname.startsWith("/invite/")
+  ) {
+    return "client";
+  }
+  if (hasPtWorkspace && !hasClientWorkspace) return "pt";
+  if (hasClientWorkspace && !hasPtWorkspace) return "client";
+  return hasPtProfile ? "pt" : "client";
+}
+
+function getActiveClientRow(params: {
+  accountType: AccountType;
+  clientRows: ClientProfileRow[];
+  workspaceId: string | null;
+}) {
+  if (params.accountType !== "client") return null;
+  const workspaceRows = params.clientRows.filter((row) => row.workspace_id);
+  if (params.workspaceId) {
+    const selected = workspaceRows.find(
+      (row) => row.workspace_id === params.workspaceId,
+    );
+    if (selected) return selected;
+  }
+  return workspaceRows[0] ?? params.clientRows[0] ?? null;
+}
+
+export function getAuthenticatedRedirectPath(state: RedirectState) {
+  if (state.accountType === "pt") {
+    if (!state.ptWorkspaceComplete) return "/pt/onboarding/workspace";
+    return "/pt-hub";
+  }
+
+  if (state.accountType === "client") {
+    if (!state.clientAccountComplete) {
+      const inviteQuery = state.pendingInviteToken
+        ? `?invite=${encodeURIComponent(state.pendingInviteToken)}`
+        : "";
+      return `/client/onboarding/account${inviteQuery}`;
+    }
+    if (!state.hasWorkspaceMembership) return "/no-workspace";
+    if (state.clientWorkspaceOnboardingHardGateRequired) {
+      return "/app/onboarding";
+    }
+    return "/app/home";
+  }
+
+  if (state.ptWorkspaceComplete) {
+    return "/pt-hub";
+  }
+
+  const signupIntent = getSignupIntentFallback();
+  if (signupIntent === "pt") {
+    return state.ptWorkspaceComplete ? "/pt-hub" : "/pt/onboarding/workspace";
+  }
+  if (signupIntent === "client") {
+    if (!state.clientAccountComplete) {
+      const inviteQuery = state.pendingInviteToken
+        ? `?invite=${encodeURIComponent(state.pendingInviteToken)}`
+        : "";
+      return `/client/onboarding/account${inviteQuery}`;
+    }
+    if (state.hasWorkspaceMembership) {
+      return state.clientWorkspaceOnboardingHardGateRequired
+        ? "/app/onboarding"
+        : "/app/home";
+    }
+    return "/no-workspace";
+  }
+
+  return "/no-workspace";
+}
+
+function getBootstrapPath(state: Omit<AuthBootstrapState, "bootstrapPath">, pathname: string) {
+  if (pathname.startsWith("/invite/")) return null;
+
+  return getAuthenticatedRedirectPath(state);
+}
+
+async function resolveBootstrapState(
+  user: User,
+  pathname: string,
+): Promise<Omit<AuthBootstrapState, "bootstrapPath">> {
+  const [ptProfileData, workspaceData, clientData] = await Promise.all([
+    safeLookup(
+      "PT profile",
+      supabase
+        .from("pt_profiles")
+        .select(PT_PROFILE_SELECT)
+        .eq("user_id", user.id)
+        .returns<PtProfileRow[]>()
+        .limit(25),
+      [] as PtProfileRow[],
+    ),
+    safeLookup(
+      "Workspace membership",
       supabase
         .from("workspace_members")
         .select("workspace_id, role")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
+        .returns<WorkspaceMembershipRow[]>()
         .limit(25),
-      WORKSPACE_LOOKUP_TIMEOUT_MS,
-      `Workspace membership lookup timed out (${Math.round(WORKSPACE_LOOKUP_TIMEOUT_MS / 1000)}s).`,
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("timed out")) {
-      workspaceLookupTimedOut = true;
-      workspaceMember = { data: null, error: null };
-    } else {
-      throw error;
-    }
-  }
+      [] as WorkspaceMembershipRow[],
+    ),
+    safeLookup(
+      "Client profile",
+      supabase
+        .from("clients")
+        .select(CLIENT_PROFILE_SELECT)
+        .eq("user_id", user.id)
+        .returns<ClientProfileRow[]>()
+        .limit(25),
+      [] as ClientProfileRow[],
+    ),
+  ]);
 
-  if (workspaceLookupTimedOut) {
-    const timeoutError = new Error(
-      "Role resolution failed due to workspace lookup timeout.",
-    );
-    timeoutError.name = ROLE_LOOKUP_TIMEOUT_CODE;
-    throw timeoutError;
-  }
+  const ptProfile = getCanonicalPtProfile(ptProfileData as PtProfileRow[]);
+  const workspaceRows = workspaceData as WorkspaceMembershipRow[];
+  const clientRows = ((clientData ?? []) as ClientProfileRow[]).sort((a, b) => {
+    if (!a.workspace_id && b.workspace_id) return -1;
+    if (a.workspace_id && !b.workspace_id) return 1;
+    return (a.created_at ?? "").localeCompare(b.created_at ?? "");
+  });
+  const storedWorkspaceId = getActiveWorkspaceIdFromStorage();
+  const signupIntent = getSignupIntentFallback();
+  const accountType = resolveAccountType({
+    ptProfile,
+    clientRows,
+    workspaceRows,
+    pathname,
+    signupIntent,
+  });
+  const activeClient = getActiveClientRow({
+    accountType,
+    clientRows,
+    workspaceId: storedWorkspaceId,
+  });
+  const inviteTokenFromPath = pathname.startsWith("/invite/")
+    ? pathname.split("/invite/")[1] ?? null
+    : null;
+  const pendingInviteToken = inviteTokenFromPath ?? getPendingInviteToken();
+  const ptWorkspaceComplete = workspaceRows.some((member) =>
+    member.role?.startsWith("pt"),
+  );
+  const hasWorkspaceMembership =
+    accountType === "pt"
+      ? ptWorkspaceComplete
+      : Boolean(activeClient?.workspace_id);
+  const clientAccountComplete = isClientAccountComplete(activeClient);
 
-  if (workspaceMember.error) throw workspaceMember.error;
-  const workspaceRows = workspaceMember.data ?? [];
-  const ptWorkspaceMember =
-    workspaceRows.find((member) => member.role?.startsWith("pt")) ?? null;
-  if (ptWorkspaceMember) {
-    return {
-      role: "pt",
-      workspaceMember: ptWorkspaceMember,
-      clientMember: null,
-    };
-  }
-
-  let clientMember: {
-    data: Array<{ id: string; workspace_id: string | null }> | null;
-    error: unknown;
-  } = {
-    data: null,
-    error: null,
+  return {
+    accountType,
+    role:
+      accountType === "pt"
+        ? "pt"
+        : accountType === "client"
+          ? "client"
+          : "none",
+    hasWorkspaceMembership,
+    ptWorkspaceComplete,
+    ptProfileComplete: isPtProfileComplete(ptProfile),
+    clientAccountComplete,
+    clientWorkspaceOnboardingHardGateRequired: Boolean(
+      activeClient?.workspace_id && !clientAccountComplete,
+    ),
+    pendingInviteToken,
+    activeWorkspaceId:
+      accountType === "pt"
+        ? storedWorkspaceId ??
+          workspaceRows.find((member) => member.workspace_id)?.workspace_id ??
+          null
+        : activeClient?.workspace_id ?? null,
+    activeClientId: activeClient?.id ?? null,
+    ptProfile,
+    clientProfile: activeClient,
   };
-  let clientLookupUnstable = false;
-  const clientQuery = `clients.select("id, workspace_id").eq("user_id", "${userId}")`;
+}
 
-  for (const timeoutMs of CLIENT_LOOKUP_TIMEOUT_STEPS_MS) {
-    try {
-      clientMember = await withTimeout(
-        supabase
-          .from("clients")
-          .select("id, workspace_id")
-          .eq("user_id", userId)
-          .limit(25),
-        timeoutMs,
-        `Client lookup timed out (${Math.round(timeoutMs / 1000)}s).`,
-      );
-      clientLookupUnstable = false;
-      break;
-    } catch (error) {
-      clientLookupUnstable = true;
-      if (error instanceof Error && error.message.includes("timed out")) {
-        console.warn("Client lookup timed out", {
-          userId,
-          query: clientQuery,
-          timeoutMs,
-        });
-      } else {
-        console.warn("Client lookup failed", {
-          userId,
-          query: clientQuery,
-          error,
-          timeoutMs,
-        });
-      }
-      clientMember = { data: null, error: null };
-    }
+const emptyBootstrapState: AuthBootstrapState = {
+  accountType: "unknown",
+  role: "none",
+  hasWorkspaceMembership: false,
+  ptWorkspaceComplete: false,
+  ptProfileComplete: false,
+  clientAccountComplete: false,
+  clientWorkspaceOnboardingHardGateRequired: false,
+  pendingInviteToken: null,
+  activeWorkspaceId: null,
+  activeClientId: null,
+  ptProfile: null,
+  clientProfile: null,
+  bootstrapPath: null,
+};
+
+function hasMeaningfulBootstrapState(
+  state: AuthBootstrapState | Omit<AuthBootstrapState, "bootstrapPath"> | null | undefined,
+) {
+  if (!state) return false;
+
+  return Boolean(
+    state.accountType !== "unknown" ||
+      state.hasWorkspaceMembership ||
+      state.ptWorkspaceComplete ||
+      state.clientAccountComplete ||
+      state.activeWorkspaceId ||
+      state.activeClientId ||
+      state.ptProfile ||
+      state.clientProfile,
+  );
+}
+
+function shouldPreservePreviousBootstrapState(params: {
+  nextState: Omit<AuthBootstrapState, "bootstrapPath">;
+  previousState: AuthBootstrapState | null;
+}) {
+  const { nextState, previousState } = params;
+  if (!hasMeaningfulBootstrapState(previousState)) return false;
+
+  const nextStateLooksEmpty = !hasMeaningfulBootstrapState(nextState);
+  if (nextStateLooksEmpty) return true;
+
+  if (
+    previousState?.accountType === "pt" &&
+    previousState.ptWorkspaceComplete &&
+    nextState.accountType !== "pt" &&
+    !nextState.ptWorkspaceComplete &&
+    !nextState.ptProfile
+  ) {
+    return true;
   }
 
-  if (clientMember.error) {
-    console.warn("Client lookup error", {
-      userId,
-      query: clientQuery,
-      error: clientMember.error,
-    });
-    return {
-      role: "none",
-      workspaceMember: workspaceMember.data,
-      clientMember: clientMember.data,
+  if (
+    previousState?.accountType === "client" &&
+    previousState.hasWorkspaceMembership &&
+    nextState.accountType === "unknown" &&
+    !nextState.clientProfile &&
+    !nextState.hasWorkspaceMembership
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function stabilizeBootstrapState(params: {
+  pathname: string;
+  nextState: Omit<AuthBootstrapState, "bootstrapPath">;
+  previousState?: AuthBootstrapState | null;
+  cachedState?: AuthBootstrapState | null;
+}) {
+  const { cachedState = null, nextState, pathname, previousState = null } = params;
+  const fallbackState = hasMeaningfulBootstrapState(previousState)
+    ? previousState
+    : hasMeaningfulBootstrapState(cachedState)
+      ? cachedState
+      : null;
+
+  if (
+    fallbackState &&
+    shouldPreservePreviousBootstrapState({
+      nextState,
+      previousState: fallbackState,
+    })
+  ) {
+    const stabilizedState: Omit<AuthBootstrapState, "bootstrapPath"> = {
+      accountType: fallbackState.accountType,
+      role: fallbackState.role,
+      hasWorkspaceMembership: fallbackState.hasWorkspaceMembership,
+      ptWorkspaceComplete: fallbackState.ptWorkspaceComplete,
+      ptProfileComplete: fallbackState.ptProfileComplete,
+      clientAccountComplete: fallbackState.clientAccountComplete,
+      clientWorkspaceOnboardingHardGateRequired:
+        fallbackState.clientWorkspaceOnboardingHardGateRequired,
+      pendingInviteToken:
+        nextState.pendingInviteToken ?? fallbackState.pendingInviteToken,
+      activeWorkspaceId:
+        nextState.activeWorkspaceId ?? fallbackState.activeWorkspaceId,
+      activeClientId: nextState.activeClientId ?? fallbackState.activeClientId,
+      ptProfile: nextState.ptProfile ?? fallbackState.ptProfile,
+      clientProfile: nextState.clientProfile ?? fallbackState.clientProfile,
     };
-  }
-  const clientRows = clientMember.data ?? [];
-  if (clientRows.length > 0) {
+
     return {
-      role: "client",
-      workspaceMember: ptWorkspaceMember,
-      clientMember: clientRows[0],
+      ...stabilizedState,
+      bootstrapPath: getBootstrapPath(stabilizedState, pathname),
     };
-  }
-
-  if (clientLookupUnstable) {
-    console.warn(
-      "Client lookup remained unstable; keeping role unresolved this pass",
-      {
-        userId,
-        query: clientQuery,
-      },
-    );
-    const timeoutError = new Error(
-      "Role resolution failed due to lookup timeout.",
-    );
-    timeoutError.name = ROLE_LOOKUP_TIMEOUT_CODE;
-    throw timeoutError;
-  }
-
-  if (!window.location.pathname.startsWith("/invite/")) {
-    console.warn("Client record not found or not accessible", {
-      userId,
-      query: clientQuery,
-    });
   }
 
   return {
-    role: "none",
-    workspaceMember: ptWorkspaceMember,
-    clientMember: null,
+    ...nextState,
+    bootstrapPath: getBootstrapPath(nextState, pathname),
   };
 }
 
@@ -235,66 +595,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<Error | null>(null);
-  const [role, setRole] = useState<AppRole>(() => getCachedRole());
-  const resolvingRef = useRef(false);
-  const lastResolveKeyRef = useRef("");
-  const roleRetryTimerRef = useRef<number | null>(null);
+  const [bootstrapState, setBootstrapState] =
+    useState<AuthBootstrapState>(emptyBootstrapState);
+  const resolveIdRef = useRef(0);
+  const hasResolvedInitialSessionRef = useRef(false);
+  const sessionRef = useRef<Session | null>(null);
+  const bootstrapStateRef = useRef<AuthBootstrapState>(emptyBootstrapState);
 
-  const resolveRoleOnce = useCallback(
-    async (userId: string, options?: { force?: boolean }) => {
-      const key = `${userId ?? "none"}`;
-      if (!options?.force) {
-        if (resolvingRef.current || lastResolveKeyRef.current === key) return;
-      }
-      resolvingRef.current = true;
-      let resolved = false;
-      let skippedDemotion = false;
-      try {
-        const result = await resolveRole(userId);
-        setRole((prev) => {
-          if (result.role === "none" && prev !== "none" && !options?.force) {
-            skippedDemotion = true;
-            return prev;
-          }
-          return prev === result.role ? prev : result.role;
-        });
-        if (!skippedDemotion) {
-          lastResolveKeyRef.current = key;
-          resolved = true;
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === ROLE_LOOKUP_TIMEOUT_CODE) {
-          // Keep the current role/session and silently retry on next pass.
-          // Showing a blocking auth error here interrupts otherwise valid sessions.
-          if (import.meta.env.DEV) {
-            console.debug(
-              "Role resolution timed out; keeping current auth state.",
-            );
-          }
-          setAuthError(null);
-          lastResolveKeyRef.current = "";
-          if (roleRetryTimerRef.current === null) {
-            roleRetryTimerRef.current = window.setTimeout(() => {
-              roleRetryTimerRef.current = null;
-              void resolveRoleOnce(userId, { force: true });
-            }, 1_500);
-          }
-          return;
-        }
-        console.error("Failed to resolve role", error);
-        setRole((prev) => (prev === "none" ? prev : prev));
-      } finally {
-        if (!resolved) {
-          lastResolveKeyRef.current = "";
-        }
-        resolvingRef.current = false;
-      }
-    },
-    [],
-  );
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    bootstrapStateRef.current = bootstrapState;
+  }, [bootstrapState]);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    writeCachedBootstrapState(userId, {
+      accountType: bootstrapState.accountType,
+      role: bootstrapState.role,
+      hasWorkspaceMembership: bootstrapState.hasWorkspaceMembership,
+      ptWorkspaceComplete: bootstrapState.ptWorkspaceComplete,
+      ptProfileComplete: bootstrapState.ptProfileComplete,
+      clientAccountComplete: bootstrapState.clientAccountComplete,
+      clientWorkspaceOnboardingHardGateRequired:
+        bootstrapState.clientWorkspaceOnboardingHardGateRequired,
+      pendingInviteToken: bootstrapState.pendingInviteToken,
+      activeWorkspaceId: bootstrapState.activeWorkspaceId,
+      activeClientId: bootstrapState.activeClientId,
+      ptProfile: bootstrapState.ptProfile,
+      clientProfile: bootstrapState.clientProfile,
+    });
+  }, [bootstrapState, session?.user?.id]);
 
   const refreshRole = useCallback(async () => {
-    setLoading(true);
     try {
       setAuthError(null);
       const { data, error } = await withTimeout(
@@ -302,41 +639,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         SESSION_LOAD_TIMEOUT_MS,
         `Session load timed out (${Math.round(SESSION_LOAD_TIMEOUT_MS / 1000)}s).`,
       );
-      if (error) {
-        setAuthError(new Error(error.message));
-        setSession(null);
-        setRole("none");
+      if (error) throw error;
+
+      const nextSession = await ensureFreshSession(data.session ?? null);
+      sessionRef.current = nextSession;
+      setSession(nextSession);
+
+      if (!nextSession?.user) {
+        clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
+        setBootstrapState(emptyBootstrapState);
         return;
       }
-      const nextSession = await ensureFreshSession(data.session ?? null);
-      setSession(nextSession);
-      const userId = nextSession?.user?.id ?? null;
-      if (userId) {
-        await resolveRoleOnce(userId, { force: true });
-      } else {
-        setRole((prev) => (prev === "none" ? prev : "none"));
-        lastResolveKeyRef.current = "";
-      }
-    } catch (error) {
-      setAuthError(error instanceof Error ? error : new Error(String(error)));
-      setSession(null);
-      setRole("none");
-    } finally {
-      setLoading(false);
-    }
-  }, [resolveRoleOnce]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (role === "pt" || role === "client") {
-      window.localStorage.setItem(ROLE_STORAGE_KEY, role);
-      return;
+      const pathname = getCurrentPathname();
+      const cachedState = readCachedBootstrapState(nextSession.user.id, pathname);
+      const nextStateBase = await resolveBootstrapState(nextSession.user, pathname);
+      setBootstrapState(
+        stabilizeBootstrapState({
+          pathname,
+          nextState: nextStateBase,
+          previousState: bootstrapStateRef.current,
+          cachedState,
+        }),
+      );
+    } catch (error) {
+      if (isInvalidRefreshTokenError(error)) {
+        await clearBrokenLocalSession();
+        sessionRef.current = null;
+        setSession(null);
+        setBootstrapState(emptyBootstrapState);
+        return;
+      }
+      logLookupWarning("Auth refresh", error);
     }
-    window.localStorage.removeItem(ROLE_STORAGE_KEY);
-  }, [role]);
+  }, []);
 
   useEffect(() => {
     let alive = true;
+    const currentResolveId = ++resolveIdRef.current;
 
     const init = async () => {
       setLoading(true);
@@ -355,33 +695,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           `Session load timed out (${Math.round(SESSION_LOAD_TIMEOUT_MS / 1000)}s).`,
         );
 
-        if (!alive) return;
+        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        if (error) throw error;
 
-        if (error) {
-          setAuthError(new Error(error.message));
-          setSession(null);
-          setRole("none");
+        const nextSession = await ensureFreshSession(data.session ?? null);
+        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        sessionRef.current = nextSession;
+        setSession(nextSession);
+
+        if (!nextSession?.user) {
+          clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
+          setBootstrapState(emptyBootstrapState);
           return;
         }
 
-        const nextSession = await ensureFreshSession(data.session ?? null);
-        setSession(nextSession);
-        const userId = nextSession?.user?.id ?? null;
-        if (userId) {
-          if (alive) {
-            await resolveRoleOnce(userId);
-          }
-        } else {
-          setRole((prev) => (prev === "none" ? prev : "none"));
-          lastResolveKeyRef.current = "";
+        const pathname = getCurrentPathname();
+        const cachedState = readCachedBootstrapState(nextSession.user.id, pathname);
+        if (cachedState) {
+          setBootstrapState(cachedState);
+          hasResolvedInitialSessionRef.current = true;
+          setLoading(false);
         }
+        const nextStateBase = await resolveBootstrapState(nextSession.user, pathname);
+        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        setBootstrapState(
+          stabilizeBootstrapState({
+            pathname,
+            nextState: nextStateBase,
+            previousState: bootstrapStateRef.current,
+            cachedState,
+          }),
+        );
       } catch (error) {
-        if (!alive) return;
+        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        if (isInvalidRefreshTokenError(error)) {
+          await clearBrokenLocalSession();
+        }
+        clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
+        sessionRef.current = null;
         setAuthError(error instanceof Error ? error : new Error(String(error)));
         setSession(null);
-        setRole("none");
+        setBootstrapState(emptyBootstrapState);
       } finally {
-        if (!alive) return;
+        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        hasResolvedInitialSessionRef.current = true;
         setLoading(false);
       }
     };
@@ -389,39 +746,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     init();
 
     const { data: sub } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
+      async (event, nextSession) => {
         if (!alive) return;
-        setLoading(true);
-        const nextSession = await ensureFreshSession(newSession ?? null);
-        setSession(nextSession);
+        if (event === "TOKEN_REFRESHED") {
+          sessionRef.current = nextSession ?? null;
+          setSession(nextSession ?? null);
+          return;
+        }
+
+        if (event === "SIGNED_OUT") {
+          clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
+          sessionRef.current = null;
+          setSession(null);
+          setBootstrapState(emptyBootstrapState);
+          hasResolvedInitialSessionRef.current = true;
+          setLoading(false);
+          return;
+        }
+
+        const shouldBlockUi =
+          !hasResolvedInitialSessionRef.current ||
+          (event === "SIGNED_IN" && !sessionRef.current);
+        if (shouldBlockUi) {
+          setLoading(true);
+        }
         try {
-          const userId = nextSession?.user?.id ?? null;
-          if (userId) {
-            if (alive) {
-              await resolveRoleOnce(userId);
-            }
-          } else {
-            setRole((prev) => (prev === "none" ? prev : "none"));
-            lastResolveKeyRef.current = "";
+          setAuthError(null);
+          const freshSession = await ensureFreshSession(nextSession ?? null);
+          sessionRef.current = freshSession;
+          setSession(freshSession);
+
+          if (!freshSession?.user) {
+            clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
+            setBootstrapState(emptyBootstrapState);
+            return;
           }
+
+          const pathname = getCurrentPathname();
+          const cachedState = readCachedBootstrapState(freshSession.user.id, pathname);
+          const nextStateBase = await resolveBootstrapState(
+            freshSession.user,
+            pathname,
+          );
+          if (!alive) return;
+          setBootstrapState(
+            stabilizeBootstrapState({
+              pathname,
+              nextState: nextStateBase,
+              previousState: bootstrapStateRef.current,
+              cachedState,
+            }),
+          );
         } catch (error) {
-          console.error("Failed to resolve role", error);
-          if (alive) setRole((prev) => (prev === "none" ? prev : "none"));
+          if (!alive) return;
+          if (isInvalidRefreshTokenError(error)) {
+            await clearBrokenLocalSession();
+            sessionRef.current = null;
+            setSession(null);
+            setBootstrapState(emptyBootstrapState);
+            return;
+          }
+          logLookupWarning(`Auth state change (${event})`, error);
+          setBootstrapState(bootstrapStateRef.current);
         } finally {
-          if (alive) setLoading(false);
+          if (!alive) return;
+          hasResolvedInitialSessionRef.current = true;
+          if (shouldBlockUi) setLoading(false);
         }
       },
     );
 
     return () => {
       alive = false;
-      if (roleRetryTimerRef.current !== null) {
-        window.clearTimeout(roleRetryTimerRef.current);
-        roleRetryTimerRef.current = null;
-      }
       sub.subscription.unsubscribe();
     };
-  }, [resolveRoleOnce]);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -429,10 +828,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       loading,
       authError,
-      role,
       refreshRole,
+      ...bootstrapState,
     }),
-    [session, loading, authError, role, refreshRole],
+    [authError, bootstrapState, loading, refreshRole, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -30,9 +30,10 @@ import {
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
-import { usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
+import { usePtHubProfile, usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { supabase } from "../../lib/supabase";
+import { getUserDisplayName } from "../../lib/account-profiles";
 
 const hubNavGroups = [
   {
@@ -188,6 +189,47 @@ function getPtHubHeaderPillChevronClassName(isLightMode: boolean) {
   );
 }
 
+function getPtHubStatusPillClassName(isLightMode: boolean) {
+  return cn(
+    "hidden h-[58px] min-w-[176px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl sm:flex",
+    isLightMode
+      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)]"
+      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)]",
+  );
+}
+
+function getPtHubStatusPillIconClassName(params: {
+  isLightMode: boolean;
+  published: boolean;
+}) {
+  return cn(
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition-colors duration-200",
+    params.published
+      ? params.isLightMode
+        ? "border-emerald-500/18 bg-emerald-500/10 text-emerald-700"
+        : "border-success/24 bg-success/12 text-success"
+      : params.isLightMode
+        ? "border-amber-500/18 bg-amber-500/10 text-amber-700"
+        : "border-warning/24 bg-warning/12 text-warning",
+  );
+}
+
+function getPtHubStatusPillToneClassName(params: {
+  isLightMode: boolean;
+  published: boolean;
+}) {
+  return cn(
+    "text-[0.92rem] font-medium",
+    params.published
+      ? params.isLightMode
+        ? "text-emerald-700"
+        : "text-success"
+      : params.isLightMode
+        ? "text-amber-700"
+        : "text-warning",
+  );
+}
+
 function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
   return cn(
     "group relative flex items-start gap-3 rounded-[22px] border px-3.5 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
@@ -269,22 +311,29 @@ function PtHubThemeToggle({
 export function PtHubLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { ptProfile, user } = useAuth();
   const { workspaceId, switchWorkspace } = useWorkspace();
   const workspacesQuery = usePtHubWorkspaces();
+  const profileQuery = usePtHubProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
-  const [isScrollActive, setIsScrollActive] = useState(false);
 
   const meta = routeMeta[location.pathname] ?? defaultRouteMeta;
   const workspaces = workspacesQuery.data ?? [];
+  const publishedProfile = Boolean(profileQuery.data?.isPublished);
   const latestWorkspace = workspaces[0] ?? null;
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === workspaceId) ??
     latestWorkspace;
   const breadcrumbSegments = ["PT Hub", meta.title];
+  const coachDisplayName =
+    ptProfile?.full_name?.trim() ||
+    ptProfile?.display_name?.trim() ||
+    getUserDisplayName(user) ||
+    "Trainer account";
   const userInitial = (
+    coachDisplayName.charAt(0) ||
     user?.email?.charAt(0) ||
     user?.phone?.charAt(0) ||
     "P"
@@ -311,26 +360,6 @@ export function PtHubLayout() {
     window.localStorage.setItem(PT_HUB_THEME_STORAGE_KEY, themeMode);
   }, [themeMode]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    let scrollTimeout = 0;
-    const handleScroll = () => {
-      setIsScrollActive(true);
-      window.clearTimeout(scrollTimeout);
-      scrollTimeout = window.setTimeout(() => {
-        setIsScrollActive(false);
-      }, 90);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.clearTimeout(scrollTimeout);
-    };
-  }, []);
-
   const signOut = async () => {
     setIsSigningOut(true);
     await supabase.auth.signOut();
@@ -341,11 +370,10 @@ export function PtHubLayout() {
     <div
       className={cn(
         "pt-hub-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden",
-        isScrollActive && "pt-hub-scroll-active",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
       )}
     >
-      <AppShellBackgroundLayer />
+      <AppShellBackgroundLayer animated mode={themeMode} />
 
       <div
         className={cn(
@@ -468,6 +496,27 @@ export function PtHubLayout() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <div className={getPtHubStatusPillClassName(isLightMode)}>
+                    <div
+                      className={getPtHubStatusPillIconClassName({
+                        isLightMode,
+                        published: publishedProfile,
+                      })}
+                    >
+                      <Globe className="h-4 w-4 [stroke-width:1.7]" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className="pt-hub-kicker">Profile status</p>
+                      <p
+                        className={getPtHubStatusPillToneClassName({
+                          isLightMode,
+                          published: publishedProfile,
+                        })}
+                      >
+                        {publishedProfile ? "Published" : "Unpublished"}
+                      </p>
+                    </div>
+                  </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -482,11 +531,11 @@ export function PtHubLayout() {
                           {userInitial}
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                          <p className="pt-hub-kicker">
                             Profile
                           </p>
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                            {user?.email ?? "Trainer account"}
+                            {coachDisplayName}
                           </p>
                         </div>
                         <span
@@ -506,11 +555,11 @@ export function PtHubLayout() {
                       <DropdownMenuLabel
                         className={getPtHubDropdownLabelClassName(isLightMode)}
                       >
-                        <span className="block text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/75">
+                        <span className="pt-hub-kicker block">
                           Account
                         </span>
                         <span className="mt-1 block truncate text-sm font-medium text-foreground">
-                          {user?.email ?? "Trainer account"}
+                          {coachDisplayName}
                         </span>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator
@@ -608,7 +657,7 @@ export function PtHubLayout() {
                           <Building className="h-4 w-4 [stroke-width:1.7]" />
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                          <p className="pt-hub-kicker">
                             Coaching space
                           </p>
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
@@ -635,7 +684,7 @@ export function PtHubLayout() {
                       <DropdownMenuLabel
                         className={getPtHubDropdownLabelClassName(isLightMode)}
                       >
-                        <span className="block text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/75">
+                        <span className="pt-hub-kicker block">
                           Coaching Spaces
                         </span>
                       </DropdownMenuLabel>
@@ -766,10 +815,7 @@ function SidebarContent({
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
             <p
-              className={cn(
-                "px-2 text-[10px] font-semibold uppercase tracking-[0.32em]",
-                isLightMode ? "text-slate-500" : "text-muted-foreground/80",
-              )}
+              className="pt-hub-kicker px-2"
             >
               {group.label}
             </p>

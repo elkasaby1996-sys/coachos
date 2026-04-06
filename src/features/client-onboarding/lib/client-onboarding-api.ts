@@ -1,4 +1,5 @@
 import { supabase } from "../../../lib/supabase";
+import { updateClientCanonicalProfile } from "../../../lib/account-profiles";
 import type {
   ClientOnboardingStatus,
   ClientOnboardingStepKey,
@@ -74,6 +75,46 @@ export async function submitClientOnboarding(clientId: string) {
 
   if (error) throw error;
   return data;
+}
+
+export async function saveClientCanonicalBasics(params: {
+  clientId: string;
+  fullName: string;
+  phone: string;
+  dateOfBirth: string;
+  sex: string;
+  avatarUrl: string;
+  heightValue: string;
+  heightUnit: string;
+  weightValueCurrent: string;
+  weightUnit: string;
+}) {
+  const isComplete =
+    params.fullName.trim() &&
+    params.phone.trim() &&
+    params.dateOfBirth.trim() &&
+    params.sex.trim() &&
+    params.heightValue.trim() &&
+    params.weightValueCurrent.trim();
+
+  return updateClientCanonicalProfile(params.clientId, {
+    full_name: params.fullName,
+    phone: params.phone,
+    date_of_birth: params.dateOfBirth,
+    sex: params.sex,
+    avatar_url: params.avatarUrl,
+    height_value: params.heightValue.trim()
+      ? Number(params.heightValue)
+      : null,
+    height_unit: params.heightUnit,
+    weight_value_current: params.weightValueCurrent.trim()
+      ? Number(params.weightValueCurrent)
+      : null,
+    weight_unit: params.weightUnit,
+    account_onboarding_completed_at: isComplete
+      ? new Date().toISOString()
+      : undefined,
+  });
 }
 
 export function getOnboardingSectionForStep(stepKey: ClientOnboardingStepKey) {
