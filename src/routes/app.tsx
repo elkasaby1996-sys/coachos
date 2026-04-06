@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import {
   Navigate,
   Route,
@@ -76,8 +76,21 @@ import {
 } from "./lazy-pages";
 
 // ✅ assumes your AuthProvider exports this hook
-import { getAuthenticatedRedirectPath, useAuth } from "../lib/auth";
+import {
+  getAuthenticatedRedirectPath,
+  useBootstrapAuth,
+  useSessionAuth,
+} from "../lib/auth";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
+import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
+
+type WindowWithIdleCallback = Window & {
+  requestIdleCallback?: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions,
+  ) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
 
 function FullPageLoader() {
   return (
@@ -88,12 +101,12 @@ function FullPageLoader() {
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { authLoading, session } = useSessionAuth();
   const location = useLocation();
 
   return (
     <BootstrapGate>
-      {loading ? (
+      {authLoading ? (
         <FullPageLoader />
       ) : !session ? (
         <Navigate to="/login" replace state={{ from: location.pathname }} />
@@ -157,16 +170,7 @@ function getProtectedRedirect(params: {
     return null;
   }
 
-  return getAuthenticatedRedirectPath({
-    accountType: params.accountType,
-    hasWorkspaceMembership: params.hasWorkspaceMembership,
-    ptWorkspaceComplete: params.ptWorkspaceComplete,
-    ptProfileComplete: params.ptProfileComplete,
-    clientAccountComplete: params.clientAccountComplete,
-    clientWorkspaceOnboardingHardGateRequired:
-      params.clientWorkspaceOnboardingHardGateRequired,
-    pendingInviteToken: params.pendingInviteToken,
-  });
+  return "/no-workspace";
 }
 
 function RequireRole({
@@ -178,19 +182,27 @@ function RequireRole({
 }) {
   const {
     accountType,
+    bootstrapResolved,
+    bootstrapStale,
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired,
+    hasStableBootstrap,
     hasWorkspaceMembership,
-    loading,
     pendingInviteToken,
     ptProfileComplete,
     ptWorkspaceComplete,
-  } = useAuth();
+  } = useBootstrapAuth();
   const location = useLocation();
 
   return (
     <BootstrapGate>
-      {loading ? <FullPageLoader /> : (() => {
+      {!bootstrapResolved ? (
+        hasStableBootstrap && bootstrapStale ? (
+          <>{children}</>
+        ) : (
+          <FullPageLoader />
+        )
+      ) : (() => {
         const redirect = getProtectedRedirect({
           pathname: location.pathname,
           allow,
@@ -213,21 +225,21 @@ function RequireRole({
 }
 
 function IndexRedirect() {
-  const {
-    bootstrapPath,
-    loading,
-    session,
-  } = useAuth();
+  const { authLoading, session } = useSessionAuth();
+  const { bootstrapPath, bootstrapResolved } = useBootstrapAuth();
 
-  if (loading) return <FullPageLoader />;
+  if (authLoading) return <FullPageLoader />;
 
   if (!session) return <WelcomePage />;
+
+  if (!bootstrapResolved) return <FullPageLoader />;
 
   return <Navigate to={bootstrapPath ?? "/no-workspace"} replace />;
 }
 
 function LoginGate() {
-  const { bootstrapPath, loading, session } = useAuth();
+  const { authLoading, session } = useSessionAuth();
+  const { bootstrapPath, bootstrapResolved } = useBootstrapAuth();
   const location = useLocation();
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const redirectTarget =
@@ -236,11 +248,12 @@ function LoginGate() {
       ? redirectParam
       : null;
 
-  if (loading) return <FullPageLoader />;
+  if (authLoading) return <FullPageLoader />;
 
   // If already logged in, don't allow staying on /login
   if (session) {
     if (redirectTarget) return <Navigate to={redirectTarget} replace />;
+    if (!bootstrapResolved) return <FullPageLoader />;
     return <Navigate to={bootstrapPath ?? "/no-workspace"} replace />;
   }
 
@@ -252,9 +265,57 @@ function LegacyJoinRedirect() {
   return <Navigate to={`/invite/${code ?? ""}`} replace />;
 }
 
+function PtHubAssetPreloader() {
+  const location = useLocation();
+  const { isAuthenticated } = useSessionAuth();
+  const { accountType } = useBootstrapAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const shouldPreload =
+      accountType === "pt" ||
+      location.pathname.startsWith("/pt") ||
+      location.pathname.startsWith("/pt-hub");
+
+    if (!shouldPreload) return;
+
+    const windowWithIdleCallback = window as WindowWithIdleCallback;
+    let timeoutHandle: number | null = null;
+    let idleHandle: number | null = null;
+
+    const preload = () => {
+      void preloadPtHubAnimatedBackground();
+    };
+
+    if (typeof windowWithIdleCallback.requestIdleCallback === "function") {
+      idleHandle = windowWithIdleCallback.requestIdleCallback(preload, {
+        timeout: 900,
+      });
+    } else {
+      timeoutHandle = window.setTimeout(preload, 120);
+    }
+
+    return () => {
+      if (
+        idleHandle !== null &&
+        typeof windowWithIdleCallback.cancelIdleCallback === "function"
+      ) {
+        windowWithIdleCallback.cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle !== null) {
+        window.clearTimeout(timeoutHandle);
+      }
+    };
+  }, [accountType, isAuthenticated, location.pathname]);
+
+  return null;
+}
+
 export function App() {
   return (
     <Suspense fallback={<FullPageLoader />}>
+      <PtHubAssetPreloader />
       <Routes>
         {/* Smart landing */}
         <Route path="/" element={<IndexRedirect />} />

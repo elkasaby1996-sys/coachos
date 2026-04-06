@@ -9,7 +9,7 @@ import { ClientsKpiRow } from "../../components/pt/clients/ClientsKpiRow";
 import { ClientsFilters } from "../../components/pt/clients/ClientsFilters";
 import { ClientListRow } from "../../components/pt/clients/ClientListRow";
 import { EmptyState } from "../../components/ui/coachos";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import {
   getClientRiskFlagMeta,
   matchesClientSegment,
@@ -58,7 +58,7 @@ const lifecycleOptions = [
 ] as const;
 
 export function PtClientsPage() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const {
     workspaceId,
     loading: workspaceLoading,

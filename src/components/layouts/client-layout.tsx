@@ -21,7 +21,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { StatusBanner } from "../client/portal";
 import { useWorkspace } from "../../lib/use-workspace";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
@@ -66,7 +66,7 @@ export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { workspaceId, loading, error } = useWorkspace();
-  const { authError, hasWorkspaceMembership } = useAuth();
+  const { bootstrapError: authError, hasWorkspaceMembership } = useBootstrapAuth();
   const onboardingQuery = useClientOnboarding();
   const onboardingSummary = onboardingQuery.data ?? null;
   const basicsGateRequired = Boolean(

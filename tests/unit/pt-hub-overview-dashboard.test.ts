@@ -201,10 +201,11 @@ describe("PT Hub overview dashboard model", () => {
 
     expect(model.mode).toBe("activation");
     expect(model.metrics.map((metric) => metric.label)).toEqual([
-      "Profile readiness",
-      "Launch blockers",
-      "Coaching spaces",
-      "New leads this month",
+      "Monthly earnings",
+      "Active clients",
+      "New leads",
+      "Check-ins due",
+      "Onboarding in progress",
     ]);
     expect(model.actionItems[0]?.id).toBe("profile-blockers");
     expect(model.actionItems.map((item) => item.id)).toContain(
@@ -309,8 +310,13 @@ describe("PT Hub overview dashboard model", () => {
     });
 
     expect(model.mode).toBe("operating");
-    expect(model.metrics[0]?.label).toBe("Awaiting response");
-    expect(model.metrics[1]?.label).toBe("Clients needing attention");
+    expect(model.metrics.map((metric) => metric.label)).toEqual([
+      "Monthly earnings",
+      "Active clients",
+      "New leads",
+      "Check-ins due",
+      "Onboarding in progress",
+    ]);
     expect(model.actionItems[0]?.id).toBe("unreplied-leads");
     expect(model.actionItems.map((item) => item.id)).toEqual(
       expect.arrayContaining([

@@ -1,5 +1,5 @@
 import {
-  Building,
+  ClipboardList,
   MessageSquarePlus,
   Sparkles,
   UsersRound,
@@ -38,13 +38,10 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { cn } from "../../lib/utils";
 
 const metricIconMap = {
-  "business-setup": Sparkles,
-  "coaching-spaces": Building,
   "active-clients": UsersRound,
   "new-leads-month": MessageSquarePlus,
-  "awaiting-response": MessageSquarePlus,
-  "clients-needing-attention": UsersRound,
-  "checkins-overdue": UsersRound,
+  "checkins-due": Sparkles,
+  "onboarding-in-progress": ClipboardList,
   "monthly-revenue": Wallet,
   "monthly-earnings": Wallet,
 } as const;
@@ -55,6 +52,36 @@ function getMetricGridClassName(metricCount: number) {
   if (metricCount === 3) return "lg:grid-cols-3";
   if (metricCount === 2) return "sm:grid-cols-2";
   return "grid-cols-1";
+}
+
+function formatActivityDayStamp(value: Date | string | null | undefined) {
+  if (!value) return "Today";
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Today";
+
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const startOfDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
+  const diffDays = Math.round(
+    (startOfToday.getTime() - startOfDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export function PtHubOverviewPage() {
@@ -265,7 +292,7 @@ function buildRecentActivityItems(params: {
       ? {
           id: "recent-lead",
           title: `${latestLead.fullName} submitted an inquiry`,
-          description: `${formatRelativeTime(latestLead.submittedAt)}. ${latestLead.goalSummary}`,
+          description: formatActivityDayStamp(latestLead.submittedAt),
           href: "/pt-hub/leads",
           ctaLabel: "Open lead",
         }
@@ -274,7 +301,9 @@ function buildRecentActivityItems(params: {
       ? {
           id: "recent-client",
           title: `${latestClientAttention.displayName} needs coach attention`,
-          description: `${latestClientAttention.recentActivityLabel}. Review check-ins, onboarding, or risk signals for this client.`,
+          description: latestClientAttention.lastActivityAt
+            ? formatActivityDayStamp(latestClientAttention.lastActivityAt)
+            : "Today",
           href: "/pt-hub/clients",
           ctaLabel: "Open clients",
         }
@@ -283,7 +312,7 @@ function buildRecentActivityItems(params: {
       ? {
           id: "recent-space",
           title: `${latestCoachingSpace.name} was updated`,
-          description: `${formatRelativeTime(latestCoachingSpace.lastUpdated)}. Keep this coaching space ready for new and active clients.`,
+          description: formatActivityDayStamp(latestCoachingSpace.lastUpdated),
           href: "/pt-hub/workspaces",
           ctaLabel: "Open coaching spaces",
         }
@@ -294,9 +323,7 @@ function buildRecentActivityItems(params: {
           title: params.profilePublished
             ? "Your public profile is live"
             : `Your public profile is ${readiness.completionPercent}% complete`,
-          description: params.profilePublished
-            ? "The public page is already published, so profile improvements now support better lead conversion."
-            : `${readiness.missingItems.length} setup item(s) are still blocking a stronger launch.`,
+          description: "Today",
           href: "/pt-hub/profile",
           ctaLabel: "Open profile",
         }

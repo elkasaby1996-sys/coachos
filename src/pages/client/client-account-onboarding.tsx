@@ -13,7 +13,7 @@ import {
   persistPendingInviteToken,
   updateClientCanonicalProfile,
 } from "../../lib/account-profiles";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 
 type FormState = {
   fullName: string;
@@ -42,14 +42,14 @@ const emptyForm: FormState = {
 export function ClientAccountOnboardingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { session, authLoading } = useSessionAuth();
   const {
     accountType,
     bootstrapPath,
     clientProfile,
-    loading,
+    patchBootstrap,
     refreshRole,
-    session,
-  } = useAuth();
+  } = useBootstrapAuth();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -129,7 +129,7 @@ export function ClientAccountOnboardingPage() {
     };
   }, [clientProfile, pendingInviteToken, session]);
 
-  if (loading) {
+  if (authLoading) {
     return (
       <AuthBackdrop contentClassName="max-w-xl">
         <Card className="w-full">
@@ -200,6 +200,25 @@ export function ClientAccountOnboardingPage() {
         weight_value_current: Number(form.weightValueCurrent),
         weight_unit: form.weightUnit,
         account_onboarding_completed_at: new Date().toISOString(),
+      });
+      patchBootstrap({
+        accountType: "client",
+        role: "client",
+        clientAccountComplete: true,
+        clientProfile: {
+          ...profile,
+          full_name: form.fullName,
+          avatar_url: form.avatarUrl,
+          phone: form.phone,
+          date_of_birth: form.dateOfBirth,
+          sex: form.sex,
+          height_value: Number(form.heightValue),
+          height_unit: form.heightUnit,
+          weight_value_current: Number(form.weightValueCurrent),
+          weight_unit: form.weightUnit,
+          account_onboarding_completed_at: new Date().toISOString(),
+        },
+        activeClientId: profile.id,
       });
       window.localStorage.removeItem("coachos_client_signup_name");
       await refreshRole?.();

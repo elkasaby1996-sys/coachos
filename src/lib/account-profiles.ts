@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
 export const PENDING_INVITE_STORAGE_KEY = "coachos_pending_invite_token";
+export const SIGNUP_INTENT_STORAGE_KEY = "coachos_signup_intent";
 
 export type AccountType = "pt" | "client" | "unknown";
 
@@ -103,6 +104,23 @@ export function persistPendingInviteToken(token: string | null | undefined) {
 export function clearPendingInviteToken() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
+}
+
+export function getSignupIntentFallback(): AccountType {
+  if (typeof window === "undefined") return "unknown";
+  const intent = window.localStorage.getItem(SIGNUP_INTENT_STORAGE_KEY);
+  if (intent === "pt" || intent === "client") return intent;
+  return "unknown";
+}
+
+export function persistSignupIntent(intent: Extract<AccountType, "pt" | "client">) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SIGNUP_INTENT_STORAGE_KEY, intent);
+}
+
+export function clearSignupIntent() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SIGNUP_INTENT_STORAGE_KEY);
 }
 
 export function getUserDisplayName(user: User | null | undefined) {

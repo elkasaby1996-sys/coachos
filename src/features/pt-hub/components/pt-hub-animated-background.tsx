@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 
 type BackgroundQualityTier = "high" | "medium" | "low";
 type PtHubThemeMode = "dark" | "light";
-type ThreeModule = typeof import("three");
 
 type WindowWithIdleCallback = Window & {
   requestIdleCallback?: (
@@ -20,12 +19,21 @@ type NavigatorWithHints = Navigator & {
   deviceMemory?: number;
 };
 
+type WebGlContext = WebGLRenderingContext | WebGL2RenderingContext;
+
+type RendererConfig = {
+  antialias: boolean;
+  pixelRatio: number;
+  enablePointerTracking: boolean;
+};
+
 const vertexShader = `
+  attribute vec2 a_position;
   varying vec2 vUv;
 
   void main() {
-    vUv = uv;
-    gl_Position = vec4(position, 1.0);
+    vUv = a_position * 0.5 + 0.5;
+    gl_Position = vec4(a_position, 0.0, 1.0);
   }
 `;
 
@@ -172,10 +180,10 @@ const themePalettes: Record<
   },
   light: {
     base: "#e7edf1",
-    mistA: "#9fb8c9",
-    mistB: "#b8c7df",
-    mistC: "#cedae2",
-    sheen: "#5b87a0",
+    mistA: "#98b1c1",
+    mistB: "#b2c2d7",
+    mistC: "#c8d5de",
+    sheen: "#567f97",
     reducedTop: "oklch(0.948_0.006_188)",
     reducedBottom: "oklch(0.886_0.01_186)",
     reducedGlowA: "oklch(0.68_0.032_188/0.18)",
@@ -319,13 +327,13 @@ function getRendererConfig(quality: BackgroundQualityTier) {
     case "high":
       return {
         antialias: false,
-        pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
         enablePointerTracking: true,
       };
     case "medium":
       return {
         antialias: false,
-        pixelRatio: Math.min(window.devicePixelRatio || 1, 1.25),
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 1.4),
         enablePointerTracking: false,
       };
     default:
@@ -335,6 +343,64 @@ function getRendererConfig(quality: BackgroundQualityTier) {
         enablePointerTracking: false,
       };
   }
+}
+
+function hexToNormalizedRgb(hex: string) {
+  const sanitized = hex.replace("#", "");
+  const normalized =
+    sanitized.length === 3
+      ? sanitized
+          .split("")
+          .map((part) => `${part}${part}`)
+          .join("")
+      : sanitized;
+  const intValue = Number.parseInt(normalized, 16);
+  return [
+    ((intValue >> 16) & 255) / 255,
+    ((intValue >> 8) & 255) / 255,
+    (intValue & 255) / 255,
+  ] as const;
+}
+
+function createShader(gl: WebGlContext, type: number, source: string) {
+  const shader = gl.createShader(type);
+  if (!shader) {
+    throw new Error("Unable to create WebGL shader.");
+  }
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    const info = gl.getShaderInfoLog(shader) ?? "Unknown shader compile error.";
+    gl.deleteShader(shader);
+    throw new Error(info);
+  }
+  return shader;
+}
+
+function createProgram(
+  gl: WebGlContext,
+  vertexSource: string,
+  fragmentSource: string,
+) {
+  const vertex = createShader(gl, gl.VERTEX_SHADER, vertexSource);
+  const fragment = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+  const program = gl.createProgram();
+  if (!program) {
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    throw new Error("Unable to create WebGL program.");
+  }
+  gl.attachShader(program, vertex);
+  gl.attachShader(program, fragment);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    const info = gl.getProgramInfoLog(program) ?? "Unknown program link error.";
+    gl.deleteProgram(program);
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    throw new Error(info);
+  }
+  return { program, vertex, fragment };
 }
 
 export function PtHubAnimatedBackground({
@@ -384,75 +450,113 @@ export function PtHubAnimatedBackground({
     let cleanupScene: (() => void) | undefined;
 
     const bootRenderer = async () => {
-      let THREE: ThreeModule;
-
-      try {
-        THREE = await import("three");
-      } catch {
-        if (!cancelled) {
-          setHasWebglBackground(false);
-        }
-        return;
-      }
-
       if (cancelled || !canvas.parentElement) return;
 
-      let renderer: import("three").WebGLRenderer | null = null;
-      let geometry: import("three").PlaneGeometry | null = null;
-      let material: import("three").ShaderMaterial | null = null;
-      let timer: import("three").Timer | null = null;
+      let gl: WebGlContext | null = null;
+      let program: WebGLProgram | null = null;
+      let vertexShaderObject: WebGLShader | null = null;
+      let fragmentShaderObject: WebGLShader | null = null;
+      let positionBuffer: WebGLBuffer | null = null;
       let isDocumentVisible = document.visibilityState === "visible";
       let lastRenderTime = 0;
+      let startTime = performance.now();
 
       try {
-        renderer = new THREE.WebGLRenderer({
-          canvas,
+        const contextAttributes: WebGLContextAttributes = {
           alpha: true,
           antialias: rendererConfig.antialias,
-          powerPreference: "default",
-          failIfMajorPerformanceCaveat: false,
-        });
-        renderer.setPixelRatio(rendererConfig.pixelRatio);
-        renderer.setClearColor(0x000000, 0);
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        const pointerTarget = canvas.parentElement;
-
-        geometry = new THREE.PlaneGeometry(2, 2);
-        const uniforms = {
-          u_resolution: { value: new THREE.Vector2(1, 1) },
-          u_time: { value: 0 },
-          u_pointer: { value: new THREE.Vector2(0.5, 0.24) },
-          u_base: { value: new THREE.Color(palette.base) },
-          u_mistA: { value: new THREE.Color(palette.mistA) },
-          u_mistB: { value: new THREE.Color(palette.mistB) },
-          u_mistC: { value: new THREE.Color(palette.mistC) },
-          u_sheen: { value: new THREE.Color(palette.sheen) },
+          depth: false,
+          stencil: false,
+          premultipliedAlpha: false,
+          preserveDrawingBuffer: false,
+          powerPreference: "high-performance",
         };
-        material = new THREE.ShaderMaterial({
-          uniforms,
-          vertexShader,
-          fragmentShader,
-          depthWrite: false,
-          depthTest: false,
-        });
+        gl =
+          (canvas.getContext("webgl2", contextAttributes) as WebGlContext | null) ??
+          (canvas.getContext("webgl", contextAttributes) as WebGlContext | null) ??
+          (canvas.getContext("experimental-webgl", contextAttributes) as WebGlContext | null);
 
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
+        if (!gl) {
+          throw new Error("WebGL is not available.");
+        }
+
+        const compiled = createProgram(gl, vertexShader, fragmentShader);
+        program = compiled.program;
+        vertexShaderObject = compiled.vertex;
+        fragmentShaderObject = compiled.fragment;
+
+        positionBuffer = gl.createBuffer();
+        if (!positionBuffer) {
+          throw new Error("Unable to create background buffer.");
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array([
+            -1, -1,
+            1, -1,
+            -1, 1,
+            -1, 1,
+            1, -1,
+            1, 1,
+          ]),
+          gl.STATIC_DRAW,
+        );
+
+        gl.useProgram(program);
+
+        const positionLocation = gl.getAttribLocation(program, "a_position");
+        const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+        const timeLocation = gl.getUniformLocation(program, "u_time");
+        const pointerLocation = gl.getUniformLocation(program, "u_pointer");
+        const baseLocation = gl.getUniformLocation(program, "u_base");
+        const mistALocation = gl.getUniformLocation(program, "u_mistA");
+        const mistBLocation = gl.getUniformLocation(program, "u_mistB");
+        const mistCLocation = gl.getUniformLocation(program, "u_mistC");
+        const sheenLocation = gl.getUniformLocation(program, "u_sheen");
+
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.CULL_FACE);
+        gl.clearColor(0, 0, 0, 0);
+
+        const baseColor = hexToNormalizedRgb(palette.base);
+        const mistAColor = hexToNormalizedRgb(palette.mistA);
+        const mistBColor = hexToNormalizedRgb(palette.mistB);
+        const mistCColor = hexToNormalizedRgb(palette.mistC);
+        const sheenColor = hexToNormalizedRgb(palette.sheen);
+        const pointerTarget = canvas.parentElement;
+        const pointerCurrent = { x: 0.5, y: 0.24 };
+        const pointerTargetValue = { x: 0.5, y: 0.24 };
 
         const resize = () => {
-          if (!canvas.parentElement || !renderer) return;
+          if (!canvas.parentElement || !gl) return;
           const { clientWidth, clientHeight } = canvas.parentElement;
-          renderer.setSize(clientWidth, clientHeight, false);
-          uniforms.u_resolution.value.set(clientWidth, clientHeight);
+          const width = Math.max(
+            1,
+            Math.round(clientWidth * rendererConfig.pixelRatio),
+          );
+          const height = Math.max(
+            1,
+            Math.round(clientHeight * rendererConfig.pixelRatio),
+          );
+          if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+          }
+          gl.viewport(0, 0, width, height);
+          gl.useProgram(program);
+          gl.uniform2f(resolutionLocation, width, height);
+          gl.uniform3f(baseLocation, ...baseColor);
+          gl.uniform3f(mistALocation, ...mistAColor);
+          gl.uniform3f(mistBLocation, ...mistBColor);
+          gl.uniform3f(mistCLocation, ...mistCColor);
+          gl.uniform3f(sheenLocation, ...sheenColor);
         };
 
         resize();
         window.addEventListener("resize", resize);
-
-        const restingPointer = new THREE.Vector2(0.5, 0.24);
-        const pointerTargetValue = restingPointer.clone();
 
         const handlePointerMove = (event: PointerEvent) => {
           if (!rendererConfig.enablePointerTracking) return;
@@ -464,16 +568,15 @@ export function PtHubAnimatedBackground({
             event.clientY <= rect.bottom;
 
           if (!withinBounds) {
-            pointerTargetValue.copy(restingPointer);
+            pointerTargetValue.x = 0.5;
+            pointerTargetValue.y = 0.24;
             return;
           }
 
           const x = (event.clientX - rect.left) / rect.width;
           const y = (event.clientY - rect.top) / rect.height;
-          pointerTargetValue.set(
-            THREE.MathUtils.lerp(0.16, 0.84, x),
-            THREE.MathUtils.lerp(0.15, 0.85, 1 - y),
-          );
+          pointerTargetValue.x = 0.16 + (0.84 - 0.16) * x;
+          pointerTargetValue.y = 0.15 + (0.85 - 0.15) * (1 - y);
         };
 
         const handleVisibilityChange = () => {
@@ -506,16 +609,14 @@ export function PtHubAnimatedBackground({
           false,
         );
 
-        timer = new THREE.Timer();
-        timer.connect(document);
         setHasWebglBackground(true);
 
         const render = () => {
-          if (!renderer || !timer) return;
           if (!isDocumentVisible) {
             frameId = window.requestAnimationFrame(render);
             return;
           }
+          if (!gl || !program) return;
           const now = performance.now();
           const frameBudget = scrollActive ? 1000 / 42 : 1000 / 60;
           if (now - lastRenderTime < frameBudget) {
@@ -523,10 +624,13 @@ export function PtHubAnimatedBackground({
             return;
           }
           lastRenderTime = now;
-          timer.update();
-          uniforms.u_time.value = timer.getElapsed();
-          uniforms.u_pointer.value.lerp(pointerTargetValue, 0.04);
-          renderer.render(scene, camera);
+          pointerCurrent.x += (pointerTargetValue.x - pointerCurrent.x) * 0.04;
+          pointerCurrent.y += (pointerTargetValue.y - pointerCurrent.y) * 0.04;
+          gl.useProgram(program);
+          gl.uniform1f(timeLocation, (now - startTime) / 1000);
+          gl.uniform2f(pointerLocation, pointerCurrent.x, pointerCurrent.y);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
           frameId = window.requestAnimationFrame(render);
         };
 
@@ -553,10 +657,18 @@ export function PtHubAnimatedBackground({
             handleContextRestored,
             false,
           );
-          timer?.dispose();
-          geometry?.dispose();
-          material?.dispose();
-          renderer?.dispose();
+          if (positionBuffer) {
+            gl?.deleteBuffer(positionBuffer);
+          }
+          if (program) {
+            gl?.deleteProgram(program);
+          }
+          if (vertexShaderObject) {
+            gl?.deleteShader(vertexShaderObject);
+          }
+          if (fragmentShaderObject) {
+            gl?.deleteShader(fragmentShaderObject);
+          }
         };
       } catch {
         setHasWebglBackground(false);
@@ -564,10 +676,18 @@ export function PtHubAnimatedBackground({
           if (current === "high") return "medium";
           return "low";
         });
-        renderer?.dispose();
-        geometry?.dispose();
-        material?.dispose();
-        timer?.dispose();
+        if (positionBuffer && gl) {
+          gl.deleteBuffer(positionBuffer);
+        }
+        if (program && gl) {
+          gl.deleteProgram(program);
+        }
+        if (vertexShaderObject && gl) {
+          gl.deleteShader(vertexShaderObject);
+        }
+        if (fragmentShaderObject && gl) {
+          gl.deleteShader(fragmentShaderObject);
+        }
       }
     };
 
@@ -625,7 +745,7 @@ export function PtHubAnimatedBackground({
           className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
             hasWebglBackground
               ? mode === "light"
-                ? "opacity-60"
+                ? "opacity-54"
                 : "opacity-100"
               : "opacity-0"
           }`}

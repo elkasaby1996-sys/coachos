@@ -10,7 +10,7 @@ import {
   getUserDisplayName,
   updatePtProfile,
 } from "../../lib/account-profiles";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 
 type FormState = {
   fullName: string;
@@ -49,14 +49,14 @@ function splitCsv(value: string) {
 
 export function PtProfileOnboardingPage() {
   const navigate = useNavigate();
+  const { session, authLoading } = useSessionAuth();
   const {
-    session,
-    loading,
     accountType,
     hasWorkspaceMembership,
+    patchBootstrap,
     ptProfile,
     refreshRole,
-  } = useAuth();
+  } = useBootstrapAuth();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -117,7 +117,7 @@ export function PtProfileOnboardingPage() {
     };
   }, [ptProfile, session]);
 
-  if (loading) {
+  if (authLoading) {
     return (
       <AuthBackdrop contentClassName="max-w-2xl">
         <Card className="w-full">
@@ -143,6 +143,7 @@ export function PtProfileOnboardingPage() {
     setSaving(true);
     setError(null);
     try {
+      const completedAt = new Date().toISOString();
       await updatePtProfile(session.user.id, {
         full_name: form.fullName,
         coach_business_name: form.coachBusinessName,
@@ -155,7 +156,41 @@ export function PtProfileOnboardingPage() {
         languages: splitCsv(form.languages),
         specialties: splitCsv(form.specialties),
         starting_price: form.startingPrice ? Number(form.startingPrice) : null,
-        onboarding_completed_at: new Date().toISOString(),
+        onboarding_completed_at: completedAt,
+      });
+      patchBootstrap({
+        accountType: "pt",
+        role: "pt",
+        ptProfileComplete: true,
+        ptProfile: {
+          ...(ptProfile ?? {
+            user_id: session.user.id,
+            full_name: null,
+            phone: null,
+            avatar_url: null,
+            coach_business_name: null,
+            headline: null,
+            bio: null,
+            location_country: null,
+            location_city: null,
+            languages: null,
+            specialties: null,
+            starting_price: null,
+            onboarding_completed_at: null,
+          }),
+          full_name: form.fullName,
+          coach_business_name: form.coachBusinessName,
+          phone: form.phone,
+          avatar_url: form.avatarUrl,
+          headline: form.headline,
+          bio: form.bio,
+          location_country: form.locationCountry,
+          location_city: form.locationCity,
+          languages: splitCsv(form.languages),
+          specialties: splitCsv(form.specialties),
+          starting_price: form.startingPrice ? Number(form.startingPrice) : null,
+          onboarding_completed_at: completedAt,
+        },
       });
       await refreshRole?.();
       navigate("/pt-hub", { replace: true });

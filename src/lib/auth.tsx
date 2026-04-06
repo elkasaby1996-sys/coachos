@@ -13,7 +13,9 @@ import {
   type AccountType,
   type ClientProfileRow,
   type PtProfileRow,
+  clearSignupIntent,
   getCanonicalPtProfile,
+  getSignupIntentFallback,
   getPendingInviteToken,
   isClientAccountComplete,
   isPtProfileComplete,
@@ -22,7 +24,7 @@ import { supabase, supabaseConfigured } from "./supabase";
 
 export type AppRole = "pt" | "client" | "none";
 
-type AuthBootstrapState = {
+export type AuthBootstrapState = {
   accountType: AccountType;
   role: AppRole;
   hasWorkspaceMembership: boolean;
@@ -38,15 +40,71 @@ type AuthBootstrapState = {
   bootstrapPath: string | null;
 };
 
-interface AuthContextValue extends AuthBootstrapState {
+type AuthBootstrapCoreState = Omit<AuthBootstrapState, "bootstrapPath">;
+
+type RedirectState = Pick<
+  AuthBootstrapState,
+  | "accountType"
+  | "hasWorkspaceMembership"
+  | "ptWorkspaceComplete"
+  | "ptProfileComplete"
+  | "clientAccountComplete"
+  | "clientWorkspaceOnboardingHardGateRequired"
+  | "pendingInviteToken"
+>;
+
+type WorkspaceMembershipRow = {
+  workspace_id: string | null;
+  role: string | null;
+};
+
+type CachedBootstrapState = Omit<AuthBootstrapState, "bootstrapPath">;
+
+export type LookupResult<T> =
+  | { status: "ok"; data: T }
+  | { status: "empty" }
+  | { status: "timeout"; error: Error }
+  | { status: "error"; error: unknown };
+
+export type BootstrapResolution =
+  | { status: "resolved"; state: AuthBootstrapCoreState }
+  | { status: "unresolved"; error: Error };
+
+interface SessionAuthContextValue {
   user: User | null;
   session: Session | null;
-  loading: boolean;
+  isAuthenticated: boolean;
+  authLoading: boolean;
   authError: Error | null;
-  refreshRole?: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+interface BootstrapAuthContextValue extends AuthBootstrapState {
+  bootstrapLoading: boolean;
+  bootstrapResolved: boolean;
+  bootstrapStale: boolean;
+  hasStableBootstrap: boolean;
+  bootstrapError: Error | null;
+  refreshBootstrap: () => Promise<void>;
+  refreshRole: () => Promise<void>;
+  patchBootstrap: (
+    updater:
+      | Partial<AuthBootstrapCoreState>
+      | ((prev: AuthBootstrapCoreState) => Partial<AuthBootstrapCoreState>),
+  ) => void;
+}
+
+type CombinedAuthContextValue = SessionAuthContextValue &
+  BootstrapAuthContextValue & {
+    loading: boolean;
+  };
+
+const SessionAuthContext = createContext<SessionAuthContextValue | undefined>(
+  undefined,
+);
+const BootstrapAuthContext = createContext<
+  BootstrapAuthContextValue | undefined
+>(undefined);
+
 const SESSION_LOAD_TIMEOUT_MS = 30_000;
 const LOOKUP_TIMEOUT_MS = 3_000;
 const BOOTSTRAP_CACHE_PREFIX = "coachos_auth_bootstrap_v1";
@@ -106,23 +164,25 @@ const CLIENT_PROFILE_SELECT = [
   "created_at",
 ].join(", ");
 
-type WorkspaceMembershipRow = {
-  workspace_id: string | null;
-  role: string | null;
+const emptyBootstrapCoreState: AuthBootstrapCoreState = {
+  accountType: "unknown",
+  role: "none",
+  hasWorkspaceMembership: false,
+  ptWorkspaceComplete: false,
+  ptProfileComplete: false,
+  clientAccountComplete: false,
+  clientWorkspaceOnboardingHardGateRequired: false,
+  pendingInviteToken: null,
+  activeWorkspaceId: null,
+  activeClientId: null,
+  ptProfile: null,
+  clientProfile: null,
 };
 
-type RedirectState = Pick<
-  AuthBootstrapState,
-  | "accountType"
-  | "hasWorkspaceMembership"
-  | "ptWorkspaceComplete"
-  | "ptProfileComplete"
-  | "clientAccountComplete"
-  | "clientWorkspaceOnboardingHardGateRequired"
-  | "pendingInviteToken"
->;
-
-type CachedBootstrapState = Omit<AuthBootstrapState, "bootstrapPath">;
+const emptyBootstrapState: AuthBootstrapState = {
+  ...emptyBootstrapCoreState,
+  bootstrapPath: null,
+};
 
 function withTimeout<T>(
   promise: PromiseLike<T>,
@@ -192,6 +252,11 @@ function getBootstrapCacheKey(userId: string) {
   return `${BOOTSTRAP_CACHE_PREFIX}:${userId}`;
 }
 
+function getActiveWorkspaceIdFromStorage() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("coachos_workspace_id");
+}
+
 function readCachedBootstrapState(
   userId: string,
   pathname: string,
@@ -213,10 +278,7 @@ function readCachedBootstrapState(
   }
 }
 
-function writeCachedBootstrapState(
-  userId: string,
-  state: Omit<AuthBootstrapState, "bootstrapPath">,
-) {
+function writeCachedBootstrapState(userId: string, state: AuthBootstrapCoreState) {
   if (typeof window === "undefined") return;
 
   try {
@@ -234,66 +296,78 @@ function clearCachedBootstrapState(userId: string | null | undefined) {
   window.localStorage.removeItem(getBootstrapCacheKey(userId));
 }
 
-function getActiveWorkspaceIdFromStorage() {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("coachos_workspace_id");
-}
-
-function getSignupIntentFallback(): AccountType {
-  if (typeof window === "undefined") return "unknown";
-  const intent = window.localStorage.getItem("coachos_signup_intent");
-  if (intent === "pt" || intent === "client") return intent;
-  return "unknown";
-}
-
 function logLookupWarning(label: string, error: unknown) {
   if (typeof console === "undefined") return;
   console.warn(`[auth] ${label} lookup failed`, error);
 }
 
-async function safeLookup<T>(
-  label: string,
-  promise: PromiseLike<{ data: T | null; error: unknown }>,
-  fallback: T,
+function hasMeaningfulBootstrapState(
+  state: AuthBootstrapState | AuthBootstrapCoreState | null | undefined,
 ) {
+  if (!state) return false;
+
+  return Boolean(
+    state.accountType !== "unknown" ||
+      state.hasWorkspaceMembership ||
+      state.ptWorkspaceComplete ||
+      state.clientAccountComplete ||
+      state.activeWorkspaceId ||
+      state.activeClientId ||
+      state.ptProfile ||
+      state.clientProfile,
+  );
+}
+
+function sortClientRows(rows: ClientProfileRow[]) {
+  return [...rows].sort((a, b) => {
+    if (!a.workspace_id && b.workspace_id) return -1;
+    if (a.workspace_id && !b.workspace_id) return 1;
+    return (a.created_at ?? "").localeCompare(b.created_at ?? "");
+  });
+}
+
+async function lookupRows<T>(
+  label: string,
+  query: PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<LookupResult<T[]>> {
   try {
     const { data, error } = await withTimeout(
-      promise,
+      query,
       LOOKUP_TIMEOUT_MS,
       `${label} lookup timed out (${Math.round(LOOKUP_TIMEOUT_MS / 1000)}s).`,
     );
-    if (error) throw error;
-    return (data ?? fallback) as T;
+
+    if (error) {
+      logLookupWarning(label, error);
+      return { status: "error", error };
+    }
+
+    const rows = (data ?? []) as T[];
+    return rows.length > 0 ? { status: "ok", data: rows } : { status: "empty" };
   } catch (error) {
     logLookupWarning(label, error);
-    return fallback;
+    if (error instanceof Error && error.message.toLowerCase().includes("timed out")) {
+      return { status: "timeout", error };
+    }
+    return { status: "error", error };
   }
 }
 
 function resolveAccountType(params: {
   ptProfile: PtProfileRow | null;
   clientRows: ClientProfileRow[];
-  workspaceRows: WorkspaceMembershipRow[];
   pathname: string;
   signupIntent: AccountType;
 }): AccountType {
   const hasPtProfile = Boolean(params.ptProfile);
   const hasClientRows = params.clientRows.length > 0;
-  const hasPtWorkspace = params.workspaceRows.some((member) =>
-    member.role?.startsWith("pt"),
-  );
   const hasClientWorkspace = params.clientRows.some((row) => row.workspace_id);
 
   if (hasPtProfile && !hasClientRows) return "pt";
   if (!hasPtProfile && hasClientRows) return "client";
-  if (hasPtWorkspace && !hasClientRows) return "pt";
-  if (hasClientWorkspace && !hasPtProfile && !hasPtWorkspace) return "client";
   if (!hasPtProfile && !hasClientRows && params.signupIntent !== "unknown") {
     return params.signupIntent;
   }
-  if (hasPtWorkspace) return "pt";
-  if (hasClientWorkspace) return "client";
-  if (!hasPtProfile && !hasClientRows) return "unknown";
 
   if (params.pathname.startsWith("/pt")) return "pt";
   if (
@@ -303,9 +377,11 @@ function resolveAccountType(params: {
   ) {
     return "client";
   }
-  if (hasPtWorkspace && !hasClientWorkspace) return "pt";
-  if (hasClientWorkspace && !hasPtWorkspace) return "client";
-  return hasPtProfile ? "pt" : "client";
+
+  if (hasClientWorkspace && !hasPtProfile) return "client";
+  if (hasPtProfile) return "pt";
+  if (hasClientRows) return "client";
+  return "unknown";
 }
 
 function getActiveClientRow(params: {
@@ -322,6 +398,301 @@ function getActiveClientRow(params: {
     if (selected) return selected;
   }
   return workspaceRows[0] ?? params.clientRows[0] ?? null;
+}
+
+function buildPendingInviteToken(pathname: string) {
+  const inviteTokenFromPath = pathname.startsWith("/invite/")
+    ? pathname.split("/invite/")[1] ?? null
+    : null;
+  return inviteTokenFromPath ?? getPendingInviteToken();
+}
+
+function finalizeBootstrapState(
+  state: AuthBootstrapCoreState,
+  pathname: string,
+): AuthBootstrapState {
+  return {
+    ...state,
+    bootstrapPath: getBootstrapPath(state, pathname),
+  };
+}
+
+function shouldClearSignupIntent(state: AuthBootstrapCoreState) {
+  return (
+    state.accountType !== "unknown" ||
+    state.hasWorkspaceMembership ||
+    state.ptWorkspaceComplete ||
+    state.clientAccountComplete
+  );
+}
+
+export function buildStaleBootstrapFallbackState(params: {
+  fallback: AuthBootstrapState;
+  pathname: string;
+}): AuthBootstrapState {
+  const { fallback, pathname } = params;
+
+  return finalizeBootstrapState(
+    {
+      accountType: fallback.accountType,
+      role: fallback.role,
+      hasWorkspaceMembership: fallback.hasWorkspaceMembership,
+      ptWorkspaceComplete: fallback.ptWorkspaceComplete,
+      ptProfileComplete: fallback.ptProfileComplete,
+      clientAccountComplete: fallback.clientAccountComplete,
+      clientWorkspaceOnboardingHardGateRequired:
+        fallback.clientWorkspaceOnboardingHardGateRequired,
+      pendingInviteToken:
+        buildPendingInviteToken(pathname) ?? fallback.pendingInviteToken,
+      activeWorkspaceId: fallback.activeWorkspaceId,
+      activeClientId: fallback.activeClientId,
+      ptProfile: fallback.ptProfile,
+      clientProfile: fallback.clientProfile,
+    },
+    pathname,
+  );
+}
+
+function buildPtWorkspaceState(params: {
+  pathname: string;
+  pendingInviteToken: string | null;
+  storedWorkspaceId: string | null;
+  workspaceRows: WorkspaceMembershipRow[];
+  previousStable: AuthBootstrapState | null;
+}): AuthBootstrapCoreState {
+  const firstWorkspaceId =
+    params.workspaceRows.find((member) => member.workspace_id)?.workspace_id ?? null;
+  const previousPtProfile =
+    params.previousStable?.accountType === "pt" ? params.previousStable.ptProfile : null;
+
+  return {
+    accountType: "pt",
+    role: "pt",
+    hasWorkspaceMembership: true,
+    ptWorkspaceComplete: true,
+    ptProfileComplete: isPtProfileComplete(previousPtProfile),
+    clientAccountComplete: false,
+    clientWorkspaceOnboardingHardGateRequired: false,
+    pendingInviteToken: params.pendingInviteToken,
+    activeWorkspaceId: params.storedWorkspaceId ?? firstWorkspaceId,
+    activeClientId: null,
+    ptProfile: previousPtProfile,
+    clientProfile: null,
+  };
+}
+
+function buildProfileDerivedState(params: {
+  pathname: string;
+  pendingInviteToken: string | null;
+  storedWorkspaceId: string | null;
+  ptProfile: PtProfileRow | null;
+  clientRows: ClientProfileRow[];
+  signupIntent: AccountType;
+}): AuthBootstrapCoreState {
+  const accountType = resolveAccountType({
+    ptProfile: params.ptProfile,
+    clientRows: params.clientRows,
+    pathname: params.pathname,
+    signupIntent: params.signupIntent,
+  });
+  const activeClient = getActiveClientRow({
+    accountType,
+    clientRows: params.clientRows,
+    workspaceId: params.storedWorkspaceId,
+  });
+  const clientAccountComplete = isClientAccountComplete(activeClient);
+
+  return {
+    accountType,
+    role:
+      accountType === "pt"
+        ? "pt"
+        : accountType === "client"
+          ? "client"
+          : "none",
+    hasWorkspaceMembership:
+      accountType === "client" ? Boolean(activeClient?.workspace_id) : false,
+    ptWorkspaceComplete: false,
+    ptProfileComplete: isPtProfileComplete(params.ptProfile),
+    clientAccountComplete,
+    clientWorkspaceOnboardingHardGateRequired: Boolean(
+      activeClient?.workspace_id && !clientAccountComplete,
+    ),
+    pendingInviteToken: params.pendingInviteToken,
+    activeWorkspaceId:
+      accountType === "client" ? activeClient?.workspace_id ?? null : null,
+    activeClientId: activeClient?.id ?? null,
+    ptProfile: accountType === "pt" ? params.ptProfile : null,
+    clientProfile: activeClient,
+  };
+}
+
+export function resolveBootstrapFromLookupResults(params: {
+  pathname: string;
+  previousStable: AuthBootstrapState | null;
+  storedWorkspaceId: string | null;
+  signupIntent: AccountType;
+  pendingInviteToken: string | null;
+  membershipResult: LookupResult<WorkspaceMembershipRow[]>;
+  ptProfileResult: LookupResult<PtProfileRow[]> | null;
+  clientResult: LookupResult<ClientProfileRow[]> | null;
+}): BootstrapResolution {
+  const {
+    clientResult,
+    membershipResult,
+    pathname,
+    pendingInviteToken,
+    previousStable,
+    ptProfileResult,
+    signupIntent,
+    storedWorkspaceId,
+  } = params;
+
+  if (membershipResult.status === "ok") {
+    const ptWorkspaceRows = membershipResult.data.filter((member) =>
+      member.role?.startsWith("pt"),
+    );
+    if (ptWorkspaceRows.length > 0) {
+      return {
+        status: "resolved",
+        state: buildPtWorkspaceState({
+          pathname,
+          pendingInviteToken,
+          storedWorkspaceId,
+          workspaceRows: ptWorkspaceRows,
+          previousStable,
+        }),
+      };
+    }
+  }
+
+  if (membershipResult.status === "timeout") {
+    return { status: "unresolved", error: membershipResult.error };
+  }
+
+  if (membershipResult.status === "error") {
+    return {
+      status: "unresolved",
+      error:
+        membershipResult.error instanceof Error
+          ? membershipResult.error
+          : new Error("Workspace membership lookup failed."),
+    };
+  }
+
+  const ptProfile =
+    ptProfileResult?.status === "ok"
+      ? getCanonicalPtProfile(ptProfileResult.data)
+      : null;
+  const clientRows =
+    clientResult?.status === "ok" ? sortClientRows(clientResult.data) : [];
+
+  const hasPositivePt = Boolean(ptProfile);
+  const hasPositiveClient = clientRows.length > 0;
+  const ptUnknown =
+    ptProfileResult?.status === "timeout" || ptProfileResult?.status === "error";
+  const clientUnknown =
+    clientResult?.status === "timeout" || clientResult?.status === "error";
+
+  if (hasPositivePt || hasPositiveClient) {
+    return {
+      status: "resolved",
+      state: buildProfileDerivedState({
+        pathname,
+        pendingInviteToken,
+        storedWorkspaceId,
+        ptProfile,
+        clientRows,
+        signupIntent,
+      }),
+    };
+  }
+
+  if (ptUnknown || clientUnknown) {
+    const error =
+      ptProfileResult?.status === "timeout"
+        ? ptProfileResult.error
+        : clientResult?.status === "timeout"
+          ? clientResult.error
+          : ptProfileResult?.status === "error"
+            ? ptProfileResult.error
+            : clientResult?.status === "error"
+              ? clientResult.error
+              : new Error("Bootstrap lookups remained unresolved.");
+
+    return {
+      status: "unresolved",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+
+  return {
+    status: "resolved",
+    state: buildProfileDerivedState({
+      pathname,
+      pendingInviteToken,
+      storedWorkspaceId,
+      ptProfile: null,
+      clientRows: [],
+      signupIntent,
+    }),
+  };
+}
+
+async function resolveBootstrapState(params: {
+  user: User;
+  pathname: string;
+  previousStable: AuthBootstrapState | null;
+}): Promise<BootstrapResolution> {
+  const { pathname, previousStable, user } = params;
+  const storedWorkspaceId = getActiveWorkspaceIdFromStorage();
+  const signupIntent = getSignupIntentFallback();
+  const pendingInviteToken = buildPendingInviteToken(pathname);
+
+  const membershipResult = await lookupRows(
+    "Workspace membership",
+    supabase
+      .from("workspace_members")
+      .select("workspace_id, role")
+      .eq("user_id", user.id)
+      .returns<WorkspaceMembershipRow[]>()
+      .limit(25),
+  );
+
+  const [ptProfileResult, clientResult] =
+    membershipResult.status === "empty"
+      ? await Promise.all([
+    lookupRows(
+      "PT profile",
+      supabase
+        .from("pt_profiles")
+        .select(PT_PROFILE_SELECT)
+        .eq("user_id", user.id)
+        .returns<PtProfileRow[]>()
+        .limit(25),
+    ),
+    lookupRows(
+      "Client profile",
+      supabase
+        .from("clients")
+        .select(CLIENT_PROFILE_SELECT)
+        .eq("user_id", user.id)
+        .returns<ClientProfileRow[]>()
+        .limit(25),
+    ),
+  ])
+      : [null, null];
+
+  return resolveBootstrapFromLookupResults({
+    pathname,
+    previousStable,
+    storedWorkspaceId,
+    signupIntent,
+    pendingInviteToken,
+    membershipResult,
+    ptProfileResult,
+    clientResult,
+  });
 }
 
 export function getAuthenticatedRedirectPath(state: RedirectState) {
@@ -370,237 +741,42 @@ export function getAuthenticatedRedirectPath(state: RedirectState) {
   return "/no-workspace";
 }
 
-function getBootstrapPath(state: Omit<AuthBootstrapState, "bootstrapPath">, pathname: string) {
+export function getBootstrapPath(
+  state: AuthBootstrapCoreState,
+  pathname: string,
+) {
   if (pathname.startsWith("/invite/")) return null;
-
   return getAuthenticatedRedirectPath(state);
 }
 
-async function resolveBootstrapState(
-  user: User,
-  pathname: string,
-): Promise<Omit<AuthBootstrapState, "bootstrapPath">> {
-  const [ptProfileData, workspaceData, clientData] = await Promise.all([
-    safeLookup(
-      "PT profile",
-      supabase
-        .from("pt_profiles")
-        .select(PT_PROFILE_SELECT)
-        .eq("user_id", user.id)
-        .returns<PtProfileRow[]>()
-        .limit(25),
-      [] as PtProfileRow[],
-    ),
-    safeLookup(
-      "Workspace membership",
-      supabase
-        .from("workspace_members")
-        .select("workspace_id, role")
-        .eq("user_id", user.id)
-        .returns<WorkspaceMembershipRow[]>()
-        .limit(25),
-      [] as WorkspaceMembershipRow[],
-    ),
-    safeLookup(
-      "Client profile",
-      supabase
-        .from("clients")
-        .select(CLIENT_PROFILE_SELECT)
-        .eq("user_id", user.id)
-        .returns<ClientProfileRow[]>()
-        .limit(25),
-      [] as ClientProfileRow[],
-    ),
-  ]);
-
-  const ptProfile = getCanonicalPtProfile(ptProfileData as PtProfileRow[]);
-  const workspaceRows = workspaceData as WorkspaceMembershipRow[];
-  const clientRows = ((clientData ?? []) as ClientProfileRow[]).sort((a, b) => {
-    if (!a.workspace_id && b.workspace_id) return -1;
-    if (a.workspace_id && !b.workspace_id) return 1;
-    return (a.created_at ?? "").localeCompare(b.created_at ?? "");
-  });
-  const storedWorkspaceId = getActiveWorkspaceIdFromStorage();
-  const signupIntent = getSignupIntentFallback();
-  const accountType = resolveAccountType({
-    ptProfile,
-    clientRows,
-    workspaceRows,
-    pathname,
-    signupIntent,
-  });
-  const activeClient = getActiveClientRow({
-    accountType,
-    clientRows,
-    workspaceId: storedWorkspaceId,
-  });
-  const inviteTokenFromPath = pathname.startsWith("/invite/")
-    ? pathname.split("/invite/")[1] ?? null
-    : null;
-  const pendingInviteToken = inviteTokenFromPath ?? getPendingInviteToken();
-  const ptWorkspaceComplete = workspaceRows.some((member) =>
-    member.role?.startsWith("pt"),
-  );
-  const hasWorkspaceMembership =
-    accountType === "pt"
-      ? ptWorkspaceComplete
-      : Boolean(activeClient?.workspace_id);
-  const clientAccountComplete = isClientAccountComplete(activeClient);
-
+export function buildSessionAuthValue(params: {
+  session: Session | null;
+  authLoading: boolean;
+  authError: Error | null;
+}): SessionAuthContextValue {
   return {
-    accountType,
-    role:
-      accountType === "pt"
-        ? "pt"
-        : accountType === "client"
-          ? "client"
-          : "none",
-    hasWorkspaceMembership,
-    ptWorkspaceComplete,
-    ptProfileComplete: isPtProfileComplete(ptProfile),
-    clientAccountComplete,
-    clientWorkspaceOnboardingHardGateRequired: Boolean(
-      activeClient?.workspace_id && !clientAccountComplete,
-    ),
-    pendingInviteToken,
-    activeWorkspaceId:
-      accountType === "pt"
-        ? storedWorkspaceId ??
-          workspaceRows.find((member) => member.workspace_id)?.workspace_id ??
-          null
-        : activeClient?.workspace_id ?? null,
-    activeClientId: activeClient?.id ?? null,
-    ptProfile,
-    clientProfile: activeClient,
-  };
-}
-
-const emptyBootstrapState: AuthBootstrapState = {
-  accountType: "unknown",
-  role: "none",
-  hasWorkspaceMembership: false,
-  ptWorkspaceComplete: false,
-  ptProfileComplete: false,
-  clientAccountComplete: false,
-  clientWorkspaceOnboardingHardGateRequired: false,
-  pendingInviteToken: null,
-  activeWorkspaceId: null,
-  activeClientId: null,
-  ptProfile: null,
-  clientProfile: null,
-  bootstrapPath: null,
-};
-
-function hasMeaningfulBootstrapState(
-  state: AuthBootstrapState | Omit<AuthBootstrapState, "bootstrapPath"> | null | undefined,
-) {
-  if (!state) return false;
-
-  return Boolean(
-    state.accountType !== "unknown" ||
-      state.hasWorkspaceMembership ||
-      state.ptWorkspaceComplete ||
-      state.clientAccountComplete ||
-      state.activeWorkspaceId ||
-      state.activeClientId ||
-      state.ptProfile ||
-      state.clientProfile,
-  );
-}
-
-function shouldPreservePreviousBootstrapState(params: {
-  nextState: Omit<AuthBootstrapState, "bootstrapPath">;
-  previousState: AuthBootstrapState | null;
-}) {
-  const { nextState, previousState } = params;
-  if (!hasMeaningfulBootstrapState(previousState)) return false;
-
-  const nextStateLooksEmpty = !hasMeaningfulBootstrapState(nextState);
-  if (nextStateLooksEmpty) return true;
-
-  if (
-    previousState?.accountType === "pt" &&
-    previousState.ptWorkspaceComplete &&
-    nextState.accountType !== "pt" &&
-    !nextState.ptWorkspaceComplete &&
-    !nextState.ptProfile
-  ) {
-    return true;
-  }
-
-  if (
-    previousState?.accountType === "client" &&
-    previousState.hasWorkspaceMembership &&
-    nextState.accountType === "unknown" &&
-    !nextState.clientProfile &&
-    !nextState.hasWorkspaceMembership
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function stabilizeBootstrapState(params: {
-  pathname: string;
-  nextState: Omit<AuthBootstrapState, "bootstrapPath">;
-  previousState?: AuthBootstrapState | null;
-  cachedState?: AuthBootstrapState | null;
-}) {
-  const { cachedState = null, nextState, pathname, previousState = null } = params;
-  const fallbackState = hasMeaningfulBootstrapState(previousState)
-    ? previousState
-    : hasMeaningfulBootstrapState(cachedState)
-      ? cachedState
-      : null;
-
-  if (
-    fallbackState &&
-    shouldPreservePreviousBootstrapState({
-      nextState,
-      previousState: fallbackState,
-    })
-  ) {
-    const stabilizedState: Omit<AuthBootstrapState, "bootstrapPath"> = {
-      accountType: fallbackState.accountType,
-      role: fallbackState.role,
-      hasWorkspaceMembership: fallbackState.hasWorkspaceMembership,
-      ptWorkspaceComplete: fallbackState.ptWorkspaceComplete,
-      ptProfileComplete: fallbackState.ptProfileComplete,
-      clientAccountComplete: fallbackState.clientAccountComplete,
-      clientWorkspaceOnboardingHardGateRequired:
-        fallbackState.clientWorkspaceOnboardingHardGateRequired,
-      pendingInviteToken:
-        nextState.pendingInviteToken ?? fallbackState.pendingInviteToken,
-      activeWorkspaceId:
-        nextState.activeWorkspaceId ?? fallbackState.activeWorkspaceId,
-      activeClientId: nextState.activeClientId ?? fallbackState.activeClientId,
-      ptProfile: nextState.ptProfile ?? fallbackState.ptProfile,
-      clientProfile: nextState.clientProfile ?? fallbackState.clientProfile,
-    };
-
-    return {
-      ...stabilizedState,
-      bootstrapPath: getBootstrapPath(stabilizedState, pathname),
-    };
-  }
-
-  return {
-    ...nextState,
-    bootstrapPath: getBootstrapPath(nextState, pathname),
+    user: params.session?.user ?? null,
+    session: params.session,
+    isAuthenticated: Boolean(params.session),
+    authLoading: params.authLoading,
+    authError: params.authError,
   };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<Error | null>(null);
   const [bootstrapState, setBootstrapState] =
     useState<AuthBootstrapState>(emptyBootstrapState);
-  const resolveIdRef = useRef(0);
-  const hasResolvedInitialSessionRef = useRef(false);
+  const [bootstrapLoading, setBootstrapLoading] = useState(false);
+  const [bootstrapResolved, setBootstrapResolved] = useState(false);
+  const [bootstrapStale, setBootstrapStale] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState<Error | null>(null);
+  const bootstrapRequestIdRef = useRef(0);
   const sessionRef = useRef<Session | null>(null);
   const bootstrapStateRef = useRef<AuthBootstrapState>(emptyBootstrapState);
+  const lastStableBootstrapRef = useRef<AuthBootstrapState | null>(null);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -610,76 +786,170 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bootstrapStateRef.current = bootstrapState;
   }, [bootstrapState]);
 
-  useEffect(() => {
-    const userId = session?.user?.id;
-    if (!userId) return;
-
-    writeCachedBootstrapState(userId, {
-      accountType: bootstrapState.accountType,
-      role: bootstrapState.role,
-      hasWorkspaceMembership: bootstrapState.hasWorkspaceMembership,
-      ptWorkspaceComplete: bootstrapState.ptWorkspaceComplete,
-      ptProfileComplete: bootstrapState.ptProfileComplete,
-      clientAccountComplete: bootstrapState.clientAccountComplete,
-      clientWorkspaceOnboardingHardGateRequired:
-        bootstrapState.clientWorkspaceOnboardingHardGateRequired,
-      pendingInviteToken: bootstrapState.pendingInviteToken,
-      activeWorkspaceId: bootstrapState.activeWorkspaceId,
-      activeClientId: bootstrapState.activeClientId,
-      ptProfile: bootstrapState.ptProfile,
-      clientProfile: bootstrapState.clientProfile,
-    });
-  }, [bootstrapState, session?.user?.id]);
-
-  const refreshRole = useCallback(async () => {
-    try {
-      setAuthError(null);
-      const { data, error } = await withTimeout(
-        supabase.auth.getSession(),
-        SESSION_LOAD_TIMEOUT_MS,
-        `Session load timed out (${Math.round(SESSION_LOAD_TIMEOUT_MS / 1000)}s).`,
-      );
-      if (error) throw error;
-
-      const nextSession = await ensureFreshSession(data.session ?? null);
-      sessionRef.current = nextSession;
-      setSession(nextSession);
-
-      if (!nextSession?.user) {
-        clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
-        setBootstrapState(emptyBootstrapState);
-        return;
+  const applyResolvedBootstrapState = useCallback(
+    (nextState: AuthBootstrapCoreState, pathname: string, userId: string) => {
+      const finalized = finalizeBootstrapState(nextState, pathname);
+      lastStableBootstrapRef.current = finalized;
+      writeCachedBootstrapState(userId, nextState);
+      if (shouldClearSignupIntent(nextState)) {
+        clearSignupIntent();
       }
+      setBootstrapState(finalized);
+      setBootstrapResolved(true);
+      setBootstrapStale(false);
+      setBootstrapLoading(false);
+      setBootstrapError(null);
+    },
+    [],
+  );
 
-      const pathname = getCurrentPathname();
-      const cachedState = readCachedBootstrapState(nextSession.user.id, pathname);
-      const nextStateBase = await resolveBootstrapState(nextSession.user, pathname);
+  const applyStaleBootstrapState = useCallback(
+    (params: { fallback: AuthBootstrapState; pathname: string; error: Error }) => {
+      const { error, fallback, pathname } = params;
       setBootstrapState(
-        stabilizeBootstrapState({
-          pathname,
-          nextState: nextStateBase,
-          previousState: bootstrapStateRef.current,
-          cachedState,
-        }),
+        buildStaleBootstrapFallbackState({ fallback, pathname }),
       );
-    } catch (error) {
-      if (isInvalidRefreshTokenError(error)) {
-        await clearBrokenLocalSession();
-        sessionRef.current = null;
-        setSession(null);
-        setBootstrapState(emptyBootstrapState);
+      setBootstrapResolved(false);
+      setBootstrapStale(true);
+      setBootstrapLoading(false);
+      setBootstrapError(error);
+    },
+    [],
+  );
+
+  const resetBootstrapState = useCallback(() => {
+    bootstrapRequestIdRef.current += 1;
+    setBootstrapState(emptyBootstrapState);
+    setBootstrapLoading(false);
+    setBootstrapResolved(false);
+    setBootstrapStale(false);
+    setBootstrapError(null);
+    lastStableBootstrapRef.current = null;
+  }, []);
+
+  const runBootstrap = useCallback(
+    async (
+      user: User,
+      options?: {
+        pathname?: string;
+        seedFromCache?: boolean;
+      },
+    ) => {
+      const pathname = options?.pathname ?? getCurrentPathname();
+      const currentRequestId = ++bootstrapRequestIdRef.current;
+      const cachedState = readCachedBootstrapState(user.id, pathname);
+      if (options?.seedFromCache && cachedState && !hasMeaningfulBootstrapState(lastStableBootstrapRef.current)) {
+        lastStableBootstrapRef.current = cachedState;
+      }
+      if (options?.seedFromCache && cachedState) {
+        setBootstrapState(cachedState);
+        setBootstrapStale(true);
+        setBootstrapResolved(false);
+      }
+      setBootstrapLoading(true);
+      setBootstrapError(null);
+
+      const resolution = await resolveBootstrapState({
+        user,
+        pathname,
+        previousStable: lastStableBootstrapRef.current,
+      });
+
+      if (currentRequestId !== bootstrapRequestIdRef.current) return;
+
+      if (resolution.status === "resolved") {
+        applyResolvedBootstrapState(resolution.state, pathname, user.id);
         return;
       }
-      logLookupWarning("Auth refresh", error);
+
+      const fallbackState =
+        lastStableBootstrapRef.current ??
+        (hasMeaningfulBootstrapState(cachedState) ? cachedState : null);
+
+      if (fallbackState) {
+        applyStaleBootstrapState({
+          fallback: fallbackState,
+          pathname,
+          error: resolution.error,
+        });
+        return;
+      }
+
+      setBootstrapLoading(false);
+      setBootstrapResolved(false);
+      setBootstrapStale(false);
+      setBootstrapError(resolution.error);
+    },
+    [applyResolvedBootstrapState, applyStaleBootstrapState],
+  );
+
+  const refreshBootstrap = useCallback(async () => {
+    const nextSession =
+      sessionRef.current ??
+      (await ensureFreshSession((await supabase.auth.getSession()).data.session ?? null));
+
+    sessionRef.current = nextSession;
+    setSession(nextSession);
+
+    if (!nextSession?.user) {
+      clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
+      resetBootstrapState();
+      return;
     }
-  }, []);
+
+    await runBootstrap(nextSession.user, { pathname: getCurrentPathname() });
+  }, [resetBootstrapState, runBootstrap]);
+
+  const patchBootstrap = useCallback(
+    (
+      updater:
+        | Partial<AuthBootstrapCoreState>
+        | ((prev: AuthBootstrapCoreState) => Partial<AuthBootstrapCoreState>),
+    ) => {
+      const pathname = getCurrentPathname();
+      const previousCore: AuthBootstrapCoreState = {
+        accountType: bootstrapStateRef.current.accountType,
+        role: bootstrapStateRef.current.role,
+        hasWorkspaceMembership: bootstrapStateRef.current.hasWorkspaceMembership,
+        ptWorkspaceComplete: bootstrapStateRef.current.ptWorkspaceComplete,
+        ptProfileComplete: bootstrapStateRef.current.ptProfileComplete,
+        clientAccountComplete: bootstrapStateRef.current.clientAccountComplete,
+        clientWorkspaceOnboardingHardGateRequired:
+          bootstrapStateRef.current.clientWorkspaceOnboardingHardGateRequired,
+        pendingInviteToken: bootstrapStateRef.current.pendingInviteToken,
+        activeWorkspaceId: bootstrapStateRef.current.activeWorkspaceId,
+        activeClientId: bootstrapStateRef.current.activeClientId,
+        ptProfile: bootstrapStateRef.current.ptProfile,
+        clientProfile: bootstrapStateRef.current.clientProfile,
+      };
+      const patch =
+        typeof updater === "function" ? updater(previousCore) : updater;
+      const nextCore = {
+        ...previousCore,
+        ...patch,
+      };
+      const finalized = finalizeBootstrapState(nextCore, pathname);
+      lastStableBootstrapRef.current = finalized;
+      if (sessionRef.current?.user?.id) {
+        writeCachedBootstrapState(sessionRef.current.user.id, nextCore);
+      }
+      if (shouldClearSignupIntent(nextCore)) {
+        clearSignupIntent();
+      }
+      setBootstrapState(finalized);
+      setBootstrapResolved(true);
+      setBootstrapStale(false);
+      setBootstrapLoading(false);
+      setBootstrapError(null);
+    },
+    [],
+  );
 
   useEffect(() => {
     let alive = true;
-    const currentResolveId = ++resolveIdRef.current;
 
     const init = async () => {
-      setLoading(true);
+      setAuthLoading(true);
       try {
         setAuthError(null);
 
@@ -694,60 +964,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           SESSION_LOAD_TIMEOUT_MS,
           `Session load timed out (${Math.round(SESSION_LOAD_TIMEOUT_MS / 1000)}s).`,
         );
-
-        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        if (!alive) return;
         if (error) throw error;
 
         const nextSession = await ensureFreshSession(data.session ?? null);
-        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        if (!alive) return;
         sessionRef.current = nextSession;
         setSession(nextSession);
 
         if (!nextSession?.user) {
-          clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
-          setBootstrapState(emptyBootstrapState);
+          clearCachedBootstrapState(null);
+          resetBootstrapState();
           return;
         }
 
-        const pathname = getCurrentPathname();
-        const cachedState = readCachedBootstrapState(nextSession.user.id, pathname);
-        if (cachedState) {
-          setBootstrapState(cachedState);
-          hasResolvedInitialSessionRef.current = true;
-          setLoading(false);
-        }
-        const nextStateBase = await resolveBootstrapState(nextSession.user, pathname);
-        if (!alive || currentResolveId !== resolveIdRef.current) return;
-        setBootstrapState(
-          stabilizeBootstrapState({
-            pathname,
-            nextState: nextStateBase,
-            previousState: bootstrapStateRef.current,
-            cachedState,
-          }),
-        );
+        void runBootstrap(nextSession.user, {
+          pathname: getCurrentPathname(),
+          seedFromCache: true,
+        });
       } catch (error) {
-        if (!alive || currentResolveId !== resolveIdRef.current) return;
+        if (!alive) return;
         if (isInvalidRefreshTokenError(error)) {
           await clearBrokenLocalSession();
         }
-        clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
         sessionRef.current = null;
-        setAuthError(error instanceof Error ? error : new Error(String(error)));
         setSession(null);
-        setBootstrapState(emptyBootstrapState);
+        resetBootstrapState();
+        setAuthError(error instanceof Error ? error : new Error(String(error)));
       } finally {
-        if (!alive || currentResolveId !== resolveIdRef.current) return;
-        hasResolvedInitialSessionRef.current = true;
-        setLoading(false);
+        if (!alive) return;
+        setAuthLoading(false);
       }
     };
 
-    init();
+    void init();
 
     const { data: sub } = supabase.auth.onAuthStateChange(
       async (event, nextSession) => {
         if (!alive) return;
+
         if (event === "TOKEN_REFRESHED") {
           sessionRef.current = nextSession ?? null;
           setSession(nextSession ?? null);
@@ -758,60 +1013,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
           sessionRef.current = null;
           setSession(null);
-          setBootstrapState(emptyBootstrapState);
-          hasResolvedInitialSessionRef.current = true;
-          setLoading(false);
+          resetBootstrapState();
           return;
         }
 
-        const shouldBlockUi =
-          !hasResolvedInitialSessionRef.current ||
-          (event === "SIGNED_IN" && !sessionRef.current);
-        if (shouldBlockUi) {
-          setLoading(true);
-        }
         try {
           setAuthError(null);
           const freshSession = await ensureFreshSession(nextSession ?? null);
+          if (!alive) return;
           sessionRef.current = freshSession;
           setSession(freshSession);
 
           if (!freshSession?.user) {
             clearCachedBootstrapState(sessionRef.current?.user?.id ?? null);
-            setBootstrapState(emptyBootstrapState);
+            resetBootstrapState();
             return;
           }
 
-          const pathname = getCurrentPathname();
-          const cachedState = readCachedBootstrapState(freshSession.user.id, pathname);
-          const nextStateBase = await resolveBootstrapState(
-            freshSession.user,
-            pathname,
-          );
-          if (!alive) return;
-          setBootstrapState(
-            stabilizeBootstrapState({
-              pathname,
-              nextState: nextStateBase,
-              previousState: bootstrapStateRef.current,
-              cachedState,
-            }),
-          );
+          void runBootstrap(freshSession.user, {
+            pathname: getCurrentPathname(),
+            seedFromCache: true,
+          });
         } catch (error) {
           if (!alive) return;
           if (isInvalidRefreshTokenError(error)) {
             await clearBrokenLocalSession();
             sessionRef.current = null;
             setSession(null);
-            setBootstrapState(emptyBootstrapState);
+            resetBootstrapState();
             return;
           }
-          logLookupWarning(`Auth state change (${event})`, error);
-          setBootstrapState(bootstrapStateRef.current);
-        } finally {
-          if (!alive) return;
-          hasResolvedInitialSessionRef.current = true;
-          if (shouldBlockUi) setLoading(false);
+          setAuthError(error instanceof Error ? error : new Error(String(error)));
         }
       },
     );
@@ -820,25 +1052,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       alive = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [resetBootstrapState, runBootstrap]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user: session?.user ?? null,
-      session,
-      loading,
-      authError,
-      refreshRole,
-      ...bootstrapState,
-    }),
-    [authError, bootstrapState, loading, refreshRole, session],
+  const sessionValue = useMemo<SessionAuthContextValue>(
+    () =>
+      buildSessionAuthValue({
+        session,
+        authLoading,
+        authError,
+      }),
+    [authError, authLoading, session],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const bootstrapValue = useMemo<BootstrapAuthContextValue>(
+    () => ({
+      ...bootstrapState,
+      bootstrapLoading,
+      bootstrapResolved,
+      bootstrapStale,
+      hasStableBootstrap: hasMeaningfulBootstrapState(lastStableBootstrapRef.current),
+      bootstrapError,
+      refreshBootstrap,
+      refreshRole: refreshBootstrap,
+      patchBootstrap,
+    }),
+    [
+      bootstrapError,
+      bootstrapLoading,
+      bootstrapResolved,
+      bootstrapStale,
+      bootstrapState,
+      patchBootstrap,
+      refreshBootstrap,
+    ],
+  );
+
+  return (
+    <SessionAuthContext.Provider value={sessionValue}>
+      <BootstrapAuthContext.Provider value={bootstrapValue}>
+        {children}
+      </BootstrapAuthContext.Provider>
+    </SessionAuthContext.Provider>
+  );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+export function useSessionAuth() {
+  const ctx = useContext(SessionAuthContext);
+  if (!ctx) throw new Error("useSessionAuth must be used within AuthProvider");
   return ctx;
+}
+
+export function useBootstrapAuth() {
+  const ctx = useContext(BootstrapAuthContext);
+  if (!ctx) throw new Error("useBootstrapAuth must be used within AuthProvider");
+  return ctx;
+}
+
+export function useAuth(): CombinedAuthContextValue {
+  const session = useSessionAuth();
+  const bootstrap = useBootstrapAuth();
+
+  return {
+    ...session,
+    ...bootstrap,
+    loading: session.authLoading,
+  };
 }

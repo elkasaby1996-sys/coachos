@@ -21,7 +21,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 
@@ -91,7 +91,7 @@ const normalizeSortOrder = (value: string) => {
 };
 
 export function PtBaselineTemplatesPage() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);

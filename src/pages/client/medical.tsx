@@ -16,7 +16,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 type ClientMedicalProfile = {
   id: string;
@@ -83,7 +83,7 @@ const getErrorMessage = (error: unknown) => {
 };
 
 export function ClientMedicalPage() {
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [historyTitle, setHistoryTitle] = useState("");

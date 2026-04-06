@@ -19,7 +19,7 @@ import {
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { cn } from "../../lib/utils";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import {
@@ -170,7 +170,7 @@ const getQuestionSummaryValue = (value: QuestionValue | undefined) => {
 
 export function ClientCheckinPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const onboardingSummary = useClientOnboarding().data ?? null;
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionValue>>({});

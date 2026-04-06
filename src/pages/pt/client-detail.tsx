@@ -76,7 +76,7 @@ import {
   getSupabaseErrorDetails,
   getSupabaseErrorMessage,
 } from "../../lib/supabase-errors";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import {
   getClientLifecycleMeta,
   getClientLifecycleReason,
@@ -574,7 +574,7 @@ type QueryResult<T> = {
 const baselinePhotoTypes = ["front", "side", "back"] as const;
 
 export function PtClientDetailPage() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const { clientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -9075,7 +9075,7 @@ function PtClientNotesTab({
   clientId: string | null;
   workspaceId: string | null;
 }) {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const queryClient = useQueryClient();
   const [noteDraft, setNoteDraft] = useState("");
   const [noteStatus, setNoteStatus] = useState<"idle" | "saving" | "error">(
@@ -9239,7 +9239,7 @@ function PtClientMedicalTab({
   clientId: string | null;
   workspaceId: string | null;
 }) {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [historyTitle, setHistoryTitle] = useState("");

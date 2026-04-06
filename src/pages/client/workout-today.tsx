@@ -17,7 +17,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 type TemplateExerciseRow = {
   id: string;
@@ -56,7 +56,7 @@ const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
 
 export function ClientWorkoutTodayPage() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);

@@ -12,7 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu";
-import { useAuth } from "../../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
 import { cn } from "../../../lib/utils";
 import { NotificationPanel } from "./notification-panel";
 import {
@@ -35,7 +35,8 @@ export function NotificationBell({
   iconClassName?: string;
 }) {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user } = useSessionAuth();
+  const { role } = useBootstrapAuth();
   const [open, setOpen] = useState(false);
   const [toastNotification, setToastNotification] =
     useState<NotificationRecord | null>(null);

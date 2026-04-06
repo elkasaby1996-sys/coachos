@@ -14,7 +14,7 @@ import {
   SettingsToast,
 } from "../settings/sections/shared";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import {
   AVAILABLE_THEME_PREFERENCES,
   LIGHT_MODE_ENABLED,
@@ -83,7 +83,7 @@ const toNumberOrNull = (value: string) => {
 };
 
 export function ClientSettingsPage() {
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const { themePreference, compactDensity, updateAppearance, isSaving } =
     useThemePreference();

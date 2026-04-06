@@ -22,7 +22,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorMessage } from "../../lib/supabase-errors";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import {
   ActiveExercisePanel,
   type ActiveExercise,
@@ -157,7 +157,7 @@ export function ClientWorkoutRunPage() {
   const navigate = useNavigate();
   const { assignedWorkoutId } = useParams();
   const workoutId = isUuid(assignedWorkoutId) ? assignedWorkoutId : null;
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const [saveIndex, setSaveIndex] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);

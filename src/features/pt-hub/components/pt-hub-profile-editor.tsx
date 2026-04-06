@@ -24,7 +24,7 @@ import type {
 import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
 import { PtHubReadinessPanel } from "./pt-hub-readiness-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
-import { useAuth } from "../../../lib/auth";
+import { useSessionAuth } from "../../../lib/auth";
 
 const coachingModeOptions: Array<{
   value: PTCoachingMode;
@@ -155,7 +155,7 @@ export function PtHubProfileEditor({
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const [form, setForm] = useState<StoredProfileDraft>(createDraft(profile));
   const [specialtiesInput, setSpecialtiesInput] = useState(
     listToInput(profile.specialties),

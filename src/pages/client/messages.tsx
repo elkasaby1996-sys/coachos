@@ -26,7 +26,7 @@ import {
 } from "../../components/client/portal";
 import { Skeleton } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -66,7 +66,7 @@ const quickPrompts = [
 ] as const;
 
 export function ClientMessagesPage() {
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
   const draft = useMemo(
@@ -331,7 +331,7 @@ export function ClientMessagesPage() {
         <SurfaceCardHeader className="border-b border-border/60 pb-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center text-primary">
                 <MessageCircleMore className="h-5 w-5" />
               </div>
               <div className="min-w-0 space-y-1">

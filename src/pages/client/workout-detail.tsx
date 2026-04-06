@@ -14,7 +14,7 @@ import {
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorDetails } from "../../lib/supabase-errors";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 type SetState = {
   id?: string;
@@ -86,7 +86,7 @@ const getWorkoutTemplate = (value: any) =>
 export function ClientWorkoutDetailPage() {
   const { assignedWorkoutId } = useParams();
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const [saveIndex, setSaveIndex] = useState<number | null>(null);
   const [showSummary, setShowSummary] = useState(false);

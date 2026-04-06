@@ -13,7 +13,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 
 type InviteRecord = {
@@ -70,7 +70,7 @@ function getInviteMeta(selection: ExpirySelection) {
 }
 
 export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const [open, setOpen] = useState(false);
   const [expirySelection, setExpirySelection] =
     useState<ExpirySelection>("24h");

@@ -19,7 +19,7 @@ import {
   StickyActionBar,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 
 type BaselineEntry = {
@@ -115,7 +115,7 @@ const formatSupabaseError = (error: unknown) => {
 export function ClientBaselinePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const [baselineEntry, setBaselineEntry] = useState<BaselineEntry | null>(
     null,

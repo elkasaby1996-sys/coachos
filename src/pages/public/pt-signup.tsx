@@ -2,17 +2,23 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Dumbbell, Globe } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import {
   ensurePtProfile,
   getUserDisplayName,
+  persistSignupIntent,
   updatePtProfile,
 } from "../../lib/account-profiles";
 import { signInWithOAuth, signUpWithEmailPassword } from "../../lib/auth-helpers";
 import { supabase } from "../../lib/supabase";
-import { getAuthenticatedRedirectPath, useAuth } from "../../lib/auth";
+import {
+  getAuthenticatedRedirectPath,
+  useBootstrapAuth,
+  useSessionAuth,
+} from "../../lib/auth";
 
 const COUNTRY_OPTIONS = [
   { name: "Saudi Arabia", dialCode: "+966" },
@@ -73,16 +79,15 @@ export function PtSignupPage() {
   const navigate = useNavigate();
   const {
     accountType,
+    bootstrapResolved,
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired,
     hasWorkspaceMembership,
-    loading,
     pendingInviteToken,
     ptProfileComplete,
     ptWorkspaceComplete,
-    session,
-    user,
-  } = useAuth();
+  } = useBootstrapAuth();
+  const { authLoading, session, user } = useSessionAuth();
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
@@ -96,7 +101,11 @@ export function PtSignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (!loading && session) {
+  if (session && !bootstrapResolved) {
+    return <AuthPageLoader message="Restoring your coach account..." />;
+  }
+
+  if (!authLoading && session) {
     return (
       <Navigate
         to={getAuthenticatedRedirectPath({
@@ -114,7 +123,7 @@ export function PtSignupPage() {
   }
 
   const persistPtSignupDraft = () => {
-    window.localStorage.setItem("coachos_signup_intent", "pt");
+    persistSignupIntent("pt");
     window.localStorage.setItem("coachos_pt_signup_full_name", fullName.trim());
     window.localStorage.setItem("coachos_pt_signup_country", country.trim());
     window.localStorage.setItem("coachos_pt_signup_city", city.trim());

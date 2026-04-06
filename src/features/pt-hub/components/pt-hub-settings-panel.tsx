@@ -237,7 +237,7 @@ export function PtHubSettingsPanel({
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-background/70 text-primary">
+                <div className="flex h-10 w-10 items-center justify-center text-primary">
                   {form.weeklyDigest ? (
                     <BellRing className="h-4 w-4" />
                   ) : (

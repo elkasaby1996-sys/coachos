@@ -9,13 +9,14 @@ import {
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabaseConfigured } from "../../lib/supabase";
 
 type HealthState = "loading" | "ok" | "error";
 
 export function PtOpsStatusPage() {
-  const { session, role } = useAuth();
+  const { session } = useSessionAuth();
+  const { role } = useBootstrapAuth();
   const [healthState, setHealthState] = useState<HealthState>("loading");
   const [healthMessage, setHealthMessage] = useState<string>(
     "Checking /health...",
@@ -80,7 +81,7 @@ export function PtOpsStatusPage() {
 
       <div className="rounded-[24px] border border-warning/30 bg-warning/10 px-5 py-4">
         <div className="flex items-start gap-3">
-          <div className="rounded-full border border-warning/30 bg-warning/12 p-2 text-warning">
+          <div className="flex h-8 w-8 items-center justify-center text-warning">
             <AlertTriangle className="h-4 w-4" />
           </div>
           <div>

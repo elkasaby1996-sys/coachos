@@ -4,8 +4,13 @@ import { PublicPtProfileView } from "../../pt-public/components/public-pt-profil
 
 export function PtHubProfilePreview({
   profile,
+  statusBadges,
 }: {
   profile: PTProfilePreviewData;
+  statusBadges?: Array<{
+    label: string;
+    tone?: "success" | "secondary";
+  }>;
 }) {
   const publicProfile: PTPublicProfile = {
     userId: "preview",
@@ -34,5 +39,11 @@ export function PtHubProfilePreview({
       `/coach/${profile.slug || "preview-coach"}`,
   };
 
-  return <PublicPtProfileView profile={publicProfile} preview />;
+  return (
+    <PublicPtProfileView
+      profile={publicProfile}
+      preview
+      previewStatusBadges={statusBadges}
+    />
+  );
 }

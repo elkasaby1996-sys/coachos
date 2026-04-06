@@ -17,7 +17,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak } from "../../lib/habits";
@@ -107,7 +107,7 @@ const getWorkoutTemplateInfo = (row: any) => {
 
 export function ClientHomePage() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const weekStart = useMemo(() => {

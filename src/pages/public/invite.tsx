@@ -41,7 +41,7 @@ import {
   signUpWithEmailPassword,
   verifyPhoneOtp,
 } from "../../lib/auth-helpers";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
@@ -73,7 +73,8 @@ function getErrorMessage(err: unknown): string {
 export function InvitePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { accountType, loading, refreshRole, session } = useAuth();
+  const { session, authLoading } = useSessionAuth();
+  const { accountType, patchBootstrap, refreshRole } = useBootstrapAuth();
   const [activeTab, setActiveTab] = useState<InviteTab>("social");
   const [inviteLoading, setInviteLoading] = useState(true);
   const [invite, setInvite] = useState<VerifyInviteRow | null>(null);
@@ -161,6 +162,15 @@ export function InvitePage() {
           email: session.user.email ?? null,
         });
         if (!isClientAccountComplete(clientProfile)) {
+          patchBootstrap({
+            accountType: "client",
+            role: "client",
+            clientProfile,
+            activeClientId: clientProfile?.id ?? null,
+            clientAccountComplete: false,
+            hasWorkspaceMembership: false,
+            clientWorkspaceOnboardingHardGateRequired: false,
+          });
           navigate(
             `/client/onboarding/account?invite=${encodeURIComponent(tokenValue)}`,
             { replace: true },
@@ -176,6 +186,19 @@ export function InvitePage() {
         if (acceptError) throw acceptError;
         setNotice("Invite accepted. Redirecting...");
         clearPendingInviteToken();
+        patchBootstrap((prev) => ({
+          accountType: "client",
+          role: "client",
+          hasWorkspaceMembership: true,
+          clientWorkspaceOnboardingHardGateRequired: true,
+          activeWorkspaceId: invite.workspace_id ?? prev.activeWorkspaceId,
+          clientProfile: prev.clientProfile
+            ? {
+                ...prev.clientProfile,
+                workspace_id: invite.workspace_id ?? prev.clientProfile.workspace_id,
+              }
+            : prev.clientProfile,
+        }));
         await refreshRole?.();
         navigate("/app/onboarding", { replace: true });
       } catch (err) {
@@ -188,10 +211,12 @@ export function InvitePage() {
     accept();
   }, [
     accountType,
+    invite?.workspace_id,
     session?.user,
     invite?.is_valid,
     tokenValue,
     navigate,
+    patchBootstrap,
     refreshRole,
   ]);
 
@@ -342,7 +367,7 @@ export function InvitePage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-5 rounded-2xl border border-border/50 bg-card/60 p-5 shadow-[0_0_0_1px_oklch(var(--primary)/0.08),0_16px_48px_-28px_oklch(var(--primary)/0.6)] focus-within:shadow-[0_0_0_1px_oklch(var(--primary)/0.25),0_20px_56px_-26px_oklch(var(--primary)/0.75)]">
-            {inviteLoading || loading ? (
+            {inviteLoading || authLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-1/2" />
                 <Skeleton className="h-10 w-full" />
@@ -389,7 +414,7 @@ export function InvitePage() {
                   ? " Finalizing invite..."
                   : " Finishing invite acceptance..."}
               </div>
-            ) : invite && invite.is_valid && !(inviteLoading || loading) ? (
+            ) : invite && invite.is_valid && !(inviteLoading || authLoading) ? (
               <Tabs
                 value={activeTab}
                 onValueChange={(value) => setActiveTab(value as InviteTab)}
@@ -621,7 +646,7 @@ export function InvitePage() {
                   </p>
                 </TabsContent>
               </Tabs>
-            ) : !inviteLoading && !loading ? (
+            ) : !inviteLoading && !authLoading ? (
               <div className="rounded-xl border border-border/70 bg-secondary/30 p-4 text-sm text-muted-foreground">
                 This invite cannot be used right now. Ask your coach for a fresh
                 invite.

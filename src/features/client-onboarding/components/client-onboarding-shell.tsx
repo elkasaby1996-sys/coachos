@@ -32,7 +32,7 @@ import {
   SurfaceCardHeader,
   SurfaceCardTitle,
 } from "../../../components/client/portal";
-import { useAuth } from "../../../lib/auth";
+import { useSessionAuth } from "../../../lib/auth";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { useClientOnboarding } from "../hooks/use-client-onboarding";
 import {
@@ -255,7 +255,7 @@ export function ClientOnboardingShell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const onboardingQuery = useClientOnboarding();
   const summary = onboardingQuery.data ?? null;
 

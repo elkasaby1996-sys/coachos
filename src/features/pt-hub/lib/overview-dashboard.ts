@@ -38,6 +38,7 @@ export interface PtHubOverviewActionItem {
   href: string;
   ctaLabel: string;
   tone: ActionTone;
+  workspaceId?: string | null;
 }
 
 export interface PtHubOverviewChecklistItem {
@@ -114,9 +115,7 @@ function buildEarningsMetric(
     id: "monthly-earnings",
     label: "Monthly earnings",
     value: revenue?.monthlyRevenueLabel ?? "Not connected",
-    helper: revenueConnected
-      ? "Live earnings tracked from connected payments"
-      : "Connect payments to track earnings live",
+    helper: "",
     href: "/pt-hub/payments",
     delta: {
       value: revenueConnected ? "Live" : "Pending",
@@ -193,6 +192,36 @@ function getClientsNeedingAttention(clients: PTClientSummary[]) {
   return ids.size;
 }
 
+function getMostUrgentClient(
+  clients: PTClientSummary[],
+  predicate: (client: PTClientSummary) => boolean,
+) {
+  return [...clients]
+    .filter(predicate)
+    .sort((left, right) => {
+      const overdueDelta =
+        (right.overdueCheckinsCount ?? 0) - (left.overdueCheckinsCount ?? 0);
+      if (overdueDelta !== 0) return overdueDelta;
+
+      const rightTime = new Date(
+        right.lastActivityAt ??
+          right.lastClientReplyAt ??
+          right.updatedAt ??
+          right.createdAt ??
+          0,
+      ).getTime();
+      const leftTime = new Date(
+        left.lastActivityAt ??
+          left.lastClientReplyAt ??
+          left.updatedAt ??
+          left.createdAt ??
+          0,
+      ).getTime();
+
+      return leftTime - rightTime;
+    })[0];
+}
+
 function getOverviewMode(params: {
   leads: PTLead[];
   workspaces: PTWorkspaceSummary[];
@@ -215,94 +244,71 @@ function getOverviewMode(params: {
 }
 
 function buildMetrics(params: {
-  mode: PtHubOverviewMode;
-  workspaces: PTWorkspaceSummary[];
-  leads: PTLead[];
   stats: PTOverviewStats | null | undefined;
-  clientsNeedingAttentionCount: number;
   clientStats: ReturnType<typeof getPtClientBaseStats>;
-  profileCompletionPercent: number;
-  readiness: PTProfileReadiness | null | undefined;
-  publicationState: PTPublicationState | null | undefined;
   revenue: PTRevenueSnapshot | null | undefined;
 }) {
-  const applicationsDelta = buildMetricDelta(
+  const leadDelta = buildMetricDelta(
     (params.stats?.applicationsThisMonth ?? 0) -
       (params.stats?.applicationsPreviousWindow ?? 0),
   );
-  const businessSetupCompletionPercent = getBusinessSetupCompletionPercent({
-    readiness: params.readiness,
-    workspaces: params.workspaces,
-  });
-  const hasIncompleteBusinessSetup = businessSetupCompletionPercent < 100;
-
-  if (params.mode === "activation") {
-    const activationMetrics: Array<PtHubOverviewMetric | null> = [
-      hasIncompleteBusinessSetup
-        ? {
-            id: "business-setup",
-            label: "Business setup",
-            value: `${businessSetupCompletionPercent}%`,
-            helper:
-              "How close the business foundation is to being ready for real demand",
-            accent: true,
-          }
-        : null,
-      {
-        id: "coaching-spaces",
-        label: "Coaching spaces",
-        value: params.workspaces.length,
-        helper: "Spaces ready to receive and coach clients",
-      },
-      {
-        id: "active-clients",
-        label: "Active clients",
-        value: params.clientStats.activeClients,
-        helper: "Clients already inside active coaching delivery",
-      },
-      {
-        id: "new-leads-month",
-        label: "New leads this month",
-        value: params.stats?.applicationsThisMonth ?? 0,
-        helper: "Early demand signal for the coaching business",
-        delta: applicationsDelta,
-      },
-      buildEarningsMetric(params.revenue),
-    ];
-
-    return activationMetrics.filter(
-      (metric): metric is PtHubOverviewMetric => metric !== null,
-    );
-  }
+  const overdueCheckinCount = params.clientStats.overdueCheckinClients;
+  const onboardingInProgressCount = params.clientStats.onboardingIncompleteClients;
 
   return [
     {
-      id: "awaiting-response",
-      label: "Awaiting response",
-      value: getUnrepliedLeadCount(params.leads),
-      helper: "Leads still waiting to hear from you",
+      ...buildEarningsMetric(params.revenue),
       accent: true,
     },
     {
-      id: "clients-needing-attention",
-      label: "Clients needing attention",
-      value: params.clientsNeedingAttentionCount,
-      helper: "At risk, overdue, or stuck onboarding",
-    },
-    {
-      id: "checkins-overdue",
-      label: "Check-ins overdue",
-      value: params.clientStats.overdueCheckinClients,
-      helper: "Clients waiting on a check-in follow-up",
+      id: "active-clients",
+      label: "Active clients",
+      value: params.clientStats.activeClients,
+      helper: "Across all workspaces",
+      href: "/pt-hub/clients",
     },
     {
       id: "new-leads-month",
-      label: "New leads this month",
+      label: "New leads",
       value: params.stats?.applicationsThisMonth ?? 0,
-      helper: "30-day lead flow into your business",
-      delta: applicationsDelta,
+      helper: "This month",
+      href: "/pt-hub/leads",
+      delta: leadDelta,
     },
-    buildEarningsMetric(params.revenue),
+    {
+      id: "checkins-due",
+      label: "Check-ins due",
+      value: overdueCheckinCount,
+      helper: "Due or overdue",
+      href: "/pt/checkins",
+      delta:
+        overdueCheckinCount > 0
+          ? {
+              value: `${overdueCheckinCount} overdue`,
+              tone: "negative",
+            }
+          : {
+              value: "All clear",
+              tone: "positive",
+            },
+    },
+    {
+      id: "onboarding-in-progress",
+      label: "Onboarding in progress",
+      value: onboardingInProgressCount,
+      helper: "Still onboarding",
+      href: "/pt-hub/clients",
+      delta:
+        onboardingInProgressCount > 0
+          ? {
+              value: `${onboardingInProgressCount} waiting review`,
+              tone: "neutral",
+            }
+          : {
+              value: "No blockers",
+              tone: "positive",
+            },
+    },
   ] satisfies PtHubOverviewMetric[];
 }
 
@@ -311,6 +317,7 @@ function buildActionItems(params: {
   publicationState: PTPublicationState | null | undefined;
   workspaces: PTWorkspaceSummary[];
   leads: PTLead[];
+  clients: PTClientSummary[];
   clientStats: ReturnType<typeof getPtClientBaseStats>;
   clientsNeedingAttentionCount: number;
   subscription: PTSubscriptionSummary | null | undefined;
@@ -322,6 +329,24 @@ function buildActionItems(params: {
   const incompleteChecklist =
     params.readiness?.checklist.filter((item) => !item.complete) ?? [];
   const unrepliedLeadCount = getUnrepliedLeadCount(params.leads);
+  const mostUrgentOverdueClient = getMostUrgentClient(
+    params.clients,
+    (client) => client.hasOverdueCheckin,
+  );
+  const mostUrgentAtRiskClient = getMostUrgentClient(
+    params.clients,
+    (client) =>
+      client.lifecycleState === "at_risk" || client.riskFlags.length > 0,
+  );
+  const mostUrgentOnboardingClient = getMostUrgentClient(
+    params.clients,
+    (client) => client.onboardingIncomplete,
+  );
+  const mostUrgentAttentionClient =
+    mostUrgentOverdueClient ??
+    mostUrgentAtRiskClient ??
+    mostUrgentOnboardingClient ??
+    null;
 
   const upsertAction = (item: PtHubOverviewActionItem & { priority: number }) => {
     const existing = actionItems.get(item.id);
@@ -347,45 +372,69 @@ function buildActionItems(params: {
   if (params.clientStats.overdueCheckinClients > 0) {
     upsertAction({
       id: "overdue-checkins",
-      label: "Review overdue check-ins",
+      label: mostUrgentOverdueClient
+        ? `${mostUrgentOverdueClient.displayName} is overdue for review`
+        : "Review overdue check-ins",
       badge: formatCount(params.clientStats.overdueCheckinClients, "client"),
-      description:
-        "Some clients are overdue for a check-in review or follow-up across your workspaces and need attention today.",
-      href: "/pt-hub/clients",
-      ctaLabel: "Review clients",
+      description: mostUrgentOverdueClient
+        ? `${params.clientStats.overdueCheckinClients} client(s) are overdue across your coaching spaces. Start in ${mostUrgentOverdueClient.workspaceName}.`
+        : "Some clients are overdue for a check-in review or follow-up across your workspaces and need attention today.",
+      href: mostUrgentOverdueClient
+        ? `/pt/clients/${mostUrgentOverdueClient.id}`
+        : "/pt-hub/clients",
+      ctaLabel: mostUrgentOverdueClient
+        ? `Open ${mostUrgentOverdueClient.workspaceName}`
+        : "Review clients",
       tone: "danger",
       priority: 96,
+      workspaceId: mostUrgentOverdueClient?.workspaceId ?? null,
     });
   }
 
   if (params.clientStats.atRiskClients > 0) {
     upsertAction({
       id: "at-risk-clients",
-      label: "Check at-risk clients",
+      label: mostUrgentAtRiskClient
+        ? `${mostUrgentAtRiskClient.displayName} is showing risk signals`
+        : "Check at-risk clients",
       badge: formatCount(params.clientStats.atRiskClients, "client"),
-      description:
-        "These clients are carrying risk signals such as missed check-ins, low responsiveness, or inactivity across the business.",
-      href: "/pt-hub/clients",
-      ctaLabel: "View client health",
+      description: mostUrgentAtRiskClient
+        ? `${params.clientStats.atRiskClients} client(s) are carrying risk signals across the business. Start in ${mostUrgentAtRiskClient.workspaceName}.`
+        : "These clients are carrying risk signals such as missed check-ins, low responsiveness, or inactivity across the business.",
+      href: mostUrgentAtRiskClient
+        ? `/pt/clients/${mostUrgentAtRiskClient.id}`
+        : "/pt-hub/clients",
+      ctaLabel: mostUrgentAtRiskClient
+        ? `Open ${mostUrgentAtRiskClient.workspaceName}`
+        : "View client health",
       tone: "warning",
       priority: 92,
+      workspaceId: mostUrgentAtRiskClient?.workspaceId ?? null,
     });
   }
 
   if (params.clientStats.onboardingIncompleteClients > 0) {
     upsertAction({
       id: "incomplete-onboarding",
-      label: "Finish client onboarding",
+      label: mostUrgentOnboardingClient
+        ? `${mostUrgentOnboardingClient.displayName} still needs onboarding`
+        : "Finish client onboarding",
       badge: formatCount(
         params.clientStats.onboardingIncompleteClients,
         "client",
       ),
-      description:
-        "Some clients are still missing onboarding steps, which makes delivery and accountability harder to manage.",
-      href: "/pt-hub/clients",
-      ctaLabel: "Open clients",
+      description: mostUrgentOnboardingClient
+        ? `${params.clientStats.onboardingIncompleteClients} client(s) are still missing onboarding steps. Start in ${mostUrgentOnboardingClient.workspaceName}.`
+        : "Some clients are still missing onboarding steps, which makes delivery and accountability harder to manage.",
+      href: mostUrgentOnboardingClient
+        ? `/pt/clients/${mostUrgentOnboardingClient.id}`
+        : "/pt-hub/clients",
+      ctaLabel: mostUrgentOnboardingClient
+        ? `Open ${mostUrgentOnboardingClient.workspaceName}`
+        : "Open clients",
       tone: "warning",
       priority: 84,
+      workspaceId: mostUrgentOnboardingClient?.workspaceId ?? null,
     });
   }
 
@@ -468,14 +517,22 @@ function buildActionItems(params: {
   if (actionItems.size === 0 && params.clientsNeedingAttentionCount > 0) {
     upsertAction({
       id: "client-attention",
-      label: "Review client health",
+      label: mostUrgentAttentionClient
+        ? `${mostUrgentAttentionClient.displayName} needs coach attention`
+        : "Review client health",
       badge: formatCount(params.clientsNeedingAttentionCount, "client"),
-      description:
-        "There are no urgent lead or billing blockers, but some clients still deserve a quick operational check.",
-      href: "/pt-hub/clients",
-      ctaLabel: "Open clients",
+      description: mostUrgentAttentionClient
+        ? `${params.clientsNeedingAttentionCount} client(s) still need a coach check. Start in ${mostUrgentAttentionClient.workspaceName}.`
+        : "There are no urgent lead or billing blockers, but some clients still deserve a quick operational check.",
+      href: mostUrgentAttentionClient
+        ? `/pt/clients/${mostUrgentAttentionClient.id}`
+        : "/pt-hub/clients",
+      ctaLabel: mostUrgentAttentionClient
+        ? `Open ${mostUrgentAttentionClient.workspaceName}`
+        : "Open clients",
       tone: "neutral",
       priority: 60,
+      workspaceId: mostUrgentAttentionClient?.workspaceId ?? null,
     });
   }
 
@@ -770,15 +827,8 @@ export function getPtHubOverviewDashboardModel(
         : "Focus on the next decisions that keep leads moving, clients healthy, and delivery on track.",
     setupCompletionPercent,
     metrics: buildMetrics({
-      mode,
-      workspaces,
-      leads,
       stats: params.stats,
-      clientsNeedingAttentionCount,
       clientStats,
-      profileCompletionPercent,
-      readiness: params.readiness,
-      publicationState: params.publicationState,
       revenue: params.revenue,
     }),
     actionItems: buildActionItems({
@@ -786,6 +836,7 @@ export function getPtHubOverviewDashboardModel(
       publicationState: params.publicationState,
       workspaces,
       leads,
+      clients,
       clientStats,
       clientsNeedingAttentionCount,
       subscription: params.subscription,

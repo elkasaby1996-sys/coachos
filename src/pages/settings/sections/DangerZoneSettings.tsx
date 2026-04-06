@@ -22,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
-import { useAuth } from "../../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
 import {
@@ -35,7 +35,8 @@ import {
 
 export function DangerZoneSettings() {
   const navigate = useNavigate();
-  const { user, refreshRole } = useAuth();
+  const { user } = useSessionAuth();
+  const { refreshRole } = useBootstrapAuth();
   const { workspaceId } = useWorkspace();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<"success" | "error">(

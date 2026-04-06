@@ -15,7 +15,7 @@ import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { refreshWorkspaceNameAcrossApp } from "../../lib/workspace-query";
 import {
   AVAILABLE_THEME_PREFERENCES,
@@ -30,7 +30,7 @@ export function PtSettingsPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");

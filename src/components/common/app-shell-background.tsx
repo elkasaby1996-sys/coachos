@@ -1,4 +1,10 @@
-import { PtHubAnimatedBackground } from "../../features/pt-hub/components/pt-hub-animated-background";
+import { Suspense, lazy } from "react";
+import { getPtHubAnimatedBackgroundModule } from "./app-shell-background-preload";
+
+const PtHubAnimatedBackground = lazy(async () => {
+  const module = await getPtHubAnimatedBackgroundModule();
+  return { default: module.PtHubAnimatedBackground };
+});
 
 type AppShellBackgroundMode = "dark" | "light";
 
@@ -72,7 +78,7 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
         className="absolute inset-0"
         style={{
           background: isLightMode
-            ? "linear-gradient(180deg, rgba(255,255,255,0.14), transparent 18%, transparent 84%, rgba(15,23,42,0.06))"
+            ? "linear-gradient(180deg, rgba(255,255,255,0.11), transparent 18%, transparent 84%, rgba(15,23,42,0.06))"
             : "linear-gradient(180deg, rgba(255,255,255,0.03), transparent 18%, transparent 82%, rgba(0,0,0,0.28))",
         }}
       />
@@ -89,7 +95,13 @@ export function AppShellBackgroundLayer({
 }) {
   return (
     <>
-      {animated ? <PtHubAnimatedBackground mode={mode} /> : <AmbientShellBackground mode={mode} />}
+      {animated ? (
+        <Suspense fallback={<AmbientShellBackground mode={mode} />}>
+          <PtHubAnimatedBackground mode={mode} />
+        </Suspense>
+      ) : (
+        <AmbientShellBackground mode={mode} />
+      )}
       <div
         className="pointer-events-none absolute inset-0 -z-10"
         style={{

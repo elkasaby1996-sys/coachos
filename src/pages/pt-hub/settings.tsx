@@ -6,11 +6,11 @@ import {
   savePtHubSettings,
   usePtHubSettings,
 } from "../../features/pt-hub/lib/pt-hub";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 export function PtHubSettingsPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const settingsQuery = usePtHubSettings();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

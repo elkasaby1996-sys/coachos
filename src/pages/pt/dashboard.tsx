@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
@@ -132,7 +132,7 @@ const buildMetricDelta = ({
 };
 
 export function PtDashboardPage() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const navigate = useNavigate();
   const messagesEnabled = true;
   const {

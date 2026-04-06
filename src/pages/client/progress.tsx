@@ -25,7 +25,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 
 type HabitPoint = {
@@ -228,7 +228,7 @@ function ProgressLoadingState() {
 }
 
 export function ClientProgressPage() {
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const navigate = useNavigate();
   const [timeframe, setTimeframe] = useState<"4w" | "8w">("8w");
   const axisColor = "oklch(0.98 0 0 / 0.92)";

@@ -13,32 +13,31 @@ import {
   getPendingInviteToken,
   persistPendingInviteToken,
 } from "../../lib/account-profiles";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
 export function NoWorkspacePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const signupIntent =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("coachos_signup_intent")
-      : null;
   const {
     accountType,
+    bootstrapResolved,
+    bootstrapStale,
     clientAccountComplete,
     hasWorkspaceMembership,
-    loading,
+    hasStableBootstrap,
     pendingInviteToken,
     ptWorkspaceComplete,
-    session,
-  } = useAuth();
+  } = useBootstrapAuth();
+  const { authLoading, session } = useSessionAuth();
   const [inviteCode, setInviteCode] = useState(
     pendingInviteToken ?? getPendingInviteToken() ?? "",
   );
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (loading) return;
+    if (authLoading) return;
+    if (!bootstrapResolved && !(bootstrapStale && hasStableBootstrap)) return;
     if (!session) {
       if (location.pathname !== "/login") {
         navigate("/login", { replace: true });
@@ -53,26 +52,11 @@ export function NoWorkspacePage() {
       navigate("/pt-hub", { replace: true });
       return;
     }
-    if (accountType === "unknown" && signupIntent === "pt") {
-      navigate("/pt/onboarding/workspace", { replace: true });
-      return;
-    }
     if (accountType === "unknown" && ptWorkspaceComplete) {
       navigate("/pt-hub", { replace: true });
       return;
     }
     if (accountType === "client" && !clientAccountComplete) {
-      navigate(
-        pendingInviteToken
-          ? `/client/onboarding/account?invite=${encodeURIComponent(
-              pendingInviteToken,
-            )}`
-          : "/client/onboarding/account",
-        { replace: true },
-      );
-      return;
-    }
-    if (accountType === "unknown" && signupIntent === "client") {
       navigate(
         pendingInviteToken
           ? `/client/onboarding/account?invite=${encodeURIComponent(
@@ -92,18 +76,20 @@ export function NoWorkspacePage() {
     }
   }, [
     accountType,
+    authLoading,
+    bootstrapResolved,
+    bootstrapStale,
     clientAccountComplete,
+    hasStableBootstrap,
     hasWorkspaceMembership,
-    loading,
     location.pathname,
     navigate,
     pendingInviteToken,
     ptWorkspaceComplete,
     session,
-    signupIntent,
   ]);
 
-  if (loading) {
+  if (authLoading || (!bootstrapResolved && !(bootstrapStale && hasStableBootstrap))) {
     return (
       <AuthBackdrop contentClassName="max-w-md">
         <Card className="w-full max-w-md">

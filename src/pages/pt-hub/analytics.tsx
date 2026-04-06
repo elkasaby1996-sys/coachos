@@ -172,7 +172,7 @@ function MetricBox({
         <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
         {label}
         </p>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/16 bg-background/18 text-primary backdrop-blur-lg">
+        <span className="flex h-8 w-8 items-center justify-center text-primary">
           <Sparkles className="h-3.5 w-3.5 [stroke-width:1.7]" />
         </span>
       </div>

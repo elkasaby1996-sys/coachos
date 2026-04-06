@@ -11,10 +11,6 @@ export default defineConfig({
             return "vendor-backend-observability";
           }
 
-          if (id.includes("/node_modules/three/")) {
-            return "vendor-three";
-          }
-
           if (id.includes("framer-motion")) {
             return "vendor-motion";
           }

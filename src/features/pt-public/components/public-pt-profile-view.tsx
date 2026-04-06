@@ -31,12 +31,17 @@ export function PublicPtProfileView({
   submitting = false,
   success = false,
   onSubmitApplication,
+  previewStatusBadges = [],
 }: {
   profile: PTPublicProfile;
   preview?: boolean;
   submitting?: boolean;
   success?: boolean;
   onSubmitApplication?: (input: PTPublicLeadInput) => Promise<void>;
+  previewStatusBadges?: Array<{
+    label: string;
+    tone?: "success" | "secondary";
+  }>;
 }) {
   const title = profile.displayName || profile.fullName || "Coach";
 
@@ -45,6 +50,19 @@ export function PublicPtProfileView({
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="overflow-hidden rounded-[36px] border border-border/70 bg-[linear-gradient(180deg,rgba(11,16,27,0.96),rgba(8,12,21,0.98))] shadow-[0_40px_120px_-60px_rgba(37,99,235,0.45)]">
           <div className="relative overflow-hidden border-b border-border/60">
+            {preview && previewStatusBadges.length > 0 ? (
+              <div className="absolute right-6 top-6 z-20 flex flex-wrap items-center justify-end gap-2 sm:right-8 sm:top-8">
+                {previewStatusBadges.map((badge) => (
+                  <Badge
+                    key={badge.label}
+                    variant={badge.tone === "success" ? "success" : "secondary"}
+                    className="rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-3xl"
+                  >
+                    {badge.label}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
             {profile.bannerImageUrl ? (
               <img
                 src={profile.bannerImageUrl}

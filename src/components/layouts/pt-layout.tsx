@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { cn } from "../../lib/utils";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -276,10 +276,10 @@ function getHeaderPillClassName(isLightMode: boolean) {
 
 function getHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
-    "flex h-8 w-8 shrink-0 items-center justify-center rounded-[13px] border text-foreground transition-colors duration-200",
+    "flex h-8 w-8 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
     isLightMode
-      ? "border-[oklch(var(--border-default)/0.62)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.62),oklch(var(--bg-muted)/0.44))] text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.38),0_14px_28px_-24px_oklch(0.28_0.02_190/0.12)] group-hover:text-[oklch(var(--text-primary))]"
-      : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_28px_-24px_rgba(0,0,0,0.82)] group-hover:text-foreground",
+      ? "text-primary group-hover:text-[oklch(var(--text-primary))]"
+      : "text-primary group-hover:text-foreground",
   );
 }
 
@@ -425,7 +425,8 @@ export function PtLayout() {
     switchWorkspace,
     refreshWorkspace,
   } = useWorkspace();
-  const { authError, user } = useAuth();
+  const { authError, user } = useSessionAuth();
+  const { patchBootstrap } = useBootstrapAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
   const pageTitle = getPtRouteTitle(location.pathname);
@@ -615,6 +616,13 @@ export function PtLayout() {
         throw new Error("Workspace was created, but no workspace ID returned.");
       }
 
+      patchBootstrap({
+        accountType: "pt",
+        role: "pt",
+        hasWorkspaceMembership: true,
+        ptWorkspaceComplete: true,
+        activeWorkspaceId: createdWorkspaceId,
+      });
       switchWorkspace(createdWorkspaceId);
       refreshWorkspace();
       setNewWorkspaceName("");

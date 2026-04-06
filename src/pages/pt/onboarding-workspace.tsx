@@ -14,19 +14,19 @@ import {
   updatePtProfile,
 } from "../../lib/account-profiles";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 
 export function PtWorkspaceOnboardingPage() {
   const navigate = useNavigate();
+  const { session, authLoading } = useSessionAuth();
   const {
     accountType,
     hasWorkspaceMembership,
-    loading,
+    patchBootstrap,
     ptProfile,
     refreshRole,
-    session,
-  } = useAuth();
+  } = useBootstrapAuth();
   const [workspaceName, setWorkspaceName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export function PtWorkspaceOnboardingPage() {
     };
   }, [ptProfile, session?.user, workspaceName]);
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="text-sm text-muted-foreground">Loading...</div>
@@ -118,10 +118,15 @@ export function PtWorkspaceOnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const { error: createError } = await supabase.rpc("create_workspace", {
+      const { data, error: createError } = await supabase.rpc("create_workspace", {
         p_name: name,
       });
       if (createError) throw createError;
+
+      const createdWorkspaceId = Array.isArray(data)
+        ? ((data[0] as { workspace_id?: string } | undefined)?.workspace_id ??
+          null)
+        : ((data as { workspace_id?: string } | null)?.workspace_id ?? null);
 
       window.localStorage.removeItem("coachos_pt_workspace_name");
       window.localStorage.removeItem("coachos_signup_intent");
@@ -129,6 +134,23 @@ export function PtWorkspaceOnboardingPage() {
       window.localStorage.removeItem("coachos_pt_signup_country");
       window.localStorage.removeItem("coachos_pt_signup_city");
       window.localStorage.removeItem("coachos_pt_signup_phone");
+      patchBootstrap({
+        accountType: "pt",
+        role: "pt",
+        hasWorkspaceMembership: true,
+        ptWorkspaceComplete: true,
+        activeWorkspaceId: createdWorkspaceId,
+        ptProfile: ptProfile
+          ? {
+              ...ptProfile,
+              onboarding_completed_at:
+                ptProfile.onboarding_completed_at ?? new Date().toISOString(),
+            }
+          : ptProfile,
+        ptProfileComplete:
+          ptProfile?.onboarding_completed_at !== null &&
+          ptProfile?.onboarding_completed_at !== undefined,
+      });
       await refreshRole?.();
       navigate("/pt-hub", { replace: true });
     } catch (err) {

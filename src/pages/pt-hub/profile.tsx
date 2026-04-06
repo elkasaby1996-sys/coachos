@@ -11,12 +11,12 @@ import {
   usePtHubPublicationState,
   usePtHubProfileReadiness,
 } from "../../features/pt-hub/lib/pt-hub";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtHubProfilePage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const { workspaceId } = useWorkspace();
   const profileQuery = usePtHubProfile();
   const readinessQuery = usePtHubProfileReadiness();

@@ -16,7 +16,7 @@ import {
   StatusPill,
 } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
@@ -58,7 +58,7 @@ type MessageRow = {
 };
 
 export function PtMessagesPage() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const { workspaceId } = useWorkspace();
   const location = useLocation();
   const navigate = useNavigate();

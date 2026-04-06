@@ -16,7 +16,7 @@ import {
   usePtHubLeads,
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTLead, PTLeadStatus } from "../../features/pt-hub/types";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 
 const statusOptions: Array<PTLeadStatus | "all"> = [
@@ -26,7 +26,7 @@ const statusOptions: Array<PTLeadStatus | "all"> = [
 
 export function PtHubLeadsPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const leadsQuery = usePtHubLeads();
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<PTLeadStatus | "all">("all");

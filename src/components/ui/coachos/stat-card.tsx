@@ -29,7 +29,7 @@ export function StatCard({
     <Card
       className={cn(
         isPtHub
-          ? "surface-panel relative overflow-hidden rounded-[30px] border-border/70 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl"
+          ? "surface-panel relative min-h-[188px] overflow-hidden rounded-[30px] border-border/70 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl"
           : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
         accent &&
           (isPtHub
@@ -56,27 +56,26 @@ export function StatCard({
         />
       )}
       <CardHeader
-        className={cn("space-y-3", isPtHub && "relative px-5 py-5 sm:px-6")}
+        className={cn(
+          "space-y-3",
+          isPtHub && "relative flex h-full px-5 py-5 sm:px-6",
+        )}
       >
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="font-semibold uppercase tracking-[0.22em]">
             {label}
           </span>
           {Icon ? (
-            <span
+            <Icon
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-[16px] border",
-                isPtHub
-                  ? "border-primary/20 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.42))] text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] backdrop-blur-lg"
-                  : "border-border/70 bg-card/70 text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] backdrop-blur-md",
+                "h-4.5 w-4.5 shrink-0",
+                isPtHub ? "text-primary/90" : "text-primary",
               )}
-            >
-              <Icon className="h-4 w-4" />
-            </span>
+            />
           ) : null}
         </div>
         <div className="flex items-end justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle
               className={cn(
                 "text-2xl font-semibold tracking-tight",
@@ -89,7 +88,7 @@ export function StatCard({
               <p
                 className={cn(
                   "text-xs text-muted-foreground",
-                  isPtHub && "mt-1 text-[0.95rem] leading-5",
+                  isPtHub && "mt-1 text-[0.78rem] leading-[1.15rem]",
                 )}
               >
                 {helper}

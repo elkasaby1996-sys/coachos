@@ -1,5 +1,5 @@
 import React from "react";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 export function LoadingScreen({
   message = "Loading...",
@@ -14,7 +14,7 @@ export function LoadingScreen({
 }
 
 export function BootstrapGate({ children }: { children: React.ReactNode }) {
-  const { loading: authLoading, session } = useAuth();
+  const { authLoading, session } = useSessionAuth();
 
   // If auth finished and no session -> don't block public pages.
   if (!session && !authLoading) return <>{children}</>;

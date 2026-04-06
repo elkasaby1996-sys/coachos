@@ -4,11 +4,12 @@ import {
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { EmptyState } from "../../../components/ui/coachos/empty-state";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Button } from "../../../components/ui/button";
 import { cn } from "../../../lib/utils";
+import { useWorkspace } from "../../../lib/use-workspace";
 import type {
   PtHubOverviewActionItem,
   PtHubOverviewChecklistItem,
@@ -138,10 +139,19 @@ export function PtHubActionCenter({
   items: PtHubOverviewActionItem[];
   mode: "activation" | "operating";
 }) {
+  const navigate = useNavigate();
+  const { switchWorkspace } = useWorkspace();
   const helperText =
     mode === "activation"
       ? "Live priorities across setup, lead flow, and every coaching workspace."
       : "Live priorities across the PT Hub, client delivery, and every coaching workspace.";
+
+  const handleActionClick = (item: PtHubOverviewActionItem) => {
+    if (item.workspaceId) {
+      switchWorkspace(item.workspaceId);
+    }
+    navigate(item.href);
+  };
 
   return (
     <div className="surface-panel-strong relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[0_34px_92px_-56px_rgba(0,0,0,0.98)] backdrop-blur-xl sm:px-6 sm:py-6">
@@ -162,8 +172,10 @@ export function PtHubActionCenter({
         {items.length > 0 ? (
           <div className="-mx-1 divide-y divide-border/60">
             {items.map((item) => (
-              <article
+              <button
                 key={item.id}
+                type="button"
+                onClick={() => handleActionClick(item)}
                 className="pt-hub-interactive group grid gap-4 rounded-[24px] border border-transparent bg-transparent px-4 py-4 first:pt-1 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center hover:bg-background/20"
               >
                 <div className="min-w-0 space-y-2">
@@ -184,23 +196,17 @@ export function PtHubActionCenter({
                     {item.description}
                   </p>
                 </div>
-                <Button
-                  asChild
-                  variant="ghost"
-                  className="shrink-0 justify-between px-0 text-primary hover:bg-transparent hover:text-foreground"
-                >
-                  <Link to={item.href}>
-                    {item.ctaLabel}
-                    <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
-                  </Link>
-                </Button>
-              </article>
+                <span className="inline-flex shrink-0 items-center justify-between gap-2 px-0 text-sm font-medium text-primary transition-colors group-hover:text-foreground">
+                  {item.ctaLabel}
+                  <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
+                </span>
+              </button>
             ))}
           </div>
         ) : (
           <div className="rounded-[28px] border border-success/18 bg-success/8 px-5 py-6">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-success/24 bg-success/14 text-success">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center text-success">
                 <CheckCircle2 className="h-4 w-4 [stroke-width:1.7]" />
               </div>
               <div>

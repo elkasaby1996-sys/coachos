@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "../../../lib/auth";
+import { useSessionAuth } from "../../../lib/auth";
 import {
   matchesClientSegment,
   normalizeClientLifecycleState,
@@ -434,7 +434,7 @@ function getWorkspaceStatus(
 }
 
 export function usePtHubWorkspaces() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const { workspaceId: activeWorkspaceId } = useWorkspace();
 
   return useQuery({
@@ -551,7 +551,7 @@ function mapLead(row: PtHubLeadRow, notes: PTLeadNote[]): PTLead {
 }
 
 export function usePtHubProfile() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const { workspaceId } = useWorkspace();
 
   return useQuery({
@@ -654,7 +654,7 @@ export function usePtHubProfile() {
 }
 
 export function usePtHubSettings() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
 
   return useQuery({
     queryKey: ["pt-hub-settings", user?.id],
@@ -1093,7 +1093,7 @@ export function usePtHubAnalytics() {
 }
 
 export function usePtHubLeads() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
 
   return useQuery({
     queryKey: ["pt-hub-leads", user?.id],
@@ -1140,7 +1140,7 @@ export function usePtHubLeads() {
 }
 
 export function usePtHubClients() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const workspacesQuery = usePtHubWorkspaces();
 
   return useQuery({

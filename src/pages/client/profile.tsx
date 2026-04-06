@@ -33,7 +33,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { getProfileCompletion } from "../../lib/profile-completion";
 
 const goalOptions = [
@@ -227,7 +227,7 @@ function ProfileSection({
 
 export function ClientProfilePage() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [editOpen, setEditOpen] = useState(false);

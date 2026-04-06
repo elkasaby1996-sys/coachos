@@ -1,23 +1,36 @@
 import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { Button } from "../../components/ui/button";
-import { getAuthenticatedRedirectPath, useAuth } from "../../lib/auth";
+import {
+  getAuthenticatedRedirectPath,
+  useBootstrapAuth,
+  useSessionAuth,
+} from "../../lib/auth";
 
 export function SignupRolePage() {
   const {
     accountType,
+    bootstrapResolved,
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired,
     hasWorkspaceMembership,
-    loading,
     pendingInviteToken,
     ptProfileComplete,
     ptWorkspaceComplete,
-    session,
-  } = useAuth();
+  } = useBootstrapAuth();
+  const { authLoading, session } = useSessionAuth();
 
-  if (!loading && session) {
+  if (authLoading) {
+    return <AuthPageLoader message="Checking your session..." />;
+  }
+
+  if (session && !bootstrapResolved) {
+    return <AuthPageLoader message="Restoring your account path..." />;
+  }
+
+  if (session) {
     return (
       <Navigate
         to={getAuthenticatedRedirectPath({

@@ -19,7 +19,7 @@ import {
   StickyActionBar,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import {
   addDaysToDateString,
   diffDays,
@@ -110,7 +110,7 @@ const getErrorDetails = (error: unknown) => {
 };
 
 export function ClientHabitsPage() {
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [formState, setFormState] = useState<HabitFormState>(emptyForm);
   const [initialFormState, setInitialFormState] =

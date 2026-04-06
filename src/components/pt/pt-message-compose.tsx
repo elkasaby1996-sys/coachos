@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { EmptyState, Skeleton, StatusPill } from "../ui/coachos";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -78,7 +78,7 @@ export function PtMessageComposeProvider({
 }: {
   children: ReactNode;
 }) {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const { workspaceId } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();

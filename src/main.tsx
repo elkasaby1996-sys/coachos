@@ -7,7 +7,6 @@ import { ThemeProvider } from "./components/common/theme-provider";
 import { AuthProvider } from "./lib/auth";
 import { App } from "./routes/app";
 import { initializeThemePreference } from "./lib/theme";
-import { HealthPage } from "./pages/public/health";
 import "./styles/globals.css";
 
 initializeThemePreference("dark");
@@ -56,19 +55,15 @@ const queryClient = new QueryClient({
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  window.location.pathname === "/health" ? (
-    <HealthPage />
-  ) : (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <ErrorBoundary fallback={<p>Something went wrong.</p>}>
-              <App />
-            </ErrorBoundary>
-          </BrowserRouter>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  ),
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <ErrorBoundary fallback={<p>Something went wrong.</p>}>
+            <App />
+          </ErrorBoundary>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
+  </QueryClientProvider>,
 );

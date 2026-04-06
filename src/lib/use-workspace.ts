@@ -1,11 +1,32 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./supabase";
-import { useAuth } from "./auth";
+import { useBootstrapAuth, useSessionAuth } from "./auth";
 
 const ACTIVE_WORKSPACE_STORAGE_KEY = "coachos_workspace_id";
 
+type WorkspaceSnapshot = {
+  workspaceId: string | null;
+  workspaceIds: string[];
+  ownerUserId: string | null;
+};
+
+const emptyWorkspaceSnapshot: WorkspaceSnapshot = {
+  workspaceId: null,
+  workspaceIds: [],
+  ownerUserId: null,
+};
+
 export function useWorkspace() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
+  const {
+    accountType,
+    activeWorkspaceId: bootstrapWorkspaceId,
+    bootstrapError,
+    bootstrapResolved,
+    bootstrapStale,
+    hasStableBootstrap,
+    hasWorkspaceMembership,
+  } = useBootstrapAuth();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceIds, setWorkspaceIds] = useState<string[]>([]);
   const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
@@ -13,11 +34,23 @@ export function useWorkspace() {
   const [error, setError] = useState<Error | null>(null);
   const [hasCached, setHasCached] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const lastStableWorkspaceRef = useRef<WorkspaceSnapshot>(emptyWorkspaceSnapshot);
+  const requestIdRef = useRef(0);
 
   const switchWorkspace = useCallback((nextWorkspaceId: string) => {
     if (!nextWorkspaceId) return;
     setWorkspaceId(nextWorkspaceId);
+    setWorkspaceIds((current) =>
+      current.includes(nextWorkspaceId) ? current : [nextWorkspaceId, ...current],
+    );
     setHasCached(true);
+    lastStableWorkspaceRef.current = {
+      workspaceId: nextWorkspaceId,
+      workspaceIds: lastStableWorkspaceRef.current.workspaceIds.includes(nextWorkspaceId)
+        ? lastStableWorkspaceRef.current.workspaceIds
+        : [nextWorkspaceId, ...lastStableWorkspaceRef.current.workspaceIds],
+      ownerUserId: lastStableWorkspaceRef.current.ownerUserId,
+    };
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         ACTIVE_WORKSPACE_STORAGE_KEY,
@@ -29,6 +62,30 @@ export function useWorkspace() {
   const refreshWorkspace = useCallback(() => {
     setReloadNonce((value) => value + 1);
   }, []);
+
+  const applyWorkspaceSnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
+    setWorkspaceId(snapshot.workspaceId);
+    setWorkspaceIds(snapshot.workspaceIds);
+    setOwnerUserId(snapshot.ownerUserId);
+    if (snapshot.workspaceId) {
+      lastStableWorkspaceRef.current = snapshot;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, snapshot.workspaceId);
+      }
+    }
+  }, []);
+
+  const applyStaleWorkspaceSnapshot = useCallback(
+    (nextError: Error) => {
+      const fallback = lastStableWorkspaceRef.current;
+      if (fallback.workspaceId) {
+        applyWorkspaceSnapshot(fallback);
+      }
+      setError(nextError);
+      setLoading(false);
+    },
+    [applyWorkspaceSnapshot],
+  );
 
   const withTimeout = async <T>(
     promise: PromiseLike<T>,
@@ -50,7 +107,6 @@ export function useWorkspace() {
   };
 
   useEffect(() => {
-    let mounted = true;
     if (typeof window !== "undefined") {
       const cached = window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
       if (cached) {
@@ -60,6 +116,56 @@ export function useWorkspace() {
       }
     }
 
+    if (
+      bootstrapWorkspaceId &&
+      (bootstrapResolved || (bootstrapStale && hasStableBootstrap)) &&
+      (workspaceId !== bootstrapWorkspaceId ||
+        (hasWorkspaceMembership &&
+          accountType === "pt" &&
+          !workspaceIds.includes(bootstrapWorkspaceId)))
+    ) {
+      const seededWorkspaceIds =
+        hasWorkspaceMembership && accountType === "pt"
+          ? workspaceIds.includes(bootstrapWorkspaceId)
+            ? workspaceIds
+            : [bootstrapWorkspaceId, ...workspaceIds]
+          : [bootstrapWorkspaceId];
+      const seededSnapshot = {
+        workspaceId: bootstrapWorkspaceId,
+        workspaceIds: seededWorkspaceIds,
+        ownerUserId:
+          accountType === "pt"
+            ? lastStableWorkspaceRef.current.ownerUserId
+            : null,
+      };
+      applyWorkspaceSnapshot(seededSnapshot);
+      setHasCached(true);
+      setLoading(false);
+      setError(null);
+    }
+  }, [
+    accountType,
+    applyWorkspaceSnapshot,
+    bootstrapResolved,
+    bootstrapStale,
+    bootstrapWorkspaceId,
+    hasStableBootstrap,
+    hasWorkspaceMembership,
+    workspaceId,
+    workspaceIds,
+  ]);
+
+  useEffect(() => {
+    if (!bootstrapWorkspaceId || !bootstrapError) return;
+    if (lastStableWorkspaceRef.current.workspaceId) {
+      setError(bootstrapError);
+      setLoading(false);
+    }
+  }, [bootstrapError, bootstrapWorkspaceId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const currentRequestId = ++requestIdRef.current;
     const loadWorkspace = async () => {
       if (!user?.id) {
         setWorkspaceId(null);
@@ -73,6 +179,7 @@ export function useWorkspace() {
         return;
       }
 
+      const preservedSnapshot = lastStableWorkspaceRef.current;
       if (!hasCached) {
         setLoading(true);
       }
@@ -93,6 +200,7 @@ export function useWorkspace() {
         );
 
         if (memberError) throw memberError;
+        if (!mounted || currentRequestId !== requestIdRef.current) return;
         const memberWorkspaceIds = (memberData ?? [])
           .map((member) => member.workspace_id)
           .filter((id): id is string => Boolean(id));
@@ -109,6 +217,7 @@ export function useWorkspace() {
             );
 
           if (workspaceError) throw workspaceError;
+          if (!mounted || currentRequestId !== requestIdRef.current) return;
 
           const cachedWorkspaceId =
             typeof window !== "undefined"
@@ -129,15 +238,12 @@ export function useWorkspace() {
             throw new Error("Workspace owner not found for this user.");
           }
           if (mounted) {
-            setWorkspaceIds(memberWorkspaceIds);
-            setWorkspaceId(selectedWorkspaceId);
-            setOwnerUserId(selectedWorkspace.owner_user_id);
-          }
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(
-              ACTIVE_WORKSPACE_STORAGE_KEY,
-              selectedWorkspaceId,
-            );
+            applyWorkspaceSnapshot({
+              workspaceId: selectedWorkspaceId,
+              workspaceIds: memberWorkspaceIds,
+              ownerUserId: selectedWorkspace.owner_user_id,
+            });
+            setError(null);
           }
           return;
         }
@@ -153,49 +259,65 @@ export function useWorkspace() {
         );
 
         if (clientError) throw clientError;
+        if (!mounted || currentRequestId !== requestIdRef.current) return;
         if (!clientData?.workspace_id) {
           throw new Error("Workspace not found for this user.");
         }
         if (mounted) {
-          setWorkspaceId(clientData.workspace_id);
-          setWorkspaceIds([clientData.workspace_id]);
-          // Client users can read their own client row, but current workspaces
-          // RLS only grants read access to workspace_members. The client portal
-          // only requires workspace_id, so avoid hard-failing on owner lookup.
-          setOwnerUserId(null);
-        }
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(
-            ACTIVE_WORKSPACE_STORAGE_KEY,
-            clientData.workspace_id,
-          );
+          applyWorkspaceSnapshot({
+            workspaceId: clientData.workspace_id,
+            workspaceIds: [clientData.workspace_id],
+            ownerUserId: null,
+          });
+          setError(null);
         }
       } catch (err) {
         console.error("Workspace bootstrap failed", err);
-        if (mounted) {
-          setWorkspaceId(null);
-          setWorkspaceIds([]);
-          setOwnerUserId(null);
-          if (typeof window !== "undefined") {
-            window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
-          }
-          setError(
+        if (mounted && currentRequestId === requestIdRef.current) {
+          const nextError =
             err instanceof Error
               ? err
-              : new Error("Workspace bootstrap failed"),
-          );
+              : new Error("Workspace bootstrap failed");
+          const isTransient =
+            nextError.message.toLowerCase().includes("timed out") ||
+            bootstrapStale;
+
+          if (isTransient && preservedSnapshot.workspaceId) {
+            applyStaleWorkspaceSnapshot(nextError);
+            return;
+          }
+
+          if (!preservedSnapshot.workspaceId) {
+            setWorkspaceId(null);
+            setWorkspaceIds([]);
+            setOwnerUserId(null);
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+            }
+          }
+          setError(nextError);
         }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted && currentRequestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     };
 
-    loadWorkspace();
+    void loadWorkspace();
 
     return () => {
       mounted = false;
     };
-  }, [user?.id, hasCached, reloadNonce]);
+  }, [
+    accountType,
+    applyStaleWorkspaceSnapshot,
+    applyWorkspaceSnapshot,
+    bootstrapStale,
+    hasCached,
+    reloadNonce,
+    user?.id,
+  ]);
 
   return {
     workspaceId,

@@ -265,7 +265,7 @@ export function EmptyStateBlock({
     >
       <div
         className={cn(
-          "mb-4 flex h-12 w-12 items-center justify-center rounded-[18px] border border-border/70 bg-card/70 text-primary",
+          "mb-4 flex h-12 w-12 items-center justify-center text-primary",
           centered && "mx-auto",
         )}
       >

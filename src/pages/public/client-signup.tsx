@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Globe, UserRound } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
@@ -10,26 +11,30 @@ import {
   extractInviteToken,
   getPendingInviteToken,
   getUserAvatarUrl,
+  persistSignupIntent,
   persistPendingInviteToken,
 } from "../../lib/account-profiles";
 import { signInWithOAuth, signUpWithEmailPassword } from "../../lib/auth-helpers";
-import { getAuthenticatedRedirectPath, useAuth } from "../../lib/auth";
+import {
+  getAuthenticatedRedirectPath,
+  useBootstrapAuth,
+  useSessionAuth,
+} from "../../lib/auth";
 
 export function ClientSignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
     accountType,
+    bootstrapResolved,
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired,
     hasWorkspaceMembership,
-    loading,
     pendingInviteToken: authPendingInviteToken,
     ptProfileComplete,
     ptWorkspaceComplete,
-    session,
-    user,
-  } = useAuth();
+  } = useBootstrapAuth();
+  const { authLoading, session, user } = useSessionAuth();
   const pendingInviteToken = useMemo(
     () => extractInviteToken(searchParams.get("invite") ?? getPendingInviteToken() ?? ""),
     [searchParams],
@@ -43,7 +48,11 @@ export function ClientSignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (!loading && session) {
+  if (session && !bootstrapResolved) {
+    return <AuthPageLoader message="Restoring your client account..." />;
+  }
+
+  if (!authLoading && session) {
     return (
       <Navigate
         to={getAuthenticatedRedirectPath({
@@ -83,6 +92,7 @@ export function ClientSignupPage() {
     setError(null);
     setNotice(null);
     try {
+      persistSignupIntent("client");
       if (pendingInviteToken) {
         persistPendingInviteToken(pendingInviteToken);
       }
@@ -125,6 +135,7 @@ export function ClientSignupPage() {
     setError(null);
     setNotice(null);
     try {
+      persistSignupIntent("client");
       if (!fullName.trim()) {
         setError("Add your full name before continuing with Google.");
         setBusyAction("idle");

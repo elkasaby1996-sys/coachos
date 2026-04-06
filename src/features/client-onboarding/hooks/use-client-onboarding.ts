@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "../../../lib/auth";
+import { useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import {
   getCompletionPercent,
@@ -66,7 +66,7 @@ function toBaselineSummary(
 }
 
 export function useClientOnboarding() {
-  const { session, user } = useAuth();
+  const { session, user } = useSessionAuth();
 
   return useQuery({
     queryKey: ["client-workspace-onboarding", session?.user?.id],

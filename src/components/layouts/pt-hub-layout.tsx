@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { cn } from "../../lib/utils";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { usePtHubProfile, usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
@@ -61,18 +61,6 @@ const hubNavGroups = [
     ],
   },
 ] as const;
-
-const navDescriptions: Record<string, string> = {
-  Overview: "Business summary",
-  "Coach Profile": "Public trainer page",
-  "Profile Preview": "See the public page",
-  Leads: "New inquiries",
-  Clients: "Client list and status",
-  "Coaching Spaces": "Your active workspaces",
-  Payments: "Billing and payouts",
-  Analytics: "Business insights",
-  Settings: "Account preferences",
-};
 
 const routeMeta: Record<string, { title: string; description: string }> = {
   "/pt-hub": {
@@ -173,10 +161,10 @@ function getPtHubHeaderPillClassName(isLightMode: boolean) {
 
 function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border text-foreground transition-colors duration-200",
+    "flex h-9 w-9 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(246,249,251,0.46),rgba(230,237,243,0.38))] text-[rgb(79,143,170)] shadow-[inset_0_1px_0_rgba(255,255,255,0.44),0_14px_28px_-24px_rgba(15,23,42,0.14)] group-hover:text-slate-900"
-      : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_28px_-24px_rgba(0,0,0,0.82)] group-hover:text-foreground",
+      ? "text-[rgb(79,143,170)] group-hover:text-slate-900"
+      : "text-primary group-hover:text-foreground",
   );
 }
 
@@ -203,14 +191,14 @@ function getPtHubStatusPillIconClassName(params: {
   published: boolean;
 }) {
   return cn(
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition-colors duration-200",
+    "flex h-9 w-9 shrink-0 items-center justify-center transition-colors duration-200",
     params.published
       ? params.isLightMode
-        ? "border-emerald-500/18 bg-emerald-500/10 text-emerald-700"
-        : "border-success/24 bg-success/12 text-success"
+        ? "text-emerald-700"
+        : "text-success"
       : params.isLightMode
-        ? "border-amber-500/18 bg-amber-500/10 text-amber-700"
-        : "border-warning/24 bg-warning/12 text-warning",
+        ? "text-amber-700"
+        : "text-warning",
   );
 }
 
@@ -311,7 +299,8 @@ function PtHubThemeToggle({
 export function PtHubLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { ptProfile, user } = useAuth();
+  const { ptProfile } = useBootstrapAuth();
+  const { user } = useSessionAuth();
   const { workspaceId, switchWorkspace } = useWorkspace();
   const workspacesQuery = usePtHubWorkspaces();
   const profileQuery = usePtHubProfile();
@@ -326,7 +315,6 @@ export function PtHubLayout() {
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === workspaceId) ??
     latestWorkspace;
-  const breadcrumbSegments = ["PT Hub", meta.title];
   const coachDisplayName =
     ptProfile?.full_name?.trim() ||
     ptProfile?.display_name?.trim() ||
@@ -466,25 +454,7 @@ export function PtHubLayout() {
                     <span className="sr-only">Open PT Hub navigation</span>
                   </Button>
                   <div className="min-w-0 space-y-3">
-                    <div className="space-y-1.5">
-                      <nav
-                        aria-label="Breadcrumb"
-                        className="text-xs text-muted-foreground"
-                      >
-                        <ol className="flex flex-wrap items-center gap-2 uppercase tracking-[0.22em]">
-                          {breadcrumbSegments.map((segment, index) => (
-                            <li
-                              key={segment}
-                              className="flex items-center gap-2"
-                            >
-                              {index > 0 ? (
-                                <span aria-hidden="true">/</span>
-                              ) : null}
-                              <span>{segment}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      </nav>
+                    <div className="space-y-1">
                       <p className="text-[2.15rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.45rem]">
                         {meta.title}
                       </p>
@@ -495,7 +465,7 @@ export function PtHubLayout() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <div className={getPtHubStatusPillClassName(isLightMode)}>
                     <div
                       className={getPtHubStatusPillIconClassName({
@@ -517,6 +487,122 @@ export function PtHubLayout() {
                       </p>
                     </div>
                   </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={workspaces.length === 0}
+                        className={cn(
+                          getPtHubHeaderPillClassName(isLightMode),
+                          workspaces.length === 0 &&
+                            "cursor-not-allowed opacity-50",
+                        )}
+                      >
+                        <div
+                          className={getPtHubHeaderPillIconClassName(
+                            isLightMode,
+                          )}
+                        >
+                          <Building className="h-4 w-4 [stroke-width:1.7]" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                          <p className="pt-hub-kicker">
+                            Coaching space
+                          </p>
+                          <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                            {currentWorkspace?.name ?? "No workspace selected"}
+                          </p>
+                        </div>
+                        <span
+                          className={getPtHubHeaderPillChevronClassName(
+                            isLightMode,
+                          )}
+                        >
+                          <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                        </span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      sideOffset={10}
+                      className={cn(
+                        getPtHubDropdownContentClassName(isLightMode),
+                        "w-72",
+                      )}
+                    >
+                      <DropdownMenuLabel
+                        className={getPtHubDropdownLabelClassName(isLightMode)}
+                      >
+                        <span className="pt-hub-kicker block">
+                          Coaching Spaces
+                        </span>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator
+                        className={getPtHubDropdownSeparatorClassName(
+                          isLightMode,
+                        )}
+                      />
+                      <DropdownMenuItem
+                        className={cn(
+                          "mt-1 px-3 py-3",
+                          getPtHubDropdownItemClassName(isLightMode),
+                        )}
+                        onClick={() => navigate("/pt-hub")}
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <span
+                            className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
+                              isLightMode ? "text-slate-600" : "text-primary",
+                            )}
+                          >
+                            <PanelsTopLeft className="h-4 w-4 [stroke-width:1.7]" />
+                          </span>
+                          <p className="truncate font-medium text-foreground">
+                            Repsync PT Hub
+                          </p>
+                        </div>
+                        {location.pathname.startsWith("/pt-hub") ? (
+                          <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
+                        ) : null}
+                      </DropdownMenuItem>
+                      {workspaces.map((workspace) => (
+                        <DropdownMenuItem
+                          key={workspace.id}
+                          className={cn(
+                            "mt-1 px-3 py-3",
+                            getPtHubDropdownItemClassName(isLightMode),
+                          )}
+                          onClick={() => {
+                            switchWorkspace(workspace.id);
+                            navigate("/pt/dashboard");
+                          }}
+                        >
+                          <div className="flex min-w-0 flex-1 items-center gap-3">
+                            <span
+                              className={cn(
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
+                                isLightMode ? "text-slate-600" : "text-primary",
+                              )}
+                            >
+                              <Building className="h-4 w-4 [stroke-width:1.7]" />
+                            </span>
+                            <p className="truncate font-medium text-foreground">
+                              {workspace.name}
+                            </p>
+                          </div>
+                          <div className="ml-3 flex shrink-0 items-center gap-2">
+                            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                              {workspace.clientCount ?? 0}
+                            </span>
+                            {workspace.id === currentWorkspace?.id ? (
+                              <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
+                            ) : null}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -638,122 +724,6 @@ export function PtHubLayout() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        disabled={workspaces.length === 0}
-                        className={cn(
-                          getPtHubHeaderPillClassName(isLightMode),
-                          workspaces.length === 0 &&
-                            "cursor-not-allowed opacity-50",
-                        )}
-                      >
-                        <div
-                          className={getPtHubHeaderPillIconClassName(
-                            isLightMode,
-                          )}
-                        >
-                          <Building className="h-4 w-4 [stroke-width:1.7]" />
-                        </div>
-                        <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                          <p className="pt-hub-kicker">
-                            Coaching space
-                          </p>
-                          <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                            {currentWorkspace?.name ?? "No workspace selected"}
-                          </p>
-                        </div>
-                        <span
-                          className={getPtHubHeaderPillChevronClassName(
-                            isLightMode,
-                          )}
-                        >
-                          <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                        </span>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      sideOffset={10}
-                      className={cn(
-                        getPtHubDropdownContentClassName(isLightMode),
-                        "w-72",
-                      )}
-                    >
-                      <DropdownMenuLabel
-                        className={getPtHubDropdownLabelClassName(isLightMode)}
-                      >
-                        <span className="pt-hub-kicker block">
-                          Coaching Spaces
-                        </span>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator
-                        className={getPtHubDropdownSeparatorClassName(
-                          isLightMode,
-                        )}
-                      />
-                      <DropdownMenuItem
-                        className={cn(
-                          "mt-1 px-3 py-3",
-                          getPtHubDropdownItemClassName(isLightMode),
-                        )}
-                        onClick={() => navigate("/pt-hub")}
-                      >
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <span
-                            className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
-                              isLightMode ? "text-slate-600" : "text-primary",
-                            )}
-                          >
-                            <PanelsTopLeft className="h-4 w-4 [stroke-width:1.7]" />
-                          </span>
-                          <p className="truncate font-medium text-foreground">
-                            Repsync PT Hub
-                          </p>
-                        </div>
-                        {location.pathname.startsWith("/pt-hub") ? (
-                          <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
-                        ) : null}
-                      </DropdownMenuItem>
-                      {workspaces.map((workspace) => (
-                        <DropdownMenuItem
-                          key={workspace.id}
-                          className={cn(
-                            "mt-1 px-3 py-3",
-                            getPtHubDropdownItemClassName(isLightMode),
-                          )}
-                          onClick={() => {
-                            switchWorkspace(workspace.id);
-                            navigate("/pt/dashboard");
-                          }}
-                        >
-                          <div className="flex min-w-0 flex-1 items-center gap-3">
-                            <span
-                              className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
-                                isLightMode ? "text-slate-600" : "text-primary",
-                              )}
-                            >
-                              <Building className="h-4 w-4 [stroke-width:1.7]" />
-                            </span>
-                            <p className="truncate font-medium text-foreground">
-                              {workspace.name}
-                            </p>
-                          </div>
-                          <div className="ml-3 flex shrink-0 items-center gap-2">
-                            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                              {workspace.clientCount ?? 0}
-                            </span>
-                            {workspace.id === currentWorkspace?.id ? (
-                              <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
-                            ) : null}
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
               </div>
             </header>
@@ -844,19 +814,13 @@ function SidebarContent({
                         >
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
-                        <div className="min-w-0">
-                          <p className={cn(isLightMode ? "text-slate-900" : "text-inherit")}>
-                            {item.label}
-                          </p>
+                        <div className="min-w-0 self-center">
                           <p
                             className={cn(
-                              "text-xs leading-4.5",
-                              isLightMode
-                                ? "text-slate-600"
-                                : "text-muted-foreground",
+                              isLightMode ? "text-slate-900" : "text-inherit",
                             )}
                           >
-                            {navDescriptions[item.label]}
+                            {item.label}
                           </p>
                         </div>
                       </>

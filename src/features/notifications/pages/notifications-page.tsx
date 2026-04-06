@@ -8,7 +8,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../../components/ui/tabs";
-import { useAuth } from "../../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
 import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
 import { NotificationItem } from "../components/notification-item";
 import {
@@ -65,7 +65,8 @@ const groupPtNotifications = (rows: NotificationRecord[]) => {
 
 export function NotificationsPage() {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user } = useSessionAuth();
+  const { role } = useBootstrapAuth();
   const isClientPortal = role === "client";
   const [activeTab, setActiveTab] = useState<NotificationFilter>("all");
   const allQuery = useInfiniteNotifications({

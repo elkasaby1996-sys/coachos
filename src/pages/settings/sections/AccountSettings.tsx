@@ -8,11 +8,11 @@ import {
   SettingsRow,
   SettingsToast,
 } from "./shared";
-import { useAuth } from "../../../lib/auth";
+import { useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 
 export function AccountSettings() {
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
