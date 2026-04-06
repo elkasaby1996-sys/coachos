@@ -7,7 +7,10 @@ export function LoadingScreen({
   message?: string;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div
+      className="min-h-screen flex items-center justify-center bg-background"
+      data-testid="bootstrap-loading"
+    >
       <div className="text-sm text-muted-foreground">{message}</div>
     </div>
   );

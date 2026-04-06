@@ -245,6 +245,7 @@ export function ClientAccountOnboardingPage() {
   return (
     <AuthBackdrop contentClassName="max-w-xl">
       <Card className="w-full rounded-[28px] border-border/70 bg-card/88 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
+        <div data-testid="client-account-onboarding-page" />
         <CardHeader className="space-y-2">
           <CardTitle>Finish your client account</CardTitle>
           <p className="text-sm text-muted-foreground">

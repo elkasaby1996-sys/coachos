@@ -1,7 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { requireEnvVars, signInWithEmail } from "./utils/test-helpers";
+import { authSmokeFixtures, seedAuthSmokeStates } from "./utils/auth-seeds";
+import {
+  signInWithEmail,
+  waitForAuthSessionReady,
+  waitForBootstrapResolved,
+  waitForPageReady,
+} from "./utils/test-helpers";
 
 test.describe("Smoke: auth and onboarding", () => {
+  test.beforeEach(async () => {
+    await seedAuthSmokeStates();
+  });
+
   test("Invalid credentials keep user on login", async ({ page }) => {
     await page.goto("/login");
 
@@ -17,62 +27,70 @@ test.describe("Smoke: auth and onboarding", () => {
     ).toBeVisible();
   });
 
-  test("PT can sign in and reach PT Hub or workspace onboarding", async ({
+  test("PT with workspace can sign in and reach PT Hub", async ({
     page,
   }) => {
-    const required = requireEnvVars(["E2E_PT_EMAIL", "E2E_PT_PASSWORD"]);
-    test.skip(!required.ok, `Missing env: ${required.missing.join(", ")}`);
-
     await signInWithEmail(
       page,
-      process.env.E2E_PT_EMAIL!,
-      process.env.E2E_PT_PASSWORD!,
+      authSmokeFixtures.ptComplete.email,
+      authSmokeFixtures.ptComplete.password,
     );
-
-    await expect(page).toHaveURL(
-      /\/(pt-hub|pt\/onboarding\/workspace|no-workspace)/,
-    );
-
-    if (page.url().includes("/no-workspace")) {
-      await page.getByRole("link", { name: /create pt workspace/i }).click();
-      await expect(page).toHaveURL(/\/pt\/onboarding\/workspace/);
-    }
-
-    if (page.url().includes("/pt/onboarding/workspace")) {
-      await page
-        .getByLabel(/workspace name/i)
-        .fill(`Smoke Workspace ${Date.now()}`);
-      await page.getByRole("button", { name: /create workspace/i }).click();
-      await expect(page).toHaveURL(/\/pt-hub/);
-    }
+    await waitForAuthSessionReady(page);
+    await waitForBootstrapResolved(page);
+    await waitForPageReady(page, {
+      testId: "pt-hub-page",
+      urlPattern: /\/pt-hub$/,
+    });
   });
 
-  test("Client can sign in and reach onboarding or home", async ({ page }) => {
-    const required = requireEnvVars([
-      "E2E_CLIENT_EMAIL",
-      "E2E_CLIENT_PASSWORD",
-    ]);
-    test.skip(!required.ok, `Missing env: ${required.missing.join(", ")}`);
-
+  test("PT with incomplete profile still resolves to a stable PT Hub route", async ({
+    page,
+  }) => {
     await signInWithEmail(
       page,
-      process.env.E2E_CLIENT_EMAIL!,
-      process.env.E2E_CLIENT_PASSWORD!,
+      authSmokeFixtures.ptIncompleteProfile.email,
+      authSmokeFixtures.ptIncompleteProfile.password,
     );
+    await waitForAuthSessionReady(page);
+    await waitForBootstrapResolved(page);
+    await waitForPageReady(page, {
+      testId: "pt-hub-page",
+      urlPattern: /\/pt-hub$/,
+    });
+  });
 
-    await expect(page).toHaveURL(/\/app\/(onboarding|home)/);
+  test("Client without workspace lands on no-workspace", async ({ page }) => {
+    await signInWithEmail(
+      page,
+      authSmokeFixtures.clientNoWorkspace.email,
+      authSmokeFixtures.clientNoWorkspace.password,
+    );
+    await waitForAuthSessionReady(page);
+    await waitForBootstrapResolved(page);
+    await waitForPageReady(page, {
+      testId: "no-workspace-page",
+      urlPattern: /\/no-workspace$/,
+    });
+  });
 
-    if (page.url().includes("/app/onboarding")) {
-      await expect(
-        page.getByRole("heading", {
-          name: /guided onboarding for your coaching workspace|set up your profile/i,
-        }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", {
-          name: /next|continue|finish setup|save and finish later/i,
-        }),
-      ).toBeVisible();
-    }
+  test("Client invite flow lands in workspace onboarding", async ({ page }) => {
+    await signInWithEmail(
+      page,
+      authSmokeFixtures.clientInvite.email,
+      authSmokeFixtures.clientInvite.password,
+    );
+    await waitForAuthSessionReady(page);
+    await waitForBootstrapResolved(page);
+    await waitForPageReady(page, {
+      testId: "no-workspace-page",
+      urlPattern: /\/no-workspace$/,
+    });
+
+    await page.goto(`/invite/${authSmokeFixtures.clientInvite.inviteToken}`);
+    await waitForBootstrapResolved(page);
+    await waitForPageReady(page, {
+      testId: "client-workspace-onboarding-page",
+      urlPattern: /\/app\/onboarding$/,
+    });
   });
 });

@@ -312,10 +312,27 @@ function PtHubAssetPreloader() {
   return null;
 }
 
+function AuthTestSignals() {
+  const { authLoading, isAuthenticated } = useSessionAuth();
+  const { bootstrapResolved } = useBootstrapAuth();
+
+  return (
+    <div aria-hidden="true" className="hidden">
+      {!authLoading && isAuthenticated ? (
+        <div data-testid="auth-session-ready" />
+      ) : null}
+      {!authLoading && isAuthenticated && bootstrapResolved ? (
+        <div data-testid="bootstrap-resolved" />
+      ) : null}
+    </div>
+  );
+}
+
 export function App() {
   return (
     <Suspense fallback={<FullPageLoader />}>
       <PtHubAssetPreloader />
+      <AuthTestSignals />
       <Routes>
         {/* Smart landing */}
         <Route path="/" element={<IndexRedirect />} />

@@ -45,6 +45,39 @@ async function isRouteStable(page: Page, targetPath: string) {
   return true;
 }
 
+export async function waitForAuthSessionReady(page: Page, timeoutMs = 15_000) {
+  await page.getByTestId("auth-session-ready").waitFor({
+    state: "attached",
+    timeout: timeoutMs,
+  });
+}
+
+export async function waitForBootstrapResolved(page: Page, timeoutMs = 20_000) {
+  await page.getByTestId("bootstrap-resolved").waitFor({
+    state: "attached",
+    timeout: timeoutMs,
+  });
+}
+
+export async function waitForPageReady(
+  page: Page,
+  params: {
+    testId: string;
+    urlPattern?: RegExp;
+    timeoutMs?: number;
+  },
+) {
+  if (params.urlPattern) {
+    await expect(page).toHaveURL(params.urlPattern, {
+      timeout: params.timeoutMs ?? 20_000,
+    });
+  }
+  await page.getByTestId(params.testId).waitFor({
+    state: "attached",
+    timeout: params.timeoutMs ?? 20_000,
+  });
+}
+
 export async function signInWithEmail(
   page: Page,
   email: string,

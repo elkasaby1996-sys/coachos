@@ -122,6 +122,7 @@ export function NoWorkspacePage() {
   return (
     <AuthBackdrop contentClassName="max-w-md">
       <Card className="w-full max-w-md">
+        <div data-testid="no-workspace-page" />
         <CardHeader>
           <CardTitle>
             {accountType === "client"

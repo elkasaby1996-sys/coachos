@@ -169,7 +169,7 @@ export function PtHubOverviewPage() {
   );
 
   return (
-    <section className="space-y-7">
+    <section className="space-y-7" data-testid="pt-hub-page">
       <div className={cn("grid gap-4", metricGridClassName)}>
         {dashboardModel.metrics.map((metric) => {
           const Icon = metricIconMap[metric.id as keyof typeof metricIconMap];

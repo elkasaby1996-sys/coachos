@@ -786,7 +786,10 @@ export function ClientOnboardingShell() {
   ).length;
 
   return (
-    <section className="portal-shell">
+    <section
+      className="portal-shell"
+      data-testid="client-workspace-onboarding-page"
+    >
       <SurfaceCard>
         <SurfaceCardContent className="space-y-6 pt-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
