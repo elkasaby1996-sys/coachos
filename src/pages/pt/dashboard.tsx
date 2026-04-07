@@ -12,6 +12,16 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import {
+  StaggerGroup,
+  StaggerItem,
+} from "../../components/common/motion-primitives";
+import {
+  ActionButtonLabel,
+  ActionStatusMessage,
+  AnimatedValue,
+  LoadingPanel,
+} from "../../components/common/action-feedback";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatCard } from "../../components/pt/dashboard/StatCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
@@ -156,6 +166,9 @@ export function PtDashboardPage() {
   const [todoDraft, setTodoDraft] = useState("");
   const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
   const [todoEdits, setTodoEdits] = useState<Record<string, string>>({});
+  const [todoActionState, setTodoActionState] = useState<
+    "idle" | "saving" | "success" | "error"
+  >("idle");
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -231,6 +244,7 @@ export function PtDashboardPage() {
     if (!user?.id || !workspaceId || !todoDraft.trim()) return;
     const title = todoDraft.trim();
     setTodoDraft("");
+    setTodoActionState("saving");
     const { data, error } = await supabase
       .from("coach_todos")
       .insert({ title, coach_id: user.id, workspace_id: workspaceId })
@@ -238,7 +252,12 @@ export function PtDashboardPage() {
       .single();
     if (!error && data) {
       setCoachTodos((prev) => [...prev, data as CoachTodo]);
+      setTodoActionState("success");
+      window.setTimeout(() => setTodoActionState("idle"), 1200);
+      return;
     }
+    setTodoActionState("error");
+    window.setTimeout(() => setTodoActionState("idle"), 1800);
   };
 
   const toggleTodo = async (todo: CoachTodo) => {
@@ -638,50 +657,71 @@ export function PtDashboardPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_320px]">
+      <StaggerGroup
+        className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_320px]"
+        stagger={0.05}
+      >
         {isLoading ? (
           Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-28 w-full" />
+            <StaggerItem key={index}>
+              <LoadingPanel
+                title="Loading metrics"
+                description="Refreshing today’s coaching snapshot."
+                className="h-28"
+              />
+            </StaggerItem>
           ))
         ) : (
           <>
-            <StatCard
-              label="Clients"
-              value={activeClientsCount}
-              helper="Active"
-              icon={Sparkles}
-              delta={buildMetricDelta({
-                delta: activeClientsDelta,
-              })}
-            />
-            <StatCard
-              label="Avg adherence"
-              value={`${adherencePercent}%`}
-              helper="7d"
-              icon={Rocket}
-              delta={buildMetricDelta({
-                delta: adherenceDelta,
-                suffix: "%",
-              })}
-            />
-            <StatCard
-              label="Unread messages"
-              value={unreadCount}
-              helper="Unread"
-              icon={MessageCircle}
-            />
-            <StatCard
-              label="Check-ins today"
-              value={checkinsTodayCount}
-              helper="Due"
-              icon={CalendarDays}
-            />
+            <StaggerItem>
+              <StatCard
+                label="Clients"
+                value={activeClientsCount}
+                helper="Active"
+                icon={Sparkles}
+                delta={buildMetricDelta({
+                  delta: activeClientsDelta,
+                })}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                label="Avg adherence"
+                value={`${adherencePercent}%`}
+                helper="7d"
+                icon={Rocket}
+                delta={buildMetricDelta({
+                  delta: adherenceDelta,
+                  suffix: "%",
+                })}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                label="Unread messages"
+                value={unreadCount}
+                helper="Unread"
+                icon={MessageCircle}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                label="Check-ins today"
+                value={checkinsTodayCount}
+                helper="Due"
+                icon={CalendarDays}
+              />
+            </StaggerItem>
           </>
         )}
-      </div>
+      </StaggerGroup>
 
-      <div className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.7fr)_320px]">
-        <div className="space-y-4">
+      <StaggerGroup
+        className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.7fr)_320px]"
+        stagger={0.07}
+        delayChildren={0.05}
+      >
+        <StaggerItem className="space-y-4">
           <DashboardCard
             className="self-start"
             title={clientPanelTitle}
@@ -696,11 +736,10 @@ export function PtDashboardPage() {
             }
           >
             {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <Skeleton key={index} className="h-16 w-full" />
-                ))}
-              </div>
+              <LoadingPanel
+                title="Loading client queue"
+                description="Ranking the clients who need attention first."
+              />
             ) : priorityClientRows.length > 0 ? (
               <div className={showSingleClientCard ? "space-y-3" : "space-y-2"}>
                 {priorityClientRows.map((client) => (
@@ -801,11 +840,10 @@ export function PtDashboardPage() {
               }
             >
               {isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <Skeleton key={index} className="h-12 w-full" />
-                  ))}
-                </div>
+                <LoadingPanel
+                  title="Loading check-ins"
+                  description="Collecting the latest review queue."
+                />
               ) : recentCheckins.length > 0 ? (
                 <div className="space-y-2.5">
                   {recentCheckins.map((row) => {
@@ -863,11 +901,10 @@ export function PtDashboardPage() {
               }
             >
               {isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <Skeleton key={index} className="h-14 w-full" />
-                  ))}
-                </div>
+                <LoadingPanel
+                  title="Loading messages"
+                  description="Pulling in the most recent client conversations."
+                />
               ) : messageRows.length > 0 ? (
                 <div className={messageRows.length <= 2 ? "space-y-2" : "space-y-2.5"}>
                   {messageRows.map((message) => (
@@ -904,9 +941,9 @@ export function PtDashboardPage() {
               )}
             </DashboardCard>
           </div>
-        </div>
+        </StaggerItem>
 
-        <div className="space-y-4">
+        <StaggerItem className="space-y-4">
           <DashboardCard
             title="Queue"
             className="border-primary/10"
@@ -921,30 +958,35 @@ export function PtDashboardPage() {
             }
           >
             {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <Skeleton key={index} className="h-10 w-full" />
-                ))}
-              </div>
+              <LoadingPanel
+                title="Loading queue"
+                description="Rebuilding your check-in pressure points."
+              />
             ) : (
               <div className="surface-subtle grid grid-cols-3 gap-2 rounded-[1.35rem] p-2">
                 <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     Due now
                   </p>
-                  <p className="mt-1 text-xl font-semibold">{checkinDueNowCount}</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    <AnimatedValue value={checkinDueNowCount} />
+                  </p>
                 </div>
                 <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     Overdue
                   </p>
-                  <p className="mt-1 text-xl font-semibold">{checkinOverdueCount}</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    <AnimatedValue value={checkinOverdueCount} />
+                  </p>
                 </div>
                 <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     Due soon
                   </p>
-                  <p className="mt-1 text-xl font-semibold">{checkinSoonCount}</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    <AnimatedValue value={checkinSoonCount} />
+                  </p>
                 </div>
               </div>
             )}
@@ -973,9 +1015,24 @@ export function PtDashboardPage() {
                   onClick={() => void addTodo()}
                   disabled={!todoDraft.trim()}
                 >
-                  Add
+                  <ActionButtonLabel
+                    state={todoActionState}
+                    idleLabel="Add"
+                    savingLabel="Adding..."
+                    successLabel="Added"
+                    errorLabel="Try again"
+                  />
                 </Button>
               </div>
+              {todoActionState !== "idle" ? (
+                <ActionStatusMessage
+                  tone={todoActionState === "error" ? "error" : "success"}
+                >
+                  {todoActionState === "error"
+                    ? "We couldn't save that task right now."
+                    : "Task saved to your focus list."}
+                </ActionStatusMessage>
+              ) : null}
               {coachTodos.length === 0 ? (
                 <EmptyState
                   title="No tasks yet"
@@ -1026,6 +1083,7 @@ export function PtDashboardPage() {
                         <Button
                           size="icon"
                           variant="ghost"
+                          aria-label="Delete note"
                           onClick={() => void deleteTodo(todo)}
                           disabled={todoBusyId === todo.id}
                         >
@@ -1039,8 +1097,8 @@ export function PtDashboardPage() {
             </div>
           </DashboardCard>
 
-        </div>
-      </div>
+        </StaggerItem>
+      </StaggerGroup>
     </div>
   );
 }

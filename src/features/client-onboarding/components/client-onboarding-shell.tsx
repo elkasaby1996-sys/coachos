@@ -14,6 +14,10 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import {
+  ActionButtonLabel,
+  ActionStatusMessage,
+} from "../../../components/common/action-feedback";
+import {
   Card,
   CardContent,
   CardHeader,
@@ -871,11 +875,9 @@ export function ClientOnboardingShell() {
       ) : null}
 
       {successMessage ? (
-        <StatusBanner
-          variant="success"
-          title="Status"
-          description={successMessage}
-        />
+        <ActionStatusMessage tone="success">
+          {successMessage}
+        </ActionStatusMessage>
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
@@ -1079,6 +1081,8 @@ export function ClientOnboardingShell() {
                 </StepField>
                 <StepField label="Date of birth" required>
                   <Input
+                    id="client-onboarding-date-of-birth"
+                    aria-label="Date of birth"
                     type="date"
                     value={draft.basics.date_of_birth}
                     onChange={(event) =>
@@ -2106,7 +2110,11 @@ export function ClientOnboardingShell() {
                 <Clock3 className="h-3.5 w-3.5" />
                 {summary.awaitingReview
                   ? "Read-only while your coach reviews this onboarding."
-                  : "Draft changes save automatically while you work."}
+                  : saveState === "saved"
+                    ? "Draft saved and ready for the next step."
+                    : saveState === "saving" || saveState === "autosaving"
+                      ? "Saving your latest changes..."
+                      : "Draft changes save automatically while you work."}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -2147,10 +2155,21 @@ export function ClientOnboardingShell() {
                       submitState === "saving"
                     }
                   >
-                    {submitState === "saving" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : null}
-                    Submit onboarding
+                    <ActionButtonLabel
+                      state={
+                        submitState === "saving"
+                          ? "saving"
+                          : submitState === "success"
+                            ? "success"
+                            : submitState === "error"
+                              ? "error"
+                              : "idle"
+                      }
+                      idleLabel="Submit onboarding"
+                      savingLabel="Submitting..."
+                      successLabel="Submitted"
+                      errorLabel="Try again"
+                    />
                   </Button>
                 )}
               </div>

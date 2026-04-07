@@ -19,6 +19,7 @@ import {
   getCheckinOperationalState,
   type CheckinOperationalState,
 } from "../../lib/checkin-review";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
 
 type ClientRow = {
   id: string;
@@ -157,6 +158,41 @@ export function PtCheckinsQueuePage() {
     ],
     [],
   );
+
+  const dueNowRows = useMemo(
+    () =>
+      queueRows.filter(
+        (row) => row.status === "submitted" || row.status === "due",
+      ),
+    [queueRows],
+  );
+  const overdueRows = useMemo(
+    () => queueRows.filter((row) => row.status === "overdue"),
+    [queueRows],
+  );
+  const upcomingRows = useMemo(
+    () => queueRows.filter((row) => row.status === "upcoming"),
+    [queueRows],
+  );
+
+  const dueNowWindow = useWindowedRows({
+    rows: dueNowRows,
+    initialCount: 10,
+    step: 10,
+    resetKey: dueNowRows.length,
+  });
+  const overdueWindow = useWindowedRows({
+    rows: overdueRows,
+    initialCount: 10,
+    step: 10,
+    resetKey: overdueRows.length,
+  });
+  const upcomingWindow = useWindowedRows({
+    rows: upcomingRows,
+    initialCount: 10,
+    step: 10,
+    resetKey: upcomingRows.length,
+  });
 
   const renderQueueRows = (
     rows: QueueRow[],
@@ -360,12 +396,18 @@ export function PtCheckinsQueuePage() {
 
       <div className="space-y-6">
         {queueSections.map((section) => {
-          const rows = queueRows.filter((row) => {
-            if (section.key === "due-now") {
-              return row.status === "submitted" || row.status === "due";
-            }
-            return row.status === section.key;
-          });
+          const rows =
+            section.key === "due-now"
+              ? dueNowRows
+              : section.key === "overdue"
+                ? overdueRows
+                : upcomingRows;
+          const windowed =
+            section.key === "due-now"
+              ? dueNowWindow
+              : section.key === "overdue"
+                ? overdueWindow
+                : upcomingWindow;
           return (
             <DashboardCard key={section.key} title={section.title}>
               {isLoading ? (
@@ -380,10 +422,23 @@ export function PtCheckinsQueuePage() {
                   description={section.emptyDescription}
                 />
               ) : (
-                renderQueueRows(
-                  rows,
-                  section.key === "due-now" ? "Review" : "Open",
-                )
+                <div className="space-y-4">
+                  {renderQueueRows(
+                    windowed.visibleRows,
+                    section.key === "due-now" ? "Review" : "Open",
+                  )}
+                  {windowed.hasHiddenRows ? (
+                    <div className="flex justify-center">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={windowed.showMore}
+                      >
+                        Show {Math.min(windowed.hiddenCount, 10)} more
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
               )}
             </DashboardCard>
           );

@@ -144,6 +144,23 @@ export interface PTClientSummary {
   recentActivityLabel: string;
 }
 
+export interface PTClientStatsSnapshot {
+  totalClients: number;
+  activeClients: number;
+  pausedClients: number;
+  atRiskClients: number;
+  onboardingIncompleteClients: number;
+  overdueCheckinClients: number;
+}
+
+export interface PTClientDirectoryPage {
+  clients: PTClientSummary[];
+  totalCount: number;
+  hasMore: boolean;
+  page: number;
+  pageSize: number;
+}
+
 export interface PTProfilePreviewData {
   fullName: string;
   displayName: string;

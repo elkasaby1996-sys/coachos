@@ -12,9 +12,11 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
+import { RouteTransition } from "../common/route-transition";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
 import { Button } from "../ui/button";
@@ -112,6 +114,7 @@ export function ClientLayout() {
       ? onboardingSummary.onboarding.status !== "completed"
       : false,
   );
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!loading && !hasWorkspaceMembership) {
@@ -198,17 +201,28 @@ export function ClientLayout() {
                 title={item.label}
                 className={({ isActive }) =>
                   cn(
-                    "group flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
-                    isActive &&
-                      "border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.56))] text-foreground shadow-[0_18px_42px_-34px_oklch(0_0_0/0.8)]",
+                    "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
+                    isActive && "text-foreground",
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
+                    {isActive ? (
+                      <motion.span
+                        layoutId={reduceMotion ? undefined : "client-nav-active-pill"}
+                        className="absolute inset-0 rounded-[20px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.56))] shadow-[0_18px_42px_-34px_oklch(0_0_0/0.8)]"
+                        transition={{
+                          type: "spring",
+                          stiffness: 250,
+                          damping: 28,
+                          mass: 0.9,
+                        }}
+                      />
+                    ) : null}
                     <span
                       className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-[16px] border transition-colors",
+                        "relative z-10 flex h-9 w-9 items-center justify-center rounded-[16px] border transition-colors",
                         isActive
                           ? "border-primary/20 bg-primary/10 text-primary"
                           : "border-border/70 bg-card/65 text-muted-foreground group-hover:border-border/90 group-hover:text-primary",
@@ -216,7 +230,20 @@ export function ClientLayout() {
                     >
                       <item.icon className="h-4 w-4" />
                     </span>
-                    <span className="hidden xl:inline">{item.label}</span>
+                    <motion.span
+                      className="relative z-10 hidden xl:inline"
+                      animate={
+                        reduceMotion
+                          ? undefined
+                          : {
+                              x: isActive ? 4 : 0,
+                              opacity: isActive ? 1 : 0.82,
+                            }
+                      }
+                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      {item.label}
+                    </motion.span>
                   </>
                 )}
               </NavLink>
@@ -327,7 +354,9 @@ export function ClientLayout() {
                   />
                 </div>
               ) : (
-                <Outlet />
+                <RouteTransition>
+                  <Outlet />
+                </RouteTransition>
               )}
             </PageContainer>
           </main>

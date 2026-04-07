@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
 
 type BackgroundQualityTier = "high" | "medium" | "low";
 type PtHubThemeMode = "dark" | "light";
@@ -246,9 +247,90 @@ function usePrefersReducedMotion() {
 }
 
 function AmbientMotionLayer({ mode }: { mode: PtHubThemeMode }) {
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const orbPrimaryRef = useRef<HTMLDivElement | null>(null);
+  const orbSecondaryRef = useRef<HTMLDivElement | null>(null);
+  const orbTertiaryRef = useRef<HTMLDivElement | null>(null);
+  const wavePrimaryRef = useRef<HTMLDivElement | null>(null);
+  const waveSecondaryRef = useRef<HTMLDivElement | null>(null);
+  const reduceMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (reduceMotion || !layerRef.current) return;
+
+    const context = gsap.context(() => {
+      gsap.fromTo(
+        layerRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 1.1, ease: "power2.out" },
+      );
+
+      const loopConfigs = [
+        {
+          element: orbPrimaryRef.current,
+          x: 28,
+          y: 24,
+          scale: 1.06,
+          duration: 18,
+        },
+        {
+          element: orbSecondaryRef.current,
+          x: -24,
+          y: 18,
+          scale: 0.96,
+          duration: 22,
+        },
+        {
+          element: orbTertiaryRef.current,
+          x: 18,
+          y: -26,
+          scale: 1.04,
+          duration: 20,
+        },
+        {
+          element: wavePrimaryRef.current,
+          x: 24,
+          y: -12,
+          scaleX: 1.04,
+          scaleY: 0.98,
+          duration: 26,
+        },
+        {
+          element: waveSecondaryRef.current,
+          x: -20,
+          y: 14,
+          scaleX: 0.97,
+          scaleY: 1.03,
+          duration: 24,
+        },
+      ] as const;
+
+      loopConfigs.forEach((config) => {
+        if (!config.element) return;
+        gsap.set(config.element, { transformOrigin: "50% 50%" });
+        gsap.to(config.element, {
+          x: config.x,
+          y: config.y,
+          scale: "scale" in config ? config.scale : undefined,
+          scaleX: "scaleX" in config ? config.scaleX : undefined,
+          scaleY: "scaleY" in config ? config.scaleY : undefined,
+          duration: config.duration,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+        });
+      });
+    }, layerRef);
+
+    return () => {
+      context.revert();
+    };
+  }, [reduceMotion]);
+
   return (
-    <>
+    <div ref={layerRef}>
       <div
+        ref={orbPrimaryRef}
         className={`pt-hub-bg-orb pt-hub-bg-orb-primary absolute transform-gpu ${
           mode === "light"
             ? "-left-[8%] top-[-6%] h-[28rem] w-[28rem]"
@@ -256,6 +338,7 @@ function AmbientMotionLayer({ mode }: { mode: PtHubThemeMode }) {
         }`}
       />
       <div
+        ref={orbSecondaryRef}
         className={`pt-hub-bg-orb pt-hub-bg-orb-secondary absolute transform-gpu ${
           mode === "light"
             ? "right-[-8%] top-[10%] h-[24rem] w-[24rem]"
@@ -263,6 +346,7 @@ function AmbientMotionLayer({ mode }: { mode: PtHubThemeMode }) {
         }`}
       />
       <div
+        ref={orbTertiaryRef}
         className={`pt-hub-bg-orb pt-hub-bg-orb-success absolute transform-gpu ${
           mode === "light"
             ? "bottom-[-14%] left-[24%] h-[24rem] w-[24rem]"
@@ -270,6 +354,7 @@ function AmbientMotionLayer({ mode }: { mode: PtHubThemeMode }) {
         }`}
       />
       <div
+        ref={wavePrimaryRef}
         className={`pt-hub-bg-wave absolute transform-gpu ${
           mode === "light"
             ? "left-[12%] top-[18%] h-[16rem] w-[68%]"
@@ -277,13 +362,14 @@ function AmbientMotionLayer({ mode }: { mode: PtHubThemeMode }) {
         }`}
       />
       <div
+        ref={waveSecondaryRef}
         className={`pt-hub-bg-wave pt-hub-bg-wave-delayed absolute transform-gpu ${
           mode === "light"
             ? "bottom-[12%] right-[0%] h-[14rem] w-[62%]"
             : "bottom-[10%] right-[-6%] h-[16rem] w-[72%]"
         }`}
       />
-    </>
+    </div>
   );
 }
 

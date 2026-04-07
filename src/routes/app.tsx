@@ -1,4 +1,5 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Navigate,
   Route,
@@ -328,12 +329,175 @@ function AuthTestSignals() {
   );
 }
 
+function getShellKey(pathname: string) {
+  if (pathname.startsWith("/pt-hub")) return "pt-hub";
+  if (pathname.startsWith("/pt") || pathname.startsWith("/settings")) {
+    return "pt-workspace";
+  }
+  if (pathname.startsWith("/app")) return "client-workspace";
+  return "public";
+}
+
+function ensureMetaTag(name: string) {
+  let tag = document.head.querySelector<HTMLMetaElement>(
+    `meta[name="${name}"]`,
+  );
+
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.name = name;
+    document.head.appendChild(tag);
+  }
+
+  return tag;
+}
+
+function ensureCanonicalLink() {
+  let link = document.head.querySelector<HTMLLinkElement>(
+    'link[rel="canonical"]',
+  );
+
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "canonical";
+    document.head.appendChild(link);
+  }
+
+  return link;
+}
+
+function isPrivateRoute(pathname: string) {
+  return (
+    pathname.startsWith("/pt-hub") ||
+    pathname.startsWith("/pt") ||
+    pathname.startsWith("/app") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/invite") ||
+    pathname.startsWith("/join") ||
+    pathname.startsWith("/no-workspace") ||
+    pathname.startsWith("/client/onboarding")
+  );
+}
+
+function DocumentMetadata() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const robots = ensureMetaTag("robots");
+    const googlebot = ensureMetaTag("googlebot");
+    const canonical = ensureCanonicalLink();
+    const content = isPrivateRoute(location.pathname)
+      ? "noindex, nofollow"
+      : "index, follow";
+    const canonicalUrl = `${window.location.origin}${location.pathname}`;
+
+    robots.content = content;
+    googlebot.content = content;
+    canonical.href = canonicalUrl;
+  }, [location.pathname]);
+
+  return null;
+}
+
+function AppShellTransition({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const reduceMotion = useReducedMotion();
+  const shellKey = getShellKey(location.pathname);
+  const previousShellRef = useRef(shellKey);
+  const previousShellKey = previousShellRef.current;
+
+  useEffect(() => {
+    previousShellRef.current = shellKey;
+  }, [shellKey]);
+
+  const shellMotion = useMemo(() => {
+    const fromHubToWorkspace =
+      previousShellKey === "pt-hub" && shellKey === "pt-workspace";
+    const fromWorkspaceToHub =
+      previousShellKey === "pt-workspace" && shellKey === "pt-hub";
+
+    if (fromHubToWorkspace) {
+      return {
+        initial: { opacity: 0, x: 28, y: 10, scale: 0.988, filter: "blur(12px)" },
+        animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" },
+        exit: { opacity: 0, x: -22, y: -6, scale: 1.008, filter: "blur(10px)" },
+      };
+    }
+
+    if (fromWorkspaceToHub) {
+      return {
+        initial: { opacity: 0, x: -24, y: 12, scale: 0.992, filter: "blur(10px)" },
+        animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" },
+        exit: { opacity: 0, x: 18, y: -8, scale: 1.004, filter: "blur(8px)" },
+      };
+    }
+
+    return {
+      initial: { opacity: 0, y: 18, scale: 0.995, filter: "blur(10px)" },
+      animate: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" },
+      exit: { opacity: 0, y: -14, scale: 1.003, filter: "blur(8px)" },
+    };
+  }, [previousShellKey, shellKey]);
+
+  const shellOverlay = useMemo(() => {
+    if (shellKey === "pt-hub") {
+      return "radial-gradient(circle at 20% 20%, rgba(116, 201, 164, 0.12), transparent 36%), radial-gradient(circle at 82% 22%, rgba(79, 143, 170, 0.12), transparent 34%)";
+    }
+
+    if (shellKey === "pt-workspace") {
+      return "radial-gradient(circle at 16% 18%, rgba(87, 129, 255, 0.1), transparent 34%), radial-gradient(circle at 80% 24%, rgba(116, 201, 164, 0.08), transparent 30%)";
+    }
+
+    if (shellKey === "client-workspace") {
+      return "radial-gradient(circle at 18% 20%, rgba(251, 191, 36, 0.09), transparent 32%), radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.08), transparent 28%)";
+    }
+
+    return "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 30%)";
+  }, [shellKey]);
+
+  if (reduceMotion) {
+    return <>{children}</>;
+  }
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={shellKey}
+        className="relative"
+        initial={shellMotion.initial}
+        animate={shellMotion.animate}
+        exit={shellMotion.exit}
+        transition={{
+          duration: 0.34,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
+        <motion.div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10"
+          initial={{ opacity: 0.22 }}
+          animate={{ opacity: 0 }}
+          exit={{ opacity: 0.18 }}
+          transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+          style={{ background: shellOverlay }}
+        />
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export function App() {
+  const location = useLocation();
+
   return (
     <Suspense fallback={<FullPageLoader />}>
       <PtHubAssetPreloader />
       <AuthTestSignals />
-      <Routes>
+      <DocumentMetadata />
+      <AppShellTransition>
+        <Routes location={location}>
         {/* Smart landing */}
         <Route path="/" element={<IndexRedirect />} />
 
@@ -540,7 +704,8 @@ export function App() {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        </Routes>
+      </AppShellTransition>
     </Suspense>
   );
 }

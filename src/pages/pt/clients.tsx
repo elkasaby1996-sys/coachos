@@ -9,6 +9,7 @@ import { ClientsKpiRow } from "../../components/pt/clients/ClientsKpiRow";
 import { ClientsFilters } from "../../components/pt/clients/ClientsFilters";
 import { ClientListRow } from "../../components/pt/clients/ClientListRow";
 import { EmptyState } from "../../components/ui/coachos";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { useSessionAuth } from "../../lib/auth";
 import {
   getClientRiskFlagMeta,
@@ -240,6 +241,13 @@ export function PtClientsPage() {
     ];
   }, [formattedClients]);
 
+  const clientsWindow = useWindowedRows({
+    rows: filteredClients,
+    initialCount: 20,
+    step: 20,
+    resetKey: `${searchValue}:${segment}:${lifecycleFilter}:${filteredClients.length}`,
+  });
+
   return (
     <div className="space-y-8">
       {error ? (
@@ -285,7 +293,7 @@ export function PtClientsPage() {
           </div>
         ) : filteredClients.length > 0 ? (
           <>
-            {filteredClients.map((client) => (
+            {clientsWindow.visibleRows.map((client) => (
               <ClientListRow
                 key={client.id}
                 name={client.name}
@@ -305,6 +313,13 @@ export function PtClientsPage() {
                 }
               />
             ))}
+            {clientsWindow.hasHiddenRows ? (
+              <div className="flex justify-center pt-2">
+                <Button variant="secondary" onClick={clientsWindow.showMore}>
+                  Show {Math.min(clientsWindow.hiddenCount, 20)} more clients
+                </Button>
+              </div>
+            ) : null}
             {hasMore ? (
               <div className="flex justify-center pt-2">
                 <Button

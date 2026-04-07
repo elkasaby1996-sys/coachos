@@ -6,6 +6,7 @@ import {
   type ComponentType,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Apple,
   ArrowUpRight,
@@ -31,6 +32,7 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
+import { createPtWorkspace } from "../../features/pt-hub/lib/pt-hub";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { cn } from "../../lib/utils";
@@ -40,6 +42,7 @@ import { PageContainer } from "../common/page-container";
 import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
+import { RouteTransition } from "../common/route-transition";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { PtMessageComposeProvider } from "../pt/pt-message-compose";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
@@ -62,6 +65,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
+import "../../styles/pt-workspace-shell.css";
 
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
 
@@ -320,8 +324,8 @@ function sidebarLinkClasses(
     collapsed ? "justify-center px-2.5 py-2.5" : "px-3.5 py-3",
     isActive
       ? isLightMode
-        ? "translate-x-1 border-primary/24 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.78),oklch(var(--bg-surface)/0.64))] text-[oklch(var(--text-primary))] shadow-[0_22px_54px_-36px_oklch(0.28_0.02_190/0.14)]"
-        : "translate-x-1 border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] text-foreground shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]"
+        ? "translate-x-1 border-transparent bg-transparent text-[oklch(var(--text-primary))]"
+        : "translate-x-1 border-transparent bg-transparent text-foreground"
       : isLightMode
         ? "border-transparent bg-transparent text-[oklch(var(--text-secondary))] hover:border-[oklch(var(--border-default)/0.75)] hover:bg-[oklch(var(--bg-surface-elevated)/0.34)] hover:text-[oklch(var(--text-primary))]"
         : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
@@ -337,6 +341,8 @@ function SidebarNav({
   isLightMode: boolean;
   onNavigate?: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:flex lg:flex-col lg:justify-center lg:gap-6">
       {ptNavGroups.map((group) => (
@@ -366,9 +372,32 @@ function SidebarNav({
                 >
                   {({ isActive }) => (
                     <>
+                      {isActive ? (
+                        <motion.span
+                          layoutId={
+                            reduceMotion
+                              ? undefined
+                              : collapsed
+                                ? "pt-nav-active-collapsed"
+                                : "pt-nav-active-expanded"
+                          }
+                          className={cn(
+                            "absolute inset-0 rounded-[22px]",
+                            isLightMode
+                              ? "border border-primary/24 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.78),oklch(var(--bg-surface)/0.64))] shadow-[0_22px_54px_-36px_oklch(0.28_0.02_190/0.14)]"
+                              : "border border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]",
+                          )}
+                          transition={{
+                            type: "spring",
+                            stiffness: 250,
+                            damping: 28,
+                            mass: 0.9,
+                          }}
+                        />
+                      ) : null}
                       <span
                         className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
+                          "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
                           isActive
                             ? "border-primary/20 bg-primary/10 text-primary"
                             : isLightMode
@@ -379,7 +408,21 @@ function SidebarNav({
                         <Icon className="h-4 w-4 [stroke-width:1.7]" />
                       </span>
                       {!collapsed ? (
-                        <div className="min-w-0">
+                        <motion.div
+                          className="min-w-0"
+                          animate={
+                            reduceMotion
+                              ? undefined
+                              : {
+                                  x: isActive ? 4 : 0,
+                                  opacity: isActive ? 1 : 0.9,
+                                }
+                          }
+                          transition={{
+                            duration: 0.22,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                        >
                           <p
                             className={cn(
                               isLightMode
@@ -399,7 +442,7 @@ function SidebarNav({
                           >
                             {item.description}
                           </p>
-                        </div>
+                        </motion.div>
                       ) : null}
                     </>
                   )}
@@ -602,19 +645,7 @@ export function PtLayout() {
     setIsCreatingWorkspace(true);
     setCreateWorkspaceError(null);
     try {
-      const { data, error } = await supabase.rpc("create_workspace", {
-        p_name: nextName,
-      });
-      if (error) throw error;
-
-      const createdWorkspaceId = Array.isArray(data)
-        ? ((data[0] as { workspace_id?: string } | undefined)?.workspace_id ??
-          null)
-        : ((data as { workspace_id?: string } | null)?.workspace_id ?? null);
-
-      if (!createdWorkspaceId) {
-        throw new Error("Workspace was created, but no workspace ID returned.");
-      }
+      const createdWorkspaceId = await createPtWorkspace(nextName);
 
       patchBootstrap({
         accountType: "pt",
@@ -745,6 +776,7 @@ export function PtLayout() {
               variant="ghost"
               size="icon"
               onClick={() => setMobileNavOpen(false)}
+              aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -1135,9 +1167,9 @@ export function PtLayout() {
               </header>
 
               <main className="min-w-0">
-                <div className="grid gap-6">
+                <RouteTransition className="grid gap-6">
                   <Outlet />
-                </div>
+                </RouteTransition>
               </main>
               </div>
             </WorkspaceHeaderModeProvider>

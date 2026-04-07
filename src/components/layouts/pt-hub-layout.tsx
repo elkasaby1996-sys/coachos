@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Building,
   Check,
@@ -32,8 +33,10 @@ import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { usePtHubProfile, usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
+import { RouteTransition } from "../common/route-transition";
 import { supabase } from "../../lib/supabase";
 import { getUserDisplayName } from "../../lib/account-profiles";
+import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
   {
@@ -223,8 +226,8 @@ function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
     "group relative flex items-start gap-3 rounded-[22px] border px-3.5 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
     isActive
       ? isLightMode
-        ? "translate-x-1 border-primary/26 bg-[linear-gradient(180deg,rgba(236,242,246,0.72),rgba(221,230,238,0.6))] text-slate-900 shadow-[0_22px_54px_-36px_rgba(15,23,42,0.14)]"
-        : "translate-x-1 border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] text-foreground shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]"
+        ? "translate-x-1 border-transparent bg-transparent text-slate-900"
+        : "translate-x-1 border-transparent bg-transparent text-foreground"
       : isLightMode
         ? "border-transparent bg-transparent text-slate-800 hover:border-border/80 hover:bg-white/24 hover:text-slate-950"
         : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
@@ -389,6 +392,7 @@ export function PtHubLayout() {
               variant="ghost"
               size="icon"
               onClick={() => setMobileOpen(false)}
+              aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -729,7 +733,9 @@ export function PtHubLayout() {
             </header>
 
             <main className="min-w-0">
-              <Outlet />
+              <RouteTransition>
+                <Outlet />
+              </RouteTransition>
             </main>
           </div>
         </div>
@@ -752,6 +758,7 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const isLightMode = themeMode === "light";
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col px-5 py-5", className)}>
@@ -802,9 +809,25 @@ function SidebarContent({
                   >
                     {({ isActive }) => (
                       <>
+                        {isActive ? (
+                          <motion.span
+                            layoutId="pt-hub-nav-active-pill"
+                            className={cn(
+                              "absolute inset-0 rounded-[24px] border",
+                              isLightMode
+                                ? "border-primary/26 bg-[linear-gradient(180deg,rgba(236,242,246,0.72),rgba(221,230,238,0.6))] shadow-[0_22px_54px_-36px_rgba(15,23,42,0.14)]"
+                                : "border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]",
+                            )}
+                            transition={
+                              reduceMotion
+                                ? { duration: 0 }
+                                : { type: "spring", stiffness: 280, damping: 30 }
+                            }
+                          />
+                        ) : null}
                         <span
                           className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
+                            "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
                             isActive
                               ? "border-primary/20 bg-primary/10 text-primary"
                               : isLightMode
@@ -814,15 +837,24 @@ function SidebarContent({
                         >
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
-                        <div className="min-w-0 self-center">
+                        <motion.div
+                          className="min-w-0 self-center"
+                          animate={
+                            reduceMotion
+                              ? { opacity: 1, x: 0 }
+                              : { opacity: 1, x: isActive ? 2 : 0 }
+                          }
+                          transition={{ duration: 0.18, ease: "easeOut" }}
+                        >
                           <p
                             className={cn(
+                              "relative z-10",
                               isLightMode ? "text-slate-900" : "text-inherit",
                             )}
                           >
                             {item.label}
                           </p>
-                        </div>
+                        </motion.div>
                       </>
                     )}
                   </NavLink>

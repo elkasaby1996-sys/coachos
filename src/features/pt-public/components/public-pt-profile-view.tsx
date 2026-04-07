@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import {
   ArrowRight,
   ExternalLink,
@@ -8,6 +8,8 @@ import {
   Star,
   Users,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import gsap from "gsap";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import type { PTPublicLeadInput, PTPublicProfile } from "../../pt-hub/types";
@@ -44,12 +46,91 @@ export function PublicPtProfileView({
   }>;
 }) {
   const title = profile.displayName || profile.fullName || "Coach";
+  const reduceMotion = useReducedMotion();
+  const heroGlowRef = useRef<HTMLDivElement | null>(null);
+  const profileCardRef = useRef<HTMLDivElement | null>(null);
+  const sectionRefs = useRef<Array<HTMLElement | null>>([]);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      return;
+    }
+
+    const heroGlow = heroGlowRef.current;
+    const profileCard = profileCardRef.current;
+    if (!heroGlow || !profileCard) {
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        heroGlow,
+        { xPercent: -4, yPercent: -2, scale: 0.96 },
+        {
+          xPercent: 4,
+          yPercent: 3,
+          scale: 1.06,
+          duration: 10,
+          ease: "sine.inOut",
+          repeat: -1,
+          yoyo: true,
+        },
+      );
+
+      gsap.fromTo(
+        profileCard,
+        { y: 12, rotateX: 1.5 },
+        {
+          y: -10,
+          rotateX: -1,
+          duration: 7.5,
+          ease: "sine.inOut",
+          repeat: -1,
+          yoyo: true,
+        },
+      );
+
+      sectionRefs.current.forEach((section, index) => {
+        if (!section) {
+          return;
+        }
+
+        gsap.fromTo(
+          section,
+          { y: 28, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.7,
+            delay: 0.15 + index * 0.08,
+            ease: "power2.out",
+          },
+        );
+      });
+    });
+
+    return () => ctx.revert();
+  }, [reduceMotion]);
+
+  const registerSection = (index: number) => (node: HTMLElement | null) => {
+    sectionRefs.current[index] = node;
+  };
 
   return (
     <div className="min-h-screen text-foreground">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="overflow-hidden rounded-[36px] border border-border/70 bg-[linear-gradient(180deg,rgba(11,16,27,0.96),rgba(8,12,21,0.98))] shadow-[0_40px_120px_-60px_rgba(37,99,235,0.45)]">
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: "easeOut" }}
+          className="overflow-hidden rounded-[36px] border border-border/70 bg-[linear-gradient(180deg,rgba(11,16,27,0.96),rgba(8,12,21,0.98))] shadow-[0_40px_120px_-60px_rgba(37,99,235,0.45)]"
+        >
           <div className="relative overflow-hidden border-b border-border/60">
+            <div
+              ref={heroGlowRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-[-8%] top-[-18%] h-[22rem] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.22),rgba(56,189,248,0.02)_60%,transparent_74%)] blur-3xl"
+            />
             {preview && previewStatusBadges.length > 0 ? (
               <div className="absolute right-6 top-6 z-20 flex flex-wrap items-center justify-end gap-2 sm:right-8 sm:top-8">
                 {previewStatusBadges.map((badge) => (
@@ -75,7 +156,10 @@ export function PublicPtProfileView({
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
               <div className="flex flex-wrap items-end gap-5">
-                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background/70 text-3xl font-semibold text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.8)] sm:h-28 sm:w-28">
+                <div
+                  ref={profileCardRef}
+                  className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background/70 text-3xl font-semibold text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.8)] sm:h-28 sm:w-28"
+                >
                   {profile.profilePhotoUrl ? (
                     <img
                       src={profile.profilePhotoUrl}
@@ -139,7 +223,7 @@ export function PublicPtProfileView({
 
           <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[minmax(0,1.15fr)_360px]">
             <div className="space-y-8">
-              <section className="space-y-4">
+              <section ref={registerSection(0)} className="space-y-4 opacity-0">
                 <SectionHeader
                   icon={<Sparkles className="h-4 w-4" />}
                   title="Overview"
@@ -167,7 +251,7 @@ export function PublicPtProfileView({
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section ref={registerSection(1)} className="space-y-4 opacity-0">
                 <SectionHeader title="Positioning" />
                 <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-2">
@@ -206,7 +290,7 @@ export function PublicPtProfileView({
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section ref={registerSection(2)} className="space-y-4 opacity-0">
                 <SectionHeader
                   icon={<Star className="h-4 w-4" />}
                   title="Proof"
@@ -289,7 +373,10 @@ export function PublicPtProfileView({
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-[28px] border border-primary/20 bg-primary/8 p-6">
+              <div
+                ref={registerSection(3)}
+                className="rounded-[28px] border border-primary/20 bg-primary/8 p-6 opacity-0"
+              >
                 <p className="text-sm font-medium text-primary">
                   Work with {title}
                 </p>
@@ -326,7 +413,10 @@ export function PublicPtProfileView({
                 </div>
               </div>
 
-              <div className="rounded-[28px] bg-background/28 p-6">
+              <div
+                ref={registerSection(4)}
+                className="rounded-[28px] bg-background/28 p-6 opacity-0"
+              >
                 <SectionHeader title="Social links" />
                 <div className="mt-4 space-y-2">
                   {profile.socialLinks.length > 0 ? (
@@ -356,7 +446,7 @@ export function PublicPtProfileView({
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

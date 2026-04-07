@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, BellRing } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import { Skeleton } from "../../../components/ui/skeleton";
 import {
   Tabs,
   TabsContent,
@@ -9,6 +10,7 @@ import {
   TabsTrigger,
 } from "../../../components/ui/tabs";
 import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
+import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
 import { NotificationItem } from "../components/notification-item";
 import {
@@ -21,6 +23,10 @@ import {
   SurfaceCardHeader,
   SurfaceCardTitle,
 } from "../../../components/client/portal";
+import {
+  StaggerGroup,
+  StaggerItem,
+} from "../../../components/common/motion-primitives";
 import {
   useInfiniteNotifications,
   useMarkAllNotificationsRead,
@@ -87,7 +93,22 @@ export function NotificationsPage() {
   const unreadCount = useMemo(() => {
     return allNotifications.filter((row) => !row.is_read).length;
   }, [allNotifications]);
+  const unreadNotifications = useMemo(() => {
+    return unreadQuery.data?.pages.flat() ?? [];
+  }, [unreadQuery.data?.pages]);
   const notificationsError = allQuery.error ?? unreadQuery.error;
+  const allWindow = useWindowedRows({
+    rows: allNotifications,
+    initialCount: 18,
+    step: 18,
+    resetKey: `all:${allNotifications.length}`,
+  });
+  const unreadWindow = useWindowedRows({
+    rows: unreadNotifications,
+    initialCount: 18,
+    step: 18,
+    resetKey: `unread:${unreadNotifications.length}`,
+  });
 
   const handleOpenNotification = async (notification: NotificationRecord) => {
     if (!notification.is_read) {
@@ -253,8 +274,11 @@ export function NotificationsPage() {
             </TabsList>
 
             {(["all", "unread"] as NotificationFilter[]).map((filter) => {
-              const query = filter === "unread" ? unreadQuery : allQuery;
-              const rows = query.data?.pages.flat() ?? [];
+              const isUnreadFilter = filter === "unread";
+              const query = isUnreadFilter ? unreadQuery : allQuery;
+              const rows = isUnreadFilter ? unreadNotifications : allNotifications;
+              const windowed = isUnreadFilter ? unreadWindow : allWindow;
+              const visibleRows = windowed.visibleRows;
               const emptyTitle =
                 filter === "unread"
                   ? "No new notifications"
@@ -273,14 +297,13 @@ export function NotificationsPage() {
               return (
                 <TabsContent key={filter} value={filter} className="mt-0">
                   {query.isLoading ? (
-                    <div className="space-y-3">
+                    <StaggerGroup className="space-y-3" stagger={0.05}>
                       {Array.from({ length: 6 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className="h-28 rounded-[var(--radius-lg)] border border-border/60 bg-secondary/18"
-                        />
+                        <StaggerItem key={index}>
+                          <Skeleton className="h-28 rounded-[var(--radius-lg)] border border-border/60" />
+                        </StaggerItem>
                       ))}
-                    </div>
+                    </StaggerGroup>
                   ) : rows.length === 0 ? (
                     <EmptyStateBlock
                       centered
@@ -308,17 +331,28 @@ export function NotificationsPage() {
                       }
                     />
                   ) : isClientPortal ? (
-                    <div className="space-y-3">
-                      {rows.map((notification) => (
-                        <NotificationItem
-                          key={notification.id}
-                          notification={notification}
-                          audience="client"
-                          onClick={() => handleOpenNotification(notification)}
-                        />
+                    <StaggerGroup className="space-y-3" stagger={0.04}>
+                      {visibleRows.map((notification) => (
+                        <StaggerItem key={notification.id}>
+                          <NotificationItem
+                            notification={notification}
+                            audience="client"
+                            onClick={() => handleOpenNotification(notification)}
+                          />
+                        </StaggerItem>
                       ))}
+                      {windowed.hasHiddenRows ? (
+                        <StaggerItem className="flex justify-center pt-1">
+                          <Button
+                            variant="secondary"
+                            onClick={windowed.showMore}
+                          >
+                            Show {Math.min(windowed.hiddenCount, 18)} more
+                          </Button>
+                        </StaggerItem>
+                      ) : null}
                       {query.hasNextPage ? (
-                        <div className="flex justify-center pt-2">
+                        <StaggerItem className="flex justify-center pt-2">
                           <Button
                             variant="secondary"
                             onClick={() => query.fetchNextPage()}
@@ -328,13 +362,13 @@ export function NotificationsPage() {
                               ? "Loading..."
                               : "Load more"}
                           </Button>
-                        </div>
+                        </StaggerItem>
                       ) : null}
-                    </div>
+                    </StaggerGroup>
                   ) : (
-                    <div className="space-y-5">
-                      {groupPtNotifications(rows).map((group) => (
-                        <div key={group.label} className="space-y-3">
+                    <StaggerGroup className="space-y-5" stagger={0.06}>
+                      {groupPtNotifications(visibleRows).map((group) => (
+                        <StaggerItem key={group.label} className="space-y-3">
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <div className="text-sm font-semibold text-foreground">
@@ -346,22 +380,33 @@ export function NotificationsPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-3">
+                          <StaggerGroup className="space-y-3" stagger={0.04}>
                             {group.rows.map((notification) => (
-                              <NotificationItem
-                                key={notification.id}
-                                notification={notification}
-                                audience="pt"
-                                onClick={() =>
-                                  handleOpenNotification(notification)
-                                }
-                              />
+                              <StaggerItem key={notification.id}>
+                                <NotificationItem
+                                  notification={notification}
+                                  audience="pt"
+                                  onClick={() =>
+                                    handleOpenNotification(notification)
+                                  }
+                                />
+                              </StaggerItem>
                             ))}
-                          </div>
-                        </div>
+                          </StaggerGroup>
+                        </StaggerItem>
                       ))}
+                      {windowed.hasHiddenRows ? (
+                        <StaggerItem className="flex justify-center pt-1">
+                          <Button
+                            variant="secondary"
+                            onClick={windowed.showMore}
+                          >
+                            Show {Math.min(windowed.hiddenCount, 18)} more
+                          </Button>
+                        </StaggerItem>
+                      ) : null}
                       {query.hasNextPage ? (
-                        <div className="flex justify-center pt-2">
+                        <StaggerItem className="flex justify-center pt-2">
                           <Button
                             variant="secondary"
                             onClick={() => query.fetchNextPage()}
@@ -371,9 +416,9 @@ export function NotificationsPage() {
                               ? "Loading..."
                               : "Load more"}
                           </Button>
-                        </div>
+                        </StaggerItem>
                       ) : null}
-                    </div>
+                    </StaggerGroup>
                   )}
                 </TabsContent>
               );

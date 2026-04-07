@@ -1,5 +1,7 @@
 // @ts-nocheck
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { gsap } from "gsap";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -20,6 +22,10 @@ import {
 } from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PageContainer } from "../../components/common/page-container";
+import {
+  ActionButtonLabel,
+  ActionStatusMessage,
+} from "../../components/common/action-feedback";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useSessionAuth } from "../../lib/auth";
@@ -153,6 +159,40 @@ const parseOptionalNumber = (value: string) => {
 const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
+const buildWorkoutSetLogSnapshot = (
+  sessionId: string,
+  rows: ExerciseState[],
+): WorkoutSetLogRow[] => {
+  const createdAt = new Date().toISOString();
+
+  return rows.flatMap((exercise) =>
+    exercise.sets
+      .map((setItem, index) => {
+        const reps = parseOptionalNumber(setItem.reps);
+        const weight = parseOptionalNumber(setItem.weight);
+        const rpe = parseOptionalNumber(setItem.rpe);
+        const isCompleted = Boolean(setItem.is_completed);
+        const hasValues =
+          reps !== null || weight !== null || rpe !== null || isCompleted;
+
+        if (!hasValues || !exercise.exerciseId) return null;
+
+        return {
+          id: `${sessionId}:${exercise.exerciseId}:${index + 1}`,
+          workout_session_id: sessionId,
+          exercise_id: exercise.exerciseId,
+          set_number: index + 1,
+          reps,
+          weight,
+          rpe,
+          is_completed: isCompleted,
+          created_at: createdAt,
+        } satisfies WorkoutSetLogRow;
+      })
+      .filter((row): row is WorkoutSetLogRow => Boolean(row)),
+  );
+};
+
 export function ClientWorkoutRunPage() {
   const navigate = useNavigate();
   const { assignedWorkoutId } = useParams();
@@ -164,12 +204,17 @@ export function ClientWorkoutRunPage() {
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
   const [finishNotes, setFinishNotes] = useState("");
-  const [finishStatus, setFinishStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
+  const [finishStatus, setFinishStatus] = useState<
+    "idle" | "saving" | "success" | "error"
+  >("idle");
   const [finishError, setFinishError] = useState<string | null>(null);
+  const [completionCelebrationOpen, setCompletionCelebrationOpen] =
+    useState(false);
   const [restTimerEnabled, setRestTimerEnabled] = useState(true);
   const [restAutoStart, setRestAutoStart] = useState(true);
+  const celebrationCardRef = useRef<HTMLDivElement | null>(null);
+  const celebrationStatRefs = useRef<HTMLDivElement[]>([]);
+  const celebrationTimeoutRef = useRef<number | null>(null);
 
   const clientQuery = useQuery({
     queryKey: ["client", session?.user?.id],
@@ -575,13 +620,14 @@ export function ClientWorkoutRunPage() {
   const handleStartWorkout = async () => {
     if (!workoutId || !clientId) return;
     setSaveError(null);
+    const startedAt = new Date().toISOString();
     const { error: createError } = await supabase
       .from("workout_sessions")
       .upsert(
         {
           assigned_workout_id: workoutId,
           client_id: clientId,
-          started_at: new Date().toISOString(),
+          started_at: startedAt,
         },
         { onConflict: "assigned_workout_id", ignoreDuplicates: true },
       );
@@ -589,6 +635,17 @@ export function ClientWorkoutRunPage() {
       setSaveError(getErrorMessage(createError));
       return;
     }
+    queryClient.setQueryData<WorkoutSessionRow | null>(
+      ["workout-session", workoutId],
+      (current) =>
+        current ??
+        ({
+          id: `pending:${workoutId}`,
+          assigned_workout_id: workoutId,
+          started_at: startedAt,
+          completed_at: null,
+        } satisfies WorkoutSessionRow),
+    );
     await queryClient.invalidateQueries({
       queryKey: ["workout-session", workoutId],
     });
@@ -636,6 +693,16 @@ export function ClientWorkoutRunPage() {
     }
   };
 
+  const syncWorkoutLogsCache = (
+    sessionId: string,
+    nextExercises: ExerciseState[],
+  ) => {
+    queryClient.setQueryData<WorkoutSetLogRow[]>(
+      ["workout-set-logs", sessionId],
+      buildWorkoutSetLogSnapshot(sessionId, nextExercises),
+    );
+  };
+
   const saveAllExercises = async () => {
     if (!workoutSession?.id) return;
     try {
@@ -647,9 +714,7 @@ export function ClientWorkoutRunPage() {
         setSaveIndex(exerciseIndex);
         await saveExerciseSets(exercises[exerciseIndex], workoutSession.id);
       }
-      await queryClient.invalidateQueries({
-        queryKey: ["workout-set-logs", workoutSession.id],
-      });
+      syncWorkoutLogsCache(workoutSession.id, exercises);
     } finally {
       setSaveIndex(null);
     }
@@ -663,9 +728,7 @@ export function ClientWorkoutRunPage() {
 
     try {
       await saveExerciseSets(exercise, workoutSession.id);
-      await queryClient.invalidateQueries({
-        queryKey: ["workout-set-logs", workoutSession.id],
-      });
+      syncWorkoutLogsCache(workoutSession.id, exercises);
     } catch (error) {
       setSaveError(getErrorMessage(error));
     } finally {
@@ -681,9 +744,7 @@ export function ClientWorkoutRunPage() {
       for (const exerciseIndex of exerciseIndexes) {
         await saveExerciseSets(exercises[exerciseIndex], workoutSession.id);
       }
-      await queryClient.invalidateQueries({
-        queryKey: ["workout-set-logs", workoutSession.id],
-      });
+      syncWorkoutLogsCache(workoutSession.id, exercises);
     } catch (error) {
       setSaveError(getErrorMessage(error));
     } finally {
@@ -715,14 +776,68 @@ export function ClientWorkoutRunPage() {
         .eq("id", workoutId);
       if (assignedError) throw assignedError;
 
-      setFinishStatus("idle");
+      queryClient.setQueryData<WorkoutSessionRow | null>(
+        ["workout-session", workoutId],
+        (current) =>
+          current
+            ? {
+                ...current,
+                completed_at: completedAt,
+              }
+            : current,
+      );
+      queryClient.setQueryData(["assigned-workout", workoutId, clientId], (current) => {
+        if (!current || Array.isArray(current)) return current;
+        return {
+          ...current,
+          status: "completed",
+          completed_at: completedAt,
+        };
+      });
+
+      setFinishStatus("success");
       setFinishOpen(false);
-      navigate("/app/home", { state: { toast: "Workout logged" } });
+      setCompletionCelebrationOpen(true);
+      celebrationTimeoutRef.current = window.setTimeout(() => {
+        navigate("/app/home", { state: { toast: "Workout logged" } });
+      }, 1650);
     } catch (error) {
       setFinishStatus("error");
       setFinishError(getErrorMessage(error));
     }
   };
+
+  useEffect(() => {
+    if (!completionCelebrationOpen) return;
+
+    const card = celebrationCardRef.current;
+    const statNodes = celebrationStatRefs.current.filter(Boolean);
+
+    const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+    timeline.fromTo(
+      card,
+      { y: 36, opacity: 0, scale: 0.94, filter: "blur(14px)" },
+      { y: 0, opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.6 },
+    );
+    timeline.fromTo(
+      statNodes,
+      { y: 18, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.34, stagger: 0.08 },
+      "-=0.28",
+    );
+
+    return () => {
+      timeline.kill();
+    };
+  }, [completionCelebrationOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (celebrationTimeoutRef.current) {
+        window.clearTimeout(celebrationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSkipWorkout = async () => {
     if (workoutId) {
@@ -1336,12 +1451,31 @@ export function ClientWorkoutRunPage() {
                 <AlertDescription>{finishError}</AlertDescription>
               </Alert>
             ) : null}
+            {finishStatus === "success" ? (
+              <ActionStatusMessage tone="success">
+                Workout logged. Wrapping up your session...
+              </ActionStatusMessage>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleConfirmFinish}
                 disabled={!workoutSession || finishStatus === "saving"}
               >
-                {finishStatus === "saving" ? "Saving..." : "Confirm finish"}
+                <ActionButtonLabel
+                  state={
+                    finishStatus === "saving"
+                      ? "saving"
+                      : finishStatus === "success"
+                        ? "success"
+                        : finishStatus === "error"
+                          ? "error"
+                          : "idle"
+                  }
+                  idleLabel="Confirm finish"
+                  savingLabel="Saving session..."
+                  successLabel="Logged"
+                  errorLabel="Retry finish"
+                />
               </Button>
               <Button variant="secondary" onClick={() => setFinishOpen(false)}>
                 Cancel
@@ -1350,6 +1484,66 @@ export function ClientWorkoutRunPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <AnimatePresence>
+        {completionCelebrationOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(116,201,164,0.22),rgba(4,6,8,0.9)_58%)] px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div
+              ref={celebrationCardRef}
+              className="w-full max-w-xl rounded-[30px] border border-success/20 bg-[linear-gradient(180deg,rgba(10,18,16,0.96),rgba(7,11,10,0.94))] p-6 text-foreground shadow-[0_38px_110px_-48px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
+            >
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1 text-sm text-success">
+                Session complete
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-3xl font-semibold tracking-tight">
+                  Workout logged
+                </h3>
+                <p className="max-w-lg text-sm text-muted-foreground">
+                  Your session is saved, your coach notes are attached, and your
+                  progress is being folded into the next check-in.
+                </p>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    label: "Exercises",
+                    value: `${completedExercises}/${exercises.length}`,
+                  },
+                  {
+                    label: "Sets",
+                    value: `${completedSets}/${totalSets}`,
+                  },
+                  {
+                    label: "Volume",
+                    value: totalVolume > 0 ? totalVolume.toFixed(0) : "--",
+                  },
+                ].map((item, index) => (
+                  <div
+                    key={item.label}
+                    ref={(node) => {
+                      if (node) celebrationStatRefs.current[index] = node;
+                    }}
+                    className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4"
+                  >
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 bg-background/80 backdrop-blur md:static md:border-none md:bg-transparent md:backdrop-blur-0">
         <PageContainer className="flex items-center justify-between py-3">
           <div className="text-xs text-muted-foreground">
@@ -1361,7 +1555,11 @@ export function ClientWorkoutRunPage() {
             onClick={() => setFinishOpen(true)}
             disabled={!workoutSession}
           >
-            Finish workout
+            <ActionButtonLabel
+              state={finishStatus === "success" ? "success" : "idle"}
+              idleLabel="Finish workout"
+              successLabel="Workout logged"
+            />
           </Button>
         </PageContainer>
       </div>

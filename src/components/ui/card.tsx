@@ -8,7 +8,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "surface-panel overflow-hidden text-card-foreground",
+      "surface-panel overflow-hidden text-card-foreground transition-[transform,border-color,box-shadow] duration-300 ease-out",
       className,
     )}
     {...props}

@@ -19,6 +19,8 @@ import {
 } from "../ui/dialog";
 import { EmptyState, Skeleton, StatusPill } from "../ui/coachos";
 import { useSessionAuth } from "../../lib/auth";
+import { sendConversationMessage } from "../../lib/messages";
+import { getActionErrorMessage } from "../../lib/request-guard";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -73,6 +75,9 @@ const formatClockTime = (timestamp: string | null) => {
   });
 };
 
+const getPtComposeUnreadKey = (workspaceId: string | null | undefined) =>
+  ["pt-compose-unread", workspaceId ?? "none"] as const;
+
 export function PtMessageComposeProvider({
   children,
 }: {
@@ -86,6 +91,7 @@ export function PtMessageComposeProvider({
   const [open, setOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [hasBlockingDialogOpen, setHasBlockingDialogOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -99,6 +105,7 @@ export function PtMessageComposeProvider({
     setOpen(false);
     setSelectedClientId(null);
     setMessageDraft("");
+    setSendError(null);
   }, []);
 
   const clientsQuery = useQuery({
@@ -118,7 +125,7 @@ export function PtMessageComposeProvider({
   const conversationsQuery = useQuery({
     queryKey: ["pt-compose-conversations", workspaceId],
     enabled: !!workspaceId,
-    staleTime: 0,
+    staleTime: 1000 * 30,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("conversations")
@@ -143,9 +150,9 @@ export function PtMessageComposeProvider({
   }, [conversationsQuery.data]);
 
   const unreadCountsQuery = useQuery({
-    queryKey: ["pt-compose-unread", conversationsQuery.data],
+    queryKey: getPtComposeUnreadKey(workspaceId),
     enabled: (conversationsQuery.data ?? []).length > 0,
-    staleTime: 0,
+    staleTime: 1000 * 15,
     queryFn: async () => {
       const conversationIds = (conversationsQuery.data ?? []).map(
         (row) => row.id,
@@ -233,7 +240,7 @@ export function PtMessageComposeProvider({
   const threadQuery = useQuery({
     queryKey: ["pt-compose-thread", activeConversationId],
     enabled: !!activeConversationId && open,
-    staleTime: 0,
+    staleTime: 1000 * 10,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("messages")
@@ -271,10 +278,10 @@ export function PtMessageComposeProvider({
       .eq("sender_role", "client")
       .then(() => {
         queryClient.invalidateQueries({
-          queryKey: ["pt-compose-unread"],
+          queryKey: getPtComposeUnreadKey(workspaceId),
         });
       });
-  }, [activeConversationId, open, queryClient, threadQuery.data]);
+  }, [activeConversationId, open, queryClient, threadQuery.data, workspaceId]);
 
   useEffect(() => {
     if (!workspaceId || !open) return;
@@ -320,7 +327,7 @@ export function PtMessageComposeProvider({
             queryKey: ["pt-compose-conversations", workspaceId],
           });
           queryClient.invalidateQueries({
-            queryKey: ["pt-compose-unread"],
+            queryKey: getPtComposeUnreadKey(workspaceId),
           });
         },
       )
@@ -375,31 +382,33 @@ export function PtMessageComposeProvider({
         user?.email ??
         "Coach";
 
-      const { error } = await supabase.from("messages").insert({
-        conversation_id: conversation.id,
-        sender_user_id: user?.id ?? null,
-        sender_role: "pt",
-        sender_name: senderName,
+      await sendConversationMessage({
+        conversationId: conversation.id,
+        senderUserId: user?.id ?? null,
+        senderRole: "pt",
+        senderName,
         body: trimmed,
-        preview: trimmed.slice(0, 140),
         unread: false,
       });
-      if (error) throw error;
       return conversation.id;
     },
     onSuccess: async (conversationId) => {
+      setSendError(null);
       setMessageDraft("");
       await queryClient.invalidateQueries({
         queryKey: ["pt-compose-conversations", workspaceId],
       });
       await queryClient.invalidateQueries({
-        queryKey: ["pt-compose-unread"],
+        queryKey: getPtComposeUnreadKey(workspaceId),
       });
       if (conversationId) {
         await queryClient.invalidateQueries({
           queryKey: ["pt-compose-thread", conversationId],
         });
       }
+    },
+    onError: (error) => {
+      setSendError(getActionErrorMessage(error, "Unable to send message."));
     },
   });
 
@@ -670,12 +679,18 @@ export function PtMessageComposeProvider({
                     </div>
 
                     <div className="shrink-0 border-t border-border/70 px-5 py-4">
+                      {sendError ? (
+                        <p className="mb-3 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+                          {sendError}
+                        </p>
+                      ) : null}
                       <textarea
                         ref={textareaRef}
                         value={messageDraft}
-                        onChange={(event) =>
-                          setMessageDraft(event.target.value)
-                        }
+                        onChange={(event) => {
+                          if (sendError) setSendError(null);
+                          setMessageDraft(event.target.value);
+                        }}
                         placeholder={`Message ${selectedRow.name}`}
                         className="min-h-[96px] w-full resize-none rounded-[18px] border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />

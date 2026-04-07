@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  InfiniteData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -18,6 +19,9 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
+import { sendConversationMessage } from "../../lib/messages";
+import { getActionErrorMessage } from "../../lib/request-guard";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -29,6 +33,9 @@ const formatTime = (timestamp: string | null) => {
     minute: "2-digit",
   });
 };
+
+const getPtMessagesUnreadKey = (workspaceId: string | null | undefined) =>
+  ["pt-messages-unread", workspaceId ?? "none"] as const;
 
 type ClientRow = {
   id: string;
@@ -79,6 +86,8 @@ export function PtMessagesPage() {
   >(null);
   const [clientSearch, setClientSearch] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [visibleMessageCount, setVisibleMessageCount] = useState(100);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
@@ -113,7 +122,7 @@ export function PtMessagesPage() {
   const conversationsQuery = useQuery({
     queryKey: ["pt-messages-conversations", workspaceId],
     enabled: !!workspaceId,
-    staleTime: 0,
+    staleTime: 1000 * 30,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("conversations")
@@ -212,7 +221,7 @@ export function PtMessagesPage() {
   const messagesQuery = useInfiniteQuery({
     queryKey: ["pt-messages-thread", activeConversationId],
     enabled: !!activeConversationId,
-    staleTime: 0,
+    staleTime: 1000 * 5,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const from = pageParam * messagePageSize;
@@ -237,11 +246,26 @@ export function PtMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [messagesQuery.data]);
+  const renderedMessageRows = useMemo(
+    () => messageRows.slice(Math.max(0, messageRows.length - visibleMessageCount)),
+    [messageRows, visibleMessageCount],
+  );
+  const hasHiddenLoadedMessages =
+    messageRows.length > renderedMessageRows.length;
+
+  useEffect(() => {
+    setVisibleMessageCount(100);
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    if (messageRows.length <= visibleMessageCount) return;
+    setVisibleMessageCount((current) => Math.max(current, 100));
+  }, [messageRows.length, visibleMessageCount]);
 
   const unreadCountsQuery = useQuery({
-    queryKey: ["pt-messages-unread", conversationsQuery.data],
+    queryKey: getPtMessagesUnreadKey(workspaceId),
     enabled: (conversationsQuery.data ?? []).length > 0,
-    staleTime: 0,
+    staleTime: 1000 * 15,
     queryFn: async () => {
       const conversationIds = (conversationsQuery.data ?? []).map(
         (row) => row.id,
@@ -270,7 +294,7 @@ export function PtMessagesPage() {
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messageRows.length]);
+  }, [renderedMessageRows.length]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -289,7 +313,7 @@ export function PtMessagesPage() {
             queryKey: ["pt-messages-thread", activeConversationId],
           });
           queryClient.invalidateQueries({
-            queryKey: ["pt-messages-unread", conversationsQuery.data],
+            queryKey: getPtMessagesUnreadKey(workspaceId),
           });
         },
       )
@@ -297,7 +321,7 @@ export function PtMessagesPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeConversationId, conversationsQuery.data, queryClient]);
+  }, [activeConversationId, queryClient, workspaceId]);
 
   useEffect(() => {
     if (!activeConversationId) {
@@ -358,14 +382,14 @@ export function PtMessagesPage() {
       .eq("sender_role", "client")
       .then(() => {
         queryClient.invalidateQueries({
-          queryKey: ["pt-messages-unread", conversationsQuery.data],
+          queryKey: getPtMessagesUnreadKey(workspaceId),
         });
       });
   }, [
     activeConversationId,
-    conversationsQuery.data,
     messageRows.length,
     queryClient,
+    workspaceId,
   ]);
 
   const sendMutation = useMutation({
@@ -376,30 +400,64 @@ export function PtMessagesPage() {
         (user?.user_metadata?.full_name as string | undefined) ??
         user?.email ??
         "Coach";
-      const body = messageDraft.trim();
-      const { error } = await supabase.from("messages").insert({
-        conversation_id: activeConversationId,
-        sender_user_id: user?.id ?? null,
-        sender_role: "pt",
-        sender_name: senderName,
-        body,
-        preview: body.slice(0, 140),
+      return (await sendConversationMessage({
+        conversationId: activeConversationId,
+        senderUserId: user?.id ?? null,
+        senderRole: "pt",
+        senderName,
+        body: messageDraft,
         unread: false,
-      });
-      if (error) throw error;
+      })) as MessageRow;
     },
-    onSuccess: async () => {
+    onSuccess: async (message) => {
+      setSendError(null);
       setMessageDraft("");
       updateTyping(false);
-      await queryClient.invalidateQueries({
-        queryKey: ["pt-messages-thread", activeConversationId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["pt-messages-conversations", workspaceId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["pt-messages-unread", conversationsQuery.data],
-      });
+      if (!activeConversationId || !message) return;
+
+      queryClient.setQueryData<InfiniteData<MessageRow[]>>(
+        ["pt-messages-thread", activeConversationId],
+        (current) => {
+          if (!current) {
+            return {
+              pageParams: [0],
+              pages: [[message]],
+            };
+          }
+
+          const pages = [...current.pages];
+          if (pages.length === 0) {
+            pages.push([message]);
+          } else {
+            const lastPage = pages[pages.length - 1] ?? [];
+            pages[pages.length - 1] = [...lastPage, message];
+          }
+
+          return {
+            ...current,
+            pages,
+          };
+        },
+      );
+
+      queryClient.setQueryData<ConversationRow[]>(
+        ["pt-messages-conversations", workspaceId],
+        (current) =>
+          current?.map((row) =>
+            row.id === activeConversationId
+              ? {
+                  ...row,
+                  last_message_at: message.created_at,
+                  last_message_preview: message.body ?? "",
+                  last_message_sender_name: message.sender_name,
+                  last_message_sender_role: message.sender_role,
+                }
+              : row,
+          ) ?? current,
+      );
+    },
+    onError: (error) => {
+      setSendError(getActionErrorMessage(error, "Unable to send message."));
     },
   });
 
@@ -467,6 +525,17 @@ export function PtMessagesPage() {
   const selectedConversationRow =
     clientInboxRows.find((row) => row.client.id === selectedClientId) ?? null;
   const selectedClient = selectedConversationRow?.client ?? null;
+  const {
+    visibleRows: visibleClientInboxRows,
+    hasHiddenRows: hasHiddenClientInboxRows,
+    hiddenCount: hiddenClientInboxCount,
+    showMore: showMoreClientInboxRows,
+  } = useWindowedRows({
+    rows: clientInboxRows,
+    initialCount: 18,
+    step: 18,
+    resetKey: `${clientSearch}:${clientInboxRows.length}`,
+  });
   const unreadConversationCount = useMemo(
     () => clientInboxRows.filter((row) => row.unreadCount > 0).length,
     [clientInboxRows],
@@ -518,7 +587,7 @@ export function PtMessagesPage() {
                 />
               ) : (
                 <div className="space-y-2">
-                  {clientInboxRows.map((row) => {
+                  {visibleClientInboxRows.map((row) => {
                     const isActive = row.client.id === selectedClientId;
                     return (
                       <button
@@ -564,6 +633,17 @@ export function PtMessagesPage() {
                       </button>
                     );
                   })}
+                  {hasHiddenClientInboxRows ? (
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={showMoreClientInboxRows}
+                      >
+                        Show {Math.min(hiddenClientInboxCount, 18)} more
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -673,7 +753,20 @@ export function PtMessagesPage() {
                         </Button>
                       </div>
                     ) : null}
-                    {messageRows.map((message) => {
+                    {hasHiddenLoadedMessages ? (
+                      <div className="flex justify-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setVisibleMessageCount((current) => current + 100)
+                          }
+                        >
+                          Show older loaded messages
+                        </Button>
+                      </div>
+                    ) : null}
+                    {renderedMessageRows.map((message) => {
                       const isCoach = message.sender_role === "pt";
                       return (
                         <div
@@ -714,11 +807,19 @@ export function PtMessagesPage() {
                 <div ref={scrollRef} />
               </div>
               <div className="rounded-[22px] border border-border/70 bg-background/45 p-3">
+                {sendError ? (
+                  <p className="mb-3 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+                    {sendError}
+                  </p>
+                ) : null}
                 <div className="flex items-stretch gap-2">
                   <textarea
                     className="h-12 min-h-12 w-full resize-none rounded-[16px] border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={messageDraft}
-                    onChange={(event) => setMessageDraft(event.target.value)}
+                    onChange={(event) => {
+                      if (sendError) setSendError(null);
+                      setMessageDraft(event.target.value);
+                    }}
                     placeholder="Write a coaching reply"
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {

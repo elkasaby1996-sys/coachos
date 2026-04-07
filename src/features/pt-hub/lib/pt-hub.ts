@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useSessionAuth } from "../../../lib/auth";
 import {
   matchesClientSegment,
@@ -6,6 +7,7 @@ import {
   type ClientSegmentKey,
 } from "../../../lib/client-lifecycle";
 import { formatRelativeTime } from "../../../lib/relative-time";
+import { runClientGuardedAction } from "../../../lib/request-guard";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
 import type {
@@ -13,6 +15,8 @@ import type {
   PTAccountSettingsDraft,
   PTAnalyticsSnapshot,
   PTAnalyticsWorkspaceBreakdown,
+  PTClientDirectoryPage,
+  PTClientStatsSnapshot,
   PTClientSummary,
   PTCoachingMode,
   PTLead,
@@ -193,6 +197,20 @@ type PtClientsSummaryRow = {
   overdue_checkins_count: number | null;
   has_overdue_checkin: boolean | null;
   risk_flags: string[] | null;
+};
+
+type PtHubClientStatsRow = {
+  total_clients: number | null;
+  active_clients: number | null;
+  paused_clients: number | null;
+  at_risk_clients: number | null;
+  onboarding_incomplete_clients: number | null;
+  overdue_checkin_clients: number | null;
+};
+
+type PtHubClientsPageRow = PtClientsSummaryRow & {
+  workspace_name: string | null;
+  total_count: number | null;
 };
 
 type PtHubLeadRow = {
@@ -704,13 +722,12 @@ export function usePtHubOverview() {
   return useQuery({
     queryKey: [
       "pt-hub-overview",
-      workspacesQuery.data,
-      profileQuery.data?.completionPercent,
-      profileQuery.data?.updatedAt,
-      settingsQuery.data?.subscriptionStatus,
-      leadsQuery.data,
-      clientsQuery.data,
-      readinessQuery.data?.completionPercent,
+      workspacesQuery.dataUpdatedAt,
+      profileQuery.dataUpdatedAt,
+      settingsQuery.dataUpdatedAt,
+      leadsQuery.dataUpdatedAt,
+      clientsQuery.dataUpdatedAt,
+      readinessQuery.dataUpdatedAt,
     ],
     enabled:
       workspacesQuery.isSuccess &&
@@ -879,8 +896,8 @@ export function usePtHubProfileReadiness() {
   return useQuery({
     queryKey: [
       "pt-hub-profile-readiness",
-      profileQuery.data,
-      settingsQuery.data,
+      profileQuery.dataUpdatedAt,
+      settingsQuery.dataUpdatedAt,
     ],
     enabled: profileQuery.isSuccess && settingsQuery.isSuccess,
     queryFn: async () =>
@@ -931,9 +948,9 @@ export function usePtHubPublicationState() {
   return useQuery({
     queryKey: [
       "pt-hub-publication-state",
-      profileQuery.data,
-      settingsQuery.data,
-      readinessQuery.data,
+      profileQuery.dataUpdatedAt,
+      settingsQuery.dataUpdatedAt,
+      readinessQuery.dataUpdatedAt,
     ],
     enabled:
       profileQuery.isSuccess &&
@@ -953,7 +970,11 @@ export function usePtHubPayments() {
   const clientsQuery = usePtHubClients();
 
   return useQuery({
-    queryKey: ["pt-hub-payments", settingsQuery.data, clientsQuery.data],
+    queryKey: [
+      "pt-hub-payments",
+      settingsQuery.dataUpdatedAt,
+      clientsQuery.dataUpdatedAt,
+    ],
     enabled: settingsQuery.isSuccess && clientsQuery.isSuccess,
     queryFn: async () => {
       const clients = clientsQuery.data ?? [];
@@ -1010,10 +1031,10 @@ export function usePtHubAnalytics() {
   return useQuery({
     queryKey: [
       "pt-hub-analytics",
-      leadsQuery.data,
-      clientsQuery.data,
-      profileQuery.data,
-      readinessQuery.data,
+      leadsQuery.dataUpdatedAt,
+      clientsQuery.dataUpdatedAt,
+      profileQuery.dataUpdatedAt,
+      readinessQuery.dataUpdatedAt,
     ],
     enabled:
       profileQuery.isSuccess &&
@@ -1142,9 +1163,13 @@ export function usePtHubLeads() {
 export function usePtHubClients() {
   const { user } = useSessionAuth();
   const workspacesQuery = usePtHubWorkspaces();
+  const workspaceIdsKey = useMemo(
+    () => (workspacesQuery.data ?? []).map((workspace) => workspace.id).join("|"),
+    [workspacesQuery.data],
+  );
 
   return useQuery({
-    queryKey: ["pt-hub-clients", user?.id, workspacesQuery.data],
+    queryKey: ["pt-hub-clients", user?.id, workspaceIdsKey],
     enabled: Boolean(user?.id) && workspacesQuery.isSuccess,
     queryFn: async () => {
       const workspaces = workspacesQuery.data ?? [];
@@ -1171,6 +1196,103 @@ export function usePtHubClients() {
         const bTime = new Date(b.createdAt ?? 0).getTime();
         return bTime - aTime;
       });
+    },
+  });
+}
+
+function normalizePtHubClientSearch(value: string | undefined) {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function usePtHubClientStats() {
+  const { user } = useSessionAuth();
+
+  return useQuery({
+    queryKey: ["pt-hub-client-stats", user?.id],
+    enabled: Boolean(user?.id),
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("pt_hub_client_stats");
+
+      if (error) throw error;
+
+      const row = ((data ?? [])[0] ?? null) as PtHubClientStatsRow | null;
+
+      return {
+        totalClients: row?.total_clients ?? 0,
+        activeClients: row?.active_clients ?? 0,
+        pausedClients: row?.paused_clients ?? 0,
+        atRiskClients: row?.at_risk_clients ?? 0,
+        onboardingIncompleteClients:
+          row?.onboarding_incomplete_clients ?? 0,
+        overdueCheckinClients: row?.overdue_checkin_clients ?? 0,
+      } satisfies PTClientStatsSnapshot;
+    },
+  });
+}
+
+export function usePtHubClientsPage(params: {
+  page: number;
+  pageSize?: number;
+  workspaceId?: string;
+  lifecycle?: string;
+  segment?: ClientSegmentKey;
+  search?: string;
+}) {
+  const { user } = useSessionAuth();
+  const page = Math.max(0, params.page);
+  const pageSize = params.pageSize ?? 25;
+  const workspaceId = params.workspaceId && params.workspaceId !== "all"
+    ? params.workspaceId
+    : null;
+  const lifecycle = params.lifecycle && params.lifecycle !== "all"
+    ? params.lifecycle
+    : null;
+  const segment = params.segment && params.segment !== "all"
+    ? params.segment
+    : null;
+  const search = normalizePtHubClientSearch(params.search);
+
+  return useQuery({
+    queryKey: [
+      "pt-hub-clients-page",
+      user?.id,
+      page,
+      pageSize,
+      workspaceId ?? "all",
+      lifecycle ?? "all",
+      segment ?? "all",
+      search ?? "",
+    ],
+    enabled: Boolean(user?.id),
+    staleTime: 1000 * 30,
+    placeholderData: (previous) => previous,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("pt_hub_clients_page", {
+        p_limit: pageSize,
+        p_offset: page * pageSize,
+        p_workspace_id: workspaceId,
+        p_lifecycle: lifecycle,
+        p_search: search,
+        p_segment: segment,
+      });
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as PtHubClientsPageRow[];
+      const clients = rows.map((row) =>
+        mapPtClientSummary(row, row.workspace_name?.trim() || "Workspace"),
+      );
+      const totalCount = rows[0]?.total_count ?? 0;
+
+      return {
+        clients,
+        totalCount,
+        hasMore: page * pageSize + clients.length < totalCount,
+        page,
+        pageSize,
+      } satisfies PTClientDirectoryPage;
     },
   });
 }
@@ -1448,10 +1570,15 @@ export async function submitPublicPtApplication(input: PTPublicLeadInput) {
     p_package_interest: input.packageInterest.trim(),
   };
 
-  const { data, error } = await supabase.rpc(
-    "submit_public_pt_application",
-    nextInput,
-  );
+  const { data, error } = await runClientGuardedAction({
+    action: "public-pt-application",
+    scope: `${nextInput.p_slug}:${nextInput.p_email.toLowerCase()}`,
+    cooldownMs: 60_000,
+    message:
+      "Please wait a minute before submitting another application for this coach.",
+    run: async () =>
+      await supabase.rpc("submit_public_pt_application", nextInput),
+  });
 
   if (error) throw error;
 
@@ -1464,8 +1591,15 @@ export async function createPtWorkspace(workspaceName: string) {
     throw new Error("Workspace name is required.");
   }
 
-  const { data, error } = await supabase.rpc("create_workspace", {
-    p_name: nextName,
+  const { data, error } = await runClientGuardedAction({
+    action: "workspace-create",
+    scope: "current-user",
+    cooldownMs: 15_000,
+    message: "Please wait a few seconds before creating another workspace.",
+    run: async () =>
+      await supabase.rpc("create_workspace", {
+        p_name: nextName,
+      }),
   });
   if (error) throw error;
 
