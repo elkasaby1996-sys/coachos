@@ -37,9 +37,6 @@ export const ClientSignupPage = lazy(() =>
     default: m.ClientSignupPage,
   })),
 );
-export const WelcomePage = lazy(() =>
-  import("../pages/public/welcome").then((m) => ({ default: m.WelcomePage })),
-);
 export const PublicCoachProfilePage = lazy(() =>
   import("../pages/public/coach-profile").then((m) => ({
     default: m.PublicCoachProfilePage,

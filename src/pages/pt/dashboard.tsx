@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
+  Info,
   MessageCircle,
   Rocket,
   Sparkles,
@@ -165,7 +166,6 @@ export function PtDashboardPage() {
   const [coachTodos, setCoachTodos] = useState<CoachTodo[]>([]);
   const [todoDraft, setTodoDraft] = useState("");
   const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
-  const [todoEdits, setTodoEdits] = useState<Record<string, string>>({});
   const [todoActionState, setTodoActionState] = useState<
     "idle" | "saving" | "success" | "error"
   >("idle");
@@ -265,27 +265,6 @@ export function PtDashboardPage() {
     const { data, error } = await supabase
       .from("coach_todos")
       .update({ is_done: !todo.is_done })
-      .eq("id", todo.id)
-      .select("id, title, is_done, created_at")
-      .single();
-    if (!error && data) {
-      setCoachTodos((prev) =>
-        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row)),
-      );
-    }
-    setTodoBusyId(null);
-  };
-
-  const updateTodoTitle = async (todo: CoachTodo, title: string) => {
-    setTodoBusyId(todo.id);
-    const trimmed = title.trim();
-    if (!trimmed) {
-      await deleteTodo(todo);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("coach_todos")
-      .update({ title: trimmed })
       .eq("id", todo.id)
       .select("id, title, is_done, created_at")
       .single();
@@ -1034,64 +1013,55 @@ export function PtDashboardPage() {
                 </ActionStatusMessage>
               ) : null}
               {coachTodos.length === 0 ? (
-                <EmptyState
-                  title="No tasks yet"
-                  description="Add the next action."
-                />
+                <div className="surface-subtle flex items-start gap-3 rounded-2xl px-3.5 py-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground">
+                    <Info className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      No tasks yet
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Add one quick action to keep today&apos;s focus visible.
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-2">
-                  {coachTodos.map((todo) => {
-                    const draft = todoEdits[todo.id] ?? todo.title;
-                    return (
-                      <div
-                        key={todo.id}
-                        className="surface-subtle flex items-center gap-2 px-3 py-2.5 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={todo.is_done}
-                          onChange={() => void toggleTodo(todo)}
-                          className="h-4 w-4 accent-primary"
-                          disabled={todoBusyId === todo.id}
-                        />
-                        <input
-                          value={draft}
-                          onChange={(event) =>
-                            setTodoEdits((prev) => ({
-                              ...prev,
-                              [todo.id]: event.target.value,
-                            }))
-                          }
-                          onBlur={() => {
-                            if (draft !== todo.title) {
-                              void updateTodoTitle(todo, draft);
-                            }
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              void updateTodoTitle(todo, draft);
-                            }
-                          }}
-                          className={`w-full bg-transparent text-sm outline-none ${
+                  {coachTodos.map((todo) => (
+                    <div
+                      key={todo.id}
+                      className="surface-subtle flex items-center gap-3 px-3 py-2.5 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={todo.is_done}
+                        onChange={() => void toggleTodo(todo)}
+                        className="h-4 w-4 accent-primary"
+                        disabled={todoBusyId === todo.id}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`truncate text-sm ${
                             todo.is_done
                               ? "text-muted-foreground line-through"
                               : "text-foreground"
                           }`}
-                          disabled={todoBusyId === todo.id}
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label="Delete note"
-                          onClick={() => void deleteTodo(todo)}
-                          disabled={todoBusyId === todo.id}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                          {todo.title}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Delete task"
+                        onClick={() => void deleteTodo(todo)}
+                        disabled={todoBusyId === todo.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

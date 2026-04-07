@@ -72,7 +72,6 @@ import {
   SignupRolePage,
   SupportPage,
   TermsPage,
-  WelcomePage,
   WorkspaceSettings,
 } from "./lazy-pages";
 
@@ -231,7 +230,7 @@ function IndexRedirect() {
 
   if (authLoading) return <FullPageLoader />;
 
-  if (!session) return <WelcomePage />;
+  if (!session) return <Navigate to="/login" replace />;
 
   if (!bootstrapResolved) return <FullPageLoader />;
 

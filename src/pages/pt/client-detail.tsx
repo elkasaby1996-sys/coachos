@@ -4068,13 +4068,17 @@ export function PtClientDetailPage() {
             </div>
           </DashboardCard>
 
-          <DashboardCard
-            title="Live Client Signals"
-            subtitle="Secondary signals supporting the coaching decision."
-            className="lg:col-span-2"
-          >
+          <section className="space-y-3 lg:col-span-2">
+            <div className="space-y-1 px-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Live Client Signals
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Secondary signals supporting the coaching decision.
+              </p>
+            </div>
             {statsLoading ? (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <Card key={index} className="border-border/70 bg-card/80">
                     <CardHeader className="space-y-2">
@@ -4085,12 +4089,13 @@ export function PtClientDetailPage() {
                 ))}
               </div>
             ) : clientSnapshot ? (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
                 <StatCard
                   label="Adherence"
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
                   helper="Last 7 days"
                   icon={Sparkles}
+                  className="h-full min-h-[170px]"
                   delta={buildMetricDelta({
                     delta: adherenceDelta,
                     suffix: "%",
@@ -4101,6 +4106,7 @@ export function PtClientDetailPage() {
                   value={habitStreak > 0 ? `${habitStreak}d` : "--"}
                   helper="Habit streak"
                   icon={Rocket}
+                  className="h-full min-h-[170px]"
                   delta={buildMetricDelta({
                     delta: habitStreak - previousHabitStreak,
                     suffix: "d",
@@ -4115,18 +4121,21 @@ export function PtClientDetailPage() {
                       : "No check-ins"
                   }
                   icon={CalendarDays}
+                  className="h-full min-h-[170px]"
                 />
                 <StatCard
                   label="Last workout"
                   value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
                   helper={lastWorkoutStatus ?? "No workouts"}
                   icon={Sparkles}
+                  className="h-full min-h-[170px]"
                 />
                 <StatCard
                   label="Program lane"
                   value={activeProgram?.program_template?.name ?? "--"}
                   helper={activeProgram?.start_date ?? "No active program"}
                   icon={Rocket}
+                  className="h-full min-h-[170px]"
                 />
               </div>
             ) : (
@@ -4135,7 +4144,7 @@ export function PtClientDetailPage() {
                 description="Client activity will show here once sessions begin."
               />
             )}
-          </DashboardCard>
+          </section>
         </div>
 
         {scheduleLoading ? (
@@ -7484,12 +7493,13 @@ function PtClientHabitsTab({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <StatCard
                 label="Adherence"
                 value={`${Number.isFinite(adherencePct) ? adherencePct : 0}%`}
                 helper="Logged days / 7"
                 icon={Sparkles}
+                className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta:
                     Number.isFinite(adherencePct) &&
@@ -7504,6 +7514,7 @@ function PtClientHabitsTab({
                 value={`${habitStreak} days`}
                 helper="Days logged in a row"
                 icon={Rocket}
+                className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta: habitStreak - previousHabitStreak,
                   suffix: "d",
@@ -7522,6 +7533,7 @@ function PtClientHabitsTab({
                 }
                 helper="7-day averages"
                 icon={Flame}
+                className="h-full min-h-[170px]"
                 delta={
                   typeof avgSteps === "number" &&
                   typeof habitTrends.previousAvgSteps === "number"
