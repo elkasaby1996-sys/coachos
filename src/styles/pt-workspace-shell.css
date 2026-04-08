@@ -74,6 +74,41 @@
   z-index: -1;
 }
 
+@media (min-width: 1024px) {
+  .pt-workspace-theme .pt-content-zoom {
+    --pt-content-zoom: 0.94;
+    zoom: var(--pt-content-zoom);
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .pt-workspace-theme .pt-content-zoom {
+    --pt-content-zoom: 0.88;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .pt-workspace-theme .pt-content-zoom {
+    --pt-content-zoom: 0.92;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 860px) {
+  .pt-workspace-theme .pt-content-zoom {
+    --pt-content-zoom: 0.86;
+  }
+}
+
+@supports not (zoom: 1) {
+  @media (min-width: 1024px) {
+    .pt-workspace-theme .pt-content-zoom {
+      transform: scale(var(--pt-content-zoom, 0.94));
+      transform-origin: top center;
+      width: calc(100% / var(--pt-content-zoom, 0.94));
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .pt-workspace-theme .theme-shell-canvas::after {
     opacity: 0.08;

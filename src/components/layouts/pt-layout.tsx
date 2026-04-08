@@ -345,7 +345,7 @@ function SidebarNav({
   const reduceMotion = useReducedMotion();
 
   return (
-    <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:flex lg:flex-col lg:justify-center lg:gap-6">
+    <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-4 pr-1 lg:flex lg:flex-col lg:gap-6">
       {ptNavGroups.map((group) => (
         <div key={group.label} className="space-y-2.5">
           {!collapsed ? (
@@ -743,7 +743,7 @@ export function PtLayout() {
   return (
     <div
       className={cn(
-        "pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden",
+        "pt-workspace-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         isLightMode ? "pt-workspace-theme-light" : "pt-workspace-theme-dark",
       )}
     >
@@ -792,18 +792,18 @@ export function PtLayout() {
         </div>
       </aside>
 
-      <PageContainer className="relative z-10 py-4 sm:py-5 lg:py-6">
+      <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-6">
         <div
           className={cn(
-            "grid gap-5 xl:gap-6",
+            "grid items-start gap-5 lg:h-full lg:items-stretch xl:gap-6",
             desktopNavCollapsed
               ? "lg:grid-cols-[104px_minmax(0,1fr)]"
               : "lg:grid-cols-[296px_minmax(0,1fr)]",
           )}
         >
-          <aside className="hidden lg:block">
-            <div className="sticky top-5">
-              <div className="surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[34px] border-border/70">
+          <aside className="hidden lg:block lg:h-full lg:min-h-0">
+            <div className="sticky top-0 h-full min-h-0">
+              <div className="surface-panel-strong h-full min-h-0 overflow-hidden rounded-[34px] border-border/70">
                 <div className="flex h-full min-h-0 flex-col px-4 py-5">
                   <div
                     className={cn(
@@ -869,7 +869,7 @@ export function PtLayout() {
 
           <PtMessageComposeProvider>
             <WorkspaceHeaderModeProvider value="shell">
-              <div className="min-w-0 space-y-5">
+              <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
                 <header
                   className={cn(
                     "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
@@ -1192,17 +1192,19 @@ export function PtLayout() {
                   </div>
                 </header>
 
-                <main className="min-w-0">
-                  <RouteTransition className="grid gap-6">
-                    <Outlet />
-                  </RouteTransition>
+                <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
+                  <div className="pt-content-zoom">
+                    <RouteTransition className="grid gap-6">
+                      <Outlet />
+                    </RouteTransition>
+                  </div>
                 </main>
               </div>
             </WorkspaceHeaderModeProvider>
           </PtMessageComposeProvider>
         </div>
       </PageContainer>
-      <AppFooter className="mt-4 sm:mt-5" />
+      <AppFooter className="mt-4 sm:mt-5 lg:mt-0" />
 
       <Dialog open={createWorkspaceOpen} onOpenChange={setCreateWorkspaceOpen}>
         <DialogContent className="w-[92vw] max-w-[460px]">

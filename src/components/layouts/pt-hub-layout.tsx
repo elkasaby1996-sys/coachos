@@ -364,7 +364,7 @@ export function PtHubLayout() {
   return (
     <div
       className={cn(
-        "pt-hub-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden",
+        "pt-hub-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
       )}
     >
@@ -411,13 +411,13 @@ export function PtHubLayout() {
         </div>
       </aside>
 
-      <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:py-6">
-        <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-6">
-          <aside className="hidden lg:block">
-            <div className="fixed bottom-5 left-8 top-5 w-[300px] 2xl:left-[max(2rem,calc((100vw-2000px)/2+2rem))]">
+      <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-6">
+        <div className="grid items-start gap-5 lg:h-full lg:grid-cols-[300px_minmax(0,1fr)] lg:items-stretch xl:gap-6">
+          <aside className="hidden lg:block lg:h-full lg:min-h-0">
+            <div className="sticky top-0 h-full min-h-0">
               <div
                 className={cn(
-                  "surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[34px] border-border/70",
+                  "surface-panel-strong h-full min-h-0 overflow-hidden rounded-[34px] border-border/70",
                   isLightMode
                     ? "shadow-[var(--surface-strong-shadow)]"
                     : "shadow-[var(--surface-strong-shadow)]",
@@ -432,7 +432,7 @@ export function PtHubLayout() {
             </div>
           </aside>
 
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
             <header
               className={cn(
                 "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
@@ -730,10 +730,12 @@ export function PtHubLayout() {
               </div>
             </header>
 
-            <main className="min-w-0">
-              <RouteTransition>
-                <Outlet />
-              </RouteTransition>
+            <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
+              <div className="pt-content-zoom">
+                <RouteTransition>
+                  <Outlet />
+                </RouteTransition>
+              </div>
             </main>
           </div>
         </div>
@@ -785,7 +787,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:overflow-visible">
+      <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-4 pr-1">
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
             <p className="pt-hub-kicker px-2">{group.label}</p>
