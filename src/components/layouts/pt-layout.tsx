@@ -38,6 +38,7 @@ import { supabase } from "../../lib/supabase";
 import { cn } from "../../lib/utils";
 import { useWorkspace } from "../../lib/use-workspace";
 import { LoadingScreen } from "../common/bootstrap-gate";
+import { AppFooter } from "../common/app-footer";
 import { PageContainer } from "../common/page-container";
 import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
@@ -1098,10 +1099,10 @@ export function PtLayout() {
                         ref={searchShellRef}
                         className="relative w-full lg:max-w-[32rem]"
                       >
-                        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Search className="app-search-icon h-3.5 w-3.5" />
                         <Input
                           placeholder="Search clients, programs, tags..."
-                          className="h-11 rounded-full border-border/70 bg-card/72 pl-9 text-[13px] shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]"
+                          className="app-search-input"
                           aria-label="Search clients"
                           value={searchInput}
                           onChange={(event) => {
@@ -1201,6 +1202,7 @@ export function PtLayout() {
           </PtMessageComposeProvider>
         </div>
       </PageContainer>
+      <AppFooter className="mt-4 sm:mt-5" />
 
       <Dialog open={createWorkspaceOpen} onOpenChange={setCreateWorkspaceOpen}>
         <DialogContent className="w-[92vw] max-w-[460px]">

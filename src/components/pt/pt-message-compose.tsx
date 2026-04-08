@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { EmptyState, Skeleton } from "../ui/coachos";
+import { Input } from "../ui/input";
 import { useSessionAuth } from "../../lib/auth";
 import { sendConversationMessage } from "../../lib/messages";
 import { getActionErrorMessage } from "../../lib/request-guard";
@@ -137,17 +138,16 @@ function MessageWidgetSearch({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.7),oklch(var(--bg-surface)/0.58))] px-3 text-sm text-muted-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] backdrop-blur-xl transition focus-within:border-primary/30 focus-within:text-foreground">
-      <Search className="h-4 w-4 shrink-0 opacity-80" />
-      <input
+    <div className="relative">
+      <Search className="app-search-icon h-4 w-4" />
+      <Input
         type="search"
-        inputMode="search"
+        className="app-search-input"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search clients"
-        className="h-full w-full appearance-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/80 [-webkit-appearance:none] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none"
       />
-    </label>
+    </div>
   );
 }
 

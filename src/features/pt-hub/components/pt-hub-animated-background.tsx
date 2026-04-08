@@ -164,36 +164,36 @@ const themePalettes: Record<
   }
 > = {
   dark: {
-    base: "#050607",
-    mistA: "#294336",
-    mistB: "#17231d",
-    mistC: "#31483b",
-    sheen: "#7f9788",
-    reducedTop: "oklch(0.082_0.003_185)",
-    reducedBottom: "oklch(0.048_0.002_185)",
-    reducedGlowA: "oklch(0.26_0.008_170/0.26)",
-    reducedGlowB: "oklch(0.18_0.005_190/0.18)",
-    reducedGlowC: "oklch(0.14_0.003_160/0.12)",
+    base: "#0a0f16",
+    mistA: "#28374b",
+    mistB: "#182436",
+    mistC: "#33465a",
+    sheen: "#8aa2be",
+    reducedTop: "oklch(0.102_0.006_210)",
+    reducedBottom: "oklch(0.072_0.005_208)",
+    reducedGlowA: "oklch(0.26_0.018_220/0.18)",
+    reducedGlowB: "oklch(0.22_0.014_208/0.14)",
+    reducedGlowC: "oklch(0.16_0.01_198/0.1)",
     radialOverlay:
-      "radial-gradient(circle at top, rgba(255, 255, 255, 0.02) 0%, transparent 22%, rgba(0, 0, 0, 0.06) 52%, rgba(0, 0, 0, 0.22) 100%)",
+      "radial-gradient(circle at top, rgba(255, 255, 255, 0.018) 0%, transparent 24%, rgba(7, 10, 16, 0.05) 54%, rgba(4, 7, 12, 0.18) 100%)",
     linearOverlay:
-      "linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 18%, transparent 80%, rgba(0, 0, 0, 0.24))",
+      "linear-gradient(180deg, rgba(6, 10, 16, 0.14), transparent 18%, transparent 80%, rgba(4, 8, 12, 0.22))",
   },
   light: {
-    base: "#e7edf1",
-    mistA: "#98b1c1",
-    mistB: "#b2c2d7",
-    mistC: "#c8d5de",
-    sheen: "#567f97",
-    reducedTop: "oklch(0.948_0.006_188)",
-    reducedBottom: "oklch(0.886_0.01_186)",
-    reducedGlowA: "oklch(0.68_0.032_188/0.18)",
-    reducedGlowB: "oklch(0.72_0.028_206/0.16)",
-    reducedGlowC: "oklch(0.75_0.02_194/0.14)",
+    base: "#eff4f8",
+    mistA: "#a7bdd3",
+    mistB: "#c4d3e1",
+    mistC: "#d9e3ec",
+    sheen: "#6f8eaa",
+    reducedTop: "oklch(0.956_0.006_192)",
+    reducedBottom: "oklch(0.898_0.008_190)",
+    reducedGlowA: "oklch(0.69_0.028_200/0.12)",
+    reducedGlowB: "oklch(0.72_0.022_214/0.1)",
+    reducedGlowC: "oklch(0.75_0.016_202/0.08)",
     radialOverlay:
-      "radial-gradient(circle at top, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 24%, transparent 48%, rgba(15, 23, 42, 0.05) 100%)",
+      "radial-gradient(circle at top, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 24%, transparent 48%, rgba(15, 23, 42, 0.035) 100%)",
     linearOverlay:
-      "linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 18%, transparent 82%, rgba(30, 41, 59, 0.05))",
+      "linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 18%, transparent 82%, rgba(30, 41, 59, 0.04))",
   },
 };
 
@@ -831,8 +831,8 @@ export function PtHubAnimatedBackground({
           className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
             hasWebglBackground
               ? mode === "light"
-                ? "opacity-54"
-                : "opacity-100"
+                ? "opacity-30"
+                : "opacity-68"
               : "opacity-0"
           }`}
         />

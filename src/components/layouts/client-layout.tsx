@@ -16,6 +16,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
+import { AppFooter } from "../common/app-footer";
 import { RouteTransition } from "../common/route-transition";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
@@ -360,6 +361,7 @@ export function ClientLayout() {
               )}
             </PageContainer>
           </main>
+          <AppFooter className="pb-20 md:pb-3" size="portal" />
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
             <PageContainer size="portal" className="grid grid-cols-6 gap-1">
               {navItems.map((item) => (

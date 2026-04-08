@@ -649,28 +649,24 @@ function buildPipelineSummary(params: {
       id: "awaiting-response",
       label: "Awaiting response",
       value: formatCount(getUnrepliedLeadCount(params.leads), "lead"),
-      detail: "New or reviewed leads that still need a reply",
       tone: "danger",
     },
     {
       id: "pipeline-moving",
       label: "In progress",
       value: formatCount(getPipelineLeadCount(params.leads), "lead"),
-      detail: "Contacted leads and booked consultations",
       tone: "info",
     },
     {
       id: "accepted",
       label: "Accepted",
       value: formatCount(getAcceptedLeadCount(params.leads), "lead"),
-      detail: "Leads that have already converted or been accepted",
       tone: "success",
     },
     {
       id: "new-this-month",
       label: "New this month",
       value: formatCount(params.stats?.applicationsThisMonth ?? 0, "lead"),
-      detail: "30-day inbound volume across the business",
       tone: "info",
     },
   ] satisfies PtHubOverviewSummaryItem[];
@@ -685,21 +681,18 @@ function buildClientHealthSummary(params: {
       id: "needs-attention",
       label: "Needs attention",
       value: formatCount(params.clientsNeedingAttentionCount, "client"),
-      detail: "Unique clients with at-risk, overdue, or onboarding issues",
       tone: "warning",
     },
     {
       id: "at-risk",
       label: "At risk",
       value: formatCount(params.clientStats.atRiskClients, "client"),
-      detail: "Clients showing risk signals or marked at risk",
       tone: "danger",
     },
     {
       id: "checkin-overdue",
       label: "Check-ins overdue",
       value: formatCount(params.clientStats.overdueCheckinClients, "client"),
-      detail: "Clients currently behind on check-ins",
       tone: "warning",
     },
     {
@@ -709,7 +702,6 @@ function buildClientHealthSummary(params: {
         params.clientStats.onboardingIncompleteClients,
         "client",
       ),
-      detail: "Clients still missing setup progress",
       tone: "info",
     },
   ] satisfies PtHubOverviewSummaryItem[];

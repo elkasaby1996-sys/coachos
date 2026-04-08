@@ -47,14 +47,14 @@ export function ClientsFilters({
         <div className="relative w-full sm:w-72">
           <Input
             placeholder="Search clients, goals, or risks..."
-            className="h-9 rounded-full bg-secondary/40 pl-10"
+            className="app-search-input app-search-input-sm pl-10"
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
           />
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="app-search-icon h-4 w-4" />
         </div>
         <select
-          className="workspace-filter-chip h-9 w-36 shrink-0"
+          className="app-filter-control app-filter-control-sm w-36 shrink-0"
           value={activeLifecycle}
           onChange={(event) =>
             onLifecycleChange(event.target.value as ClientLifecycleFilterKey)

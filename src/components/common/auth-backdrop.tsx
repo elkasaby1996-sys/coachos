@@ -1,6 +1,6 @@
 import { cn } from "../../lib/utils";
-import { Link } from "react-router-dom";
 import { AppShellBackgroundLayer } from "./app-shell-background";
+import { AppFooter } from "./app-footer";
 
 interface AuthBackdropProps {
   children: React.ReactNode;
@@ -21,17 +21,7 @@ export function AuthBackdrop({
         {children}
       </div>
 
-      <nav className="pointer-events-auto absolute bottom-4 z-20 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-        <Link className="transition-colors hover:text-foreground" to="/privacy">
-          Privacy
-        </Link>
-        <Link className="transition-colors hover:text-foreground" to="/terms">
-          Terms
-        </Link>
-        <Link className="transition-colors hover:text-foreground" to="/support">
-          Support
-        </Link>
-      </nav>
+      <AppFooter className="pointer-events-auto absolute inset-x-0 bottom-0 z-20" />
     </div>
   );
 }

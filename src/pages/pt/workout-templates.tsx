@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
   Dialog,
@@ -279,18 +279,21 @@ export function PtWorkoutTemplatesPage() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          className="w-full sm:w-72"
-          placeholder="Search templates"
-          value={searchQuery}
-          onChange={(event) => {
-            const next = event.target.value;
-            setSearchQuery(next);
-            updateParams({ q: next });
-          }}
-        />
+        <div className="relative w-full sm:w-72">
+          <Search className="app-search-icon h-4 w-4" />
+          <Input
+            className="app-search-input"
+            placeholder="Search templates"
+            value={searchQuery}
+            onChange={(event) => {
+              const next = event.target.value;
+              setSearchQuery(next);
+              updateParams({ q: next });
+            }}
+          />
+        </div>
         <select
-          className="workspace-filter-chip w-full sm:w-auto"
+          className="app-filter-control w-full sm:w-auto"
           value={typeFilter}
           onChange={(event) => {
             const next = event.target.value;
@@ -306,7 +309,7 @@ export function PtWorkoutTemplatesPage() {
           ))}
         </select>
         <select
-          className="workspace-filter-chip w-full sm:w-auto"
+          className="app-filter-control w-full sm:w-auto"
           value={sortBy}
           onChange={(event) => {
             const next = event.target.value;

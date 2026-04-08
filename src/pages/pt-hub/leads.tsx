@@ -122,9 +122,9 @@ export function PtHubLeadsPage() {
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="app-search-icon h-4 w-4" />
               <Input
-                className="pl-9"
+                className="app-search-input"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
                 placeholder="Search name, contact, goal, or notes"

@@ -5,6 +5,7 @@ import {
   UsersRound,
   Wallet,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import {
@@ -44,7 +45,7 @@ const metricIconMap = {
   "onboarding-in-progress": ClipboardList,
   "monthly-revenue": Wallet,
   "monthly-earnings": Wallet,
-} as const;
+} as const satisfies Record<string, LucideIcon>;
 
 function getMetricGridClassName(metricCount: number) {
   if (metricCount >= 5) return "xl:grid-cols-5";
@@ -205,7 +206,6 @@ export function PtHubOverviewPage() {
       <div className="grid gap-6 xl:grid-cols-3">
         <PtHubSummaryCard
           title="Lead pipeline"
-          description="What is coming into the business and where follow-up is needed."
           items={dashboardModel.pipelineSummary}
           isEmpty={leads.length === 0}
           emptyState={{
@@ -218,7 +218,6 @@ export function PtHubOverviewPage() {
         />
         <PtHubSummaryCard
           title="Client delivery"
-          description="A quick read on who needs support, follow-up, or onboarding help."
           items={dashboardModel.clientHealthSummary}
           isEmpty={clients.length === 0}
           emptyState={{

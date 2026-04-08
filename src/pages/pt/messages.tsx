@@ -7,7 +7,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { SendHorizontal } from "lucide-react";
+import { Search, SendHorizontal } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -574,11 +574,15 @@ export function PtMessagesPage() {
             />
           ) : (
             <div className="space-y-4">
-              <Input
-                value={clientSearch}
-                onChange={(event) => setClientSearch(event.target.value)}
-                placeholder="Search client, status, or recent message"
-              />
+              <div className="relative">
+                <Search className="app-search-icon h-4 w-4" />
+                <Input
+                  className="app-search-input"
+                  value={clientSearch}
+                  onChange={(event) => setClientSearch(event.target.value)}
+                  placeholder="Search client, status, or recent message"
+                />
+              </div>
 
               {clientInboxRows.length === 0 ? (
                 <EmptyState

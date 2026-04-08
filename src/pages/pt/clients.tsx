@@ -1,337 +1,232 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { Search, UsersRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "../../components/ui/button";
-import { Skeleton } from "../../components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
-import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
-import { ClientsKpiRow } from "../../components/pt/clients/ClientsKpiRow";
+import { EmptyState } from "../../components/ui/coachos/empty-state";
+import { StatCard } from "../../components/ui/coachos/stat-card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Skeleton } from "../../components/ui/skeleton";
+import { PtHubClientTable } from "../../features/pt-hub/components/pt-hub-client-table";
+import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
+import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
 import {
-  ClientsFilters,
-  type ClientLifecycleFilterKey,
-} from "../../components/pt/clients/ClientsFilters";
-import { ClientListRow } from "../../components/pt/clients/ClientListRow";
-import { EmptyState } from "../../components/ui/coachos";
-import { useWindowedRows } from "../../hooks/use-windowed-rows";
-import { useSessionAuth } from "../../lib/auth";
-import {
-  matchesClientSegment,
-  normalizeClientLifecycleState,
-  type ClientSegmentKey,
-} from "../../lib/client-lifecycle";
-import { formatRelativeTime } from "../../lib/relative-time";
-import { supabase } from "../../lib/supabase";
+  getPtClientBaseStats,
+  usePtHubClientsPage,
+} from "../../features/pt-hub/lib/pt-hub";
+import type { PTClientSummary } from "../../features/pt-hub/types";
+import { type ClientSegmentKey } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
 
-type ClientRecord = {
-  id: string;
-  workspace_id: string | null;
-  user_id: string | null;
-  status: string | null;
-  lifecycle_state: string | null;
-  lifecycle_changed_at: string | null;
-  paused_reason: string | null;
-  churn_reason: string | null;
-  display_name: string | null;
-  goal: string | null;
-  tags: string[] | null;
-  created_at: string | null;
-  updated_at: string | null;
-  onboarding_status: string | null;
-  onboarding_incomplete: boolean | null;
-  last_session_at: string | null;
-  last_checkin_at: string | null;
-  last_message_at: string | null;
-  last_client_reply_at: string | null;
-  last_activity_at: string | null;
-  overdue_checkins_count: number | null;
-  has_overdue_checkin: boolean | null;
-  risk_flags: string[] | null;
-};
+const WORKSPACE_PLACEHOLDER_ID = "00000000-0000-0000-0000-000000000000";
 
 export function PtClientsPage() {
-  const { user } = useSessionAuth();
+  const navigate = useNavigate();
   const {
     workspaceId,
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
-  const navigate = useNavigate();
-  const [clients, setClients] = useState<ClientRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const [searchValue, setSearchValue] = useState("");
-  const [segment, setSegment] = useState<ClientSegmentKey>("all");
-  const [lifecycleFilter, setLifecycleFilter] =
-    useState<ClientLifecycleFilterKey>("all");
-  const pageSize = 50;
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadClients = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
-      if (workspaceLoading) {
-        setIsLoading(true);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        if (!workspaceId) throw new Error("Workspace not found.");
-
-        const { data, error: clientsError } = await supabase.rpc(
-          "pt_clients_summary",
-          {
-            p_workspace_id: workspaceId,
-            p_limit: pageSize,
-            p_offset: page * pageSize,
-          },
-        );
-
-        if (clientsError) throw clientsError;
-        if (!isMounted) return;
-
-        const rows = ((data ?? []) as ClientRecord[]).map((row) => ({
-          ...row,
-          risk_flags: row.risk_flags ?? [],
-        }));
-
-        setClients((prev) => (page === 0 ? rows : [...prev, ...rows]));
-        setHasMore(rows.length === pageSize);
-        setError(null);
-      } catch (err) {
-        if (isMounted) {
-          setError(
-            err instanceof Error ? err.message : "Failed to load clients.",
-          );
-        }
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    loadClients();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id, workspaceId, workspaceLoading, page]);
-
-  useEffect(() => {
-    if (workspaceError) {
-      setError(workspaceError.message);
-    }
-  }, [workspaceError]);
-
-  const formattedClients = useMemo(() => {
-    return clients.map((client) => {
-      const lifecycleState = normalizeClientLifecycleState(
-        client.lifecycle_state,
-      );
-      const lastActivityRaw =
-        client.last_activity_at ??
-        client.last_client_reply_at ??
-        client.last_session_at ??
-        client.last_checkin_at ??
-        client.created_at;
-
-      return {
-        ...client,
-        lifecycleState,
-        name: client.display_name?.trim() || "Client",
-        program: client.tags?.[0] ?? client.goal ?? "No program assigned",
-        summary:
-          client.has_overdue_checkin && (client.overdue_checkins_count ?? 0) > 0
-            ? `${client.overdue_checkins_count} overdue check-in${(client.overdue_checkins_count ?? 0) > 1 ? "s" : ""}`
-            : client.goal?.trim() || "",
-        riskFlags: client.risk_flags ?? [],
-        lastActivityLabel: lastActivityRaw
-          ? formatRelativeTime(lastActivityRaw)
-          : "No recent activity",
-        nextAction: client.onboarding_incomplete
-          ? "Finish onboarding review"
-          : client.has_overdue_checkin &&
-              (client.overdue_checkins_count ?? 0) > 0
-            ? `Review ${client.overdue_checkins_count} overdue check-in${(client.overdue_checkins_count ?? 0) > 1 ? "s" : ""}`
-            : client.risk_flags?.includes("no_recent_reply")
-              ? "Message for response"
-              : lifecycleState === "paused"
-                ? "Confirm pause plan"
-                : "Review latest training",
-        coachingSignal: client.risk_flags?.includes("low_adherence_trend")
-          ? "Adherence trending down"
-          : client.risk_flags?.includes("inactive_client")
-            ? "Client activity has gone quiet"
-            : client.risk_flags?.includes("missed_checkins")
-              ? "Check-in cadence broken"
-              : client.goal?.trim()
-                ? `Goal: ${client.goal.trim()}`
-                : `Focus: ${client.tags?.[0] ?? "No block assigned"}`,
-      };
-    });
-  }, [clients]);
-
-  const filteredClients = useMemo(() => {
-    const search = searchValue.trim().toLowerCase();
-
-    return formattedClients.filter((client) => {
-      const matchesSearch = search
-        ? [
-            client.name,
-            client.program,
-            client.summary,
-            client.lifecycleState,
-            ...(client.riskFlags ?? []),
-            client.onboarding_status ?? "",
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(search)
-        : true;
-
-      const matchesSegment = matchesClientSegment(client, segment);
-      const matchesLifecycle =
-        lifecycleFilter === "all"
-          ? true
-          : client.lifecycleState === lifecycleFilter;
-
-      return matchesSearch && matchesSegment && matchesLifecycle;
-    });
-  }, [formattedClients, lifecycleFilter, searchValue, segment]);
-
-  const stats = useMemo(() => {
-    const total = formattedClients.length;
-    const onboardingIncomplete = formattedClients.filter((client) =>
-      matchesClientSegment(client, "onboarding_incomplete"),
-    ).length;
-    const atRisk = formattedClients.filter((client) =>
-      matchesClientSegment(client, "at_risk"),
-    ).length;
-    const overdue = formattedClients.filter((client) =>
-      matchesClientSegment(client, "checkin_overdue"),
-    ).length;
-    const paused = formattedClients.filter((client) =>
-      matchesClientSegment(client, "paused"),
-    ).length;
-
-    return [
-      { label: "Total Clients", value: total },
-      {
-        label: "Onboarding Incomplete",
-        value: onboardingIncomplete,
-        tone: "text-warning",
-      },
-      { label: "At Risk", value: atRisk, tone: "text-destructive" },
-      { label: "Check-in Overdue", value: overdue, tone: "text-warning" },
-      { label: "Paused", value: paused, tone: "text-muted-foreground" },
-    ];
-  }, [formattedClients]);
-
-  const clientsWindow = useWindowedRows({
-    rows: filteredClients,
-    initialCount: 20,
-    step: 20,
-    resetKey: `${searchValue}:${segment}:${lifecycleFilter}:${filteredClients.length}`,
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
+  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
+  const [page, setPage] = useState(0);
+  const deferredSearchValue = useDeferredValue(searchValue);
+  const scopedWorkspaceId = workspaceId ?? WORKSPACE_PLACEHOLDER_ID;
+  const clientsQuery = usePtHubClientsPage({
+    page,
+    pageSize: 25,
+    workspaceId: scopedWorkspaceId,
+    lifecycle: lifecycleFilter,
+    segment: segmentFilter,
+    search: deferredSearchValue,
+  });
+  const statsQuery = usePtHubClientsPage({
+    page: 0,
+    pageSize: 5000,
+    workspaceId: scopedWorkspaceId,
   });
 
+  const stats = useMemo(
+    () => getPtClientBaseStats(statsQuery.data?.clients ?? []),
+    [statsQuery.data],
+  );
+  const clients = clientsQuery.data?.clients ?? [];
+  const totalCount = clientsQuery.data?.totalCount ?? 0;
+  const pageSize = clientsQuery.data?.pageSize ?? 25;
+  const rangeStart = totalCount === 0 ? 0 : page * pageSize + 1;
+  const rangeEnd = totalCount === 0 ? 0 : Math.min((page + 1) * pageSize, totalCount);
+  const isTableLoading =
+    workspaceLoading ||
+    clientsQuery.isLoading ||
+    (clientsQuery.isFetching && !clientsQuery.data);
+  const hasAnyClients = stats.totalClients > 0;
+  const isEmpty = totalCount === 0;
+  const queryError =
+    clientsQuery.error instanceof Error ? clientsQuery.error.message : null;
+  const errorMessage = workspaceError?.message ?? queryError;
+
+  useEffect(() => {
+    setPage(0);
+  }, [deferredSearchValue, lifecycleFilter, segmentFilter, workspaceId]);
+
+  const openClient = (client: PTClientSummary) => {
+    navigate(
+      client.onboardingIncomplete
+        ? `/pt/clients/${client.id}?tab=onboarding`
+        : `/pt/clients/${client.id}`,
+    );
+  };
+
   return (
-    <div className="space-y-8">
-      {error ? (
+    <section className="space-y-6">
+      {errorMessage ? (
         <Alert className="border-destructive/30">
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       ) : null}
 
-      <WorkspacePageHeader
-        title="Clients"
-        actions={<InviteClientDialog trigger={<Button>+ Add Client</Button>} />}
+      <PtHubPageHeader
+        eyebrow="Clients"
+        title="Manage your clients"
+        description="View every client in your active coaching space."
       />
 
-      <ClientsKpiRow stats={stats} />
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ClientsFilters
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
-          activeSegment={segment}
-          onSegmentChange={setSegment}
-          activeLifecycle={lifecycleFilter}
-          onLifecycleChange={setLifecycleFilter}
+      <div className="grid gap-4 xl:grid-cols-4">
+        <StatCard
+          surface="pt-hub"
+          label="Total Clients"
+          value={stats.totalClients}
+          helper="In this coaching space"
+          icon={UsersRound}
+          accent
+        />
+        <StatCard
+          surface="pt-hub"
+          label="Active"
+          value={stats.activeClients}
+          helper="Currently in training"
+        />
+        <StatCard
+          surface="pt-hub"
+          label="At Risk"
+          value={stats.atRiskClients}
+          helper="Needs your attention"
+        />
+        <StatCard
+          surface="pt-hub"
+          label="Paused"
+          value={stats.pausedClients}
+          helper="Currently paused"
         />
       </div>
 
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full" />
+      <PtHubSectionCard
+        title="Client List"
+        actions={
+          <InviteClientDialog
+            trigger={<Button variant="secondary">Invite client</Button>}
+          />
+        }
+        contentClassName="space-y-6"
+      >
+        <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
+            <div className="relative">
+              <Search className="app-search-icon h-4 w-4" />
+              <Input
+                className="app-search-input"
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder="Search clients, goals, or status"
+              />
+            </div>
+            <select
+              className="app-filter-control"
+              value={lifecycleFilter}
+              onChange={(event) => setLifecycleFilter(event.target.value)}
+            >
+              <option value="all">All lifecycles</option>
+              <option value="invited">Invited</option>
+              <option value="onboarding">Onboarding</option>
+              <option value="paused">Paused</option>
+              <option value="active">Active</option>
+              <option value="at_risk">At risk</option>
+              <option value="completed">Completed</option>
+              <option value="churned">Churned</option>
+            </select>
+            <select
+              className="app-filter-control"
+              value={segmentFilter}
+              onChange={(event) =>
+                setSegmentFilter(event.target.value as ClientSegmentKey)
+              }
+            >
+              <option value="all">All segments</option>
+              <option value="onboarding_incomplete">
+                Onboarding incomplete
+              </option>
+              <option value="checkin_overdue">Check-in overdue</option>
+              <option value="at_risk">At-risk clients</option>
+              <option value="paused">Paused clients</option>
+            </select>
+          </div>
+        </div>
+
+        {isTableLoading ? (
+          <div className="space-y-3 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
             ))}
           </div>
-        ) : filteredClients.length > 0 ? (
-          <>
-            {clientsWindow.visibleRows.map((client) => (
-              <ClientListRow
-                key={client.id}
-                name={client.name}
-                program={client.program}
-                summary={client.summary}
-                status={client.lifecycleState}
-                lastActivity={client.lastActivityLabel}
-                nextAction={client.nextAction}
-                pausedReason={client.paused_reason}
-                churnReason={client.churn_reason}
-                onClick={() =>
-                  navigate(
-                    client.onboarding_incomplete
-                      ? `/pt/clients/${client.id}?tab=onboarding`
-                      : `/pt/clients/${client.id}`,
-                  )
-                }
-              />
-            ))}
-            {clientsWindow.hasHiddenRows ? (
-              <div className="flex justify-center pt-2">
-                <Button variant="secondary" onClick={clientsWindow.showMore}>
-                  Show {Math.min(clientsWindow.hiddenCount, 20)} more clients
-                </Button>
-              </div>
-            ) : null}
-            {hasMore ? (
-              <div className="flex justify-center pt-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setPage((prev) => prev + 1)}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Loading..." : "Load more"}
-                </Button>
-              </div>
-            ) : null}
-          </>
-        ) : (
+        ) : isEmpty ? (
           <EmptyState
-            centered
-            title="No clients in this view yet"
-            description="Invite a client or change the filters."
-            action={
-              <InviteClientDialog
-                trigger={
-                  <Button className="mt-4" size="sm">
-                    Invite client
-                  </Button>
-                }
-              />
+            title="No clients found"
+            description={
+              hasAnyClients
+                ? "No clients match the current filters."
+                : "You do not have any client records yet."
             }
+            icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
           />
+        ) : (
+          <PtHubClientTable clients={clients} onOpen={openClient} />
         )}
-      </div>
-    </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+          <p>
+            {isEmpty
+              ? hasAnyClients
+                ? "No clients match the current filters."
+                : "No client records yet."
+              : `Showing ${rangeStart}-${rangeEnd} of ${totalCount} clients`}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+              disabled={page === 0 || clientsQuery.isFetching || workspaceLoading}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((current) => current + 1)}
+              disabled={
+                !clientsQuery.data?.hasMore ||
+                clientsQuery.isFetching ||
+                workspaceLoading
+              }
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </PtHubSectionCard>
+    </section>
   );
 }

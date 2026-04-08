@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Search, UsersRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
@@ -93,12 +94,6 @@ export function PtHubClientsPage() {
         />
         <StatCard
           surface="pt-hub"
-          label="Onboarding Incomplete"
-          value={stats?.onboardingIncompleteClients ?? 0}
-          helper="Setup still incomplete"
-        />
-        <StatCard
-          surface="pt-hub"
           label="Paused"
           value={stats?.pausedClients ?? 0}
           helper="Currently paused"
@@ -107,22 +102,26 @@ export function PtHubClientsPage() {
 
       <PtHubSectionCard
         title="Client List"
-        description="Search by client, goal, coaching space, or status."
+        actions={
+          <InviteClientDialog
+            trigger={<Button variant="secondary">Invite client</Button>}
+          />
+        }
         contentClassName="space-y-6"
       >
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="app-search-icon h-4 w-4" />
               <Input
-                className="pl-9"
+                className="app-search-input"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
                 placeholder="Search clients, goals, or coaching space"
               />
             </div>
             <select
-              className="h-10 app-field px-3 text-sm"
+              className="app-filter-control"
               value={workspaceFilter}
               onChange={(event) => setWorkspaceFilter(event.target.value)}
             >
@@ -134,7 +133,7 @@ export function PtHubClientsPage() {
               ))}
             </select>
             <select
-              className="h-10 app-field px-3 text-sm"
+              className="app-filter-control"
               value={lifecycleFilter}
               onChange={(event) => setLifecycleFilter(event.target.value)}
             >
@@ -148,7 +147,7 @@ export function PtHubClientsPage() {
               <option value="churned">Churned</option>
             </select>
             <select
-              className="h-10 app-field px-3 text-sm"
+              className="app-filter-control"
               value={segmentFilter}
               onChange={(event) =>
                 setSegmentFilter(event.target.value as ClientSegmentKey)
@@ -164,6 +163,29 @@ export function PtHubClientsPage() {
             </select>
           </div>
         </div>
+
+        {isTableLoading ? (
+          <div className="space-y-3 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
+            ))}
+          </div>
+        ) : isEmpty ? (
+          <EmptyState
+            title="No clients found"
+            description={
+              hasAnyClients
+                ? "No clients match the current filters."
+                : "You do not have any client records yet."
+            }
+            icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
+          />
+        ) : (
+          <PtHubClientTable
+            clients={clients}
+            onOpen={openClientWorkspace}
+          />
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
           <p>
@@ -192,29 +214,6 @@ export function PtHubClientsPage() {
             </Button>
           </div>
         </div>
-
-        {isTableLoading ? (
-          <div className="space-y-3 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
-            ))}
-          </div>
-        ) : isEmpty ? (
-          <EmptyState
-            title="No clients found"
-            description={
-              hasAnyClients
-                ? "No clients match the current filters."
-                : "You do not have any client records yet."
-            }
-            icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
-          />
-        ) : (
-          <PtHubClientTable
-            clients={clients}
-            onOpen={openClientWorkspace}
-          />
-        )}
       </PtHubSectionCard>
     </section>
   );

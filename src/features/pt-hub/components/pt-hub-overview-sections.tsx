@@ -35,7 +35,7 @@ function getActionToneBadgeClassName(tone: PtHubOverviewActionItem["tone"]) {
     case "success":
       return "border-success/30 bg-success/12 text-success";
     default:
-      return "border-[oklch(var(--chart-2)/0.24)] bg-[oklch(var(--chart-2)/0.12)] text-[oklch(var(--chart-2)/0.96)]";
+      return "border-primary/24 bg-primary/10 text-primary";
   }
 }
 
@@ -61,10 +61,9 @@ function getSummaryToneStyles(tone: PtHubOverviewSummaryItem["tone"]) {
       };
     case "info":
       return {
-        label:
-          "border-[oklch(var(--chart-2)/0.24)] bg-[oklch(var(--chart-2)/0.12)] text-[oklch(var(--chart-2)/0.96)]",
-        value: "text-[oklch(var(--chart-2)/0.98)]",
-        detail: "text-[oklch(var(--chart-2)/0.82)]",
+        label: "border-primary/24 bg-primary/10 text-primary",
+        value: "text-primary",
+        detail: "text-muted-foreground",
       };
     default:
       return {
@@ -82,7 +81,7 @@ export function PtHubOverviewLoadingState() {
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`metric-skeleton-${index}`}
-            className="surface-panel relative overflow-hidden rounded-[30px] border border-border/70 px-5 py-5 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl sm:px-6"
+            className="surface-panel relative overflow-hidden rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6"
           >
             <Skeleton className="h-3 w-28" />
             <Skeleton className="mt-6 h-10 w-24 rounded-xl" />
@@ -91,7 +90,7 @@ export function PtHubOverviewLoadingState() {
         ))}
       </div>
 
-      <div className="surface-panel-strong rounded-[34px] border border-border/70 px-5 py-5 shadow-[0_34px_92px_-56px_rgba(0,0,0,0.98)] backdrop-blur-xl sm:px-6 sm:py-6">
+      <div className="surface-panel-strong rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
         <div className="space-y-4">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-10 w-72 rounded-2xl" />
@@ -110,7 +109,7 @@ export function PtHubOverviewLoadingState() {
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={`panel-skeleton-${index}`}
-            className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[0_26px_70px_-44px_rgba(0,0,0,0.82)] backdrop-blur-xl sm:px-6"
+            className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6"
           >
             <Skeleton className="h-4 w-32" />
             <div className="mt-5 space-y-3">
@@ -126,7 +125,7 @@ export function PtHubOverviewLoadingState() {
       </div>
 
       <div className="grid gap-6">
-        <div className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[0_26px_70px_-44px_rgba(0,0,0,0.82)] backdrop-blur-xl sm:px-6">
+        <div className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6">
           <div className="space-y-4">
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-8 w-44 rounded-xl" />
@@ -190,9 +189,9 @@ export function PtHubActionCenter({
   };
 
   return (
-    <div className="surface-panel-strong relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[0_34px_92px_-56px_rgba(0,0,0,0.98)] backdrop-blur-xl sm:px-6 sm:py-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.2),transparent_32%),radial-gradient(circle_at_bottom_left,oklch(var(--success)/0.14),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.18),transparent_46%,oklch(var(--bg-surface)/0.12))]" />
-      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)]" />
+    <div className="surface-panel-strong relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_32%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.18),transparent_46%,oklch(var(--bg-surface)/0.12))]" />
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
 
       <div className="relative space-y-4">
         <div className="space-y-2">
@@ -240,9 +239,9 @@ export function PtHubActionCenter({
             ))}
           </div>
         ) : (
-          <div className="rounded-[28px] border border-success/18 bg-success/8 px-5 py-6">
+          <div className="rounded-[28px] border border-primary/18 bg-primary/8 px-5 py-6">
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success [stroke-width:1.7]" />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
               <div>
                 <p className="text-[1rem] font-medium uppercase tracking-[0.04em] text-foreground">
                   Nothing urgent right now
@@ -334,7 +333,7 @@ export function PtHubLaunchChecklistCard({
           </div>
           <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/70">
             <div
-              className="h-full rounded-full bg-[linear-gradient(90deg,oklch(var(--accent)),oklch(var(--chart-2)),oklch(var(--success)))] transition-[width]"
+              className="h-full rounded-full bg-[linear-gradient(90deg,oklch(var(--accent)),oklch(var(--chart-3)),oklch(var(--primary)/0.78))] transition-[width]"
               style={{ width: `${completionPercent}%` }}
             />
           </div>

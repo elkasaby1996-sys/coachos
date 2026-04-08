@@ -36,6 +36,7 @@ import {
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
+import { AppFooter } from "../common/app-footer";
 import { RouteTransition } from "../common/route-transition";
 import { supabase } from "../../lib/supabase";
 import { getUserDisplayName } from "../../lib/account-profiles";
@@ -117,8 +118,8 @@ function getPtHubDropdownContentClassName(isLightMode: boolean) {
   return cn(
     "w-60 rounded-[22px] border p-1.5 text-foreground backdrop-blur-3xl",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(236,241,245,0.78),rgba(220,228,235,0.68))] shadow-[0_26px_62px_-36px_rgba(15,23,42,0.16)]"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(16,20,18,0.94),rgba(9,12,11,0.92))] shadow-[0_30px_72px_-40px_rgba(0,0,0,0.92)]",
+      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.84))] shadow-[var(--surface-portal-shadow)]"
+      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] shadow-[var(--surface-portal-shadow)]",
   );
 }
 
@@ -138,21 +139,23 @@ function getPtHubDropdownLabelClassName(isLightMode: boolean) {
 function getPtHubDropdownSeparatorClassName(isLightMode: boolean) {
   return cn(
     "-mx-1 my-1.5 h-px",
-    isLightMode ? "bg-slate-900/[0.08]" : "bg-white/[0.08]",
+    isLightMode ? "bg-border/60" : "bg-border/50",
   );
 }
 
 function getPtHubDropdownUtilityRowClassName(isLightMode: boolean) {
   return cn(
     "flex items-center justify-between gap-3 rounded-[14px] px-3 py-2.5 text-sm text-foreground",
-    isLightMode ? "bg-[rgba(255,255,255,0.18)]" : "bg-white/[0.03]",
+    isLightMode
+      ? "bg-[oklch(var(--bg-surface-elevated)/0.7)]"
+      : "bg-[oklch(var(--bg-surface-elevated)/0.38)]",
   );
 }
 
 function getPtHubDropdownGlyphClassName(isLightMode: boolean) {
   return cn(
     "flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-200",
-    isLightMode ? "text-slate-600" : "text-primary",
+    isLightMode ? "text-primary" : "text-primary",
   );
 }
 
@@ -160,17 +163,15 @@ function getPtHubHeaderPillClassName(isLightMode: boolean) {
   return cn(
     "group hidden h-[58px] w-[236px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16 hover:bg-[linear-gradient(180deg,rgba(238,243,247,0.78),rgba(223,232,239,0.68))] hover:shadow-[0_24px_54px_-34px_rgba(15,23,42,0.18),0_0_0_1px_rgba(79,143,170,0.08),inset_0_1px_0_rgba(255,255,255,0.44)]"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))] hover:shadow-[0_24px_52px_-34px_rgba(0,0,0,0.88),0_0_0_1px_rgba(116,201,164,0.08),inset_0_1px_0_rgba(255,255,255,0.08)]",
+      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.94),oklch(var(--bg-surface)/0.82))] hover:shadow-[0_24px_54px_-36px_oklch(var(--accent)/0.16)]"
+      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.78))] hover:shadow-[0_24px_52px_-36px_oklch(var(--accent)/0.18)]",
   );
 }
 
 function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
     "flex h-9 w-9 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
-    isLightMode
-      ? "text-[rgb(79,143,170)] group-hover:text-slate-900"
-      : "text-primary group-hover:text-foreground",
+    isLightMode ? "text-primary group-hover:text-foreground" : "text-primary group-hover:text-foreground",
   );
 }
 
@@ -178,8 +179,8 @@ function getPtHubHeaderPillChevronClassName(isLightMode: boolean) {
   return cn(
     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
     isLightMode
-      ? "border-slate-900/8 bg-white/22 text-[rgb(79,143,170)] group-hover:border-primary/16 group-hover:text-slate-800"
-      : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
+      ? "border-border/70 bg-[oklch(var(--bg-surface-elevated)/0.72)] text-primary group-hover:border-primary/18 group-hover:text-foreground"
+      : "border-border/60 bg-[oklch(var(--bg-surface-elevated)/0.3)] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
   );
 }
 
@@ -187,8 +188,8 @@ function getPtHubStatusPillClassName(isLightMode: boolean) {
   return cn(
     "hidden h-[58px] min-w-[176px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl sm:flex",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)]"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)]",
+      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)]"
+      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)]",
   );
 }
 
@@ -363,7 +364,7 @@ export function PtHubLayout() {
   return (
     <div
       className={cn(
-        "pt-hub-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden",
+        "pt-hub-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
       )}
     >
@@ -410,7 +411,7 @@ export function PtHubLayout() {
         </div>
       </aside>
 
-      <PageContainer className="relative z-10 py-4 sm:py-5 lg:py-6">
+      <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:py-6">
         <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-6">
           <aside className="hidden lg:block">
             <div className="fixed bottom-5 left-8 top-5 w-[300px] 2xl:left-[max(2rem,calc((100vw-2000px)/2+2rem))]">
@@ -418,8 +419,8 @@ export function PtHubLayout() {
                 className={cn(
                   "surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[34px] border-border/70",
                   isLightMode
-                    ? "shadow-[0_30px_72px_-52px_rgba(15,23,42,0.14)]"
-                    : "shadow-[0_40px_100px_-64px_rgba(0,0,0,0.98)]",
+                    ? "shadow-[var(--surface-strong-shadow)]"
+                    : "shadow-[var(--surface-strong-shadow)]",
                 )}
               >
                 <SidebarContent
@@ -436,17 +437,17 @@ export function PtHubLayout() {
               className={cn(
                 "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
                 isLightMode
-                  ? "shadow-[0_28px_76px_-56px_rgba(15,23,42,0.16)]"
-                  : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
+                  ? "shadow-[var(--surface-strong-shadow)]"
+                  : "shadow-[var(--surface-strong-shadow)]",
               )}
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.2),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-2)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--success)/0.06))]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--accent)/0.04))]" />
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-6 top-0 h-px",
                   isLightMode
-                    ? "bg-[linear-gradient(90deg,transparent,rgba(15,23,42,0.12),transparent)]"
-                    : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)]",
+                    ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.22),transparent)]"
+                    : "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]",
                 )}
               />
               <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -737,6 +738,7 @@ export function PtHubLayout() {
           </div>
         </div>
       </PageContainer>
+      <AppFooter />
     </div>
   );
 }

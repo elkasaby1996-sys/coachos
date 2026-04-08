@@ -550,22 +550,22 @@
 
   .pt-hub-theme.pt-hub-theme-dark {
     color-scheme: dark;
-    --bg-canvas: 0.072 0.006 192;
-    --bg-sidebar: 0.106 0.008 188;
-    --bg-surface: 0.148 0.01 182;
-    --bg-surface-elevated: 0.188 0.012 178;
-    --bg-muted: 0.17 0.01 180;
-    --bg-input: 0.165 0.01 180;
-    --text-primary: 0.962 0.003 160;
-    --text-secondary: 0.87 0.005 168;
-    --text-muted: 0.74 0.006 170;
-    --text-on-accent: 0.95 0.004 165;
-    --border-subtle: 0.27 0.01 178;
-    --border-default: 0.34 0.014 176;
-    --border-strong: 0.43 0.018 174;
-    --accent: 0.69 0.09 160;
-    --accent-hover: 0.73 0.1 160;
-    --success: 0.72 0.082 154;
+    --bg-canvas: 0.094 0.008 206;
+    --bg-sidebar: 0.146 0.01 208;
+    --bg-surface: 0.178 0.01 210;
+    --bg-surface-elevated: 0.21 0.012 210;
+    --bg-muted: 0.22 0.01 210;
+    --bg-input: 0.236 0.01 210;
+    --text-primary: 0.95 0 0;
+    --text-secondary: 0.84 0.004 210;
+    --text-muted: 0.69 0.003 208;
+    --text-on-accent: 0.12 0.01 210;
+    --border-subtle: 0.24 0.01 210;
+    --border-default: 0.28 0.01 210;
+    --border-strong: 0.36 0.014 208;
+    --accent: 0.74 0.14 196;
+    --accent-hover: 0.77 0.15 196;
+    --success: 0.665 0.05 205;
     --warning: 0.74 0.03 95;
     --danger: 0.63 0.03 25;
     --background: var(--bg-canvas);
@@ -584,11 +584,11 @@
     --border: var(--border-default);
     --input: var(--bg-input);
     --ring: var(--accent);
-    --chart-1: 0.69 0.09 160;
-    --chart-2: 0.66 0.05 196;
-    --chart-3: 0.78 0.025 160;
-    --chart-4: 0.55 0.028 210;
-    --chart-5: 0.69 0.055 152;
+    --chart-1: 0.74 0.14 196;
+    --chart-2: 0.68 0.08 208;
+    --chart-3: 0.62 0.05 196;
+    --chart-4: 0.71 0.032 226;
+    --chart-5: 0.63 0.04 210;
     --shell-canvas:
       radial-gradient(
         circle at 12% 16%,
@@ -602,72 +602,72 @@
       ),
       radial-gradient(
         circle at 74% 82%,
-        oklch(var(--success) / 0.085),
+        oklch(var(--chart-3) / 0.08),
         transparent 26%
       ),
       linear-gradient(
         160deg,
-        oklch(0.088 0.008 194),
-        oklch(0.056 0.007 188) 58%,
-        oklch(0.044 0.006 184)
+        oklch(0.11 0.008 208),
+        oklch(0.082 0.008 206) 58%,
+        oklch(0.066 0.007 204)
       );
     --sidebar-bg: linear-gradient(
       180deg,
-      oklch(var(--bg-sidebar) / 0.74),
-      oklch(0.122 0.01 184 / 0.56)
+      oklch(var(--bg-sidebar) / 0.98),
+      oklch(var(--bg-canvas) / 0.98)
     );
     --surface-bg:
       linear-gradient(
         180deg,
-        oklch(var(--bg-surface-elevated) / 0.5),
-        oklch(var(--bg-surface) / 0.32)
+        oklch(var(--bg-surface) / 0.96),
+        oklch(var(--bg-surface) / 0.86)
       ),
-      linear-gradient(135deg, oklch(1 0 0 / 0.06), transparent 34%);
+      linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 34%);
     --surface-strong-bg:
       linear-gradient(
         180deg,
-        oklch(var(--bg-surface-elevated) / 0.68),
-        oklch(var(--bg-surface) / 0.44)
+        oklch(var(--bg-surface-elevated) / 0.98),
+        oklch(var(--bg-surface) / 0.9)
       ),
       linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 38%);
     --surface-portal-bg:
       linear-gradient(
         180deg,
-        oklch(var(--bg-surface-elevated) / 0.66),
-        oklch(var(--bg-surface) / 0.46)
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.92)
       ),
       linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 38%);
     --section-bg: linear-gradient(
       180deg,
-      oklch(var(--bg-surface-elevated) / 0.46),
-      oklch(var(--bg-surface) / 0.26)
+      oklch(var(--bg-surface-elevated) / 0.42),
+      oklch(var(--bg-surface) / 0.28)
     );
     --dashed-bg: linear-gradient(
       180deg,
       oklch(var(--bg-muted) / 0.28),
-      oklch(var(--bg-surface) / 0.18)
+      oklch(var(--bg-surface) / 0.2)
     );
     --popover-bg: linear-gradient(
       180deg,
-      oklch(var(--bg-surface-elevated) / 0.72),
-      oklch(var(--bg-surface) / 0.5)
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.92)
     );
     --dialog-bg: linear-gradient(
       180deg,
-      oklch(var(--bg-surface-elevated) / 0.74),
-      oklch(var(--bg-surface) / 0.5)
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.9)
     );
-    --topbar-bg: oklch(var(--bg-surface-elevated) / 0.58);
-    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.7);
-    --overlay-bg: oklch(0.048 0.008 180 / 0.78);
-    --surface-shadow: 0 26px 70px -42px oklch(0 0 0 / 0.58);
-    --surface-strong-shadow: 0 32px 80px -44px oklch(0 0 0 / 0.7);
+    --topbar-bg: oklch(var(--bg-surface) / 0.72);
+    --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.94);
+    --overlay-bg: oklch(var(--bg-canvas) / 0.72);
+    --surface-shadow: 0 24px 70px -52px oklch(0 0 0 / 0.52);
+    --surface-strong-shadow: 0 24px 70px -52px oklch(0 0 0 / 0.72);
     --surface-portal-shadow:
-      0 0 0 1px oklch(var(--border-subtle) / 0.32),
-      0 28px 76px -44px oklch(0 0 0 / 0.76);
-    --popover-shadow: 0 20px 60px -40px oklch(0 0 0 / 0.78);
+      0 0 0 1px oklch(var(--border-subtle) / 0.18),
+      0 26px 70px -48px oklch(0 0 0 / 0.78);
+    --popover-shadow: 0 20px 60px -40px oklch(0 0 0 / 0.72);
     --dialog-shadow: 0 28px 80px -50px oklch(0 0 0 / 0.82);
-    --sticky-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.78);
+    --sticky-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.8);
     --field-glass-bg:
       linear-gradient(
         180deg,
@@ -694,22 +694,22 @@
 
   .pt-hub-theme.pt-hub-theme-light {
     color-scheme: light;
-    --bg-canvas: 0.906 0.009 188;
-    --bg-sidebar: 0.878 0.011 186;
-    --bg-surface: 0.936 0.007 186;
-    --bg-surface-elevated: 0.952 0.006 186;
-    --bg-muted: 0.862 0.012 184;
-    --bg-input: 0.918 0.008 186;
-    --text-primary: 0.23 0.018 198;
-    --text-secondary: 0.34 0.015 196;
-    --text-muted: 0.47 0.012 194;
+    --bg-canvas: 0.908 0.009 190;
+    --bg-sidebar: 0.882 0.01 188;
+    --bg-surface: 0.934 0.007 188;
+    --bg-surface-elevated: 0.95 0.006 188;
+    --bg-muted: 0.866 0.011 186;
+    --bg-input: 0.918 0.008 188;
+    --text-primary: 0.228 0.017 200;
+    --text-secondary: 0.338 0.014 198;
+    --text-muted: 0.468 0.011 196;
     --text-on-accent: 0.985 0.002 180;
-    --border-subtle: 0.79 0.01 186;
-    --border-default: 0.71 0.012 184;
-    --border-strong: 0.62 0.016 182;
-    --accent: 0.58 0.085 188;
-    --accent-hover: 0.54 0.092 188;
-    --success: 0.69 0.1 154;
+    --border-subtle: 0.79 0.009 188;
+    --border-default: 0.71 0.011 186;
+    --border-strong: 0.62 0.015 184;
+    --accent: 0.57 0.078 191;
+    --accent-hover: 0.54 0.086 191;
+    --success: 0.665 0.05 205;
     --warning: 0.74 0.04 92;
     --danger: 0.62 0.18 26;
     --background: var(--bg-canvas);
@@ -728,37 +728,37 @@
     --border: var(--border-default);
     --input: var(--bg-input);
     --ring: var(--accent);
-    --chart-1: 0.58 0.085 188;
-    --chart-2: 0.62 0.055 206;
-    --chart-3: 0.6 0.035 194;
-    --chart-4: 0.73 0.05 92;
-    --chart-5: 0.63 0.05 214;
+    --chart-1: 0.57 0.078 191;
+    --chart-2: 0.61 0.05 208;
+    --chart-3: 0.595 0.03 196;
+    --chart-4: 0.71 0.032 226;
+    --chart-5: 0.63 0.04 210;
     --shell-canvas:
       radial-gradient(
         circle at 14% 16%,
-        oklch(var(--accent) / 0.16),
+        oklch(var(--accent) / 0.15),
         transparent 26%
       ),
       radial-gradient(
         circle at 84% 18%,
-        oklch(var(--chart-2) / 0.12),
+        oklch(var(--chart-2) / 0.11),
         transparent 24%
       ),
       radial-gradient(
         circle at 70% 82%,
-        oklch(var(--chart-3) / 0.1),
+        oklch(var(--chart-3) / 0.09),
         transparent 24%
       ),
       linear-gradient(
         165deg,
-        oklch(0.936 0.01 190),
+        oklch(0.938 0.01 192),
         oklch(var(--bg-canvas)) 46%,
-        oklch(0.864 0.012 186)
+        oklch(0.868 0.011 188)
       );
     --sidebar-bg: linear-gradient(
       180deg,
-      oklch(var(--bg-sidebar) / 0.78),
-      oklch(0.842 0.011 184 / 0.66)
+      oklch(var(--bg-sidebar) / 0.8),
+      oklch(0.846 0.01 186 / 0.68)
     );
     --surface-bg:
       linear-gradient(
@@ -766,21 +766,21 @@
         oklch(var(--bg-surface-elevated) / 0.82),
         oklch(var(--bg-surface) / 0.68)
       ),
-      linear-gradient(135deg, oklch(1 0 0 / 0.26), transparent 42%);
+      linear-gradient(135deg, oklch(1 0 0 / 0.24), transparent 42%);
     --surface-strong-bg:
       linear-gradient(
         180deg,
         oklch(var(--bg-surface-elevated) / 0.88),
-        oklch(var(--bg-surface) / 0.72)
+        oklch(var(--bg-surface) / 0.74)
       ),
-      linear-gradient(135deg, oklch(1 0 0 / 0.3), transparent 44%);
+      linear-gradient(135deg, oklch(1 0 0 / 0.28), transparent 44%);
     --surface-portal-bg:
       linear-gradient(
         180deg,
         oklch(var(--bg-surface-elevated) / 0.9),
-        oklch(var(--bg-surface) / 0.76)
+        oklch(var(--bg-surface) / 0.78)
       ),
-      linear-gradient(135deg, oklch(1 0 0 / 0.28), transparent 42%);
+      linear-gradient(135deg, oklch(1 0 0 / 0.26), transparent 42%);
     --section-bg: linear-gradient(
       180deg,
       oklch(var(--bg-surface-elevated) / 0.72),
@@ -794,46 +794,46 @@
     --popover-bg: linear-gradient(
       180deg,
       oklch(var(--bg-surface-elevated) / 0.9),
-      oklch(var(--bg-surface) / 0.78)
+      oklch(var(--bg-surface) / 0.8)
     );
     --dialog-bg: linear-gradient(
       180deg,
       oklch(var(--bg-surface-elevated) / 0.92),
-      oklch(var(--bg-surface) / 0.8)
+      oklch(var(--bg-surface) / 0.82)
     );
     --topbar-bg: oklch(var(--bg-surface-elevated) / 0.52);
     --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.68);
-    --overlay-bg: oklch(0.78 0.012 176 / 0.42);
-    --surface-shadow: 0 24px 70px -52px oklch(0.28 0.02 190 / 0.18);
-    --surface-strong-shadow: 0 26px 74px -52px oklch(0.26 0.02 188 / 0.22);
+    --overlay-bg: oklch(0.79 0.011 186 / 0.4);
+    --surface-shadow: 0 24px 70px -52px oklch(0.28 0.02 192 / 0.16);
+    --surface-strong-shadow: 0 26px 74px -52px oklch(0.26 0.02 190 / 0.2);
     --surface-portal-shadow:
       0 0 0 1px oklch(var(--border-subtle) / 0.52),
-      0 28px 76px -48px oklch(0.28 0.02 188 / 0.22);
-    --popover-shadow: 0 22px 62px -42px oklch(0.26 0.02 188 / 0.24);
-    --dialog-shadow: 0 28px 80px -50px oklch(0.24 0.02 188 / 0.26);
-    --sticky-shadow: 0 24px 60px -40px oklch(0.28 0.02 188 / 0.2);
+      0 28px 76px -48px oklch(0.28 0.02 190 / 0.2);
+    --popover-shadow: 0 22px 62px -42px oklch(0.26 0.02 190 / 0.22);
+    --dialog-shadow: 0 28px 80px -50px oklch(0.24 0.02 190 / 0.24);
+    --sticky-shadow: 0 24px 60px -40px oklch(0.28 0.02 190 / 0.18);
     --field-glass-bg:
       linear-gradient(
         180deg,
-        oklch(var(--bg-surface-elevated) / 0.86),
-        oklch(var(--bg-surface) / 0.68)
+        oklch(var(--bg-surface-elevated) / 0.82),
+        oklch(var(--bg-surface) / 0.66)
       ),
-      linear-gradient(135deg, oklch(1 0 0 / 0.22), transparent 48%);
+      linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 48%);
     --field-glass-bg-focus:
       linear-gradient(
         180deg,
-        oklch(var(--bg-surface-elevated) / 0.92),
-        oklch(var(--bg-surface) / 0.76)
+        oklch(var(--bg-surface-elevated) / 0.88),
+        oklch(var(--bg-surface) / 0.74)
       ),
-      linear-gradient(135deg, oklch(1 0 0 / 0.28), transparent 46%);
+      linear-gradient(135deg, oklch(1 0 0 / 0.24), transparent 46%);
     --field-glass-border: oklch(var(--border-subtle) / 0.72);
     --field-glass-border-focus: oklch(var(--accent) / 0.34);
     --field-glass-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.68),
-      0 18px 36px -28px oklch(0.28 0.02 188 / 0.2);
+      inset 0 1px 0 oklch(1 0 0 / 0.64),
+      0 18px 36px -28px oklch(0.28 0.02 186 / 0.19);
     --field-glass-shadow-focus:
-      inset 0 1px 0 oklch(1 0 0 / 0.76),
-      0 22px 42px -28px oklch(0.28 0.02 188 / 0.22);
+      inset 0 1px 0 oklch(1 0 0 / 0.72),
+      0 22px 42px -28px oklch(0.28 0.02 186 / 0.21);
     --field-glass-ring: oklch(var(--accent) / 0.18);
     --field-glass-placeholder: oklch(var(--text-muted) / 0.92);
   }

@@ -418,30 +418,30 @@ function AppShellTransition({ children }: { children: React.ReactNode }) {
 
     if (fromHubToWorkspace) {
       return {
-        initial: { opacity: 0, x: 28, y: 10, scale: 0.988, filter: "blur(12px)" },
-        animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" },
-        exit: { opacity: 0, x: -22, y: -6, scale: 1.008, filter: "blur(10px)" },
+        initial: { opacity: 0.82 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0.9 },
       };
     }
 
     if (fromWorkspaceToHub) {
       return {
-        initial: { opacity: 0, x: -24, y: 12, scale: 0.992, filter: "blur(10px)" },
-        animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" },
-        exit: { opacity: 0, x: 18, y: -8, scale: 1.004, filter: "blur(8px)" },
+        initial: { opacity: 0.82 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0.9 },
       };
     }
 
     return {
-      initial: { opacity: 0, y: 18, scale: 0.995, filter: "blur(10px)" },
-      animate: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" },
-      exit: { opacity: 0, y: -14, scale: 1.003, filter: "blur(8px)" },
+      initial: { opacity: 0.84 },
+      animate: { opacity: 1 },
+      exit: { opacity: 0.9 },
     };
   }, [previousShellKey, shellKey]);
 
   const shellOverlay = useMemo(() => {
     if (shellKey === "pt-hub") {
-      return "radial-gradient(circle at 20% 20%, rgba(116, 201, 164, 0.12), transparent 36%), radial-gradient(circle at 82% 22%, rgba(79, 143, 170, 0.12), transparent 34%)";
+      return "radial-gradient(circle at 16% 18%, rgba(87, 129, 255, 0.1), transparent 34%), radial-gradient(circle at 80% 24%, rgba(116, 201, 164, 0.08), transparent 30%)";
     }
 
     if (shellKey === "pt-workspace") {
