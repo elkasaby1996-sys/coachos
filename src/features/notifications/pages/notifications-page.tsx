@@ -131,6 +131,7 @@ export function NotificationsPage() {
       title="Notifications"
       subtitle="Coach updates, plan changes, reminders, and messages in one place."
       stateText={clientStateText}
+      module="settings"
       actions={
         <Button
           variant="secondary"
@@ -144,6 +145,7 @@ export function NotificationsPage() {
     />
   ) : (
     <WorkspacePageHeader
+      module="settings"
       title="Notifications"
       description="Review client activity, coach communication, invites, and schedule changes in one notification center."
       actions={
@@ -196,7 +198,10 @@ export function NotificationsPage() {
         />
       ) : null}
 
-      <SurfaceCard className={isClientPortal ? "" : "rounded-[24px]"}>
+      <SurfaceCard
+        module="settings"
+        className={isClientPortal ? "" : "rounded-[24px]"}
+      >
         <SurfaceCardHeader className="gap-4 pb-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
@@ -255,6 +260,7 @@ export function NotificationsPage() {
             <TabsList className="grid h-auto w-full max-w-md grid-cols-1 gap-2 rounded-[var(--radius-lg)] bg-transparent p-0 sm:grid-cols-2">
               <TabsTrigger
                 value="all"
+                module="settings"
                 className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
               >
                 <span>All</span>
@@ -264,6 +270,7 @@ export function NotificationsPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="unread"
+                module="settings"
                 className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
               >
                 <span>New</span>

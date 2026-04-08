@@ -1,0 +1,363 @@
+:root,
+.dark {
+  --module-overview: 0.76 0.13 220;
+  --module-overview-hover: 0.8 0.14 220;
+  --module-leads: 0.77 0.14 70;
+  --module-leads-hover: 0.8 0.15 70;
+  --module-clients: 0.75 0.12 165;
+  --module-clients-hover: 0.79 0.13 165;
+  --module-coaching: 0.7 0.14 275;
+  --module-coaching-hover: 0.74 0.15 275;
+  --module-checkins: 0.75 0.13 240;
+  --module-checkins-hover: 0.79 0.14 240;
+  --module-billing: 0.7 0.16 305;
+  --module-billing-hover: 0.74 0.17 305;
+  --module-analytics: 0.77 0.14 240;
+  --module-analytics-hover: 0.81 0.15 240;
+  --module-profile: 0.78 0.12 170;
+  --module-profile-hover: 0.82 0.13 170;
+  --module-settings: 0.72 0.028 255;
+  --module-settings-hover: 0.76 0.032 255;
+
+  --state-success: 0.76 0.13 150;
+  --state-info: 0.75 0.12 250;
+  --state-warning: 0.79 0.14 75;
+  --state-danger: 0.67 0.15 25;
+  --state-neutral: 0.7 0.02 185;
+
+  --module-overview-bg-soft: oklch(var(--module-overview) / 0.14);
+  --module-overview-border: oklch(var(--module-overview) / 0.3);
+  --module-overview-text: oklch(var(--module-overview-hover));
+  --module-overview-icon: oklch(var(--module-overview-hover));
+  --module-overview-ring: oklch(var(--module-overview) / 0.24);
+  --module-overview-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-overview) / 0.72),
+    oklch(var(--module-overview) / 0.08)
+  );
+
+  --module-leads-bg-soft: oklch(var(--module-leads) / 0.14);
+  --module-leads-border: oklch(var(--module-leads) / 0.28);
+  --module-leads-text: oklch(var(--module-leads-hover));
+  --module-leads-icon: oklch(var(--module-leads-hover));
+  --module-leads-ring: oklch(var(--module-leads) / 0.24);
+  --module-leads-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-leads) / 0.72),
+    oklch(var(--module-leads) / 0.08)
+  );
+
+  --module-clients-bg-soft: oklch(var(--module-clients) / 0.14);
+  --module-clients-border: oklch(var(--module-clients) / 0.28);
+  --module-clients-text: oklch(var(--module-clients-hover));
+  --module-clients-icon: oklch(var(--module-clients-hover));
+  --module-clients-ring: oklch(var(--module-clients) / 0.22);
+  --module-clients-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-clients) / 0.72),
+    oklch(var(--module-clients) / 0.08)
+  );
+
+  --module-coaching-bg-soft: oklch(var(--module-coaching) / 0.14);
+  --module-coaching-border: oklch(var(--module-coaching) / 0.28);
+  --module-coaching-text: oklch(var(--module-coaching-hover));
+  --module-coaching-icon: oklch(var(--module-coaching-hover));
+  --module-coaching-ring: oklch(var(--module-coaching) / 0.22);
+  --module-coaching-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-coaching) / 0.72),
+    oklch(var(--module-coaching) / 0.08)
+  );
+
+  --module-checkins-bg-soft: oklch(var(--module-checkins) / 0.14);
+  --module-checkins-border: oklch(var(--module-checkins) / 0.28);
+  --module-checkins-text: oklch(var(--module-checkins-hover));
+  --module-checkins-icon: oklch(var(--module-checkins-hover));
+  --module-checkins-ring: oklch(var(--module-checkins) / 0.22);
+  --module-checkins-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-checkins) / 0.72),
+    oklch(var(--module-checkins) / 0.08)
+  );
+
+  --module-billing-bg-soft: oklch(var(--module-billing) / 0.14);
+  --module-billing-border: oklch(var(--module-billing) / 0.28);
+  --module-billing-text: oklch(var(--module-billing-hover));
+  --module-billing-icon: oklch(var(--module-billing-hover));
+  --module-billing-ring: oklch(var(--module-billing) / 0.22);
+  --module-billing-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-billing) / 0.72),
+    oklch(var(--module-billing) / 0.08)
+  );
+
+  --module-analytics-bg-soft: oklch(var(--module-analytics) / 0.14);
+  --module-analytics-border: oklch(var(--module-analytics) / 0.3);
+  --module-analytics-text: oklch(var(--module-analytics-hover));
+  --module-analytics-icon: oklch(var(--module-analytics-hover));
+  --module-analytics-ring: oklch(var(--module-analytics) / 0.24);
+  --module-analytics-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-analytics) / 0.72),
+    oklch(var(--module-analytics) / 0.08)
+  );
+
+  --module-profile-bg-soft: oklch(var(--module-profile) / 0.14);
+  --module-profile-border: oklch(var(--module-profile) / 0.28);
+  --module-profile-text: oklch(var(--module-profile-hover));
+  --module-profile-icon: oklch(var(--module-profile-hover));
+  --module-profile-ring: oklch(var(--module-profile) / 0.22);
+  --module-profile-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-profile) / 0.72),
+    oklch(var(--module-profile) / 0.08)
+  );
+
+  --module-settings-bg-soft: oklch(var(--module-settings) / 0.12);
+  --module-settings-border: oklch(var(--module-settings) / 0.24);
+  --module-settings-text: oklch(var(--module-settings-hover));
+  --module-settings-icon: oklch(var(--module-settings-hover));
+  --module-settings-ring: oklch(var(--module-settings) / 0.18);
+  --module-settings-rail: linear-gradient(
+    180deg,
+    oklch(var(--module-settings) / 0.68),
+    oklch(var(--module-settings) / 0.08)
+  );
+
+  --state-success-bg-soft: oklch(var(--state-success) / 0.14);
+  --state-success-border: oklch(var(--state-success) / 0.28);
+  --state-success-text: oklch(var(--state-success));
+  --state-success-icon: oklch(var(--state-success));
+  --state-success-ring: oklch(var(--state-success) / 0.22);
+
+  --state-info-bg-soft: oklch(var(--state-info) / 0.14);
+  --state-info-border: oklch(var(--state-info) / 0.28);
+  --state-info-text: oklch(var(--state-info));
+  --state-info-icon: oklch(var(--state-info));
+  --state-info-ring: oklch(var(--state-info) / 0.22);
+
+  --state-warning-bg-soft: oklch(var(--state-warning) / 0.14);
+  --state-warning-border: oklch(var(--state-warning) / 0.28);
+  --state-warning-text: oklch(var(--state-warning));
+  --state-warning-icon: oklch(var(--state-warning));
+  --state-warning-ring: oklch(var(--state-warning) / 0.22);
+
+  --state-danger-bg-soft: oklch(var(--state-danger) / 0.14);
+  --state-danger-border: oklch(var(--state-danger) / 0.28);
+  --state-danger-text: oklch(var(--state-danger));
+  --state-danger-icon: oklch(var(--state-danger));
+  --state-danger-ring: oklch(var(--state-danger) / 0.22);
+
+  --state-neutral-bg-soft: oklch(var(--state-neutral) / 0.14);
+  --state-neutral-border: oklch(var(--state-neutral) / 0.24);
+  --state-neutral-text: oklch(var(--state-neutral));
+  --state-neutral-icon: oklch(var(--state-neutral));
+  --state-neutral-ring: oklch(var(--state-neutral) / 0.18);
+
+  --success: var(--state-success);
+  --info: var(--state-info);
+  --warning: var(--state-warning);
+  --danger: var(--state-danger);
+  --neutral: var(--state-neutral);
+
+  --section-accent: oklch(var(--accent));
+  --section-accent-hover: oklch(var(--accent-hover));
+  --section-accent-bg-soft: oklch(var(--accent) / 0.14);
+  --section-accent-border: oklch(var(--accent) / 0.28);
+  --section-accent-text: oklch(var(--accent-hover));
+  --section-accent-icon: oklch(var(--accent-hover));
+  --section-accent-ring: oklch(var(--accent) / 0.22);
+  --section-accent-rail: linear-gradient(
+    180deg,
+    oklch(var(--accent) / 0.72),
+    oklch(var(--accent) / 0.08)
+  );
+}
+
+.light {
+  --module-overview: 0.68 0.12 220;
+  --module-overview-hover: 0.64 0.13 220;
+  --module-leads: 0.72 0.14 70;
+  --module-leads-hover: 0.68 0.14 70;
+  --module-clients: 0.7 0.12 165;
+  --module-clients-hover: 0.66 0.12 165;
+  --module-coaching: 0.63 0.13 275;
+  --module-coaching-hover: 0.59 0.14 275;
+  --module-checkins: 0.67 0.13 240;
+  --module-checkins-hover: 0.63 0.14 240;
+  --module-billing: 0.63 0.15 305;
+  --module-billing-hover: 0.59 0.15 305;
+  --module-analytics: 0.69 0.14 240;
+  --module-analytics-hover: 0.65 0.14 240;
+  --module-profile: 0.7 0.11 170;
+  --module-profile-hover: 0.66 0.11 170;
+  --module-settings: 0.56 0.02 255;
+  --module-settings-hover: 0.5 0.02 255;
+
+  --state-success: 0.67 0.12 150;
+  --state-info: 0.64 0.12 250;
+  --state-warning: 0.73 0.13 75;
+  --state-danger: 0.62 0.14 25;
+  --state-neutral: 0.56 0.02 185;
+}
+
+.section-accent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--section-accent-border);
+  background: var(--section-accent-bg-soft);
+  color: var(--section-accent-text);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
+}
+
+.section-accent-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--section-accent-border);
+  background:
+    linear-gradient(
+      180deg,
+      var(--section-accent-bg-soft),
+      oklch(var(--bg-surface-elevated) / 0.22)
+    );
+  color: var(--section-accent-icon);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.06),
+    0 16px 34px -28px oklch(0 0 0 / 0.36);
+}
+
+.section-accent-dot {
+  background: var(--section-accent-text);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--section-accent-text) 36%, transparent);
+}
+
+.section-accent-rail {
+  background: var(--section-accent-rail);
+}
+
+.section-accent-kicker {
+  color: var(--section-accent-text);
+}
+
+.section-accent-title {
+  color: var(--section-accent-text);
+}
+
+.section-accent-card {
+  border-color: color-mix(in oklab, var(--section-accent-border) 82%, oklch(var(--border-default)));
+}
+
+.section-accent-card::before {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--section-accent-text) 84%, transparent),
+    color-mix(in oklab, var(--section-accent-text) 36%, transparent),
+    transparent
+  );
+  opacity: 0.62;
+}
+
+.section-accent-card::after {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--section-accent-bg-soft) 34%, transparent),
+      transparent 22%
+    ),
+    radial-gradient(
+      circle at top left,
+      color-mix(in oklab, var(--section-accent-bg-soft) 42%, transparent),
+      transparent 24%
+    );
+}
+
+.section-accent-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.section-accent-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--section-accent-text) 88%, transparent),
+    color-mix(in oklab, var(--section-accent-text) 42%, transparent),
+    transparent
+  );
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.section-accent-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.section-accent-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at top right,
+      color-mix(in oklab, var(--section-accent-bg-soft) 68%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--section-accent-bg-soft) 26%, transparent),
+      transparent 48%
+    );
+  opacity: 0.9;
+}
+
+.section-accent-tab[data-state="active"] {
+  color: var(--section-accent-text);
+  border-color: var(--section-accent-border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--section-accent-bg-soft) 92%, oklch(var(--bg-surface-elevated) / 0.82)),
+      oklch(var(--bg-surface) / 0.78)
+    );
+  box-shadow:
+    inset 0 -2px 0 var(--section-accent-text),
+    0 16px 34px -28px oklch(0 0 0 / 0.46);
+}
+
+.section-accent-tab[data-state="active"] svg,
+.section-accent-nav-active .section-accent-nav-icon,
+.section-accent-nav-icon-active {
+  color: var(--section-accent-icon);
+}
+
+.section-accent-nav-active {
+  border-color: var(--section-accent-border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--section-accent-bg-soft) 94%, oklch(var(--bg-surface-elevated) / 0.88)),
+      oklch(var(--bg-surface) / 0.82)
+    );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--section-accent-border) 68%, transparent),
+    0 22px 54px -36px color-mix(in oklab, var(--section-accent-bg-soft) 62%, transparent);
+}
+
+.section-accent-nav-icon {
+  color: color-mix(in oklab, var(--section-accent-text) 72%, oklch(var(--text-muted)));
+}
+
+.section-accent-inline-status {
+  border-color: var(--section-accent-border);
+  background: var(--section-accent-bg-soft);
+  color: var(--section-accent-text);
+}

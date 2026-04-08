@@ -163,6 +163,11 @@ export const PtHubLeadsPage = lazy(() =>
     default: m.PtHubLeadsPage,
   })),
 );
+export const PtHubLeadDetailPage = lazy(() =>
+  import("../pages/pt-hub/lead-detail").then((m) => ({
+    default: m.PtHubLeadDetailPage,
+  })),
+);
 export const PtHubClientsPage = lazy(() =>
   import("../pages/pt-hub/clients").then((m) => ({
     default: m.PtHubClientsPage,

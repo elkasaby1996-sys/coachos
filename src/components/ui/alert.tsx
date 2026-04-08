@@ -1,15 +1,18 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
+import { semanticToneClassNames, type SemanticTone } from "../../lib/semantic-status";
 
 export function Alert({
   className,
+  tone,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLDivElement> & { tone?: SemanticTone | null }) {
   return (
     <div
       role="alert"
       className={cn(
         "surface-panel rounded-[22px] px-4 py-3 text-sm text-foreground",
+        tone && semanticToneClassNames[tone].surface,
         className,
       )}
       {...props}

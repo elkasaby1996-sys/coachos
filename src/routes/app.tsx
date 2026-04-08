@@ -47,6 +47,7 @@ import {
   PtExerciseLibraryPage,
   PtHubAnalyticsPage,
   PtHubClientsPage,
+  PtHubLeadDetailPage,
   PtHubLeadsPage,
   PtHubLayout,
   PtHubOverviewPage,
@@ -560,6 +561,7 @@ export function App() {
           <Route path="profile" element={<PtHubProfilePage />} />
           <Route path="profile/preview" element={<PtHubProfilePreviewPage />} />
           <Route path="leads" element={<PtHubLeadsPage />} />
+          <Route path="leads/:leadId" element={<PtHubLeadDetailPage />} />
           <Route path="clients" element={<PtHubClientsPage />} />
           <Route path="workspaces" element={<PtHubWorkspacesPage />} />
           <Route path="payments" element={<PtHubPaymentsPage />} />

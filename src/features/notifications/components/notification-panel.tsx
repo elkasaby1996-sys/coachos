@@ -40,7 +40,7 @@ export function NotificationPanel({
 
   return (
     <motion.div
-      className="w-[380px] max-w-[92vw] overflow-hidden rounded-2xl border border-border/70 bg-[oklch(0.2_0.015_255)] shadow-[0_22px_56px_-32px_rgb(0_0_0/0.8)]"
+      className="overflow-hidden"
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "visible"}
       variants={

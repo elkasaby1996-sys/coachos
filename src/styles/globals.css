@@ -1118,7 +1118,22 @@
 
   select:not(.field-reset),
   .app-field-select {
-    @apply h-11 w-full px-3 pr-10;
+    @apply h-11 w-full px-3 pr-11;
+    appearance: none;
+    -webkit-appearance: none;
+    background-repeat: no-repeat, no-repeat;
+    background-position:
+      0 0,
+      right 0.875rem center;
+    background-size:
+      100% 100%,
+      1rem 1rem;
+    background-image: var(--select-surface-bg-field), var(--select-chevron);
+  }
+
+  select:not(.field-reset):focus-visible,
+  .app-field-select:focus-visible {
+    background-image: var(--select-surface-bg-field-focus), var(--select-chevron);
   }
 
   textarea:not(.field-reset),

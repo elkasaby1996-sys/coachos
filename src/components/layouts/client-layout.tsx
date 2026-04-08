@@ -29,14 +29,45 @@ import { supabase } from "../../lib/supabase";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientOnboardingSoftGate } from "../../features/client-onboarding/components/client-onboarding-soft-gate";
+import {
+  getModuleToneClasses,
+  getModuleToneForPath,
+  getModuleToneStyle,
+  type ModuleTone,
+} from "../../lib/module-tone";
 
 const navItems = [
-  { label: "Home", to: "/app/home", icon: Home },
-  { label: "Habits", to: "/app/habits", icon: CalendarDays },
-  { label: "Progress", to: "/app/progress", icon: LineChart },
-  { label: "Medical", to: "/app/medical", icon: HeartPulse },
-  { label: "Messages", to: "/app/messages", icon: MessageCircle },
-  { label: "Settings", to: "/app/settings", icon: UserCircle },
+  { label: "Home", to: "/app/home", icon: Home, module: "overview" as ModuleTone },
+  {
+    label: "Habits",
+    to: "/app/habits",
+    icon: CalendarDays,
+    module: "checkins" as ModuleTone,
+  },
+  {
+    label: "Progress",
+    to: "/app/progress",
+    icon: LineChart,
+    module: "analytics" as ModuleTone,
+  },
+  {
+    label: "Medical",
+    to: "/app/medical",
+    icon: HeartPulse,
+    module: "clients" as ModuleTone,
+  },
+  {
+    label: "Messages",
+    to: "/app/messages",
+    icon: MessageCircle,
+    module: "coaching" as ModuleTone,
+  },
+  {
+    label: "Settings",
+    to: "/app/settings",
+    icon: UserCircle,
+    module: "settings" as ModuleTone,
+  },
 ];
 
 const getRouteLabel = (pathname: string) => {
@@ -79,6 +110,8 @@ export function ClientLayout() {
     !onboardingSummary.progress.basics.complete,
   );
   const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
+  const currentModule = getModuleToneForPath(location.pathname);
+  const currentModuleClasses = getModuleToneClasses(currentModule);
   const routeLabel = useMemo(
     () => getRouteLabel(location.pathname),
     [location.pathname],
@@ -131,7 +164,10 @@ export function ClientLayout() {
 
   if (errorMessage) {
     return (
-      <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]">
+      <div
+        className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
+        style={getModuleToneStyle(currentModule)}
+      >
         <AppShellBackgroundLayer />
         <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
           <Card className="w-full max-w-md">
@@ -174,7 +210,10 @@ export function ClientLayout() {
   };
 
   return (
-    <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]">
+    <div
+      className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
+      style={getModuleToneStyle(currentModule)}
+    >
       <AppShellBackgroundLayer />
       <div className="relative z-10 flex min-h-screen w-full">
         <aside className="theme-sidebar-surface hidden w-20 flex-col border-r border-border/70 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
@@ -212,7 +251,11 @@ export function ClientLayout() {
                         layoutId={
                           reduceMotion ? undefined : "client-nav-active-pill"
                         }
-                        className="absolute inset-0 rounded-[20px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.56))] shadow-[0_18px_42px_-34px_oklch(0_0_0/0.8)]"
+                        className={cn(
+                          "absolute inset-0 rounded-[20px] border",
+                          getModuleToneClasses(item.module).navActive,
+                        )}
+                        style={getModuleToneStyle(item.module)}
                         transition={{
                           type: "spring",
                           stiffness: 250,
@@ -222,11 +265,13 @@ export function ClientLayout() {
                       />
                     ) : null}
                     <span
+                      style={getModuleToneStyle(item.module)}
                       className={cn(
                         "relative z-10 flex h-9 w-9 items-center justify-center transition-colors",
                         isActive
-                          ? "text-primary"
-                          : "text-muted-foreground group-hover:text-primary",
+                          ? "section-accent-nav-icon-active"
+                          : "text-muted-foreground group-hover:text-foreground",
+                        getModuleToneClasses(item.module).navIcon,
                       )}
                     >
                       <item.icon className="h-4 w-4" />
@@ -271,10 +316,17 @@ export function ClientLayout() {
               size="portal"
               className="flex flex-wrap items-center justify-between gap-3"
             >
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <PanelTop className="hidden h-4 w-4 text-primary sm:inline-flex" />
-                  <PanelLeftClose className="h-4 w-4 text-primary md:hidden" />
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <PanelTop
+                    className={cn(
+                      "hidden h-4 w-4 sm:inline-flex",
+                      currentModuleClasses.title,
+                    )}
+                  />
+                  <PanelLeftClose
+                    className={cn("h-4 w-4 md:hidden", currentModuleClasses.title)}
+                  />
                   <span>Repsync client workspace</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -283,7 +335,9 @@ export function ClientLayout() {
                     <>
                       <span className="hidden text-border sm:inline">|</span>
                       <span className="inline-flex items-center gap-1.5 text-foreground/80">
-                        <CircleDot className="h-3.5 w-3.5 text-primary" />
+                        <CircleDot
+                          className={cn("h-3.5 w-3.5", currentModuleClasses.title)}
+                        />
                         {topStatusText}
                       </span>
                     </>

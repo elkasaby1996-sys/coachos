@@ -119,6 +119,59 @@
   --popover-shadow: 0 20px 60px -40px oklch(0 0 0 / 0.72);
   --dialog-shadow: 0 28px 80px -50px oklch(0 0 0 / 0.82);
   --sticky-shadow: 0 24px 60px -40px oklch(0 0 0 / 0.8);
+  --menu-surface-bg:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.92)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 38%);
+  --menu-panel-bg:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.94)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.08), transparent 40%);
+  --menu-surface-shadow:
+    0 0 0 1px oklch(var(--border-subtle) / 0.18),
+    0 26px 70px -48px oklch(0 0 0 / 0.78);
+  --menu-panel-shadow:
+    0 0 0 1px oklch(var(--border-subtle) / 0.18),
+    0 30px 78px -50px oklch(0 0 0 / 0.82);
+  --menu-border-color: oklch(var(--border-default) / 0.82);
+  --menu-item-hover: oklch(var(--bg-surface-elevated) / 0.44);
+  --menu-item-pressed: oklch(var(--bg-surface-elevated) / 0.56);
+  --menu-separator-color: oklch(var(--border-default) / 0.58);
+  --menu-label-color: oklch(var(--text-muted) / 0.92);
+  --menu-icon-color: oklch(var(--accent) / 0.92);
+  --menu-icon-surface:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.58),
+      oklch(var(--bg-surface) / 0.42)
+    );
+  --select-surface-bg-field: var(--field-glass-bg);
+  --select-surface-bg-field-focus: var(--field-glass-bg-focus);
+  --select-surface-bg-filter:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.78),
+      oklch(var(--bg-surface) / 0.62)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.1), transparent 48%);
+  --select-surface-bg-filter-focus:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.84),
+      oklch(var(--bg-surface) / 0.7)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.14), transparent 46%);
+  --select-filter-border: oklch(var(--border-default) / 0.75);
+  --select-filter-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.05),
+    0 12px 30px -30px oklch(0 0 0 / 0.52);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4.25 6.5L8 10.25L11.75 6.5' stroke='%23AAB6C8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --field-glass-bg:
     linear-gradient(
       180deg,
@@ -264,6 +317,59 @@
   --popover-shadow: 0 22px 62px -42px oklch(0.26 0.02 190 / 0.22);
   --dialog-shadow: 0 28px 80px -50px oklch(0.24 0.02 190 / 0.24);
   --sticky-shadow: 0 24px 60px -40px oklch(0.28 0.02 190 / 0.18);
+  --menu-surface-bg:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.9),
+      oklch(var(--bg-surface) / 0.8)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.24), transparent 42%);
+  --menu-panel-bg:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.92),
+      oklch(var(--bg-surface) / 0.82)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.26), transparent 44%);
+  --menu-surface-shadow:
+    0 0 0 1px oklch(var(--border-subtle) / 0.52),
+    0 28px 76px -48px oklch(0.28 0.02 190 / 0.2);
+  --menu-panel-shadow:
+    0 0 0 1px oklch(var(--border-subtle) / 0.58),
+    0 30px 82px -50px oklch(0.26 0.02 190 / 0.22);
+  --menu-border-color: oklch(var(--border-default) / 0.8);
+  --menu-item-hover: oklch(var(--bg-surface-elevated) / 0.74);
+  --menu-item-pressed: oklch(var(--bg-surface-elevated) / 0.84);
+  --menu-separator-color: oklch(var(--border-default) / 0.62);
+  --menu-label-color: oklch(var(--text-muted) / 0.94);
+  --menu-icon-color: oklch(var(--accent) / 0.86);
+  --menu-icon-surface:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.72),
+      oklch(var(--bg-surface) / 0.58)
+    );
+  --select-surface-bg-field: var(--field-glass-bg);
+  --select-surface-bg-field-focus: var(--field-glass-bg-focus);
+  --select-surface-bg-filter:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.8),
+      oklch(var(--bg-surface) / 0.68)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 46%);
+  --select-surface-bg-filter-focus:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.86),
+      oklch(var(--bg-surface) / 0.74)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.22), transparent 44%);
+  --select-filter-border: oklch(var(--border-default) / 0.72);
+  --select-filter-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.18),
+    0 14px 30px -26px oklch(0.28 0.02 186 / 0.18);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4.25 6.5L8 10.25L11.75 6.5' stroke='%23516372' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --field-glass-bg:
     linear-gradient(
       180deg,
@@ -415,35 +521,163 @@ h6 {
 
 .app-filter-control {
   height: 2.5rem;
-  border-radius: 9999px;
-  border: 1px solid oklch(var(--border-default) / 0.75);
-  background:
-    linear-gradient(
-      180deg,
-      oklch(var(--bg-surface-elevated) / 0.78),
-      oklch(var(--bg-surface) / 0.62)
-    ),
-    linear-gradient(135deg, oklch(1 0 0 / 0.1), transparent 48%);
-  color: oklch(var(--text-primary));
-  padding-left: 0.875rem;
-  padding-right: 2rem;
-  font-size: 0.8125rem;
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.05),
-    0 12px 30px -30px oklch(0 0 0 / 0.52);
-  appearance: none;
-  -webkit-appearance: none;
 }
 
 .app-filter-control:focus-visible {
   outline: none;
+}
+
+.app-filter-control-sm {
+  height: 2.25rem;
+}
+
+.app-dropdown-content {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  will-change: transform, opacity;
+}
+
+.app-dropdown-content[data-state="open"] {
+  animation: app-dropdown-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-dropdown-content[data-state="closed"] {
+  animation: app-dropdown-out 140ms ease-in;
+}
+
+.app-dropdown-item[data-highlighted] {
+  background: var(--menu-item-hover);
+  color: oklch(var(--text-primary));
+  transform: translateX(1px);
+}
+
+.app-dropdown-item[data-state="open"] {
+  background: var(--menu-item-pressed);
+}
+
+.app-dropdown-item-icon,
+.app-dropdown-icon-badge {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  background: var(--menu-icon-surface);
+  color: var(--menu-icon-color);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.06);
+}
+
+.app-dropdown-utility-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  padding: 0.75rem;
+  background: var(--menu-item-hover);
+}
+
+.app-select {
+  --select-surface-bg-current: var(--select-surface-bg-field);
+  width: 100%;
+  min-width: 0;
+  border-radius: 1rem;
+  border: 1px solid var(--field-glass-border);
+  color: oklch(var(--text-primary));
+  padding-left: 0.875rem;
+  padding-right: 2.75rem;
+  appearance: none;
+  -webkit-appearance: none;
+  background-repeat: no-repeat, no-repeat;
+  background-position:
+    0 0,
+    right 0.875rem center;
+  background-size:
+    100% 100%,
+    1rem 1rem;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-image 180ms ease,
+    transform 180ms ease;
+}
+
+.app-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.app-select[data-state="open"] {
+  transform: translateY(-1px);
+}
+
+.app-select-trigger {
+  background-image: var(--select-surface-bg-current);
+  background-position: 0 0;
+  background-size: 100% 100%;
+}
+
+.app-select-trigger-icon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  pointer-events: none;
+  transform: translateY(-50%);
+  color: oklch(var(--text-muted) / 0.95);
+  transition:
+    transform 180ms ease,
+    color 180ms ease;
+}
+
+.app-select-trigger[data-state="open"] .app-select-trigger-icon {
+  transform: translateY(-50%) rotate(180deg);
+  color: oklch(var(--text-secondary));
+}
+
+.app-select-field {
+  --select-surface-bg-current: var(--select-surface-bg-field);
+  border-color: var(--field-glass-border);
+  background-image: var(--select-surface-bg-field), var(--select-chevron);
+  box-shadow: var(--field-glass-shadow);
+}
+
+.app-select-field:focus-visible,
+.app-select-field[data-state="open"] {
+  outline: none;
+  --select-surface-bg-current: var(--select-surface-bg-field-focus);
   border-color: var(--field-glass-border-focus);
+  background-image: var(--select-surface-bg-field-focus), var(--select-chevron);
   box-shadow:
     var(--field-glass-shadow-focus),
     0 0 0 4px var(--field-glass-ring);
 }
 
-.app-filter-control-sm {
+.app-select-filter,
+.app-filter-control {
+  --select-surface-bg-current: var(--select-surface-bg-filter);
+  border-radius: 9999px;
+  border-color: var(--select-filter-border);
+  background-image: var(--select-surface-bg-filter), var(--select-chevron);
+  box-shadow: var(--select-filter-shadow);
+  padding-left: 1rem;
+  padding-right: 2.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.app-select-filter:focus-visible,
+.app-select-filter[data-state="open"],
+.app-filter-control:focus-visible {
+  --select-surface-bg-current: var(--select-surface-bg-filter-focus);
+  border-color: var(--field-glass-border-focus);
+  background-image: var(--select-surface-bg-filter-focus), var(--select-chevron);
+  box-shadow:
+    var(--field-glass-shadow-focus),
+    0 0 0 4px var(--field-glass-ring);
+}
+
+.app-select-sm {
   height: 2.25rem;
 }
 
@@ -456,5 +690,27 @@ h6 {
   }
   100% {
     transform: translate3d(-0.8%, 2.2%, 0) scale(1.015) rotate(-2deg);
+  }
+}
+
+@keyframes app-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes app-dropdown-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
   }
 }

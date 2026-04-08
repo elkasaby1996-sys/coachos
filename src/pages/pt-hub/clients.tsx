@@ -6,6 +6,7 @@ import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PtHubClientTable } from "../../features/pt-hub/components/pt-hub-client-table";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
@@ -121,8 +122,8 @@ export function PtHubClientsPage() {
                 placeholder="Search clients, goals, or coaching space"
               />
             </div>
-            <select
-              className="app-filter-control"
+            <Select
+              variant="filter"
               value={workspaceFilter}
               onChange={(event) => setWorkspaceFilter(event.target.value)}
             >
@@ -132,9 +133,9 @@ export function PtHubClientsPage() {
                   {workspace.name}
                 </option>
               ))}
-            </select>
-            <select
-              className="app-filter-control"
+            </Select>
+            <Select
+              variant="filter"
               value={lifecycleFilter}
               onChange={(event) => setLifecycleFilter(event.target.value)}
             >
@@ -145,9 +146,9 @@ export function PtHubClientsPage() {
               <option value="active">Active</option>
               <option value="completed">Completed</option>
               <option value="churned">Churned</option>
-            </select>
-            <select
-              className="app-filter-control"
+            </Select>
+            <Select
+              variant="filter"
               value={segmentFilter}
               onChange={(event) =>
                 setSegmentFilter(event.target.value as ClientSegmentKey)
@@ -160,7 +161,7 @@ export function PtHubClientsPage() {
               <option value="checkin_overdue">Check-in overdue</option>
               <option value="at_risk">At-risk clients</option>
               <option value="paused">Paused clients</option>
-            </select>
+            </Select>
           </div>
         </div>
 

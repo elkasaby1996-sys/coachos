@@ -6,6 +6,11 @@ import {
   getSemanticToneClasses,
   type SemanticToneLike,
 } from "../../../lib/semantic-status";
+import {
+  getModuleToneClasses,
+  getModuleToneStyle,
+  type ModuleTone,
+} from "../../../lib/module-tone";
 
 export function StatCard({
   label,
@@ -17,6 +22,7 @@ export function StatCard({
   surface = "default",
   className,
   disableHoverMotion = false,
+  module,
 }: {
   label: string;
   value: string | number;
@@ -30,11 +36,14 @@ export function StatCard({
   surface?: "default" | "pt-hub";
   className?: string;
   disableHoverMotion?: boolean;
+  module?: ModuleTone;
 }) {
   const isPtHub = surface === "pt-hub";
   const reduceMotion = useReducedMotion();
   const ptHubLabelClassName = "text-[oklch(var(--text-secondary)/0.88)]";
   const ptHubHelperClassName = "text-muted-foreground";
+  const moduleClasses = module ? getModuleToneClasses(module) : null;
+  const toneStyle = getModuleToneStyle(module);
 
   return (
     <motion.div
@@ -50,12 +59,14 @@ export function StatCard({
           isPtHub
             ? "surface-panel relative h-full min-h-[188px] overflow-hidden rounded-[30px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl"
             : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
+          module && moduleClasses?.card,
           accent &&
             (isPtHub
               ? "border-primary/25"
               : "border-primary/35 shadow-[0_26px_60px_-42px_oklch(var(--accent)/0.24)]"),
           className,
         )}
+        style={toneStyle}
       >
         {isPtHub ? (
           <div
@@ -90,12 +101,19 @@ export function StatCard({
               {label}
             </span>
             {Icon ? (
-              <Icon
+              <span
                 className={cn(
-                  "h-4.5 w-4.5 shrink-0",
-                  "text-foreground drop-shadow-none",
+                  "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/42",
+                  module && moduleClasses?.iconBadge,
                 )}
-              />
+              >
+                <Icon
+                  className={cn(
+                    "h-4.5 w-4.5 shrink-0",
+                    module ? moduleClasses?.title : "text-foreground",
+                  )}
+                />
+              </span>
             ) : null}
           </div>
           <div className="flex items-end justify-between gap-3">

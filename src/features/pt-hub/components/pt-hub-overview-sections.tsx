@@ -10,6 +10,7 @@ import { EmptyState } from "../../../components/ui/coachos/empty-state";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import type { ModuleTone } from "../../../lib/module-tone";
 import {
   getSemanticBadgeVariant,
   getSemanticToneClasses,
@@ -242,11 +243,13 @@ export function PtHubActionCenter({
 
 export function PtHubRecentActivityCard({
   items,
+  module,
 }: {
   items: PtHubOverviewActivityItem[];
+  module?: ModuleTone;
 }) {
   return (
-    <PtHubSectionCard title="Recent activity">
+    <PtHubSectionCard title="Recent activity" module={module}>
       {items.length > 0 ? (
         <div className="-mx-1 divide-y divide-border/60">
           {items.map((item) => (
@@ -310,6 +313,7 @@ export function PtHubLaunchChecklistCard({
   description,
   actions,
   collapsed = false,
+  module,
 }: {
   items: PtHubOverviewChecklistItem[];
   completionPercent: number;
@@ -317,12 +321,14 @@ export function PtHubLaunchChecklistCard({
   description?: string;
   actions?: ReactNode;
   collapsed?: boolean;
+  module?: ModuleTone;
 }) {
   return (
     <PtHubSectionCard
       title={title}
       description={description}
       actions={actions}
+      module={module}
       contentClassName={collapsed ? "hidden" : undefined}
     >
       {!collapsed ? (
@@ -416,6 +422,7 @@ export function PtHubSummaryCard({
   emptyState,
   actions,
   collapsed = false,
+  module,
 }: {
   title: string;
   description?: string;
@@ -429,12 +436,14 @@ export function PtHubSummaryCard({
   };
   actions?: ReactNode;
   collapsed?: boolean;
+  module?: ModuleTone;
 }) {
   return (
     <PtHubSectionCard
       title={title}
       description={description}
       actions={actions}
+      module={module}
       contentClassName={collapsed ? "hidden" : undefined}
     >
       {!collapsed ? (

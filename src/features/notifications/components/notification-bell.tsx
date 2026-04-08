@@ -124,30 +124,20 @@ export function NotificationBell({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          variant="panel"
           align="end"
           sideOffset={10}
-          className="border-0 bg-transparent p-0 shadow-none"
+          className="w-[380px] max-w-[92vw]"
         >
-          <motion.div
-            initial={
-              reduceMotion ? { opacity: 1 } : { opacity: 0, y: -10, scale: 0.97 }
-            }
-            animate={
-              reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }
-            }
-            transition={{ duration: reduceMotion ? 0.14 : 0.22, ease: "easeOut" }}
-            style={{ transformOrigin: "top right" }}
-          >
-            <NotificationPanel
-              notifications={notifications}
-              isLoading={notificationsQuery.isLoading}
-              unreadCount={unreadCount}
-              viewAllHref={viewAllHref}
-              onNotificationClick={handleNotificationClick}
-              onMarkAllRead={() => markAllReadMutation.mutate()}
-              markAllDisabled={unreadCount === 0 || markAllReadMutation.isPending}
-            />
-          </motion.div>
+          <NotificationPanel
+            notifications={notifications}
+            isLoading={notificationsQuery.isLoading}
+            unreadCount={unreadCount}
+            viewAllHref={viewAllHref}
+            onNotificationClick={handleNotificationClick}
+            onMarkAllRead={() => markAllReadMutation.mutate()}
+            markAllDisabled={unreadCount === 0 || markAllReadMutation.isPending}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
     </>

@@ -1,15 +1,22 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { Select } from "../../components/ui/select";
 import { settingsNavItems } from "./nav";
 import { cn } from "../../lib/utils";
+import {
+  getModuleToneClasses,
+  getModuleToneStyle,
+} from "../../lib/module-tone";
 
 export function SettingsLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const toneClasses = getModuleToneClasses("settings");
 
   return (
     <div className="space-y-5">
       <WorkspacePageHeader
+        module="settings"
         title="Settings"
         description="Manage workspace, account, and product defaults with the same shared system used across the PT workspace."
       />
@@ -21,9 +28,8 @@ export function SettingsLayout() {
         >
           Settings section
         </label>
-        <select
+        <Select
           id="settings-section-select"
-          className="w-full"
           value={
             settingsNavItems.find((item) =>
               location.pathname.startsWith(item.to),
@@ -36,12 +42,15 @@ export function SettingsLayout() {
               {item.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden md:block">
-          <nav className="surface-panel sticky top-24 rounded-[24px] p-2">
+          <nav
+            className="surface-panel sticky top-24 rounded-[24px] p-2"
+            style={getModuleToneStyle("settings")}
+          >
             {settingsNavItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -53,12 +62,17 @@ export function SettingsLayout() {
                     cn(
                       "flex items-start gap-3 rounded-2xl px-3 py-3 transition",
                       isActive
-                        ? "border border-border/70 bg-card/72 text-foreground"
+                        ? toneClasses.navActive
                         : "border border-transparent text-muted-foreground hover:border-border/60 hover:bg-card/55 hover:text-foreground",
                     )
                   }
                 >
-                  <span className="mt-0.5 rounded-xl border border-border/70 bg-card/78 p-1.5">
+                  <span
+                    className={cn(
+                      "mt-0.5 rounded-xl border border-border/70 bg-card/78 p-1.5",
+                      toneClasses.iconBadge,
+                    )}
+                  >
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="space-y-1">

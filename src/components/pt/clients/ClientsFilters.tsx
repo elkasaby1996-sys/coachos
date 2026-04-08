@@ -5,6 +5,7 @@ import type {
 } from "../../../lib/client-lifecycle";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import { Select } from "../../ui/select";
 
 export type ClientLifecycleFilterKey = "all" | ClientLifecycleState;
 
@@ -56,8 +57,10 @@ export function ClientsFilters({
           />
           <Search className="app-search-icon h-4 w-4" />
         </div>
-        <select
-          className="app-filter-control app-filter-control-sm w-36 shrink-0"
+        <Select
+          variant="filter"
+          size="sm"
+          className="w-36 shrink-0"
           value={activeLifecycle}
           onChange={(event) =>
             onLifecycleChange(event.target.value as ClientLifecycleFilterKey)
@@ -69,7 +72,7 @@ export function ClientsFilters({
               {filter.label}
             </option>
           ))}
-        </select>
+        </Select>
         {segments.map((segment) => (
           <Button
             key={segment.key}

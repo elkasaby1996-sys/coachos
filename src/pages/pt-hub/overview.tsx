@@ -43,6 +43,7 @@ import {
   getSemanticToneForStatus,
   type SemanticTone,
 } from "../../lib/semantic-status";
+import { getModuleToneForPath } from "../../lib/module-tone";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { cn } from "../../lib/utils";
 
@@ -196,6 +197,7 @@ export function PtHubOverviewPage() {
               icon={Icon}
               accent={metric.accent}
               delta={metric.delta}
+              module={metric.href ? getModuleToneForPath(metric.href) : "overview"}
               className="h-full"
             />
           );
@@ -217,6 +219,7 @@ export function PtHubOverviewPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <PtHubSummaryCard
+          module="leads"
           title="Lead pipeline"
           items={dashboardModel.pipelineSummary}
           isEmpty={leads.length === 0}
@@ -229,6 +232,7 @@ export function PtHubOverviewPage() {
           }}
         />
         <PtHubSummaryCard
+          module="checkins"
           title="Client delivery"
           items={dashboardModel.clientHealthSummary}
           isEmpty={clients.length === 0}
@@ -240,13 +244,14 @@ export function PtHubOverviewPage() {
             ctaLabel: "Open coaching spaces",
           }}
         />
-        <PtHubRecentActivityCard items={recentActivityItems} />
+        <PtHubRecentActivityCard items={recentActivityItems} module="overview" />
       </div>
 
       {showBusinessSetup ? (
         <div className="grid gap-6">
           <div id={businessSetupToggleId}>
             <PtHubLaunchChecklistCard
+              module="profile"
               title="Business setup"
               description="Finish the foundation across workspace, coach page, and first-demand readiness."
               items={dashboardModel.launchChecklist}
@@ -283,6 +288,7 @@ export function PtHubOverviewPage() {
         <div className="grid gap-6">
           <div id={billingToggleId}>
             <PtHubSummaryCard
+              module="billing"
               title="Revenue and billing"
               description="Commercial health for the coaching business."
               items={dashboardModel.billingSummary}

@@ -5,9 +5,14 @@ import { cn } from "../../../lib/utils";
 import {
   getNotificationIcon,
   getNotificationIconClasses,
+  getNotificationModuleTone,
   getNotificationTypeLabel,
 } from "../lib/notification-utils";
 import type { NotificationRecord } from "../lib/types";
+import {
+  getModuleToneClasses,
+  getModuleToneStyle,
+} from "../../../lib/module-tone";
 
 type NotificationItemProps = {
   notification: NotificationRecord;
@@ -25,6 +30,8 @@ export function NotificationItem({
   const Icon = getNotificationIcon(notification);
   const typeLabel = getNotificationTypeLabel(notification.type, audience);
   const hasAction = Boolean(notification.action_url);
+  const module = getNotificationModuleTone(notification);
+  const moduleClasses = getModuleToneClasses(module);
 
   return (
     <button
@@ -33,33 +40,40 @@ export function NotificationItem({
         "group flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         notification.is_read
           ? "border-border/60 bg-secondary/16 hover:border-border hover:bg-secondary/24"
-          : "border-primary/24 bg-primary/[0.07] shadow-[0_18px_40px_-34px_rgba(56,189,248,0.75)] hover:border-primary/38 hover:bg-primary/[0.1]",
+          : "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] shadow-[0_18px_40px_-34px_color-mix(in_oklab,var(--state-info-bg-soft)_88%,transparent)] hover:border-[var(--state-info-border)] hover:bg-[var(--state-info-bg-soft)]",
         compact ? "rounded-xl px-3 py-2.5" : "px-4 py-4",
         className,
       )}
+      style={getModuleToneStyle(module)}
       {...props}
     >
       <div
         className={cn(
           "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
           getNotificationIconClasses(notification),
+          moduleClasses.iconBadge,
           compact ? "h-9 w-9 rounded-lg" : "",
         )}
       >
-        <Icon className="h-4 w-4" />
+        <Icon className={cn("h-4 w-4", moduleClasses.title)} />
       </div>
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">
+          <span
+            className={cn(
+              "text-xs font-medium",
+              moduleClasses.text,
+            )}
+          >
             {typeLabel}
           </span>
           {notification.priority === "high" ? (
-            <span className="rounded-full border border-warning/30 bg-warning/12 px-2 py-0.5 text-[11px] font-medium text-warning">
+            <span className="rounded-full border border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-warning-text)]">
               High priority
             </span>
           ) : null}
           {!notification.is_read ? (
-            <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+            <span className="rounded-full border border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-info-text)]">
               New
             </span>
           ) : null}

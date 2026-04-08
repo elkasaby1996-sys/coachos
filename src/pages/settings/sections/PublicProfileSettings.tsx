@@ -10,6 +10,7 @@ import {
 } from "../../../components/ui/dialog";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
+import { Select } from "../../../components/ui/select";
 import { Switch } from "../../../components/ui/switch";
 import {
   SettingsActions,
@@ -236,7 +237,7 @@ export function PublicProfileSettings() {
           </SettingsRow>
 
           <SettingsRow label="Training mode" hint="How you deliver coaching.">
-            <select
+            <Select
               value={form.trainingMode}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -244,12 +245,11 @@ export function PublicProfileSettings() {
                   trainingMode: event.target.value as TrainingMode,
                 }))
               }
-              className="h-10 w-full app-field px-3 text-sm"
             >
               <option value="online">Online</option>
               <option value="in_person">In-person</option>
               <option value="hybrid">Hybrid</option>
-            </select>
+            </Select>
           </SettingsRow>
 
           <SettingsRow label="Languages" hint="Comma-separated languages.">

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -584,8 +585,9 @@ export function PtExerciseLibraryPage() {
                 }
               />
             </div>
-            <select
-              className="app-filter-control w-full"
+            <Select
+              variant="filter"
+              className="w-full"
               value={datasetSearch.bodyPart}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -600,9 +602,10 @@ export function PtExerciseLibraryPage() {
                   {option}
                 </option>
               ))}
-            </select>
-            <select
-              className="app-filter-control w-full"
+            </Select>
+            <Select
+              variant="filter"
+              className="w-full"
               value={datasetSearch.equipment}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -617,9 +620,10 @@ export function PtExerciseLibraryPage() {
                   {option}
                 </option>
               ))}
-            </select>
-            <select
-              className="app-filter-control w-full"
+            </Select>
+            <Select
+              variant="filter"
+              className="w-full"
               value={datasetSearch.target}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -634,7 +638,7 @@ export function PtExerciseLibraryPage() {
                   {option}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button

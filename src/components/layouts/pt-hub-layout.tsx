@@ -20,6 +20,7 @@ import {
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { PageContainer } from "../common/page-container";
+import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,72 +45,135 @@ import {
   getSemanticToneClasses,
   getSemanticToneForStatus,
 } from "../../lib/semantic-status";
+import {
+  getModuleToneClasses,
+  getModuleToneStyle,
+  type ModuleTone,
+} from "../../lib/module-tone";
 import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
   {
     label: "Home",
     items: [
-      { label: "Overview", to: "/pt-hub", icon: PanelsTopLeft, end: true },
-      { label: "Coach Profile", to: "/pt-hub/profile", icon: UserRound },
-      { label: "Profile Preview", to: "/pt-hub/profile/preview", icon: Globe },
+      {
+        label: "Overview",
+        to: "/pt-hub",
+        icon: PanelsTopLeft,
+        end: true,
+        module: "overview" as const,
+      },
+      {
+        label: "Coach Profile",
+        to: "/pt-hub/profile",
+        icon: UserRound,
+        module: "profile" as const,
+      },
+      {
+        label: "Profile Preview",
+        to: "/pt-hub/profile/preview",
+        icon: Globe,
+        module: "profile" as const,
+      },
     ],
   },
   {
     label: "Clients",
     items: [
-      { label: "Leads", to: "/pt-hub/leads", icon: MessageSquarePlus },
-      { label: "Clients", to: "/pt-hub/clients", icon: UsersRound },
-      { label: "Coaching Spaces", to: "/pt-hub/workspaces", icon: Building },
-      { label: "Payments", to: "/pt-hub/payments", icon: Wallet },
-      { label: "Analytics", to: "/pt-hub/analytics", icon: PanelsTopLeft },
+      {
+        label: "Leads",
+        to: "/pt-hub/leads",
+        icon: MessageSquarePlus,
+        module: "leads" as const,
+      },
+      {
+        label: "Clients",
+        to: "/pt-hub/clients",
+        icon: UsersRound,
+        module: "clients" as const,
+      },
+      {
+        label: "Coaching Spaces",
+        to: "/pt-hub/workspaces",
+        icon: Building,
+        module: "coaching" as const,
+      },
+      {
+        label: "Payments",
+        to: "/pt-hub/payments",
+        icon: Wallet,
+        module: "billing" as const,
+      },
+      {
+        label: "Analytics",
+        to: "/pt-hub/analytics",
+        icon: PanelsTopLeft,
+        module: "analytics" as const,
+      },
     ],
   },
   {
     label: "Account",
     items: [
-      { label: "Settings", to: "/pt-hub/settings", icon: SlidersHorizontal },
+      {
+        label: "Settings",
+        to: "/pt-hub/settings",
+        icon: SlidersHorizontal,
+        module: "settings" as const,
+      },
     ],
   },
 ] as const;
 
-const routeMeta: Record<string, { title: string; description: string }> = {
+const routeMeta: Record<
+  string,
+  { title: string; description: string; module: ModuleTone }
+> = {
   "/pt-hub": {
     title: "Overview",
     description: "Run your coaching business from one dashboard.",
+    module: "overview",
   },
   "/pt-hub/profile": {
     title: "Coach Profile",
     description: "Update the public trainer page clients will see.",
+    module: "profile",
   },
   "/pt-hub/profile/preview": {
     title: "Profile Preview",
     description: "Preview your public trainer page before sharing it.",
+    module: "profile",
   },
   "/pt-hub/leads": {
     title: "Leads",
     description: "Review new inquiries and follow up faster.",
+    module: "leads",
   },
   "/pt-hub/clients": {
     title: "Clients",
     description: "See every client across your coaching spaces.",
+    module: "clients",
   },
   "/pt-hub/workspaces": {
     title: "Coaching Spaces",
     description: "Open, create, and manage your coaching spaces.",
+    module: "coaching",
   },
   "/pt-hub/payments": {
     title: "Payments",
     description: "Check billing, invoices, and revenue at a glance.",
+    module: "billing",
   },
   "/pt-hub/analytics": {
     title: "Analytics",
     description: "Track inquiries, conversions, and client growth.",
+    module: "analytics",
   },
   "/pt-hub/settings": {
     title: "Account Settings",
     description:
       "Manage account details, notifications, and profile visibility.",
+    module: "settings",
   },
 };
 
@@ -118,48 +182,12 @@ const PT_HUB_THEME_STORAGE_KEY = "coachos-pt-hub-theme-mode";
 
 type PtHubThemeMode = "dark" | "light";
 
-function getPtHubDropdownContentClassName(isLightMode: boolean) {
-  return cn(
-    "w-60 rounded-[22px] border p-1.5 text-foreground backdrop-blur-3xl",
-    isLightMode
-      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.84))] shadow-[var(--surface-portal-shadow)]"
-      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] shadow-[var(--surface-portal-shadow)]",
-  );
-}
-
-function getPtHubDropdownItemClassName(isLightMode: boolean) {
-  return cn(
-    "group rounded-[14px] px-3 py-2.5 text-sm text-foreground transition-colors duration-200 focus:text-foreground data-[highlighted]:text-foreground",
-    isLightMode
-      ? "bg-transparent focus:bg-slate-900/[0.05] data-[highlighted]:bg-slate-900/[0.05]"
-      : "bg-transparent focus:bg-white/[0.05] data-[highlighted]:bg-white/[0.05]",
-  );
-}
-
-function getPtHubDropdownLabelClassName(isLightMode: boolean) {
-  return cn("px-3 py-2", isLightMode ? "" : "");
-}
-
-function getPtHubDropdownSeparatorClassName(isLightMode: boolean) {
-  return cn(
-    "-mx-1 my-1.5 h-px",
-    isLightMode ? "bg-border/60" : "bg-border/50",
-  );
-}
-
-function getPtHubDropdownUtilityRowClassName(isLightMode: boolean) {
-  return cn(
-    "flex items-center justify-between gap-3 rounded-[14px] px-3 py-2.5 text-sm text-foreground",
-    isLightMode
-      ? "bg-[oklch(var(--bg-surface-elevated)/0.7)]"
-      : "bg-[oklch(var(--bg-surface-elevated)/0.38)]",
-  );
-}
-
-function getPtHubDropdownGlyphClassName(isLightMode: boolean) {
-  return cn(
-    "flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-200",
-    isLightMode ? "text-primary" : "text-primary",
+function getPtHubRouteMeta(pathname: string) {
+  return (
+    Object.entries(routeMeta)
+      .sort((a, b) => b[0].length - a[0].length)
+      .find(([routePath]) => pathname === routePath || pathname.startsWith(`${routePath}/`))
+      ?.[1] ?? defaultRouteMeta
   );
 }
 
@@ -238,71 +266,6 @@ function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
   );
 }
 
-function PtHubThemeToggle({
-  mode,
-  onToggle,
-}: {
-  mode: PtHubThemeMode;
-  onToggle: () => void;
-}) {
-  const isLightMode = mode === "light";
-
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={isLightMode}
-      onClick={onToggle}
-      aria-label={
-        isLightMode
-          ? "Switch PT Hub to dark mode"
-          : "Switch PT Hub to light mode"
-      }
-      className={cn(
-        "group relative inline-flex h-[30px] w-[92px] items-center rounded-full border px-1 backdrop-blur-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
-        isLightMode
-          ? "border-black/10 bg-[linear-gradient(180deg,rgba(232,239,235,0.72),rgba(216,225,219,0.62))] text-foreground shadow-[0_16px_32px_-24px_rgba(15,23,42,0.18)]"
-          : "border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-foreground shadow-[0_16px_30px_-24px_rgba(0,0,0,0.78)]",
-      )}
-    >
-      <span
-        className={cn(
-          "pointer-events-none absolute top-1/2 h-[22px] w-[42px] -translate-y-1/2 rounded-full transition-all duration-200",
-          isLightMode
-            ? "left-[45px] border border-slate-900/85 bg-slate-900 shadow-[0_10px_18px_-12px_rgba(15,23,42,0.5)]"
-            : "left-1 border border-white/12 bg-[linear-gradient(180deg,oklch(var(--accent)),oklch(var(--chart-2)))] shadow-[0_10px_18px_-12px_oklch(var(--accent)/0.6)]",
-        )}
-      />
-      <span
-        className={cn(
-          "pointer-events-none absolute inset-[3px] rounded-full",
-          isLightMode
-            ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.04))]"
-            : "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01))]",
-        )}
-      />
-      <span className="relative z-10 grid w-full grid-cols-2 items-center">
-        <span
-          className={cn(
-            "flex h-[22px] items-center justify-center transition-colors duration-200",
-            isLightMode ? "text-foreground/45" : "text-slate-950",
-          )}
-        >
-          <Moon className="h-3.5 w-3.5" />
-        </span>
-        <span
-          className={cn(
-            "flex h-[22px] items-center justify-center transition-colors duration-200",
-            isLightMode ? "text-white" : "text-foreground/45",
-          )}
-        >
-          <Sun className="h-3.5 w-3.5" />
-        </span>
-      </span>
-    </button>
-  );
-}
-
 export function PtHubLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -315,7 +278,8 @@ export function PtHubLayout() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
 
-  const meta = routeMeta[location.pathname] ?? defaultRouteMeta;
+  const meta = getPtHubRouteMeta(location.pathname);
+  const currentModuleClasses = getModuleToneClasses(meta.module);
   const workspaces = workspacesQuery.data ?? [];
   const publishedProfile = Boolean(profileQuery.data?.isPublished);
   const latestWorkspace = workspaces[0] ?? null;
@@ -367,6 +331,7 @@ export function PtHubLayout() {
         "pt-hub-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
       )}
+      style={getModuleToneStyle(meta.module)}
     >
       <AppShellBackgroundLayer animated mode={themeMode} />
 
@@ -462,8 +427,25 @@ export function PtHubLayout() {
                     <span className="sr-only">Open PT Hub navigation</span>
                   </Button>
                   <div className="min-w-0 space-y-3">
-                    <div className="space-y-1">
-                      <p className="text-[2.15rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.45rem]">
+                    <div className="space-y-2">
+                      <p
+                        className={cn(
+                          "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
+                          currentModuleClasses.text,
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn("h-1.5 w-1.5 rounded-full", currentModuleClasses.dot)}
+                        />
+                        {meta.title}
+                      </p>
+                      <p
+                        className={cn(
+                          "text-[2.15rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.45rem]",
+                          currentModuleClasses.title,
+                        )}
+                      >
                         {meta.title}
                       </p>
                       <p className="max-w-2xl text-[0.95rem] leading-6 text-muted-foreground">
@@ -542,39 +524,23 @@ export function PtHubLayout() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
+                      variant="menu"
                       align="end"
                       sideOffset={10}
-                      className={cn(
-                        getPtHubDropdownContentClassName(isLightMode),
-                        "w-72",
-                      )}
+                      className="w-72"
                     >
-                      <DropdownMenuLabel
-                        className={getPtHubDropdownLabelClassName(isLightMode)}
-                      >
+                      <DropdownMenuLabel>
                         <span className="pt-hub-kicker block">
                           Coaching Spaces
                         </span>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator
-                        className={getPtHubDropdownSeparatorClassName(
-                          isLightMode,
-                        )}
-                      />
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className={cn(
-                          "mt-1 px-3 py-3",
-                          getPtHubDropdownItemClassName(isLightMode),
-                        )}
+                        className="mt-1"
                         onClick={() => navigate("/pt-hub")}
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <span
-                            className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
-                              isLightMode ? "text-slate-600" : "text-primary",
-                            )}
-                          >
+                          <span className="app-dropdown-icon-badge">
                             <PanelsTopLeft className="h-4 w-4 [stroke-width:1.7]" />
                           </span>
                           <p className="truncate font-medium text-foreground">
@@ -588,22 +554,14 @@ export function PtHubLayout() {
                       {workspaces.map((workspace) => (
                         <DropdownMenuItem
                           key={workspace.id}
-                          className={cn(
-                            "mt-1 px-3 py-3",
-                            getPtHubDropdownItemClassName(isLightMode),
-                          )}
+                          className="mt-1"
                           onClick={() => {
                             switchWorkspace(workspace.id);
                             navigate("/pt/dashboard");
                           }}
                         >
                           <div className="flex min-w-0 flex-1 items-center gap-3">
-                            <span
-                              className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
-                                isLightMode ? "text-slate-600" : "text-primary",
-                              )}
-                            >
+                            <span className="app-dropdown-icon-badge">
                               <Building className="h-4 w-4 [stroke-width:1.7]" />
                             </span>
                             <p className="truncate font-medium text-foreground">
@@ -651,41 +609,28 @@ export function PtHubLayout() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
+                      variant="menu"
                       align="end"
                       sideOffset={10}
-                      className={getPtHubDropdownContentClassName(isLightMode)}
+                      className="w-64"
                     >
-                      <DropdownMenuLabel
-                        className={getPtHubDropdownLabelClassName(isLightMode)}
-                      >
+                      <DropdownMenuLabel>
                         <span className="pt-hub-kicker block">Account</span>
                         <span className="mt-1 block truncate text-sm font-medium text-foreground">
                           {coachDisplayName}
                         </span>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator
-                        className={getPtHubDropdownSeparatorClassName(
-                          isLightMode,
-                        )}
-                      />
-                      <div
-                        className={getPtHubDropdownUtilityRowClassName(
-                          isLightMode,
-                        )}
-                      >
+                      <DropdownMenuSeparator />
+                      <div className="app-dropdown-utility-row">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            className={getPtHubDropdownGlyphClassName(
-                              isLightMode,
-                            )}
-                          >
+                          <span className="app-dropdown-icon-badge">
                             <Moon className="h-4 w-4 [stroke-width:1.7]" />
                           </span>
                           <span className="truncate font-medium text-foreground">
                             Theme
                           </span>
                         </div>
-                        <PtHubThemeToggle
+                        <ThemeModeSwitch
                           mode={themeMode}
                           onToggle={() =>
                             setThemeMode((current) =>
@@ -694,24 +639,12 @@ export function PtHubLayout() {
                           }
                         />
                       </div>
-                      <DropdownMenuSeparator
-                        className={getPtHubDropdownSeparatorClassName(
-                          isLightMode,
-                        )}
-                      />
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className={cn(
-                          "mt-1",
-                          getPtHubDropdownItemClassName(isLightMode),
-                        )}
+                        className="mt-1"
                         onClick={() => navigate("/pt-hub/settings")}
                       >
-                        <span
-                          className={cn(
-                            "mr-3",
-                            getPtHubDropdownGlyphClassName(isLightMode),
-                          )}
-                        >
+                        <span className="app-dropdown-icon-badge">
                           <SlidersHorizontal className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
@@ -719,18 +652,12 @@ export function PtHubLayout() {
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        className={getPtHubDropdownItemClassName(isLightMode)}
                         disabled={isSigningOut}
                         onClick={() => {
                           void signOut();
                         }}
                       >
-                        <span
-                          className={cn(
-                            "mr-3",
-                            getPtHubDropdownGlyphClassName(isLightMode),
-                          )}
-                        >
+                        <span className="app-dropdown-icon-badge">
                           <LogOut className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
@@ -824,10 +751,9 @@ function SidebarContent({
                             layoutId="pt-hub-nav-active-pill"
                             className={cn(
                               "absolute inset-0 rounded-[24px] border",
-                              isLightMode
-                                ? "border-primary/26 bg-[linear-gradient(180deg,rgba(236,242,246,0.72),rgba(221,230,238,0.6))] shadow-[0_22px_54px_-36px_rgba(15,23,42,0.14)]"
-                                : "border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]",
+                              getModuleToneClasses(item.module).navActive,
                             )}
+                            style={getModuleToneStyle(item.module)}
                             transition={
                               reduceMotion
                                 ? { duration: 0 }
@@ -840,13 +766,15 @@ function SidebarContent({
                           />
                         ) : null}
                         <span
+                          style={getModuleToneStyle(item.module)}
                           className={cn(
                             "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center transition-colors",
                             isActive
-                              ? "text-primary"
+                              ? "section-accent-nav-icon-active"
                               : isLightMode
-                                ? "text-slate-600 group-hover:text-primary"
-                                : "text-muted-foreground group-hover:text-primary",
+                                ? "text-slate-600 group-hover:text-foreground"
+                                : "text-muted-foreground group-hover:text-foreground",
+                            getModuleToneClasses(item.module).navIcon,
                           )}
                         >
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />

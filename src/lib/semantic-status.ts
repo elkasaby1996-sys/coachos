@@ -19,34 +19,44 @@ export const semanticToneClassNames: Record<
   }
 > = {
   success: {
-    badge: "border-success/22 bg-success/12 text-success",
-    marker: "bg-success",
-    text: "text-success",
-    surface: "border-success/22 bg-success/12 text-success",
+    badge:
+      "border-[var(--state-success-border)] bg-[var(--state-success-bg-soft)] text-[var(--state-success-text)]",
+    marker: "bg-[var(--state-success-text)]",
+    text: "text-[var(--state-success-text)]",
+    surface:
+      "border-[var(--state-success-border)] bg-[var(--state-success-bg-soft)] text-[var(--state-success-text)]",
   },
   info: {
-    badge: "border-info/22 bg-info/12 text-info",
-    marker: "bg-info",
-    text: "text-info",
-    surface: "border-info/22 bg-info/12 text-info",
+    badge:
+      "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] text-[var(--state-info-text)]",
+    marker: "bg-[var(--state-info-text)]",
+    text: "text-[var(--state-info-text)]",
+    surface:
+      "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] text-[var(--state-info-text)]",
   },
   warning: {
-    badge: "border-warning/22 bg-warning/12 text-warning",
-    marker: "bg-warning",
-    text: "text-warning",
-    surface: "border-warning/22 bg-warning/12 text-warning",
+    badge:
+      "border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] text-[var(--state-warning-text)]",
+    marker: "bg-[var(--state-warning-text)]",
+    text: "text-[var(--state-warning-text)]",
+    surface:
+      "border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] text-[var(--state-warning-text)]",
   },
   danger: {
-    badge: "border-danger/22 bg-danger/12 text-danger",
-    marker: "bg-danger",
-    text: "text-danger",
-    surface: "border-danger/22 bg-danger/12 text-danger",
+    badge:
+      "border-[var(--state-danger-border)] bg-[var(--state-danger-bg-soft)] text-[var(--state-danger-text)]",
+    marker: "bg-[var(--state-danger-text)]",
+    text: "text-[var(--state-danger-text)]",
+    surface:
+      "border-[var(--state-danger-border)] bg-[var(--state-danger-bg-soft)] text-[var(--state-danger-text)]",
   },
   neutral: {
-    badge: "border-neutral/22 bg-neutral/12 text-neutral",
-    marker: "bg-neutral",
-    text: "text-neutral",
-    surface: "border-neutral/22 bg-neutral/12 text-neutral",
+    badge:
+      "border-[var(--state-neutral-border)] bg-[var(--state-neutral-bg-soft)] text-[var(--state-neutral-text)]",
+    marker: "bg-[var(--state-neutral-text)]",
+    text: "text-[var(--state-neutral-text)]",
+    surface:
+      "border-[var(--state-neutral-border)] bg-[var(--state-neutral-bg-soft)] text-[var(--state-neutral-text)]",
   },
 };
 

@@ -9,6 +9,7 @@ import { App } from "./routes/app";
 import { initializeThemePreference } from "./lib/theme";
 import "./styles/globals.css";
 import "./styles/style.css";
+import "./styles/color-language.css";
 
 initializeThemePreference("dark");
 

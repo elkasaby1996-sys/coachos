@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
@@ -292,8 +293,9 @@ export function PtWorkoutTemplatesPage() {
             }}
           />
         </div>
-        <select
-          className="app-filter-control w-full sm:w-auto"
+        <Select
+          variant="filter"
+          className="w-full sm:w-auto sm:min-w-[12rem]"
           value={typeFilter}
           onChange={(event) => {
             const next = event.target.value;
@@ -307,9 +309,10 @@ export function PtWorkoutTemplatesPage() {
               {value}
             </option>
           ))}
-        </select>
-        <select
-          className="app-filter-control w-full sm:w-auto"
+        </Select>
+        <Select
+          variant="filter"
+          className="w-full sm:w-auto sm:min-w-[11rem]"
           value={sortBy}
           onChange={(event) => {
             const next = event.target.value;
@@ -319,7 +322,7 @@ export function PtWorkoutTemplatesPage() {
         >
           <option value="newest">Sort by newest</option>
           <option value="name">Sort by name</option>
-        </select>
+        </Select>
         <Button
           onClick={() => {
             setCreateError(null);

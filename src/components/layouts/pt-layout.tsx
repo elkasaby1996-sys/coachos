@@ -23,6 +23,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  Moon,
   Plus,
   Search,
   Settings,
@@ -66,6 +67,12 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
+import {
+  getModuleToneClasses,
+  getModuleToneForPath,
+  getModuleToneStyle,
+  type ModuleTone,
+} from "../../lib/module-tone";
 import "../../styles/pt-workspace-shell.css";
 
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
@@ -117,6 +124,7 @@ type PtNavItem = {
   description: string;
   to: string;
   icon: ComponentType<{ className?: string }>;
+  module: ModuleTone;
 };
 
 const ptNavGroups: Array<{
@@ -131,30 +139,35 @@ const ptNavGroups: Array<{
         description: "Track coaching activity and daily priorities.",
         to: "/pt/dashboard",
         icon: LayoutDashboard,
+        module: "overview",
       },
       {
         label: "Clients",
         description: "Manage your roster, notes, and client detail views.",
         to: "/pt/clients",
         icon: Users,
+        module: "clients",
       },
       {
         label: "Messages",
         description: "Stay on top of conversations and follow-ups.",
         to: "/pt/messages",
         icon: MessageCircle,
+        module: "coaching",
       },
       {
         label: "Calendar",
         description: "Review sessions, planning, and weekly schedule flow.",
         to: "/pt/calendar",
         icon: CalendarDays,
+        module: "coaching",
       },
       {
         label: "Check-ins",
         description: "Monitor readiness, responses, and coaching feedback.",
         to: "/pt/checkins",
         icon: ClipboardList,
+        module: "checkins",
       },
     ],
   },
@@ -166,24 +179,28 @@ const ptNavGroups: Array<{
         description: "Create, edit, and assign structured programs.",
         to: "/pt/programs",
         icon: CalendarDays,
+        module: "coaching",
       },
       {
         label: "Workouts",
         description: "Shape workout templates and exercise flow.",
         to: "/pt/templates/workouts",
         icon: Dumbbell,
+        module: "coaching",
       },
       {
         label: "Nutrition Programs",
         description: "Manage nutrition planning and meal structure.",
         to: "/pt/nutrition-programs",
         icon: Apple,
+        module: "coaching",
       },
       {
         label: "Exercise Library",
         description: "Review and organize reusable exercise assets.",
         to: "/pt/settings/exercises",
         icon: BookOpen,
+        module: "coaching",
       },
     ],
   },
@@ -195,6 +212,7 @@ const ptNavGroups: Array<{
         description: "Adjust workspace defaults and account controls.",
         to: "/settings/workspace",
         icon: Settings,
+        module: "settings",
       },
     ],
   },
@@ -399,10 +417,9 @@ function SidebarNav({
                           }
                           className={cn(
                             "absolute inset-0 rounded-[22px]",
-                            isLightMode
-                              ? "border border-primary/24 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.78),oklch(var(--bg-surface)/0.64))] shadow-[0_22px_54px_-36px_oklch(0.28_0.02_190/0.14)]"
-                              : "border border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]",
+                            getModuleToneClasses(item.module).navActive,
                           )}
+                          style={getModuleToneStyle(item.module)}
                           transition={{
                             type: "spring",
                             stiffness: 250,
@@ -412,13 +429,15 @@ function SidebarNav({
                         />
                       ) : null}
                       <span
+                        style={getModuleToneStyle(item.module)}
                         className={cn(
                           "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center transition-colors",
                           isActive
-                            ? "text-primary"
+                            ? "section-accent-nav-icon-active"
                             : isLightMode
-                              ? "text-[oklch(var(--text-muted))] group-hover:text-primary"
-                              : "text-muted-foreground group-hover:text-primary",
+                              ? "text-[oklch(var(--text-muted))] group-hover:text-foreground"
+                              : "text-muted-foreground group-hover:text-foreground",
+                          getModuleToneClasses(item.module).navIcon,
                         )}
                       >
                         <Icon className="h-4 w-4 [stroke-width:1.7]" />
@@ -479,6 +498,8 @@ export function PtLayout() {
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
   const pageHeader = getPtRouteHeader(location.pathname);
+  const currentModule = getModuleToneForPath(location.pathname);
+  const currentModuleClasses = getModuleToneClasses(currentModule);
   const errorMessage =
     error?.message ??
     authError?.message ??
@@ -721,7 +742,10 @@ export function PtLayout() {
 
   if (errorMessage) {
     return (
-      <div className="pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden">
+    <div
+      className="pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden"
+      style={getModuleToneStyle(currentModule)}
+    >
         <AppShellBackgroundLayer />
         <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
           <Card className="w-full max-w-md">
@@ -751,6 +775,7 @@ export function PtLayout() {
         "pt-workspace-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         isLightMode ? "pt-workspace-theme-light" : "pt-workspace-theme-dark",
       )}
+      style={getModuleToneStyle(currentModule)}
     >
       <AppShellBackgroundLayer />
       <div
@@ -904,8 +929,25 @@ export function PtLayout() {
                           <Menu className="h-5 w-5 [stroke-width:1.7]" />
                           <span className="sr-only">Open PT navigation</span>
                         </Button>
-                        <div className="min-w-0 space-y-1">
-                          <p className="truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]">
+                        <div className="min-w-0 space-y-2">
+                          <p
+                            className={cn(
+                              "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
+                              currentModuleClasses.text,
+                            )}
+                          >
+                            <span
+                              aria-hidden
+                              className={cn("h-1.5 w-1.5 rounded-full", currentModuleClasses.dot)}
+                            />
+                            {pageHeader.title}
+                          </p>
+                          <p
+                            className={cn(
+                              "truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]",
+                              currentModuleClasses.title,
+                            )}
+                          >
                             {pageHeader.title}
                           </p>
                           {pageHeader.description ? (
@@ -971,6 +1013,7 @@ export function PtLayout() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
+                            variant="menu"
                             align="end"
                             sideOffset={10}
                             className="w-72"
@@ -983,7 +1026,7 @@ export function PtLayout() {
                               onClick={() => navigate("/pt-hub")}
                             >
                               <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
+                                <span className="app-dropdown-icon-badge">
                                   <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
                                 </span>
                                 <div className="min-w-0">
@@ -1015,7 +1058,7 @@ export function PtLayout() {
                                   }}
                                 >
                                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
+                                    <span className="app-dropdown-icon-badge">
                                       <Building2 className="h-4 w-4 [stroke-width:1.7]" />
                                     </span>
                                     <p className="truncate font-medium text-foreground">
@@ -1035,7 +1078,9 @@ export function PtLayout() {
                                 setCreateWorkspaceOpen(true);
                               }}
                             >
-                              <Plus className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                              <span className="app-dropdown-icon-badge">
+                                <Plus className="h-4 w-4 [stroke-width:1.7]" />
+                              </span>
                               Create workspace
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -1073,6 +1118,7 @@ export function PtLayout() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
+                            variant="menu"
                             align="end"
                             sideOffset={10}
                             className="w-56"
@@ -1082,24 +1128,35 @@ export function PtLayout() {
                             <DropdownMenuItem
                               onClick={() => navigate("/settings/workspace")}
                             >
-                              <Settings className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                              <span className="app-dropdown-icon-badge">
+                                <Settings className="h-4 w-4 [stroke-width:1.7]" />
+                              </span>
                               Settings
                             </DropdownMenuItem>
-                            <div className="flex items-center justify-between px-3 py-2">
-                              <span className="text-sm font-medium text-foreground">
-                                Theme
+                            <div className="app-dropdown-utility-row">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <span className="app-dropdown-icon-badge">
+                                  <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                                </span>
+                                <span className="text-sm font-medium text-foreground">
+                                  Theme
+                                </span>
+                              </div>
+                              <span className="shrink-0">
+                                <ThemeModeSwitch
+                                  mode={resolvedTheme}
+                                  onToggle={toggleTheme}
+                                />
                               </span>
-                              <ThemeModeSwitch
-                                checked={resolvedTheme === "dark"}
-                                onToggle={toggleTheme}
-                              />
                             </div>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               disabled={isSigningOut}
                               onClick={signOut}
                             >
-                              <LogOut className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                              <span className="app-dropdown-icon-badge">
+                                <LogOut className="h-4 w-4 [stroke-width:1.7]" />
+                              </span>
                               {isSigningOut ? "Signing out..." : "Sign out"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>

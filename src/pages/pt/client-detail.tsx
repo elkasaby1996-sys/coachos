@@ -22,6 +22,7 @@ import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/coachos/skeleton";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import {
   Tabs,
   TabsContent,
@@ -31,12 +32,15 @@ import {
 import {
   Apple,
   AlertTriangle,
+  Ban,
   CalendarDays,
   ClipboardCheck,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
   Dumbbell,
+  Eye,
+  EyeOff,
   FileText,
   Flame,
   FlaskConical,
@@ -45,6 +49,7 @@ import {
   Moon,
   MoreHorizontal,
   Pencil,
+  Play,
   Rocket,
   Sparkles,
   Upload,
@@ -3938,15 +3943,30 @@ export function PtClientDetailPage() {
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent
+                      variant="menu"
+                      size="compact"
+                      align="end"
+                      className="w-60"
+                    >
                       <DropdownMenuLabel>Client actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={openProfileEdit}>
+                        <span className="app-dropdown-icon-badge">
+                          <Pencil className="h-4 w-4" />
+                        </span>
                         Edit profile
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setIsOverviewCollapsed((prev) => !prev)}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          {isOverviewCollapsed ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </span>
                         {isOverviewCollapsed
                           ? "Show profile details"
                           : "Hide profile details"}
@@ -3955,11 +3975,17 @@ export function PtClientDetailPage() {
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("active")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <Play className="h-4 w-4" />
+                        </span>
                         Mark active
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("paused")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <Moon className="h-4 w-4" />
+                        </span>
                         Mark paused
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -3969,6 +3995,9 @@ export function PtClientDetailPage() {
                           )
                         }
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <AlertTriangle className="h-4 w-4" />
+                        </span>
                         {clientSnapshot?.manual_risk_flag
                           ? "Clear at risk"
                           : "Mark at risk"}
@@ -3976,11 +4005,17 @@ export function PtClientDetailPage() {
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("completed")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </span>
                         Mark completed
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("churned")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <Ban className="h-4 w-4" />
+                        </span>
                         Mark churned
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -4602,8 +4637,9 @@ export function PtClientDetailPage() {
                             <label className="text-xs font-semibold text-muted-foreground">
                               Template
                             </label>
-                            <select
-                              className="h-10 w-full app-field px-3 text-sm"
+                            <Select
+                              variant="field"
+                              className="h-10"
                               value={checkinTemplateId}
                               onChange={(event) =>
                                 setCheckinTemplateId(event.target.value)
@@ -4619,15 +4655,16 @@ export function PtClientDetailPage() {
                                   {template.name ?? "Untitled template"}
                                 </option>
                               ))}
-                            </select>
+                            </Select>
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-2">
                               <label className="text-xs font-semibold text-muted-foreground">
                                 Frequency
                               </label>
-                              <select
-                                className="h-10 w-full app-field px-3 text-sm"
+                              <Select
+                                variant="field"
+                                className="h-10"
                                 value={checkinFrequency}
                                 onChange={(event) =>
                                   setCheckinFrequency(event.target.value)
@@ -4641,7 +4678,7 @@ export function PtClientDetailPage() {
                                     {option.label}
                                   </option>
                                 ))}
-                              </select>
+                              </Select>
                             </div>
                             <div className="space-y-2">
                               <label
@@ -4887,8 +4924,9 @@ export function PtClientDetailPage() {
               <label className="text-xs font-semibold text-muted-foreground">
                 Workout template
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={editTemplateId}
                 onChange={(event) => setEditTemplateId(event.target.value)}
               >
@@ -4901,14 +4939,15 @@ export function PtClientDetailPage() {
                       : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Status
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={editStatus}
                 onChange={(event) =>
                   setEditStatus(
@@ -4919,7 +4958,7 @@ export function PtClientDetailPage() {
                 <option value="planned">Planned</option>
                 <option value="completed">Completed</option>
                 <option value="skipped">Skipped</option>
-              </select>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -5696,8 +5735,9 @@ export function PtClientDetailPage() {
               <label className="text-xs font-semibold text-muted-foreground">
                 Training type
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={profileEditForm.training_type}
                 onChange={(event) =>
                   setProfileEditForm((prev) => ({
@@ -5712,7 +5752,7 @@ export function PtClientDetailPage() {
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <label className="text-xs font-semibold text-muted-foreground">
@@ -6679,8 +6719,9 @@ function PtClientScheduleCard({
                 onChange={(event) => setNutritionAssignDate(event.target.value)}
               />
             </div>
-            <select
-              className="h-10 w-full app-field px-3 text-sm"
+            <Select
+              variant="field"
+              className="h-10"
               value={nutritionTemplateId}
               onChange={(event) => setNutritionTemplateId(event.target.value)}
             >
@@ -6690,7 +6731,7 @@ function PtClientScheduleCard({
                   {template.name ?? "Program"}
                 </option>
               ))}
-            </select>
+            </Select>
             <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
               <p className="mb-2 font-semibold text-foreground">
                 Next 7 days preview
@@ -6879,8 +6920,9 @@ function PtClientScheduleCard({
               <label className="text-xs font-semibold text-muted-foreground">
                 Workout template
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={overrideTemplateId}
                 disabled={overrideIsRest}
                 onChange={(event) => {
@@ -6899,7 +6941,7 @@ function PtClientScheduleCard({
                       : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <input
@@ -8151,8 +8193,9 @@ function PtClientPlanTab({
                     <label className="text-xs font-semibold text-muted-foreground">
                       Program
                     </label>
-                    <select
-                      className="h-10 w-full app-field px-3 text-sm"
+                    <Select
+                      variant="field"
+                      className="h-10"
                       value={selectedProgramId}
                       onChange={(event) => onProgramChange(event.target.value)}
                     >
@@ -8165,7 +8208,7 @@ function PtClientPlanTab({
                             : ""}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label
@@ -8323,8 +8366,9 @@ function PtClientPlanTab({
                     <label className="text-xs font-semibold text-muted-foreground">
                       Workout template
                     </label>
-                    <select
-                      className="h-10 w-full app-field px-3 text-sm"
+                    <Select
+                      variant="field"
+                      className="h-10"
                       value={selectedTemplateId}
                       onChange={(event) => onTemplateChange(event.target.value)}
                     >
@@ -8337,7 +8381,7 @@ function PtClientPlanTab({
                             : ""}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label
@@ -8725,8 +8769,9 @@ function PtClientNutritionTab({
                 <label className="text-xs font-semibold text-muted-foreground">
                   Nutrition program
                 </label>
-                <select
-                  className="h-10 w-full app-field px-3 text-sm"
+                <Select
+                  variant="field"
+                  className="h-10"
                   value={selectedNutritionProgramId}
                   onChange={(event) =>
                     setSelectedNutritionProgramId(event.target.value)
@@ -8741,7 +8786,7 @@ function PtClientNutritionTab({
                         : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label
