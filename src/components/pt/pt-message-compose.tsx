@@ -28,6 +28,7 @@ import { getActionErrorMessage } from "../../lib/request-guard";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { cn } from "../../lib/utils";
 import {
   PtMessageComposeContext,
@@ -38,7 +39,7 @@ type ClientRow = {
   id: string;
   display_name: string | null;
   user_id: string | null;
-  status: string | null;
+  lifecycle_state: string | null;
 };
 
 type ConversationRow = {
@@ -177,9 +178,9 @@ function MessageWidgetRow({
             <span className="truncate text-sm font-semibold text-foreground">
               {row.name}
             </span>
-            {row.client.status ? (
+            {row.client.lifecycle_state ? (
               <span className="truncate text-[11px] text-muted-foreground">
-                {row.client.status}
+                {getClientLifecycleMeta(row.client.lifecycle_state).label}
               </span>
             ) : null}
           </div>
@@ -306,7 +307,9 @@ function MessageWidgetComposer({
           disabled={disabled || sending}
           aria-label={sending ? "Sending message" : "Send message"}
         >
-          <Send className={cn("h-4 w-4 transition", active && "text-cyan-100")} />
+          <Send
+            className={cn("h-4 w-4 transition", active && "text-cyan-100")}
+          />
         </Button>
       </div>
     </div>
@@ -355,7 +358,7 @@ export function PtMessageComposeProvider({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, display_name, user_id, status")
+        .select("id, display_name, user_id, lifecycle_state")
         .eq("workspace_id", workspaceId ?? "")
         .order("display_name", { ascending: true });
       if (error) throw error;
@@ -436,7 +439,7 @@ export function PtMessageComposeProvider({
           conversation?.last_message_preview?.trim() ||
           (conversation?.last_message_sender_role === "client"
             ? "Client started a conversation."
-            : client.status?.trim()) ||
+            : getClientLifecycleMeta(client.lifecycle_state).label) ||
           "No messages yet";
         return {
           client,
@@ -474,7 +477,7 @@ export function PtMessageComposeProvider({
     if (!query) return inboxRows;
     return inboxRows.filter((row) => {
       const haystack =
-        `${row.name} ${row.preview} ${row.client.status ?? ""}`.toLowerCase();
+        `${row.name} ${row.preview} ${row.client.lifecycle_state ?? ""}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [inboxRows, searchValue]);
@@ -759,9 +762,7 @@ export function PtMessageComposeProvider({
     );
   };
 
-  const handleComposerKeyDown = (
-    event: KeyboardEvent<HTMLTextAreaElement>,
-  ) => {
+  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       if (!messageDraft.trim() || sendMutation.isPending) return;
@@ -790,7 +791,10 @@ export function PtMessageComposeProvider({
                 ref={panelRef}
                 role="dialog"
                 aria-label="Messages"
-                aria-modal={typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches}
+                aria-modal={
+                  typeof window !== "undefined" &&
+                  window.matchMedia("(max-width: 639px)").matches
+                }
                 tabIndex={-1}
                 data-pt-message-compose-drawer="true"
                 className="pointer-events-auto fixed inset-x-3 top-[max(env(safe-area-inset-top),0.75rem)] bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] flex flex-col overflow-hidden rounded-[30px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[0_34px_86px_-40px_oklch(0_0_0/0.92)] outline-none backdrop-blur-xl sm:inset-x-auto sm:right-4 sm:bottom-[calc(env(safe-area-inset-bottom)+5rem)] sm:top-auto sm:h-[620px] sm:w-[400px]"
@@ -912,7 +916,8 @@ export function PtMessageComposeProvider({
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-y-auto bg-[linear-gradient(180deg,oklch(var(--bg-surface)/0.52),oklch(var(--bg-surface)/0.62))] px-3 py-3">
-                      {clientsQuery.isLoading || conversationsQuery.isLoading ? (
+                      {clientsQuery.isLoading ||
+                      conversationsQuery.isLoading ? (
                         <div className="space-y-2">
                           {Array.from({ length: 6 }).map((_, index) => (
                             <Skeleton
@@ -949,7 +954,6 @@ export function PtMessageComposeProvider({
                         </div>
                       )}
                     </div>
-
                   </>
                 )}
               </div>

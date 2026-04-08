@@ -48,7 +48,8 @@ export function PtHubClientsPage() {
   const totalCount = clientsQuery.data?.totalCount ?? 0;
   const pageSize = clientsQuery.data?.pageSize ?? 25;
   const rangeStart = totalCount === 0 ? 0 : page * pageSize + 1;
-  const rangeEnd = totalCount === 0 ? 0 : Math.min((page + 1) * pageSize, totalCount);
+  const rangeEnd =
+    totalCount === 0 ? 0 : Math.min((page + 1) * pageSize, totalCount);
   const isTableLoading =
     clientsQuery.isLoading || (clientsQuery.isFetching && !clientsQuery.data);
   const isEmpty = totalCount === 0;
@@ -142,7 +143,6 @@ export function PtHubClientsPage() {
               <option value="onboarding">Onboarding</option>
               <option value="paused">Paused</option>
               <option value="active">Active</option>
-              <option value="at_risk">At risk</option>
               <option value="completed">Completed</option>
               <option value="churned">Churned</option>
             </select>
@@ -181,10 +181,7 @@ export function PtHubClientsPage() {
             icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
-          <PtHubClientTable
-            clients={clients}
-            onOpen={openClientWorkspace}
-          />
+          <PtHubClientTable clients={clients} onOpen={openClientWorkspace} />
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">

@@ -1,4 +1,5 @@
 import { getPtClientBaseStats } from "./pt-hub";
+import { isClientAtRisk } from "../../../lib/client-lifecycle";
 import {
   getSemanticToneForStatus,
   type SemanticTone,
@@ -192,8 +193,7 @@ function getClientsNeedingAttention(clients: PTClientSummary[]) {
     if (
       client.hasOverdueCheckin ||
       client.onboardingIncomplete ||
-      client.lifecycleState === "at_risk" ||
-      client.riskFlags.length > 0
+      isClientAtRisk(client)
     ) {
       ids.add(client.id);
     }
@@ -339,10 +339,8 @@ function buildActionItems(params: {
     params.clients,
     (client) => client.hasOverdueCheckin,
   );
-  const mostUrgentAtRiskClient = getMostUrgentClient(
-    params.clients,
-    (client) =>
-      client.lifecycleState === "at_risk" || client.riskFlags.length > 0,
+  const mostUrgentAtRiskClient = getMostUrgentClient(params.clients, (client) =>
+    isClientAtRisk(client),
   );
   const mostUrgentOnboardingClient = getMostUrgentClient(
     params.clients,
@@ -802,7 +800,9 @@ function buildBillingSummary(params: {
       value: params.revenue?.monthlyRevenueLabel ?? "Not connected",
       detail: "Live revenue will surface here once billing is connected",
       tone: getSemanticToneForStatus(
-        params.revenue?.revenueConnected === true ? "Billing is connected" : "Not connected",
+        params.revenue?.revenueConnected === true
+          ? "Billing is connected"
+          : "Not connected",
       ),
     },
     {
@@ -816,7 +816,9 @@ function buildBillingSummary(params: {
           ? "Connected billing metric"
           : "Closest current proxy based on active clients",
       tone: getSemanticToneForStatus(
-        params.revenue?.revenueConnected === true ? "Connected" : "Not connected",
+        params.revenue?.revenueConnected === true
+          ? "Connected"
+          : "Not connected",
       ),
     },
   ] satisfies PtHubOverviewSummaryItem[];

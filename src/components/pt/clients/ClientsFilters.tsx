@@ -16,15 +16,18 @@ const segments: Array<{ key: ClientSegmentKey; label: string }> = [
   { key: "paused", label: "Paused" },
 ];
 
-const lifecycleFilters: Array<{ key: ClientLifecycleFilterKey; label: string }> =
-  [
-    { key: "all", label: "All lifecycles" },
-    { key: "invited", label: "Invited" },
-    { key: "onboarding", label: "Onboarding" },
-    { key: "active", label: "Active" },
-    { key: "completed", label: "Completed" },
-    { key: "churned", label: "Churned" },
-  ];
+const lifecycleFilters: Array<{
+  key: ClientLifecycleFilterKey;
+  label: string;
+}> = [
+  { key: "all", label: "All lifecycles" },
+  { key: "invited", label: "Invited" },
+  { key: "onboarding", label: "Onboarding" },
+  { key: "active", label: "Active" },
+  { key: "paused", label: "Paused" },
+  { key: "completed", label: "Completed" },
+  { key: "churned", label: "Churned" },
+];
 
 export function ClientsFilters({
   searchValue,

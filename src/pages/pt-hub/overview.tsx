@@ -38,6 +38,7 @@ import type {
   PTProfileReadiness,
   PTWorkspaceSummary,
 } from "../../features/pt-hub/types";
+import { isClientAtRisk } from "../../lib/client-lifecycle";
 import {
   getSemanticToneForStatus,
   type SemanticTone,
@@ -331,8 +332,7 @@ function buildRecentActivityItems(params: {
       (client) =>
         client.hasOverdueCheckin ||
         client.onboardingIncomplete ||
-        client.lifecycleState === "at_risk" ||
-        client.riskFlags.length > 0,
+        isClientAtRisk(client),
     )
     .sort((left, right) => {
       const leftTime = new Date(
@@ -367,8 +367,7 @@ function buildRecentActivityItems(params: {
           ctaLabel: "Open clients",
           tone:
             latestClientAttention.hasOverdueCheckin ||
-            latestClientAttention.lifecycleState === "at_risk" ||
-            latestClientAttention.riskFlags.length > 0
+            isClientAtRisk(latestClientAttention)
               ? getSemanticToneForStatus("At risk")
               : getSemanticToneForStatus("Needs attention"),
         }

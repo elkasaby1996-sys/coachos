@@ -1,11 +1,16 @@
 import { ArrowUpRight } from "lucide-react";
 import {
-  getClientLifecycleMeta,
+  getClientRiskState,
   getClientRiskFlagMeta,
+  isClientAtRisk,
   normalizeClientRiskFlags,
 } from "../../../lib/client-lifecycle";
-import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import {
+  LifecycleBadge,
+  RiskBadge,
+  TagInfoBadge,
+} from "../../../components/ui/coachos/status-pill";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { getSemanticToneClasses } from "../../../lib/semantic-status";
 import type { PTClientSummary } from "../types";
@@ -17,17 +22,14 @@ export function PtHubClientTable({
   clients: PTClientSummary[];
   onOpen: (client: PTClientSummary) => void;
 }) {
-  const {
-    visibleRows,
-    hasHiddenRows,
-    hiddenCount,
-    showMore,
-  } = useWindowedRows({
-    rows: clients,
-    initialCount: 16,
-    step: 16,
-    resetKey: clients.length,
-  });
+  const { visibleRows, hasHiddenRows, hiddenCount, showMore } = useWindowedRows(
+    {
+      rows: clients,
+      initialCount: 16,
+      step: 16,
+      resetKey: clients.length,
+    },
+  );
 
   return (
     <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
@@ -39,11 +41,12 @@ export function PtHubClientTable({
       </div>
       <div className="space-y-2">
         {visibleRows.map((client) => {
-          const lifecycle = getClientLifecycleMeta(client.lifecycleState);
           const riskFlags = normalizeClientRiskFlags(client.riskFlags).slice(
             0,
             2,
           );
+          const riskState = getClientRiskState(client);
+          const clientAtRisk = isClientAtRisk(client);
           const reason = client.pausedReason ?? client.churnReason;
 
           return (
@@ -55,9 +58,7 @@ export function PtHubClientTable({
                 aria-hidden
                 className={`absolute bottom-4 left-1 top-4 w-[2px] rounded-full ${
                   getSemanticToneClasses(
-                    client.hasOverdueCheckin ||
-                      client.lifecycleState === "at_risk" ||
-                      riskFlags.length > 0
+                    client.hasOverdueCheckin || clientAtRisk
                       ? "danger"
                       : client.onboardingIncomplete
                         ? "warning"
@@ -83,24 +84,35 @@ export function PtHubClientTable({
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={lifecycle.variant}>{lifecycle.label}</Badge>
+                <LifecycleBadge lifecycleState={client.lifecycleState} />
+                {clientAtRisk ? <RiskBadge riskState={riskState} /> : null}
                 {client.onboardingIncomplete && client.onboardingStatus ? (
-                  <Badge variant="warning">
-                    {client.onboardingStatus.replace(/_/g, " ")}
-                  </Badge>
+                  <TagInfoBadge
+                    label={client.onboardingStatus.replace(/_/g, " ")}
+                    variant="warning"
+                    title="Onboarding status"
+                    description="This client still has onboarding work pending before coaching is fully settled."
+                  />
                 ) : null}
                 {client.hasOverdueCheckin ? (
-                  <Badge variant="warning">
-                    {client.overdueCheckinsCount} overdue
-                  </Badge>
+                  <TagInfoBadge
+                    label={`${client.overdueCheckinsCount} overdue`}
+                    variant="warning"
+                    title="Overdue check-ins"
+                    description="One or more scheduled check-ins still need a submission or review."
+                  />
                 ) : null}
                 {riskFlags.map((flag) => {
                   const meta = getClientRiskFlagMeta(flag);
                   if (!meta) return null;
                   return (
-                    <Badge key={flag} variant={meta.variant}>
-                      {meta.shortLabel}
-                    </Badge>
+                    <TagInfoBadge
+                      key={flag}
+                      label={meta.shortLabel}
+                      variant={meta.variant}
+                      title={meta.label}
+                      description={meta.description}
+                    />
                   );
                 })}
               </div>

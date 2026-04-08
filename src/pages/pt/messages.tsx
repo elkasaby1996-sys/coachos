@@ -13,11 +13,12 @@ import { Input } from "../../components/ui/input";
 import {
   DashboardCard,
   EmptyState,
+  LifecycleBadge,
   Skeleton,
-  StatusPill,
 } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
+import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { sendConversationMessage } from "../../lib/messages";
@@ -41,7 +42,7 @@ type ClientRow = {
   id: string;
   display_name: string | null;
   user_id: string | null;
-  status: string | null;
+  lifecycle_state: string | null;
 };
 
 type ConversationRow = {
@@ -111,7 +112,7 @@ export function PtMessagesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, display_name, user_id, status")
+        .select("id, display_name, user_id, lifecycle_state")
         .eq("workspace_id", workspaceId ?? "")
         .order("display_name", { ascending: true });
       if (error) throw error;
@@ -247,7 +248,8 @@ export function PtMessagesPage() {
     return [...flat].reverse();
   }, [messagesQuery.data]);
   const renderedMessageRows = useMemo(
-    () => messageRows.slice(Math.max(0, messageRows.length - visibleMessageCount)),
+    () =>
+      messageRows.slice(Math.max(0, messageRows.length - visibleMessageCount)),
     [messageRows, visibleMessageCount],
   );
   const hasHiddenLoadedMessages =
@@ -385,12 +387,7 @@ export function PtMessagesPage() {
           queryKey: getPtMessagesUnreadKey(workspaceId),
         });
       });
-  }, [
-    activeConversationId,
-    messageRows.length,
-    queryClient,
-    workspaceId,
-  ]);
+  }, [activeConversationId, messageRows.length, queryClient, workspaceId]);
 
   const sendMutation = useMutation({
     mutationFn: async () => {
@@ -488,7 +485,7 @@ export function PtMessagesPage() {
           conversation?.last_message_preview?.trim() ||
           (conversation?.last_message_sender_role === "client"
             ? "Client started a new thread."
-            : client.status?.trim()) ||
+            : getClientLifecycleMeta(client.lifecycle_state).label) ||
           "No messages yet";
         return {
           client,
@@ -501,7 +498,7 @@ export function PtMessagesPage() {
       })
       .filter((row) => {
         if (!query) return true;
-        return `${row.name} ${row.preview} ${row.client.status ?? ""}`
+        return `${row.name} ${row.preview} ${row.client.lifecycle_state ?? ""}`
           .toLowerCase()
           .includes(query);
       })
@@ -580,7 +577,7 @@ export function PtMessagesPage() {
                   className="app-search-input"
                   value={clientSearch}
                   onChange={(event) => setClientSearch(event.target.value)}
-                  placeholder="Search client, status, or recent message"
+                  placeholder="Search client, lifecycle, or recent message"
                 />
               </div>
 
@@ -611,9 +608,13 @@ export function PtMessagesPage() {
                               <div className="truncate font-semibold text-foreground">
                                 {row.name}
                               </div>
-                              {row.client.status ? (
+                              {row.client.lifecycle_state ? (
                                 <span className="text-xs text-muted-foreground">
-                                  {row.client.status}
+                                  {
+                                    getClientLifecycleMeta(
+                                      row.client.lifecycle_state,
+                                    ).label
+                                  }
                                 </span>
                               ) : null}
                             </div>
@@ -669,7 +670,9 @@ export function PtMessagesPage() {
                 >
                   Open profile
                 </Button>
-                <StatusPill status={selectedClient.status ?? "active"} />
+                <LifecycleBadge
+                  lifecycleState={selectedClient.lifecycle_state}
+                />
               </div>
             ) : (
               "Conversation"

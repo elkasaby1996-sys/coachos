@@ -128,6 +128,7 @@ export interface PTClientSummary {
   displayName: string;
   status: string;
   lifecycleState: string;
+  manualRiskFlag: boolean;
   lifecycleChangedAt: string | null;
   pausedReason: string | null;
   churnReason: string | null;

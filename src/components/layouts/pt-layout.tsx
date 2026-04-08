@@ -259,15 +259,30 @@ const ptSearchRoutes: SearchResult[] = [
   },
 ];
 
-function getPtRouteTitle(pathname: string) {
-  if (pathname.startsWith("/settings/")) return "Settings";
-  if (pathname.startsWith("/pt/clients/")) return "Client Detail";
+function getPtRouteHeader(pathname: string) {
+  if (pathname.startsWith("/settings/")) {
+    return {
+      title: "Settings",
+      description: "Adjust workspace defaults and account controls.",
+    };
+  }
+
+  if (pathname.startsWith("/pt/clients/")) {
+    return {
+      title: "Client Detail",
+      description:
+        "Review client state, planning, communication, and follow-ups in one place.",
+    };
+  }
 
   const matchedItem = [...ptNavGroups.flatMap((group) => group.items)]
     .sort((a, b) => b.to.length - a.to.length)
     .find((item) => pathname.startsWith(item.to));
 
-  return matchedItem?.label ?? "PT Workspace";
+  return {
+    title: matchedItem?.label ?? "PT Workspace",
+    description: matchedItem?.description ?? null,
+  };
 }
 
 function getHeaderPillClassName(isLightMode: boolean) {
@@ -321,7 +336,7 @@ function sidebarLinkClasses(
   collapsed: boolean,
 ) {
   return cn(
-    "group relative flex items-start gap-3 rounded-[22px] border text-sm font-medium transition-all duration-200",
+    "group relative flex items-center gap-3 rounded-[22px] border text-sm font-medium transition-all duration-200",
     collapsed ? "justify-center px-2.5 py-2.5" : "px-3.5 py-3",
     isActive
       ? isLightMode
@@ -433,16 +448,6 @@ function SidebarNav({
                           >
                             {item.label}
                           </p>
-                          <p
-                            className={cn(
-                              "text-xs leading-4.5",
-                              isLightMode
-                                ? "text-[oklch(var(--text-muted))]"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {item.description}
-                          </p>
                         </motion.div>
                       ) : null}
                     </>
@@ -473,7 +478,7 @@ export function PtLayout() {
   const { patchBootstrap } = useBootstrapAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
-  const pageTitle = getPtRouteTitle(location.pathname);
+  const pageHeader = getPtRouteHeader(location.pathname);
   const errorMessage =
     error?.message ??
     authError?.message ??
@@ -899,9 +904,16 @@ export function PtLayout() {
                           <Menu className="h-5 w-5 [stroke-width:1.7]" />
                           <span className="sr-only">Open PT navigation</span>
                         </Button>
-                        <p className="truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]">
-                          {pageTitle}
-                        </p>
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]">
+                            {pageHeader.title}
+                          </p>
+                          {pageHeader.description ? (
+                            <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
+                              {pageHeader.description}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">

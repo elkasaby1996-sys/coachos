@@ -70,8 +70,11 @@ import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
   EmptyState,
+  LifecycleBadge,
+  RiskBadge,
   StatCard,
   StatusPill,
+  TagInfoBadge,
 } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import {
@@ -83,6 +86,7 @@ import {
   getClientLifecycleMeta,
   getClientLifecycleReason,
   getClientRiskFlagMeta,
+  getClientRiskState,
   normalizeClientRiskFlags,
 } from "../../lib/client-lifecycle";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
@@ -256,11 +260,11 @@ const buildMetricDelta = ({
 }) => {
   if (typeof delta !== "number" || Number.isNaN(delta)) return null;
   const rounded =
-    decimals > 0
-      ? Number(delta.toFixed(decimals))
-      : Math.round(delta);
+    decimals > 0 ? Number(delta.toFixed(decimals)) : Math.round(delta);
   const absolute =
-    decimals > 0 ? Math.abs(rounded).toFixed(decimals) : Math.abs(rounded).toString();
+    decimals > 0
+      ? Math.abs(rounded).toFixed(decimals)
+      : Math.abs(rounded).toString();
   const prefix = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
   const tone =
     rounded === 0
@@ -338,6 +342,7 @@ type PtClientProfile = {
   goal: string | null;
   status: string | null;
   lifecycle_state: string | null;
+  manual_risk_flag: boolean | null;
   lifecycle_changed_at: string | null;
   paused_reason: string | null;
   churn_reason: string | null;
@@ -919,7 +924,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
         )
         .eq("id", clientId ?? "")
         .eq("workspace_id", workspaceQuery.data ?? "")
@@ -1604,10 +1609,7 @@ export function PtClientDetailPage() {
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
-    enabled:
-      !!clientId &&
-      !!habitsToday &&
-      needsHabitsSummaryData,
+    enabled: !!clientId && !!habitsToday && needsHabitsSummaryData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
@@ -1639,10 +1641,7 @@ export function PtClientDetailPage() {
 
   const habitsStreakQuery = useQuery({
     queryKey: ["pt-client-habits-streak", clientId, habitsToday],
-    enabled:
-      !!clientId &&
-      !!habitsToday &&
-      needsHabitsSummaryData,
+    enabled: !!clientId && !!habitsToday && needsHabitsSummaryData,
     queryFn: async () => {
       const streakStart = addDaysToDateString(habitsToday, -29);
       const { data, error } = await supabase
@@ -2003,7 +2002,12 @@ export function PtClientDetailPage() {
   const invalidateProgramAndSchedule = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+        queryKey: [
+          "assigned-workouts-upcoming",
+          clientId,
+          todayKey,
+          planEndKey,
+        ],
       }),
       queryClient.invalidateQueries({
         queryKey: ["client-program-active", clientId],
@@ -2306,7 +2310,8 @@ export function PtClientDetailPage() {
     );
     syncProgramOverridesCache(activeProgram.id, (current) => {
       const nextRow = {
-        id: current.find((row) => row.override_date === overrideDate)?.id ??
+        id:
+          current.find((row) => row.override_date === overrideDate)?.id ??
           `${activeProgram.id}:${overrideDate}`,
         override_date: overrideDate,
         workout_template_id: overrideIsRest ? null : overrideTemplateId,
@@ -2321,15 +2326,30 @@ export function PtClientDetailPage() {
               },
       } satisfies ProgramOverrideRow;
 
-      return [...current.filter((row) => row.override_date !== overrideDate), nextRow]
-        .filter((row) => row.override_date && row.override_date >= todayKey && row.override_date <= planEndKey)
+      return [
+        ...current.filter((row) => row.override_date !== overrideDate),
+        nextRow,
+      ]
+        .filter(
+          (row) =>
+            row.override_date &&
+            row.override_date >= todayKey &&
+            row.override_date <= planEndKey,
+        )
         .sort((a, b) =>
-          String(a.override_date ?? "").localeCompare(String(b.override_date ?? "")),
+          String(a.override_date ?? "").localeCompare(
+            String(b.override_date ?? ""),
+          ),
         );
     });
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+        queryKey: [
+          "assigned-workouts-upcoming",
+          clientId,
+          todayKey,
+          planEndKey,
+        ],
       }),
       queryClient.invalidateQueries({
         queryKey: [
@@ -2367,7 +2387,9 @@ export function PtClientDetailPage() {
       setAssignMessage(getErrorMessage(error));
       return;
     }
-    const existing = (upcomingQuery.data ?? []).find((workout) => workout.id === id);
+    const existing = (upcomingQuery.data ?? []).find(
+      (workout) => workout.id === id,
+    );
     syncAssignedWorkoutCaches({
       row: buildAssignedWorkoutCacheRow({
         id,
@@ -2375,7 +2397,9 @@ export function PtClientDetailPage() {
         workoutTemplateId: existing?.workout_template_id ?? null,
         status,
         completedAt:
-          status === "completed" ? (payload as { completed_at?: string }).completed_at ?? null : null,
+          status === "completed"
+            ? ((payload as { completed_at?: string }).completed_at ?? null)
+            : null,
         dayType: existing?.day_type ?? null,
       }),
       previousScheduledDate: existing?.scheduled_date ?? null,
@@ -2441,7 +2465,7 @@ export function PtClientDetailPage() {
         status: editStatus,
         completedAt:
           editStatus === "completed"
-            ? existing?.completed_at ?? new Date().toISOString()
+            ? (existing?.completed_at ?? new Date().toISOString())
             : null,
         dayType: existing?.day_type ?? null,
         coachNote: existing?.coach_note ?? null,
@@ -2503,7 +2527,9 @@ export function PtClientDetailPage() {
       setAssignMessage(getErrorMessage(error));
       return;
     }
-    const existing = (upcomingQuery.data ?? []).find((workout) => workout.id === id);
+    const existing = (upcomingQuery.data ?? []).find(
+      (workout) => workout.id === id,
+    );
     syncAssignedWorkoutCaches({
       row: buildAssignedWorkoutCacheRow({
         id,
@@ -2718,6 +2744,19 @@ export function PtClientDetailPage() {
     () => normalizeClientRiskFlags(clientOperationalQuery.data?.risk_flags),
     [clientOperationalQuery.data?.risk_flags],
   );
+  const clientRiskState = useMemo(
+    () =>
+      getClientRiskState({
+        lifecycle_state: clientSnapshot?.lifecycle_state,
+        manual_risk_flag: clientSnapshot?.manual_risk_flag,
+        risk_flags: clientOperationalQuery.data?.risk_flags,
+      }),
+    [
+      clientOperationalQuery.data?.risk_flags,
+      clientSnapshot?.lifecycle_state,
+      clientSnapshot?.manual_risk_flag,
+    ],
+  );
 
   const upcomingCheckins = useMemo(() => {
     if (!checkinsRows || checkinsRows.length === 0) return [];
@@ -2785,6 +2824,15 @@ export function PtClientDetailPage() {
   const clientAttentionReasons = useMemo(() => {
     const reasons: Array<{ id: string; title: string; helper: string }> = [];
 
+    if (clientSnapshot?.manual_risk_flag) {
+      reasons.push({
+        id: "manual-risk",
+        title: "Client is manually flagged at risk",
+        helper:
+          "A PT has manually marked this client as needing extra attention.",
+      });
+    }
+
     if (onboardingSnapshot && onboardingSnapshot.status !== "completed") {
       reasons.push({
         id: "onboarding",
@@ -2825,6 +2873,7 @@ export function PtClientDetailPage() {
   }, [
     adherenceStat,
     clientRiskFlags,
+    clientSnapshot?.manual_risk_flag,
     latestClientActivityAt,
     onboardingSnapshot,
     onboardingStatusMeta.description,
@@ -3194,8 +3243,7 @@ export function PtClientDetailPage() {
           ? {
               ...prev,
               status: updated.status ?? prev.status,
-              lifecycle_state:
-                updated.lifecycle_state ?? prev.lifecycle_state ?? "active",
+              lifecycle_state: updated.lifecycle_state ?? prev.lifecycle_state,
               lifecycle_changed_at:
                 updated.lifecycle_changed_at ?? prev.lifecycle_changed_at,
               paused_reason: updated.paused_reason ?? null,
@@ -3211,7 +3259,7 @@ export function PtClientDetailPage() {
                 ...prev,
                 status: updated.status ?? prev.status,
                 lifecycle_state:
-                  updated.lifecycle_state ?? prev.lifecycle_state ?? "active",
+                  updated.lifecycle_state ?? prev.lifecycle_state,
                 lifecycle_changed_at:
                   updated.lifecycle_changed_at ?? prev.lifecycle_changed_at,
                 paused_reason: updated.paused_reason ?? null,
@@ -3232,6 +3280,8 @@ export function PtClientDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["pt-checkins-queue"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
     ]);
 
     setLifecycleActionStatus("idle");
@@ -3239,6 +3289,61 @@ export function PtClientDetailPage() {
     setToastVariant("success");
     setToastMessage(
       `Client moved to ${lifecycleTargetState.replace(/_/g, " ")}.`,
+    );
+  };
+
+  const handleManualRiskToggle = async (nextValue: boolean) => {
+    if (!clientSnapshot?.id) return;
+
+    const { data, error } = await supabase.rpc("pt_set_client_manual_risk", {
+      p_client_id: clientSnapshot.id,
+      p_manual_risk_flag: nextValue,
+    });
+
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(
+        getSupabaseErrorMessage(error, "Could not update risk status."),
+      );
+      return;
+    }
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (updated) {
+      setClientProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              manual_risk_flag:
+                updated.manual_risk_flag ?? prev.manual_risk_flag ?? false,
+              updated_at: updated.updated_at ?? prev.updated_at,
+            }
+          : prev,
+      );
+
+      queryClient.setQueryData(
+        ["pt-client-profile", workspaceQuery.data, clientId],
+        (prev: PtClientProfile | undefined) =>
+          prev
+            ? {
+                ...prev,
+                manual_risk_flag:
+                  updated.manual_risk_flag ?? prev.manual_risk_flag ?? false,
+                updated_at: updated.updated_at ?? prev.updated_at,
+              }
+            : prev,
+      );
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
+    ]);
+    setToastVariant("success");
+    setToastMessage(
+      nextValue ? "Client marked at risk." : "At-risk flag cleared.",
     );
   };
 
@@ -3753,15 +3858,17 @@ export function PtClientDetailPage() {
                       <h2 className="text-xl font-semibold tracking-tight">
                         {clientSnapshot?.display_name ?? "Client profile"}
                       </h2>
-                      <StatusPill
-                        status={
-                          clientSnapshot?.lifecycle_state ??
-                          clientSnapshot?.status ??
-                          "active"
-                        }
+                      <LifecycleBadge
+                        lifecycleState={clientSnapshot?.lifecycle_state}
                       />
+                      <RiskBadge riskState={clientRiskState} />
                       {onboardingSnapshot ? (
-                        <StatusPill status={onboardingSnapshot.status} />
+                        <TagInfoBadge
+                          label={onboardingStatusMeta.label}
+                          variant={onboardingStatusMeta.variant}
+                          title="Onboarding status"
+                          description={onboardingStatusMeta.description}
+                        />
                       ) : null}
                       {hasClientAttentionFlag ? (
                         <button
@@ -3777,9 +3884,13 @@ export function PtClientDetailPage() {
                         const meta = getClientRiskFlagMeta(flag);
                         if (!meta) return null;
                         return (
-                          <Badge key={flag} variant={meta.variant}>
-                            {meta.shortLabel}
-                          </Badge>
+                          <TagInfoBadge
+                            key={flag}
+                            label={meta.shortLabel}
+                            variant={meta.variant}
+                            title={meta.label}
+                            description={meta.description}
+                          />
                         );
                       })}
                     </div>
@@ -3852,9 +3963,15 @@ export function PtClientDetailPage() {
                         Mark paused
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => openLifecycleDialog("at_risk")}
+                        onClick={() =>
+                          void handleManualRiskToggle(
+                            !(clientSnapshot?.manual_risk_flag ?? false),
+                          )
+                        }
                       >
-                        Mark at risk
+                        {clientSnapshot?.manual_risk_flag
+                          ? "Clear at risk"
+                          : "Mark at risk"}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("completed")}
@@ -3879,12 +3996,8 @@ export function PtClientDetailPage() {
                         Lifecycle
                       </span>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <StatusPill
-                          status={
-                            clientSnapshot?.lifecycle_state ??
-                            clientSnapshot?.status ??
-                            "active"
-                          }
+                        <LifecycleBadge
+                          lifecycleState={clientSnapshot?.lifecycle_state}
                         />
                         {clientSnapshot?.lifecycle_changed_at ? (
                           <span className="text-xs text-muted-foreground">
@@ -3899,9 +4012,30 @@ export function PtClientDetailPage() {
                       <span className="block text-xs text-muted-foreground">
                         Onboarding
                       </span>
-                      <span className="mt-0.5 block font-medium">
-                        {onboardingStatusMeta.label}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                        <TagInfoBadge
+                          label={onboardingStatusMeta.label}
+                          variant={onboardingStatusMeta.variant}
+                          title="Onboarding status"
+                          description={onboardingStatusMeta.description}
+                        />
+                      </div>
+                    </div>
+                    <div className="ops-stat">
+                      <span className="block text-xs text-muted-foreground">
+                        Risk
                       </span>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                        <RiskBadge riskState={clientRiskState} />
+                        {clientSnapshot?.manual_risk_flag ? (
+                          <TagInfoBadge
+                            label="Manual flag"
+                            variant="danger"
+                            title="Manual at-risk flag"
+                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
+                          />
+                        ) : null}
+                      </div>
                     </div>
                     <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
@@ -3972,25 +4106,35 @@ export function PtClientDetailPage() {
                         Risk signals
                       </span>
                       <div className="mt-1 flex flex-wrap gap-2">
+                        {clientSnapshot?.manual_risk_flag ? (
+                          <TagInfoBadge
+                            label="Manual at-risk flag"
+                            variant="danger"
+                            title="Manual at-risk flag"
+                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
+                            className="text-[10px]"
+                          />
+                        ) : null}
                         {clientRiskFlags.length > 0 ? (
                           clientRiskFlags.map((flag) => {
                             const meta = getClientRiskFlagMeta(flag);
                             if (!meta) return null;
                             return (
-                              <Badge
+                              <TagInfoBadge
                                 key={flag}
+                                label={meta.shortLabel}
                                 variant={meta.variant}
+                                title={meta.label}
+                                description={meta.description}
                                 className="text-[10px]"
-                              >
-                                {meta.shortLabel}
-                              </Badge>
+                              />
                             );
                           })
-                        ) : (
+                        ) : !clientSnapshot?.manual_risk_flag ? (
                           <span className="text-sm font-medium text-muted-foreground">
                             No active risk flags
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
@@ -4068,18 +4212,10 @@ export function PtClientDetailPage() {
             </div>
           </DashboardCard>
 
-          <section className="space-y-3 lg:col-span-2">
-            <div className="space-y-1 px-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                Live Client Signals
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Secondary signals supporting the coaching decision.
-              </p>
-            </div>
+          <section className="lg:col-span-2 lg:h-full">
             {statsLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-                {Array.from({ length: 5 }).map((_, index) => (
+              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
+                {Array.from({ length: 4 }).map((_, index) => (
                   <Card key={index} className="border-border/70 bg-card/80">
                     <CardHeader className="space-y-2">
                       <Skeleton className="h-3 w-24" />
@@ -4089,13 +4225,14 @@ export function PtClientDetailPage() {
                 ))}
               </div>
             ) : clientSnapshot ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
                 <StatCard
                   label="Adherence"
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
                   helper="Last 7 days"
                   icon={Sparkles}
-                  className="h-full min-h-[170px]"
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                   delta={buildMetricDelta({
                     delta: adherenceDelta,
                     suffix: "%",
@@ -4106,7 +4243,8 @@ export function PtClientDetailPage() {
                   value={habitStreak > 0 ? `${habitStreak}d` : "--"}
                   helper="Habit streak"
                   icon={Rocket}
-                  className="h-full min-h-[170px]"
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                   delta={buildMetricDelta({
                     delta: habitStreak - previousHabitStreak,
                     suffix: "d",
@@ -4121,21 +4259,16 @@ export function PtClientDetailPage() {
                       : "No check-ins"
                   }
                   icon={CalendarDays}
-                  className="h-full min-h-[170px]"
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                 />
                 <StatCard
                   label="Last workout"
                   value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
                   helper={lastWorkoutStatus ?? "No workouts"}
                   icon={Sparkles}
-                  className="h-full min-h-[170px]"
-                />
-                <StatCard
-                  label="Program lane"
-                  value={activeProgram?.program_template?.name ?? "--"}
-                  helper={activeProgram?.start_date ?? "No active program"}
-                  icon={Rocket}
-                  className="h-full min-h-[170px]"
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                 />
               </div>
             ) : (
@@ -4416,7 +4549,9 @@ export function PtClientDetailPage() {
                 <TabsContent value="progress">
                   <Suspense fallback={<ClientDetailDeferredTabFallback />}>
                     <LazyPtClientProgressTab
-                      hasBaselineSubmission={Boolean(baselineEntryQuery.data?.id)}
+                      hasBaselineSubmission={Boolean(
+                        baselineEntryQuery.data?.id,
+                      )}
                       onOpenHabits={() => setActiveTab("habits")}
                       onOpenBaseline={() => setActiveTab("baseline")}
                       onOpenWorkout={() => setActiveTab("workout")}
@@ -4962,31 +5097,33 @@ export function PtClientDetailPage() {
                   ) : selectedCheckinAnswersQuery.data &&
                     selectedCheckinAnswersQuery.data.length > 0 ? (
                     <div className="space-y-3">
-                      {selectedCheckinAnswersWindow.visibleRows.map((answer, index) => (
-                        <div
-                          key={answer.id}
-                          className="grid gap-2 rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
-                        >
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                              Prompt {index + 1}
-                            </p>
-                            <p className="text-sm font-medium leading-6 text-foreground">
-                              {answer.question?.question_text ??
-                                answer.question?.prompt ??
-                                "Question"}
-                            </p>
+                      {selectedCheckinAnswersWindow.visibleRows.map(
+                        (answer, index) => (
+                          <div
+                            key={answer.id}
+                            className="grid gap-2 rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
+                          >
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                Prompt {index + 1}
+                              </p>
+                              <p className="text-sm font-medium leading-6 text-foreground">
+                                {answer.question?.question_text ??
+                                  answer.question?.prompt ??
+                                  "Question"}
+                              </p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                Answer
+                              </p>
+                              <p className="rounded-xl border border-border/50 bg-background/45 px-3 py-2 text-sm leading-6 text-foreground">
+                                {renderCheckinAnswerValue(answer)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                              Answer
-                            </p>
-                            <p className="rounded-xl border border-border/50 bg-background/45 px-3 py-2 text-sm leading-6 text-foreground">
-                              {renderCheckinAnswerValue(answer)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                       {selectedCheckinAnswersWindow.hasHiddenRows ? (
                         <div className="flex justify-center pt-1">
                           <Button
@@ -5678,12 +5815,12 @@ function PtClientScheduleCard({
   const [dayNote, setDayNote] = useState("");
   const [dayNoteStatus, setDayNoteStatus] = useState<"idle" | "saving">("idle");
   const [dayNoteMessage, setDayNoteMessage] = useState<string | null>(null);
-  const [addWorkoutStatus, setAddWorkoutStatus] = useState<
-    "idle" | "saving"
-  >("idle");
-  const [addWorkoutMessage, setAddWorkoutMessage] = useState<
-    string | null
-  >(null);
+  const [addWorkoutStatus, setAddWorkoutStatus] = useState<"idle" | "saving">(
+    "idle",
+  );
+  const [addWorkoutMessage, setAddWorkoutMessage] = useState<string | null>(
+    null,
+  );
   const [nutritionAssignOpen, setNutritionAssignOpen] = useState(false);
   const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(
     null,
@@ -6434,7 +6571,9 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "completed")
                 }
-                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
+                disabled={
+                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                }
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Mark complete
@@ -6445,7 +6584,9 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "skipped")
                 }
-                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
+                disabled={
+                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                }
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 Mark missed
@@ -8854,4 +8995,3 @@ function PtClientLogsTab({
     </Card>
   );
 }
-

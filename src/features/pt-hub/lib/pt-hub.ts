@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useSessionAuth } from "../../../lib/auth";
 import {
+  isClientAtRisk,
   matchesClientSegment,
   normalizeClientLifecycleState,
   type ClientSegmentKey,
@@ -167,6 +168,7 @@ type ClientRow = {
   id: string;
   workspace_id: string | null;
   status: string | null;
+  lifecycle_state: string | null;
   display_name: string | null;
   goal: string | null;
   created_at: string | null;
@@ -179,6 +181,7 @@ type PtClientsSummaryRow = {
   user_id: string | null;
   status: string | null;
   lifecycle_state: string | null;
+  manual_risk_flag: boolean | null;
   lifecycle_changed_at: string | null;
   paused_reason: string | null;
   churn_reason: string | null;
@@ -290,7 +293,9 @@ function createTransformationId(seed: string, index: number) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return normalizedSeed ? `${normalizedSeed}-${index + 1}` : `transformation-${index + 1}`;
+  return normalizedSeed
+    ? `${normalizedSeed}-${index + 1}`
+    : `transformation-${index + 1}`;
 }
 
 function normalizeTestimonials(raw?: unknown) {
@@ -349,10 +354,7 @@ function normalizeTransformations(raw?: unknown) {
     })
     .filter(
       (item) =>
-        item.title ||
-        item.summary ||
-        item.beforeImageUrl ||
-        item.afterImageUrl,
+        item.title || item.summary || item.beforeImageUrl || item.afterImageUrl,
     );
 }
 
@@ -393,15 +395,14 @@ function isLeadInDateWindow(submittedAt: string, startDate: Date) {
   return parsed >= startDate;
 }
 
-function isClientActive(status: string | null) {
-  if (!status) return true;
-  const normalized = status.trim().toLowerCase();
-  return !["archived", "inactive", "paused"].includes(normalized);
+function isWorkspaceActiveClient(lifecycleState: string | null | undefined) {
+  const lifecycle = normalizeClientLifecycleState(lifecycleState);
+  return ["invited", "onboarding", "active"].includes(lifecycle);
 }
 
 function isLifecycleCoached(lifecycleState: string | null | undefined) {
   const lifecycle = normalizeClientLifecycleState(lifecycleState);
-  return ["active", "at_risk"].includes(lifecycle);
+  return lifecycle === "active";
 }
 
 function mapPtClientSummary(
@@ -421,7 +422,8 @@ function mapPtClientSummary(
     workspaceName,
     displayName: row.display_name?.trim() || "Client",
     status: row.status?.trim() || "active",
-    lifecycleState: row.lifecycle_state?.trim() || "active",
+    lifecycleState: row.lifecycle_state?.trim() || "unknown",
+    manualRiskFlag: Boolean(row.manual_risk_flag),
     lifecycleChangedAt: row.lifecycle_changed_at,
     pausedReason: row.paused_reason ?? null,
     churnReason: row.churn_reason ?? null,
@@ -493,7 +495,7 @@ export function usePtHubWorkspaces() {
         const { data: clients, error: clientsError } = await supabase
           .from("clients")
           .select(
-            "id, workspace_id, status, display_name, goal, created_at, updated_at",
+            "id, workspace_id, status, lifecycle_state, display_name, goal, created_at, updated_at",
           )
           .in("workspace_id", workspaceIds)
           .returns<ClientRow[]>();
@@ -501,7 +503,10 @@ export function usePtHubWorkspaces() {
         if (clientsError) throw clientsError;
 
         clientCountMap = (clients ?? []).reduce((map, client) => {
-          if (!client.workspace_id || !isClientActive(client.status))
+          if (
+            !client.workspace_id ||
+            !isWorkspaceActiveClient(client.lifecycle_state)
+          )
             return map;
           map.set(client.workspace_id, (map.get(client.workspace_id) ?? 0) + 1);
           return map;
@@ -1100,7 +1105,9 @@ export function usePtHubAnalytics() {
           isLifecycleCoached(client.lifecycleState),
         ).length,
         profileCompletionPercent: readinessQuery.data?.completionPercent ?? 0,
-        testimonialCountLabel: String(profileQuery.data?.testimonials.length ?? 0),
+        testimonialCountLabel: String(
+          profileQuery.data?.testimonials.length ?? 0,
+        ),
         transformationsCountLabel: String(
           profileQuery.data?.transformations.length ?? 0,
         ),
@@ -1164,7 +1171,8 @@ export function usePtHubClients() {
   const { user } = useSessionAuth();
   const workspacesQuery = usePtHubWorkspaces();
   const workspaceIdsKey = useMemo(
-    () => (workspacesQuery.data ?? []).map((workspace) => workspace.id).join("|"),
+    () =>
+      (workspacesQuery.data ?? []).map((workspace) => workspace.id).join("|"),
     [workspacesQuery.data],
   );
 
@@ -1224,8 +1232,7 @@ export function usePtHubClientStats() {
         activeClients: row?.active_clients ?? 0,
         pausedClients: row?.paused_clients ?? 0,
         atRiskClients: row?.at_risk_clients ?? 0,
-        onboardingIncompleteClients:
-          row?.onboarding_incomplete_clients ?? 0,
+        onboardingIncompleteClients: row?.onboarding_incomplete_clients ?? 0,
         overdueCheckinClients: row?.overdue_checkin_clients ?? 0,
       } satisfies PTClientStatsSnapshot;
     },
@@ -1243,15 +1250,14 @@ export function usePtHubClientsPage(params: {
   const { user } = useSessionAuth();
   const page = Math.max(0, params.page);
   const pageSize = params.pageSize ?? 25;
-  const workspaceId = params.workspaceId && params.workspaceId !== "all"
-    ? params.workspaceId
-    : null;
-  const lifecycle = params.lifecycle && params.lifecycle !== "all"
-    ? params.lifecycle
-    : null;
-  const segment = params.segment && params.segment !== "all"
-    ? params.segment
-    : null;
+  const workspaceId =
+    params.workspaceId && params.workspaceId !== "all"
+      ? params.workspaceId
+      : null;
+  const lifecycle =
+    params.lifecycle && params.lifecycle !== "all" ? params.lifecycle : null;
+  const segment =
+    params.segment && params.segment !== "all" ? params.segment : null;
   const search = normalizePtHubClientSearch(params.search);
 
   return useQuery({
@@ -1307,7 +1313,7 @@ export function getPtClientBaseStats(clients: PTClientSummary[]) {
       normalizeClientLifecycleState(client.lifecycleState) === "paused",
   ).length;
   const atRiskClients = clients.filter((client) =>
-    matchesClientSegment(client, "at_risk"),
+    isClientAtRisk(client),
   ).length;
   const onboardingIncompleteClients = clients.filter((client) =>
     matchesClientSegment(client, "onboarding_incomplete"),

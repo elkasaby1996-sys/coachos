@@ -1,6 +1,19 @@
+import { useState } from "react";
 import { Badge } from "../badge";
 import type { BadgeVariant } from "../badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../dialog";
 import { cn } from "../../../lib/utils";
+import {
+  getClientLifecycleMeta,
+  getClientRiskStateMeta,
+  type ClientRiskState,
+} from "../../../lib/client-lifecycle";
 import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
 
 const defaultStatusMap: Record<
@@ -85,6 +98,107 @@ export function StatusPill({
     <Badge variant={pill.variant} className={cn("tracking-[0.2em]", className)}>
       {pill.label}
     </Badge>
+  );
+}
+
+export function TagInfoBadge({
+  label,
+  variant,
+  title,
+  description,
+  disabled = false,
+  className,
+}: {
+  label: string;
+  variant: BadgeVariant;
+  title: string;
+  description: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (disabled) {
+    return (
+      <Badge variant={variant} className={cn("tracking-[0.2em]", className)}>
+        {label}
+      </Badge>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        aria-label={`${label}: show explanation`}
+      >
+        <Badge
+          variant={variant}
+          className={cn(
+            "tracking-[0.2em] transition-transform duration-200 hover:-translate-y-px",
+            className,
+          )}
+        >
+          {label}
+        </Badge>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function LifecycleBadge({
+  lifecycleState,
+  className,
+  interactive = true,
+}: {
+  lifecycleState: string | null | undefined;
+  className?: string;
+  interactive?: boolean;
+}) {
+  const pill = getClientLifecycleMeta(lifecycleState);
+
+  return (
+    <TagInfoBadge
+      label={pill.label}
+      variant={pill.variant}
+      title={`${pill.label} lifecycle`}
+      description={pill.description}
+      disabled={!interactive || pill.label === "Active"}
+      className={className}
+    />
+  );
+}
+
+export function RiskBadge({
+  riskState,
+  className,
+  interactive = true,
+}: {
+  riskState: ClientRiskState;
+  className?: string;
+  interactive?: boolean;
+}) {
+  const pill = getClientRiskStateMeta(riskState);
+
+  return (
+    <TagInfoBadge
+      label={pill.label}
+      variant={pill.variant}
+      title={`${pill.label} risk state`}
+      description={pill.description}
+      disabled={!interactive}
+      className={className}
+    />
   );
 }
 

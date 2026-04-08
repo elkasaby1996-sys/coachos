@@ -56,7 +56,8 @@ export function PtClientsPage() {
   const totalCount = clientsQuery.data?.totalCount ?? 0;
   const pageSize = clientsQuery.data?.pageSize ?? 25;
   const rangeStart = totalCount === 0 ? 0 : page * pageSize + 1;
-  const rangeEnd = totalCount === 0 ? 0 : Math.min((page + 1) * pageSize, totalCount);
+  const rangeEnd =
+    totalCount === 0 ? 0 : Math.min((page + 1) * pageSize, totalCount);
   const isTableLoading =
     workspaceLoading ||
     clientsQuery.isLoading ||
@@ -153,7 +154,6 @@ export function PtClientsPage() {
               <option value="onboarding">Onboarding</option>
               <option value="paused">Paused</option>
               <option value="active">Active</option>
-              <option value="at_risk">At risk</option>
               <option value="completed">Completed</option>
               <option value="churned">Churned</option>
             </select>
@@ -208,7 +208,9 @@ export function PtClientsPage() {
               variant="secondary"
               size="sm"
               onClick={() => setPage((current) => Math.max(0, current - 1))}
-              disabled={page === 0 || clientsQuery.isFetching || workspaceLoading}
+              disabled={
+                page === 0 || clientsQuery.isFetching || workspaceLoading
+              }
             >
               Previous
             </Button>

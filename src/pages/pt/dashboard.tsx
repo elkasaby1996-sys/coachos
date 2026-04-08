@@ -26,7 +26,12 @@ import {
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatCard } from "../../components/pt/dashboard/StatCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
-import { EmptyState } from "../../components/ui/coachos";
+import {
+  EmptyState,
+  LifecycleBadge,
+  RiskBadge,
+  TagInfoBadge,
+} from "../../components/ui/coachos";
 import {
   Card,
   CardContent,
@@ -42,7 +47,7 @@ import {
   checkinOperationalStatusMap,
   getCheckinOperationalState,
 } from "../../lib/checkin-review";
-import { getSemanticToneClasses } from "../../lib/semantic-status";
+import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 type ClientRecord = {
@@ -50,6 +55,8 @@ type ClientRecord = {
   workspace_id: string;
   user_id: string;
   status: string | null;
+  lifecycle_state: string | null;
+  manual_risk_flag: boolean | null;
   display_name: string | null;
   created_at: string;
   tags: string[] | null;
@@ -96,6 +103,7 @@ type AttentionTone = "neutral" | "warning" | "danger";
 type ClientAttentionRow = {
   id: string;
   name: string;
+  lifecycleState: string | null;
   lifecycle: string;
   lifecycleTone: AttentionTone;
   onboardingLabel: string | null;
@@ -308,14 +316,37 @@ export function PtDashboardPage() {
     return Math.max(0, Math.floor((today - ms) / (1000 * 60 * 60 * 24)));
   };
 
-  const toneClassName = (tone: AttentionTone) =>
-    getSemanticToneClasses(tone).badge;
+  const getAttentionDescription = (label: string) => {
+    switch (label) {
+      case "Manual at-risk flag":
+        return "A PT manually marked this client as needing extra attention.";
+      case "Onboarding review":
+        return "The client has submitted onboarding and it now needs PT review.";
+      case "Onboarding":
+        return "The client is still moving through onboarding steps.";
+      case "Check-in overdue":
+        return "A scheduled check-in is overdue and needs follow-up.";
+      case "Check-in due":
+        return "A scheduled check-in is currently due.";
+      case "Upcoming check-in":
+        return "A scheduled check-in is coming up soon.";
+      case "Long idle gap":
+        return "Recent client activity has been quiet long enough to need review.";
+      case "Recent inactivity":
+        return "Client activity has slowed and may need follow-up.";
+      case "Lifecycle review":
+        return "The lifecycle state needs attention because this client is not currently active.";
+      case "Adherence low":
+        return "Recent adherence is low enough that the plan may need adjustment.";
+      default:
+        return "This tag highlights why the client is being surfaced in the coaching queue.";
+    }
+  };
 
   const activeClientsCount = useMemo(
     () =>
       clients.filter(
-        (client) =>
-          (client.status ?? "active").toLowerCase() === "active",
+        (client) => client.lifecycle_state?.toLowerCase() === "active",
       ).length,
     [clients],
   );
@@ -389,13 +420,14 @@ export function PtDashboardPage() {
   }, [checkinRows, todayStr]);
   const activeClientsDelta = useMemo(() => {
     const currentWindow = clients.filter((client) => {
-      const status = (client.status ?? "active").toLowerCase();
-      return status === "active" && client.created_at >= addDaysToDateString(todayStr, -6);
+      return (
+        client.lifecycle_state?.toLowerCase() === "active" &&
+        client.created_at >= addDaysToDateString(todayStr, -6)
+      );
     }).length;
     const previousWindow = clients.filter((client) => {
-      const status = (client.status ?? "active").toLowerCase();
       return (
-        status === "active" &&
+        client.lifecycle_state?.toLowerCase() === "active" &&
         client.created_at >= previousWeekStart &&
         client.created_at <= previousWeekEnd
       );
@@ -415,8 +447,14 @@ export function PtDashboardPage() {
       return Math.round((completed / rows.length) * 100);
     };
 
-    const currentWindow = getWindowAdherence(addDaysToDateString(todayStr, -6), todayStr);
-    const previousWindow = getWindowAdherence(previousWeekStart, previousWeekEnd);
+    const currentWindow = getWindowAdherence(
+      addDaysToDateString(todayStr, -6),
+      todayStr,
+    );
+    const previousWindow = getWindowAdherence(
+      previousWeekStart,
+      previousWeekEnd,
+    );
     if (currentWindow === null || previousWindow === null) return null;
     return currentWindow - previousWindow;
   }, [assignedWorkouts, previousWeekEnd, previousWeekStart, todayStr]);
@@ -459,9 +497,10 @@ export function PtDashboardPage() {
       const name = client.display_name?.trim()
         ? client.display_name
         : `Client ${client.user_id.slice(0, 6)}`;
-      const lifecycle = normalizeLabel(client.status);
+      const lifecycleMeta = getClientLifecycleMeta(client.lifecycle_state);
+      const lifecycle = lifecycleMeta.label;
       const lifecycleTone: AttentionTone =
-        (client.status ?? "active").toLowerCase() === "active"
+        client.lifecycle_state?.toLowerCase() === "active"
           ? "neutral"
           : "warning";
       const onboardingStatus =
@@ -501,7 +540,11 @@ export function PtDashboardPage() {
       let attentionTone: AttentionTone = "neutral";
       let attentionScore = 0;
 
-      if (
+      if (client.manual_risk_flag) {
+        attentionLabel = "Manual at-risk flag";
+        attentionTone = "danger";
+        attentionScore = 82;
+      } else if (
         onboardingStatus === "review_needed" ||
         onboardingStatus === "submitted"
       ) {
@@ -582,6 +625,7 @@ export function PtDashboardPage() {
       return {
         id: client.id,
         name,
+        lifecycleState: client.lifecycle_state,
         lifecycle,
         lifecycleTone,
         onboardingLabel,
@@ -612,15 +656,15 @@ export function PtDashboardPage() {
   )
     ? "Clients Needing Attention"
     : "Client Overview";
-  const priorityClientRows = clientRows.slice(0, clientRows.length === 1 ? 1 : 6);
+  const priorityClientRows = clientRows.slice(
+    0,
+    clientRows.length === 1 ? 1 : 6,
+  );
   const showSingleClientCard = priorityClientRows.length === 1;
 
   return (
     <div className="space-y-6">
-      <WorkspacePageHeader
-        title="Coach Dashboard"
-        className="py-2.5 sm:py-3"
-      />
+      <WorkspacePageHeader title="Coach Dashboard" className="py-2.5 sm:py-3" />
 
       {loadError ? (
         <Card className="border-destructive/40">
@@ -739,21 +783,19 @@ export function PtDashboardPage() {
                         </span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
-                            client.lifecycleTone,
-                          )}`}
-                        >
-                          {client.lifecycle}
-                        </span>
+                        <LifecycleBadge
+                          lifecycleState={client.lifecycleState}
+                        />
+                        {client.attentionLabel === "Manual at-risk flag" ? (
+                          <RiskBadge riskState="at_risk" />
+                        ) : null}
                         {client.onboardingLabel ? (
-                          <span
-                            className={`rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
-                              "warning",
-                            )}`}
-                          >
-                            {client.onboardingLabel}
-                          </span>
+                          <TagInfoBadge
+                            label={client.onboardingLabel}
+                            variant="warning"
+                            title="Onboarding status"
+                            description="This client still has onboarding work pending before coaching is fully settled."
+                          />
                         ) : null}
                         {client.checkinState ? (
                           <StatusPill
@@ -774,13 +816,22 @@ export function PtDashboardPage() {
                         <span>Next: {client.nextActionLabel}</span>
                       </div>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
-                        client.attentionTone,
-                      )}`}
-                    >
-                      {client.attentionLabel}
-                    </span>
+                    <div className="shrink-0">
+                      <TagInfoBadge
+                        label={client.attentionLabel}
+                        variant={
+                          client.attentionTone === "danger"
+                            ? "danger"
+                            : client.attentionTone === "warning"
+                              ? "warning"
+                              : "neutral"
+                        }
+                        title="Why this client is highlighted"
+                        description={getAttentionDescription(
+                          client.attentionLabel,
+                        )}
+                      />
+                    </div>
                   </button>
                 ))}
               </div>
@@ -824,8 +875,8 @@ export function PtDashboardPage() {
                 <div className="space-y-2.5">
                   {recentCheckins.map((row) => {
                     const clientName =
-                      clients.find((item) => item.id === row.client_id)?.display_name ??
-                      "Client";
+                      clients.find((item) => item.id === row.client_id)
+                        ?.display_name ?? "Client";
                     const dueLabel = row.due
                       ? new Date(row.due).toLocaleDateString("en-US", {
                           month: "short",
@@ -882,7 +933,11 @@ export function PtDashboardPage() {
                   description="Pulling in the most recent client conversations."
                 />
               ) : messageRows.length > 0 ? (
-                <div className={messageRows.length <= 2 ? "space-y-2" : "space-y-2.5"}>
+                <div
+                  className={
+                    messageRows.length <= 2 ? "space-y-2" : "space-y-2.5"
+                  }
+                >
                   {messageRows.map((message) => (
                     <button
                       key={message.id}
@@ -968,10 +1023,7 @@ export function PtDashboardPage() {
             )}
           </DashboardCard>
 
-          <DashboardCard
-            title="To-Do list"
-            className="border-border/80"
-          >
+          <DashboardCard title="To-Do list" className="border-border/80">
             <div className="space-y-3">
               <div className="surface-subtle flex items-center gap-2 px-2 py-2">
                 <Input
@@ -1063,10 +1115,8 @@ export function PtDashboardPage() {
               )}
             </div>
           </DashboardCard>
-
         </StaggerItem>
       </StaggerGroup>
     </div>
   );
 }
-

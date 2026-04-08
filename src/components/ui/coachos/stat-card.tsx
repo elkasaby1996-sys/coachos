@@ -16,6 +16,7 @@ export function StatCard({
   delta,
   surface = "default",
   className,
+  disableHoverMotion = false,
 }: {
   label: string;
   value: string | number;
@@ -28,6 +29,7 @@ export function StatCard({
   } | null;
   surface?: "default" | "pt-hub";
   className?: string;
+  disableHoverMotion?: boolean;
 }) {
   const isPtHub = surface === "pt-hub";
   const reduceMotion = useReducedMotion();
@@ -38,7 +40,7 @@ export function StatCard({
     <motion.div
       className="h-full"
       whileHover={
-        reduceMotion
+        reduceMotion || disableHoverMotion
           ? undefined
           : { y: -4, transition: { duration: 0.2, ease: "easeOut" } }
       }
