@@ -188,6 +188,41 @@ export const PtHubSettingsPage = lazy(() =>
     default: m.PtHubSettingsPage,
   })),
 );
+export const PtHubSettingsLayoutPage = lazy(() =>
+  import("../pages/pt-hub/settings/layout").then((m) => ({
+    default: m.PtHubSettingsLayoutPage,
+  })),
+);
+export const PtHubSettingsAccountTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/account").then((m) => ({
+    default: m.PtHubSettingsAccountTab,
+  })),
+);
+export const PtHubSettingsNotificationsTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/notifications").then((m) => ({
+    default: m.PtHubSettingsNotificationsTab,
+  })),
+);
+export const PtHubSettingsPreferencesTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/preferences").then((m) => ({
+    default: m.PtHubSettingsPreferencesTab,
+  })),
+);
+export const PtHubSettingsSecurityTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/security").then((m) => ({
+    default: m.PtHubSettingsSecurityTab,
+  })),
+);
+export const PtHubSettingsBillingTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/billing").then((m) => ({
+    default: m.PtHubSettingsBillingTab,
+  })),
+);
+export const PtHubSettingsIntegrationsTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/integrations").then((m) => ({
+    default: m.PtHubSettingsIntegrationsTab,
+  })),
+);
 
 export const SettingsLayout = lazy(() =>
   import("../pages/settings/SettingsLayout").then((m) => ({
@@ -197,11 +232,6 @@ export const SettingsLayout = lazy(() =>
 export const WorkspaceSettings = lazy(() =>
   import("../pages/settings/sections/WorkspaceSettings").then((m) => ({
     default: m.WorkspaceSettings,
-  })),
-);
-export const PublicProfileSettings = lazy(() =>
-  import("../pages/settings/sections/PublicProfileSettings").then((m) => ({
-    default: m.PublicProfileSettings,
   })),
 );
 export const AccountSettings = lazy(() =>
@@ -227,6 +257,56 @@ export const DefaultsSettings = lazy(() =>
 export const DangerZoneSettings = lazy(() =>
   import("../pages/settings/sections/DangerZoneSettings").then((m) => ({
     default: m.DangerZoneSettings,
+  })),
+);
+export const WorkspaceSettingsLayoutPage = lazy(() =>
+  import("../pages/workspace/settings/layout").then((m) => ({
+    default: m.WorkspaceSettingsLayoutPage,
+  })),
+);
+export const WorkspaceSettingsGeneralTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/general").then((m) => ({
+    default: m.WorkspaceSettingsGeneralTab,
+  })),
+);
+export const WorkspaceSettingsBrandTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/brand").then((m) => ({
+    default: m.WorkspaceSettingsBrandTab,
+  })),
+);
+export const WorkspaceSettingsClientExperienceTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/client-experience").then((m) => ({
+    default: m.WorkspaceSettingsClientExperienceTab,
+  })),
+);
+export const WorkspaceSettingsTeamTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/team").then((m) => ({
+    default: m.WorkspaceSettingsTeamTab,
+  })),
+);
+export const WorkspaceSettingsDefaultsTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/defaults").then((m) => ({
+    default: m.WorkspaceSettingsDefaultsTab,
+  })),
+);
+export const WorkspaceSettingsAutomationsTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/automations").then((m) => ({
+    default: m.WorkspaceSettingsAutomationsTab,
+  })),
+);
+export const WorkspaceSettingsIntegrationsTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/integrations").then((m) => ({
+    default: m.WorkspaceSettingsIntegrationsTab,
+  })),
+);
+export const WorkspaceSettingsDangerTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/danger").then((m) => ({
+    default: m.WorkspaceSettingsDangerTab,
+  })),
+);
+export const LegacySettingsRedirectPage = lazy(() =>
+  import("../pages/settings/legacy/legacy-settings-redirect").then((m) => ({
+    default: m.LegacySettingsRedirectPage,
   })),
 );
 

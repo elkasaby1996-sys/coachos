@@ -8,9 +8,6 @@ import {
   useParams,
 } from "react-router-dom";
 import {
-  AccountSettings,
-  AppearanceSettings,
-  BillingSettings,
   ClientAccountOnboardingPage,
   ClientBaselinePage,
   ClientCheckinPage,
@@ -28,10 +25,9 @@ import {
   ClientWorkoutSummaryPage,
   ClientWorkoutTodayPage,
   ClientSignupPage,
-  DangerZoneSettings,
-  DefaultsSettings,
   HealthPage,
   InvitePage,
+  LegacySettingsRedirectPage,
   LoginPage,
   NoWorkspacePage,
   NotificationsPage,
@@ -54,7 +50,13 @@ import {
   PtHubPaymentsPage,
   PtHubProfilePage,
   PtHubProfilePreviewPage,
-  PtHubSettingsPage,
+  PtHubSettingsAccountTab,
+  PtHubSettingsBillingTab,
+  PtHubSettingsIntegrationsTab,
+  PtHubSettingsLayoutPage,
+  PtHubSettingsNotificationsTab,
+  PtHubSettingsPreferencesTab,
+  PtHubSettingsSecurityTab,
   PtHubWorkspacesPage,
   PtLayout,
   PtMessagesPage,
@@ -68,12 +70,18 @@ import {
   PtWorkoutTemplatePreviewPage,
   PtWorkoutTemplatesPage,
   PtWorkspaceOnboardingPage,
-  PublicProfileSettings,
-  SettingsLayout,
   SignupRolePage,
   SupportPage,
   TermsPage,
-  WorkspaceSettings,
+  WorkspaceSettingsAutomationsTab,
+  WorkspaceSettingsBrandTab,
+  WorkspaceSettingsClientExperienceTab,
+  WorkspaceSettingsDangerTab,
+  WorkspaceSettingsDefaultsTab,
+  WorkspaceSettingsGeneralTab,
+  WorkspaceSettingsIntegrationsTab,
+  WorkspaceSettingsLayoutPage,
+  WorkspaceSettingsTeamTab,
 } from "./lazy-pages";
 
 // ✅ assumes your AuthProvider exports this hook
@@ -331,7 +339,11 @@ function AuthTestSignals() {
 
 function getShellKey(pathname: string) {
   if (pathname.startsWith("/pt-hub")) return "pt-hub";
-  if (pathname.startsWith("/pt") || pathname.startsWith("/settings")) {
+  if (
+    pathname.startsWith("/pt") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/workspace/")
+  ) {
     return "pt-workspace";
   }
   if (pathname.startsWith("/app")) return "client-workspace";
@@ -372,6 +384,7 @@ function isPrivateRoute(pathname: string) {
     pathname.startsWith("/pt") ||
     pathname.startsWith("/app") ||
     pathname.startsWith("/settings") ||
+    pathname.startsWith("/workspace/") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/invite") ||
     pathname.startsWith("/join") ||
@@ -566,7 +579,28 @@ export function App() {
           <Route path="workspaces" element={<PtHubWorkspacesPage />} />
           <Route path="payments" element={<PtHubPaymentsPage />} />
           <Route path="analytics" element={<PtHubAnalyticsPage />} />
-          <Route path="settings" element={<PtHubSettingsPage />} />
+          <Route path="settings" element={<PtHubSettingsLayoutPage />}>
+            <Route index element={<Navigate to="account" replace />} />
+            <Route path="account" element={<PtHubSettingsAccountTab />} />
+            <Route
+              path="public-profile"
+              element={<Navigate to="/pt-hub/profile" replace />}
+            />
+            <Route
+              path="notifications"
+              element={<PtHubSettingsNotificationsTab />}
+            />
+            <Route
+              path="preferences"
+              element={<PtHubSettingsPreferencesTab />}
+            />
+            <Route path="security" element={<PtHubSettingsSecurityTab />} />
+            <Route path="billing" element={<PtHubSettingsBillingTab />} />
+            <Route
+              path="integrations"
+              element={<PtHubSettingsIntegrationsTab />}
+            />
+          </Route>
         </Route>
 
         {/* PT Side */}
@@ -639,6 +673,38 @@ export function App() {
         </Route>
 
         <Route
+          path="/workspace/:workspaceId/settings"
+          element={
+            <RequireAuth>
+              <RequireRole allow={["pt"]}>
+                <PtLayout />
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route element={<WorkspaceSettingsLayoutPage />}>
+            <Route index element={<Navigate to="general" replace />} />
+            <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
+            <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
+            <Route
+              path="client-experience"
+              element={<WorkspaceSettingsClientExperienceTab />}
+            />
+            <Route path="team" element={<WorkspaceSettingsTeamTab />} />
+            <Route path="defaults" element={<WorkspaceSettingsDefaultsTab />} />
+            <Route
+              path="automations"
+              element={<WorkspaceSettingsAutomationsTab />}
+            />
+            <Route
+              path="integrations"
+              element={<WorkspaceSettingsIntegrationsTab />}
+            />
+            <Route path="danger" element={<WorkspaceSettingsDangerTab />} />
+          </Route>
+        </Route>
+
+        <Route
           path="/settings"
           element={
             <RequireAuth>
@@ -648,19 +714,9 @@ export function App() {
             </RequireAuth>
           }
         >
-          <Route
-            index
-            element={<Navigate to="/settings/workspace" replace />}
-          />
-          <Route element={<SettingsLayout />}>
-            <Route path="workspace" element={<WorkspaceSettings />} />
-            <Route path="public-profile" element={<PublicProfileSettings />} />
-            <Route path="account" element={<AccountSettings />} />
-            <Route path="billing" element={<BillingSettings />} />
-            <Route path="appearance" element={<AppearanceSettings />} />
-            <Route path="defaults" element={<DefaultsSettings />} />
-            <Route path="danger" element={<DangerZoneSettings />} />
-          </Route>
+          <Route index element={<LegacySettingsRedirectPage />} />
+          <Route path=":section" element={<LegacySettingsRedirectPage />} />
+          <Route path="*" element={<LegacySettingsRedirectPage />} />
         </Route>
 
         {/* Client Side */}

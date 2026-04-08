@@ -277,8 +277,14 @@ const ptSearchRoutes: SearchResult[] = [
   },
 ];
 
-function getPtRouteHeader(pathname: string) {
-  if (pathname.startsWith("/settings/")) {
+function getPtRouteHeader(
+  pathname: string,
+  navGroups: Array<{
+    label: string;
+    items: PtNavItem[];
+  }>,
+) {
+  if (pathname.startsWith("/settings/") || pathname.startsWith("/workspace/")) {
     return {
       title: "Settings",
       description: "Adjust workspace defaults and account controls.",
@@ -293,7 +299,7 @@ function getPtRouteHeader(pathname: string) {
     };
   }
 
-  const matchedItem = [...ptNavGroups.flatMap((group) => group.items)]
+  const matchedItem = [...navGroups.flatMap((group) => group.items)]
     .sort((a, b) => b.to.length - a.to.length)
     .find((item) => pathname.startsWith(item.to));
 
@@ -367,10 +373,15 @@ function sidebarLinkClasses(
 }
 
 function SidebarNav({
+  navGroups,
   collapsed,
   isLightMode,
   onNavigate,
 }: {
+  navGroups: Array<{
+    label: string;
+    items: PtNavItem[];
+  }>;
   collapsed: boolean;
   isLightMode: boolean;
   onNavigate?: () => void;
@@ -379,7 +390,7 @@ function SidebarNav({
 
   return (
     <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-4 pr-1 lg:flex lg:flex-col lg:gap-6">
-      {ptNavGroups.map((group) => (
+      {navGroups.map((group) => (
         <div key={group.label} className="space-y-2.5">
           {!collapsed ? (
             <p
@@ -481,6 +492,16 @@ function SidebarNav({
   );
 }
 
+function getWorkspaceRouteTransitionKey(pathname: string) {
+  const workspaceSettingsMatch = pathname.match(
+    /^\/workspace\/([^/]+)\/settings(?:\/[^/]+)?(?:\/.*)?$/,
+  );
+  if (workspaceSettingsMatch) {
+    return `/workspace/${workspaceSettingsMatch[1]}/settings`;
+  }
+  return pathname;
+}
+
 export function PtLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -497,8 +518,33 @@ export function PtLayout() {
   const { patchBootstrap } = useBootstrapAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
-  const pageHeader = getPtRouteHeader(location.pathname);
+  const workspaceSettingsPath = workspaceId
+    ? `/workspace/${workspaceId}/settings/general`
+    : "/settings/workspace";
+  const navGroups = useMemo(
+    () =>
+      ptNavGroups.map((group) => ({
+        ...group,
+        items: group.items.map((item) =>
+          item.to === "/settings/workspace"
+            ? { ...item, to: workspaceSettingsPath }
+            : item,
+        ),
+      })),
+    [workspaceSettingsPath],
+  );
+  const searchRoutes = useMemo(
+    () =>
+      ptSearchRoutes.map((item) =>
+        item.type === "route" && item.href === "/settings/workspace"
+          ? { ...item, href: workspaceSettingsPath }
+          : item,
+      ),
+    [workspaceSettingsPath],
+  );
+  const pageHeader = getPtRouteHeader(location.pathname, navGroups);
   const currentModule = getModuleToneForPath(location.pathname);
+  const routeTransitionKey = getWorkspaceRouteTransitionKey(location.pathname);
   const currentModuleClasses = getModuleToneClasses(currentModule);
   const errorMessage =
     error?.message ??
@@ -599,7 +645,7 @@ export function PtLayout() {
       if (workoutsResult.error) throw workoutsResult.error;
       if (checkinsResult.error) throw checkinsResult.error;
 
-      const routeMatches = ptSearchRoutes.filter((item) =>
+      const routeMatches = searchRoutes.filter((item) =>
         `${item.label} ${item.meta}`.toLowerCase().includes(normalizedSearch),
       );
 
@@ -654,9 +700,9 @@ export function PtLayout() {
   });
 
   const searchResults = useMemo(() => {
-    if (normalizedSearch.length === 0) return ptSearchRoutes.slice(0, 6);
+    if (normalizedSearch.length === 0) return searchRoutes.slice(0, 6);
     return searchQuery.data ?? [];
-  }, [normalizedSearch.length, searchQuery.data]);
+  }, [normalizedSearch.length, searchQuery.data, searchRoutes]);
 
   useEffect(() => {
     setSearchHighlightIndex(0);
@@ -814,6 +860,7 @@ export function PtLayout() {
           </div>
           <div className="flex h-full min-h-0 flex-col px-5 py-5">
             <SidebarNav
+              navGroups={navGroups}
               collapsed={false}
               isLightMode={isLightMode}
               onNavigate={() => setMobileNavOpen(false)}
@@ -889,6 +936,7 @@ export function PtLayout() {
                     </div>
                   ) : null}
                   <SidebarNav
+                    navGroups={navGroups}
                     collapsed={desktopNavCollapsed}
                     isLightMode={isLightMode}
                   />
@@ -1126,7 +1174,7 @@ export function PtLayout() {
                             <DropdownMenuLabel>Profile</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => navigate("/settings/workspace")}
+                              onClick={() => navigate(workspaceSettingsPath)}
                             >
                               <span className="app-dropdown-icon-badge">
                                 <Settings className="h-4 w-4 [stroke-width:1.7]" />
@@ -1263,7 +1311,10 @@ export function PtLayout() {
 
                 <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
                   <div className="pt-content-zoom">
-                    <RouteTransition className="grid gap-6">
+                    <RouteTransition
+                      className="grid gap-6"
+                      routeKey={routeTransitionKey}
+                    >
                       <Outlet />
                     </RouteTransition>
                   </div>

@@ -16,6 +16,7 @@ import type { StoredProfileDraft } from "../lib/pt-hub";
 import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
 import { uploadPtProfileMedia } from "../lib/pt-profile-media";
 import type {
+  PTAccountSettingsDraft,
   PTAvailabilityMode,
   PTCoachingMode,
   PTProfile,
@@ -148,16 +149,24 @@ export function PtHubProfileEditor({
   profile,
   readiness,
   publicationState,
+  profileVisibility,
   saving,
   publishing,
+  updatingVisibility,
+  onProfileVisibilityChange,
   onSave,
   onTogglePublish,
 }: {
   profile: PTProfile;
   readiness: PTProfileReadiness;
   publicationState: PTPublicationState;
+  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   saving: boolean;
   publishing: boolean;
+  updatingVisibility: boolean;
+  onProfileVisibilityChange: (
+    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
+  ) => Promise<void>;
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
@@ -276,7 +285,7 @@ export function PtHubProfileEditor({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.34fr)_340px]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <TabsList className="pt-hub-tab-rail h-auto min-h-[3.75rem]">
+        <TabsList className="pt-hub-tab-rail h-auto min-h-[3.75rem] justify-center">
           {([
             ["identity", "Identity"],
             ["expertise", "Expertise"],
@@ -310,17 +319,9 @@ export function PtHubProfileEditor({
                     }
                   />
                 ) : null}
-                <motion.span
-                  className="relative z-10"
-                  animate={
-                    reduceMotion
-                      ? { opacity: 1, x: 0 }
-                      : { opacity: 1, x: isActive ? 2 : 0 }
-                  }
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                >
+                <span className="relative z-10">
                   {label}
-                </motion.span>
+                </span>
               </TabsTrigger>
             );
           })}
@@ -1102,7 +1103,10 @@ export function PtHubProfileEditor({
         <PtHubPublicationPanel
           publicationState={publicationState}
           readiness={readiness}
+          profileVisibility={profileVisibility}
           publishing={publishing}
+          updatingVisibility={updatingVisibility}
+          onProfileVisibilityChange={onProfileVisibilityChange}
           onTogglePublish={onTogglePublish}
         />
 

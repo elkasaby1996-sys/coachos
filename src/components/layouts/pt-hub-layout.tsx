@@ -170,9 +170,9 @@ const routeMeta: Record<
     module: "analytics",
   },
   "/pt-hub/settings": {
-    title: "Account Settings",
+    title: "PT Hub Settings",
     description:
-      "Manage account details, notifications, and profile visibility.",
+      "Manage account identity, security, billing, notifications, and integrations.",
     module: "settings",
   },
 };
@@ -189,6 +189,13 @@ function getPtHubRouteMeta(pathname: string) {
       .find(([routePath]) => pathname === routePath || pathname.startsWith(`${routePath}/`))
       ?.[1] ?? defaultRouteMeta
   );
+}
+
+function getPtHubRouteTransitionKey(pathname: string) {
+  if (/^\/pt-hub\/settings\/[^/]+(?:\/.*)?$/.test(pathname)) {
+    return "/pt-hub/settings";
+  }
+  return pathname;
 }
 
 function getPtHubHeaderPillClassName(isLightMode: boolean) {
@@ -277,6 +284,7 @@ export function PtHubLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
+  const routeTransitionKey = getPtHubRouteTransitionKey(location.pathname);
 
   const meta = getPtHubRouteMeta(location.pathname);
   const currentModuleClasses = getModuleToneClasses(meta.module);
@@ -672,7 +680,7 @@ export function PtHubLayout() {
 
             <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
               <div className="pt-content-zoom">
-                <RouteTransition>
+                <RouteTransition routeKey={routeTransitionKey}>
                   <Outlet />
                 </RouteTransition>
               </div>
