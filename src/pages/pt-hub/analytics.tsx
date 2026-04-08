@@ -33,7 +33,7 @@ export function PtHubAnalyticsPage() {
         description="See how your profile, leads, and clients are performing."
       />
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="page-kpi-block grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
           label="Profile Reach"
@@ -132,7 +132,7 @@ export function PtHubAnalyticsPage() {
                             {item.clientCount} client(s)
                           </p>
                         </div>
-                        <Badge variant="secondary">{item.clientCount}</Badge>
+                        <Badge variant="info">{item.clientCount}</Badge>
                       </div>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                         <div

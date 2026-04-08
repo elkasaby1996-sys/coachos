@@ -4,10 +4,17 @@ import {
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { EmptyState } from "../../../components/ui/coachos/empty-state";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
+import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import {
+  getSemanticBadgeVariant,
+  getSemanticToneClasses,
+  type SemanticTone,
+} from "../../../lib/semantic-status";
 import { cn } from "../../../lib/utils";
 import { useWorkspace } from "../../../lib/use-workspace";
 import type {
@@ -24,54 +31,51 @@ export interface PtHubOverviewActivityItem {
   description: string;
   href: string;
   ctaLabel: string;
+  tone: SemanticTone;
 }
 
-function getActionToneBadgeClassName(tone: PtHubOverviewActionItem["tone"]) {
-  switch (tone) {
-    case "danger":
-      return "border-danger/30 bg-danger/12 text-danger";
-    case "warning":
-      return "border-warning/30 bg-warning/12 text-warning";
-    case "success":
-      return "border-success/30 bg-success/12 text-success";
-    default:
-      return "border-primary/24 bg-primary/10 text-primary";
-  }
-}
-
-function getSummaryToneStyles(tone: PtHubOverviewSummaryItem["tone"]) {
-  switch (tone) {
-    case "danger":
-      return {
-        label: "border-danger/30 bg-danger/12 text-danger",
-        value: "text-[oklch(var(--danger)/0.96)]",
-        detail: "text-[oklch(var(--danger)/0.8)]",
-      };
-    case "warning":
-      return {
-        label: "border-warning/30 bg-warning/12 text-warning",
-        value: "text-[oklch(var(--warning)/0.98)]",
-        detail: "text-[oklch(var(--warning)/0.82)]",
-      };
-    case "success":
-      return {
-        label: "border-success/30 bg-success/12 text-success",
-        value: "text-[oklch(var(--success)/0.96)]",
-        detail: "text-[oklch(var(--success)/0.8)]",
-      };
-    case "info":
-      return {
-        label: "border-primary/24 bg-primary/10 text-primary",
-        value: "text-primary",
-        detail: "text-muted-foreground",
-      };
-    default:
-      return {
-        label: "border-border/60 bg-background/24 text-muted-foreground",
-        value: "text-foreground",
-        detail: "text-muted-foreground",
-      };
-  }
+function PtHubActionCenterRow({
+  item,
+  onClick,
+}: {
+  item: PtHubOverviewActionItem;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="pt-hub-interactive group relative grid gap-4 rounded-[24px] border border-border/55 bg-background/18 px-4 py-4 text-left shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-border/75 hover:bg-background/28 hover:shadow-[0_18px_40px_-32px_oklch(0_0_0/0.65)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute bottom-4 left-1.5 top-4 w-[2px] rounded-full",
+          getSemanticToneClasses(item.tone).marker,
+        )}
+      />
+      <div className="min-w-0 space-y-2 pl-2">
+        <p className="text-[0.96rem] font-medium uppercase tracking-[0.04em] text-foreground">
+          {item.label}
+        </p>
+        <p className="pt-hub-meta-text max-w-4xl text-[0.93rem] leading-6 text-muted-foreground">
+          {item.description}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 pl-2 md:min-w-[11.5rem] md:flex-col md:items-end md:justify-center md:pl-0">
+        <Badge
+          variant={getSemanticBadgeVariant(item.tone)}
+          className="h-7 px-2.5 py-0 text-[10px] tracking-[0.18em]"
+        >
+          {item.badge}
+        </Badge>
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors group-hover:text-foreground group-focus-visible:text-foreground">
+          {item.ctaLabel}
+          <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
+        </span>
+      </div>
+    </button>
+  );
 }
 
 export function PtHubOverviewLoadingState() {
@@ -193,49 +197,25 @@ export function PtHubActionCenter({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_32%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.18),transparent_46%,oklch(var(--bg-surface)/0.12))]" />
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
 
-      <div className="relative space-y-4">
-        <div className="space-y-2">
+      <div className="relative space-y-5">
+        <div className="space-y-2.5">
           <p className="pt-hub-kicker">Action center</p>
-          <h2 className="text-balance text-[2.05rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.55rem]">
+          <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold uppercase tracking-[0.055em] text-foreground sm:text-[1.9rem]">
             Everything that needs attention.
           </h2>
-          <p className="pt-hub-meta-text max-w-3xl text-[0.95rem] leading-6">
+          <p className="pt-hub-meta-text max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
             {helperText}
           </p>
         </div>
 
         {items.length > 0 ? (
-          <div className="-mx-1 divide-y divide-border/60">
+          <div className="space-y-3" role="list" aria-label="Action center items">
             {items.map((item) => (
-              <button
+              <PtHubActionCenterRow
                 key={item.id}
-                type="button"
+                item={item}
                 onClick={() => handleActionClick(item)}
-                className="pt-hub-interactive group grid gap-4 rounded-[24px] border border-transparent bg-transparent px-4 py-4 first:pt-1 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center hover:bg-background/20"
-              >
-                <div className="min-w-0 space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[1rem] font-medium uppercase tracking-[0.04em] text-foreground">
-                      {item.label}
-                    </p>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
-                        getActionToneBadgeClassName(item.tone),
-                      )}
-                    >
-                      {item.badge}
-                    </span>
-                  </div>
-                  <p className="pt-hub-meta-text max-w-4xl text-[0.95rem] leading-6">
-                    {item.description}
-                  </p>
-                </div>
-                <span className="inline-flex shrink-0 items-center justify-between gap-2 px-0 text-sm font-medium text-primary transition-colors group-hover:text-foreground">
-                  {item.ctaLabel}
-                  <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
-                </span>
-              </button>
+              />
             ))}
           </div>
         ) : (
@@ -276,12 +256,23 @@ export function PtHubRecentActivityCard({
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
-                    {item.title}
-                  </p>
-                  <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
-                    {item.description}
-                  </p>
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
+                        getSemanticToneClasses(item.tone).marker,
+                      )}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
+                        {item.title}
+                      </p>
+                      <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <Button
                   asChild
@@ -317,18 +308,28 @@ export function PtHubLaunchChecklistCard({
   completionPercent,
   title = "Launch checklist",
   description,
+  actions,
+  collapsed = false,
 }: {
   items: PtHubOverviewChecklistItem[];
   completionPercent: number;
   title?: string;
   description?: string;
+  actions?: ReactNode;
+  collapsed?: boolean;
 }) {
   return (
-    <PtHubSectionCard title={title} description={description}>
-      <div className="space-y-4">
-        <div className="rounded-[20px] border border-border/55 bg-background/24 px-4 py-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            <span>Completion</span>
+    <PtHubSectionCard
+      title={title}
+      description={description}
+      actions={actions}
+      contentClassName={collapsed ? "hidden" : undefined}
+    >
+      {!collapsed ? (
+        <div className="space-y-4">
+          <div className="rounded-[20px] border border-border/55 bg-background/24 px-4 py-4 backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <span>Completion</span>
             <span>{completionPercent}%</span>
           </div>
           <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/70">
@@ -365,9 +366,10 @@ export function PtHubLaunchChecklistCard({
                 <Link to={item.href}>{item.ctaLabel}</Link>
               </Button>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </PtHubSectionCard>
   );
 }
@@ -412,6 +414,8 @@ export function PtHubSummaryCard({
   items,
   isEmpty = false,
   emptyState,
+  actions,
+  collapsed = false,
 }: {
   title: string;
   description?: string;
@@ -423,10 +427,18 @@ export function PtHubSummaryCard({
     href: string;
     ctaLabel: string;
   };
+  actions?: ReactNode;
+  collapsed?: boolean;
 }) {
   return (
-    <PtHubSectionCard title={title} description={description}>
-      {emptyState && isEmpty ? (
+    <PtHubSectionCard
+      title={title}
+      description={description}
+      actions={actions}
+      contentClassName={collapsed ? "hidden" : undefined}
+    >
+      {!collapsed ? (
+        emptyState && isEmpty ? (
         <EmptyState
           title={emptyState.title}
           description={emptyState.description}
@@ -441,47 +453,45 @@ export function PtHubSummaryCard({
         <div className="-mx-1 divide-y divide-border/60">
           {items.map((item) =>
             (() => {
-              const toneStyles = getSummaryToneStyles(item.tone);
+              const toneStyles = getSemanticToneClasses(item.tone);
 
               return (
                 <div
                   key={item.id}
                   className="pt-hub-interactive rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18"
                 >
-                  <div className="min-w-0 space-y-2">
-                    <p
+                  <div className="flex items-start gap-3">
+                    <span
+                      aria-hidden
                       className={cn(
-                        "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
-                        toneStyles.label,
+                        "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
+                        toneStyles.marker,
                       )}
-                    >
-                      {item.label}
-                    </p>
-                    <p
-                      className={cn(
-                        "text-[1.1rem] font-medium uppercase tracking-[0.03em]",
-                        toneStyles.value,
-                      )}
-                    >
-                      {item.value}
-                    </p>
-                    {item.detail ? (
-                      <p
-                        className={cn(
-                          "text-[0.92rem] leading-6",
-                          toneStyles.detail,
-                        )}
+                    />
+                    <div className="min-w-0 space-y-2">
+                      <Badge
+                        variant={getSemanticBadgeVariant(item.tone)}
+                        className="px-2.5 py-1 text-[10px] tracking-[0.2em]"
                       >
-                        {item.detail}
+                        {item.label}
+                      </Badge>
+                      <p className="text-[1.1rem] font-medium uppercase tracking-[0.03em] text-foreground">
+                        {item.value}
                       </p>
-                    ) : null}
+                      {item.detail ? (
+                        <p className="pt-hub-meta-text text-[0.92rem] leading-6">
+                          {item.detail}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               );
             })(),
           )}
         </div>
-      )}
+        )
+      ) : null}
     </PtHubSectionCard>
   );
 }

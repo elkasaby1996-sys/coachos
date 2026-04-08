@@ -686,7 +686,7 @@ export function PtCheckinTemplatesPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="page-kpi-block grid gap-4 sm:grid-cols-3">
         <DashboardCard title="Templates" subtitle="Workspace library">
           {workspaceLoading || templatesQuery.isLoading ? (
             <Skeleton className="h-10 w-full" />

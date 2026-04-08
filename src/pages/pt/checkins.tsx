@@ -366,7 +366,7 @@ export function PtCheckinsQueuePage() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {[
           {
             label: "Submitted",

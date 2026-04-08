@@ -1,4 +1,5 @@
 import { getPublicCoachUrl } from "../lib/pt-hub";
+import type { BadgeVariant } from "../../../components/ui/badge";
 import type { PTProfilePreviewData, PTPublicProfile } from "../types";
 import { PublicPtProfileView } from "../../pt-public/components/public-pt-profile-view";
 
@@ -9,7 +10,7 @@ export function PtHubProfilePreview({
   profile: PTProfilePreviewData;
   statusBadges?: Array<{
     label: string;
-    tone?: "success" | "secondary";
+    tone?: BadgeVariant;
   }>;
 }) {
   const publicProfile: PTPublicProfile = {

@@ -9,9 +9,11 @@ const badgeVariants = cva(
       variant: {
         default: "border-border/70 bg-card/60 text-foreground",
         secondary: "border-border/70 bg-secondary/72 text-secondary-foreground",
-        success: "border-success/30 bg-success/14 text-success",
-        warning: "border-warning/30 bg-warning/14 text-warning",
-        danger: "border-danger/30 bg-danger/14 text-danger",
+        success: "border-success/22 bg-success/12 text-success",
+        info: "border-info/22 bg-info/12 text-info",
+        warning: "border-warning/22 bg-warning/12 text-warning",
+        danger: "border-danger/22 bg-danger/12 text-danger",
+        neutral: "border-neutral/22 bg-neutral/12 text-neutral",
         muted: "border-border/60 bg-muted/55 text-muted-foreground",
       },
     },
@@ -25,6 +27,8 @@ export interface BadgeProps
   extends
     React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
+
+export type BadgeVariant = NonNullable<BadgeProps["variant"]>;
 
 const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
   ({ className, variant, ...props }, ref) => (

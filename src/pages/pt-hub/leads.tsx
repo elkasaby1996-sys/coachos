@@ -85,7 +85,7 @@ export function PtHubLeadsPage() {
         description='See "Apply to Work With Me" submissions and decide who to follow up with next.'
       />
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
           label="Total Leads"

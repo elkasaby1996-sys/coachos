@@ -7,6 +7,7 @@ import {
 import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
 import type { PTProfileReadiness } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 
@@ -33,12 +34,10 @@ export function PtHubReadinessPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant={readiness.readyForPublish ? "success" : "warning"}
-              >
+              <Badge variant={getSemanticBadgeVariant(readiness.statusLabel)}>
                 {readiness.statusLabel}
               </Badge>
-              <Badge variant="secondary">
+              <Badge variant="info">
                 {readiness.completionPercent}% complete
               </Badge>
             </div>
@@ -46,14 +45,22 @@ export function PtHubReadinessPanel({
               {readiness.completionPercent}%
             </p>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-background/40 p-3 text-primary">
+          <div
+            className={`rounded-2xl border p-3 ${
+              readiness.readyForPublish
+                ? "border-success/22 bg-success/12 text-success"
+                : "border-warning/22 bg-warning/12 text-warning"
+            }`}
+          >
             <Sparkles className="h-5 w-5 [stroke-width:1.7]" />
           </div>
         </div>
 
         <div className="h-2 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-primary transition-[width]"
+            className={`h-full rounded-full transition-[width] ${
+              readiness.readyForPublish ? "bg-success" : "bg-warning"
+            }`}
             style={{ width: `${readiness.completionPercent}%` }}
           />
         </div>
@@ -68,7 +75,7 @@ export function PtHubReadinessPanel({
             {!readiness.readyForPublish ? (
               <div className="flex flex-wrap gap-2">
                 {readiness.missingItems.slice(0, 3).map((item) => (
-                  <Badge key={item} variant="muted">
+                  <Badge key={item} variant="warning">
                     {item}
                   </Badge>
                 ))}
@@ -100,7 +107,7 @@ export function PtHubReadinessPanel({
                       ) : null}
                     </div>
                   </div>
-                  <Badge variant={item.complete ? "success" : "muted"}>
+                  <Badge variant={item.complete ? "success" : "warning"}>
                     {item.complete ? "Done" : "Missing"}
                   </Badge>
                 </div>

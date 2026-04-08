@@ -50,13 +50,13 @@ export function PtHubProfilePreviewPage() {
                 label: publicationQuery.data?.isPublished
                   ? "Published"
                   : "Unpublished",
-                tone: publicationQuery.data?.isPublished ? "success" : "secondary",
+                tone: publicationQuery.data?.isPublished ? "success" : "warning",
               },
               ...(readinessQuery.data
                 ? [
                     {
                       label: `${readinessQuery.data.completionPercent}% ready`,
-                      tone: "secondary" as const,
+                      tone: "info" as const,
                     },
                   ]
                 : []),

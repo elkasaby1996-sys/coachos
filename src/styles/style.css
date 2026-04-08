@@ -15,8 +15,10 @@
   --accent: 0.74 0.14 196;
   --accent-hover: 0.77 0.15 196;
   --success: 0.665 0.05 205;
+  --info: 0.717 0.149 256.038;
   --warning: 0.74 0.03 95;
   --danger: 0.63 0.03 25;
+  --neutral: 0.675 0.016 169.004;
   --background: var(--bg-canvas);
   --foreground: var(--text-primary);
   --card: var(--bg-surface);
@@ -158,8 +160,10 @@
   --accent: 0.57 0.078 191;
   --accent-hover: 0.54 0.086 191;
   --success: 0.665 0.05 205;
+  --info: 0.717 0.149 256.038;
   --warning: 0.74 0.04 92;
   --danger: 0.62 0.18 26;
+  --neutral: 0.675 0.016 169.004;
   --background: var(--bg-canvas);
   --foreground: var(--text-primary);
   --card: var(--bg-surface);

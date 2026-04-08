@@ -42,6 +42,7 @@ import {
   checkinOperationalStatusMap,
   getCheckinOperationalState,
 } from "../../lib/checkin-review";
+import { getSemanticToneClasses } from "../../lib/semantic-status";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 type ClientRecord = {
@@ -308,11 +309,7 @@ export function PtDashboardPage() {
   };
 
   const toneClassName = (tone: AttentionTone) =>
-    tone === "danger"
-      ? "border-destructive/30 text-destructive"
-      : tone === "warning"
-        ? "border-amber-300/40 text-amber-200"
-        : "border-border text-muted-foreground";
+    getSemanticToneClasses(tone).badge;
 
   const activeClientsCount = useMemo(
     () =>
@@ -637,7 +634,7 @@ export function PtDashboardPage() {
       ) : null}
 
       <StaggerGroup
-        className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_320px]"
+        className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_320px]"
         stagger={0.05}
       >
         {isLoading ? (

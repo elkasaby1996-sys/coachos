@@ -2,15 +2,20 @@ import { type ReactNode, useEffect, useRef } from "react";
 import {
   ArrowRight,
   ExternalLink,
+  Globe,
+  Instagram,
+  Linkedin,
   MapPin,
   Monitor,
   Sparkles,
   Star,
   Users,
+  Youtube,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import gsap from "gsap";
 import { Badge } from "../../../components/ui/badge";
+import type { BadgeVariant } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import type { PTPublicLeadInput, PTPublicProfile } from "../../pt-hub/types";
 import { PublicPtApplyForm } from "./public-pt-apply-form";
@@ -27,6 +32,13 @@ const availabilityLabels: Record<string, string> = {
   in_person: "In-person",
 };
 
+const socialPlatformIcons = {
+  website: Globe,
+  instagram: Instagram,
+  linkedin: Linkedin,
+  youtube: Youtube,
+} as const;
+
 export function PublicPtProfileView({
   profile,
   preview = false,
@@ -42,7 +54,7 @@ export function PublicPtProfileView({
   onSubmitApplication?: (input: PTPublicLeadInput) => Promise<void>;
   previewStatusBadges?: Array<{
     label: string;
-    tone?: "success" | "secondary";
+    tone?: BadgeVariant;
   }>;
 }) {
   const title = profile.displayName || profile.fullName || "Coach";
@@ -136,7 +148,7 @@ export function PublicPtProfileView({
                 {previewStatusBadges.map((badge) => (
                   <Badge
                     key={badge.label}
-                    variant={badge.tone === "success" ? "success" : "secondary"}
+                    variant={badge.tone ?? "info"}
                     className="rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-3xl"
                   >
                     {badge.label}
@@ -421,23 +433,32 @@ export function PublicPtProfileView({
                 <div className="mt-4 space-y-2">
                   {profile.socialLinks.length > 0 ? (
                     profile.socialLinks.map((link) => (
-                      <a
-                        key={link.platform}
-                        href={preview ? undefined : link.url}
-                        target={preview ? undefined : "_blank"}
-                        rel={preview ? undefined : "noreferrer"}
-                        className="flex items-center justify-between rounded-[20px] bg-background/45 px-4 py-3 transition hover:bg-background/65"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {link.label}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {link.url}
-                          </p>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                      </a>
+                      (() => {
+                        const PlatformIcon =
+                          socialPlatformIcons[
+                            link.platform as keyof typeof socialPlatformIcons
+                          ] ?? Globe;
+
+                        return (
+                          <a
+                            key={link.platform}
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center justify-between rounded-[20px] bg-background/45 px-4 py-3 transition hover:bg-background/65"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background/72 text-primary">
+                                <PlatformIcon className="h-4 w-4" />
+                              </div>
+                              <p className="text-sm font-medium text-foreground">
+                                {link.label}
+                              </p>
+                            </div>
+                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                          </a>
+                        );
+                      })()
                     ))
                   ) : (
                     <PlaceholderText text="Public social links will show here once added in PT Hub." />

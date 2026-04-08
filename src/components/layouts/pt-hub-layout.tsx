@@ -40,6 +40,10 @@ import { AppFooter } from "../common/app-footer";
 import { RouteTransition } from "../common/route-transition";
 import { supabase } from "../../lib/supabase";
 import { getUserDisplayName } from "../../lib/account-profiles";
+import {
+  getSemanticToneClasses,
+  getSemanticToneForStatus,
+} from "../../lib/semantic-status";
 import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
@@ -197,15 +201,13 @@ function getPtHubStatusPillIconClassName(params: {
   isLightMode: boolean;
   published: boolean;
 }) {
+  const toneStyles = getSemanticToneClasses(
+    getSemanticToneForStatus(params.published ? "Published" : "Unpublished"),
+  );
+
   return cn(
-    "flex h-9 w-9 shrink-0 items-center justify-center transition-colors duration-200",
-    params.published
-      ? params.isLightMode
-        ? "text-emerald-700"
-        : "text-success"
-      : params.isLightMode
-        ? "text-amber-700"
-        : "text-warning",
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition-colors duration-200",
+    toneStyles.surface,
   );
 }
 
@@ -213,15 +215,13 @@ function getPtHubStatusPillToneClassName(params: {
   isLightMode: boolean;
   published: boolean;
 }) {
+  const toneStyles = getSemanticToneClasses(
+    getSemanticToneForStatus(params.published ? "Published" : "Unpublished"),
+  );
+
   return cn(
     "text-[0.92rem] font-medium",
-    params.published
-      ? params.isLightMode
-        ? "text-emerald-700"
-        : "text-success"
-      : params.isLightMode
-        ? "text-amber-700"
-        : "text-warning",
+    toneStyles.text,
   );
 }
 
@@ -485,14 +485,27 @@ export function PtHubLayout() {
                     </div>
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <p className="pt-hub-kicker">Profile status</p>
-                      <p
-                        className={getPtHubStatusPillToneClassName({
-                          isLightMode,
-                          published: publishedProfile,
-                        })}
-                      >
-                        {publishedProfile ? "Published" : "Unpublished"}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "h-2 w-2 rounded-full",
+                            getSemanticToneClasses(
+                              getSemanticToneForStatus(
+                                publishedProfile ? "Published" : "Unpublished",
+                              ),
+                            ).marker,
+                          )}
+                        />
+                        <p
+                          className={getPtHubStatusPillToneClassName({
+                            isLightMode,
+                            published: publishedProfile,
+                          })}
+                        >
+                          {publishedProfile ? "Published" : "Unpublished"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <DropdownMenu>

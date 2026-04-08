@@ -2,6 +2,10 @@ import { Card, CardHeader, CardTitle } from "../card";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "../../../lib/utils";
 import { AnimatedValue } from "../../common/action-feedback";
+import {
+  getSemanticToneClasses,
+  type SemanticToneLike,
+} from "../../../lib/semantic-status";
 
 export function StatCard({
   label,
@@ -20,14 +24,14 @@ export function StatCard({
   accent?: boolean;
   delta?: {
     value: string;
-    tone?: "positive" | "negative" | "neutral";
+    tone?: SemanticToneLike;
   } | null;
   surface?: "default" | "pt-hub";
   className?: string;
 }) {
   const isPtHub = surface === "pt-hub";
   const reduceMotion = useReducedMotion();
-  const ptHubLabelClassName = "text-primary/80";
+  const ptHubLabelClassName = "text-[oklch(var(--text-secondary)/0.88)]";
   const ptHubHelperClassName = "text-muted-foreground";
 
   return (
@@ -121,14 +125,10 @@ export function StatCard({
               <span
                 className={cn(
                   "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-[0.08em]",
-                  delta.tone === "positive" &&
-                    "border-success/30 bg-success/12 text-success",
-                  delta.tone === "negative" &&
-                    "border-danger/30 bg-danger/12 text-danger",
-                  (!delta.tone || delta.tone === "neutral") &&
-                    (isPtHub
-                      ? "border-primary/24 bg-primary/10 text-primary"
-                      : "border-border/70 bg-muted/28 text-muted-foreground"),
+                  getSemanticToneClasses(delta.tone).surface,
+                  !isPtHub &&
+                    (!delta.tone || delta.tone === "neutral") &&
+                    "bg-muted/28 text-muted-foreground",
                 )}
               >
                 {delta.value}

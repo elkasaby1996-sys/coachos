@@ -71,7 +71,7 @@ export function PtHubClientsPage() {
         description="View every client across your coaching spaces."
       />
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
           label="Total Clients"

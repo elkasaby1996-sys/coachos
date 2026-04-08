@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ImageIcon, Plus, Save, Sparkles, Upload, X } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
@@ -22,9 +23,9 @@ import type {
   PTPublicationState,
 } from "../types";
 import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
-import { PtHubReadinessPanel } from "./pt-hub-readiness-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { useSessionAuth } from "../../../lib/auth";
+import { cn } from "../../../lib/utils";
 
 const coachingModeOptions: Array<{
   value: PTCoachingMode;
@@ -114,9 +115,14 @@ function UploadButton({
 }
 
 function createDraft(profile: PTProfile): StoredProfileDraft {
+  const normalizedDisplayName =
+    profile.displayName.trim() || profile.fullName.trim();
+  const normalizedFullName =
+    profile.fullName.trim() || normalizedDisplayName;
+
   return {
-    fullName: profile.fullName,
-    displayName: profile.displayName,
+    fullName: normalizedFullName,
+    displayName: normalizedDisplayName,
     slug: profile.slug,
     headline: profile.headline,
     searchableHeadline: profile.searchableHeadline,
@@ -155,6 +161,8 @@ export function PtHubProfileEditor({
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
+  const reduceMotion = useReducedMotion();
+  const [activeTab, setActiveTab] = useState("identity");
   const { user } = useSessionAuth();
   const [form, setForm] = useState<StoredProfileDraft>(createDraft(profile));
   const [specialtiesInput, setSpecialtiesInput] = useState(
@@ -189,6 +197,7 @@ export function PtHubProfileEditor({
     .filter((item) => !item.complete)
     .slice(0, 4);
   const mediaBusy = Boolean(uploadingTarget);
+  const displayNameValue = form.displayName.trim() || form.fullName.trim();
 
   const updateTransformation = (
     transformationId: string,
@@ -266,19 +275,61 @@ export function PtHubProfileEditor({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.34fr)_340px]">
-      <Tabs defaultValue="identity" className="min-w-0">
-        <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-[22px] border border-border/60 bg-background/35 p-2">
-          <TabsTrigger value="identity">Identity</TabsTrigger>
-          <TabsTrigger value="expertise">Expertise</TabsTrigger>
-          <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
-          <TabsTrigger value="social">Social Links</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
+        <TabsList className="pt-hub-tab-rail h-auto min-h-[3.75rem]">
+          {([
+            ["identity", "Identity"],
+            ["expertise", "Expertise"],
+            ["marketplace", "Marketplace"],
+            ["social", "Social Links"],
+            ["preview", "Preview"],
+          ] as const).map(([value, label]) => {
+            const isActive = activeTab === value;
+
+            return (
+              <TabsTrigger
+                key={value}
+                className={cn(
+                  "pt-hub-tab-trigger group",
+                  isActive ? "text-foreground" : "text-muted-foreground",
+                )}
+                value={value}
+              >
+                {isActive ? (
+                  <motion.span
+                    layoutId="pt-hub-profile-tab-active-pill"
+                    className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border"
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : {
+                            type: "spring",
+                            stiffness: 280,
+                            damping: 30,
+                          }
+                    }
+                  />
+                ) : null}
+                <motion.span
+                  className="relative z-10"
+                  animate={
+                    reduceMotion
+                      ? { opacity: 1, x: 0 }
+                      : { opacity: 1, x: isActive ? 2 : 0 }
+                  }
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  {label}
+                </motion.span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         {!readiness.readyForPublish ? (
-          <div className="mt-5 rounded-[24px] border border-border/60 bg-background/30 px-5 py-4">
+          <div className="pt-hub-support-rail mt-5 rounded-[24px] px-5 py-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
                   <p className="text-sm font-medium text-foreground">
@@ -299,7 +350,7 @@ export function PtHubProfileEditor({
               {quickWins.map((item) => (
                 <div
                   key={item.key}
-                  className="rounded-[18px] bg-background/45 px-4 py-3"
+                  className="pt-hub-support-tile rounded-[18px] px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -334,32 +385,26 @@ export function PtHubProfileEditor({
         <TabsContent value="identity" className="space-y-5">
           <PtHubSectionCard
             title="Profile media"
-            description="Upload the hero media that powers your public coach page, preview, and future discovery surfaces."
             contentClassName="space-y-4"
           >
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[24px] border border-dashed border-border/70 bg-background/35 p-4">
-                <div className="flex h-28 items-center justify-center rounded-[20px] border border-border/60 bg-background/70">
+                <div className="flex min-h-[18rem] items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-background/70">
                   {form.profilePhotoUrl ? (
                     <img
                       src={form.profilePhotoUrl}
-                      alt={
-                        form.displayName || form.fullName || "Profile preview"
-                      }
+                      alt={displayNameValue || "Profile preview"}
                       className="h-full w-full rounded-[20px] object-cover"
                     />
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <ImageIcon className="h-4 w-4" />
-                      Profile photo preview
+                      Photo preview
                     </div>
                   )}
                 </div>
                 <p className="mt-4 text-sm font-medium text-foreground">
                   Profile photo
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Use a sharp square headshot that feels premium and performance-led.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <UploadButton
@@ -388,20 +433,9 @@ export function PtHubProfileEditor({
                     </Button>
                   ) : null}
                 </div>
-                <Input
-                  className="mt-4"
-                  placeholder="Or paste a public image URL"
-                  value={form.profilePhotoUrl ?? ""}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      profilePhotoUrl: event.target.value || null,
-                    }))
-                  }
-                />
               </div>
               <div className="rounded-[24px] border border-dashed border-border/70 bg-background/35 p-4">
-                <div className="flex h-28 items-center justify-center rounded-[20px] border border-border/60 bg-background/70">
+                <div className="flex min-h-[18rem] items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-background/70">
                   {form.bannerImageUrl ? (
                     <img
                       src={form.bannerImageUrl}
@@ -417,9 +451,6 @@ export function PtHubProfileEditor({
                 </div>
                 <p className="mt-4 text-sm font-medium text-foreground">
                   Banner image
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Wide visual used in the public profile hero and future coach discovery surfaces.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <UploadButton
@@ -448,63 +479,36 @@ export function PtHubProfileEditor({
                     </Button>
                   ) : null}
                 </div>
-                <Input
-                  className="mt-4"
-                  placeholder="Or paste a public banner URL"
-                  value={form.bannerImageUrl ?? ""}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      bannerImageUrl: event.target.value || null,
-                    }))
-                  }
-                />
               </div>
             </div>
           </PtHubSectionCard>
 
           <PtHubSectionCard
             title="Brand identity"
-            description="This editor shapes how your coaching brand looks, sounds, and positions itself publicly."
+            description="Set the public name and core profile story."
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Full name
-                </label>
-                <Input
-                  value={form.fullName}
-                  onChange={(event) =>
-                    setForm((prev) => ({
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Display name
+              </label>
+              <Input
+                value={form.displayName}
+                onChange={(event) =>
+                  setForm((prev) => {
+                    const nextDisplayName = event.target.value;
+                    return {
                       ...prev,
-                      fullName: event.target.value,
-                    }))
-                  }
-                  placeholder="Your full name"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Display name
-                </label>
-                <Input
-                  value={form.displayName}
-                  onChange={(event) =>
-                    setForm((prev) => {
-                      const nextDisplayName = event.target.value;
-                      return {
-                        ...prev,
-                        displayName: nextDisplayName,
-                        slug:
-                          prev.slug || !nextDisplayName
-                            ? prev.slug
-                            : slugifyValue(nextDisplayName),
-                      };
-                    })
-                  }
-                  placeholder="How clients will see your brand"
-                />
-              </div>
+                      displayName: nextDisplayName,
+                      fullName: nextDisplayName,
+                      slug:
+                        prev.slug || !nextDisplayName
+                          ? prev.slug
+                          : slugifyValue(nextDisplayName),
+                    };
+                  })
+                }
+                placeholder="How clients will see your brand"
+              />
             </div>
 
             <div className="space-y-2">
@@ -1065,7 +1069,7 @@ export function PtHubProfileEditor({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-2xl font-semibold text-foreground">
-                      {form.displayName || "Display name"}
+                      {displayNameValue || "Display name"}
                     </p>
                     <p className="mt-1 text-sm text-primary">
                       {form.headline || "Headline goes here"}
@@ -1097,11 +1101,10 @@ export function PtHubProfileEditor({
       <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
         <PtHubPublicationPanel
           publicationState={publicationState}
+          readiness={readiness}
           publishing={publishing}
           onTogglePublish={onTogglePublish}
         />
-
-        <PtHubReadinessPanel readiness={readiness} compact />
 
         <PtHubSectionCard
           title="Preview and save"
@@ -1114,7 +1117,13 @@ export function PtHubProfileEditor({
             <Button
               className="w-full"
               disabled={saving || mediaBusy || !hasChanges}
-              onClick={() => onSave(form)}
+              onClick={() =>
+                onSave({
+                  ...form,
+                  fullName: displayNameValue,
+                  displayName: displayNameValue,
+                })
+              }
             >
               <Save className="h-4 w-4" />
               {mediaBusy

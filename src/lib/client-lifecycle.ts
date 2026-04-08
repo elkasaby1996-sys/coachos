@@ -1,3 +1,5 @@
+import type { BadgeVariant } from "../components/ui/badge";
+
 export const clientLifecycleStates = [
   "invited",
   "onboarding",
@@ -26,19 +28,19 @@ export type ClientSegmentKey =
   | "at_risk"
   | "paused";
 
-type PillVariant = "success" | "warning" | "danger" | "muted" | "secondary";
+type PillVariant = BadgeVariant;
 
 const lifecycleMeta: Record<
   ClientLifecycleState,
   { label: string; variant: PillVariant }
 > = {
   invited: { label: "Invited", variant: "warning" },
-  onboarding: { label: "Onboarding", variant: "secondary" },
+  onboarding: { label: "Onboarding", variant: "warning" },
   active: { label: "Active", variant: "success" },
   paused: { label: "Paused", variant: "warning" },
   at_risk: { label: "At risk", variant: "danger" },
-  completed: { label: "Completed", variant: "muted" },
-  churned: { label: "Churned", variant: "muted" },
+  completed: { label: "Completed", variant: "neutral" },
+  churned: { label: "Churned", variant: "neutral" },
 };
 
 const riskMeta: Record<
@@ -63,7 +65,7 @@ const riskMeta: Record<
   inactive_client: {
     label: "Inactive client",
     shortLabel: "Inactive",
-    variant: "muted",
+    variant: "neutral",
   },
 };
 
