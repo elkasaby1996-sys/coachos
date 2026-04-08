@@ -27,9 +27,13 @@ export function StatCard({
 }) {
   const isPtHub = surface === "pt-hub";
   const reduceMotion = useReducedMotion();
+  const ptHubLabelClassName =
+    "text-[oklch(var(--chart-2)/0.9)] drop-shadow-[0_0_18px_oklch(var(--chart-2)/0.08)]";
+  const ptHubHelperClassName = "text-[oklch(var(--chart-2)/0.78)]";
 
   return (
     <motion.div
+      className="h-full"
       whileHover={
         reduceMotion
           ? undefined
@@ -39,7 +43,7 @@ export function StatCard({
       <Card
         className={cn(
           isPtHub
-            ? "surface-panel relative min-h-[188px] overflow-hidden rounded-[30px] border-border/70 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl"
+            ? "surface-panel relative h-full min-h-[188px] overflow-hidden rounded-[30px] border-border/70 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.82)] backdrop-blur-xl"
             : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
           accent &&
             (isPtHub
@@ -71,7 +75,12 @@ export function StatCard({
             isPtHub && "relative flex h-full px-5 py-5 sm:px-6",
           )}
         >
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div
+            className={cn(
+              "flex items-center justify-between text-xs text-muted-foreground",
+              isPtHub && ptHubLabelClassName,
+            )}
+          >
             <span className="font-semibold uppercase tracking-[0.22em]">
               {label}
             </span>
@@ -79,7 +88,9 @@ export function StatCard({
               <Icon
                 className={cn(
                   "h-4.5 w-4.5 shrink-0",
-                  isPtHub ? "text-primary/90" : "text-primary",
+                  isPtHub
+                    ? "text-[oklch(var(--chart-2)/0.96)] drop-shadow-[0_0_16px_oklch(var(--chart-2)/0.22)]"
+                    : "text-primary",
                 )}
               />
             ) : null}
@@ -98,7 +109,11 @@ export function StatCard({
                 <p
                   className={cn(
                     "text-xs text-muted-foreground",
-                    isPtHub && "mt-1 text-[0.78rem] leading-[1.15rem]",
+                    isPtHub &&
+                      cn(
+                        "mt-1 text-[0.78rem] leading-[1.15rem]",
+                        ptHubHelperClassName,
+                      ),
                   )}
                 >
                   {helper}
@@ -114,7 +129,9 @@ export function StatCard({
                   delta.tone === "negative" &&
                     "border-danger/30 bg-danger/12 text-danger",
                   (!delta.tone || delta.tone === "neutral") &&
-                    "border-border/70 bg-muted/28 text-muted-foreground",
+                    (isPtHub
+                      ? "border-[oklch(var(--chart-2)/0.24)] bg-[oklch(var(--chart-2)/0.12)] text-[oklch(var(--chart-2)/0.96)]"
+                      : "border-border/70 bg-muted/28 text-muted-foreground"),
                 )}
               >
                 {delta.value}

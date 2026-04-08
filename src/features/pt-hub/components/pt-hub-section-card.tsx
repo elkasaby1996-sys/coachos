@@ -38,7 +38,7 @@ export function PtHubSectionCard({
               {title}
             </CardTitle>
             {description ? (
-              <p className="max-w-xl text-[0.95rem] leading-6 text-muted-foreground">
+              <p className="pt-hub-meta-text max-w-xl text-[0.95rem] leading-6">
                 {description}
               </p>
             ) : null}

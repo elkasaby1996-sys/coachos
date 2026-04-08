@@ -68,7 +68,8 @@ export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { workspaceId, loading, error } = useWorkspace();
-  const { bootstrapError: authError, hasWorkspaceMembership } = useBootstrapAuth();
+  const { bootstrapError: authError, hasWorkspaceMembership } =
+    useBootstrapAuth();
   const onboardingQuery = useClientOnboarding();
   const onboardingSummary = onboardingQuery.data ?? null;
   const basicsGateRequired = Boolean(
@@ -91,10 +92,7 @@ export function ClientLayout() {
       );
     });
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const errorMessage =
-    error?.message ??
-    authError?.message ??
-    null;
+  const errorMessage = error?.message ?? authError?.message ?? null;
   const shouldRenderOnboardingBanner = Boolean(
     onboardingSummary &&
     onboardingSummary.onboarding.status !== "completed" &&
@@ -210,7 +208,9 @@ export function ClientLayout() {
                   <>
                     {isActive ? (
                       <motion.span
-                        layoutId={reduceMotion ? undefined : "client-nav-active-pill"}
+                        layoutId={
+                          reduceMotion ? undefined : "client-nav-active-pill"
+                        }
                         className="absolute inset-0 rounded-[20px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.56))] shadow-[0_18px_42px_-34px_oklch(0_0_0/0.8)]"
                         transition={{
                           type: "spring",
@@ -222,10 +222,10 @@ export function ClientLayout() {
                     ) : null}
                     <span
                       className={cn(
-                        "relative z-10 flex h-9 w-9 items-center justify-center rounded-[16px] border transition-colors",
+                        "relative z-10 flex h-9 w-9 items-center justify-center transition-colors",
                         isActive
-                          ? "border-primary/20 bg-primary/10 text-primary"
-                          : "border-border/70 bg-card/65 text-muted-foreground group-hover:border-border/90 group-hover:text-primary",
+                          ? "text-primary"
+                          : "text-muted-foreground group-hover:text-primary",
                       )}
                     >
                       <item.icon className="h-4 w-4" />

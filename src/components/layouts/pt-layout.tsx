@@ -397,12 +397,12 @@ function SidebarNav({
                       ) : null}
                       <span
                         className={cn(
-                          "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
+                          "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center transition-colors",
                           isActive
-                            ? "border-primary/20 bg-primary/10 text-primary"
+                            ? "text-primary"
                             : isLightMode
-                              ? "border-[oklch(var(--border-default)/0.56)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.42),oklch(var(--bg-muted)/0.26))] text-[oklch(var(--text-muted))] group-hover:border-primary/22 group-hover:text-primary"
-                              : "border-border/70 bg-background/75 text-muted-foreground group-hover:border-primary/20 group-hover:text-primary",
+                              ? "text-[oklch(var(--text-muted))] group-hover:text-primary"
+                              : "text-muted-foreground group-hover:text-primary",
                         )}
                       >
                         <Icon className="h-4 w-4 [stroke-width:1.7]" />
@@ -818,9 +818,7 @@ export function PtLayout() {
                         desktopNavCollapsed && "justify-center",
                       )}
                     >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-primary/16 bg-background/22 text-primary backdrop-blur-xl">
-                        <Sparkles className="h-5 w-5 [stroke-width:1.7]" />
-                      </div>
+                      <Sparkles className="h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
                       {!desktopNavCollapsed ? (
                         <div className="min-w-0">
                           <p className="text-[1.1rem] font-semibold uppercase tracking-[0.05em] text-foreground">
@@ -871,306 +869,333 @@ export function PtLayout() {
           <PtMessageComposeProvider>
             <WorkspaceHeaderModeProvider value="shell">
               <div className="min-w-0 space-y-5">
-              <header
-                className={cn(
-                  "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
-                  isLightMode
-                    ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
-                    : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
-                )}
-              >
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--chart-2)/0.06))]" />
-                <div
+                <header
                   className={cn(
-                    "pointer-events-none absolute inset-x-6 top-0 h-px",
+                    "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
                     isLightMode
-                      ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]"
-                      : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
+                      ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
+                      : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
                   )}
-                />
-                <div className="relative space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="lg:hidden"
-                        onClick={() => setMobileNavOpen(true)}
-                      >
-                        <Menu className="h-5 w-5 [stroke-width:1.7]" />
-                        <span className="sr-only">Open PT navigation</span>
-                      </Button>
-                      <p className="truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]">
-                        {pageTitle}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <NotificationBell
-                        viewAllHref="/pt/notifications"
-                        buttonClassName={getHeaderBellButtonClassName(
-                          isLightMode,
-                        )}
-                        iconClassName="h-[18px] w-[18px]"
-                      />
-
-                      <InviteClientDialog
-                        trigger={
-                          <Button
-                            className={getHeaderUtilityButtonClassName(
-                              isLightMode,
-                            )}
-                            variant="ghost"
-                          >
-                            <Plus className="h-4 w-4" />
-                            Invite client
-                          </Button>
-                        }
-                      />
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className={getHeaderPillClassName(isLightMode)}
-                            aria-label="Workspace menu"
-                          >
-                            <div className={getHeaderPillIconClassName(isLightMode)}>
-                              <Building2 className="h-4 w-4 [stroke-width:1.7]" />
-                            </div>
-                            <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                                Workspace
-                              </p>
-                              <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                                {workspaceDisplayName}
-                              </p>
-                            </div>
-                            <span className={getHeaderPillChevronClassName(isLightMode)}>
-                              <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                            </span>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          sideOffset={10}
-                          className="w-72"
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--chart-2)/0.06))]" />
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute inset-x-6 top-0 h-px",
+                      isLightMode
+                        ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]"
+                        : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
+                    )}
+                  />
+                  <div className="relative space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="lg:hidden"
+                          onClick={() => setMobileNavOpen(true)}
                         >
-                          <DropdownMenuLabel>Active workspace</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => navigate("/pt-hub")}>
-                            <div className="flex min-w-0 flex-1 items-center gap-3">
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
-                                <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
-                              </span>
-                              <div className="min-w-0">
-                                <p className="truncate font-medium text-foreground">
-                                  Repsync PT Hub
+                          <Menu className="h-5 w-5 [stroke-width:1.7]" />
+                          <span className="sr-only">Open PT navigation</span>
+                        </Button>
+                        <p className="truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]">
+                          {pageTitle}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <NotificationBell
+                          viewAllHref="/pt/notifications"
+                          buttonClassName={getHeaderBellButtonClassName(
+                            isLightMode,
+                          )}
+                          iconClassName="h-[18px] w-[18px]"
+                        />
+
+                        <InviteClientDialog
+                          trigger={
+                            <Button
+                              className={getHeaderUtilityButtonClassName(
+                                isLightMode,
+                              )}
+                              variant="ghost"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Invite client
+                            </Button>
+                          }
+                        />
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className={getHeaderPillClassName(isLightMode)}
+                              aria-label="Workspace menu"
+                            >
+                              <div
+                                className={getHeaderPillIconClassName(
+                                  isLightMode,
+                                )}
+                              >
+                                <Building2 className="h-4 w-4 [stroke-width:1.7]" />
+                              </div>
+                              <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                                  Workspace
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Business and admin workspace
+                                <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                  {workspaceDisplayName}
                                 </p>
                               </div>
-                            </div>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {workspaceSwitcherQuery.isLoading ? (
-                            <DropdownMenuItem disabled>
-                              Loading workspaces...
-                            </DropdownMenuItem>
-                          ) : workspaces.length === 0 ? (
-                            <DropdownMenuItem disabled>
-                              No workspaces found
-                            </DropdownMenuItem>
-                          ) : (
-                            workspaces.map((workspace) => (
-                              <DropdownMenuItem
-                                key={workspace.id}
-                                onClick={() => {
-                                  switchWorkspace(workspace.id);
-                                  navigate("/pt/dashboard");
-                                }}
+                              <span
+                                className={getHeaderPillChevronClassName(
+                                  isLightMode,
+                                )}
                               >
-                                <div className="flex min-w-0 flex-1 items-center gap-3">
-                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
-                                    <Building2 className="h-4 w-4 [stroke-width:1.7]" />
-                                  </span>
+                                <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                              </span>
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            sideOffset={10}
+                            className="w-72"
+                          >
+                            <DropdownMenuLabel>
+                              Active workspace
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => navigate("/pt-hub")}
+                            >
+                              <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
+                                  <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
+                                </span>
+                                <div className="min-w-0">
                                   <p className="truncate font-medium text-foreground">
-                                    {workspace.name?.trim() || "PT Workspace"}
+                                    Repsync PT Hub
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Business and admin workspace
                                   </p>
                                 </div>
-                                {workspace.id === workspaceId ? (
-                                  <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
-                                ) : null}
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {workspaceSwitcherQuery.isLoading ? (
+                              <DropdownMenuItem disabled>
+                                Loading workspaces...
                               </DropdownMenuItem>
-                            ))
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCreateWorkspaceError(null);
-                              setCreateWorkspaceOpen(true);
-                            }}
-                          >
-                            <Plus className="mr-3 h-4 w-4 [stroke-width:1.7]" />
-                            Create workspace
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className={getHeaderPillClassName(isLightMode)}
-                            aria-label="Profile menu"
-                          >
-                            <div className={getHeaderPillIconClassName(isLightMode)}>
-                              {userInitial}
-                            </div>
-                            <div className="min-w-0 flex-1 space-y-0.5">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                                Profile
-                              </p>
-                              <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                                {user?.email ?? "Trainer account"}
-                              </p>
-                            </div>
-                            <span className={getHeaderPillChevronClassName(isLightMode)}>
-                              <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                            </span>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" sideOffset={10} className="w-56">
-                          <DropdownMenuLabel>Profile</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => navigate("/settings/workspace")}
-                          >
-                            <Settings className="mr-3 h-4 w-4 [stroke-width:1.7]" />
-                            Settings
-                          </DropdownMenuItem>
-                          <div className="flex items-center justify-between px-3 py-2">
-                            <span className="text-sm font-medium text-foreground">
-                              Theme
-                            </span>
-                            <ThemeModeSwitch
-                              checked={resolvedTheme === "dark"}
-                              onToggle={toggleTheme}
-                            />
-                          </div>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem disabled={isSigningOut} onClick={signOut}>
-                            <LogOut className="mr-3 h-4 w-4 [stroke-width:1.7]" />
-                            {isSigningOut ? "Signing out..." : "Sign out"}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div
-                      ref={searchShellRef}
-                      className="relative w-full lg:max-w-[32rem]"
-                    >
-                      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search clients, programs, tags..."
-                        className="h-11 rounded-full border-border/70 bg-card/72 pl-9 text-[13px] shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]"
-                        aria-label="Search clients"
-                        value={searchInput}
-                        onChange={(event) => {
-                          setSearchInput(event.target.value);
-                          setSearchOpen(true);
-                        }}
-                        onFocus={() => setSearchOpen(true)}
-                        onKeyDown={(event) => {
-                          if (!searchResults.length) return;
-
-                          if (event.key === "ArrowDown") {
-                            event.preventDefault();
-                            setSearchOpen(true);
-                            setSearchHighlightIndex((current) =>
-                              Math.min(current + 1, searchResults.length - 1),
-                            );
-                          }
-
-                          if (event.key === "ArrowUp") {
-                            event.preventDefault();
-                            setSearchHighlightIndex((current) =>
-                              Math.max(current - 1, 0),
-                            );
-                          }
-
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            const selected =
-                              searchResults[searchHighlightIndex] ??
-                              searchResults[0];
-                            if (selected) {
-                              handleSearchSelect(selected);
-                            }
-                          }
-
-                          if (event.key === "Escape") {
-                            setSearchOpen(false);
-                          }
-                        }}
-                      />
-                      {searchOpen ? (
-                        <div className="absolute inset-x-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[24px] border border-border/75 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
-                          {searchQuery.isLoading ? (
-                            <div className="px-3 py-3 text-sm text-muted-foreground">
-                              Searching workspace...
-                            </div>
-                          ) : searchResults.length === 0 ? (
-                            <div className="px-3 py-3 text-sm text-muted-foreground">
-                              No matching results.
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              {searchResults.map((result, index) => (
-                                <button
-                                  key={result.id}
-                                  type="button"
-                                  className={cn(
-                                    "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
-                                    index === searchHighlightIndex
-                                      ? "bg-card/80 text-foreground"
-                                      : "text-foreground/90 hover:bg-card/72",
-                                  )}
-                                  onMouseEnter={() =>
-                                    setSearchHighlightIndex(index)
-                                  }
-                                  onClick={() => handleSearchSelect(result)}
+                            ) : workspaces.length === 0 ? (
+                              <DropdownMenuItem disabled>
+                                No workspaces found
+                              </DropdownMenuItem>
+                            ) : (
+                              workspaces.map((workspace) => (
+                                <DropdownMenuItem
+                                  key={workspace.id}
+                                  onClick={() => {
+                                    switchWorkspace(workspace.id);
+                                    navigate("/pt/dashboard");
+                                  }}
                                 >
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-medium text-foreground">
-                                      {result.label}
-                                    </p>
-                                    <p className="truncate text-xs text-muted-foreground">
-                                      {result.meta}
+                                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] text-primary">
+                                      <Building2 className="h-4 w-4 [stroke-width:1.7]" />
+                                    </span>
+                                    <p className="truncate font-medium text-foreground">
+                                      {workspace.name?.trim() || "PT Workspace"}
                                     </p>
                                   </div>
-                                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                    {result.type}
-                                  </span>
-                                </button>
-                              ))}
+                                  {workspace.id === workspaceId ? (
+                                    <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
+                                  ) : null}
+                                </DropdownMenuItem>
+                              ))
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setCreateWorkspaceError(null);
+                                setCreateWorkspaceOpen(true);
+                              }}
+                            >
+                              <Plus className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                              Create workspace
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className={getHeaderPillClassName(isLightMode)}
+                              aria-label="Profile menu"
+                            >
+                              <div
+                                className={getHeaderPillIconClassName(
+                                  isLightMode,
+                                )}
+                              >
+                                {userInitial}
+                              </div>
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                                  Profile
+                                </p>
+                                <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                  {user?.email ?? "Trainer account"}
+                                </p>
+                              </div>
+                              <span
+                                className={getHeaderPillChevronClassName(
+                                  isLightMode,
+                                )}
+                              >
+                                <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                              </span>
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            sideOffset={10}
+                            className="w-56"
+                          >
+                            <DropdownMenuLabel>Profile</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => navigate("/settings/workspace")}
+                            >
+                              <Settings className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                              Settings
+                            </DropdownMenuItem>
+                            <div className="flex items-center justify-between px-3 py-2">
+                              <span className="text-sm font-medium text-foreground">
+                                Theme
+                              </span>
+                              <ThemeModeSwitch
+                                checked={resolvedTheme === "dark"}
+                                onToggle={toggleTheme}
+                              />
                             </div>
-                          )}
-                        </div>
-                      ) : null}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              disabled={isSigningOut}
+                              onClick={signOut}
+                            >
+                              <LogOut className="mr-3 h-4 w-4 [stroke-width:1.7]" />
+                              {isSigningOut ? "Signing out..." : "Sign out"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div
+                        ref={searchShellRef}
+                        className="relative w-full lg:max-w-[32rem]"
+                      >
+                        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Search clients, programs, tags..."
+                          className="h-11 rounded-full border-border/70 bg-card/72 pl-9 text-[13px] shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]"
+                          aria-label="Search clients"
+                          value={searchInput}
+                          onChange={(event) => {
+                            setSearchInput(event.target.value);
+                            setSearchOpen(true);
+                          }}
+                          onFocus={() => setSearchOpen(true)}
+                          onKeyDown={(event) => {
+                            if (!searchResults.length) return;
+
+                            if (event.key === "ArrowDown") {
+                              event.preventDefault();
+                              setSearchOpen(true);
+                              setSearchHighlightIndex((current) =>
+                                Math.min(current + 1, searchResults.length - 1),
+                              );
+                            }
+
+                            if (event.key === "ArrowUp") {
+                              event.preventDefault();
+                              setSearchHighlightIndex((current) =>
+                                Math.max(current - 1, 0),
+                              );
+                            }
+
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              const selected =
+                                searchResults[searchHighlightIndex] ??
+                                searchResults[0];
+                              if (selected) {
+                                handleSearchSelect(selected);
+                              }
+                            }
+
+                            if (event.key === "Escape") {
+                              setSearchOpen(false);
+                            }
+                          }}
+                        />
+                        {searchOpen ? (
+                          <div className="absolute inset-x-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[24px] border border-border/75 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
+                            {searchQuery.isLoading ? (
+                              <div className="px-3 py-3 text-sm text-muted-foreground">
+                                Searching workspace...
+                              </div>
+                            ) : searchResults.length === 0 ? (
+                              <div className="px-3 py-3 text-sm text-muted-foreground">
+                                No matching results.
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                {searchResults.map((result, index) => (
+                                  <button
+                                    key={result.id}
+                                    type="button"
+                                    className={cn(
+                                      "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
+                                      index === searchHighlightIndex
+                                        ? "bg-card/80 text-foreground"
+                                        : "text-foreground/90 hover:bg-card/72",
+                                    )}
+                                    onMouseEnter={() =>
+                                      setSearchHighlightIndex(index)
+                                    }
+                                    onClick={() => handleSearchSelect(result)}
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-medium text-foreground">
+                                        {result.label}
+                                      </p>
+                                      <p className="truncate text-xs text-muted-foreground">
+                                        {result.meta}
+                                      </p>
+                                    </div>
+                                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                      {result.type}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </header>
+                </header>
 
-              <main className="min-w-0">
-                <RouteTransition className="grid gap-6">
-                  <Outlet />
-                </RouteTransition>
-              </main>
+                <main className="min-w-0">
+                  <RouteTransition className="grid gap-6">
+                    <Outlet />
+                  </RouteTransition>
+                </main>
               </div>
             </WorkspaceHeaderModeProvider>
           </PtMessageComposeProvider>
@@ -1187,7 +1212,10 @@ export function PtLayout() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <label htmlFor="create-workspace-name" className="field-label block">
+            <label
+              htmlFor="create-workspace-name"
+              className="field-label block"
+            >
               Workspace name
             </label>
             <Input

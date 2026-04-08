@@ -237,13 +237,11 @@ export function PtHubSettingsPanel({
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center text-primary">
-                  {form.weeklyDigest ? (
-                    <BellRing className="h-4 w-4" />
-                  ) : (
-                    <ShieldCheck className="h-4 w-4" />
-                  )}
-                </div>
+                {form.weeklyDigest ? (
+                  <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                ) : (
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                )}
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     {hasChanges

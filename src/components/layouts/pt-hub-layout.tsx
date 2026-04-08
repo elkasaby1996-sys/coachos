@@ -31,7 +31,10 @@ import {
 import { cn } from "../../lib/utils";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
-import { usePtHubProfile, usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
+import {
+  usePtHubProfile,
+  usePtHubWorkspaces,
+} from "../../features/pt-hub/lib/pt-hub";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { RouteTransition } from "../common/route-transition";
 import { supabase } from "../../lib/supabase";
@@ -408,9 +411,9 @@ export function PtHubLayout() {
       </aside>
 
       <PageContainer className="relative z-10 py-4 sm:py-5 lg:py-6">
-        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-6">
+        <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-6">
           <aside className="hidden lg:block">
-            <div className="sticky top-5">
+            <div className="fixed bottom-5 left-8 top-5 w-[300px] 2xl:left-[max(2rem,calc((100vw-2000px)/2+2rem))]">
               <div
                 className={cn(
                   "surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[34px] border-border/70",
@@ -510,9 +513,7 @@ export function PtHubLayout() {
                           <Building className="h-4 w-4 [stroke-width:1.7]" />
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                          <p className="pt-hub-kicker">
-                            Coaching space
-                          </p>
+                          <p className="pt-hub-kicker">Coaching space</p>
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {currentWorkspace?.name ?? "No workspace selected"}
                           </p>
@@ -621,9 +622,7 @@ export function PtHubLayout() {
                           {userInitial}
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="pt-hub-kicker">
-                            Profile
-                          </p>
+                          <p className="pt-hub-kicker">Profile</p>
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {coachDisplayName}
                           </p>
@@ -645,9 +644,7 @@ export function PtHubLayout() {
                       <DropdownMenuLabel
                         className={getPtHubDropdownLabelClassName(isLightMode)}
                       >
-                        <span className="pt-hub-kicker block">
-                          Account
-                        </span>
+                        <span className="pt-hub-kicker block">Account</span>
                         <span className="mt-1 block truncate text-sm font-medium text-foreground">
                           {coachDisplayName}
                         </span>
@@ -764,9 +761,7 @@ function SidebarContent({
     <div className={cn("flex h-full min-h-0 flex-col px-5 py-5", className)}>
       <div className="space-y-4 border-b border-border/60 pb-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-primary/16 bg-background/22 text-primary backdrop-blur-xl">
-            <Building className="h-5 w-5 [stroke-width:1.7]" />
-          </div>
+          <Building className="mt-0.5 h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
           <div className="min-w-0 space-y-1">
             <p
               className={cn(
@@ -788,14 +783,10 @@ function SidebarContent({
         </div>
       </div>
 
-      <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:flex lg:flex-col lg:justify-center lg:gap-6">
+      <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:overflow-visible">
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
-            <p
-              className="pt-hub-kicker px-2"
-            >
-              {group.label}
-            </p>
+            <p className="pt-hub-kicker px-2">{group.label}</p>
             <div className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
@@ -805,7 +796,9 @@ function SidebarContent({
                     to={item.to}
                     end={"end" in item ? item.end : undefined}
                     onClick={onNavigate}
-                    className={({ isActive }) => sidebarLinkClasses(isActive, isLightMode)}
+                    className={({ isActive }) =>
+                      sidebarLinkClasses(isActive, isLightMode)
+                    }
                   >
                     {({ isActive }) => (
                       <>
@@ -821,18 +814,22 @@ function SidebarContent({
                             transition={
                               reduceMotion
                                 ? { duration: 0 }
-                                : { type: "spring", stiffness: 280, damping: 30 }
+                                : {
+                                    type: "spring",
+                                    stiffness: 280,
+                                    damping: 30,
+                                  }
                             }
                           />
                         ) : null}
                         <span
                           className={cn(
-                            "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
+                            "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center transition-colors",
                             isActive
-                              ? "border-primary/20 bg-primary/10 text-primary"
+                              ? "text-primary"
                               : isLightMode
-                                ? "border-slate-400/40 bg-[linear-gradient(180deg,rgba(245,248,246,0.34),rgba(228,235,231,0.22))] text-slate-600 group-hover:border-primary/22 group-hover:text-primary"
-                                : "border-border/70 bg-background/75 text-muted-foreground group-hover:border-primary/20 group-hover:text-primary",
+                                ? "text-slate-600 group-hover:text-primary"
+                                : "text-muted-foreground group-hover:text-primary",
                           )}
                         >
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />

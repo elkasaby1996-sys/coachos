@@ -6,13 +6,15 @@ import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { ClientsKpiRow } from "../../components/pt/clients/ClientsKpiRow";
-import { ClientsFilters } from "../../components/pt/clients/ClientsFilters";
+import {
+  ClientsFilters,
+  type ClientLifecycleFilterKey,
+} from "../../components/pt/clients/ClientsFilters";
 import { ClientListRow } from "../../components/pt/clients/ClientListRow";
 import { EmptyState } from "../../components/ui/coachos";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { useSessionAuth } from "../../lib/auth";
 import {
-  getClientRiskFlagMeta,
   matchesClientSegment,
   normalizeClientLifecycleState,
   type ClientSegmentKey,
@@ -47,17 +49,6 @@ type ClientRecord = {
   risk_flags: string[] | null;
 };
 
-const lifecycleOptions = [
-  { value: "all", label: "All lifecycles" },
-  { value: "invited", label: "Invited" },
-  { value: "onboarding", label: "Onboarding" },
-  { value: "active", label: "Active" },
-  { value: "at_risk", label: "At risk" },
-  { value: "paused", label: "Paused" },
-  { value: "completed", label: "Completed" },
-  { value: "churned", label: "Churned" },
-] as const;
-
 export function PtClientsPage() {
   const { user } = useSessionAuth();
   const {
@@ -73,7 +64,8 @@ export function PtClientsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [searchValue, setSearchValue] = useState("");
   const [segment, setSegment] = useState<ClientSegmentKey>("all");
-  const [lifecycleFilter, setLifecycleFilter] = useState("all");
+  const [lifecycleFilter, setLifecycleFilter] =
+    useState<ClientLifecycleFilterKey>("all");
   const pageSize = 50;
 
   useEffect(() => {
@@ -270,18 +262,9 @@ export function PtClientsPage() {
           onSearchChange={setSearchValue}
           activeSegment={segment}
           onSegmentChange={setSegment}
+          activeLifecycle={lifecycleFilter}
+          onLifecycleChange={setLifecycleFilter}
         />
-        <select
-          className="workspace-filter-chip w-auto"
-          value={lifecycleFilter}
-          onChange={(event) => setLifecycleFilter(event.target.value)}
-        >
-          {lifecycleOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="space-y-3">

@@ -541,11 +541,9 @@
     --field-glass-border: oklch(1 0 0 / 0.14);
     --field-glass-border-focus: oklch(var(--accent) / 0.44);
     --field-glass-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.18),
-      0 18px 34px -26px oklch(0 0 0 / 0.48);
+      inset 0 1px 0 oklch(1 0 0 / 0.18), 0 18px 34px -26px oklch(0 0 0 / 0.48);
     --field-glass-shadow-focus:
-      inset 0 1px 0 oklch(1 0 0 / 0.24),
-      0 22px 42px -26px oklch(0 0 0 / 0.56);
+      inset 0 1px 0 oklch(1 0 0 / 0.24), 0 22px 42px -26px oklch(0 0 0 / 0.56);
     --field-glass-ring: oklch(var(--accent) / 0.24);
     --field-glass-placeholder: oklch(var(--text-muted) / 0.9);
   }
@@ -687,11 +685,9 @@
     --field-glass-border: oklch(1 0 0 / 0.18);
     --field-glass-border-focus: oklch(var(--accent) / 0.48);
     --field-glass-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.16),
-      0 20px 38px -28px oklch(0 0 0 / 0.56);
+      inset 0 1px 0 oklch(1 0 0 / 0.16), 0 20px 38px -28px oklch(0 0 0 / 0.56);
     --field-glass-shadow-focus:
-      inset 0 1px 0 oklch(1 0 0 / 0.22),
-      0 24px 46px -28px oklch(0 0 0 / 0.64);
+      inset 0 1px 0 oklch(1 0 0 / 0.22), 0 24px 46px -28px oklch(0 0 0 / 0.64);
     --field-glass-ring: oklch(var(--accent) / 0.26);
     --field-glass-placeholder: oklch(var(--text-muted) / 0.9);
   }
@@ -1007,22 +1003,22 @@
   }
 
   :where(
-      input:not([type]):not(.field-reset),
-      input[type="text"]:not(.field-reset),
-      input[type="email"]:not(.field-reset),
-      input[type="password"]:not(.field-reset),
-      input[type="number"]:not(.field-reset),
-      input[type="tel"]:not(.field-reset),
-      input[type="url"]:not(.field-reset),
-      input[type="search"]:not(.field-reset),
-      input[type="date"]:not(.field-reset),
-      input[type="time"]:not(.field-reset),
-      input[type="datetime-local"]:not(.field-reset),
-      input[type="month"]:not(.field-reset),
-      input[type="week"]:not(.field-reset),
-      select:not(.field-reset),
-      textarea:not(.field-reset)
-    ),
+    input:not([type]):not(.field-reset),
+    input[type="text"]:not(.field-reset),
+    input[type="email"]:not(.field-reset),
+    input[type="password"]:not(.field-reset),
+    input[type="number"]:not(.field-reset),
+    input[type="tel"]:not(.field-reset),
+    input[type="url"]:not(.field-reset),
+    input[type="search"]:not(.field-reset),
+    input[type="date"]:not(.field-reset),
+    input[type="time"]:not(.field-reset),
+    input[type="datetime-local"]:not(.field-reset),
+    input[type="month"]:not(.field-reset),
+    input[type="week"]:not(.field-reset),
+    select:not(.field-reset),
+    textarea:not(.field-reset)
+  ),
   .app-field {
     @apply text-sm text-foreground transition-[border-color,background-image,box-shadow];
     border-radius: 1rem;
@@ -1039,43 +1035,43 @@
   }
 
   :where(
-      input:not([type]):not(.field-reset),
-      input[type="text"]:not(.field-reset),
-      input[type="email"]:not(.field-reset),
-      input[type="password"]:not(.field-reset),
-      input[type="number"]:not(.field-reset),
-      input[type="tel"]:not(.field-reset),
-      input[type="url"]:not(.field-reset),
-      input[type="search"]:not(.field-reset),
-      input[type="date"]:not(.field-reset),
-      input[type="time"]:not(.field-reset),
-      input[type="datetime-local"]:not(.field-reset),
-      input[type="month"]:not(.field-reset),
-      input[type="week"]:not(.field-reset),
-      select:not(.field-reset),
-      textarea:not(.field-reset)
-    )::placeholder,
+    input:not([type]):not(.field-reset),
+    input[type="text"]:not(.field-reset),
+    input[type="email"]:not(.field-reset),
+    input[type="password"]:not(.field-reset),
+    input[type="number"]:not(.field-reset),
+    input[type="tel"]:not(.field-reset),
+    input[type="url"]:not(.field-reset),
+    input[type="search"]:not(.field-reset),
+    input[type="date"]:not(.field-reset),
+    input[type="time"]:not(.field-reset),
+    input[type="datetime-local"]:not(.field-reset),
+    input[type="month"]:not(.field-reset),
+    input[type="week"]:not(.field-reset),
+    select:not(.field-reset),
+    textarea:not(.field-reset)
+  )::placeholder,
   .app-field::placeholder {
     color: var(--field-glass-placeholder);
   }
 
   :where(
-      input:not([type]):not(.field-reset),
-      input[type="text"]:not(.field-reset),
-      input[type="email"]:not(.field-reset),
-      input[type="password"]:not(.field-reset),
-      input[type="number"]:not(.field-reset),
-      input[type="tel"]:not(.field-reset),
-      input[type="url"]:not(.field-reset),
-      input[type="search"]:not(.field-reset),
-      input[type="date"]:not(.field-reset),
-      input[type="time"]:not(.field-reset),
-      input[type="datetime-local"]:not(.field-reset),
-      input[type="month"]:not(.field-reset),
-      input[type="week"]:not(.field-reset),
-      select:not(.field-reset),
-      textarea:not(.field-reset)
-    ):focus-visible,
+    input:not([type]):not(.field-reset),
+    input[type="text"]:not(.field-reset),
+    input[type="email"]:not(.field-reset),
+    input[type="password"]:not(.field-reset),
+    input[type="number"]:not(.field-reset),
+    input[type="tel"]:not(.field-reset),
+    input[type="url"]:not(.field-reset),
+    input[type="search"]:not(.field-reset),
+    input[type="date"]:not(.field-reset),
+    input[type="time"]:not(.field-reset),
+    input[type="datetime-local"]:not(.field-reset),
+    input[type="month"]:not(.field-reset),
+    input[type="week"]:not(.field-reset),
+    select:not(.field-reset),
+    textarea:not(.field-reset)
+  ):focus-visible,
   .app-field:focus-visible {
     outline: none;
     border-color: var(--field-glass-border-focus);
@@ -1086,22 +1082,22 @@
   }
 
   :where(
-      input:not([type]):not(.field-reset),
-      input[type="text"]:not(.field-reset),
-      input[type="email"]:not(.field-reset),
-      input[type="password"]:not(.field-reset),
-      input[type="number"]:not(.field-reset),
-      input[type="tel"]:not(.field-reset),
-      input[type="url"]:not(.field-reset),
-      input[type="search"]:not(.field-reset),
-      input[type="date"]:not(.field-reset),
-      input[type="time"]:not(.field-reset),
-      input[type="datetime-local"]:not(.field-reset),
-      input[type="month"]:not(.field-reset),
-      input[type="week"]:not(.field-reset),
-      select:not(.field-reset),
-      textarea:not(.field-reset)
-    ):disabled,
+    input:not([type]):not(.field-reset),
+    input[type="text"]:not(.field-reset),
+    input[type="email"]:not(.field-reset),
+    input[type="password"]:not(.field-reset),
+    input[type="number"]:not(.field-reset),
+    input[type="tel"]:not(.field-reset),
+    input[type="url"]:not(.field-reset),
+    input[type="search"]:not(.field-reset),
+    input[type="date"]:not(.field-reset),
+    input[type="time"]:not(.field-reset),
+    input[type="datetime-local"]:not(.field-reset),
+    input[type="month"]:not(.field-reset),
+    input[type="week"]:not(.field-reset),
+    select:not(.field-reset),
+    textarea:not(.field-reset)
+  ):disabled,
   .app-field:disabled {
     @apply cursor-not-allowed opacity-60;
   }
@@ -1428,7 +1424,7 @@
 
   .pt-hub-kicker {
     @apply text-[11px] font-semibold uppercase tracking-[0.22em];
-    color: oklch(var(--foreground) / 0.82);
+    color: oklch(var(--chart-2) / 0.88);
   }
 
   .ops-surface {
@@ -1512,7 +1508,6 @@
   .auth-shell-subtitle {
     @apply text-sm leading-6 text-muted-foreground sm:text-[15px];
   }
-
 }
 
 @media (prefers-reduced-motion: reduce) {

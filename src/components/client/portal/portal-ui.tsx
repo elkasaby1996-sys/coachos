@@ -81,10 +81,7 @@ export const SurfaceCardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "flex flex-col gap-2 px-5 py-5 sm:px-6 sm:py-6",
-      className,
-    )}
+    className={cn("flex flex-col gap-2 px-5 py-5 sm:px-6 sm:py-6", className)}
     {...props}
   />
 ));
@@ -157,38 +154,38 @@ const bannerConfig: Record<
   {
     icon: React.ComponentType<{ className?: string }>;
     root: string;
-    iconBox: string;
+    iconClassName: string;
   }
 > = {
   success: {
     icon: CheckCircle2,
     root: "border-success/28 bg-success/12 text-foreground",
-    iconBox: "bg-success/18 text-success",
+    iconClassName: "text-success",
   },
   info: {
     icon: Info,
     root: "border-accent/30 bg-accent/10 text-foreground",
-    iconBox: "bg-accent/18 text-accent",
+    iconClassName: "text-accent",
   },
   warning: {
     icon: TriangleAlert,
     root: "border-warning/28 bg-warning/12 text-foreground",
-    iconBox: "bg-warning/18 text-warning",
+    iconClassName: "text-warning",
   },
   error: {
     icon: XCircle,
     root: "border-danger/28 bg-danger/12 text-foreground",
-    iconBox: "bg-danger/18 text-danger",
+    iconClassName: "text-danger",
   },
   reviewed: {
     icon: ClipboardCheck,
     root: "border-primary/28 bg-primary/10 text-foreground",
-    iconBox: "bg-primary/18 text-primary",
+    iconClassName: "text-primary",
   },
   locked: {
     icon: Lock,
     root: "border-border/70 bg-muted/28 text-foreground",
-    iconBox: "bg-background/70 text-muted-foreground",
+    iconClassName: "text-muted-foreground",
   },
 };
 
@@ -222,14 +219,14 @@ export function StatusBanner({
         )}
       >
         <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-border/60 transition-transform duration-300",
-              config.iconBox,
-            )}
-          >
-            {icon ?? <Icon className="h-5 w-5" />}
-          </div>
+          {icon ?? (
+            <Icon
+              className={cn(
+                "mt-0.5 h-5 w-5 shrink-0 transition-transform duration-300",
+                config.iconClassName,
+              )}
+            />
+          )}
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">{title}</p>
             {description ? (

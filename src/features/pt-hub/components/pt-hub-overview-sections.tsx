@@ -26,16 +26,52 @@ export interface PtHubOverviewActivityItem {
   ctaLabel: string;
 }
 
-function getActionToneClassName(tone: PtHubOverviewActionItem["tone"]) {
+function getActionToneBadgeClassName(tone: PtHubOverviewActionItem["tone"]) {
   switch (tone) {
     case "danger":
-      return "text-danger";
+      return "border-danger/30 bg-danger/12 text-danger";
     case "warning":
-      return "text-warning";
+      return "border-warning/30 bg-warning/12 text-warning";
     case "success":
-      return "text-success";
+      return "border-success/30 bg-success/12 text-success";
     default:
-      return "text-muted-foreground";
+      return "border-[oklch(var(--chart-2)/0.24)] bg-[oklch(var(--chart-2)/0.12)] text-[oklch(var(--chart-2)/0.96)]";
+  }
+}
+
+function getSummaryToneStyles(tone: PtHubOverviewSummaryItem["tone"]) {
+  switch (tone) {
+    case "danger":
+      return {
+        label: "border-danger/30 bg-danger/12 text-danger",
+        value: "text-[oklch(var(--danger)/0.96)]",
+        detail: "text-[oklch(var(--danger)/0.8)]",
+      };
+    case "warning":
+      return {
+        label: "border-warning/30 bg-warning/12 text-warning",
+        value: "text-[oklch(var(--warning)/0.98)]",
+        detail: "text-[oklch(var(--warning)/0.82)]",
+      };
+    case "success":
+      return {
+        label: "border-success/30 bg-success/12 text-success",
+        value: "text-[oklch(var(--success)/0.96)]",
+        detail: "text-[oklch(var(--success)/0.8)]",
+      };
+    case "info":
+      return {
+        label:
+          "border-[oklch(var(--chart-2)/0.24)] bg-[oklch(var(--chart-2)/0.12)] text-[oklch(var(--chart-2)/0.96)]",
+        value: "text-[oklch(var(--chart-2)/0.98)]",
+        detail: "text-[oklch(var(--chart-2)/0.82)]",
+      };
+    default:
+      return {
+        label: "border-border/60 bg-background/24 text-muted-foreground",
+        value: "text-foreground",
+        detail: "text-muted-foreground",
+      };
   }
 }
 
@@ -164,7 +200,7 @@ export function PtHubActionCenter({
           <h2 className="text-balance text-[2.05rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.55rem]">
             Everything that needs attention.
           </h2>
-          <p className="max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
+          <p className="pt-hub-meta-text max-w-3xl text-[0.95rem] leading-6">
             {helperText}
           </p>
         </div>
@@ -185,14 +221,14 @@ export function PtHubActionCenter({
                     </p>
                     <span
                       className={cn(
-                        "text-[11px] font-semibold uppercase tracking-[0.2em]",
-                        getActionToneClassName(item.tone),
+                        "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
+                        getActionToneBadgeClassName(item.tone),
                       )}
                     >
                       {item.badge}
                     </span>
                   </div>
-                  <p className="max-w-4xl text-[0.95rem] leading-6 text-muted-foreground">
+                  <p className="pt-hub-meta-text max-w-4xl text-[0.95rem] leading-6">
                     {item.description}
                   </p>
                 </div>
@@ -206,14 +242,12 @@ export function PtHubActionCenter({
         ) : (
           <div className="rounded-[28px] border border-success/18 bg-success/8 px-5 py-6">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center text-success">
-                <CheckCircle2 className="h-4 w-4 [stroke-width:1.7]" />
-              </div>
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success [stroke-width:1.7]" />
               <div>
                 <p className="text-[1rem] font-medium uppercase tracking-[0.04em] text-foreground">
                   Nothing urgent right now
                 </p>
-                <p className="mt-2 max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
+                <p className="pt-hub-meta-text mt-2 max-w-3xl text-[0.95rem] leading-6">
                   You are caught up on the biggest blockers. Use the sections
                   below to keep momentum moving and look for the next growth
                   opportunity.
@@ -246,7 +280,7 @@ export function PtHubRecentActivityCard({
                   <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
                     {item.title}
                   </p>
-                  <p className="mt-2 text-[0.95rem] leading-6 text-muted-foreground">
+                  <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
                     {item.description}
                   </p>
                 </div>
@@ -313,26 +347,17 @@ export function PtHubLaunchChecklistCard({
               className="pt-hub-interactive flex flex-col gap-4 rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0 flex items-start gap-3">
-                <span
+                <CheckCircle2
                   className={cn(
-                    "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[16px] border backdrop-blur-lg",
-                    item.complete
-                      ? "border-success/24 bg-success/12 text-success"
-                      : "border-primary/20 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.72),oklch(var(--bg-surface)/0.42))] text-primary",
+                    "mt-0.5 h-5 w-5 shrink-0 [stroke-width:1.7]",
+                    item.complete ? "text-success" : "text-primary opacity-55",
                   )}
-                >
-                  <CheckCircle2
-                    className={cn(
-                      "h-4 w-4 [stroke-width:1.7]",
-                      !item.complete && "opacity-55",
-                    )}
-                  />
-                </span>
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
                     {item.label}
                   </p>
-                  <p className="mt-2 text-[0.95rem] leading-6 text-muted-foreground">
+                  <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
                     {item.description}
                   </p>
                 </div>
@@ -370,7 +395,7 @@ export function PtHubQuickActionsCard({
               <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
                 {action.label}
               </p>
-              <p className="mt-1 text-[0.95rem] leading-6 text-muted-foreground">
+              <p className="pt-hub-meta-text mt-1 text-[0.95rem] leading-6">
                 {action.description}
               </p>
             </div>
@@ -415,26 +440,47 @@ export function PtHubSummaryCard({
         />
       ) : (
         <div className="-mx-1 divide-y divide-border/60">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="pt-hub-interactive rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18"
-            >
-              <div className="min-w-0 space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  {item.label}
-                </p>
-                <p className="text-[1.1rem] font-medium uppercase tracking-[0.03em] text-foreground">
-                  {item.value}
-                </p>
-                {item.detail ? (
-                  <p className="text-[0.92rem] leading-6 text-muted-foreground">
-                    {item.detail}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          ))}
+          {items.map((item) =>
+            (() => {
+              const toneStyles = getSummaryToneStyles(item.tone);
+
+              return (
+                <div
+                  key={item.id}
+                  className="pt-hub-interactive rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18"
+                >
+                  <div className="min-w-0 space-y-2">
+                    <p
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
+                        toneStyles.label,
+                      )}
+                    >
+                      {item.label}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-[1.1rem] font-medium uppercase tracking-[0.03em]",
+                        toneStyles.value,
+                      )}
+                    >
+                      {item.value}
+                    </p>
+                    {item.detail ? (
+                      <p
+                        className={cn(
+                          "text-[0.92rem] leading-6",
+                          toneStyles.detail,
+                        )}
+                      >
+                        {item.detail}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })(),
+          )}
         </div>
       )}
     </PtHubSectionCard>
