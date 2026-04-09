@@ -7,8 +7,10 @@ import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { PtHubLeadDetailView } from "../../features/pt-hub/components/pt-hub-lead-detail-view";
 import {
   addPtHubLeadNote,
+  approvePtHubLead,
   updatePtHubLeadStatus,
   usePtHubLeads,
+  usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTLead } from "../../features/pt-hub/types";
 import { useSessionAuth } from "../../lib/auth";
@@ -18,6 +20,7 @@ export function PtHubLeadDetailPage() {
   const queryClient = useQueryClient();
   const { user } = useSessionAuth();
   const leadsQuery = usePtHubLeads();
+  const workspacesQuery = usePtHubWorkspaces();
   const [saving, setSaving] = useState(false);
 
   const lead = useMemo(
@@ -61,14 +64,42 @@ export function PtHubLeadDetailPage() {
   return (
     <PtHubLeadDetailView
       lead={lead}
+      workspaces={(workspacesQuery.data ?? []).map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+      }))}
       saving={saving}
-      onUpdateStatus={async (nextLeadId, status, markConverted) => {
+      onUpdateStatus={async (nextLeadId, status) => {
         setSaving(true);
         try {
           await updatePtHubLeadStatus({
             leadId: nextLeadId,
             status,
-            markConverted,
+          });
+          await refreshLeads();
+        } finally {
+          setSaving(false);
+        }
+      }}
+      onApprove={async (nextLeadId, params) => {
+        setSaving(true);
+        try {
+          await approvePtHubLead({
+            leadId: nextLeadId,
+            workspaceId: params.workspaceId,
+            workspaceName: params.workspaceName,
+          });
+          await refreshLeads();
+        } finally {
+          setSaving(false);
+        }
+      }}
+      onDecline={async (nextLeadId) => {
+        setSaving(true);
+        try {
+          await updatePtHubLeadStatus({
+            leadId: nextLeadId,
+            status: "declined",
           });
           await refreshLeads();
         } finally {

@@ -107,6 +107,7 @@ function createWorkspace(
 function createLead(overrides: Partial<PTLead> = {}): PTLead {
   return {
     id: "lead-1",
+    applicantUserId: "applicant-1",
     fullName: "Jordan Lead",
     email: "jordan@example.com",
     phone: null,
@@ -114,6 +115,8 @@ function createLead(overrides: Partial<PTLead> = {}): PTLead {
     trainingExperience: "Intermediate",
     budgetInterest: null,
     packageInterest: null,
+    packageInterestId: null,
+    packageInterestLabelSnapshot: null,
     status: "new",
     submittedAt: "2026-04-03T12:00:00.000Z",
     notesPreview: null,

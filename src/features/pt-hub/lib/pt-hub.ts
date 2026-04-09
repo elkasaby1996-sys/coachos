@@ -11,6 +11,10 @@ import { formatRelativeTime } from "../../../lib/relative-time";
 import { runClientGuardedAction } from "../../../lib/request-guard";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
+import {
+  buildPublicPtApplicationRpcInput,
+  normalizePtLeadStatus,
+} from "./pt-hub-leads";
 import type {
   PTAvailabilityMode,
   PTAccountSettingsDraft,
@@ -25,6 +29,7 @@ import type {
   PTLeadStatus,
   PTInvoiceSummary,
   PTOverviewStats,
+  PTPublicPackageOption,
   PTPublicLeadInput,
   PTPublicProfile,
   PTPublicTestimonial,
@@ -223,6 +228,7 @@ type PtHubClientsPageRow = PtClientsSummaryRow & {
 type PtHubLeadRow = {
   id: string;
   user_id: string;
+  applicant_user_id: string | null;
   full_name: string;
   email: string | null;
   phone: string | null;
@@ -230,7 +236,9 @@ type PtHubLeadRow = {
   training_experience: string | null;
   budget_interest: string | null;
   package_interest: string | null;
-  status: PTLeadStatus;
+  package_interest_id: string | null;
+  package_interest_label_snapshot: string | null;
+  status: string | null;
   submitted_at: string;
   source: string | null;
   source_slug: string | null;
@@ -552,6 +560,7 @@ function mapLead(row: PtHubLeadRow, notes: PTLeadNote[]): PTLead {
   const source = row.source?.trim() || "manual";
   return {
     id: row.id,
+    applicantUserId: row.applicant_user_id,
     fullName: row.full_name,
     email: row.email,
     phone: row.phone,
@@ -559,7 +568,9 @@ function mapLead(row: PtHubLeadRow, notes: PTLeadNote[]): PTLead {
     trainingExperience: row.training_experience,
     budgetInterest: row.budget_interest,
     packageInterest: row.package_interest,
-    status: row.status,
+    packageInterestId: row.package_interest_id,
+    packageInterestLabelSnapshot: row.package_interest_label_snapshot,
+    status: normalizePtLeadStatus(row.status),
     submittedAt: row.submitted_at,
     notesPreview: notes[0]?.body ?? null,
     notes,
@@ -1074,8 +1085,8 @@ export function usePtHubAnalytics() {
         return parsed >= previousMonthStart && parsed < startOfMonth;
       }).length;
 
-      const acceptedApplications = leads.filter((lead) =>
-        ["accepted"].includes(lead.status),
+      const convertedApplications = leads.filter(
+        (lead) => lead.status === "converted",
       ).length;
 
       const clientsByWorkspace = clients.reduce((map, client) => {
@@ -1108,7 +1119,7 @@ export function usePtHubAnalytics() {
         applicationsPreviousWindow,
         applicationConversionRate:
           leads.length > 0
-            ? Math.round((acceptedApplications / leads.length) * 100)
+            ? Math.round((convertedApplications / leads.length) * 100)
             : 0,
         activeClients: clients.filter((client) =>
           isLifecycleCoached(client.lifecycleState),
@@ -1146,7 +1157,7 @@ export function usePtHubLeads() {
         supabase
           .from("pt_hub_leads")
           .select(
-            "id, user_id, full_name, email, phone, goal_summary, training_experience, budget_interest, package_interest, status, submitted_at, source, source_slug, converted_at, converted_workspace_id, converted_client_id, created_at, updated_at",
+            "id, user_id, applicant_user_id, full_name, email, phone, goal_summary, training_experience, budget_interest, package_interest, package_interest_id, package_interest_label_snapshot, status, submitted_at, source, source_slug, converted_at, converted_workspace_id, converted_client_id, created_at, updated_at",
           )
           .eq("user_id", userId)
           .order("submitted_at", { ascending: false })
@@ -1382,23 +1393,45 @@ export function getPtProfilePreviewData(
 export async function updatePtHubLeadStatus(params: {
   leadId: string;
   status: PTLeadStatus;
-  markConverted?: boolean;
 }) {
-  const payload: {
-    status: PTLeadStatus;
-    converted_at?: string | null;
-  } = { status: params.status };
-
-  if (params.markConverted) {
-    payload.converted_at = new Date().toISOString();
-  }
-
   const { error } = await supabase
     .from("pt_hub_leads")
-    .update(payload)
+    .update({ status: params.status })
     .eq("id", params.leadId);
 
   if (error) throw error;
+}
+
+export type PtHubLeadApprovalResult = {
+  lead_id: string;
+  status: PTLeadStatus;
+  workspace_id: string | null;
+  client_id: string | null;
+};
+
+export async function approvePtHubLead(params: {
+  leadId: string;
+  workspaceId?: string | null;
+  workspaceName?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("pt_hub_approve_lead", {
+    p_lead_id: params.leadId,
+    p_workspace_id: params.workspaceId ?? null,
+    p_workspace_name: params.workspaceName?.trim() || null,
+  });
+
+  if (error) throw error;
+
+  const row = (Array.isArray(data)
+    ? (data[0] ?? null)
+    : data) as PtHubLeadApprovalResult | null;
+
+  return row
+    ? {
+        ...row,
+        status: normalizePtLeadStatus(row.status),
+      }
+    : null;
 }
 
 export async function addPtHubLeadNote(params: {
@@ -1575,21 +1608,146 @@ export async function setPtHubProfilePublication(publish: boolean) {
   if (error) throw error;
 }
 
+function normalizePublicPackageLabel(row: Record<string, unknown>) {
+  const labelCandidates = [
+    row.public_label,
+    row.label,
+    row.title,
+    row.name,
+  ];
+
+  for (const candidate of labelCandidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return "";
+}
+
+function mapPublicPackageOptions(rows: Record<string, unknown>[]) {
+  const options: PTPublicPackageOption[] = [];
+
+  for (const row of rows) {
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    if (!id) continue;
+
+    const isActive =
+      typeof row.is_active === "boolean" ? row.is_active : true;
+    const isPublic =
+      typeof row.is_public === "boolean" ? row.is_public : true;
+    if (!isActive || !isPublic) continue;
+
+    const label = normalizePublicPackageLabel(row);
+    if (!label) continue;
+
+    options.push({ id, label });
+  }
+
+  return options;
+}
+
+export function usePublicPtPackageOptions(
+  coachUserId: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: ["public-pt-package-options", coachUserId],
+    enabled: Boolean(coachUserId),
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      if (!coachUserId) return [] as PTPublicPackageOption[];
+
+      const { data, error } = await supabase
+        .from("pt_hub_packages")
+        .select("*")
+        .eq("user_id", coachUserId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        const code = (error as { code?: string }).code ?? "";
+        const message = (
+          (error as { message?: string }).message ?? ""
+        ).toLowerCase();
+        if (
+          code === "PGRST205" ||
+          message.includes("relation") ||
+          message.includes("does not exist")
+        ) {
+          return [] as PTPublicPackageOption[];
+        }
+        throw error;
+      }
+
+      return mapPublicPackageOptions(
+        (data ?? []) as Array<Record<string, unknown>>,
+      );
+    },
+  });
+}
+
+function getAuthUserFullName(user: {
+  user_metadata?: Record<string, unknown> | null;
+}) {
+  const metadata = user.user_metadata ?? {};
+  const fullName = metadata.full_name;
+  if (typeof fullName === "string" && fullName.trim()) {
+    return fullName.trim();
+  }
+
+  const fallbackName = metadata.name;
+  if (typeof fallbackName === "string" && fallbackName.trim()) {
+    return fallbackName.trim();
+  }
+
+  return "";
+}
+
 export async function submitPublicPtApplication(input: PTPublicLeadInput) {
-  const nextInput = {
-    p_slug: slugifyValue(input.slug),
-    p_full_name: input.fullName.trim(),
-    p_email: input.email.trim(),
-    p_phone: input.phone.trim(),
-    p_goal_summary: input.goalSummary.trim(),
-    p_training_experience: input.trainingExperience.trim(),
-    p_budget_interest: input.budgetInterest.trim(),
-    p_package_interest: input.packageInterest.trim(),
-  };
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+
+  const user = authData.user;
+  if (!user) {
+    throw new Error("Sign in to apply to this coach.");
+  }
+
+  const authenticatedEmail = user.email?.trim().toLowerCase() ?? "";
+  const authenticatedFullName = getAuthUserFullName(user);
+  const nextInput = buildPublicPtApplicationRpcInput({
+    input,
+    authenticatedEmail,
+    authenticatedFullName,
+  });
+
+  if (!authenticatedFullName && nextInput.p_full_name) {
+    try {
+      const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+      await supabase.auth.updateUser({
+        data: {
+          ...userMetadata,
+          full_name: nextInput.p_full_name,
+        },
+      });
+    } catch {
+      // Best effort only.
+    }
+  }
+
+  if (nextInput.p_phone) {
+    try {
+      await supabase
+        .from("clients")
+        .update({ phone: nextInput.p_phone })
+        .eq("user_id", user.id)
+        .is("workspace_id", null);
+    } catch {
+      // Best effort only.
+    }
+  }
 
   const { data, error } = await runClientGuardedAction({
     action: "public-pt-application",
-    scope: `${nextInput.p_slug}:${nextInput.p_email.toLowerCase()}`,
+    scope: `${nextInput.p_slug}:${user.id}`,
     cooldownMs: 60_000,
     message:
       "Please wait a minute before submitting another application for this coach.",

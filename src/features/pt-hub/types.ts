@@ -14,12 +14,10 @@ export type PTAvailabilityMode = "online" | "in_person";
 
 export type PTLeadStatus =
   | "new"
-  | "reviewed"
   | "contacted"
-  | "consultation_booked"
-  | "accepted"
-  | "rejected"
-  | "archived";
+  | "approved_pending_workspace"
+  | "converted"
+  | "declined";
 
 export interface PTProfile {
   id: string | null;
@@ -88,6 +86,7 @@ export interface PTLeadNote {
 
 export interface PTLead {
   id: string;
+  applicantUserId: string | null;
   fullName: string;
   email: string | null;
   phone: string | null;
@@ -95,6 +94,8 @@ export interface PTLead {
   trainingExperience: string | null;
   budgetInterest: string | null;
   packageInterest: string | null;
+  packageInterestId: string | null;
+  packageInterestLabelSnapshot: string | null;
   status: PTLeadStatus;
   submittedAt: string;
   notesPreview: string | null;
@@ -304,12 +305,23 @@ export interface PTPublicProfile {
 export interface PTPublicLeadInput {
   slug: string;
   fullName: string;
-  email: string;
   phone: string;
   goalSummary: string;
   trainingExperience: string;
-  budgetInterest: string;
-  packageInterest: string;
+  packageInterestId: string | null;
+  packageInterestLabelSnapshot: string | null;
+}
+
+export interface PTPublicApplicantIdentity {
+  isAuthenticated: boolean;
+  email: string;
+  fullName: string;
+  phone: string;
+}
+
+export interface PTPublicPackageOption {
+  id: string;
+  label: string;
 }
 
 export interface PTPublicationState {

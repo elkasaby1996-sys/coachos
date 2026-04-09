@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, MessageSquarePlus } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  MessageSquarePlus,
+  XCircle,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Textarea } from "../../../components/ui/textarea";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
@@ -14,38 +20,70 @@ import type { PTLead, PTLeadStatus } from "../types";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { getCharacterLimitState } from "../../../lib/character-limits";
 
+const ASSIGN_WORKSPACE_LATER_VALUE = "__assign_later__";
+const CREATE_NEW_WORKSPACE_VALUE = "__create_new__";
+
 export function PtHubLeadDetailView({
   lead,
+  workspaces,
   saving,
   onUpdateStatus,
+  onApprove,
+  onDecline,
   onAddNote,
 }: {
   lead: PTLead;
+  workspaces: Array<{ id: string; name: string }>;
   saving: boolean;
-  onUpdateStatus: (
+  onUpdateStatus: (leadId: string, status: PTLeadStatus) => Promise<void>;
+  onApprove: (
     leadId: string,
-    status: PTLeadStatus,
-    markConverted?: boolean,
+    params: { workspaceId?: string | null; workspaceName?: string | null },
   ) => Promise<void>;
+  onDecline: (leadId: string) => Promise<void>;
   onAddNote: (leadId: string, body: string) => Promise<void>;
 }) {
-  const [nextStatus, setNextStatus] = useState<PTLeadStatus>("reviewed");
+  const [nextStatus, setNextStatus] = useState<PTLeadStatus>("new");
   const [noteBody, setNoteBody] = useState("");
+  const [workspaceAssignment, setWorkspaceAssignment] = useState<string>(
+    ASSIGN_WORKSPACE_LATER_VALUE,
+  );
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const manualStatusOptions = ptHubLeadStatuses.filter(
+    (status) => status !== "converted",
+  ) as PTLeadStatus[];
   const noteLimitState = getCharacterLimitState({
     value: noteBody,
     kind: "default_text",
     fieldLabel: "Note",
   });
+  const workspaceNameLimitState = getCharacterLimitState({
+    value: newWorkspaceName,
+    kind: "default_text",
+    fieldLabel: "Workspace name",
+  });
 
-  const initialStatus = useMemo(
-    () => lead.status ?? "reviewed",
-    [lead.status],
-  );
+  const initialStatus = useMemo(() => lead.status ?? "new", [lead.status]);
+  const statusSelectValue = manualStatusOptions.includes(nextStatus)
+    ? nextStatus
+    : "contacted";
 
   useEffect(() => {
-    setNextStatus(lead.status ?? "reviewed");
+    setNextStatus(lead.status ?? "new");
     setNoteBody("");
-  }, [lead]);
+    setWorkspaceAssignment(
+      lead.convertedWorkspaceId ??
+        workspaces[0]?.id ??
+        ASSIGN_WORKSPACE_LATER_VALUE,
+    );
+    setNewWorkspaceName("");
+  }, [lead, workspaces]);
+
+  const isCreatingWorkspace = workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE;
+  const approveDisabled =
+    saving ||
+    workspaceNameLimitState.overLimit ||
+    (isCreatingWorkspace && !newWorkspaceName.trim());
 
   return (
     <section className="space-y-6">
@@ -91,13 +129,16 @@ export function PtHubLeadDetailView({
               label="Experience"
               value={lead.trainingExperience || "Not provided"}
             />
-            <DetailRow
-              label="Budget"
-              value={lead.budgetInterest || "Not provided"}
-            />
+            {lead.budgetInterest ? (
+              <DetailRow label="Budget (legacy)" value={lead.budgetInterest} />
+            ) : null}
             <DetailRow
               label="Package interest"
-              value={lead.packageInterest || "Not provided"}
+              value={
+                lead.packageInterestLabelSnapshot ||
+                lead.packageInterest ||
+                "Not provided"
+              }
             />
           </PtHubSectionCard>
 
@@ -169,33 +210,96 @@ export function PtHubLeadDetailView({
                 Update status
               </label>
               <Select
-                value={nextStatus}
+                value={statusSelectValue}
                 onChange={(event) =>
                   setNextStatus(event.target.value as PTLeadStatus)
                 }
               >
-                {ptHubLeadStatuses.map((status) => (
+                {manualStatusOptions.map((status) => (
                   <option key={status} value={status}>
                     {status.replace(/_/g, " ")}
                   </option>
                 ))}
               </Select>
+              <Button
+                disabled={
+                  saving ||
+                  nextStatus === initialStatus ||
+                  !manualStatusOptions.includes(nextStatus)
+                }
+                onClick={() => onUpdateStatus(lead.id, nextStatus)}
+              >
+                Save status
+              </Button>
+            </div>
+
+            <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/35 p-4">
+              <label className="text-sm font-medium text-foreground">
+                Workspace assignment for approval
+              </label>
+              <Select
+                value={workspaceAssignment}
+                onChange={(event) => setWorkspaceAssignment(event.target.value)}
+              >
+                <option value={ASSIGN_WORKSPACE_LATER_VALUE}>
+                  Approve now, assign workspace later
+                </option>
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </option>
+                ))}
+                <option value={CREATE_NEW_WORKSPACE_VALUE}>
+                  Create new workspace
+                </option>
+              </Select>
+
+              {isCreatingWorkspace ? (
+                <>
+                  <Input
+                    isInvalid={workspaceNameLimitState.overLimit}
+                    value={newWorkspaceName}
+                    onChange={(event) => setNewWorkspaceName(event.target.value)}
+                    placeholder="New workspace name"
+                  />
+                  <FieldCharacterMeta
+                    count={workspaceNameLimitState.count}
+                    limit={workspaceNameLimitState.limit}
+                    errorText={workspaceNameLimitState.errorText}
+                  />
+                </>
+              ) : null}
+
               <div className="flex flex-wrap gap-2">
                 <Button
-                  disabled={saving || nextStatus === initialStatus}
                   className="flex-1"
-                  onClick={() => onUpdateStatus(lead.id, nextStatus)}
+                  disabled={approveDisabled}
+                  onClick={() =>
+                    onApprove(lead.id, {
+                      workspaceId:
+                        workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE ||
+                        workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE
+                          ? null
+                          : workspaceAssignment,
+                      workspaceName: isCreatingWorkspace
+                        ? newWorkspaceName.trim()
+                        : null,
+                    })
+                  }
                 >
-                  Save status
+                  <CheckCircle2 className="h-4 w-4" />
+                  {workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE
+                    ? "Approve (workspace later)"
+                    : "Approve and convert"}
                 </Button>
                 <Button
                   variant="secondary"
                   className="flex-1"
                   disabled={saving}
-                  onClick={() => onUpdateStatus(lead.id, "accepted", true)}
+                  onClick={() => onDecline(lead.id)}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Mark converted later
+                  <XCircle className="h-4 w-4" />
+                  Decline lead
                 </Button>
               </div>
             </div>
@@ -204,18 +308,16 @@ export function PtHubLeadDetailView({
           <PtHubSectionCard
             module="profile"
             title="Conversion state"
-            description="Light placeholder until full consultation and conversion workflows land."
+            description="Tracks workspace assignment and client conversion."
           >
             <DetailRow
               label="Converted"
-              value={lead.convertedAt ? "Yes" : "Not yet"}
+              value={lead.status === "converted" ? "Yes" : "Not yet"}
             />
             <DetailRow
               label="Converted at"
               value={
-                lead.convertedAt
-                  ? formatRelativeTime(lead.convertedAt)
-                  : "Not yet"
+                lead.convertedAt ? formatRelativeTime(lead.convertedAt) : "Not yet"
               }
             />
             <DetailRow

@@ -17,7 +17,12 @@ import gsap from "gsap";
 import { Badge } from "../../../components/ui/badge";
 import type { BadgeVariant } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import type { PTPublicLeadInput, PTPublicProfile } from "../../pt-hub/types";
+import type {
+  PTPublicApplicantIdentity,
+  PTPublicLeadInput,
+  PTPublicPackageOption,
+  PTPublicProfile,
+} from "../../pt-hub/types";
 import { PublicPtApplyForm } from "./public-pt-apply-form";
 
 const coachingModeLabels: Record<string, string> = {
@@ -44,6 +49,8 @@ export function PublicPtProfileView({
   preview = false,
   submitting = false,
   success = false,
+  applicantIdentity,
+  packageOptions = [],
   onSubmitApplication,
   previewStatusBadges = [],
 }: {
@@ -51,6 +58,8 @@ export function PublicPtProfileView({
   preview?: boolean;
   submitting?: boolean;
   success?: boolean;
+  applicantIdentity: PTPublicApplicantIdentity;
+  packageOptions?: PTPublicPackageOption[];
   onSubmitApplication?: (input: PTPublicLeadInput) => Promise<void>;
   previewStatusBadges?: Array<{
     label: string;
@@ -409,8 +418,8 @@ export function PublicPtProfileView({
                       Apply to work with {title}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Share your goals, training background, and budget so the
-                      coach can review fit.
+                      Share your goals, training background, and package
+                      preference so the coach can review fit.
                     </p>
                     <div className="mt-4">
                       <PublicPtApplyForm
@@ -418,6 +427,8 @@ export function PublicPtProfileView({
                         preview={preview}
                         submitting={submitting}
                         success={success}
+                        identity={applicantIdentity}
+                        packageOptions={packageOptions}
                         onSubmit={onSubmitApplication}
                       />
                     </div>

@@ -38,6 +38,7 @@ export function PtHubLeadsPage() {
         lead.goalSummary,
         lead.trainingExperience ?? "",
         lead.budgetInterest ?? "",
+        lead.packageInterestLabelSnapshot ?? "",
         lead.packageInterest ?? "",
         lead.notesPreview ?? "",
         lead.sourceLabel,
@@ -56,9 +57,9 @@ export function PtHubLeadsPage() {
       total: leads.length,
       fresh: leads.filter((lead) => lead.status === "new").length,
       activePipeline: leads.filter((lead) =>
-        ["reviewed", "contacted", "consultation_booked"].includes(lead.status),
+        ["contacted", "approved_pending_workspace"].includes(lead.status),
       ).length,
-      accepted: leads.filter((lead) => lead.status === "accepted").length,
+      converted: leads.filter((lead) => lead.status === "converted").length,
     }),
     [leads],
   );
@@ -90,13 +91,13 @@ export function PtHubLeadsPage() {
           surface="pt-hub"
           label="In Progress"
           value={stats.activePipeline}
-          helper="Reviewed, contacted, or booked"
+          helper="Contacted or awaiting workspace"
         />
         <StatCard
           surface="pt-hub"
-          label="Accepted"
-          value={stats.accepted}
-          helper="Accepted or converted"
+          label="Converted"
+          value={stats.converted}
+          helper="Approved and assigned"
         />
       </div>
 
@@ -180,9 +181,10 @@ export function PtHubLeadsPage() {
                       {lead.goalSummary}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {lead.budgetInterest ||
+                      {lead.packageInterestLabelSnapshot ||
                         lead.packageInterest ||
-                        "Budget not specified"}
+                        lead.budgetInterest ||
+                        "Package not specified"}
                     </p>
                   </div>
 

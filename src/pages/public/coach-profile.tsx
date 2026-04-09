@@ -7,12 +7,17 @@ import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { PublicPtProfileView } from "../../features/pt-public/components/public-pt-profile-view";
 import {
   submitPublicPtApplication,
+  usePublicPtPackageOptions,
   usePublicPtProfile,
 } from "../../features/pt-hub/lib/pt-hub";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 
 export function PublicCoachProfilePage() {
   const { slug } = useParams<{ slug: string }>();
+  const { session } = useSessionAuth();
+  const { clientProfile } = useBootstrapAuth();
   const profileQuery = usePublicPtProfile(slug);
+  const packageOptionsQuery = usePublicPtPackageOptions(profileQuery.data?.userId);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +61,21 @@ export function PublicCoachProfilePage() {
     );
   }
 
+  const userMetadata = session?.user?.user_metadata ?? {};
+  const metadataFullName =
+    typeof userMetadata.full_name === "string" && userMetadata.full_name.trim()
+      ? userMetadata.full_name.trim()
+      : typeof userMetadata.name === "string" && userMetadata.name.trim()
+        ? userMetadata.name.trim()
+        : "";
+  const identityFullName =
+    clientProfile?.full_name?.trim() ||
+    clientProfile?.display_name?.trim() ||
+    metadataFullName;
+  const identityPhone = clientProfile?.phone?.trim() || "";
+  const identityEmail = session?.user?.email?.trim().toLowerCase() || "";
+  const packageOptions = packageOptionsQuery.data ?? [];
+
   return (
     <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden text-foreground">
       <AppShellBackgroundLayer />
@@ -87,6 +107,13 @@ export function PublicCoachProfilePage() {
           profile={profileQuery.data}
           submitting={submitting}
           success={success}
+          applicantIdentity={{
+            isAuthenticated: Boolean(session?.user),
+            email: identityEmail,
+            fullName: identityFullName,
+            phone: identityPhone,
+          }}
+          packageOptions={packageOptions}
           onSubmitApplication={async (input) => {
             setSubmitting(true);
             setError(null);

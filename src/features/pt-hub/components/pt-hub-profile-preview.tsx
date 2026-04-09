@@ -44,6 +44,12 @@ export function PtHubProfilePreview({
     <PublicPtProfileView
       profile={publicProfile}
       preview
+      applicantIdentity={{
+        isAuthenticated: true,
+        email: "preview@coachos.local",
+        fullName: "Preview Applicant",
+        phone: "",
+      }}
       previewStatusBadges={statusBadges}
     />
   );
