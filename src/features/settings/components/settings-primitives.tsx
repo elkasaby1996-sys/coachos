@@ -1,4 +1,3 @@
-import { AlertTriangle, Info } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { NavLink, useLocation } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
@@ -10,7 +9,10 @@ import {
   CardTitle,
 } from "../../../components/ui/card";
 import { cn } from "../../../lib/utils";
-import { getModuleToneClasses, getModuleToneStyle } from "../../../lib/module-tone";
+import {
+  getModuleToneClasses,
+  getModuleToneStyle,
+} from "../../../lib/module-tone";
 
 export type SettingsTabLink = {
   id: string;
@@ -19,11 +21,7 @@ export type SettingsTabLink = {
   to: string;
 };
 
-export function ScopeBadge({
-  scope,
-}: {
-  scope: "PT Hub" | "Workspace";
-}) {
+export function ScopeBadge({ scope }: { scope: "PT Hub" | "Workspace" }) {
   return <Badge variant="secondary">{scope}</Badge>;
 }
 
@@ -49,7 +47,10 @@ export function SettingsHeader({
             toneClasses.text,
           )}
         >
-          <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)} />
+          <span
+            aria-hidden
+            className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)}
+          />
           Settings
         </p>
         <div className="flex items-center gap-2">
@@ -58,7 +59,12 @@ export function SettingsHeader({
         </div>
       </div>
       <div className="space-y-1">
-        <h1 className={cn("text-[1.9rem] font-semibold tracking-tight", toneClasses.title)}>
+        <h1
+          className={cn(
+            "text-[1.9rem] font-semibold tracking-tight",
+            toneClasses.title,
+          )}
+        >
           {title}
         </h1>
         <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
@@ -78,47 +84,43 @@ export function SettingsTabs({ tabs }: { tabs: SettingsTabLink[] }) {
   };
 
   return (
-    <div className="sticky top-0 z-30 py-2">
-      <div className="mx-auto w-full max-w-full">
-        <nav
-          className="pt-hub-tab-rail h-auto min-h-[3.75rem] justify-center"
-          aria-label="Settings tabs"
-        >
-          {tabs.map((tab) => {
-            const active = isTabActive(tab.to);
+    <nav
+      className="pt-hub-tab-rail h-auto min-h-[3.75rem] justify-center"
+      aria-label="Settings tabs"
+    >
+      {tabs.map((tab) => {
+        const active = isTabActive(tab.to);
 
-            return (
-              <NavLink
-                key={tab.id}
-                to={tab.to}
-                data-state={active ? "active" : "inactive"}
-                className={cn(
-                  "pt-hub-tab-trigger group",
-                  active ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {active ? (
-                  <motion.span
-                    layoutId="settings-tab-active-pill"
-                    className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border"
-                    transition={
-                      reduceMotion
-                        ? { duration: 0 }
-                        : {
-                            type: "spring",
-                            stiffness: 280,
-                            damping: 30,
-                          }
-                    }
-                  />
-                ) : null}
-                <span className="relative z-10">{tab.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-      </div>
-    </div>
+        return (
+          <NavLink
+            key={tab.id}
+            to={tab.to}
+            data-state={active ? "active" : "inactive"}
+            className={cn(
+              "pt-hub-tab-trigger group",
+              active ? "text-foreground" : "text-muted-foreground",
+            )}
+          >
+            {active ? (
+              <motion.span
+                layoutId="settings-tab-active-pill"
+                className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border"
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : {
+                        type: "spring",
+                        stiffness: 280,
+                        damping: 30,
+                      }
+                }
+              />
+            ) : null}
+            <span className="relative z-10">{tab.label}</span>
+          </NavLink>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -128,19 +130,29 @@ export function SettingsPageShell({
   children,
   rightRail,
 }: {
-  header: React.ReactNode;
+  header?: React.ReactNode;
   tabs: React.ReactNode;
   children: React.ReactNode;
   rightRail?: React.ReactNode;
 }) {
   return (
     <section className="space-y-5">
-      {header}
-      {tabs}
+      {header ?? null}
+      <div className="sticky top-0 z-30 py-2">
+        <div className="mx-auto flex w-full max-w-full items-center gap-3">
+          <div className="min-w-0 flex-1">{tabs}</div>
+          <div
+            id="settings-nav-action-slot"
+            className="flex shrink-0 items-center justify-end"
+          />
+        </div>
+      </div>
       {rightRail ? (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-4">{children}</div>
-          <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">{rightRail}</aside>
+          <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
+            {rightRail}
+          </aside>
         </div>
       ) : (
         <div className="space-y-4">{children}</div>
@@ -151,7 +163,6 @@ export function SettingsPageShell({
 
 export function SettingsSectionCard({
   title,
-  description,
   children,
   action,
 }: {
@@ -165,9 +176,6 @@ export function SettingsSectionCard({
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <CardTitle className="text-base font-semibold">{title}</CardTitle>
-          {description ? (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          ) : null}
         </div>
         {action}
       </CardHeader>
@@ -178,7 +186,6 @@ export function SettingsSectionCard({
 
 export function SettingsFieldRow({
   label,
-  hint,
   children,
 }: {
   label: string;
@@ -189,46 +196,18 @@ export function SettingsFieldRow({
     <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_1fr] lg:gap-6">
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">{label}</p>
-        {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       </div>
       <div className="space-y-3">{children}</div>
     </div>
   );
 }
 
-export function SettingsHelperCallout({
-  title,
-  body,
-  tone = "info",
-}: {
+export function SettingsHelperCallout(_props: {
   title: string;
   body: string;
   tone?: "info" | "warning";
 }) {
-  const Icon = tone === "warning" ? AlertTriangle : Info;
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border px-4 py-3",
-        tone === "warning"
-          ? "border-warning/35 bg-warning/10"
-          : "border-border/70 bg-muted/25",
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <Icon
-          className={cn(
-            "mt-0.5 h-4 w-4",
-            tone === "warning" ? "text-warning" : "text-primary",
-          )}
-        />
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">{title}</p>
-          <p className="text-xs leading-5 text-muted-foreground">{body}</p>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 export function StickySaveBar({
@@ -262,7 +241,11 @@ export function StickySaveBar({
           <Button type="button" variant="secondary" onClick={onDiscard}>
             Discard
           </Button>
-          <Button type="button" onClick={() => void onSave()} disabled={Boolean(isSaving)}>
+          <Button
+            type="button"
+            onClick={() => void onSave()}
+            disabled={Boolean(isSaving)}
+          >
             {isSaving ? "Saving..." : "Save changes"}
           </Button>
         </div>

@@ -11,8 +11,11 @@ import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Textarea } from "../../components/ui/textarea";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 export function JoinPage() {
   const { code } = useParams();
@@ -34,6 +37,18 @@ export function JoinPage() {
   } | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [goal, setGoal] = useState("");
+  const displayNameLimitState = getCharacterLimitState({
+    value: displayName,
+    kind: "short_name",
+    fieldLabel: "Display name",
+  });
+  const goalLimitState = getCharacterLimitState({
+    value: goal,
+    kind: "default_text",
+    fieldLabel: "Goal",
+  });
+  const hasOverLimitErrors =
+    displayNameLimitState.overLimit || goalLimitState.overLimit;
   const inviteCode = useMemo(() => code ?? "", [code]);
   const isMissingCode = inviteCode.length === 0;
   const safeRefreshRole = useCallback(async () => {
@@ -154,6 +169,15 @@ export function JoinPage() {
     setMessage(null);
 
     if (!session?.user || !inviteCode) return;
+    if (hasOverLimitErrors) {
+      setStatus("error");
+      setMessage(
+        displayNameLimitState.errorText ??
+          goalLimitState.errorText ??
+          "Please fix over-limit fields before joining.",
+      );
+      return;
+    }
     if (!displayName.trim()) {
       setStatus("error");
       setMessage("Display name is required.");
@@ -362,28 +386,40 @@ export function JoinPage() {
                 </label>
                 <Input
                   id="display-name"
+                  isInvalid={displayNameLimitState.overLimit}
                   placeholder="Alex Athlete"
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                   required
+                />
+                <FieldCharacterMeta
+                  count={displayNameLimitState.count}
+                  limit={displayNameLimitState.limit}
+                  errorText={displayNameLimitState.errorText}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="goal">
                   Goal (optional)
                 </label>
-                <textarea
+                <Textarea
                   id="goal"
-                  className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  isInvalid={goalLimitState.overLimit}
+                  className="min-h-[96px]"
                   placeholder="What do you want to focus on?"
                   value={goal}
                   onChange={(event) => setGoal(event.target.value)}
+                />
+                <FieldCharacterMeta
+                  count={goalLimitState.count}
+                  limit={goalLimitState.limit}
+                  errorText={goalLimitState.errorText}
                 />
               </div>
               <Button
                 className="w-full"
                 type="submit"
-                disabled={status === "joining"}
+                disabled={status === "joining" || hasOverLimitErrors}
               >
                 {status === "joining" ? "Joining..." : "Join workspace"}
               </Button>

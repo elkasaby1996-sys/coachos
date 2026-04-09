@@ -83,9 +83,11 @@ const DEFAULT_PROFILE_FIELDS = {
 };
 
 const DEFAULT_SETTINGS: PTAccountSettingsDraft = {
+  fullName: "",
   contactEmail: "",
   supportEmail: "",
   phone: "",
+  country: "",
   timezone:
     typeof Intl !== "undefined"
       ? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -135,9 +137,11 @@ type LegacyPtProfileRow = {
 type PtHubSettingsRow = {
   id: string;
   user_id: string;
+  full_name: string | null;
   contact_email: string | null;
   support_email: string | null;
   phone: string | null;
+  country: string | null;
   timezone: string | null;
   city: string | null;
   client_alerts: boolean;
@@ -689,7 +693,7 @@ export function usePtHubSettings() {
       const { data, error } = await supabase
         .from("pt_hub_settings")
         .select(
-          "id, user_id, contact_email, support_email, phone, timezone, city, client_alerts, weekly_digest, product_updates, profile_visibility, subscription_plan, subscription_status, updated_at, created_at",
+          "id, user_id, full_name, contact_email, support_email, phone, country, timezone, city, client_alerts, weekly_digest, product_updates, profile_visibility, subscription_plan, subscription_status, updated_at, created_at",
         )
         .eq("user_id", userId)
         .maybeSingle<PtHubSettingsRow>();
@@ -698,9 +702,15 @@ export function usePtHubSettings() {
 
       return {
         ...DEFAULT_SETTINGS,
+        fullName:
+          data?.full_name ??
+          (typeof user?.user_metadata?.full_name === "string"
+            ? user.user_metadata.full_name
+            : ""),
         contactEmail: data?.contact_email ?? user?.email ?? "",
         supportEmail: data?.support_email ?? user?.email ?? "",
         phone: data?.phone ?? "",
+        country: data?.country ?? "",
         timezone: data?.timezone ?? DEFAULT_SETTINGS.timezone,
         city: data?.city ?? "",
         clientAlerts: data?.client_alerts ?? true,
@@ -871,11 +881,10 @@ export function getPtProfileReadiness(params: {
     {
       key: "cta_ready",
       label: "CTA-ready contact path",
-      complete:
-        isPresent(settings?.contactEmail) || isPresent(settings?.supportEmail),
+      complete: isPresent(settings?.contactEmail),
       href: "/pt-hub/settings",
       guidance:
-        "Add a contact or support email so future inquiry CTAs have a real destination.",
+        "Add a contact email so future inquiry CTAs have a real destination.",
     },
   ];
 
@@ -1479,9 +1488,11 @@ export async function savePtHubSettings(params: {
   const { error } = await supabase.from("pt_hub_settings").upsert(
     {
       user_id: params.userId,
+      full_name: params.settings.fullName.trim() || null,
       contact_email: params.settings.contactEmail.trim() || null,
       support_email: params.settings.supportEmail.trim() || null,
       phone: params.settings.phone.trim() || null,
+      country: params.settings.country.trim() || null,
       timezone: params.settings.timezone.trim() || null,
       city: params.settings.city.trim() || null,
       client_alerts: params.settings.clientAlerts,

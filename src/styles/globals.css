@@ -1016,6 +1016,26 @@
     touch-action: manipulation;
   }
 
+  button {
+    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (hover: hover) {
+    button:hover:not(:disabled):not([role="switch"]):not([data-no-button-motion="true"]) {
+      transform: translateY(-1px);
+    }
+  }
+
+  button:active:not(:disabled):not([role="switch"]):not([data-no-button-motion="true"]) {
+    transform: scale(0.99);
+  }
+
+  button:disabled {
+    transform: none;
+  }
+
   :where(
     input:not([type]):not(.field-reset),
     input[type="text"]:not(.field-reset),
@@ -1104,6 +1124,25 @@
     input[type="tel"]:not(.field-reset),
     input[type="url"]:not(.field-reset),
     input[type="search"]:not(.field-reset),
+    textarea:not(.field-reset)
+  )[data-invalid="true"],
+  .app-field[data-invalid="true"],
+  .app-select[data-invalid="true"] {
+    border-color: oklch(var(--danger) / 0.72);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.14),
+      0 0 0 3px oklch(var(--danger) / 0.2);
+  }
+
+  :where(
+    input:not([type]):not(.field-reset),
+    input[type="text"]:not(.field-reset),
+    input[type="email"]:not(.field-reset),
+    input[type="password"]:not(.field-reset),
+    input[type="number"]:not(.field-reset),
+    input[type="tel"]:not(.field-reset),
+    input[type="url"]:not(.field-reset),
+    input[type="search"]:not(.field-reset),
     input[type="date"]:not(.field-reset),
     input[type="time"]:not(.field-reset),
     input[type="datetime-local"]:not(.field-reset),
@@ -1121,19 +1160,15 @@
     @apply h-11 w-full px-3 pr-11;
     appearance: none;
     -webkit-appearance: none;
-    background-repeat: no-repeat, no-repeat;
-    background-position:
-      0 0,
-      right 0.875rem center;
-    background-size:
-      100% 100%,
-      1rem 1rem;
-    background-image: var(--select-surface-bg-field), var(--select-chevron);
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 100% 100%;
+    background-image: var(--select-surface-bg-field);
   }
 
   select:not(.field-reset):focus-visible,
   .app-field-select:focus-visible {
-    background-image: var(--select-surface-bg-field-focus), var(--select-chevron);
+    background-image: var(--select-surface-bg-field-focus);
   }
 
   textarea:not(.field-reset),

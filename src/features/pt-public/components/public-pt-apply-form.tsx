@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
+import {
+  getCharacterLimitState,
+  hasCharacterLimitError,
+} from "../../../lib/character-limits";
 import type { PTPublicLeadInput } from "../../pt-hub/types";
 
 const EMPTY_FORM = {
@@ -37,7 +43,52 @@ export function PublicPtApplyForm({
     }
   }, [success]);
 
-  const submitDisabled = preview || submitting || !onSubmit;
+  const fullNameLimitState = getCharacterLimitState({
+    value: form.fullName,
+    kind: "full_name",
+    fieldLabel: "Full name",
+  });
+  const emailLimitState = getCharacterLimitState({
+    value: form.email,
+    kind: "email",
+    fieldLabel: "Email",
+  });
+  const phoneLimitState = getCharacterLimitState({
+    value: form.phone,
+    kind: "default_text",
+    fieldLabel: "Phone",
+  });
+  const goalSummaryLimitState = getCharacterLimitState({
+    value: form.goalSummary,
+    kind: "default_text",
+    fieldLabel: "Goal summary",
+  });
+  const trainingExperienceLimitState = getCharacterLimitState({
+    value: form.trainingExperience,
+    kind: "default_text",
+    fieldLabel: "Training experience",
+  });
+  const budgetInterestLimitState = getCharacterLimitState({
+    value: form.budgetInterest,
+    kind: "default_text",
+    fieldLabel: "Budget",
+  });
+  const packageInterestLimitState = getCharacterLimitState({
+    value: form.packageInterest,
+    kind: "default_text",
+    fieldLabel: "Package interest",
+  });
+  const hasOverLimitErrors = hasCharacterLimitError([
+    fullNameLimitState,
+    emailLimitState,
+    phoneLimitState,
+    goalSummaryLimitState,
+    trainingExperienceLimitState,
+    budgetInterestLimitState,
+    packageInterestLimitState,
+  ]);
+
+  const submitDisabled = preview || submitting || !onSubmit || hasOverLimitErrors;
 
   return (
     <div className="space-y-4">
@@ -56,6 +107,7 @@ export function PublicPtApplyForm({
 
       <div className="grid gap-3">
         <Input
+          isInvalid={fullNameLimitState.overLimit}
           value={form.fullName}
           onChange={(event) =>
             setForm((prev) => ({ ...prev, fullName: event.target.value }))
@@ -63,8 +115,14 @@ export function PublicPtApplyForm({
           placeholder="Full name"
           disabled={preview}
         />
+        <FieldCharacterMeta
+          count={fullNameLimitState.count}
+          limit={fullNameLimitState.limit}
+          errorText={fullNameLimitState.errorText}
+        />
         <Input
           type="email"
+          isInvalid={emailLimitState.overLimit}
           value={form.email}
           onChange={(event) =>
             setForm((prev) => ({ ...prev, email: event.target.value }))
@@ -72,7 +130,13 @@ export function PublicPtApplyForm({
           placeholder="Email"
           disabled={preview}
         />
+        <FieldCharacterMeta
+          count={emailLimitState.count}
+          limit={emailLimitState.limit}
+          errorText={emailLimitState.errorText}
+        />
         <Input
+          isInvalid={phoneLimitState.overLimit}
           value={form.phone}
           onChange={(event) =>
             setForm((prev) => ({ ...prev, phone: event.target.value }))
@@ -80,8 +144,13 @@ export function PublicPtApplyForm({
           placeholder="Phone (optional)"
           disabled={preview}
         />
-        <textarea
-          className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
+        <FieldCharacterMeta
+          count={phoneLimitState.count}
+          limit={phoneLimitState.limit}
+          errorText={phoneLimitState.errorText}
+        />
+        <Textarea
+          isInvalid={goalSummaryLimitState.overLimit}
           value={form.goalSummary}
           onChange={(event) =>
             setForm((prev) => ({ ...prev, goalSummary: event.target.value }))
@@ -89,7 +158,13 @@ export function PublicPtApplyForm({
           placeholder="What are you trying to achieve?"
           disabled={preview}
         />
+        <FieldCharacterMeta
+          count={goalSummaryLimitState.count}
+          limit={goalSummaryLimitState.limit}
+          errorText={goalSummaryLimitState.errorText}
+        />
         <Input
+          isInvalid={trainingExperienceLimitState.overLimit}
           value={form.trainingExperience}
           onChange={(event) =>
             setForm((prev) => ({
@@ -100,29 +175,50 @@ export function PublicPtApplyForm({
           placeholder="Training experience"
           disabled={preview}
         />
+        <FieldCharacterMeta
+          count={trainingExperienceLimitState.count}
+          limit={trainingExperienceLimitState.limit}
+          errorText={trainingExperienceLimitState.errorText}
+        />
         <div className="grid gap-3 md:grid-cols-2">
-          <Input
-            value={form.budgetInterest}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                budgetInterest: event.target.value,
-              }))
-            }
-            placeholder="Budget"
-            disabled={preview}
-          />
-          <Input
-            value={form.packageInterest}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                packageInterest: event.target.value,
-              }))
-            }
-            placeholder="Package interest"
-            disabled={preview}
-          />
+          <div className="space-y-2">
+            <Input
+              isInvalid={budgetInterestLimitState.overLimit}
+              value={form.budgetInterest}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  budgetInterest: event.target.value,
+                }))
+              }
+              placeholder="Budget"
+              disabled={preview}
+            />
+            <FieldCharacterMeta
+              count={budgetInterestLimitState.count}
+              limit={budgetInterestLimitState.limit}
+              errorText={budgetInterestLimitState.errorText}
+            />
+          </div>
+          <div className="space-y-2">
+            <Input
+              isInvalid={packageInterestLimitState.overLimit}
+              value={form.packageInterest}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  packageInterest: event.target.value,
+                }))
+              }
+              placeholder="Package interest"
+              disabled={preview}
+            />
+            <FieldCharacterMeta
+              count={packageInterestLimitState.count}
+              limit={packageInterestLimitState.limit}
+              errorText={packageInterestLimitState.errorText}
+            />
+          </div>
         </div>
       </div>
 
@@ -131,6 +227,10 @@ export function PublicPtApplyForm({
         disabled={submitDisabled}
         onClick={async () => {
           if (!onSubmit || preview) return;
+          if (hasOverLimitErrors) {
+            setError("Please reduce over-limit fields before submitting.");
+            return;
+          }
           if (!form.fullName.trim()) {
             setError("Full name is required.");
             return;

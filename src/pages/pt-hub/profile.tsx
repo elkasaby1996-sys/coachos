@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { Button } from "../../components/ui/button";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubProfileEditor } from "../../features/pt-hub/components/pt-hub-profile-editor";
 import {
@@ -28,7 +26,9 @@ export function PtHubProfilePage() {
   const [publishing, setPublishing] = useState(false);
   const [updatingVisibility, setUpdatingVisibility] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [messageTone, setMessageTone] = useState<"success" | "error">(
+    "success",
+  );
 
   if (
     !profileQuery.data ||
@@ -57,24 +57,6 @@ export function PtHubProfilePage() {
         eyebrow="Coach Profile"
         title="Edit your coach profile"
         description="Update the public trainer page clients will see."
-        actions={
-          <>
-            {publicationQuery.data.publicUrl ? (
-              <Button asChild variant="ghost">
-                <a
-                  href={publicationQuery.data.publicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open public page
-                </a>
-              </Button>
-            ) : null}
-            <Button asChild variant="secondary">
-              <Link to="/pt-hub/profile/preview">Open preview</Link>
-            </Button>
-          </>
-        }
       />
 
       {message ? (

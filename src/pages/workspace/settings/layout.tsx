@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Navigate, Outlet, useOutletContext, useParams } from "react-router-dom";
 import {
-  SettingsHeader,
+  Navigate,
+  Outlet,
+  useOutletContext,
+  useParams,
+} from "react-router-dom";
+import {
   SettingsPageShell,
   SettingsSectionCard,
   SettingsTabs,
@@ -34,7 +38,9 @@ export function useWorkspaceSettingsOutletContext() {
 }
 
 export function WorkspaceSettingsLayoutPage() {
-  const { workspaceId: routeWorkspaceId } = useParams<{ workspaceId: string }>();
+  const { workspaceId: routeWorkspaceId } = useParams<{
+    workspaceId: string;
+  }>();
   const access = useWorkspaceSettingsAccess(routeWorkspaceId);
 
   const workspaceQuery = useQuery({
@@ -81,16 +87,7 @@ export function WorkspaceSettingsLayoutPage() {
 
   if (access.loading) {
     return (
-      <SettingsPageShell
-        header={
-          <SettingsHeader
-            scope="Workspace"
-            title="Workspace Settings"
-            description="Verifying workspace access and loading settings..."
-          />
-        }
-        tabs={<SettingsTabs tabs={tabs} />}
-      >
+      <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
         <SettingsSectionCard
           title="Loading"
           description="Checking workspace membership and permissions."
@@ -105,13 +102,6 @@ export function WorkspaceSettingsLayoutPage() {
 
   return (
     <SettingsPageShell
-      header={
-        <SettingsHeader
-          scope="Workspace"
-          title={workspaceQuery.data?.name?.trim() || "Workspace Settings"}
-          description="Manage how this workspace operates, appears to clients, and handles team workflows."
-        />
-      }
       tabs={<SettingsTabs tabs={tabs} />}
       rightRail={
         <SettingsSectionCard
@@ -121,11 +111,15 @@ export function WorkspaceSettingsLayoutPage() {
           <div className="space-y-2 text-xs text-muted-foreground">
             <p>
               Workspace ID:{" "}
-              <span className="font-mono text-foreground">{resolvedWorkspaceId}</span>
+              <span className="font-mono text-foreground">
+                {resolvedWorkspaceId}
+              </span>
             </p>
             <p>
               Your role:{" "}
-              <span className="text-foreground">{access.role ?? "Unknown"}</span>
+              <span className="text-foreground">
+                {access.role ?? "Unknown"}
+              </span>
             </p>
             <p>
               Access level:{" "}

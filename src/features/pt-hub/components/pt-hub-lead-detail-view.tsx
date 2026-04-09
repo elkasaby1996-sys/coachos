@@ -4,12 +4,15 @@ import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Select } from "../../../components/ui/select";
+import { Textarea } from "../../../components/ui/textarea";
+import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import { PtHubPageHeader } from "./pt-hub-page-header";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { PtHubLeadStatusBadge } from "./pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "./pt-hub-lead-statuses";
 import type { PTLead, PTLeadStatus } from "../types";
 import { formatRelativeTime } from "../../../lib/relative-time";
+import { getCharacterLimitState } from "../../../lib/character-limits";
 
 export function PtHubLeadDetailView({
   lead,
@@ -28,6 +31,11 @@ export function PtHubLeadDetailView({
 }) {
   const [nextStatus, setNextStatus] = useState<PTLeadStatus>("reviewed");
   const [noteBody, setNoteBody] = useState("");
+  const noteLimitState = getCharacterLimitState({
+    value: noteBody,
+    kind: "default_text",
+    fieldLabel: "Note",
+  });
 
   const initialStatus = useMemo(
     () => lead.status ?? "reviewed",
@@ -122,16 +130,23 @@ export function PtHubLeadDetailView({
               <label className="text-sm font-medium text-foreground">
                 Add note
               </label>
-              <textarea
-                className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
+              <Textarea
+                isInvalid={noteLimitState.overLimit}
+                className="min-h-[120px]"
                 value={noteBody}
                 onChange={(event) => setNoteBody(event.target.value)}
                 placeholder="Add outreach details, qualification notes, objections, or next steps."
               />
+              <FieldCharacterMeta
+                count={noteLimitState.count}
+                limit={noteLimitState.limit}
+                errorText={noteLimitState.errorText}
+              />
               <Button
                 variant="secondary"
-                disabled={saving || !noteBody.trim()}
+                disabled={saving || !noteBody.trim() || noteLimitState.overLimit}
                 onClick={async () => {
+                  if (noteLimitState.overLimit) return;
                   await onAddNote(lead.id, noteBody);
                   setNoteBody("");
                 }}

@@ -108,9 +108,11 @@ export interface PTLead {
 }
 
 export interface PTAccountSettingsDraft {
+  fullName: string;
   contactEmail: string;
   supportEmail: string;
   phone: string;
+  country: string;
   timezone: string;
   city: string;
   clientAlerts: boolean;

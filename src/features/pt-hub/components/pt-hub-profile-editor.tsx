@@ -6,12 +6,14 @@ import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Switch } from "../../../components/ui/switch";
+import { Textarea } from "../../../components/ui/textarea";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "../../../components/ui/tabs";
+import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import type { StoredProfileDraft } from "../lib/pt-hub";
 import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
 import { uploadPtProfileMedia } from "../lib/pt-profile-media";
@@ -27,6 +29,10 @@ import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { useSessionAuth } from "../../../lib/auth";
 import { cn } from "../../../lib/utils";
+import {
+  getCharacterLimitState,
+  hasCharacterLimitError,
+} from "../../../lib/character-limits";
 
 const coachingModeOptions: Array<{
   value: PTCoachingMode;
@@ -207,6 +213,102 @@ export function PtHubProfileEditor({
     .slice(0, 4);
   const mediaBusy = Boolean(uploadingTarget);
   const displayNameValue = form.displayName.trim() || form.fullName.trim();
+  const displayNameLimitState = getCharacterLimitState({
+    value: form.displayName,
+    kind: "short_name",
+    fieldLabel: "Display name",
+  });
+  const headlineLimitState = getCharacterLimitState({
+    value: form.headline,
+    kind: "entity_name",
+    fieldLabel: "Headline",
+  });
+  const shortBioLimitState = getCharacterLimitState({
+    value: form.shortBio,
+    kind: "bio",
+    fieldLabel: "Short bio",
+  });
+  const specialtiesLimitState = getCharacterLimitState({
+    value: specialtiesInput,
+    kind: "default_text",
+    fieldLabel: "Specialties",
+  });
+  const certificationsLimitState = getCharacterLimitState({
+    value: certificationsInput,
+    kind: "default_text",
+    fieldLabel: "Certifications",
+  });
+  const coachingStyleLimitState = getCharacterLimitState({
+    value: form.coachingStyle,
+    kind: "default_text",
+    fieldLabel: "Coaching style",
+  });
+  const slugLimitState = getCharacterLimitState({
+    value: form.slug,
+    kind: "short_name",
+    fieldLabel: "Public slug",
+  });
+  const searchableHeadlineLimitState = getCharacterLimitState({
+    value: form.searchableHeadline,
+    kind: "default_text",
+    fieldLabel: "Searchable headline",
+  });
+  const locationLimitState = getCharacterLimitState({
+    value: form.locationLabel,
+    kind: "default_text",
+    fieldLabel: "Location",
+  });
+  const transformationTitleStates = form.transformations.map((item) =>
+    getCharacterLimitState({
+      value: item.title,
+      kind: "entity_name",
+      fieldLabel: "Transformation title",
+    }),
+  );
+  const transformationSummaryStates = form.transformations.map((item) =>
+    getCharacterLimitState({
+      value: item.summary,
+      kind: "default_text",
+      fieldLabel: "Transformation summary",
+    }),
+  );
+  const transformationBeforeUrlStates = form.transformations.map((item) =>
+    getCharacterLimitState({
+      value: item.beforeImageUrl ?? "",
+      kind: "default_text",
+      fieldLabel: "Before photo URL",
+    }),
+  );
+  const transformationAfterUrlStates = form.transformations.map((item) =>
+    getCharacterLimitState({
+      value: item.afterImageUrl ?? "",
+      kind: "default_text",
+      fieldLabel: "After photo URL",
+    }),
+  );
+  const socialLinkStates = form.socialLinks.map((link) =>
+    getCharacterLimitState({
+      value: link.url,
+      kind: "default_text",
+      fieldLabel: `${link.label} URL`,
+    }),
+  );
+  const hasOverLimitErrors = hasCharacterLimitError([
+    displayNameLimitState,
+    headlineLimitState,
+    shortBioLimitState,
+    specialtiesLimitState,
+    certificationsLimitState,
+    coachingStyleLimitState,
+    slugLimitState,
+    searchableHeadlineLimitState,
+    locationLimitState,
+    ...transformationTitleStates,
+    ...transformationSummaryStates,
+    ...transformationBeforeUrlStates,
+    ...transformationAfterUrlStates,
+    ...socialLinkStates,
+  ]);
 
   const updateTransformation = (
     transformationId: string,
@@ -493,6 +595,7 @@ export function PtHubProfileEditor({
                 Display name
               </label>
               <Input
+                isInvalid={displayNameLimitState.overLimit}
                 value={form.displayName}
                 onChange={(event) =>
                   setForm((prev) => {
@@ -510,6 +613,11 @@ export function PtHubProfileEditor({
                 }
                 placeholder="How clients will see your brand"
               />
+              <FieldCharacterMeta
+                count={displayNameLimitState.count}
+                limit={displayNameLimitState.limit}
+                errorText={displayNameLimitState.errorText}
+              />
             </div>
 
             <div className="space-y-2">
@@ -517,6 +625,7 @@ export function PtHubProfileEditor({
                 Headline
               </label>
               <Input
+                isInvalid={headlineLimitState.overLimit}
                 value={form.headline}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -530,19 +639,30 @@ export function PtHubProfileEditor({
                 }
                 placeholder="High-performance coach for founders, athletes, and operators"
               />
+              <FieldCharacterMeta
+                count={headlineLimitState.count}
+                limit={headlineLimitState.limit}
+                errorText={headlineLimitState.errorText}
+              />
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
                 Short bio
               </label>
-              <textarea
-                className="min-h-[160px] w-full app-field px-3 py-2 text-sm"
+              <Textarea
+                isInvalid={shortBioLimitState.overLimit}
+                className="min-h-[160px]"
                 value={form.shortBio}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, shortBio: event.target.value }))
                 }
                 placeholder="Outline your mission, outcomes, and the type of client transformation you specialize in."
+              />
+              <FieldCharacterMeta
+                count={shortBioLimitState.count}
+                limit={shortBioLimitState.limit}
+                errorText={shortBioLimitState.errorText}
               />
             </div>
           </PtHubSectionCard>
@@ -560,6 +680,7 @@ export function PtHubProfileEditor({
                     Specialties
                   </label>
                   <Input
+                    isInvalid={specialtiesLimitState.overLimit}
                     value={specialtiesInput}
                     onChange={(event) => {
                       setSpecialtiesInput(event.target.value);
@@ -569,6 +690,11 @@ export function PtHubProfileEditor({
                       }));
                     }}
                     placeholder="Strength, Hypertrophy, Fat loss, Executive performance"
+                  />
+                  <FieldCharacterMeta
+                    count={specialtiesLimitState.count}
+                    limit={specialtiesLimitState.limit}
+                    errorText={specialtiesLimitState.errorText}
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -592,6 +718,7 @@ export function PtHubProfileEditor({
                     Certifications
                   </label>
                   <Input
+                    isInvalid={certificationsLimitState.overLimit}
                     value={certificationsInput}
                     onChange={(event) => {
                       setCertificationsInput(event.target.value);
@@ -601,6 +728,11 @@ export function PtHubProfileEditor({
                       }));
                     }}
                     placeholder="NASM CPT, Precision Nutrition, EXOS"
+                  />
+                  <FieldCharacterMeta
+                    count={certificationsLimitState.count}
+                    limit={certificationsLimitState.limit}
+                    errorText={certificationsLimitState.errorText}
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -628,8 +760,9 @@ export function PtHubProfileEditor({
                 accountable from week one to peak adherence.
               </p>
             </div>
-            <textarea
-              className="min-h-[180px] w-full app-field px-3 py-2 text-sm"
+            <Textarea
+              isInvalid={coachingStyleLimitState.overLimit}
+              className="min-h-[180px]"
               value={form.coachingStyle}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -638,6 +771,11 @@ export function PtHubProfileEditor({
                 }))
               }
               placeholder="Structured, high-touch, feedback-driven, and deeply habit-focused."
+            />
+            <FieldCharacterMeta
+              count={coachingStyleLimitState.count}
+              limit={coachingStyleLimitState.limit}
+              errorText={coachingStyleLimitState.errorText}
             />
 
             <div className="space-y-4 pt-3">
@@ -704,6 +842,7 @@ export function PtHubProfileEditor({
                             Title
                           </label>
                           <Input
+                            isInvalid={transformationTitleStates[index]?.overLimit}
                             value={item.title}
                             onChange={(event) =>
                               updateTransformation(item.id, {
@@ -712,12 +851,18 @@ export function PtHubProfileEditor({
                             }
                             placeholder="12-week strength and body recomposition"
                           />
+                          <FieldCharacterMeta
+                            count={transformationTitleStates[index]?.count ?? 0}
+                            limit={transformationTitleStates[index]?.limit ?? 100}
+                            errorText={transformationTitleStates[index]?.errorText}
+                          />
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground">
                             Summary
                           </label>
                           <Input
+                            isInvalid={transformationSummaryStates[index]?.overLimit}
                             value={item.summary}
                             onChange={(event) =>
                               updateTransformation(item.id, {
@@ -725,6 +870,11 @@ export function PtHubProfileEditor({
                               })
                             }
                             placeholder="Lost 8kg while building visible strength and consistency."
+                          />
+                          <FieldCharacterMeta
+                            count={transformationSummaryStates[index]?.count ?? 0}
+                            limit={transformationSummaryStates[index]?.limit ?? 255}
+                            errorText={transformationSummaryStates[index]?.errorText}
                           />
                         </div>
                       </div>
@@ -782,6 +932,7 @@ export function PtHubProfileEditor({
                             ) : null}
                           </div>
                           <Input
+                            isInvalid={transformationBeforeUrlStates[index]?.overLimit}
                             value={item.beforeImageUrl ?? ""}
                             onChange={(event) =>
                               updateTransformation(item.id, {
@@ -789,6 +940,11 @@ export function PtHubProfileEditor({
                               })
                             }
                             placeholder="Or paste a public before-photo URL"
+                          />
+                          <FieldCharacterMeta
+                            count={transformationBeforeUrlStates[index]?.count ?? 0}
+                            limit={transformationBeforeUrlStates[index]?.limit ?? 255}
+                            errorText={transformationBeforeUrlStates[index]?.errorText}
                           />
                         </div>
 
@@ -844,6 +1000,7 @@ export function PtHubProfileEditor({
                             ) : null}
                           </div>
                           <Input
+                            isInvalid={transformationAfterUrlStates[index]?.overLimit}
                             value={item.afterImageUrl ?? ""}
                             onChange={(event) =>
                               updateTransformation(item.id, {
@@ -851,6 +1008,11 @@ export function PtHubProfileEditor({
                               })
                             }
                             placeholder="Or paste a public after-photo URL"
+                          />
+                          <FieldCharacterMeta
+                            count={transformationAfterUrlStates[index]?.count ?? 0}
+                            limit={transformationAfterUrlStates[index]?.limit ?? 255}
+                            errorText={transformationAfterUrlStates[index]?.errorText}
                           />
                         </div>
                       </div>
@@ -877,6 +1039,7 @@ export function PtHubProfileEditor({
                   Public slug
                 </label>
                 <Input
+                  isInvalid={slugLimitState.overLimit}
                   value={form.slug}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -886,12 +1049,18 @@ export function PtHubProfileEditor({
                   }
                   placeholder="your-name-coach"
                 />
+                <FieldCharacterMeta
+                  count={slugLimitState.count}
+                  limit={slugLimitState.limit}
+                  errorText={slugLimitState.errorText}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
                   Searchable headline
                 </label>
                 <Input
+                  isInvalid={searchableHeadlineLimitState.overLimit}
                   value={form.searchableHeadline}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -900,6 +1069,11 @@ export function PtHubProfileEditor({
                     }))
                   }
                   placeholder="Used for future marketplace search and discovery"
+                />
+                <FieldCharacterMeta
+                  count={searchableHeadlineLimitState.count}
+                  limit={searchableHeadlineLimitState.limit}
+                  errorText={searchableHeadlineLimitState.errorText}
                 />
               </div>
             </div>
@@ -984,6 +1158,7 @@ export function PtHubProfileEditor({
                     Location
                   </label>
                   <Input
+                    isInvalid={locationLimitState.overLimit}
                     value={form.locationLabel}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -992,6 +1167,11 @@ export function PtHubProfileEditor({
                       }))
                     }
                     placeholder="Riyadh, Saudi Arabia"
+                  />
+                  <FieldCharacterMeta
+                    count={locationLimitState.count}
+                    limit={locationLimitState.limit}
+                    errorText={locationLimitState.errorText}
                   />
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3">
@@ -1026,7 +1206,7 @@ export function PtHubProfileEditor({
             description="Keep destination links clean and intentional. The future public page will reuse them directly."
           >
             <div className="space-y-4">
-              {form.socialLinks.map((link) => (
+              {form.socialLinks.map((link, index) => (
                 <div
                   key={link.platform}
                   className="grid gap-3 rounded-[18px] bg-background/35 px-4 py-3 md:grid-cols-[160px_1fr]"
@@ -1040,6 +1220,7 @@ export function PtHubProfileEditor({
                     </p>
                   </div>
                   <Input
+                    isInvalid={socialLinkStates[index]?.overLimit}
                     value={link.url}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -1052,6 +1233,11 @@ export function PtHubProfileEditor({
                       }))
                     }
                     placeholder={`https://${link.platform}.com/your-handle`}
+                  />
+                  <FieldCharacterMeta
+                    count={socialLinkStates[index]?.count ?? 0}
+                    limit={socialLinkStates[index]?.limit ?? 255}
+                    errorText={socialLinkStates[index]?.errorText}
                   />
                 </div>
               ))}
@@ -1120,7 +1306,7 @@ export function PtHubProfileEditor({
             </Button>
             <Button
               className="w-full"
-              disabled={saving || mediaBusy || !hasChanges}
+              disabled={saving || mediaBusy || !hasChanges || hasOverLimitErrors}
               onClick={() =>
                 onSave({
                   ...form,
@@ -1134,6 +1320,8 @@ export function PtHubProfileEditor({
                 ? "Finish uploads first"
                 : saving
                   ? "Saving..."
+                  : hasOverLimitErrors
+                    ? "Fix field limits to save"
                   : "Save profile"}
             </Button>
           </div>

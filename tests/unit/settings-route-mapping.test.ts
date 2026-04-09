@@ -16,7 +16,6 @@ describe("settings route mapping", () => {
       "preferences",
       "security",
       "billing",
-      "integrations",
     ]);
   });
 

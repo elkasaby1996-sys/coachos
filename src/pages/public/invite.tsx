@@ -20,6 +20,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import {
   Tabs,
   TabsContent,
@@ -44,6 +45,7 @@ import {
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 type VerifyInviteRow = {
   is_valid: boolean;
@@ -89,6 +91,26 @@ export function InvitePage() {
   const [password, setPassword] = useState("");
   const [phoneStep, setPhoneStep] = useState<"send" | "verify">("send");
   const acceptingInviteRef = useRef(false);
+  const emailLimitState = getCharacterLimitState({
+    value: email,
+    kind: "email",
+    fieldLabel: "Email",
+  });
+  const phoneLimitState = getCharacterLimitState({
+    value: phone,
+    kind: "default_text",
+    fieldLabel: "Phone",
+  });
+  const passwordEmailLimitState = getCharacterLimitState({
+    value: passwordEmail,
+    kind: "email",
+    fieldLabel: "Email",
+  });
+  const passwordLimitState = getCharacterLimitState({
+    value: password,
+    kind: "default_text",
+    fieldLabel: "Password",
+  });
 
   const tokenValue = token ?? "";
   const redirectTo = useMemo(
@@ -242,6 +264,10 @@ export function InvitePage() {
   const handleEmailOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextEmail = email.trim();
+    if (emailLimitState.overLimit) {
+      setError(emailLimitState.errorText);
+      return;
+    }
     if (!EMAIL_REGEX.test(nextEmail)) {
       setError("Enter a valid email address.");
       return;
@@ -269,6 +295,10 @@ export function InvitePage() {
   const handlePhoneOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextPhone = phone.trim();
+    if (phoneLimitState.overLimit) {
+      setError(phoneLimitState.errorText);
+      return;
+    }
     if (!PHONE_REGEX.test(nextPhone)) {
       setError(
         "Enter a valid phone number in international format (e.g. +15555555555).",
@@ -309,6 +339,14 @@ export function InvitePage() {
   const handleEmailPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextEmail = passwordEmail.trim();
+    if (passwordEmailLimitState.overLimit || passwordLimitState.overLimit) {
+      setError(
+        passwordEmailLimitState.errorText ??
+          passwordLimitState.errorText ??
+          "Please fix over-limit fields before continuing.",
+      );
+      return;
+    }
     if (!EMAIL_REGEX.test(nextEmail)) {
       setError("Enter a valid email address.");
       return;
@@ -491,17 +529,25 @@ export function InvitePage() {
                       <Input
                         id="invite-email-link"
                         type="email"
+                        isInvalid={emailLimitState.overLimit}
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="you@example.com"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={emailLimitState.count}
+                        limit={emailLimitState.limit}
+                        errorText={emailLimitState.errorText}
                       />
                     </div>
                     <Button
                       type="submit"
                       className="w-full"
                       disabled={
-                        Boolean(busyAction) || tabDisabled("email_link")
+                        Boolean(busyAction) ||
+                        tabDisabled("email_link") ||
+                        emailLimitState.overLimit
                       }
                     >
                       {busyAction === "email_link" ? (
@@ -535,10 +581,16 @@ export function InvitePage() {
                       <Input
                         id="invite-phone"
                         type="tel"
+                        isInvalid={phoneLimitState.overLimit}
                         value={phone}
                         onChange={(event) => setPhone(event.target.value)}
                         placeholder="+15555555555"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={phoneLimitState.count}
+                        limit={phoneLimitState.limit}
+                        errorText={phoneLimitState.errorText}
                       />
                     </div>
                     {phoneStep === "verify" ? (
@@ -562,7 +614,9 @@ export function InvitePage() {
                       type="submit"
                       className="w-full"
                       disabled={
-                        Boolean(busyAction) || tabDisabled("phone_code")
+                        Boolean(busyAction) ||
+                        tabDisabled("phone_code") ||
+                        phoneLimitState.overLimit
                       }
                     >
                       {busyAction === "phone_code" ? (
@@ -596,12 +650,18 @@ export function InvitePage() {
                       <Input
                         id="invite-email-password"
                         type="email"
+                        isInvalid={passwordEmailLimitState.overLimit}
                         value={passwordEmail}
                         onChange={(event) =>
                           setPasswordEmail(event.target.value)
                         }
                         placeholder="you@example.com"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={passwordEmailLimitState.count}
+                        limit={passwordEmailLimitState.limit}
+                        errorText={passwordEmailLimitState.errorText}
                       />
                     </div>
                     <div className="space-y-2">
@@ -614,17 +674,26 @@ export function InvitePage() {
                       <Input
                         id="invite-password"
                         type="password"
+                        isInvalid={passwordLimitState.overLimit}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="Minimum 8 characters"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={passwordLimitState.count}
+                        limit={passwordLimitState.limit}
+                        errorText={passwordLimitState.errorText}
                       />
                     </div>
                     <Button
                       type="submit"
                       className="w-full"
                       disabled={
-                        Boolean(busyAction) || tabDisabled("email_password")
+                        Boolean(busyAction) ||
+                        tabDisabled("email_password") ||
+                        passwordEmailLimitState.overLimit ||
+                        passwordLimitState.overLimit
                       }
                     >
                       {busyAction === "email_password" ? (

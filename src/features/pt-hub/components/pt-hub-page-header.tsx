@@ -7,6 +7,7 @@ import {
   type ModuleTone,
 } from "../../../lib/module-tone";
 import { cn } from "../../../lib/utils";
+import { useWorkspaceHeaderMode } from "../../../components/pt/workspace-page-header";
 
 export function PtHubPageHeader({
   eyebrow,
@@ -24,8 +25,19 @@ export function PtHubPageHeader({
   module?: ModuleTone;
 }) {
   const location = useLocation();
+  const headerMode = useWorkspaceHeaderMode();
   const resolvedModule = module ?? getModuleToneForPath(location.pathname);
   const toneClasses = getModuleToneClasses(resolvedModule);
+
+  if (headerMode === "shell") {
+    if (!actions) return null;
+
+    return (
+      <div className={cn("flex flex-wrap items-center gap-2", className)}>
+        {actions}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -43,7 +55,10 @@ export function PtHubPageHeader({
               toneClasses.text,
             )}
           >
-            <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)} />
+            <span
+              aria-hidden
+              className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)}
+            />
             {eyebrow ?? title}
           </p>
           <div className="space-y-1">
@@ -60,7 +75,9 @@ export function PtHubPageHeader({
             </p>
           </div>
         </div>
-        {actions ? <div className="relative z-10 flex flex-wrap gap-2">{actions}</div> : null}
+        {actions ? (
+          <div className="relative z-10 flex flex-wrap gap-2">{actions}</div>
+        ) : null}
       </div>
     </div>
   );

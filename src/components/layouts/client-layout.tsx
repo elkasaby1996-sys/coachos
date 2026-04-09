@@ -35,9 +35,15 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
 
 const navItems = [
-  { label: "Home", to: "/app/home", icon: Home, module: "overview" as ModuleTone },
+  {
+    label: "Home",
+    to: "/app/home",
+    icon: Home,
+    module: "overview" as ModuleTone,
+  },
   {
     label: "Habits",
     to: "/app/habits",
@@ -316,8 +322,8 @@ export function ClientLayout() {
               size="portal"
               className="flex flex-wrap items-center justify-between gap-3"
             >
-                <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <PanelTop
                     className={cn(
                       "hidden h-4 w-4 sm:inline-flex",
@@ -325,7 +331,10 @@ export function ClientLayout() {
                     )}
                   />
                   <PanelLeftClose
-                    className={cn("h-4 w-4 md:hidden", currentModuleClasses.title)}
+                    className={cn(
+                      "h-4 w-4 md:hidden",
+                      currentModuleClasses.title,
+                    )}
                   />
                   <span>Repsync client workspace</span>
                 </div>
@@ -336,7 +345,10 @@ export function ClientLayout() {
                       <span className="hidden text-border sm:inline">|</span>
                       <span className="inline-flex items-center gap-1.5 text-foreground/80">
                         <CircleDot
-                          className={cn("h-3.5 w-3.5", currentModuleClasses.title)}
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            currentModuleClasses.title,
+                          )}
                         />
                         {topStatusText}
                       </span>
@@ -409,9 +421,11 @@ export function ClientLayout() {
                   />
                 </div>
               ) : (
-                <RouteTransition>
-                  <Outlet />
-                </RouteTransition>
+                <WorkspaceHeaderModeProvider value="shell">
+                  <RouteTransition>
+                    <Outlet />
+                  </RouteTransition>
+                </WorkspaceHeaderModeProvider>
               )}
             </PageContainer>
           </main>

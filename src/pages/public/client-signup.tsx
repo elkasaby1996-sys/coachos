@@ -6,6 +6,7 @@ import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import {
   ensureClientProfile,
   extractInviteToken,
@@ -20,6 +21,7 @@ import {
   useBootstrapAuth,
   useSessionAuth,
 } from "../../lib/auth";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 export function ClientSignupPage() {
   const navigate = useNavigate();
@@ -47,6 +49,18 @@ export function ClientSignupPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const fullNameLimitState = getCharacterLimitState({
+    value: fullName,
+    kind: "full_name",
+    fieldLabel: "Full name",
+  });
+  const emailLimitState = getCharacterLimitState({
+    value: email,
+    kind: "email",
+    fieldLabel: "Email",
+  });
+  const hasOverLimitErrors =
+    fullNameLimitState.overLimit || emailLimitState.overLimit;
 
   if (session && !bootstrapResolved) {
     return <AuthPageLoader message="Restoring your client account..." />;
@@ -75,6 +89,14 @@ export function ClientSignupPage() {
 
   const handleEmailSignup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (hasOverLimitErrors) {
+      setError(
+        fullNameLimitState.errorText ??
+          emailLimitState.errorText ??
+          "Please fix over-limit fields before continuing.",
+      );
+      return;
+    }
     if (!fullName.trim()) {
       setError("Full name is required.");
       return;
@@ -136,6 +158,15 @@ export function ClientSignupPage() {
     setNotice(null);
     try {
       persistSignupIntent("client");
+      if (hasOverLimitErrors) {
+        setError(
+          fullNameLimitState.errorText ??
+            emailLimitState.errorText ??
+            "Please fix over-limit fields before continuing.",
+        );
+        setBusyAction("idle");
+        return;
+      }
       if (!fullName.trim()) {
         setError("Add your full name before continuing with Google.");
         setBusyAction("idle");
@@ -180,9 +211,15 @@ export function ClientSignupPage() {
               </label>
               <Input
                 id="client-full-name"
+                isInvalid={fullNameLimitState.overLimit}
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 placeholder="Sara Ahmed"
+              />
+              <FieldCharacterMeta
+                count={fullNameLimitState.count}
+                limit={fullNameLimitState.limit}
+                errorText={fullNameLimitState.errorText}
               />
             </div>
             <div className="space-y-2">
@@ -192,9 +229,15 @@ export function ClientSignupPage() {
               <Input
                 id="client-email"
                 type="email"
+                isInvalid={emailLimitState.overLimit}
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
+              />
+              <FieldCharacterMeta
+                count={emailLimitState.count}
+                limit={emailLimitState.limit}
+                errorText={emailLimitState.errorText}
               />
             </div>
             <div className="space-y-2">
@@ -221,7 +264,11 @@ export function ClientSignupPage() {
               </div>
             ) : null}
 
-            <Button className="h-11 w-full" type="submit" disabled={busyAction !== "idle"}>
+            <Button
+              className="h-11 w-full"
+              type="submit"
+              disabled={busyAction !== "idle" || hasOverLimitErrors}
+            >
               {busyAction === "email" ? "Creating..." : "Create client account"}
             </Button>
           </form>
@@ -236,7 +283,7 @@ export function ClientSignupPage() {
             variant="secondary"
             className="h-11 w-full"
             onClick={() => void handleGoogle()}
-            disabled={busyAction !== "idle"}
+            disabled={busyAction !== "idle" || hasOverLimitErrors}
           >
             <Globe className="h-4 w-4" />
             {busyAction === "google" ? "Redirecting..." : "Continue with Google"}

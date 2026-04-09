@@ -17,10 +17,13 @@ import {
   CardTitle,
 } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
+import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import { useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import { getSupabaseErrorMessage } from "../../../lib/supabase-errors";
 import { validateMedicalDocumentFile } from "../../../lib/upload-validation";
+import { getCharacterLimitState } from "../../../lib/character-limits";
 
 type PtClientMedicalTabProps = {
   clientId: string | null;
@@ -94,6 +97,41 @@ export function PtClientMedicalTab({
   const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(
     null,
   );
+  const historyTitleLimitState = getCharacterLimitState({
+    value: historyTitle,
+    kind: "entity_name",
+    fieldLabel: "History item",
+  });
+  const historyNotesLimitState = getCharacterLimitState({
+    value: historyNotes,
+    kind: "default_text",
+    fieldLabel: "History notes",
+  });
+  const labNameLimitState = getCharacterLimitState({
+    value: labName,
+    kind: "entity_name",
+    fieldLabel: "Test name",
+  });
+  const labValueLimitState = getCharacterLimitState({
+    value: labValue,
+    kind: "default_text",
+    fieldLabel: "Value",
+  });
+  const labUnitLimitState = getCharacterLimitState({
+    value: labUnit,
+    kind: "default_text",
+    fieldLabel: "Unit",
+  });
+  const labNotesLimitState = getCharacterLimitState({
+    value: labNotes,
+    kind: "default_text",
+    fieldLabel: "Lab notes",
+  });
+  const documentLabelLimitState = getCharacterLimitState({
+    value: documentLabel,
+    kind: "default_text",
+    fieldLabel: "Label",
+  });
 
   const recordsQuery = useQuery({
     queryKey: ["pt-client-medical-records", clientId, workspaceId],
@@ -148,6 +186,15 @@ export function PtClientMedicalTab({
   const handleSaveHistory = async () => {
     const trimmedTitle = historyTitle.trim();
     const trimmedNotes = historyNotes.trim();
+    if (historyTitleLimitState.overLimit || historyNotesLimitState.overLimit) {
+      setHistoryStatus("error");
+      setHistoryMessage(
+        historyTitleLimitState.errorText ??
+          historyNotesLimitState.errorText ??
+          "Please fix over-limit fields before saving.",
+      );
+      return;
+    }
     if (!clientId || !workspaceId || !user?.id || trimmedTitle.length === 0) {
       return;
     }
@@ -184,6 +231,22 @@ export function PtClientMedicalTab({
     const trimmedValue = labValue.trim();
     const trimmedUnit = labUnit.trim();
     const trimmedNotes = labNotes.trim();
+    if (
+      labNameLimitState.overLimit ||
+      labValueLimitState.overLimit ||
+      labUnitLimitState.overLimit ||
+      labNotesLimitState.overLimit
+    ) {
+      setLabStatus("error");
+      setLabMessage(
+        labNameLimitState.errorText ??
+          labValueLimitState.errorText ??
+          labUnitLimitState.errorText ??
+          labNotesLimitState.errorText ??
+          "Please fix over-limit fields before saving.",
+      );
+      return;
+    }
     if (
       !clientId ||
       !workspaceId ||
@@ -227,6 +290,11 @@ export function PtClientMedicalTab({
 
   const handleUploadDocument = async () => {
     if (!clientId || !workspaceId || !user?.id || !documentFile) return;
+    if (documentLabelLimitState.overLimit) {
+      setDocumentStatus("error");
+      setDocumentMessage(documentLabelLimitState.errorText);
+      return;
+    }
     setDocumentStatus("saving");
     setDocumentMessage(null);
     try {
@@ -325,9 +393,15 @@ export function PtClientMedicalTab({
                 History item
               </label>
               <Input
+                isInvalid={historyTitleLimitState.overLimit}
                 value={historyTitle}
                 onChange={(event) => setHistoryTitle(event.target.value)}
                 placeholder="Ex: Prior ACL reconstruction, thyroid medication, low back pain history"
+              />
+              <FieldCharacterMeta
+                count={historyTitleLimitState.count}
+                limit={historyTitleLimitState.limit}
+                errorText={historyTitleLimitState.errorText}
               />
             </div>
             <div className="space-y-2">
@@ -348,11 +422,17 @@ export function PtClientMedicalTab({
               <label className="text-xs font-semibold text-muted-foreground">
                 Notes
               </label>
-              <textarea
-                className="min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              <Textarea
+                isInvalid={historyNotesLimitState.overLimit}
+                className="min-h-[120px] bg-background/70"
                 value={historyNotes}
                 onChange={(event) => setHistoryNotes(event.target.value)}
                 placeholder="Capture context that should follow programming and check-in decisions."
+              />
+              <FieldCharacterMeta
+                count={historyNotesLimitState.count}
+                limit={historyNotesLimitState.limit}
+                errorText={historyNotesLimitState.errorText}
               />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -360,7 +440,10 @@ export function PtClientMedicalTab({
                 variant="secondary"
                 onClick={handleSaveHistory}
                 disabled={
-                  historyStatus === "saving" || historyTitle.trim().length === 0
+                  historyStatus === "saving" ||
+                  historyTitle.trim().length === 0 ||
+                  historyTitleLimitState.overLimit ||
+                  historyNotesLimitState.overLimit
                 }
               >
                 {historyStatus === "saving" ? "Saving..." : "Add history item"}
@@ -389,9 +472,15 @@ export function PtClientMedicalTab({
                   Test name
                 </label>
                 <Input
+                  isInvalid={labNameLimitState.overLimit}
                   value={labName}
                   onChange={(event) => setLabName(event.target.value)}
                   placeholder="Ex: HbA1c, Vitamin D, LDL"
+                />
+                <FieldCharacterMeta
+                  count={labNameLimitState.count}
+                  limit={labNameLimitState.limit}
+                  errorText={labNameLimitState.errorText}
                 />
               </div>
               <div className="space-y-2">
@@ -399,9 +488,15 @@ export function PtClientMedicalTab({
                   Value
                 </label>
                 <Input
+                  isInvalid={labValueLimitState.overLimit}
                   value={labValue}
                   onChange={(event) => setLabValue(event.target.value)}
                   placeholder="5.7"
+                />
+                <FieldCharacterMeta
+                  count={labValueLimitState.count}
+                  limit={labValueLimitState.limit}
+                  errorText={labValueLimitState.errorText}
                 />
               </div>
               <div className="space-y-2">
@@ -409,9 +504,15 @@ export function PtClientMedicalTab({
                   Unit
                 </label>
                 <Input
+                  isInvalid={labUnitLimitState.overLimit}
                   value={labUnit}
                   onChange={(event) => setLabUnit(event.target.value)}
                   placeholder="%"
+                />
+                <FieldCharacterMeta
+                  count={labUnitLimitState.count}
+                  limit={labUnitLimitState.limit}
+                  errorText={labUnitLimitState.errorText}
                 />
               </div>
             </div>
@@ -433,11 +534,17 @@ export function PtClientMedicalTab({
               <label className="text-xs font-semibold text-muted-foreground">
                 Notes
               </label>
-              <textarea
-                className="min-h-[96px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              <Textarea
+                isInvalid={labNotesLimitState.overLimit}
+                className="min-h-[96px] bg-background/70"
                 value={labNotes}
                 onChange={(event) => setLabNotes(event.target.value)}
                 placeholder="Optional context, trend notes, or coaching implications."
+              />
+              <FieldCharacterMeta
+                count={labNotesLimitState.count}
+                limit={labNotesLimitState.limit}
+                errorText={labNotesLimitState.errorText}
               />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -447,7 +554,11 @@ export function PtClientMedicalTab({
                 disabled={
                   labStatus === "saving" ||
                   labName.trim().length === 0 ||
-                  labValue.trim().length === 0
+                  labValue.trim().length === 0 ||
+                  labNameLimitState.overLimit ||
+                  labValueLimitState.overLimit ||
+                  labUnitLimitState.overLimit ||
+                  labNotesLimitState.overLimit
                 }
               >
                 {labStatus === "saving" ? "Saving..." : "Add test result"}
@@ -476,9 +587,15 @@ export function PtClientMedicalTab({
                   Label
                 </label>
                 <Input
+                  isInvalid={documentLabelLimitState.overLimit}
                   value={documentLabel}
                   onChange={(event) => setDocumentLabel(event.target.value)}
                   placeholder="Ex: March blood panel"
+                />
+                <FieldCharacterMeta
+                  count={documentLabelLimitState.count}
+                  limit={documentLabelLimitState.limit}
+                  errorText={documentLabelLimitState.errorText}
                 />
               </div>
               <div className="space-y-2">
@@ -517,7 +634,11 @@ export function PtClientMedicalTab({
               <Button
                 variant="secondary"
                 onClick={handleUploadDocument}
-                disabled={documentStatus === "saving" || !documentFile}
+                disabled={
+                  documentStatus === "saving" ||
+                  !documentFile ||
+                  documentLabelLimitState.overLimit
+                }
               >
                 {documentStatus === "saving" ? "Uploading..." : "Upload report"}
               </Button>

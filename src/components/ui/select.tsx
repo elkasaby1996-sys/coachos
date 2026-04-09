@@ -11,8 +11,12 @@ import { selectVariants } from "../../lib/dropdown-system";
 import { cn } from "../../lib/utils";
 
 export interface SelectProps
-  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size">,
-    VariantProps<typeof selectVariants> {}
+  extends
+    Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size">,
+    VariantProps<typeof selectVariants> {
+  contentClassName?: string;
+  isInvalid?: boolean;
+}
 
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   (
@@ -27,6 +31,8 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       value,
       variant,
       size,
+      contentClassName,
+      isInvalid,
       ...props
     },
     ref,
@@ -47,9 +53,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     });
 
     const resolvedDefaultValue =
-      defaultValue == null
-        ? (options[0]?.value ?? "")
-        : String(defaultValue);
+      defaultValue == null ? (options[0]?.value ?? "") : String(defaultValue);
     const [internalValue, setInternalValue] =
       React.useState<string>(resolvedDefaultValue);
     const isControlled = value != null;
@@ -121,6 +125,8 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 "app-select-trigger relative inline-flex items-center justify-between gap-3 text-left",
                 className,
               )}
+              data-invalid={isInvalid ? "true" : undefined}
+              aria-invalid={isInvalid || props["aria-invalid"] ? true : undefined}
               aria-label={props["aria-label"]}
               aria-labelledby={props["aria-labelledby"]}
               aria-describedby={props["aria-describedby"]}
@@ -137,7 +143,10 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             align="start"
             sideOffset={8}
             size={size === "sm" ? "compact" : "default"}
-            className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem]"
+            className={cn(
+              "w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem]",
+              contentClassName,
+            )}
           >
             {options.map((option) => (
               <DropdownMenuItem

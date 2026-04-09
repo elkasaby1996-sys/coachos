@@ -19,6 +19,7 @@ import {
   getSemanticToneClasses,
   type SemanticTone,
 } from "../../../lib/semantic-status";
+import { useWorkspaceHeaderMode } from "../../pt/workspace-page-header";
 
 type PortalPageHeaderProps = {
   title: React.ReactNode;
@@ -37,7 +38,20 @@ export function PortalPageHeader({
   className,
   module,
 }: PortalPageHeaderProps) {
+  const headerMode = useWorkspaceHeaderMode();
   const moduleClasses = module ? getModuleToneClasses(module) : null;
+
+  if (headerMode === "shell") {
+    if (!actions) return null;
+
+    return (
+      <Reveal>
+        <section className={cn("flex flex-wrap items-center gap-2", className)}>
+          {actions}
+        </section>
+      </Reveal>
+    );
+  }
 
   return (
     <Reveal>

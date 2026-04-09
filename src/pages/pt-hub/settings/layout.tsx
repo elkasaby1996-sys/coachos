@@ -1,6 +1,5 @@
 import { Outlet } from "react-router-dom";
 import {
-  SettingsHeader,
   SettingsPageShell,
   SettingsTabs,
   type SettingsTabLink,
@@ -16,16 +15,7 @@ export function PtHubSettingsLayoutPage() {
   }));
 
   return (
-    <SettingsPageShell
-      header={
-        <SettingsHeader
-          scope="PT Hub"
-          title="PT Hub Settings"
-          description="Manage your account, business profile, and global PT Hub behavior."
-        />
-      }
-      tabs={<SettingsTabs tabs={tabs} />}
-    >
+    <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
       <Outlet />
     </SettingsPageShell>
   );

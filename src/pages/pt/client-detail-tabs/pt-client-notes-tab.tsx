@@ -5,6 +5,8 @@ import { Pencil } from "lucide-react";
 import { EmptyState } from "../../../components/ui/coachos";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Button } from "../../../components/ui/button";
+import { Textarea } from "../../../components/ui/textarea";
+import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import {
   Card,
   CardContent,
@@ -14,6 +16,7 @@ import {
 import { useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import { getSupabaseErrorMessage } from "../../../lib/supabase-errors";
+import { getCharacterLimitState } from "../../../lib/character-limits";
 
 type PtClientNotesTabProps = {
   clientId: string | null;
@@ -51,6 +54,11 @@ export function PtClientNotesTab({
     "idle",
   );
   const [noteMessage, setNoteMessage] = useState<string | null>(null);
+  const noteLimitState = getCharacterLimitState({
+    value: noteDraft,
+    kind: "default_text",
+    fieldLabel: "Note",
+  });
 
   const notesQuery = useQuery({
     queryKey: ["pt-client-notes", clientId, workspaceId],
@@ -71,6 +79,11 @@ export function PtClientNotesTab({
 
   const handleSaveNote = async () => {
     const trimmed = noteDraft.trim();
+    if (noteLimitState.overLimit) {
+      setNoteStatus("error");
+      setNoteMessage(noteLimitState.errorText);
+      return;
+    }
     if (!clientId || !workspaceId || !user?.id || trimmed.length === 0) return;
     setNoteStatus("saving");
     setNoteMessage(null);
@@ -115,17 +128,25 @@ export function PtClientNotesTab({
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          <textarea
-            className="min-h-[220px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <Textarea
+            isInvalid={noteLimitState.overLimit}
+            className="min-h-[220px] bg-background/70"
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
             placeholder="Add a coaching note about goals, communication, programming decisions, or anything that matters for the next PT touchpoint."
+          />
+          <FieldCharacterMeta
+            count={noteLimitState.count}
+            limit={noteLimitState.limit}
+            errorText={noteLimitState.errorText}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Button
               variant="secondary"
               disabled={
-                noteStatus === "saving" || noteDraft.trim().length === 0
+                noteStatus === "saving" ||
+                noteDraft.trim().length === 0 ||
+                noteLimitState.overLimit
               }
               onClick={handleSaveNote}
             >

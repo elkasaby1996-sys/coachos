@@ -33,6 +33,7 @@ import { cn } from "../../lib/utils";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import {
+  usePtHubSettings,
   usePtHubProfile,
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
@@ -50,6 +51,7 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
 import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
@@ -172,7 +174,7 @@ const routeMeta: Record<
   "/pt-hub/settings": {
     title: "PT Hub Settings",
     description:
-      "Manage account identity, security, billing, notifications, and integrations.",
+      "Manage account identity, security, billing, and notifications.",
     module: "settings",
   },
 };
@@ -186,8 +188,10 @@ function getPtHubRouteMeta(pathname: string) {
   return (
     Object.entries(routeMeta)
       .sort((a, b) => b[0].length - a[0].length)
-      .find(([routePath]) => pathname === routePath || pathname.startsWith(`${routePath}/`))
-      ?.[1] ?? defaultRouteMeta
+      .find(
+        ([routePath]) =>
+          pathname === routePath || pathname.startsWith(`${routePath}/`),
+      )?.[1] ?? defaultRouteMeta
   );
 }
 
@@ -210,7 +214,9 @@ function getPtHubHeaderPillClassName(isLightMode: boolean) {
 function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
     "flex h-9 w-9 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
-    isLightMode ? "text-primary group-hover:text-foreground" : "text-primary group-hover:text-foreground",
+    isLightMode
+      ? "text-primary group-hover:text-foreground"
+      : "text-primary group-hover:text-foreground",
   );
 }
 
@@ -254,10 +260,7 @@ function getPtHubStatusPillToneClassName(params: {
     getSemanticToneForStatus(params.published ? "Published" : "Unpublished"),
   );
 
-  return cn(
-    "text-[0.92rem] font-medium",
-    toneStyles.text,
-  );
+  return cn("text-[0.92rem] font-medium", toneStyles.text);
 }
 
 function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
@@ -280,6 +283,7 @@ export function PtHubLayout() {
   const { user } = useSessionAuth();
   const { workspaceId, switchWorkspace } = useWorkspace();
   const workspacesQuery = usePtHubWorkspaces();
+  const settingsQuery = usePtHubSettings();
   const profileQuery = usePtHubProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -294,7 +298,11 @@ export function PtHubLayout() {
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === workspaceId) ??
     latestWorkspace;
+  const settingsFullName = settingsQuery.data?.fullName.trim();
   const coachDisplayName =
+    (settingsFullName && settingsFullName.length > 0
+      ? settingsFullName
+      : null) ||
     ptProfile?.full_name?.trim() ||
     ptProfile?.display_name?.trim() ||
     getUserDisplayName(user) ||
@@ -444,7 +452,10 @@ export function PtHubLayout() {
                       >
                         <span
                           aria-hidden
-                          className={cn("h-1.5 w-1.5 rounded-full", currentModuleClasses.dot)}
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            currentModuleClasses.dot,
+                          )}
                         />
                         {meta.title}
                       </p>
@@ -680,9 +691,11 @@ export function PtHubLayout() {
 
             <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
               <div className="pt-content-zoom">
-                <RouteTransition routeKey={routeTransitionKey}>
-                  <Outlet />
-                </RouteTransition>
+                <WorkspaceHeaderModeProvider value="shell">
+                  <RouteTransition routeKey={routeTransitionKey}>
+                    <Outlet />
+                  </RouteTransition>
+                </WorkspaceHeaderModeProvider>
               </div>
             </main>
           </div>

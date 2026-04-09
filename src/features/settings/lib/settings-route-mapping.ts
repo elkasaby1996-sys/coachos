@@ -12,7 +12,7 @@ export const ptHubSettingsTabs: SettingsTabConfig[] = [
   {
     id: "account",
     label: "Account",
-    description: "Identity and business account settings.",
+    description: "Identity and global account settings.",
     path: "account",
     scope: "pt-hub",
   },
@@ -26,7 +26,7 @@ export const ptHubSettingsTabs: SettingsTabConfig[] = [
   {
     id: "preferences",
     label: "Preferences",
-    description: "Theme and personal app defaults.",
+    description: "Language, locale, and interface defaults.",
     path: "preferences",
     scope: "pt-hub",
   },
@@ -42,13 +42,6 @@ export const ptHubSettingsTabs: SettingsTabConfig[] = [
     label: "Billing",
     description: "Plan and billing overview.",
     path: "billing",
-    scope: "pt-hub",
-  },
-  {
-    id: "integrations",
-    label: "Integrations",
-    description: "Connected services and future integrations.",
-    path: "integrations",
     scope: "pt-hub",
   },
 ];
@@ -157,7 +150,10 @@ export function mapLegacySettingsRoute(params: {
           : section === "defaults"
             ? "defaults"
             : "danger";
-      return buildWorkspaceSettingsPath({ workspaceId: params.workspaceId, tab });
+      return buildWorkspaceSettingsPath({
+        workspaceId: params.workspaceId,
+        tab,
+      });
     }
     default:
       if (!params.workspaceId) return "/no-workspace";

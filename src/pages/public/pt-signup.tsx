@@ -3,9 +3,14 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Dumbbell, Globe } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import {
+  getCharacterLimitState,
+  hasCharacterLimitError,
+} from "../../lib/character-limits";
 import {
   ensurePtProfile,
   getUserDisplayName,
@@ -100,6 +105,32 @@ export function PtSignupPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const fullNameLimitState = getCharacterLimitState({
+    value: fullName,
+    kind: "full_name",
+    fieldLabel: "Full name",
+  });
+  const emailLimitState = getCharacterLimitState({
+    value: email,
+    kind: "email",
+    fieldLabel: "Email",
+  });
+  const cityLimitState = getCharacterLimitState({
+    value: city,
+    kind: "default_text",
+    fieldLabel: "City",
+  });
+  const phoneLimitState = getCharacterLimitState({
+    value: phone,
+    kind: "default_text",
+    fieldLabel: "Phone number",
+  });
+  const hasOverLimitErrors = hasCharacterLimitError([
+    fullNameLimitState,
+    emailLimitState,
+    cityLimitState,
+    phoneLimitState,
+  ]);
 
   if (session && !bootstrapResolved) {
     return <AuthPageLoader message="Restoring your coach account..." />;
@@ -135,6 +166,10 @@ export function PtSignupPage() {
 
   const handleEmailSignup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (hasOverLimitErrors) {
+      setError("Please reduce over-limit fields before continuing.");
+      return;
+    }
     if (!fullName.trim()) {
       setError("Full name is required.");
       return;
@@ -211,6 +246,10 @@ export function PtSignupPage() {
   };
 
   const handleGoogle = async () => {
+    if (hasOverLimitErrors) {
+      setError("Please reduce over-limit fields before continuing.");
+      return;
+    }
     if (!fullName.trim()) {
       setError("Full name is required before continuing with Google.");
       return;
@@ -259,9 +298,15 @@ export function PtSignupPage() {
               </label>
               <Input
                 id="pt-full-name"
+                isInvalid={fullNameLimitState.overLimit}
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 placeholder={getUserDisplayName(user) || "Coach name"}
+              />
+              <FieldCharacterMeta
+                count={fullNameLimitState.count}
+                limit={fullNameLimitState.limit}
+                errorText={fullNameLimitState.errorText}
               />
             </div>
             <div className="space-y-2">
@@ -271,9 +316,15 @@ export function PtSignupPage() {
               <Input
                 id="pt-email"
                 type="email"
+                isInvalid={emailLimitState.overLimit}
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="coach@example.com"
+              />
+              <FieldCharacterMeta
+                count={emailLimitState.count}
+                limit={emailLimitState.limit}
+                errorText={emailLimitState.errorText}
               />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -319,9 +370,15 @@ export function PtSignupPage() {
                 </label>
                 <Input
                   id="pt-city"
+                  isInvalid={cityLimitState.overLimit}
                   value={city}
                   onChange={(event) => setCity(event.target.value)}
                   placeholder="Riyadh"
+                />
+                <FieldCharacterMeta
+                  count={cityLimitState.count}
+                  limit={cityLimitState.limit}
+                  errorText={cityLimitState.errorText}
                 />
               </div>
             </div>
@@ -332,9 +389,15 @@ export function PtSignupPage() {
               <Input
                 id="pt-phone"
                 type="tel"
+                isInvalid={phoneLimitState.overLimit}
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 placeholder={country ? `${getCountryDialCode(country)} 5X XXX XXXX` : "+966 5X XXX XXXX"}
+              />
+              <FieldCharacterMeta
+                count={phoneLimitState.count}
+                limit={phoneLimitState.limit}
+                errorText={phoneLimitState.errorText}
               />
             </div>
             <div className="space-y-2">
@@ -373,7 +436,11 @@ export function PtSignupPage() {
               </div>
             ) : null}
 
-            <Button className="h-11 w-full" type="submit" disabled={busyAction !== "idle"}>
+            <Button
+              className="h-11 w-full"
+              type="submit"
+              disabled={busyAction !== "idle" || hasOverLimitErrors}
+            >
               {busyAction === "email" ? "Creating..." : "Create PT account"}
             </Button>
           </form>
@@ -388,7 +455,7 @@ export function PtSignupPage() {
             variant="secondary"
             className="h-11 w-full"
             onClick={() => void handleGoogle()}
-            disabled={busyAction !== "idle"}
+            disabled={busyAction !== "idle" || hasOverLimitErrors}
           >
             <Globe className="h-4 w-4" />
             {busyAction === "google" ? "Redirecting..." : "Continue with Google"}

@@ -1,8 +1,4 @@
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-} from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import {
@@ -15,6 +11,10 @@ import {
 const WorkspaceHeaderModeContext = createContext<"default" | "shell">(
   "default",
 );
+
+export function useWorkspaceHeaderMode() {
+  return useContext(WorkspaceHeaderModeContext);
+}
 
 export function WorkspaceHeaderModeProvider({
   children,
@@ -77,7 +77,10 @@ export function WorkspacePageHeader({
               toneClasses.text,
             )}
           >
-            <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)} />
+            <span
+              aria-hidden
+              className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)}
+            />
             {eyebrow}
           </p>
         ) : null}

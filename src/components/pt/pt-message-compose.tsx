@@ -30,6 +30,8 @@ import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { cn } from "../../lib/utils";
+import { getCharacterLimitState } from "../../lib/character-limits";
+import { FieldCharacterMeta } from "../common/field-character-meta";
 import {
   PtMessageComposeContext,
   type PtMessageComposeOptions,
@@ -260,6 +262,9 @@ function MessageWidgetComposer({
   placeholder,
   textareaRef,
   error,
+  limitCount,
+  limitMax,
+  limitError,
   sending,
   disabled,
   active,
@@ -271,6 +276,9 @@ function MessageWidgetComposer({
   placeholder: string;
   textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
   error: string | null;
+  limitCount: number;
+  limitMax: number;
+  limitError: string | null;
   sending: boolean;
   disabled: boolean;
   active: boolean;
@@ -293,6 +301,8 @@ function MessageWidgetComposer({
           onChange={onChange}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
+          data-invalid={limitError ? "true" : undefined}
+          aria-invalid={limitError ? true : undefined}
           className="min-h-[44px] max-h-[120px] w-full resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground/80 [scrollbar-width:thin] [&::-webkit-resizer]:hidden"
         />
         <Button
@@ -312,6 +322,12 @@ function MessageWidgetComposer({
           />
         </Button>
       </div>
+      <FieldCharacterMeta
+        className="mt-2"
+        count={limitCount}
+        limit={limitMax}
+        errorText={limitError}
+      />
     </div>
   );
 }
@@ -336,6 +352,11 @@ export function PtMessageComposeProvider({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const launcherRef = useRef<HTMLDivElement | null>(null);
+  const messageLimitState = getCharacterLimitState({
+    value: messageDraft,
+    kind: "default_text",
+    fieldLabel: "Message",
+  });
 
   const openComposer = useCallback((options?: PtMessageComposeOptions) => {
     setSelectedClientId((current) => options?.clientId ?? current);
@@ -634,6 +655,9 @@ export function PtMessageComposeProvider({
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!selectedClientId) throw new Error("No client selected.");
+      if (messageLimitState.overLimit) {
+        throw new Error(messageLimitState.errorText ?? "Message is too long.");
+      }
       const trimmed = messageDraft.trim();
       if (!trimmed) return;
 
@@ -765,7 +789,13 @@ export function PtMessageComposeProvider({
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (!messageDraft.trim() || sendMutation.isPending) return;
+      if (
+        !messageDraft.trim() ||
+        sendMutation.isPending ||
+        messageLimitState.overLimit
+      ) {
+        return;
+      }
       sendMutation.mutate();
     }
   };
@@ -894,9 +924,16 @@ export function PtMessageComposeProvider({
                       placeholder={`Message ${selectedRow.name}`}
                       textareaRef={textareaRef}
                       error={sendError}
+                      limitCount={messageLimitState.count}
+                      limitMax={messageLimitState.limit}
+                      limitError={messageLimitState.errorText}
                       sending={sendMutation.isPending}
-                      disabled={!messageDraft.trim()}
-                      active={!!messageDraft.trim()}
+                      disabled={
+                        !messageDraft.trim() || messageLimitState.overLimit
+                      }
+                      active={
+                        !!messageDraft.trim() && !messageLimitState.overLimit
+                      }
                       onChange={(event) => {
                         if (sendError) setSendError(null);
                         setMessageDraft(event.target.value);

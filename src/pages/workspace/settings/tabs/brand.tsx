@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
+import { FieldCharacterMeta } from "../../../../components/common/field-character-meta";
 import {
   DisabledSettingField,
   SettingsFieldRow,
@@ -12,6 +13,7 @@ import {
 } from "../../../../features/settings/components/settings-primitives";
 import { useDirtyNavigationGuard } from "../../../../features/settings/hooks/use-dirty-navigation-guard";
 import { supabase } from "../../../../lib/supabase";
+import { getCharacterLimitState } from "../../../../lib/character-limits";
 import { useWorkspaceSettingsOutletContext } from "../layout";
 
 type BrandFormState = {
@@ -42,9 +44,16 @@ export function WorkspaceSettingsBrandTab() {
   }, [initialState]);
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialState);
+  const logoUrlLimitState = getCharacterLimitState({
+    value: form.logoUrl,
+    kind: "default_text",
+    fieldLabel: "Workspace logo URL",
+  });
+  const hasOverLimitErrors = logoUrlLimitState.overLimit;
 
   const saveBrand = async () => {
     if (!canManage || !workspaceId) return false;
+    if (hasOverLimitErrors) return false;
 
     setSaving(true);
     setErrorText(null);
@@ -103,12 +112,18 @@ export function WorkspaceSettingsBrandTab() {
           hint="Stored in workspaces.logo_url."
         >
           <Input
+            isInvalid={logoUrlLimitState.overLimit}
             value={form.logoUrl}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, logoUrl: event.target.value }))
             }
             disabled={!canManage}
             placeholder="https://..."
+          />
+          <FieldCharacterMeta
+            count={logoUrlLimitState.count}
+            limit={logoUrlLimitState.limit}
+            errorText={logoUrlLimitState.errorText}
           />
           {!canManage ? (
             <p className="text-xs text-muted-foreground">
@@ -158,7 +173,7 @@ export function WorkspaceSettingsBrandTab() {
       </SettingsSectionCard>
 
       <StickySaveBar
-        isDirty={isDirty}
+        isDirty={isDirty && !hasOverLimitErrors}
         isSaving={saving}
         onSave={saveBrand}
         onDiscard={discard}

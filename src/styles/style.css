@@ -638,8 +638,17 @@ h6 {
 .app-select-field {
   --select-surface-bg-current: var(--select-surface-bg-field);
   border-color: var(--field-glass-border);
-  background-image: var(--select-surface-bg-field), var(--select-chevron);
+  background-image: var(--select-surface-bg-field);
   box-shadow: var(--field-glass-shadow);
+}
+
+.app-select-field[data-invalid="true"],
+.app-select-filter[data-invalid="true"],
+.app-filter-control[data-invalid="true"] {
+  border-color: oklch(var(--danger) / 0.72);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.14),
+    0 0 0 3px oklch(var(--danger) / 0.2);
 }
 
 .app-select-field:focus-visible,
@@ -647,7 +656,7 @@ h6 {
   outline: none;
   --select-surface-bg-current: var(--select-surface-bg-field-focus);
   border-color: var(--field-glass-border-focus);
-  background-image: var(--select-surface-bg-field-focus), var(--select-chevron);
+  background-image: var(--select-surface-bg-field-focus);
   box-shadow:
     var(--field-glass-shadow-focus),
     0 0 0 4px var(--field-glass-ring);
@@ -658,7 +667,7 @@ h6 {
   --select-surface-bg-current: var(--select-surface-bg-filter);
   border-radius: 9999px;
   border-color: var(--select-filter-border);
-  background-image: var(--select-surface-bg-filter), var(--select-chevron);
+  background-image: var(--select-surface-bg-filter);
   box-shadow: var(--select-filter-shadow);
   padding-left: 1rem;
   padding-right: 2.75rem;
@@ -671,7 +680,7 @@ h6 {
 .app-filter-control:focus-visible {
   --select-surface-bg-current: var(--select-surface-bg-filter-focus);
   border-color: var(--field-glass-border-focus);
-  background-image: var(--select-surface-bg-filter-focus), var(--select-chevron);
+  background-image: var(--select-surface-bg-filter-focus);
   box-shadow:
     var(--field-glass-shadow-focus),
     0 0 0 4px var(--field-glass-ring);

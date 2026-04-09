@@ -26,6 +26,9 @@ import { getActionErrorMessage } from "../../lib/request-guard";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
+import { Textarea } from "../../components/ui/textarea";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -93,6 +96,11 @@ export function PtMessagesPage() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const messagePageSize = 50;
+  const messageLimitState = getCharacterLimitState({
+    value: messageDraft,
+    kind: "default_text",
+    fieldLabel: "Message",
+  });
 
   useEffect(() => {
     if (initialClientId) {
@@ -392,6 +400,9 @@ export function PtMessagesPage() {
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!activeConversationId) throw new Error("No conversation selected.");
+      if (messageLimitState.overLimit) {
+        throw new Error(messageLimitState.errorText ?? "Message is too long.");
+      }
       if (!messageDraft.trim()) return;
       const senderName =
         (user?.user_metadata?.full_name as string | undefined) ??
@@ -605,7 +616,10 @@ export function PtMessagesPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
                             <div className="flex items-center gap-2">
-                              <div className="truncate font-semibold text-foreground">
+                              <div
+                                className="truncate font-semibold text-foreground"
+                                title={row.name}
+                              >
                                 {row.name}
                               </div>
                               {row.client.lifecycle_state ? (
@@ -618,7 +632,10 @@ export function PtMessagesPage() {
                                 </span>
                               ) : null}
                             </div>
-                            <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+                            <p
+                              className="line-clamp-2 text-sm leading-5 text-muted-foreground"
+                              title={row.preview}
+                            >
                               {row.preview}
                             </p>
                           </div>
@@ -820,8 +837,9 @@ export function PtMessagesPage() {
                   </p>
                 ) : null}
                 <div className="flex items-stretch gap-2">
-                  <textarea
-                    className="h-12 min-h-12 w-full resize-none rounded-[16px] border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  <Textarea
+                    isInvalid={messageLimitState.overLimit}
+                    className="h-12 min-h-12 resize-none rounded-[16px] border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm"
                     value={messageDraft}
                     onChange={(event) => {
                       if (sendError) setSendError(null);
@@ -831,6 +849,7 @@ export function PtMessagesPage() {
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
+                        if (messageLimitState.overLimit) return;
                         sendMutation.mutate();
                       }
                     }}
@@ -848,7 +867,11 @@ export function PtMessagesPage() {
                   />
                   <Button
                     onClick={() => sendMutation.mutate()}
-                    disabled={!messageDraft.trim() || sendMutation.isPending}
+                    disabled={
+                      !messageDraft.trim() ||
+                      sendMutation.isPending ||
+                      messageLimitState.overLimit
+                    }
                     className="h-12 w-12 shrink-0 rounded-[16px] px-0"
                     aria-label={
                       sendMutation.isPending
@@ -859,6 +882,12 @@ export function PtMessagesPage() {
                     <SendHorizontal className="h-4 w-4" />
                   </Button>
                 </div>
+                <FieldCharacterMeta
+                  className="mt-2"
+                  count={messageLimitState.count}
+                  limit={messageLimitState.limit}
+                  errorText={messageLimitState.errorText}
+                />
               </div>
             </div>
           )}

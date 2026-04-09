@@ -52,7 +52,6 @@ import {
   PtHubProfilePreviewPage,
   PtHubSettingsAccountTab,
   PtHubSettingsBillingTab,
-  PtHubSettingsIntegrationsTab,
   PtHubSettingsLayoutPage,
   PtHubSettingsNotificationsTab,
   PtHubSettingsPreferencesTab,
@@ -598,7 +597,7 @@ export function App() {
             <Route path="billing" element={<PtHubSettingsBillingTab />} />
             <Route
               path="integrations"
-              element={<PtHubSettingsIntegrationsTab />}
+              element={<Navigate to="../account" replace />}
             />
           </Route>
         </Route>

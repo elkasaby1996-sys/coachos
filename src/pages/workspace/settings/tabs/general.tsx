@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { FieldCharacterMeta } from "../../../../components/common/field-character-meta";
 import { Input } from "../../../../components/ui/input";
 import {
   DisabledSettingField,
@@ -9,6 +10,10 @@ import {
   StickySaveBar,
 } from "../../../../features/settings/components/settings-primitives";
 import { useDirtyNavigationGuard } from "../../../../features/settings/hooks/use-dirty-navigation-guard";
+import {
+  getCharacterLimitState,
+  hasCharacterLimitError,
+} from "../../../../lib/character-limits";
 import { supabase } from "../../../../lib/supabase";
 import { refreshWorkspaceNameAcrossApp } from "../../../../lib/workspace-query";
 import { useWorkspaceSettingsOutletContext } from "../layout";
@@ -41,9 +46,16 @@ export function WorkspaceSettingsGeneralTab() {
   }, [initialState]);
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialState);
+  const workspaceNameLimitState = getCharacterLimitState({
+    value: form.workspaceName,
+    kind: "entity_name",
+    fieldLabel: "Workspace name",
+  });
+  const hasOverLimitErrors = hasCharacterLimitError([workspaceNameLimitState]);
 
   const saveGeneral = async () => {
     if (!canManage || !workspaceId) return false;
+    if (hasOverLimitErrors) return false;
 
     const nextName = form.workspaceName.trim();
     if (!nextName) {
@@ -112,12 +124,18 @@ export function WorkspaceSettingsGeneralTab() {
           hint="Primary workspace name used across PT and client views."
         >
           <Input
+            isInvalid={workspaceNameLimitState.overLimit}
             value={form.workspaceName}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, workspaceName: event.target.value }))
             }
             disabled={!canManage}
             placeholder="Workspace name"
+          />
+          <FieldCharacterMeta
+            count={workspaceNameLimitState.count}
+            limit={workspaceNameLimitState.limit}
+            errorText={workspaceNameLimitState.errorText}
           />
           {!canManage ? (
             <p className="text-xs text-muted-foreground">
@@ -183,7 +201,7 @@ export function WorkspaceSettingsGeneralTab() {
       />
 
       <StickySaveBar
-        isDirty={isDirty}
+        isDirty={isDirty && !hasOverLimitErrors}
         isSaving={saving}
         onSave={saveGeneral}
         onDiscard={discard}

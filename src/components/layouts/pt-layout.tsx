@@ -33,7 +33,11 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
-import { createPtWorkspace } from "../../features/pt-hub/lib/pt-hub";
+import {
+  createPtWorkspace,
+  usePtHubSettings,
+} from "../../features/pt-hub/lib/pt-hub";
+import { getUserDisplayName } from "../../lib/account-profiles";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { cn } from "../../lib/utils";
@@ -67,12 +71,14 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
+import { FieldCharacterMeta } from "../common/field-character-meta";
 import {
   getModuleToneClasses,
   getModuleToneForPath,
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
+import { getCharacterLimitState } from "../../lib/character-limits";
 import "../../styles/pt-workspace-shell.css";
 
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
@@ -516,6 +522,7 @@ export function PtLayout() {
   } = useWorkspace();
   const { authError, user } = useSessionAuth();
   const { patchBootstrap } = useBootstrapAuth();
+  const settingsQuery = usePtHubSettings();
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
   const workspaceSettingsPath = workspaceId
@@ -559,6 +566,12 @@ export function PtLayout() {
     string | null
   >(null);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const workspaceNameLimitState = getCharacterLimitState({
+    value: newWorkspaceName,
+    kind: "entity_name",
+    fieldLabel: "Workspace name",
+  });
+  const hasWorkspaceNameOverLimit = workspaceNameLimitState.overLimit;
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearchInput, setDebouncedSearchInput] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -583,6 +596,13 @@ export function PtLayout() {
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
+  const settingsFullName = settingsQuery.data?.fullName.trim();
+  const profileDisplayName =
+    (settingsFullName && settingsFullName.length > 0
+      ? settingsFullName
+      : null) ||
+    getUserDisplayName(user) ||
+    "Trainer account";
   const normalizedSearch = debouncedSearchInput.trim().toLowerCase();
 
   useEffect(() => {
@@ -709,6 +729,12 @@ export function PtLayout() {
   }, [normalizedSearch, searchResults.length]);
 
   const handleCreateWorkspace = async () => {
+    if (hasWorkspaceNameOverLimit) {
+      setCreateWorkspaceError(
+        workspaceNameLimitState.errorText ?? "Workspace name is too long.",
+      );
+      return;
+    }
     const nextName = newWorkspaceName.trim();
     if (!nextName) {
       setCreateWorkspaceError("Workspace name is required.");
@@ -763,6 +789,7 @@ export function PtLayout() {
   };
 
   const userInitial = (
+    profileDisplayName.charAt(0) ||
     user?.email?.charAt(0) ||
     user?.phone?.charAt(0) ||
     "U"
@@ -788,10 +815,10 @@ export function PtLayout() {
 
   if (errorMessage) {
     return (
-    <div
-      className="pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden"
-      style={getModuleToneStyle(currentModule)}
-    >
+      <div
+        className="pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden"
+        style={getModuleToneStyle(currentModule)}
+      >
         <AppShellBackgroundLayer />
         <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
           <Card className="w-full max-w-md">
@@ -986,7 +1013,10 @@ export function PtLayout() {
                           >
                             <span
                               aria-hidden
-                              className={cn("h-1.5 w-1.5 rounded-full", currentModuleClasses.dot)}
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                currentModuleClasses.dot,
+                              )}
                             />
                             {pageHeader.title}
                           </p>
@@ -1153,7 +1183,7 @@ export function PtLayout() {
                                   Profile
                                 </p>
                                 <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                                  {user?.email ?? "Trainer account"}
+                                  {profileDisplayName}
                                 </p>
                               </div>
                               <span
@@ -1344,6 +1374,7 @@ export function PtLayout() {
             </label>
             <Input
               id="create-workspace-name"
+              isInvalid={hasWorkspaceNameOverLimit}
               value={newWorkspaceName}
               onChange={(event) => setNewWorkspaceName(event.target.value)}
               placeholder="Enter workspace name"
@@ -1354,6 +1385,11 @@ export function PtLayout() {
                   void handleCreateWorkspace();
                 }
               }}
+            />
+            <FieldCharacterMeta
+              count={workspaceNameLimitState.count}
+              limit={workspaceNameLimitState.limit}
+              errorText={workspaceNameLimitState.errorText}
             />
             {createWorkspaceError ? (
               <p className="text-xs text-danger">{createWorkspaceError}</p>
@@ -1373,7 +1409,7 @@ export function PtLayout() {
               type="button"
               className="w-full sm:w-auto"
               onClick={handleCreateWorkspace}
-              disabled={isCreatingWorkspace}
+              disabled={isCreatingWorkspace || hasWorkspaceNameOverLimit}
             >
               {isCreatingWorkspace ? "Creating..." : "Create workspace"}
             </Button>

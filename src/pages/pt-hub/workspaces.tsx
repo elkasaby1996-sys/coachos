@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubWorkspaceCard } from "../../features/pt-hub/components/pt-hub-workspace-card";
 import {
@@ -20,6 +21,7 @@ import {
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import { useWorkspace } from "../../lib/use-workspace";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 export function PtHubWorkspacesPage() {
   const navigate = useNavigate();
@@ -30,6 +32,12 @@ export function PtHubWorkspacesPage() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const workspaceNameLimitState = getCharacterLimitState({
+    value: workspaceName,
+    kind: "entity_name",
+    fieldLabel: "Space name",
+  });
+  const hasOverLimitErrors = workspaceNameLimitState.overLimit;
 
   const openWorkspace = (workspaceId: string) => {
     switchWorkspace(workspaceId);
@@ -37,6 +45,13 @@ export function PtHubWorkspacesPage() {
   };
 
   const handleCreateWorkspace = async () => {
+    if (hasOverLimitErrors) {
+      setError(
+        workspaceNameLimitState.errorText ??
+          "Please fix over-limit fields before continuing.",
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -108,6 +123,7 @@ export function PtHubWorkspacesPage() {
               Space name
             </label>
             <Input
+              isInvalid={workspaceNameLimitState.overLimit}
               value={workspaceName}
               onChange={(event) => setWorkspaceName(event.target.value)}
               placeholder="Velocity Performance"
@@ -117,6 +133,11 @@ export function PtHubWorkspacesPage() {
                   void handleCreateWorkspace();
                 }
               }}
+            />
+            <FieldCharacterMeta
+              count={workspaceNameLimitState.count}
+              limit={workspaceNameLimitState.limit}
+              errorText={workspaceNameLimitState.errorText}
             />
             {error ? <p className="text-xs text-danger">{error}</p> : null}
           </div>
@@ -128,7 +149,10 @@ export function PtHubWorkspacesPage() {
             >
               Cancel
             </Button>
-            <Button disabled={saving} onClick={handleCreateWorkspace}>
+            <Button
+              disabled={saving || hasOverLimitErrors}
+              onClick={handleCreateWorkspace}
+            >
               {saving ? "Creating..." : "Create space"}
             </Button>
           </DialogFooter>

@@ -30,6 +30,9 @@ import { sendConversationMessage } from "../../lib/messages";
 import { getActionErrorMessage } from "../../lib/request-guard";
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
+import { Textarea } from "../../components/ui/textarea";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -82,6 +85,11 @@ export function ClientMessagesPage() {
   const [visibleMessageCount, setVisibleMessageCount] = useState(100);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [composerFocused, setComposerFocused] = useState(false);
+  const messageLimitState = getCharacterLimitState({
+    value: messageInput,
+    kind: "default_text",
+    fieldLabel: "Message",
+  });
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const messagePageSize = 50;
@@ -265,6 +273,9 @@ export function ClientMessagesPage() {
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!conversationId) throw new Error("Conversation not ready.");
+      if (messageLimitState.overLimit) {
+        throw new Error(messageLimitState.errorText ?? "Message is too long.");
+      }
       if (!messageInput.trim()) return;
       const senderName = clientQuery.data?.display_name ?? "Client";
       return (await sendConversationMessage({
@@ -512,8 +523,9 @@ export function ClientMessagesPage() {
                   </span>
                 </div>
                 <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                  <textarea
+                  <Textarea
                     aria-label="Message your coach"
+                    isInvalid={messageLimitState.overLimit}
                     className={`form-control-compact flex-1 resize-y bg-background/80 transition-[min-height] duration-200 ${composerFocused || messageInput.trim().length > 0 ? "min-h-[120px]" : "min-h-[58px]"}`}
                     placeholder="Share your update, question, or request..."
                     value={messageInput}
@@ -524,6 +536,7 @@ export function ClientMessagesPage() {
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
+                        if (messageLimitState.overLimit) return;
                         sendMutation.mutate();
                       }
                     }}
@@ -551,13 +564,19 @@ export function ClientMessagesPage() {
                     disabled={
                       !conversationId ||
                       !messageInput.trim() ||
-                      sendMutation.isPending
+                      sendMutation.isPending ||
+                      messageLimitState.overLimit
                     }
                   >
                     <SendHorizontal className="mr-2 h-4 w-4" />
                     {sendMutation.isPending ? "Sending..." : "Send message"}
                   </Button>
                 </div>
+                <FieldCharacterMeta
+                  count={messageLimitState.count}
+                  limit={messageLimitState.limit}
+                  errorText={messageLimitState.errorText}
+                />
               </SectionCard>
             </div>
           </div>
