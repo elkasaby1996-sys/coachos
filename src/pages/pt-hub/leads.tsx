@@ -40,6 +40,7 @@ export function PtHubLeadsPage() {
         lead.budgetInterest ?? "",
         lead.packageInterestLabelSnapshot ?? "",
         lead.packageInterest ?? "",
+        lead.leadLastMessagePreview ?? "",
         lead.notesPreview ?? "",
         lead.sourceLabel,
       ]
@@ -172,7 +173,9 @@ export function PtHubLeadsPage() {
                       {lead.email || lead.phone || "No contact info"}
                     </p>
                     <p className="line-clamp-1 text-xs text-muted-foreground">
-                      {lead.notesPreview || "No internal notes yet"}
+                      {lead.leadLastMessagePreview ||
+                        lead.notesPreview ||
+                        "No lead chat activity yet"}
                     </p>
                   </div>
 
@@ -189,13 +192,22 @@ export function PtHubLeadsPage() {
                   </div>
 
                   <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>{formatRelativeTime(lead.submittedAt)}</p>
+                    <p>
+                      {formatRelativeTime(
+                        lead.leadLastMessageAt ?? lead.submittedAt,
+                      )}
+                    </p>
                     <p className="text-xs">
                       {lead.trainingExperience || "Experience not specified"}
                     </p>
                   </div>
 
                   <div className="flex items-center justify-between gap-3 lg:justify-end">
+                    {lead.leadUnreadCount > 0 ? (
+                      <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                        {lead.leadUnreadCount} unread
+                      </span>
+                    ) : null}
                     <PtHubLeadStatusBadge status={lead.status} />
                     <ChevronRight className="h-4 w-4 text-muted-foreground [stroke-width:1.7]" />
                   </div>

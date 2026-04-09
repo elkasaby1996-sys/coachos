@@ -16,7 +16,7 @@ import { PtHubPageHeader } from "./pt-hub-page-header";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { PtHubLeadStatusBadge } from "./pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "./pt-hub-lead-statuses";
-import type { PTLead, PTLeadStatus } from "../types";
+import type { PTLead, PTLeadMessage, PTLeadStatus } from "../types";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { getCharacterLimitState } from "../../../lib/character-limits";
 
@@ -26,14 +26,25 @@ const CREATE_NEW_WORKSPACE_VALUE = "__create_new__";
 export function PtHubLeadDetailView({
   lead,
   workspaces,
+  currentUserId,
+  leadChatMessages,
+  leadChatStatus,
+  leadChatArchivedReason,
+  sendingLeadMessage,
   saving,
   onUpdateStatus,
   onApprove,
   onDecline,
+  onSendLeadMessage,
   onAddNote,
 }: {
   lead: PTLead;
   workspaces: Array<{ id: string; name: string }>;
+  currentUserId: string | null;
+  leadChatMessages: PTLeadMessage[];
+  leadChatStatus: "open" | "archived" | "missing";
+  leadChatArchivedReason: "converted" | "declined" | "manual" | null;
+  sendingLeadMessage: boolean;
   saving: boolean;
   onUpdateStatus: (leadId: string, status: PTLeadStatus) => Promise<void>;
   onApprove: (
@@ -41,10 +52,12 @@ export function PtHubLeadDetailView({
     params: { workspaceId?: string | null; workspaceName?: string | null },
   ) => Promise<void>;
   onDecline: (leadId: string) => Promise<void>;
+  onSendLeadMessage: (leadId: string, body: string) => Promise<void>;
   onAddNote: (leadId: string, body: string) => Promise<void>;
 }) {
   const [nextStatus, setNextStatus] = useState<PTLeadStatus>("new");
   const [noteBody, setNoteBody] = useState("");
+  const [leadMessageBody, setLeadMessageBody] = useState("");
   const [workspaceAssignment, setWorkspaceAssignment] = useState<string>(
     ASSIGN_WORKSPACE_LATER_VALUE,
   );
@@ -56,6 +69,11 @@ export function PtHubLeadDetailView({
     value: noteBody,
     kind: "default_text",
     fieldLabel: "Note",
+  });
+  const leadMessageLimitState = getCharacterLimitState({
+    value: leadMessageBody,
+    kind: "default_text",
+    fieldLabel: "Lead message",
   });
   const workspaceNameLimitState = getCharacterLimitState({
     value: newWorkspaceName,
@@ -71,6 +89,7 @@ export function PtHubLeadDetailView({
   useEffect(() => {
     setNextStatus(lead.status ?? "new");
     setNoteBody("");
+    setLeadMessageBody("");
     setWorkspaceAssignment(
       lead.convertedWorkspaceId ??
         workspaces[0]?.id ??
@@ -140,6 +159,99 @@ export function PtHubLeadDetailView({
                 "Not provided"
               }
             />
+          </PtHubSectionCard>
+
+          <PtHubSectionCard
+            module="coaching"
+            title="Lead chat"
+            description="Pre-workspace conversation between you and this lead."
+          >
+            {leadChatStatus === "missing" ? (
+              <p className="text-sm text-muted-foreground">
+                Lead chat is being prepared. Try again in a moment.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {leadChatStatus === "archived" ? (
+                  <div className="rounded-[22px] border border-border/60 bg-background/35 p-3 text-sm text-muted-foreground">
+                    This conversation is archived
+                    {leadChatArchivedReason === "converted"
+                      ? " after conversion."
+                      : leadChatArchivedReason === "declined"
+                        ? " after decline."
+                        : "."}
+                  </div>
+                ) : null}
+
+                {leadChatMessages.length > 0 ? (
+                  <div className="max-h-[22rem] space-y-2 overflow-y-auto rounded-[22px] border border-border/60 bg-background/30 p-3">
+                    {leadChatMessages.map((message) => {
+                      const isCurrentUser =
+                        currentUserId && message.senderUserId === currentUserId;
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-[20px] border px-3 py-2 text-sm ${
+                              isCurrentUser
+                                ? "border-primary/25 bg-primary/10 text-foreground"
+                                : "border-border/60 bg-background/55 text-foreground"
+                            }`}
+                          >
+                            <p>{message.body}</p>
+                            <p className="mt-1 text-[10px] text-muted-foreground">
+                              {formatRelativeTime(message.sentAt)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No messages yet. Send a first message to begin the lead conversation.
+                  </p>
+                )}
+
+                {leadChatStatus === "open" ? (
+                  <div className="space-y-3 rounded-[22px] border border-border/60 bg-background/35 p-4">
+                    <label className="text-sm font-medium text-foreground">
+                      Message lead
+                    </label>
+                    <Textarea
+                      isInvalid={leadMessageLimitState.overLimit}
+                      className="min-h-[110px]"
+                      value={leadMessageBody}
+                      onChange={(event) => setLeadMessageBody(event.target.value)}
+                      placeholder="Send a message to this lead..."
+                    />
+                    <FieldCharacterMeta
+                      count={leadMessageLimitState.count}
+                      limit={leadMessageLimitState.limit}
+                      errorText={leadMessageLimitState.errorText}
+                    />
+                    <Button
+                      disabled={
+                        saving ||
+                        sendingLeadMessage ||
+                        !leadMessageBody.trim() ||
+                        leadMessageLimitState.overLimit
+                      }
+                      onClick={async () => {
+                        if (leadMessageLimitState.overLimit) return;
+                        await onSendLeadMessage(lead.id, leadMessageBody);
+                        setLeadMessageBody("");
+                      }}
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                      Send message
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </PtHubSectionCard>
 
           <PtHubSectionCard
@@ -322,7 +434,11 @@ export function PtHubLeadDetailView({
             />
             <DetailRow
               label="Lead preview"
-              value={lead.notesPreview || "No note preview yet"}
+              value={
+                lead.leadLastMessagePreview ||
+                lead.notesPreview ||
+                "No message preview yet"
+              }
             />
             <DetailRow
               label="Source slug"

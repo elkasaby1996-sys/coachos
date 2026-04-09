@@ -207,4 +207,32 @@ describe("auth/bootstrap regression coverage", () => {
       "/client/onboarding/account?invite=invite-token-123",
     );
   });
+
+  it("routes authenticated clients to dashboard when workspace membership is missing", () => {
+    const state = {
+      accountType: "client",
+      hasWorkspaceMembership: false,
+      ptWorkspaceComplete: false,
+      ptProfileComplete: false,
+      clientAccountComplete: true,
+      clientWorkspaceOnboardingHardGateRequired: false,
+      pendingInviteToken: null,
+    } as const;
+
+    expect(getAuthenticatedRedirectPath(state)).toBe("/app/home");
+  });
+
+  it("keeps dashboard as the default entry for workspace clients", () => {
+    const state = {
+      accountType: "client",
+      hasWorkspaceMembership: true,
+      ptWorkspaceComplete: false,
+      ptProfileComplete: false,
+      clientAccountComplete: true,
+      clientWorkspaceOnboardingHardGateRequired: true,
+      pendingInviteToken: null,
+    } as const;
+
+    expect(getAuthenticatedRedirectPath(state)).toBe("/app/home");
+  });
 });

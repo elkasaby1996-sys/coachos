@@ -179,6 +179,19 @@ export function useWorkspace() {
         return;
       }
 
+      if (accountType === "client" && !hasWorkspaceMembership) {
+        setWorkspaceId(null);
+        setWorkspaceIds([]);
+        setOwnerUserId(null);
+        setHasCached(false);
+        setError(null);
+        setLoading(false);
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+        }
+        return;
+      }
+
       const preservedSnapshot = lastStableWorkspaceRef.current;
       if (!hasCached) {
         setLoading(true);
@@ -314,6 +327,7 @@ export function useWorkspace() {
     applyStaleWorkspaceSnapshot,
     applyWorkspaceSnapshot,
     bootstrapStale,
+    hasWorkspaceMembership,
     hasCached,
     reloadNonce,
     user?.id,

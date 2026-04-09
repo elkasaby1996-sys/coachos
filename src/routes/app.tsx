@@ -164,11 +164,15 @@ function getProtectedRedirect(params: {
       return getClientAccountOnboardingPath(params.pendingInviteToken);
     }
     if (!params.hasWorkspaceMembership) {
-      return "/no-workspace";
+      if (params.allow.includes("client") && params.pathname.startsWith("/app/home")) {
+        return null;
+      }
+      return "/app/home";
     }
     if (
       params.clientWorkspaceOnboardingHardGateRequired &&
-      !params.pathname.startsWith("/app/onboarding")
+      !params.pathname.startsWith("/app/onboarding") &&
+      !params.pathname.startsWith("/app/home")
     ) {
       return "/app/onboarding";
     }

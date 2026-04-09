@@ -230,7 +230,7 @@ export function ClientAccountOnboardingPage() {
       }
 
       clearPendingInviteToken();
-      navigate("/no-workspace", { replace: true });
+      navigate("/app/home", { replace: true });
     } catch (nextError) {
       setError(
         nextError instanceof Error
@@ -408,7 +408,7 @@ export function ClientAccountOnboardingPage() {
                 type="button"
                 variant="secondary"
                 className="h-11"
-                onClick={() => navigate("/no-workspace", { replace: true })}
+                onClick={() => navigate("/app/home", { replace: true })}
                 disabled={saving}
               >
                 Skip for now

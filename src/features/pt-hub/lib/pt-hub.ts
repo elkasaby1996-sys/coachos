@@ -257,6 +257,16 @@ type PtHubLeadNoteRow = {
   created_at: string;
 };
 
+type PtHubLeadChatSummaryRow = {
+  lead_id: string;
+  conversation_id: string | null;
+  conversation_status: string | null;
+  archived_reason: string | null;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+  unread_count: number | null;
+};
+
 function isPresent(value: string | null | undefined) {
   return Boolean(value && value.trim().length > 0);
 }
@@ -556,8 +566,15 @@ function mapLeadNote(row: PtHubLeadNoteRow): PTLeadNote {
   };
 }
 
-function mapLead(row: PtHubLeadRow, notes: PTLeadNote[]): PTLead {
+function mapLead(
+  row: PtHubLeadRow,
+  notes: PTLeadNote[],
+  chatSummary: PtHubLeadChatSummaryRow | null,
+): PTLead {
   const source = row.source?.trim() || "manual";
+  const conversationStatus =
+    chatSummary?.conversation_status === "archived" ? "archived" : "open";
+
   return {
     id: row.id,
     applicantUserId: row.applicant_user_id,
@@ -573,6 +590,19 @@ function mapLead(row: PtHubLeadRow, notes: PTLeadNote[]): PTLead {
     status: normalizePtLeadStatus(row.status),
     submittedAt: row.submitted_at,
     notesPreview: notes[0]?.body ?? null,
+    leadConversationId: chatSummary?.conversation_id ?? null,
+    leadConversationStatus: chatSummary?.conversation_id
+      ? conversationStatus
+      : null,
+    leadConversationArchivedReason:
+      chatSummary?.archived_reason === "converted" ||
+      chatSummary?.archived_reason === "declined" ||
+      chatSummary?.archived_reason === "manual"
+        ? chatSummary.archived_reason
+        : null,
+    leadLastMessagePreview: chatSummary?.last_message_preview ?? null,
+    leadLastMessageAt: chatSummary?.last_message_at ?? null,
+    leadUnreadCount: chatSummary?.unread_count ?? 0,
     notes,
     source,
     sourceLabel:
@@ -1153,6 +1183,7 @@ export function usePtHubLeads() {
       const [
         { data: leads, error: leadsError },
         { data: notes, error: notesError },
+        { data: chatSummaries, error: chatSummariesError },
       ] = await Promise.all([
         supabase
           .from("pt_hub_leads")
@@ -1168,10 +1199,25 @@ export function usePtHubLeads() {
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .returns<PtHubLeadNoteRow[]>(),
+        supabase.rpc("pt_hub_lead_chat_summaries"),
       ]);
 
       if (leadsError) throw leadsError;
       if (notesError) throw notesError;
+      if (chatSummariesError) {
+        const code = (chatSummariesError as { code?: string }).code ?? "";
+        const message = (
+          (chatSummariesError as { message?: string }).message ?? ""
+        ).toLowerCase();
+        if (
+          code !== "PGRST202" &&
+          code !== "PGRST116" &&
+          !message.includes("function") &&
+          !message.includes("does not exist")
+        ) {
+          throw chatSummariesError;
+        }
+      }
 
       const notesByLead = (notes ?? []).reduce((map, row) => {
         const list = map.get(row.lead_id) ?? [];
@@ -1180,8 +1226,20 @@ export function usePtHubLeads() {
         return map;
       }, new Map<string, PTLeadNote[]>());
 
+      const chatSummaryByLead = ((chatSummaries ?? []) as PtHubLeadChatSummaryRow[]).reduce(
+        (map, row) => {
+          map.set(row.lead_id, row);
+          return map;
+        },
+        new Map<string, PtHubLeadChatSummaryRow>(),
+      );
+
       return (leads ?? []).map((lead) =>
-        mapLead(lead, notesByLead.get(lead.id) ?? []),
+        mapLead(
+          lead,
+          notesByLead.get(lead.id) ?? [],
+          chatSummaryByLead.get(lead.id) ?? null,
+        ),
       );
     },
   });

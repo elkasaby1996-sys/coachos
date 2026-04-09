@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -12,6 +12,11 @@ import {
   usePtHubLeads,
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
+import {
+  markLeadChatRead,
+  sendLeadChatMessage,
+  useLeadConversationThread,
+} from "../../features/lead-chat/lib/lead-chat";
 import type { PTLead } from "../../features/pt-hub/types";
 import { useSessionAuth } from "../../lib/auth";
 
@@ -22,11 +27,33 @@ export function PtHubLeadDetailPage() {
   const leadsQuery = usePtHubLeads();
   const workspacesQuery = usePtHubWorkspaces();
   const [saving, setSaving] = useState(false);
+  const [sendingLeadMessage, setSendingLeadMessage] = useState(false);
+  const lastMarkedMessageIdRef = useRef<string | null>(null);
 
   const lead = useMemo(
     () => (leadsQuery.data ?? []).find((item) => item.id === leadId) ?? null,
     [leadId, leadsQuery.data],
   );
+  const leadChatThreadQuery = useLeadConversationThread(lead?.id ?? null);
+
+  useEffect(() => {
+    const lastMessageId =
+      leadChatThreadQuery.data?.messages[
+        (leadChatThreadQuery.data?.messages.length ?? 0) - 1
+      ]?.id ?? null;
+    if (!lead?.id || !lastMessageId) return;
+    if (lastMarkedMessageIdRef.current === lastMessageId) return;
+    lastMarkedMessageIdRef.current = lastMessageId;
+    void (async () => {
+      await markLeadChatRead({
+        leadId: lead.id,
+        upToMessageId: lastMessageId,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-hub-leads", user?.id],
+      });
+    })();
+  }, [lead?.id, leadChatThreadQuery.data?.messages, queryClient, user?.id]);
 
   const refreshLeads = async () => {
     await queryClient.refetchQueries({ queryKey: ["pt-hub-leads", user?.id] });
@@ -68,6 +95,17 @@ export function PtHubLeadDetailPage() {
         id: workspace.id,
         name: workspace.name,
       }))}
+      currentUserId={user?.id ?? null}
+      leadChatMessages={leadChatThreadQuery.data?.messages ?? []}
+      leadChatStatus={
+        leadChatThreadQuery.data?.conversation
+          ? leadChatThreadQuery.data.conversation.status
+          : "missing"
+      }
+      leadChatArchivedReason={
+        leadChatThreadQuery.data?.conversation?.archivedReason ?? null
+      }
+      sendingLeadMessage={sendingLeadMessage}
       saving={saving}
       onUpdateStatus={async (nextLeadId, status) => {
         setSaving(true);
@@ -101,9 +139,24 @@ export function PtHubLeadDetailPage() {
             leadId: nextLeadId,
             status: "declined",
           });
+          await queryClient.invalidateQueries({
+            queryKey: ["lead-chat-thread", nextLeadId],
+          });
           await refreshLeads();
         } finally {
           setSaving(false);
+        }
+      }}
+      onSendLeadMessage={async (nextLeadId, body) => {
+        setSendingLeadMessage(true);
+        try {
+          await sendLeadChatMessage({ leadId: nextLeadId, body });
+          await queryClient.invalidateQueries({
+            queryKey: ["lead-chat-thread", nextLeadId],
+          });
+          await refreshLeads();
+        } finally {
+          setSendingLeadMessage(false);
         }
       }}
       onAddNote={async (nextLeadId, body) => {

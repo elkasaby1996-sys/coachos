@@ -84,6 +84,16 @@ export interface PTLeadNote {
   createdAt: string;
 }
 
+export type PTLeadConversationStatus = "open" | "archived";
+
+export interface PTLeadMessage {
+  id: string;
+  conversationId: string;
+  senderUserId: string;
+  body: string;
+  sentAt: string;
+}
+
 export interface PTLead {
   id: string;
   applicantUserId: string | null;
@@ -99,6 +109,12 @@ export interface PTLead {
   status: PTLeadStatus;
   submittedAt: string;
   notesPreview: string | null;
+  leadConversationId: string | null;
+  leadConversationStatus: PTLeadConversationStatus | null;
+  leadConversationArchivedReason: "converted" | "declined" | "manual" | null;
+  leadLastMessagePreview: string | null;
+  leadLastMessageAt: string | null;
+  leadUnreadCount: number;
   notes: PTLeadNote[];
   source: string;
   sourceLabel: string;

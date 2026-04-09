@@ -13,6 +13,9 @@ set package_interest_label_snapshot = coalesce(
 )
 where package_interest_label_snapshot is null;
 
+alter table public.pt_hub_leads
+  drop constraint if exists pt_hub_leads_status_check;
+
 update public.pt_hub_leads
 set status = case
   when status = 'reviewed' then 'new'
@@ -23,19 +26,8 @@ set status = case
 end
 where status in ('reviewed', 'consultation_booked', 'accepted', 'rejected', 'archived');
 
-do $$
-begin
-  if exists (
-    select 1
-    from pg_constraint
-    where conname = 'pt_hub_leads_status_check'
-      and conrelid = 'public.pt_hub_leads'::regclass
-  ) then
-    alter table public.pt_hub_leads
-      drop constraint pt_hub_leads_status_check;
-  end if;
-end;
-$$;
+alter table public.pt_hub_leads
+  drop constraint if exists pt_hub_leads_status_check;
 
 alter table public.pt_hub_leads
   add constraint pt_hub_leads_status_check
@@ -375,7 +367,7 @@ begin
 
     insert into public.workspace_members (workspace_id, user_id, role)
     values (v_target_workspace_id, v_actor_user_id, 'pt_owner')
-    on conflict (workspace_id, user_id) do update
+    on conflict on constraint workspace_members_pkey do update
       set role = 'pt_owner';
   else
     update public.pt_hub_leads lead

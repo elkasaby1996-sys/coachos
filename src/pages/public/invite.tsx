@@ -54,8 +54,14 @@ type VerifyInviteRow = {
   workspace_id: string | null;
   workspace_name: string | null;
   workspace_logo_url: string | null;
+  pt_display_name?: string | null;
   role: string | null;
   expires_at: string | null;
+};
+
+type AcceptInviteResult = {
+  workspace_id: string | null;
+  client_id: string | null;
 };
 
 type InviteTab = "social" | "email_link" | "phone_code" | "email_password";
@@ -70,6 +76,33 @@ function getErrorMessage(err: unknown): string {
     if (typeof message === "string") return message;
   }
   return "Something went wrong.";
+}
+
+function toOptionalTrimmedText(value: string | null | undefined) {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+function buildInviteJoinSearchParams(params: {
+  workspaceId: string | null;
+  workspaceName: string | null;
+  ptDisplayName: string | null;
+}) {
+  const nextParams = new URLSearchParams({
+    invite_joined: "1",
+  });
+
+  if (params.workspaceId) {
+    nextParams.set("joined_workspace_id", params.workspaceId);
+  }
+  if (params.workspaceName) {
+    nextParams.set("joined_workspace_name", params.workspaceName);
+  }
+  if (params.ptDisplayName) {
+    nextParams.set("joined_pt_name", params.ptDisplayName);
+  }
+
+  return nextParams;
 }
 
 export function InvitePage() {
@@ -202,27 +235,51 @@ export function InvitePage() {
           return;
         }
 
-        const { error: acceptError } = await supabase.rpc("accept_invite", {
-          p_token: tokenValue,
-        });
+        const { data: acceptData, error: acceptError } = await supabase.rpc(
+          "accept_invite",
+          {
+            p_token: tokenValue,
+          },
+        );
         if (acceptError) throw acceptError;
-        setNotice("Invite accepted. Redirecting...");
+        const acceptRow = (Array.isArray(acceptData)
+          ? (acceptData[0] ?? null)
+          : acceptData) as AcceptInviteResult | null;
+        const joinedWorkspaceId =
+          toOptionalTrimmedText(acceptRow?.workspace_id) ??
+          toOptionalTrimmedText(invite.workspace_id);
+        const joinedWorkspaceName = toOptionalTrimmedText(invite.workspace_name);
+        const joinedPtDisplayName = toOptionalTrimmedText(
+          invite.pt_display_name,
+        );
+
+        setNotice("Invite accepted. Redirecting to dashboard...");
         clearPendingInviteToken();
         patchBootstrap((prev) => ({
           accountType: "client",
           role: "client",
           hasWorkspaceMembership: true,
           clientWorkspaceOnboardingHardGateRequired: true,
-          activeWorkspaceId: invite.workspace_id ?? prev.activeWorkspaceId,
+          activeWorkspaceId: joinedWorkspaceId ?? prev.activeWorkspaceId,
           clientProfile: prev.clientProfile
             ? {
                 ...prev.clientProfile,
-                workspace_id: invite.workspace_id ?? prev.clientProfile.workspace_id,
+                workspace_id:
+                  joinedWorkspaceId ?? prev.clientProfile.workspace_id,
               }
             : prev.clientProfile,
         }));
-        await refreshRole?.();
-        navigate("/app/onboarding", { replace: true });
+        try {
+          await refreshRole?.();
+        } catch {
+          // Keep navigation deterministic even if bootstrap refresh fails transiently.
+        }
+        const nextParams = buildInviteJoinSearchParams({
+          workspaceId: joinedWorkspaceId,
+          workspaceName: joinedWorkspaceName,
+          ptDisplayName: joinedPtDisplayName,
+        });
+        navigate(`/app/home?${nextParams.toString()}`, { replace: true });
       } catch (err) {
         acceptingInviteRef.current = false;
         setError(getErrorMessage(err) || "Failed to accept invite.");
@@ -234,6 +291,8 @@ export function InvitePage() {
   }, [
     accountType,
     invite?.workspace_id,
+    invite?.workspace_name,
+    invite?.pt_display_name,
     session?.user,
     invite?.is_valid,
     tokenValue,

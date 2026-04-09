@@ -708,10 +708,7 @@ export function getAuthenticatedRedirectPath(state: RedirectState) {
         : "";
       return `/client/onboarding/account${inviteQuery}`;
     }
-    if (!state.hasWorkspaceMembership) return "/no-workspace";
-    if (state.clientWorkspaceOnboardingHardGateRequired) {
-      return "/app/onboarding";
-    }
+    if (!state.hasWorkspaceMembership) return "/app/home";
     return "/app/home";
   }
 
@@ -731,11 +728,9 @@ export function getAuthenticatedRedirectPath(state: RedirectState) {
       return `/client/onboarding/account${inviteQuery}`;
     }
     if (state.hasWorkspaceMembership) {
-      return state.clientWorkspaceOnboardingHardGateRequired
-        ? "/app/onboarding"
-        : "/app/home";
+      return "/app/home";
     }
-    return "/no-workspace";
+    return "/app/home";
   }
 
   return "/no-workspace";
