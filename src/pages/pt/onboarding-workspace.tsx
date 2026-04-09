@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
+import { ActionButtonLabel } from "../../components/common/action-feedback";
 import {
   Card,
   CardContent,
@@ -13,9 +14,9 @@ import {
   getUserDisplayName,
   updatePtProfile,
 } from "../../lib/account-profiles";
-import { supabase } from "../../lib/supabase";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { createPtWorkspace } from "../../features/pt-hub/lib/pt-hub";
 
 export function PtWorkspaceOnboardingPage() {
   const navigate = useNavigate();
@@ -118,15 +119,7 @@ export function PtWorkspaceOnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const { data, error: createError } = await supabase.rpc("create_workspace", {
-        p_name: name,
-      });
-      if (createError) throw createError;
-
-      const createdWorkspaceId = Array.isArray(data)
-        ? ((data[0] as { workspace_id?: string } | undefined)?.workspace_id ??
-          null)
-        : ((data as { workspace_id?: string } | null)?.workspace_id ?? null);
+      const createdWorkspaceId = await createPtWorkspace(name);
 
       window.localStorage.removeItem("coachos_pt_workspace_name");
       window.localStorage.removeItem("coachos_signup_intent");
@@ -198,7 +191,11 @@ export function PtWorkspaceOnboardingPage() {
               </div>
             ) : null}
             <Button type="submit" className="w-full" disabled={saving}>
-              {saving ? "Creating..." : "Create workspace"}
+              <ActionButtonLabel
+                state={saving ? "saving" : "idle"}
+                idleLabel="Create workspace"
+                savingLabel="Creating workspace..."
+              />
             </Button>
           </form>
         </CardContent>

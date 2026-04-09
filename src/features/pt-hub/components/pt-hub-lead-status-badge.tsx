@@ -1,17 +1,18 @@
 import { Badge } from "../../../components/ui/badge";
+import type { BadgeVariant } from "../../../components/ui/badge";
 import type { PTLeadStatus } from "../types";
 
 const statusVariant: Record<
   PTLeadStatus,
-  "secondary" | "success" | "warning" | "danger" | "muted"
+  BadgeVariant
 > = {
   new: "warning",
-  reviewed: "secondary",
-  contacted: "secondary",
+  reviewed: "info",
+  contacted: "info",
   consultation_booked: "success",
   accepted: "success",
   rejected: "danger",
-  archived: "muted",
+  archived: "neutral",
 };
 
 const statusLabel: Record<PTLeadStatus, string> = {

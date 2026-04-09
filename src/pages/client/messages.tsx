@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
+  InfiniteData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -25,8 +26,13 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { Skeleton } from "../../components/ui/coachos";
+import { sendConversationMessage } from "../../lib/messages";
+import { getActionErrorMessage } from "../../lib/request-guard";
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
+import { Textarea } from "../../components/ui/textarea";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -74,9 +80,16 @@ export function ClientMessagesPage() {
     [location.search],
   );
   const [messageInput, setMessageInput] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [visibleMessageCount, setVisibleMessageCount] = useState(100);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [composerFocused, setComposerFocused] = useState(false);
+  const messageLimitState = getCharacterLimitState({
+    value: messageInput,
+    kind: "default_text",
+    fieldLabel: "Message",
+  });
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const messagePageSize = 50;
@@ -167,11 +180,21 @@ export function ClientMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [messagesQuery.data]);
+  const renderedMessageRows = useMemo(
+    () => messageRows.slice(Math.max(0, messageRows.length - visibleMessageCount)),
+    [messageRows, visibleMessageCount],
+  );
+  const hasHiddenLoadedMessages =
+    messageRows.length > renderedMessageRows.length;
+
+  useEffect(() => {
+    setVisibleMessageCount(100);
+  }, [conversationId]);
 
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messageRows.length]);
+  }, [renderedMessageRows.length]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -250,26 +273,52 @@ export function ClientMessagesPage() {
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!conversationId) throw new Error("Conversation not ready.");
+      if (messageLimitState.overLimit) {
+        throw new Error(messageLimitState.errorText ?? "Message is too long.");
+      }
       if (!messageInput.trim()) return;
       const senderName = clientQuery.data?.display_name ?? "Client";
-      const body = messageInput.trim();
-      const { error } = await supabase.from("messages").insert({
-        conversation_id: conversationId,
-        sender_user_id: session?.user?.id ?? null,
-        sender_role: "client",
-        sender_name: senderName,
-        body,
-        preview: body.slice(0, 140),
+      return (await sendConversationMessage({
+        conversationId,
+        senderUserId: session?.user?.id ?? null,
+        senderRole: "client",
+        senderName,
+        body: messageInput,
         unread: true,
-      });
-      if (error) throw error;
+      })) as MessageRow;
     },
-    onSuccess: async () => {
+    onSuccess: async (message) => {
+      setSendError(null);
       setMessageInput("");
       updateTyping(false);
-      await queryClient.invalidateQueries({
-        queryKey: ["client-messages", conversationId],
-      });
+      if (!conversationId || !message) return;
+      queryClient.setQueryData<InfiniteData<MessageRow[]>>(
+        ["client-messages", conversationId],
+        (current) => {
+          if (!current) {
+            return {
+              pageParams: [0],
+              pages: [[message]],
+            };
+          }
+
+          const pages = [...current.pages];
+          if (pages.length === 0) {
+            pages.push([message]);
+          } else {
+            const lastPage = pages[pages.length - 1] ?? [];
+            pages[pages.length - 1] = [...lastPage, message];
+          }
+
+          return {
+            ...current,
+            pages,
+          };
+        },
+      );
+    },
+    onError: (error) => {
+      setSendError(getActionErrorMessage(error, "Unable to send message."));
     },
   });
 
@@ -381,10 +430,23 @@ export function ClientMessagesPage() {
                   </Button>
                 </div>
               ) : null}
+              {hasHiddenLoadedMessages ? (
+                <div className="flex justify-center">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setVisibleMessageCount((current) => current + 100)
+                    }
+                  >
+                    Show older loaded messages
+                  </Button>
+                </div>
+              ) : null}
 
               {hasMessages ? (
                 <div className="space-y-3">
-                  {messageRows.map((message) => {
+                  {renderedMessageRows.map((message) => {
                     const isClient = message.sender_role === "client";
                     return (
                       <div
@@ -449,6 +511,11 @@ export function ClientMessagesPage() {
 
             <div className="sticky bottom-0 border-t border-border/60 bg-[linear-gradient(180deg,rgba(10,14,22,0.16),rgba(10,14,22,0.94)_24%,rgba(10,14,22,0.98))] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur sm:px-5 sm:pb-5">
               <SectionCard className="space-y-3 border-border/60 bg-background/60 p-4 shadow-none">
+                {sendError ? (
+                  <p className="rounded-[18px] border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+                    {sendError}
+                  </p>
+                ) : null}
                 <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                   <span>Send a direct update to your coach.</span>
                   <span className="text-xs">
@@ -456,15 +523,20 @@ export function ClientMessagesPage() {
                   </span>
                 </div>
                 <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                  <textarea
+                  <Textarea
                     aria-label="Message your coach"
+                    isInvalid={messageLimitState.overLimit}
                     className={`form-control-compact flex-1 resize-y bg-background/80 transition-[min-height] duration-200 ${composerFocused || messageInput.trim().length > 0 ? "min-h-[120px]" : "min-h-[58px]"}`}
                     placeholder="Share your update, question, or request..."
                     value={messageInput}
-                    onChange={(event) => setMessageInput(event.target.value)}
+                    onChange={(event) => {
+                      if (sendError) setSendError(null);
+                      setMessageInput(event.target.value);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
+                        if (messageLimitState.overLimit) return;
                         sendMutation.mutate();
                       }
                     }}
@@ -492,13 +564,19 @@ export function ClientMessagesPage() {
                     disabled={
                       !conversationId ||
                       !messageInput.trim() ||
-                      sendMutation.isPending
+                      sendMutation.isPending ||
+                      messageLimitState.overLimit
                     }
                   >
                     <SendHorizontal className="mr-2 h-4 w-4" />
                     {sendMutation.isPending ? "Sending..." : "Send message"}
                   </Button>
                 </div>
+                <FieldCharacterMeta
+                  count={messageLimitState.count}
+                  limit={messageLimitState.limit}
+                  errorText={messageLimitState.errorText}
+                />
               </SectionCard>
             </div>
           </div>

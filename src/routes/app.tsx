@@ -1,4 +1,5 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Navigate,
   Route,
@@ -7,9 +8,6 @@ import {
   useParams,
 } from "react-router-dom";
 import {
-  AccountSettings,
-  AppearanceSettings,
-  BillingSettings,
   ClientAccountOnboardingPage,
   ClientBaselinePage,
   ClientCheckinPage,
@@ -27,10 +25,9 @@ import {
   ClientWorkoutSummaryPage,
   ClientWorkoutTodayPage,
   ClientSignupPage,
-  DangerZoneSettings,
-  DefaultsSettings,
   HealthPage,
   InvitePage,
+  LegacySettingsRedirectPage,
   LoginPage,
   NoWorkspacePage,
   NotificationsPage,
@@ -46,13 +43,19 @@ import {
   PtExerciseLibraryPage,
   PtHubAnalyticsPage,
   PtHubClientsPage,
+  PtHubLeadDetailPage,
   PtHubLeadsPage,
   PtHubLayout,
   PtHubOverviewPage,
   PtHubPaymentsPage,
   PtHubProfilePage,
   PtHubProfilePreviewPage,
-  PtHubSettingsPage,
+  PtHubSettingsAccountTab,
+  PtHubSettingsBillingTab,
+  PtHubSettingsLayoutPage,
+  PtHubSettingsNotificationsTab,
+  PtHubSettingsPreferencesTab,
+  PtHubSettingsSecurityTab,
   PtHubWorkspacesPage,
   PtLayout,
   PtMessagesPage,
@@ -66,13 +69,18 @@ import {
   PtWorkoutTemplatePreviewPage,
   PtWorkoutTemplatesPage,
   PtWorkspaceOnboardingPage,
-  PublicProfileSettings,
-  SettingsLayout,
   SignupRolePage,
   SupportPage,
   TermsPage,
-  WelcomePage,
-  WorkspaceSettings,
+  WorkspaceSettingsAutomationsTab,
+  WorkspaceSettingsBrandTab,
+  WorkspaceSettingsClientExperienceTab,
+  WorkspaceSettingsDangerTab,
+  WorkspaceSettingsDefaultsTab,
+  WorkspaceSettingsGeneralTab,
+  WorkspaceSettingsIntegrationsTab,
+  WorkspaceSettingsLayoutPage,
+  WorkspaceSettingsTeamTab,
 } from "./lazy-pages";
 
 // ✅ assumes your AuthProvider exports this hook
@@ -230,7 +238,7 @@ function IndexRedirect() {
 
   if (authLoading) return <FullPageLoader />;
 
-  if (!session) return <WelcomePage />;
+  if (!session) return <Navigate to="/login" replace />;
 
   if (!bootstrapResolved) return <FullPageLoader />;
 
@@ -328,12 +336,180 @@ function AuthTestSignals() {
   );
 }
 
+function getShellKey(pathname: string) {
+  if (pathname.startsWith("/pt-hub")) return "pt-hub";
+  if (
+    pathname.startsWith("/pt") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/workspace/")
+  ) {
+    return "pt-workspace";
+  }
+  if (pathname.startsWith("/app")) return "client-workspace";
+  return "public";
+}
+
+function ensureMetaTag(name: string) {
+  let tag = document.head.querySelector<HTMLMetaElement>(
+    `meta[name="${name}"]`,
+  );
+
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.name = name;
+    document.head.appendChild(tag);
+  }
+
+  return tag;
+}
+
+function ensureCanonicalLink() {
+  let link = document.head.querySelector<HTMLLinkElement>(
+    'link[rel="canonical"]',
+  );
+
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "canonical";
+    document.head.appendChild(link);
+  }
+
+  return link;
+}
+
+function isPrivateRoute(pathname: string) {
+  return (
+    pathname.startsWith("/pt-hub") ||
+    pathname.startsWith("/pt") ||
+    pathname.startsWith("/app") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/workspace/") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/invite") ||
+    pathname.startsWith("/join") ||
+    pathname.startsWith("/no-workspace") ||
+    pathname.startsWith("/client/onboarding")
+  );
+}
+
+function DocumentMetadata() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const robots = ensureMetaTag("robots");
+    const googlebot = ensureMetaTag("googlebot");
+    const canonical = ensureCanonicalLink();
+    const content = isPrivateRoute(location.pathname)
+      ? "noindex, nofollow"
+      : "index, follow";
+    const canonicalUrl = `${window.location.origin}${location.pathname}`;
+
+    robots.content = content;
+    googlebot.content = content;
+    canonical.href = canonicalUrl;
+  }, [location.pathname]);
+
+  return null;
+}
+
+function AppShellTransition({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const reduceMotion = useReducedMotion();
+  const shellKey = getShellKey(location.pathname);
+  const previousShellRef = useRef(shellKey);
+  const previousShellKey = previousShellRef.current;
+
+  useEffect(() => {
+    previousShellRef.current = shellKey;
+  }, [shellKey]);
+
+  const shellMotion = useMemo(() => {
+    const fromHubToWorkspace =
+      previousShellKey === "pt-hub" && shellKey === "pt-workspace";
+    const fromWorkspaceToHub =
+      previousShellKey === "pt-workspace" && shellKey === "pt-hub";
+
+    if (fromHubToWorkspace) {
+      return {
+        initial: { opacity: 0.82 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0.9 },
+      };
+    }
+
+    if (fromWorkspaceToHub) {
+      return {
+        initial: { opacity: 0.82 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0.9 },
+      };
+    }
+
+    return {
+      initial: { opacity: 0.84 },
+      animate: { opacity: 1 },
+      exit: { opacity: 0.9 },
+    };
+  }, [previousShellKey, shellKey]);
+
+  const shellOverlay = useMemo(() => {
+    if (shellKey === "pt-hub") {
+      return "radial-gradient(circle at 16% 18%, rgba(87, 129, 255, 0.1), transparent 34%), radial-gradient(circle at 80% 24%, rgba(116, 201, 164, 0.08), transparent 30%)";
+    }
+
+    if (shellKey === "pt-workspace") {
+      return "radial-gradient(circle at 16% 18%, rgba(87, 129, 255, 0.1), transparent 34%), radial-gradient(circle at 80% 24%, rgba(116, 201, 164, 0.08), transparent 30%)";
+    }
+
+    if (shellKey === "client-workspace") {
+      return "radial-gradient(circle at 18% 20%, rgba(251, 191, 36, 0.09), transparent 32%), radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.08), transparent 28%)";
+    }
+
+    return "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 30%)";
+  }, [shellKey]);
+
+  if (reduceMotion) {
+    return <>{children}</>;
+  }
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={shellKey}
+        className="relative"
+        initial={shellMotion.initial}
+        animate={shellMotion.animate}
+        exit={shellMotion.exit}
+        transition={{
+          duration: 0.34,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
+        <motion.div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10"
+          initial={{ opacity: 0.22 }}
+          animate={{ opacity: 0 }}
+          exit={{ opacity: 0.18 }}
+          transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+          style={{ background: shellOverlay }}
+        />
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export function App() {
+  const location = useLocation();
+
   return (
     <Suspense fallback={<FullPageLoader />}>
       <PtHubAssetPreloader />
       <AuthTestSignals />
-      <Routes>
+      <DocumentMetadata />
+      <AppShellTransition>
+        <Routes location={location}>
         {/* Smart landing */}
         <Route path="/" element={<IndexRedirect />} />
 
@@ -397,11 +573,33 @@ export function App() {
           <Route path="profile" element={<PtHubProfilePage />} />
           <Route path="profile/preview" element={<PtHubProfilePreviewPage />} />
           <Route path="leads" element={<PtHubLeadsPage />} />
+          <Route path="leads/:leadId" element={<PtHubLeadDetailPage />} />
           <Route path="clients" element={<PtHubClientsPage />} />
           <Route path="workspaces" element={<PtHubWorkspacesPage />} />
           <Route path="payments" element={<PtHubPaymentsPage />} />
           <Route path="analytics" element={<PtHubAnalyticsPage />} />
-          <Route path="settings" element={<PtHubSettingsPage />} />
+          <Route path="settings" element={<PtHubSettingsLayoutPage />}>
+            <Route index element={<Navigate to="account" replace />} />
+            <Route path="account" element={<PtHubSettingsAccountTab />} />
+            <Route
+              path="public-profile"
+              element={<Navigate to="/pt-hub/profile" replace />}
+            />
+            <Route
+              path="notifications"
+              element={<PtHubSettingsNotificationsTab />}
+            />
+            <Route
+              path="preferences"
+              element={<PtHubSettingsPreferencesTab />}
+            />
+            <Route path="security" element={<PtHubSettingsSecurityTab />} />
+            <Route path="billing" element={<PtHubSettingsBillingTab />} />
+            <Route
+              path="integrations"
+              element={<Navigate to="../account" replace />}
+            />
+          </Route>
         </Route>
 
         {/* PT Side */}
@@ -474,6 +672,38 @@ export function App() {
         </Route>
 
         <Route
+          path="/workspace/:workspaceId/settings"
+          element={
+            <RequireAuth>
+              <RequireRole allow={["pt"]}>
+                <PtLayout />
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route element={<WorkspaceSettingsLayoutPage />}>
+            <Route index element={<Navigate to="general" replace />} />
+            <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
+            <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
+            <Route
+              path="client-experience"
+              element={<WorkspaceSettingsClientExperienceTab />}
+            />
+            <Route path="team" element={<WorkspaceSettingsTeamTab />} />
+            <Route path="defaults" element={<WorkspaceSettingsDefaultsTab />} />
+            <Route
+              path="automations"
+              element={<WorkspaceSettingsAutomationsTab />}
+            />
+            <Route
+              path="integrations"
+              element={<WorkspaceSettingsIntegrationsTab />}
+            />
+            <Route path="danger" element={<WorkspaceSettingsDangerTab />} />
+          </Route>
+        </Route>
+
+        <Route
           path="/settings"
           element={
             <RequireAuth>
@@ -483,19 +713,9 @@ export function App() {
             </RequireAuth>
           }
         >
-          <Route
-            index
-            element={<Navigate to="/settings/workspace" replace />}
-          />
-          <Route element={<SettingsLayout />}>
-            <Route path="workspace" element={<WorkspaceSettings />} />
-            <Route path="public-profile" element={<PublicProfileSettings />} />
-            <Route path="account" element={<AccountSettings />} />
-            <Route path="billing" element={<BillingSettings />} />
-            <Route path="appearance" element={<AppearanceSettings />} />
-            <Route path="defaults" element={<DefaultsSettings />} />
-            <Route path="danger" element={<DangerZoneSettings />} />
-          </Route>
+          <Route index element={<LegacySettingsRedirectPage />} />
+          <Route path=":section" element={<LegacySettingsRedirectPage />} />
+          <Route path="*" element={<LegacySettingsRedirectPage />} />
         </Route>
 
         {/* Client Side */}
@@ -540,7 +760,8 @@ export function App() {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        </Routes>
+      </AppShellTransition>
     </Suspense>
   );
 }

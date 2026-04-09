@@ -1,22 +1,16 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, MessageSquarePlus, Search, UsersRound } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { PtHubLeadDetailDialog } from "../../features/pt-hub/components/pt-hub-lead-detail-dialog";
 import { PtHubLeadStatusBadge } from "../../features/pt-hub/components/pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "../../features/pt-hub/components/pt-hub-lead-statuses";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
-import {
-  addPtHubLeadNote,
-  updatePtHubLeadStatus,
-  usePtHubLeads,
-} from "../../features/pt-hub/lib/pt-hub";
-import type { PTLead, PTLeadStatus } from "../../features/pt-hub/types";
-import { useSessionAuth } from "../../lib/auth";
+import { usePtHubLeads } from "../../features/pt-hub/lib/pt-hub";
+import type { PTLeadStatus } from "../../features/pt-hub/types";
 import { formatRelativeTime } from "../../lib/relative-time";
 
 const statusOptions: Array<PTLeadStatus | "all"> = [
@@ -25,13 +19,10 @@ const statusOptions: Array<PTLeadStatus | "all"> = [
 ];
 
 export function PtHubLeadsPage() {
-  const queryClient = useQueryClient();
-  const { user } = useSessionAuth();
+  const navigate = useNavigate();
   const leadsQuery = usePtHubLeads();
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<PTLeadStatus | "all">("all");
-  const [selectedLead, setSelectedLead] = useState<PTLead | null>(null);
-  const [saving, setSaving] = useState(false);
   const deferredSearchValue = useDeferredValue(searchValue);
 
   const leads = useMemo(() => leadsQuery.data ?? [], [leadsQuery.data]);
@@ -72,11 +63,6 @@ export function PtHubLeadsPage() {
     [leads],
   );
 
-  const refreshLeads = async () => {
-    await queryClient.refetchQueries({ queryKey: ["pt-hub-leads"] });
-    return queryClient.getQueryData<PTLead[]>(["pt-hub-leads"]) ?? [];
-  };
-
   return (
     <section className="space-y-6">
       <PtHubPageHeader
@@ -85,7 +71,7 @@ export function PtHubLeadsPage() {
         description='See "Apply to Work With Me" submissions and decide who to follow up with next.'
       />
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
           label="Total Leads"
@@ -122,9 +108,9 @@ export function PtHubLeadsPage() {
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="app-search-icon h-4 w-4" />
               <Input
-                className="pl-9"
+                className="app-search-input"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
                 placeholder="Search name, contact, goal, or notes"
@@ -170,7 +156,7 @@ export function PtHubLeadsPage() {
                   key={lead.id}
                   type="button"
                   className="grid w-full gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] lg:items-center"
-                  onClick={() => setSelectedLead(lead)}
+                  onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}
                 >
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -217,40 +203,6 @@ export function PtHubLeadsPage() {
           </div>
         )}
       </PtHubSectionCard>
-
-      <PtHubLeadDetailDialog
-        lead={selectedLead}
-        open={Boolean(selectedLead)}
-        saving={saving}
-        onOpenChange={(open) => {
-          if (!open) setSelectedLead(null);
-        }}
-        onUpdateStatus={async (leadId, status, markConverted) => {
-          setSaving(true);
-          try {
-            await updatePtHubLeadStatus({ leadId, status, markConverted });
-            const refreshed = await refreshLeads();
-            setSelectedLead(
-              refreshed.find((lead) => lead.id === leadId) ?? null,
-            );
-          } finally {
-            setSaving(false);
-          }
-        }}
-        onAddNote={async (leadId, body) => {
-          if (!user?.id) return;
-          setSaving(true);
-          try {
-            await addPtHubLeadNote({ leadId, userId: user.id, body });
-            const refreshed = await refreshLeads();
-            setSelectedLead(
-              refreshed.find((lead) => lead.id === leadId) ?? null,
-            );
-          } finally {
-            setSaving(false);
-          }
-        }}
-      />
     </section>
   );
 }

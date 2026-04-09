@@ -403,10 +403,14 @@ export function ClientHabitsPage() {
           </span>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <label className="text-xs font-semibold text-muted-foreground">
+          <label
+            htmlFor="client-habits-log-date"
+            className="text-xs font-semibold text-muted-foreground"
+          >
             Date
           </label>
           <Input
+            id="client-habits-log-date"
             type="date"
             className="sm:min-w-[12rem]"
             value={selectedDate}

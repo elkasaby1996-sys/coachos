@@ -1,4 +1,9 @@
 import { getPtClientBaseStats } from "./pt-hub";
+import { isClientAtRisk } from "../../../lib/client-lifecycle";
+import {
+  getSemanticToneForStatus,
+  type SemanticTone,
+} from "../../../lib/semantic-status";
 import type {
   PTAnalyticsSnapshot,
   PTClientSummary,
@@ -12,8 +17,9 @@ import type {
   PTWorkspaceSummary,
 } from "../types";
 
-type MetricTone = "positive" | "negative" | "neutral";
-type ActionTone = "danger" | "warning" | "neutral" | "success";
+type MetricTone = SemanticTone;
+type ActionTone = SemanticTone;
+type SummaryTone = SemanticTone;
 
 export type PtHubOverviewMode = "activation" | "operating";
 
@@ -55,6 +61,7 @@ export interface PtHubOverviewSummaryItem {
   label: string;
   value: string;
   detail?: string;
+  tone?: SummaryTone;
 }
 
 export interface PtHubOverviewQuickAction {
@@ -102,7 +109,7 @@ function buildMetricDelta(
   const rounded = Math.round(delta);
   return {
     value: `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`,
-    tone: rounded === 0 ? "neutral" : rounded > 0 ? "positive" : "negative",
+    tone: rounded === 0 ? "neutral" : rounded > 0 ? "info" : "danger",
   };
 }
 
@@ -110,16 +117,20 @@ function buildEarningsMetric(
   revenue: PTRevenueSnapshot | null | undefined,
 ): PtHubOverviewMetric {
   const revenueConnected = revenue?.revenueConnected === true;
+  const monthlyEarningsValue =
+    revenueConnected && revenue?.monthlyRevenueLabel
+      ? revenue.monthlyRevenueLabel
+      : "TBW";
 
   return {
     id: "monthly-earnings",
     label: "Monthly earnings",
-    value: revenue?.monthlyRevenueLabel ?? "Not connected",
-    helper: "",
+    value: monthlyEarningsValue,
+    helper: "This month",
     href: "/pt-hub/payments",
     delta: {
       value: revenueConnected ? "Live" : "Pending",
-      tone: revenueConnected ? "positive" : "neutral",
+      tone: getSemanticToneForStatus(revenueConnected ? "Live" : "Pending"),
     },
   };
 }
@@ -182,8 +193,7 @@ function getClientsNeedingAttention(clients: PTClientSummary[]) {
     if (
       client.hasOverdueCheckin ||
       client.onboardingIncomplete ||
-      client.lifecycleState === "at_risk" ||
-      client.riskFlags.length > 0
+      isClientAtRisk(client)
     ) {
       ids.add(client.id);
     }
@@ -196,30 +206,28 @@ function getMostUrgentClient(
   clients: PTClientSummary[],
   predicate: (client: PTClientSummary) => boolean,
 ) {
-  return [...clients]
-    .filter(predicate)
-    .sort((left, right) => {
-      const overdueDelta =
-        (right.overdueCheckinsCount ?? 0) - (left.overdueCheckinsCount ?? 0);
-      if (overdueDelta !== 0) return overdueDelta;
+  return [...clients].filter(predicate).sort((left, right) => {
+    const overdueDelta =
+      (right.overdueCheckinsCount ?? 0) - (left.overdueCheckinsCount ?? 0);
+    if (overdueDelta !== 0) return overdueDelta;
 
-      const rightTime = new Date(
-        right.lastActivityAt ??
-          right.lastClientReplyAt ??
-          right.updatedAt ??
-          right.createdAt ??
-          0,
-      ).getTime();
-      const leftTime = new Date(
-        left.lastActivityAt ??
-          left.lastClientReplyAt ??
-          left.updatedAt ??
-          left.createdAt ??
-          0,
-      ).getTime();
+    const rightTime = new Date(
+      right.lastActivityAt ??
+        right.lastClientReplyAt ??
+        right.updatedAt ??
+        right.createdAt ??
+        0,
+    ).getTime();
+    const leftTime = new Date(
+      left.lastActivityAt ??
+        left.lastClientReplyAt ??
+        left.updatedAt ??
+        left.createdAt ??
+        0,
+    ).getTime();
 
-      return leftTime - rightTime;
-    })[0];
+    return leftTime - rightTime;
+  })[0];
 }
 
 function getOverviewMode(params: {
@@ -253,13 +261,11 @@ function buildMetrics(params: {
       (params.stats?.applicationsPreviousWindow ?? 0),
   );
   const overdueCheckinCount = params.clientStats.overdueCheckinClients;
-  const onboardingInProgressCount = params.clientStats.onboardingIncompleteClients;
+  const onboardingInProgressCount =
+    params.clientStats.onboardingIncompleteClients;
 
   return [
-    {
-      ...buildEarningsMetric(params.revenue),
-      accent: true,
-    },
+    buildEarningsMetric(params.revenue),
     {
       id: "active-clients",
       label: "Active clients",
@@ -285,11 +291,11 @@ function buildMetrics(params: {
         overdueCheckinCount > 0
           ? {
               value: `${overdueCheckinCount} overdue`,
-              tone: "negative",
+              tone: getSemanticToneForStatus("Overdue"),
             }
           : {
               value: "All clear",
-              tone: "positive",
+              tone: getSemanticToneForStatus("All clear"),
             },
     },
     {
@@ -302,11 +308,11 @@ function buildMetrics(params: {
         onboardingInProgressCount > 0
           ? {
               value: `${onboardingInProgressCount} waiting review`,
-              tone: "neutral",
+              tone: getSemanticToneForStatus("Waiting review"),
             }
           : {
               value: "No blockers",
-              tone: "positive",
+              tone: getSemanticToneForStatus("No blockers"),
             },
     },
   ] satisfies PtHubOverviewMetric[];
@@ -333,10 +339,8 @@ function buildActionItems(params: {
     params.clients,
     (client) => client.hasOverdueCheckin,
   );
-  const mostUrgentAtRiskClient = getMostUrgentClient(
-    params.clients,
-    (client) =>
-      client.lifecycleState === "at_risk" || client.riskFlags.length > 0,
+  const mostUrgentAtRiskClient = getMostUrgentClient(params.clients, (client) =>
+    isClientAtRisk(client),
   );
   const mostUrgentOnboardingClient = getMostUrgentClient(
     params.clients,
@@ -348,7 +352,9 @@ function buildActionItems(params: {
     mostUrgentOnboardingClient ??
     null;
 
-  const upsertAction = (item: PtHubOverviewActionItem & { priority: number }) => {
+  const upsertAction = (
+    item: PtHubOverviewActionItem & { priority: number },
+  ) => {
     const existing = actionItems.get(item.id);
     if (!existing || existing.priority < item.priority) {
       actionItems.set(item.id, item);
@@ -364,7 +370,7 @@ function buildActionItems(params: {
         "These leads have not reached the contacted stage yet, so they are most likely to cool off first.",
       href: "/pt-hub/leads",
       ctaLabel: "Open lead inbox",
-      tone: "danger",
+      tone: getSemanticToneForStatus("Awaiting response"),
       priority: 100,
     });
   }
@@ -385,7 +391,7 @@ function buildActionItems(params: {
       ctaLabel: mostUrgentOverdueClient
         ? `Open ${mostUrgentOverdueClient.workspaceName}`
         : "Review clients",
-      tone: "danger",
+      tone: getSemanticToneForStatus("Overdue"),
       priority: 96,
       workspaceId: mostUrgentOverdueClient?.workspaceId ?? null,
     });
@@ -407,7 +413,7 @@ function buildActionItems(params: {
       ctaLabel: mostUrgentAtRiskClient
         ? `Open ${mostUrgentAtRiskClient.workspaceName}`
         : "View client health",
-      tone: "warning",
+      tone: getSemanticToneForStatus("At risk"),
       priority: 92,
       workspaceId: mostUrgentAtRiskClient?.workspaceId ?? null,
     });
@@ -432,7 +438,7 @@ function buildActionItems(params: {
       ctaLabel: mostUrgentOnboardingClient
         ? `Open ${mostUrgentOnboardingClient.workspaceName}`
         : "Open clients",
-      tone: "warning",
+      tone: getSemanticToneForStatus("Onboarding incomplete"),
       priority: 84,
       workspaceId: mostUrgentOnboardingClient?.workspaceId ?? null,
     });
@@ -447,7 +453,7 @@ function buildActionItems(params: {
         "Finish the missing coach-page basics so your public presence supports the business instead of holding it back.",
       href: "/pt-hub/profile",
       ctaLabel: "Open profile setup",
-      tone: "danger",
+      tone: getSemanticToneForStatus("Setup in progress"),
       priority: 88,
     });
   }
@@ -464,7 +470,9 @@ function buildActionItems(params: {
       ctaLabel: params.publicationState?.canPublish
         ? "Publish coach page"
         : "Review setup",
-      tone: params.publicationState?.canPublish ? "warning" : "danger",
+      tone: getSemanticToneForStatus(
+        params.publicationState?.canPublish ? "Ready to publish" : "Draft",
+      ),
       priority: 82,
     });
   }
@@ -478,7 +486,7 @@ function buildActionItems(params: {
         "Set up the first coaching space so the business has a delivery home for new and active clients.",
       href: "/pt-hub/workspaces",
       ctaLabel: "Create coaching space",
-      tone: "warning",
+      tone: getSemanticToneForStatus("Not created"),
       priority: 80,
     });
   }
@@ -509,7 +517,7 @@ function buildActionItems(params: {
         "Client billing is not connected yet, so revenue tracking and invoice history are still limited on this account.",
       href: "/pt-hub/payments",
       ctaLabel: "Open billing",
-      tone: "neutral",
+      tone: getSemanticToneForStatus("Billing is still manual"),
       priority: 68,
     });
   }
@@ -530,7 +538,7 @@ function buildActionItems(params: {
       ctaLabel: mostUrgentAttentionClient
         ? `Open ${mostUrgentAttentionClient.workspaceName}`
         : "Open clients",
-      tone: "neutral",
+      tone: getSemanticToneForStatus("Needs attention"),
       priority: 60,
       workspaceId: mostUrgentAttentionClient?.workspaceId ?? null,
     });
@@ -645,25 +653,25 @@ function buildPipelineSummary(params: {
       id: "awaiting-response",
       label: "Awaiting response",
       value: formatCount(getUnrepliedLeadCount(params.leads), "lead"),
-      detail: "New or reviewed leads that still need a reply",
+      tone: getSemanticToneForStatus("Awaiting response"),
     },
     {
       id: "pipeline-moving",
       label: "In progress",
       value: formatCount(getPipelineLeadCount(params.leads), "lead"),
-      detail: "Contacted leads and booked consultations",
+      tone: getSemanticToneForStatus("In progress"),
     },
     {
       id: "accepted",
       label: "Accepted",
       value: formatCount(getAcceptedLeadCount(params.leads), "lead"),
-      detail: "Leads that have already converted or been accepted",
+      tone: getSemanticToneForStatus("Accepted"),
     },
     {
       id: "new-this-month",
       label: "New this month",
       value: formatCount(params.stats?.applicationsThisMonth ?? 0, "lead"),
-      detail: "30-day inbound volume across the business",
+      tone: getSemanticToneForStatus("New this month"),
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }
@@ -677,19 +685,19 @@ function buildClientHealthSummary(params: {
       id: "needs-attention",
       label: "Needs attention",
       value: formatCount(params.clientsNeedingAttentionCount, "client"),
-      detail: "Unique clients with at-risk, overdue, or onboarding issues",
+      tone: getSemanticToneForStatus("Needs attention"),
     },
     {
       id: "at-risk",
       label: "At risk",
       value: formatCount(params.clientStats.atRiskClients, "client"),
-      detail: "Clients showing risk signals or marked at risk",
+      tone: getSemanticToneForStatus("At risk"),
     },
     {
       id: "checkin-overdue",
       label: "Check-ins overdue",
       value: formatCount(params.clientStats.overdueCheckinClients, "client"),
-      detail: "Clients currently behind on check-ins",
+      tone: getSemanticToneForStatus("Overdue"),
     },
     {
       id: "onboarding-incomplete",
@@ -698,7 +706,7 @@ function buildClientHealthSummary(params: {
         params.clientStats.onboardingIncompleteClients,
         "client",
       ),
-      detail: "Clients still missing setup progress",
+      tone: getSemanticToneForStatus("Onboarding incomplete"),
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }
@@ -719,7 +727,9 @@ function buildBusinessSummary(params: {
       id: "business-state",
       label: "Business state",
       value: params.stats?.businessHealthLabel ?? "Setup in progress",
-      detail: "A quick read on whether the business is still being set up or already building momentum.",
+      detail:
+        "A quick read on whether the business is still being set up or already building momentum.",
+      tone: "info",
     },
     {
       id: "workspace-system",
@@ -728,6 +738,7 @@ function buildBusinessSummary(params: {
       detail: latestWorkspace
         ? `Latest workspace: ${latestWorkspace.name}`
         : "Create the first coaching space so clients have a real delivery home.",
+      tone: "neutral",
     },
     {
       id: "coach-page",
@@ -736,6 +747,9 @@ function buildBusinessSummary(params: {
       detail: params.publicationState?.isPublished
         ? "Your public-facing page is live and can support inbound lead flow."
         : "The public-facing page is not live yet, so discovery and lead capture are still limited.",
+      tone: getSemanticToneForStatus(
+        params.publicationState?.isPublished ? "Published" : "Draft",
+      ),
     },
     {
       id: "profile-readiness",
@@ -747,6 +761,9 @@ function buildBusinessSummary(params: {
           : params.leads.length > 0
             ? "The coach page is ready to support real demand."
             : "The coach page is in a healthy place and ready to support lead generation.",
+      tone: getSemanticToneForStatus(
+        unpublishedBlockers > 0 ? "Onboarding incomplete" : "Healthy",
+      ),
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }
@@ -761,6 +778,7 @@ function buildBillingSummary(params: {
       label: "Platform plan",
       value: params.subscription?.planName ?? "Repsync Pro",
       detail: "The current subscription backing this PT Hub account",
+      tone: "info",
     },
     {
       id: "billing-status",
@@ -770,12 +788,22 @@ function buildBillingSummary(params: {
         params.subscription?.billingConnected === true
           ? "Billing is connected"
           : "Billing is still manual or placeholder-only",
+      tone: getSemanticToneForStatus(
+        params.subscription?.billingConnected === true
+          ? "Billing is connected"
+          : "Billing is still manual",
+      ),
     },
     {
       id: "monthly-revenue",
       label: "Monthly revenue",
       value: params.revenue?.monthlyRevenueLabel ?? "Not connected",
       detail: "Live revenue will surface here once billing is connected",
+      tone: getSemanticToneForStatus(
+        params.revenue?.revenueConnected === true
+          ? "Billing is connected"
+          : "Not connected",
+      ),
     },
     {
       id: "active-paying-clients",
@@ -787,6 +815,11 @@ function buildBillingSummary(params: {
         params.revenue?.revenueConnected === true
           ? "Connected billing metric"
           : "Closest current proxy based on active clients",
+      tone: getSemanticToneForStatus(
+        params.revenue?.revenueConnected === true
+          ? "Connected"
+          : "Not connected",
+      ),
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }

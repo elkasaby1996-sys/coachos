@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-2xl border text-sm font-medium tracking-tight transition-[background-color,border-color,color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 ring-offset-background",
+  "inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-2xl border text-sm font-medium tracking-tight transition-[background-color,border-color,color,box-shadow,transform] duration-200 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:hover:-translate-y-[1px] active:scale-[0.99] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none ring-offset-background",
   {
     variants: {
       variant: {
@@ -39,14 +39,26 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+    if (import.meta.env.DEV && !asChild) {
+      React.Children.forEach(children, (child) => {
+        if (React.isValidElement(child) && child.type === "button") {
+          console.warn(
+            "Nested <button> inside <Button> detected. Use Button `asChild` instead.",
+          );
+        }
+      });
+    }
+
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
-      />
+      >
+        {children}
+      </Comp>
     );
   },
 );

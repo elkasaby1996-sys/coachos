@@ -96,7 +96,7 @@ export function PtOpsStatusPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Supabase config

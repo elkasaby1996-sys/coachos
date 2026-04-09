@@ -1,10 +1,14 @@
 import {
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   MessageSquarePlus,
   Sparkles,
   UsersRound,
   Wallet,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import {
@@ -34,6 +38,12 @@ import type {
   PTProfileReadiness,
   PTWorkspaceSummary,
 } from "../../features/pt-hub/types";
+import { isClientAtRisk } from "../../lib/client-lifecycle";
+import {
+  getSemanticToneForStatus,
+  type SemanticTone,
+} from "../../lib/semantic-status";
+import { getModuleToneForPath } from "../../lib/module-tone";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { cn } from "../../lib/utils";
 
@@ -44,7 +54,7 @@ const metricIconMap = {
   "onboarding-in-progress": ClipboardList,
   "monthly-revenue": Wallet,
   "monthly-earnings": Wallet,
-} as const;
+} as const satisfies Record<string, LucideIcon>;
 
 function getMetricGridClassName(metricCount: number) {
   if (metricCount >= 5) return "xl:grid-cols-5";
@@ -85,6 +95,8 @@ function formatActivityDayStamp(value: Date | string | null | undefined) {
 }
 
 export function PtHubOverviewPage() {
+  const [businessSetupCollapsed, setBusinessSetupCollapsed] = useState(false);
+  const [billingCollapsed, setBillingCollapsed] = useState(false);
   const overviewQuery = usePtHubOverview();
   const workspacesQuery = usePtHubWorkspaces();
   const profileQuery = usePtHubProfile();
@@ -167,10 +179,12 @@ export function PtHubOverviewPage() {
   const metricGridClassName = getMetricGridClassName(
     dashboardModel.metrics.length,
   );
+  const businessSetupToggleId = "pt-hub-business-setup-panel";
+  const billingToggleId = "pt-hub-revenue-billing-panel";
 
   return (
     <section className="space-y-7" data-testid="pt-hub-page">
-      <div className={cn("grid gap-4", metricGridClassName)}>
+      <div className={cn("page-kpi-block grid gap-4", metricGridClassName)}>
         {dashboardModel.metrics.map((metric) => {
           const Icon = metricIconMap[metric.id as keyof typeof metricIconMap];
           const card = (
@@ -183,6 +197,7 @@ export function PtHubOverviewPage() {
               icon={Icon}
               accent={metric.accent}
               delta={metric.delta}
+              module={metric.href ? getModuleToneForPath(metric.href) : "overview"}
               className="h-full"
             />
           );
@@ -204,8 +219,8 @@ export function PtHubOverviewPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <PtHubSummaryCard
+          module="leads"
           title="Lead pipeline"
-          description="What is coming into the business and where follow-up is needed."
           items={dashboardModel.pipelineSummary}
           isEmpty={leads.length === 0}
           emptyState={{
@@ -217,8 +232,8 @@ export function PtHubOverviewPage() {
           }}
         />
         <PtHubSummaryCard
+          module="checkins"
           title="Client delivery"
-          description="A quick read on who needs support, follow-up, or onboarding help."
           items={dashboardModel.clientHealthSummary}
           isEmpty={clients.length === 0}
           emptyState={{
@@ -229,27 +244,77 @@ export function PtHubOverviewPage() {
             ctaLabel: "Open coaching spaces",
           }}
         />
-        <PtHubRecentActivityCard items={recentActivityItems} />
+        <PtHubRecentActivityCard items={recentActivityItems} module="overview" />
       </div>
 
       {showBusinessSetup ? (
         <div className="grid gap-6">
-          <PtHubLaunchChecklistCard
-            title="Business setup"
-            description="Finish the foundation across workspace, coach page, and first-demand readiness."
-            items={dashboardModel.launchChecklist}
-            completionPercent={dashboardModel.setupCompletionPercent}
-          />
+          <div id={businessSetupToggleId}>
+            <PtHubLaunchChecklistCard
+              module="profile"
+              title="Business setup"
+              description="Finish the foundation across workspace, coach page, and first-demand readiness."
+              items={dashboardModel.launchChecklist}
+              completionPercent={dashboardModel.setupCompletionPercent}
+              collapsed={businessSetupCollapsed}
+              actions={
+                <button
+                  type="button"
+                  aria-expanded={!businessSetupCollapsed}
+                  aria-controls={businessSetupToggleId}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  onClick={() =>
+                    setBusinessSetupCollapsed((current) => !current)
+                  }
+                >
+                  <span className="sr-only">
+                    {businessSetupCollapsed
+                      ? "Expand business setup"
+                      : "Collapse business setup"}
+                  </span>
+                  {businessSetupCollapsed ? (
+                    <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                  ) : (
+                    <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                  )}
+                </button>
+              }
+            />
+          </div>
         </div>
       ) : null}
 
       {dashboardModel.mode !== "activation" ? (
         <div className="grid gap-6">
-          <PtHubSummaryCard
-            title="Revenue and billing"
-            description="Commercial health for the coaching business."
-            items={dashboardModel.billingSummary}
-          />
+          <div id={billingToggleId}>
+            <PtHubSummaryCard
+              module="billing"
+              title="Revenue and billing"
+              description="Commercial health for the coaching business."
+              items={dashboardModel.billingSummary}
+              collapsed={billingCollapsed}
+              actions={
+                <button
+                  type="button"
+                  aria-expanded={!billingCollapsed}
+                  aria-controls={billingToggleId}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  onClick={() => setBillingCollapsed((current) => !current)}
+                >
+                  <span className="sr-only">
+                    {billingCollapsed
+                      ? "Expand revenue and billing"
+                      : "Collapse revenue and billing"}
+                  </span>
+                  {billingCollapsed ? (
+                    <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                  ) : (
+                    <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                  )}
+                </button>
+              }
+            />
+          </div>
         </div>
       ) : null}
     </section>
@@ -273,8 +338,7 @@ function buildRecentActivityItems(params: {
       (client) =>
         client.hasOverdueCheckin ||
         client.onboardingIncomplete ||
-        client.lifecycleState === "at_risk" ||
-        client.riskFlags.length > 0,
+        isClientAtRisk(client),
     )
     .sort((left, right) => {
       const leftTime = new Date(
@@ -295,6 +359,7 @@ function buildRecentActivityItems(params: {
           description: formatActivityDayStamp(latestLead.submittedAt),
           href: "/pt-hub/leads",
           ctaLabel: "Open lead",
+          tone: "info" satisfies SemanticTone,
         }
       : null,
     latestClientAttention
@@ -306,6 +371,11 @@ function buildRecentActivityItems(params: {
             : "Today",
           href: "/pt-hub/clients",
           ctaLabel: "Open clients",
+          tone:
+            latestClientAttention.hasOverdueCheckin ||
+            isClientAtRisk(latestClientAttention)
+              ? getSemanticToneForStatus("At risk")
+              : getSemanticToneForStatus("Needs attention"),
         }
       : null,
     latestCoachingSpace?.lastUpdated
@@ -315,6 +385,7 @@ function buildRecentActivityItems(params: {
           description: formatActivityDayStamp(latestCoachingSpace.lastUpdated),
           href: "/pt-hub/workspaces",
           ctaLabel: "Open coaching spaces",
+          tone: "neutral" satisfies SemanticTone,
         }
       : null,
     readiness
@@ -326,6 +397,9 @@ function buildRecentActivityItems(params: {
           description: "Today",
           href: "/pt-hub/profile",
           ctaLabel: "Open profile",
+          tone: getSemanticToneForStatus(
+            params.profilePublished ? "Published" : "Onboarding incomplete",
+          ),
         }
       : null,
   ].filter(Boolean) as PtHubOverviewActivityItem[];

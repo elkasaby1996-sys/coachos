@@ -1,5 +1,6 @@
 import { ArrowUpRight, Clock3, UsersRound } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
+import type { BadgeVariant } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import type { PTWorkspaceSummary } from "../types";
@@ -7,9 +8,9 @@ import { PtHubSectionCard } from "./pt-hub-section-card";
 
 const statusVariant: Record<
   PTWorkspaceSummary["status"],
-  "secondary" | "success" | "warning"
+  BadgeVariant
 > = {
-  current: "secondary",
+  current: "info",
   active: "success",
   new: "warning",
 };
@@ -37,7 +38,7 @@ export function PtHubWorkspaceCard({
               : "New space"}
         </Badge>
         {workspace.role ? (
-          <Badge variant="muted">{workspace.role.replace("_", " ")}</Badge>
+          <Badge variant="neutral">{workspace.role.replace("_", " ")}</Badge>
         ) : null}
       </div>
 

@@ -459,6 +459,7 @@ export function PtNutritionTemplateBuilderPage() {
                           <Button
                             size="icon"
                             variant="ghost"
+                            aria-label="Move component up"
                             onClick={() =>
                               moveComponent(slot.id ?? "", component.id, "up")
                             }
@@ -468,6 +469,7 @@ export function PtNutritionTemplateBuilderPage() {
                           <Button
                             size="icon"
                             variant="ghost"
+                            aria-label="Move component down"
                             onClick={() =>
                               moveComponent(slot.id ?? "", component.id, "down")
                             }
@@ -477,6 +479,7 @@ export function PtNutritionTemplateBuilderPage() {
                           <Button
                             size="icon"
                             variant="ghost"
+                            aria-label="Remove component"
                             onClick={() => removeComponent(component.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />

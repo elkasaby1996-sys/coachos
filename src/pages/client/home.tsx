@@ -6,6 +6,11 @@ import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ClientReminders } from "../../components/common/client-reminders";
 import {
+  ActionStatusMessage,
+  AnimatedValue,
+  LoadingPanel,
+} from "../../components/common/action-feedback";
+import {
   EmptyStateBlock,
   PortalPageHeader,
   SectionCard,
@@ -781,7 +786,7 @@ export function ClientHomePage() {
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
-                    {workoutsCompletedThisWeek} done this week
+                    <AnimatedValue value={`${workoutsCompletedThisWeek} done this week`} />
                   </span>
                 </div>
                 <div className="flex flex-col gap-3 border-b border-border/50 pb-3 sm:flex-row sm:items-start sm:justify-between">
@@ -794,7 +799,7 @@ export function ClientHomePage() {
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
-                    {checklistProgress}%
+                    <AnimatedValue value={`${checklistProgress}%`} />
                   </span>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -807,7 +812,7 @@ export function ClientHomePage() {
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
-                    {summaryNutritionValue}
+                    <AnimatedValue value={summaryNutritionValue} />
                   </span>
                 </div>
               </div>
@@ -816,7 +821,7 @@ export function ClientHomePage() {
             <SectionCard className="space-y-2">
               <p className="field-label">Consistency</p>
               <p className="text-2xl font-semibold text-foreground">
-                {consistencyStreak} days
+                <AnimatedValue value={`${consistencyStreak} days`} />
               </p>
               <p className="text-sm leading-6 text-muted-foreground">
                 Keep your logging streak moving and today will compound into the
@@ -897,10 +902,10 @@ export function ClientHomePage() {
               </div>
 
               {todayNutritionQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
+                <LoadingPanel
+                  title="Loading nutrition"
+                  description="Pulling in today’s meals and macro targets."
+                />
               ) : todayNutrition ? (
                 <>
                   <div className="grid grid-cols-2 gap-4 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4 text-center sm:grid-cols-4">
@@ -1016,7 +1021,9 @@ export function ClientHomePage() {
             <SectionCard className="space-y-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Progress</span>
-                <span>{checklistProgress}%</span>
+                <span>
+                  <AnimatedValue value={`${checklistProgress}%`} />
+                </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted">
                 <div
@@ -1025,7 +1032,9 @@ export function ClientHomePage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                {checklistCompletedCount} of {checklistKeys.length} complete
+                <AnimatedValue
+                  value={`${checklistCompletedCount} of ${checklistKeys.length} complete`}
+                />
               </p>
             </SectionCard>
 
@@ -1053,11 +1062,9 @@ export function ClientHomePage() {
             </div>
 
             {dayStatus?.completed ? (
-              <StatusBanner
-                variant="success"
-                title="Perfect day logged"
-                description="All checklist items are complete for today."
-              />
+              <ActionStatusMessage tone="success">
+                Perfect day logged. All checklist items are complete for today.
+              </ActionStatusMessage>
             ) : null}
 
             <div className="flex flex-wrap gap-3">
@@ -1090,39 +1097,35 @@ export function ClientHomePage() {
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
             {weeklyPlanQuery.isLoading ? (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-                {Array.from({ length: 7 }).map((_, index) => (
-                  <Skeleton
-                    key={index}
-                    className="h-16 w-full rounded-[var(--radius-lg)]"
-                  />
-                ))}
-              </div>
+              <LoadingPanel
+                title="Loading calendar"
+                description="Mapping the next 7 days of training and recovery."
+              />
             ) : (
               <>
                 <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
                   <SectionCard className="p-3">
                     <p className="field-label">Completed</p>
                     <p className="mt-2 text-2xl font-semibold text-foreground">
-                      {weeklyStats.completed}
+                      <AnimatedValue value={weeklyStats.completed} />
                     </p>
                   </SectionCard>
                   <SectionCard className="p-3">
                     <p className="field-label">Planned</p>
                     <p className="mt-2 text-2xl font-semibold text-foreground">
-                      {weeklyStats.planned}
+                      <AnimatedValue value={weeklyStats.planned} />
                     </p>
                   </SectionCard>
                   <SectionCard className="p-3">
                     <p className="field-label">Skipped</p>
                     <p className="mt-2 text-2xl font-semibold text-foreground">
-                      {weeklyStats.skipped}
+                      <AnimatedValue value={weeklyStats.skipped} />
                     </p>
                   </SectionCard>
                   <SectionCard className="p-3">
                     <p className="field-label">Rest</p>
                     <p className="mt-2 text-2xl font-semibold text-foreground">
-                      {weeklyStats.rest}
+                      <AnimatedValue value={weeklyStats.rest} />
                     </p>
                   </SectionCard>
                 </div>

@@ -108,9 +108,11 @@ export interface PTLead {
 }
 
 export interface PTAccountSettingsDraft {
+  fullName: string;
   contactEmail: string;
   supportEmail: string;
   phone: string;
+  country: string;
   timezone: string;
   city: string;
   clientAlerts: boolean;
@@ -128,6 +130,7 @@ export interface PTClientSummary {
   displayName: string;
   status: string;
   lifecycleState: string;
+  manualRiskFlag: boolean;
   lifecycleChangedAt: string | null;
   pausedReason: string | null;
   churnReason: string | null;
@@ -142,6 +145,23 @@ export interface PTClientSummary {
   overdueCheckinsCount: number;
   riskFlags: string[];
   recentActivityLabel: string;
+}
+
+export interface PTClientStatsSnapshot {
+  totalClients: number;
+  activeClients: number;
+  pausedClients: number;
+  atRiskClients: number;
+  onboardingIncompleteClients: number;
+  overdueCheckinClients: number;
+}
+
+export interface PTClientDirectoryPage {
+  clients: PTClientSummary[];
+  totalCount: number;
+  hasMore: boolean;
+  page: number;
+  pageSize: number;
 }
 
 export interface PTProfilePreviewData {

@@ -7,8 +7,24 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("@supabase/") || id.includes("@sentry/")) {
-            return "vendor-backend-observability";
+          if (id.includes("node_modules/lucide-react/")) {
+            return "vendor-icons";
+          }
+
+          if (id.includes("node_modules/three/")) {
+            return "vendor-3d";
+          }
+
+          if (id.includes("node_modules/gsap/")) {
+            return "vendor-gsap";
+          }
+
+          if (id.includes("@supabase/")) {
+            return "vendor-supabase";
+          }
+
+          if (id.includes("@sentry/")) {
+            return "vendor-observability";
           }
 
           if (id.includes("framer-motion")) {

@@ -3,61 +3,70 @@ import { Moon, Sun } from "lucide-react";
 import { LIGHT_MODE_ENABLED } from "../../lib/theme";
 
 interface ThemeModeSwitchProps {
-  checked: boolean;
+  mode: "dark" | "light";
   onToggle: () => void | Promise<void>;
   className?: string;
 }
 
 export function ThemeModeSwitch({
-  checked,
+  mode,
   onToggle,
   className,
 }: ThemeModeSwitchProps) {
   if (!LIGHT_MODE_ENABLED) return null;
+  const isLightMode = mode === "light";
 
   return (
     <button
       type="button"
       onClick={() => void onToggle()}
-      aria-label={checked ? "Switch to light mode" : "Switch to dark mode"}
-      aria-pressed={checked}
+      role="switch"
+      aria-checked={isLightMode}
+      aria-label={
+        isLightMode ? "Switch to dark mode" : "Switch to light mode"
+      }
       className={cn(
-        "relative flex h-9 w-full max-w-[92px] items-center justify-between rounded-full border border-border/75 bg-card/72 px-2 text-muted-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] backdrop-blur-xl transition-colors hover:border-border",
+        "group relative inline-flex h-[30px] w-[92px] items-center rounded-full border px-1 backdrop-blur-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
+        isLightMode
+          ? "border-black/10 bg-[linear-gradient(180deg,rgba(232,239,235,0.72),rgba(216,225,219,0.62))] text-foreground shadow-[0_16px_32px_-24px_rgba(15,23,42,0.18)]"
+          : "border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-foreground shadow-[0_16px_30px_-24px_rgba(0,0,0,0.78)]",
         className,
       )}
     >
-      <Moon
+      <span
         className={cn(
-          "z-10 h-3.5 w-3.5 transition-colors duration-300",
-          checked ? "text-foreground/45" : "text-foreground",
+          "pointer-events-none absolute top-1/2 h-[22px] w-[42px] -translate-y-1/2 rounded-full transition-all duration-200",
+          isLightMode
+            ? "left-[45px] border border-slate-900/85 bg-slate-900 shadow-[0_10px_18px_-12px_rgba(15,23,42,0.5)]"
+            : "left-1 border border-white/12 bg-[linear-gradient(180deg,oklch(var(--accent)),oklch(var(--chart-2)))] shadow-[0_10px_18px_-12px_oklch(var(--accent)/0.6)]",
         )}
       />
-      <Sun
+      <span
         className={cn(
-          "z-10 h-3.5 w-3.5 transition-colors duration-300",
-          checked
-            ? "text-primary [filter:drop-shadow(0_0_5px_oklch(var(--primary)/0.45))]"
-            : "text-foreground/45",
+          "pointer-events-none absolute inset-[3px] rounded-full",
+          isLightMode
+            ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.04))]"
+            : "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01))]",
         )}
       />
-
-      <div
-        className={cn(
-          "pointer-events-none absolute left-1/2 top-1/2 h-5 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-inner transition-colors duration-300",
-          checked ? "bg-primary/28" : "bg-muted/80",
-        )}
-      >
-        <div
+      <span className="relative z-10 grid w-full grid-cols-2 items-center">
+        <span
           className={cn(
-            "absolute left-0.5 top-0.5 h-4 w-4 rounded-full border border-border/70 shadow-md transition-[transform,background-color] duration-300 ease-out",
-            checked
-              ? "translate-x-5 bg-primary"
-              : "translate-x-0 bg-muted-foreground/50",
+            "flex h-[22px] items-center justify-center transition-colors duration-200",
+            isLightMode ? "text-foreground/45" : "text-slate-950",
           )}
         >
-          <div className="absolute left-1 top-0.5 h-1 w-1.5 rounded-full bg-white/35 blur-[1px]" />
-        </div>
-      </div>
+          <Moon className="h-3.5 w-3.5" />
+        </span>
+        <span
+          className={cn(
+            "flex h-[22px] items-center justify-center transition-colors duration-200",
+            isLightMode ? "text-white" : "text-foreground/45",
+          )}
+        >
+          <Sun className="h-3.5 w-3.5" />
+        </span>
+      </span>
     </button>
   );
 }

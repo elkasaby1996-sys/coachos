@@ -43,7 +43,7 @@ import {
 } from "../../lib/exercise-dataset";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Search } from "lucide-react";
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -1321,11 +1321,15 @@ export function PtWorkoutTemplateBuilderPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input
-                placeholder="Search exercises"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+              <div className="relative flex-1">
+                <Search className="app-search-icon h-4 w-4" />
+                <Input
+                  className="app-search-input"
+                  placeholder="Search exercises"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </div>
               <Button
                 type="button"
                 variant="secondary"

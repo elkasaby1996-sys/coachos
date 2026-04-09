@@ -14,10 +14,10 @@ export type CheckinOperationalStateRow = {
 };
 
 export const checkinOperationalStatusMap = {
-  upcoming: { label: "Upcoming", variant: "muted" },
+  upcoming: { label: "Upcoming", variant: "neutral" },
   due: { label: "Due", variant: "warning" },
   overdue: { label: "Overdue", variant: "danger" },
-  submitted: { label: "Submitted", variant: "secondary" },
+  submitted: { label: "Submitted", variant: "info" },
   reviewed: { label: "Reviewed", variant: "success" },
 } as const;
 

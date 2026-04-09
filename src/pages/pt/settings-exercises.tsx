@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import {
 } from "../../lib/exercise-dataset";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
+import { Search } from "lucide-react";
 
 const muscleGroups = [
   "Chest",
@@ -569,18 +571,23 @@ export function PtExerciseLibraryPage() {
             </div>
           ) : null}
           <div className="grid gap-2 md:grid-cols-4">
-            <Input
-              placeholder="Name"
-              value={datasetSearch.name}
-              onChange={(event) =>
-                setDatasetSearch((prev) => ({
-                  ...prev,
-                  name: event.target.value,
-                }))
-              }
-            />
-            <select
-              className="h-10 w-full app-field px-3 text-sm"
+            <div className="relative">
+              <Search className="app-search-icon h-4 w-4" />
+              <Input
+                className="app-search-input"
+                placeholder="Name"
+                value={datasetSearch.name}
+                onChange={(event) =>
+                  setDatasetSearch((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <Select
+              variant="filter"
+              className="w-full"
               value={datasetSearch.bodyPart}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -595,9 +602,10 @@ export function PtExerciseLibraryPage() {
                   {option}
                 </option>
               ))}
-            </select>
-            <select
-              className="h-10 w-full app-field px-3 text-sm"
+            </Select>
+            <Select
+              variant="filter"
+              className="w-full"
               value={datasetSearch.equipment}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -612,9 +620,10 @@ export function PtExerciseLibraryPage() {
                   {option}
                 </option>
               ))}
-            </select>
-            <select
-              className="h-10 w-full app-field px-3 text-sm"
+            </Select>
+            <Select
+              variant="filter"
+              className="w-full"
               value={datasetSearch.target}
               onChange={(event) =>
                 setDatasetSearch((prev) => ({
@@ -629,7 +638,7 @@ export function PtExerciseLibraryPage() {
                   {option}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button

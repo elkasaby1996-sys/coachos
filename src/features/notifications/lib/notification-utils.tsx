@@ -11,6 +11,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { NotificationRecord, NotificationType } from "./types";
+import type { ModuleTone } from "../../../lib/module-tone";
 
 export function getNotificationTypeLabel(
   type: NotificationType | string,
@@ -76,12 +77,39 @@ export function getNotificationIcon(notification: NotificationRecord) {
 
 export function getNotificationIconClasses(notification: NotificationRecord) {
   if (!notification.is_read) {
-    return "border-primary/25 bg-primary/10 text-primary";
+    return "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] text-[var(--state-info-text)]";
   }
   if (notification.priority === "high") {
-    return "border-warning/25 bg-warning/10 text-warning";
+    return "border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] text-[var(--state-warning-text)]";
   }
   return "border-border/70 bg-secondary/40 text-muted-foreground";
+}
+
+export function getNotificationModuleTone(
+  notification: NotificationRecord,
+): ModuleTone {
+  switch (notification.type) {
+    case "workout_assigned":
+    case "workout_updated":
+    case "message_received":
+      return "coaching";
+    case "checkin_requested":
+    case "checkin_submitted":
+    case "checkin_due_tomorrow":
+    case "workout_due_today":
+      return "checkins";
+    case "milestone_achieved":
+      return "analytics";
+    case "client_joined_workspace":
+    case "invite_accepted":
+      return "clients";
+    case "birthday_reminder":
+      return "profile";
+    case "client_inactive":
+      return "clients";
+    default:
+      return "settings";
+  }
 }
 
 export function sortNotifications<T extends { created_at: string }>(rows: T[]) {

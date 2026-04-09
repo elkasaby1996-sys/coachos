@@ -24,6 +24,8 @@ import {
   SurfaceCardHeader,
   SurfaceCardTitle,
 } from "../../components/client/portal";
+import { useVisibilityGate } from "../../hooks/use-visibility-gate";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
@@ -118,6 +120,22 @@ function ChartSurface({
       </SurfaceCardHeader>
       <SurfaceCardContent>{children}</SurfaceCardContent>
     </SurfaceCard>
+  );
+}
+
+function DeferredChartFrame({
+  title,
+}: {
+  title: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+      <Skeleton className="h-32 w-full rounded-[var(--radius-lg)] sm:h-40" />
+    </div>
   );
 }
 
@@ -587,6 +605,13 @@ export function ClientProgressPage() {
     filteredWeightSeries,
     weightUnit,
   ]);
+  const exerciseChangesWindow = useWindowedRows({
+    rows: exerciseTrends.changes,
+    initialCount: 4,
+    step: 4,
+    resetKey: `${timeframe}:${exerciseTrends.changes.length}`,
+  });
+  const recoveryVisibility = useVisibilityGate<HTMLDivElement>();
 
   if (loading) {
     return <ProgressLoadingState />;
@@ -782,103 +807,118 @@ export function ClientProgressPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
-            <SurfaceCard>
-              <SurfaceCardHeader className="pb-4">
-                <SurfaceCardTitle>Recovery and activity</SurfaceCardTitle>
-                <SurfaceCardDescription>
-                  Supporting signals that influence readiness and consistency.
-                </SurfaceCardDescription>
-              </SurfaceCardHeader>
-              <SurfaceCardContent className="space-y-4">
-                <SectionCard className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      Sleep hours
-                    </p>
-                    <Badge variant="muted">
-                      {filteredSleepSeries.length > 0
-                        ? `${filteredSleepSeries[filteredSleepSeries.length - 1]?.value ?? "--"} hrs`
-                        : "--"}
-                    </Badge>
-                  </div>
-                  {sleepPointCount >= 2 ? (
-                    <div className="h-32 w-full sm:h-40">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={filteredSleepSeries}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="oklch(0.35 0.02 260 / 0.35)"
+            <div ref={recoveryVisibility.ref}>
+              <SurfaceCard>
+                <SurfaceCardHeader className="pb-4">
+                  <SurfaceCardTitle>Recovery and activity</SurfaceCardTitle>
+                  <SurfaceCardDescription>
+                    Supporting signals that influence readiness and consistency.
+                  </SurfaceCardDescription>
+                </SurfaceCardHeader>
+                <SurfaceCardContent className="space-y-4">
+                  {recoveryVisibility.isVisible ? (
+                    <>
+                      <SectionCard className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground">
+                            Sleep hours
+                          </p>
+                          <Badge variant="muted">
+                            {filteredSleepSeries.length > 0
+                              ? `${filteredSleepSeries[filteredSleepSeries.length - 1]?.value ?? "--"} hrs`
+                              : "--"}
+                          </Badge>
+                        </div>
+                        {sleepPointCount >= 2 ? (
+                          <div className="h-32 w-full sm:h-40">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={filteredSleepSeries}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="oklch(0.35 0.02 260 / 0.35)"
+                                />
+                                <XAxis dataKey="label" hide />
+                                <YAxis hide />
+                                <Tooltip
+                                  formatter={(value: number | string) =>
+                                    `${value} hrs`
+                                  }
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="value"
+                                  stroke="oklch(var(--chart-2))"
+                                  strokeWidth={2.3}
+                                  dot={false}
+                                  connectNulls
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <EmptyStateBlock
+                            title="Sleep trend pending"
+                            description="Log sleep across a few days to make this recovery signal useful."
+                            className="min-h-[12rem]"
                           />
-                          <XAxis dataKey="label" hide />
-                          <YAxis hide />
-                          <Tooltip
-                            formatter={(value: number | string) =>
-                              `${value} hrs`
-                            }
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="oklch(var(--chart-2))"
-                            strokeWidth={2.3}
-                            dot={false}
-                            connectNulls
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <EmptyStateBlock
-                      title="Sleep trend pending"
-                      description="Log sleep across a few days to make this recovery signal useful."
-                      className="min-h-[12rem]"
-                    />
-                  )}
-                </SectionCard>
+                        )}
+                      </SectionCard>
 
-                <SectionCard className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      Steps
-                    </p>
-                    <Badge variant="muted">
-                      {filteredStepsSeries.length > 0
-                        ? `${filteredStepsSeries[filteredStepsSeries.length - 1]?.value ?? "--"}`
-                        : "--"}
-                    </Badge>
-                  </div>
-                  {stepsPointCount >= 2 ? (
-                    <div className="h-32 w-full sm:h-40">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={filteredStepsSeries}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="oklch(0.35 0.02 260 / 0.35)"
+                      <SectionCard className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground">
+                            Steps
+                          </p>
+                          <Badge variant="muted">
+                            {filteredStepsSeries.length > 0
+                              ? `${filteredStepsSeries[filteredStepsSeries.length - 1]?.value ?? "--"}`
+                              : "--"}
+                          </Badge>
+                        </div>
+                        {stepsPointCount >= 2 ? (
+                          <div className="h-32 w-full sm:h-40">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={filteredStepsSeries}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="oklch(0.35 0.02 260 / 0.35)"
+                                />
+                                <XAxis dataKey="label" hide />
+                                <YAxis hide />
+                                <Tooltip />
+                                <Line
+                                  type="monotone"
+                                  dataKey="value"
+                                  stroke="oklch(var(--chart-4))"
+                                  strokeWidth={2.3}
+                                  dot={false}
+                                  connectNulls
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <EmptyStateBlock
+                            title="Step trend pending"
+                            description="A few logged activity days will make this section more informative."
+                            className="min-h-[12rem]"
                           />
-                          <XAxis dataKey="label" hide />
-                          <YAxis hide />
-                          <Tooltip />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="oklch(var(--chart-4))"
-                            strokeWidth={2.3}
-                            dot={false}
-                            connectNulls
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                        )}
+                      </SectionCard>
+                    </>
                   ) : (
-                    <EmptyStateBlock
-                      title="Step trend pending"
-                      description="A few logged activity days will make this section more informative."
-                      className="min-h-[12rem]"
-                    />
+                    <>
+                      <SectionCard>
+                        <DeferredChartFrame title="Sleep hours" />
+                      </SectionCard>
+                      <SectionCard>
+                        <DeferredChartFrame title="Steps" />
+                      </SectionCard>
+                    </>
                   )}
-                </SectionCard>
-              </SurfaceCardContent>
-            </SurfaceCard>
+                </SurfaceCardContent>
+              </SurfaceCard>
+            </div>
 
             <SurfaceCard>
               <SurfaceCardHeader className="pb-4">
@@ -891,7 +931,7 @@ export function ClientProgressPage() {
               <SurfaceCardContent>
                 {exerciseTrends.changes.length > 0 ? (
                   <div className="space-y-3">
-                    {exerciseTrends.changes.map((item) => {
+                    {exerciseChangesWindow.visibleRows.map((item) => {
                       const trendBase =
                         item.volumeDelta ?? item.weightDelta ?? 0;
                       const TrendIcon =
@@ -947,6 +987,17 @@ export function ClientProgressPage() {
                         </SectionCard>
                       );
                     })}
+                    {exerciseChangesWindow.hasHiddenRows ? (
+                      <div className="flex justify-center pt-1">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={exerciseChangesWindow.showMore}
+                        >
+                          Show {Math.min(exerciseChangesWindow.hiddenCount, 4)} more
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <EmptyStateBlock

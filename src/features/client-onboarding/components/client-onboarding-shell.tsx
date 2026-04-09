@@ -14,12 +14,17 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import {
+  ActionButtonLabel,
+  ActionStatusMessage,
+} from "../../../components/common/action-feedback";
+import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
+import { Select } from "../../../components/ui/select";
 import { Skeleton } from "../../../components/ui/skeleton";
 import {
   EmptyStateBlock,
@@ -57,9 +62,6 @@ import type {
   ClientOnboardingFieldState,
   ClientOnboardingStepKey,
 } from "../types";
-
-const selectClassName =
-  "h-11 w-full rounded-xl border border-border/70 bg-background px-3 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const experienceOptions = [
   "Brand new",
@@ -871,11 +873,9 @@ export function ClientOnboardingShell() {
       ) : null}
 
       {successMessage ? (
-        <StatusBanner
-          variant="success"
-          title="Status"
-          description={successMessage}
-        />
+        <ActionStatusMessage tone="success">
+          {successMessage}
+        </ActionStatusMessage>
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
@@ -1004,8 +1004,7 @@ export function ClientOnboardingShell() {
                 </StepField>
                 <StepField label="Phone" required>
                   <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                    <select
-                      className={selectClassName}
+                    <Select variant="field"
                       value={phoneParts.countryCode}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1033,7 +1032,7 @@ export function ClientOnboardingShell() {
                           {option.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <Input
                       value={phoneParts.localNumber}
                       onChange={(event) =>
@@ -1079,6 +1078,8 @@ export function ClientOnboardingShell() {
                 </StepField>
                 <StepField label="Date of birth" required>
                   <Input
+                    id="client-onboarding-date-of-birth"
+                    aria-label="Date of birth"
                     type="date"
                     value={draft.basics.date_of_birth}
                     onChange={(event) =>
@@ -1098,8 +1099,7 @@ export function ClientOnboardingShell() {
                   />
                 </StepField>
                 <StepField label="Sex / gender" required>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.basics.gender}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1122,11 +1122,10 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <StepField label="Location" required>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.basics.location}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1152,7 +1151,7 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <StepField label="Timezone" required>
                   <Input
@@ -1183,8 +1182,7 @@ export function ClientOnboardingShell() {
                       }
                       disabled={!summary.canEdit}
                     />
-                    <select
-                      className={selectClassName}
+                    <Select variant="field"
                       value={draft.basics.height_unit}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1203,7 +1201,7 @@ export function ClientOnboardingShell() {
                     >
                       <option value="cm">cm</option>
                       <option value="in">in</option>
-                    </select>
+                    </Select>
                   </div>
                 </StepField>
                 <StepField label="Current weight" required>
@@ -1227,8 +1225,7 @@ export function ClientOnboardingShell() {
                       }
                       disabled={!summary.canEdit}
                     />
-                    <select
-                      className={selectClassName}
+                    <Select variant="field"
                       value={draft.basics.weight_unit}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1247,7 +1244,7 @@ export function ClientOnboardingShell() {
                     >
                       <option value="kg">kg</option>
                       <option value="lb">lb</option>
-                    </select>
+                    </Select>
                   </div>
                 </StepField>
                 <div className="md:col-span-2">
@@ -1274,8 +1271,7 @@ export function ClientOnboardingShell() {
                 </div>
                 <div className="md:col-span-2">
                   <StepField label="Unit preference" optional>
-                    <select
-                      className={selectClassName}
+                    <Select variant="field"
                       value={draft.basics.unit_preference}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1298,7 +1294,7 @@ export function ClientOnboardingShell() {
                           {option.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </StepField>
                 </div>
               </div>
@@ -1381,8 +1377,7 @@ export function ClientOnboardingShell() {
             {currentStep === "training-history" ? (
               <div className="grid gap-5 md:grid-cols-2">
                 <StepField label="Training experience" required>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.trainingHistory.experience_level}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1405,11 +1400,10 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <StepField label="Current training frequency" required>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.trainingHistory.current_training_frequency}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1432,7 +1426,7 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <div className="md:col-span-2">
                   <StepField
@@ -1482,8 +1476,7 @@ export function ClientOnboardingShell() {
                   />
                 </StepField>
                 <StepField label="Confidence level" optional>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.trainingHistory.confidence_level}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1506,7 +1499,7 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <StepField label="Days available per week" required>
                   <Input
@@ -1728,8 +1721,7 @@ export function ClientOnboardingShell() {
                   </StepField>
                 </div>
                 <StepField label="Cooking confidence" optional>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.nutritionLifestyle.cooking_confidence}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1752,11 +1744,10 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <StepField label="Eating out frequency" optional>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.nutritionLifestyle.eating_out_frequency}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1779,11 +1770,10 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <StepField label="Sleep quality" required>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.nutritionLifestyle.sleep_quality}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1806,11 +1796,10 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <StepField label="Stress level" required>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.nutritionLifestyle.stress_level}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1833,7 +1822,7 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
                 <div className="md:col-span-2">
                   <StepField
@@ -1862,8 +1851,7 @@ export function ClientOnboardingShell() {
                   </StepField>
                 </div>
                 <StepField label="Preferred training time" optional>
-                  <select
-                    className={selectClassName}
+                  <Select variant="field"
                     value={draft.nutritionLifestyle.preferred_training_time}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1886,7 +1874,7 @@ export function ClientOnboardingShell() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </StepField>
               </div>
             ) : null}
@@ -2106,7 +2094,11 @@ export function ClientOnboardingShell() {
                 <Clock3 className="h-3.5 w-3.5" />
                 {summary.awaitingReview
                   ? "Read-only while your coach reviews this onboarding."
-                  : "Draft changes save automatically while you work."}
+                  : saveState === "saved"
+                    ? "Draft saved and ready for the next step."
+                    : saveState === "saving" || saveState === "autosaving"
+                      ? "Saving your latest changes..."
+                      : "Draft changes save automatically while you work."}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -2147,10 +2139,21 @@ export function ClientOnboardingShell() {
                       submitState === "saving"
                     }
                   >
-                    {submitState === "saving" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : null}
-                    Submit onboarding
+                    <ActionButtonLabel
+                      state={
+                        submitState === "saving"
+                          ? "saving"
+                          : submitState === "success"
+                            ? "success"
+                            : submitState === "error"
+                              ? "error"
+                              : "idle"
+                      }
+                      idleLabel="Submit onboarding"
+                      savingLabel="Submitting..."
+                      successLabel="Submitted"
+                      errorLabel="Try again"
+                    />
                   </Button>
                 )}
               </div>
@@ -2168,3 +2171,5 @@ export function ClientOnboardingShell() {
     </section>
   );
 }
+
+

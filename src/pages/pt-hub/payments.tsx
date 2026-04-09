@@ -5,6 +5,7 @@ import { Badge } from "../../components/ui/badge";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
 import { usePtHubPayments } from "../../features/pt-hub/lib/pt-hub";
+import { getSemanticBadgeVariant } from "../../lib/semantic-status";
 
 export function PtHubPaymentsPage() {
   const paymentsQuery = usePtHubPayments();
@@ -20,7 +21,7 @@ export function PtHubPaymentsPage() {
         description="Review your Repsync plan, invoices, and revenue tracking."
       />
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="page-kpi-block grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
           label="Platform Plan"
@@ -39,6 +40,14 @@ export function PtHubPaymentsPage() {
           value={subscription?.billingStatus ?? "Billing placeholder"}
           helper="Status of your Repsync plan"
           icon={Landmark}
+          delta={{
+            value:
+              subscription?.billingConnected === true
+                ? "Connected"
+                : "Manual",
+            tone:
+              subscription?.billingConnected === true ? "success" : "warning",
+          }}
         />
         <StatCard
           surface="pt-hub"
@@ -46,6 +55,12 @@ export function PtHubPaymentsPage() {
           value={revenue?.monthlyRevenueLabel ?? "Not connected"}
           helper="Revenue tracking for your coaching business"
           icon={Wallet}
+          delta={{
+            value:
+              revenue?.revenueConnected === true ? "Live" : "Not connected",
+            tone:
+              revenue?.revenueConnected === true ? "success" : "warning",
+          }}
         />
         <StatCard
           surface="pt-hub"
@@ -115,9 +130,14 @@ export function PtHubPaymentsPage() {
                       <p className="text-sm font-medium text-foreground">
                         {invoice.amountLabel}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {invoice.status}
-                      </p>
+                      <div className="mt-1">
+                        <Badge
+                          variant={getSemanticBadgeVariant(invoice.status)}
+                          className="text-[10px]"
+                        >
+                          {invoice.status}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -160,8 +180,8 @@ export function PtHubPaymentsPage() {
                 "Offer pricing will appear here once client billing and checkout are introduced."}
             </p>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="muted">Not yet connected</Badge>
-              <Badge variant="secondary">Future billing tools</Badge>
+              <Badge variant="warning">Not yet connected</Badge>
+              <Badge variant="info">Future billing tools</Badge>
             </div>
           </div>
         </PtHubSectionCard>

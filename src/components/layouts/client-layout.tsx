@@ -12,9 +12,12 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
+import { AppFooter } from "../common/app-footer";
+import { RouteTransition } from "../common/route-transition";
 import { ThemeToggle } from "../common/theme-toggle";
 import { PageContainer } from "../common/page-container";
 import { Button } from "../ui/button";
@@ -26,14 +29,51 @@ import { supabase } from "../../lib/supabase";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientOnboardingSoftGate } from "../../features/client-onboarding/components/client-onboarding-soft-gate";
+import {
+  getModuleToneClasses,
+  getModuleToneForPath,
+  getModuleToneStyle,
+  type ModuleTone,
+} from "../../lib/module-tone";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
 
 const navItems = [
-  { label: "Home", to: "/app/home", icon: Home },
-  { label: "Habits", to: "/app/habits", icon: CalendarDays },
-  { label: "Progress", to: "/app/progress", icon: LineChart },
-  { label: "Medical", to: "/app/medical", icon: HeartPulse },
-  { label: "Messages", to: "/app/messages", icon: MessageCircle },
-  { label: "Settings", to: "/app/settings", icon: UserCircle },
+  {
+    label: "Home",
+    to: "/app/home",
+    icon: Home,
+    module: "overview" as ModuleTone,
+  },
+  {
+    label: "Habits",
+    to: "/app/habits",
+    icon: CalendarDays,
+    module: "checkins" as ModuleTone,
+  },
+  {
+    label: "Progress",
+    to: "/app/progress",
+    icon: LineChart,
+    module: "analytics" as ModuleTone,
+  },
+  {
+    label: "Medical",
+    to: "/app/medical",
+    icon: HeartPulse,
+    module: "clients" as ModuleTone,
+  },
+  {
+    label: "Messages",
+    to: "/app/messages",
+    icon: MessageCircle,
+    module: "coaching" as ModuleTone,
+  },
+  {
+    label: "Settings",
+    to: "/app/settings",
+    icon: UserCircle,
+    module: "settings" as ModuleTone,
+  },
 ];
 
 const getRouteLabel = (pathname: string) => {
@@ -66,7 +106,8 @@ export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { workspaceId, loading, error } = useWorkspace();
-  const { bootstrapError: authError, hasWorkspaceMembership } = useBootstrapAuth();
+  const { bootstrapError: authError, hasWorkspaceMembership } =
+    useBootstrapAuth();
   const onboardingQuery = useClientOnboarding();
   const onboardingSummary = onboardingQuery.data ?? null;
   const basicsGateRequired = Boolean(
@@ -75,6 +116,8 @@ export function ClientLayout() {
     !onboardingSummary.progress.basics.complete,
   );
   const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
+  const currentModule = getModuleToneForPath(location.pathname);
+  const currentModuleClasses = getModuleToneClasses(currentModule);
   const routeLabel = useMemo(
     () => getRouteLabel(location.pathname),
     [location.pathname],
@@ -89,10 +132,7 @@ export function ClientLayout() {
       );
     });
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const errorMessage =
-    error?.message ??
-    authError?.message ??
-    null;
+  const errorMessage = error?.message ?? authError?.message ?? null;
   const shouldRenderOnboardingBanner = Boolean(
     onboardingSummary &&
     onboardingSummary.onboarding.status !== "completed" &&
@@ -112,6 +152,7 @@ export function ClientLayout() {
       ? onboardingSummary.onboarding.status !== "completed"
       : false,
   );
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!loading && !hasWorkspaceMembership) {
@@ -129,7 +170,10 @@ export function ClientLayout() {
 
   if (errorMessage) {
     return (
-      <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]">
+      <div
+        className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
+        style={getModuleToneStyle(currentModule)}
+      >
         <AppShellBackgroundLayer />
         <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
           <Card className="w-full max-w-md">
@@ -172,7 +216,10 @@ export function ClientLayout() {
   };
 
   return (
-    <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]">
+    <div
+      className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
+      style={getModuleToneStyle(currentModule)}
+    >
       <AppShellBackgroundLayer />
       <div className="relative z-10 flex min-h-screen w-full">
         <aside className="theme-sidebar-surface hidden w-20 flex-col border-r border-border/70 px-3 py-6 backdrop-blur-xl md:flex xl:w-64 xl:px-4">
@@ -198,25 +245,57 @@ export function ClientLayout() {
                 title={item.label}
                 className={({ isActive }) =>
                   cn(
-                    "group flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
-                    isActive &&
-                      "border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.56))] text-foreground shadow-[0_18px_42px_-34px_oklch(0_0_0/0.8)]",
+                    "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
+                    isActive && "text-foreground",
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
+                    {isActive ? (
+                      <motion.span
+                        layoutId={
+                          reduceMotion ? undefined : "client-nav-active-pill"
+                        }
+                        className={cn(
+                          "absolute inset-0 rounded-[20px] border",
+                          getModuleToneClasses(item.module).navActive,
+                        )}
+                        style={getModuleToneStyle(item.module)}
+                        transition={{
+                          type: "spring",
+                          stiffness: 250,
+                          damping: 28,
+                          mass: 0.9,
+                        }}
+                      />
+                    ) : null}
                     <span
+                      style={getModuleToneStyle(item.module)}
                       className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-[16px] border transition-colors",
+                        "relative z-10 flex h-9 w-9 items-center justify-center transition-colors",
                         isActive
-                          ? "border-primary/20 bg-primary/10 text-primary"
-                          : "border-border/70 bg-card/65 text-muted-foreground group-hover:border-border/90 group-hover:text-primary",
+                          ? "section-accent-nav-icon-active"
+                          : "text-muted-foreground group-hover:text-foreground",
+                        getModuleToneClasses(item.module).navIcon,
                       )}
                     >
                       <item.icon className="h-4 w-4" />
                     </span>
-                    <span className="hidden xl:inline">{item.label}</span>
+                    <motion.span
+                      className="relative z-10 hidden xl:inline"
+                      animate={
+                        reduceMotion
+                          ? undefined
+                          : {
+                              x: isActive ? 4 : 0,
+                              opacity: isActive ? 1 : 0.82,
+                            }
+                      }
+                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      {item.label}
+                    </motion.span>
                   </>
                 )}
               </NavLink>
@@ -245,8 +324,18 @@ export function ClientLayout() {
             >
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <PanelTop className="hidden h-4 w-4 text-primary sm:inline-flex" />
-                  <PanelLeftClose className="h-4 w-4 text-primary md:hidden" />
+                  <PanelTop
+                    className={cn(
+                      "hidden h-4 w-4 sm:inline-flex",
+                      currentModuleClasses.title,
+                    )}
+                  />
+                  <PanelLeftClose
+                    className={cn(
+                      "h-4 w-4 md:hidden",
+                      currentModuleClasses.title,
+                    )}
+                  />
                   <span>Repsync client workspace</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -255,7 +344,12 @@ export function ClientLayout() {
                     <>
                       <span className="hidden text-border sm:inline">|</span>
                       <span className="inline-flex items-center gap-1.5 text-foreground/80">
-                        <CircleDot className="h-3.5 w-3.5 text-primary" />
+                        <CircleDot
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            currentModuleClasses.title,
+                          )}
+                        />
                         {topStatusText}
                       </span>
                     </>
@@ -327,10 +421,15 @@ export function ClientLayout() {
                   />
                 </div>
               ) : (
-                <Outlet />
+                <WorkspaceHeaderModeProvider value="shell">
+                  <RouteTransition>
+                    <Outlet />
+                  </RouteTransition>
+                </WorkspaceHeaderModeProvider>
               )}
             </PageContainer>
           </main>
+          <AppFooter className="pb-20 md:pb-3" size="portal" />
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
             <PageContainer size="portal" className="grid grid-cols-6 gap-1">
               {navItems.map((item) => (

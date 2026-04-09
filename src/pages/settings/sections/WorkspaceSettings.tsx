@@ -3,9 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Skeleton } from "../../../components/ui/skeleton";
+import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import { useWorkspace } from "../../../lib/use-workspace";
 import { supabase } from "../../../lib/supabase";
 import { refreshWorkspaceNameAcrossApp } from "../../../lib/workspace-query";
+import { getCharacterLimitState } from "../../../lib/character-limits";
 import {
   SettingsActions,
   SettingsBlock,
@@ -56,14 +58,29 @@ export function WorkspaceSettings() {
 
   const initialName = workspaceQuery.data?.name ?? "";
   const trimmedName = workspaceName.trim();
+  const workspaceNameLimitState = getCharacterLimitState({
+    value: workspaceName,
+    kind: "entity_name",
+    fieldLabel: "Workspace name",
+  });
+  const hasOverLimitErrors = workspaceNameLimitState.overLimit;
   const hasNameChanged = trimmedName !== (initialName ?? "").trim();
-  const canSave = hasNameChanged && trimmedName.length > 0 && !saving;
+  const canSave =
+    hasNameChanged && trimmedName.length > 0 && !saving && !hasOverLimitErrors;
 
   const validationMessage = useMemo(() => {
     if (!hasNameChanged) return null;
     if (trimmedName.length === 0) return "Workspace name cannot be empty.";
+    if (hasOverLimitErrors) {
+      return workspaceNameLimitState.errorText;
+    }
     return null;
-  }, [hasNameChanged, trimmedName.length]);
+  }, [
+    hasNameChanged,
+    hasOverLimitErrors,
+    trimmedName.length,
+    workspaceNameLimitState.errorText,
+  ]);
 
   const handleSaveWorkspace = async () => {
     if (!workspaceId || !canSave) return;
@@ -118,11 +135,17 @@ export function WorkspaceSettings() {
                 <Input
                   id="workspace-name"
                   data-testid="workspace-name-input"
+                  isInvalid={workspaceNameLimitState.overLimit}
                   value={workspaceName}
                   onChange={(event) => setWorkspaceName(event.target.value)}
                   placeholder="Enter workspace name"
                 />
-                {validationMessage ? (
+                <FieldCharacterMeta
+                  count={workspaceNameLimitState.count}
+                  limit={workspaceNameLimitState.limit}
+                  errorText={workspaceNameLimitState.errorText}
+                />
+                {validationMessage && !workspaceNameLimitState.overLimit ? (
                   <p className="text-xs text-danger">{validationMessage}</p>
                 ) : null}
               </SettingsRow>

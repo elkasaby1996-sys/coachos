@@ -1,11 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useSessionAuth } from "../../../lib/auth";
 import {
+  isClientAtRisk,
   matchesClientSegment,
   normalizeClientLifecycleState,
   type ClientSegmentKey,
 } from "../../../lib/client-lifecycle";
 import { formatRelativeTime } from "../../../lib/relative-time";
+import { runClientGuardedAction } from "../../../lib/request-guard";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
 import type {
@@ -13,6 +16,8 @@ import type {
   PTAccountSettingsDraft,
   PTAnalyticsSnapshot,
   PTAnalyticsWorkspaceBreakdown,
+  PTClientDirectoryPage,
+  PTClientStatsSnapshot,
   PTClientSummary,
   PTCoachingMode,
   PTLead,
@@ -78,9 +83,11 @@ const DEFAULT_PROFILE_FIELDS = {
 };
 
 const DEFAULT_SETTINGS: PTAccountSettingsDraft = {
+  fullName: "",
   contactEmail: "",
   supportEmail: "",
   phone: "",
+  country: "",
   timezone:
     typeof Intl !== "undefined"
       ? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -130,9 +137,11 @@ type LegacyPtProfileRow = {
 type PtHubSettingsRow = {
   id: string;
   user_id: string;
+  full_name: string | null;
   contact_email: string | null;
   support_email: string | null;
   phone: string | null;
+  country: string | null;
   timezone: string | null;
   city: string | null;
   client_alerts: boolean;
@@ -163,6 +172,7 @@ type ClientRow = {
   id: string;
   workspace_id: string | null;
   status: string | null;
+  lifecycle_state: string | null;
   display_name: string | null;
   goal: string | null;
   created_at: string | null;
@@ -175,6 +185,7 @@ type PtClientsSummaryRow = {
   user_id: string | null;
   status: string | null;
   lifecycle_state: string | null;
+  manual_risk_flag: boolean | null;
   lifecycle_changed_at: string | null;
   paused_reason: string | null;
   churn_reason: string | null;
@@ -193,6 +204,20 @@ type PtClientsSummaryRow = {
   overdue_checkins_count: number | null;
   has_overdue_checkin: boolean | null;
   risk_flags: string[] | null;
+};
+
+type PtHubClientStatsRow = {
+  total_clients: number | null;
+  active_clients: number | null;
+  paused_clients: number | null;
+  at_risk_clients: number | null;
+  onboarding_incomplete_clients: number | null;
+  overdue_checkin_clients: number | null;
+};
+
+type PtHubClientsPageRow = PtClientsSummaryRow & {
+  workspace_name: string | null;
+  total_count: number | null;
 };
 
 type PtHubLeadRow = {
@@ -272,7 +297,9 @@ function createTransformationId(seed: string, index: number) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return normalizedSeed ? `${normalizedSeed}-${index + 1}` : `transformation-${index + 1}`;
+  return normalizedSeed
+    ? `${normalizedSeed}-${index + 1}`
+    : `transformation-${index + 1}`;
 }
 
 function normalizeTestimonials(raw?: unknown) {
@@ -331,10 +358,7 @@ function normalizeTransformations(raw?: unknown) {
     })
     .filter(
       (item) =>
-        item.title ||
-        item.summary ||
-        item.beforeImageUrl ||
-        item.afterImageUrl,
+        item.title || item.summary || item.beforeImageUrl || item.afterImageUrl,
     );
 }
 
@@ -375,15 +399,14 @@ function isLeadInDateWindow(submittedAt: string, startDate: Date) {
   return parsed >= startDate;
 }
 
-function isClientActive(status: string | null) {
-  if (!status) return true;
-  const normalized = status.trim().toLowerCase();
-  return !["archived", "inactive", "paused"].includes(normalized);
+function isWorkspaceActiveClient(lifecycleState: string | null | undefined) {
+  const lifecycle = normalizeClientLifecycleState(lifecycleState);
+  return ["invited", "onboarding", "active"].includes(lifecycle);
 }
 
 function isLifecycleCoached(lifecycleState: string | null | undefined) {
   const lifecycle = normalizeClientLifecycleState(lifecycleState);
-  return ["active", "at_risk"].includes(lifecycle);
+  return lifecycle === "active";
 }
 
 function mapPtClientSummary(
@@ -403,7 +426,8 @@ function mapPtClientSummary(
     workspaceName,
     displayName: row.display_name?.trim() || "Client",
     status: row.status?.trim() || "active",
-    lifecycleState: row.lifecycle_state?.trim() || "active",
+    lifecycleState: row.lifecycle_state?.trim() || "unknown",
+    manualRiskFlag: Boolean(row.manual_risk_flag),
     lifecycleChangedAt: row.lifecycle_changed_at,
     pausedReason: row.paused_reason ?? null,
     churnReason: row.churn_reason ?? null,
@@ -475,7 +499,7 @@ export function usePtHubWorkspaces() {
         const { data: clients, error: clientsError } = await supabase
           .from("clients")
           .select(
-            "id, workspace_id, status, display_name, goal, created_at, updated_at",
+            "id, workspace_id, status, lifecycle_state, display_name, goal, created_at, updated_at",
           )
           .in("workspace_id", workspaceIds)
           .returns<ClientRow[]>();
@@ -483,7 +507,10 @@ export function usePtHubWorkspaces() {
         if (clientsError) throw clientsError;
 
         clientCountMap = (clients ?? []).reduce((map, client) => {
-          if (!client.workspace_id || !isClientActive(client.status))
+          if (
+            !client.workspace_id ||
+            !isWorkspaceActiveClient(client.lifecycle_state)
+          )
             return map;
           map.set(client.workspace_id, (map.get(client.workspace_id) ?? 0) + 1);
           return map;
@@ -666,7 +693,7 @@ export function usePtHubSettings() {
       const { data, error } = await supabase
         .from("pt_hub_settings")
         .select(
-          "id, user_id, contact_email, support_email, phone, timezone, city, client_alerts, weekly_digest, product_updates, profile_visibility, subscription_plan, subscription_status, updated_at, created_at",
+          "id, user_id, full_name, contact_email, support_email, phone, country, timezone, city, client_alerts, weekly_digest, product_updates, profile_visibility, subscription_plan, subscription_status, updated_at, created_at",
         )
         .eq("user_id", userId)
         .maybeSingle<PtHubSettingsRow>();
@@ -675,9 +702,15 @@ export function usePtHubSettings() {
 
       return {
         ...DEFAULT_SETTINGS,
+        fullName:
+          data?.full_name ??
+          (typeof user?.user_metadata?.full_name === "string"
+            ? user.user_metadata.full_name
+            : ""),
         contactEmail: data?.contact_email ?? user?.email ?? "",
         supportEmail: data?.support_email ?? user?.email ?? "",
         phone: data?.phone ?? "",
+        country: data?.country ?? "",
         timezone: data?.timezone ?? DEFAULT_SETTINGS.timezone,
         city: data?.city ?? "",
         clientAlerts: data?.client_alerts ?? true,
@@ -704,13 +737,12 @@ export function usePtHubOverview() {
   return useQuery({
     queryKey: [
       "pt-hub-overview",
-      workspacesQuery.data,
-      profileQuery.data?.completionPercent,
-      profileQuery.data?.updatedAt,
-      settingsQuery.data?.subscriptionStatus,
-      leadsQuery.data,
-      clientsQuery.data,
-      readinessQuery.data?.completionPercent,
+      workspacesQuery.dataUpdatedAt,
+      profileQuery.dataUpdatedAt,
+      settingsQuery.dataUpdatedAt,
+      leadsQuery.dataUpdatedAt,
+      clientsQuery.dataUpdatedAt,
+      readinessQuery.dataUpdatedAt,
     ],
     enabled:
       workspacesQuery.isSuccess &&
@@ -849,11 +881,10 @@ export function getPtProfileReadiness(params: {
     {
       key: "cta_ready",
       label: "CTA-ready contact path",
-      complete:
-        isPresent(settings?.contactEmail) || isPresent(settings?.supportEmail),
+      complete: isPresent(settings?.contactEmail),
       href: "/pt-hub/settings",
       guidance:
-        "Add a contact or support email so future inquiry CTAs have a real destination.",
+        "Add a contact email so future inquiry CTAs have a real destination.",
     },
   ];
 
@@ -879,8 +910,8 @@ export function usePtHubProfileReadiness() {
   return useQuery({
     queryKey: [
       "pt-hub-profile-readiness",
-      profileQuery.data,
-      settingsQuery.data,
+      profileQuery.dataUpdatedAt,
+      settingsQuery.dataUpdatedAt,
     ],
     enabled: profileQuery.isSuccess && settingsQuery.isSuccess,
     queryFn: async () =>
@@ -931,9 +962,9 @@ export function usePtHubPublicationState() {
   return useQuery({
     queryKey: [
       "pt-hub-publication-state",
-      profileQuery.data,
-      settingsQuery.data,
-      readinessQuery.data,
+      profileQuery.dataUpdatedAt,
+      settingsQuery.dataUpdatedAt,
+      readinessQuery.dataUpdatedAt,
     ],
     enabled:
       profileQuery.isSuccess &&
@@ -953,7 +984,11 @@ export function usePtHubPayments() {
   const clientsQuery = usePtHubClients();
 
   return useQuery({
-    queryKey: ["pt-hub-payments", settingsQuery.data, clientsQuery.data],
+    queryKey: [
+      "pt-hub-payments",
+      settingsQuery.dataUpdatedAt,
+      clientsQuery.dataUpdatedAt,
+    ],
     enabled: settingsQuery.isSuccess && clientsQuery.isSuccess,
     queryFn: async () => {
       const clients = clientsQuery.data ?? [];
@@ -1010,10 +1045,10 @@ export function usePtHubAnalytics() {
   return useQuery({
     queryKey: [
       "pt-hub-analytics",
-      leadsQuery.data,
-      clientsQuery.data,
-      profileQuery.data,
-      readinessQuery.data,
+      leadsQuery.dataUpdatedAt,
+      clientsQuery.dataUpdatedAt,
+      profileQuery.dataUpdatedAt,
+      readinessQuery.dataUpdatedAt,
     ],
     enabled:
       profileQuery.isSuccess &&
@@ -1079,7 +1114,9 @@ export function usePtHubAnalytics() {
           isLifecycleCoached(client.lifecycleState),
         ).length,
         profileCompletionPercent: readinessQuery.data?.completionPercent ?? 0,
-        testimonialCountLabel: String(profileQuery.data?.testimonials.length ?? 0),
+        testimonialCountLabel: String(
+          profileQuery.data?.testimonials.length ?? 0,
+        ),
         transformationsCountLabel: String(
           profileQuery.data?.transformations.length ?? 0,
         ),
@@ -1142,9 +1179,14 @@ export function usePtHubLeads() {
 export function usePtHubClients() {
   const { user } = useSessionAuth();
   const workspacesQuery = usePtHubWorkspaces();
+  const workspaceIdsKey = useMemo(
+    () =>
+      (workspacesQuery.data ?? []).map((workspace) => workspace.id).join("|"),
+    [workspacesQuery.data],
+  );
 
   return useQuery({
-    queryKey: ["pt-hub-clients", user?.id, workspacesQuery.data],
+    queryKey: ["pt-hub-clients", user?.id, workspaceIdsKey],
     enabled: Boolean(user?.id) && workspacesQuery.isSuccess,
     queryFn: async () => {
       const workspaces = workspacesQuery.data ?? [];
@@ -1175,6 +1217,101 @@ export function usePtHubClients() {
   });
 }
 
+function normalizePtHubClientSearch(value: string | undefined) {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function usePtHubClientStats() {
+  const { user } = useSessionAuth();
+
+  return useQuery({
+    queryKey: ["pt-hub-client-stats", user?.id],
+    enabled: Boolean(user?.id),
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("pt_hub_client_stats");
+
+      if (error) throw error;
+
+      const row = ((data ?? [])[0] ?? null) as PtHubClientStatsRow | null;
+
+      return {
+        totalClients: row?.total_clients ?? 0,
+        activeClients: row?.active_clients ?? 0,
+        pausedClients: row?.paused_clients ?? 0,
+        atRiskClients: row?.at_risk_clients ?? 0,
+        onboardingIncompleteClients: row?.onboarding_incomplete_clients ?? 0,
+        overdueCheckinClients: row?.overdue_checkin_clients ?? 0,
+      } satisfies PTClientStatsSnapshot;
+    },
+  });
+}
+
+export function usePtHubClientsPage(params: {
+  page: number;
+  pageSize?: number;
+  workspaceId?: string;
+  lifecycle?: string;
+  segment?: ClientSegmentKey;
+  search?: string;
+}) {
+  const { user } = useSessionAuth();
+  const page = Math.max(0, params.page);
+  const pageSize = params.pageSize ?? 25;
+  const workspaceId =
+    params.workspaceId && params.workspaceId !== "all"
+      ? params.workspaceId
+      : null;
+  const lifecycle =
+    params.lifecycle && params.lifecycle !== "all" ? params.lifecycle : null;
+  const segment =
+    params.segment && params.segment !== "all" ? params.segment : null;
+  const search = normalizePtHubClientSearch(params.search);
+
+  return useQuery({
+    queryKey: [
+      "pt-hub-clients-page",
+      user?.id,
+      page,
+      pageSize,
+      workspaceId ?? "all",
+      lifecycle ?? "all",
+      segment ?? "all",
+      search ?? "",
+    ],
+    enabled: Boolean(user?.id),
+    staleTime: 1000 * 30,
+    placeholderData: (previous) => previous,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("pt_hub_clients_page", {
+        p_limit: pageSize,
+        p_offset: page * pageSize,
+        p_workspace_id: workspaceId,
+        p_lifecycle: lifecycle,
+        p_search: search,
+        p_segment: segment,
+      });
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as PtHubClientsPageRow[];
+      const clients = rows.map((row) =>
+        mapPtClientSummary(row, row.workspace_name?.trim() || "Workspace"),
+      );
+      const totalCount = rows[0]?.total_count ?? 0;
+
+      return {
+        clients,
+        totalCount,
+        hasMore: page * pageSize + clients.length < totalCount,
+        page,
+        pageSize,
+      } satisfies PTClientDirectoryPage;
+    },
+  });
+}
+
 export function getPtClientBaseStats(clients: PTClientSummary[]) {
   const totalClients = clients.length;
   const activeClients = clients.filter((client) =>
@@ -1185,7 +1322,7 @@ export function getPtClientBaseStats(clients: PTClientSummary[]) {
       normalizeClientLifecycleState(client.lifecycleState) === "paused",
   ).length;
   const atRiskClients = clients.filter((client) =>
-    matchesClientSegment(client, "at_risk"),
+    isClientAtRisk(client),
   ).length;
   const onboardingIncompleteClients = clients.filter((client) =>
     matchesClientSegment(client, "onboarding_incomplete"),
@@ -1351,9 +1488,11 @@ export async function savePtHubSettings(params: {
   const { error } = await supabase.from("pt_hub_settings").upsert(
     {
       user_id: params.userId,
+      full_name: params.settings.fullName.trim() || null,
       contact_email: params.settings.contactEmail.trim() || null,
       support_email: params.settings.supportEmail.trim() || null,
       phone: params.settings.phone.trim() || null,
+      country: params.settings.country.trim() || null,
       timezone: params.settings.timezone.trim() || null,
       city: params.settings.city.trim() || null,
       client_alerts: params.settings.clientAlerts,
@@ -1448,10 +1587,15 @@ export async function submitPublicPtApplication(input: PTPublicLeadInput) {
     p_package_interest: input.packageInterest.trim(),
   };
 
-  const { data, error } = await supabase.rpc(
-    "submit_public_pt_application",
-    nextInput,
-  );
+  const { data, error } = await runClientGuardedAction({
+    action: "public-pt-application",
+    scope: `${nextInput.p_slug}:${nextInput.p_email.toLowerCase()}`,
+    cooldownMs: 60_000,
+    message:
+      "Please wait a minute before submitting another application for this coach.",
+    run: async () =>
+      await supabase.rpc("submit_public_pt_application", nextInput),
+  });
 
   if (error) throw error;
 
@@ -1464,8 +1608,15 @@ export async function createPtWorkspace(workspaceName: string) {
     throw new Error("Workspace name is required.");
   }
 
-  const { data, error } = await supabase.rpc("create_workspace", {
-    p_name: nextName,
+  const { data, error } = await runClientGuardedAction({
+    action: "workspace-create",
+    scope: "current-user",
+    cooldownMs: 15_000,
+    message: "Please wait a few seconds before creating another workspace.",
+    run: async () =>
+      await supabase.rpc("create_workspace", {
+        p_name: nextName,
+      }),
   });
   if (error) throw error;
 

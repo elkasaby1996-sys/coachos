@@ -1,7 +1,9 @@
 // @ts-nocheck
 import {
+  Suspense,
   useCallback,
   useEffect,
+  lazy,
   useMemo,
   useRef,
   useState,
@@ -20,6 +22,7 @@ import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/coachos/skeleton";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import {
   Tabs,
   TabsContent,
@@ -29,12 +32,15 @@ import {
 import {
   Apple,
   AlertTriangle,
+  Ban,
   CalendarDays,
   ClipboardCheck,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
   Dumbbell,
+  Eye,
+  EyeOff,
   FileText,
   Flame,
   FlaskConical,
@@ -43,6 +49,7 @@ import {
   Moon,
   MoreHorizontal,
   Pencil,
+  Play,
   Rocket,
   Sparkles,
   Upload,
@@ -68,8 +75,11 @@ import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
   EmptyState,
+  LifecycleBadge,
+  RiskBadge,
   StatCard,
   StatusPill,
+  TagInfoBadge,
 } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
 import {
@@ -81,6 +91,7 @@ import {
   getClientLifecycleMeta,
   getClientLifecycleReason,
   getClientRiskFlagMeta,
+  getClientRiskState,
   normalizeClientRiskFlags,
 } from "../../lib/client-lifecycle";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
@@ -101,6 +112,7 @@ import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { usePtMessageCompose } from "../../components/pt/pt-message-compose-context";
 import {
   buildPtOnboardingChecklist,
@@ -155,12 +167,37 @@ const workbenchTabIcons: Record<
   baseline: Moon,
 };
 
+const LazyPtClientProgressTab = lazy(async () => {
+  const module = await import("./client-detail-tabs/pt-client-progress-tab");
+  return { default: module.PtClientProgressTab };
+});
+
+const LazyPtClientNotesTab = lazy(async () => {
+  const module = await import("./client-detail-tabs/pt-client-notes-tab");
+  return { default: module.PtClientNotesTab };
+});
+
+const LazyPtClientMedicalTab = lazy(async () => {
+  const module = await import("./client-detail-tabs/pt-client-medical-tab");
+  return { default: module.PtClientMedicalTab };
+});
+
 const formatDateKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+function ClientDetailDeferredTabFallback() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-36 w-full" />
+    </div>
+  );
+}
 
 const diffDays = (start: string, end: string) => {
   const startDate = new Date(start);
@@ -228,11 +265,11 @@ const buildMetricDelta = ({
 }) => {
   if (typeof delta !== "number" || Number.isNaN(delta)) return null;
   const rounded =
-    decimals > 0
-      ? Number(delta.toFixed(decimals))
-      : Math.round(delta);
+    decimals > 0 ? Number(delta.toFixed(decimals)) : Math.round(delta);
   const absolute =
-    decimals > 0 ? Math.abs(rounded).toFixed(decimals) : Math.abs(rounded).toString();
+    decimals > 0
+      ? Math.abs(rounded).toFixed(decimals)
+      : Math.abs(rounded).toString();
   const prefix = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
   const tone =
     rounded === 0
@@ -310,6 +347,7 @@ type PtClientProfile = {
   goal: string | null;
   status: string | null;
   lifecycle_state: string | null;
+  manual_risk_flag: boolean | null;
   lifecycle_changed_at: string | null;
   paused_reason: string | null;
   churn_reason: string | null;
@@ -622,6 +660,24 @@ export function PtClientDetailPage() {
     }
   }, [active]);
 
+  const isOverviewTab = active === "overview";
+  const isOnboardingTab = active === "onboarding";
+  const isWorkoutTab = active === "workout";
+  const isNutritionTab = active === "nutrition";
+  const isMedicalTab = active === "medical";
+  const isHabitsTab = active === "habits";
+  const isProgressTab = active === "progress";
+  const isLogsTab = active === "logs";
+  const isCheckinsTab = active === "checkins";
+  const isNotesTab = active === "notes";
+  const isBaselineTab = active === "baseline";
+  const needsOnboardingData = isOverviewTab || isOnboardingTab;
+  const needsWorkoutPlanningData = isOverviewTab || isWorkoutTab;
+  const needsBaselineData =
+    isOverviewTab || isOnboardingTab || isBaselineTab || isProgressTab;
+  const needsCheckinsData = isOverviewTab || isCheckinsTab;
+  const needsHabitsSummaryData = isOverviewTab || isHabitsTab;
+
   const setActiveTab = (tab: string) => {
     if (!tabs.includes(tab as (typeof tabs)[number])) return;
     setActive(tab as (typeof tabs)[number]);
@@ -823,7 +879,7 @@ export function PtClientDetailPage() {
     date.setDate(date.getDate() + 14);
     return formatDateKey(date);
   }, [today]);
-  const showLogs = active === "logs";
+  const showLogs = isLogsTab;
 
   const workspaceQuery = useQuery({
     queryKey: ["pt-workspace", user?.id],
@@ -837,7 +893,7 @@ export function PtClientDetailPage() {
 
   const workspaceDetailsQuery = useQuery({
     queryKey: ["pt-workspace-details", workspaceQuery.data],
-    enabled: !!workspaceQuery.data,
+    enabled: !!workspaceQuery.data && isCheckinsTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspaces")
@@ -854,7 +910,7 @@ export function PtClientDetailPage() {
 
   const checkinTemplatesQuery = useQuery({
     queryKey: ["pt-checkin-templates", workspaceQuery.data],
-    enabled: !!workspaceQuery.data,
+    enabled: !!workspaceQuery.data && isCheckinsTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("checkin_templates")
@@ -873,7 +929,7 @@ export function PtClientDetailPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
         )
         .eq("id", clientId ?? "")
         .eq("workspace_id", workspaceQuery.data ?? "")
@@ -904,7 +960,7 @@ export function PtClientDetailPage() {
 
   const onboardingQuery = useQuery({
     queryKey: ["pt-client-onboarding", clientId, workspaceQuery.data],
-    enabled: !!clientId && !!workspaceQuery.data,
+    enabled: !!clientId && !!workspaceQuery.data && needsOnboardingData,
     queryFn: async () => {
       const { error: ensureError } = await supabase.rpc(
         "ensure_workspace_client_onboarding",
@@ -1158,7 +1214,7 @@ export function PtClientDetailPage() {
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
-    enabled: !!workspaceQuery.data && active === "workout",
+    enabled: !!workspaceQuery.data && isWorkoutTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
@@ -1172,9 +1228,7 @@ export function PtClientDetailPage() {
 
   const programTemplatesQuery = useQuery({
     queryKey: ["program-templates", workspaceQuery.data],
-    enabled:
-      !!workspaceQuery.data &&
-      (active === "workout" || active === "onboarding"),
+    enabled: !!workspaceQuery.data && (isWorkoutTab || isOnboardingTab),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("program_templates")
@@ -1189,7 +1243,7 @@ export function PtClientDetailPage() {
 
   const activeProgramQuery = useQuery({
     queryKey: ["client-program-active", clientId],
-    enabled: !!clientId && (active === "workout" || active === "onboarding"),
+    enabled: !!clientId && (isWorkoutTab || isOnboardingTab || isOverviewTab),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_programs")
@@ -1211,7 +1265,7 @@ export function PtClientDetailPage() {
 
   const pausedProgramQuery = useQuery({
     queryKey: ["client-program-paused", clientId],
-    enabled: !!clientId && (active === "workout" || active === "onboarding"),
+    enabled: !!clientId && (isWorkoutTab || isOnboardingTab),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_programs")
@@ -1237,7 +1291,7 @@ export function PtClientDetailPage() {
       todayKey,
       planEndKey,
     ],
-    enabled: !!activeProgram?.id && active === "workout",
+    enabled: !!activeProgram?.id && isWorkoutTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_program_overrides")
@@ -1276,7 +1330,7 @@ export function PtClientDetailPage() {
 
   const upcomingQuery = useQuery({
     queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
-    enabled: !!clientId && (active === "workout" || active === "overview"),
+    enabled: !!clientId && needsWorkoutPlanningData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
@@ -1310,7 +1364,7 @@ export function PtClientDetailPage() {
 
   const workoutSessionsQuery = useQuery({
     queryKey: ["workout-sessions", upcomingAssignedWorkoutIds],
-    enabled: upcomingAssignedWorkoutIds.length > 0 && active === "overview",
+    enabled: upcomingAssignedWorkoutIds.length > 0 && isOverviewTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_sessions")
@@ -1338,7 +1392,7 @@ export function PtClientDetailPage() {
 
   const workoutSetLogsQuery = useQuery({
     queryKey: ["workout-set-logs", workoutSessionIds],
-    enabled: workoutSessionIds.length > 0 && active === "overview",
+    enabled: workoutSessionIds.length > 0 && isOverviewTab,
     queryFn: async () => {
       if (workoutSessionIds.length === 0) return [];
       const { data, error } = await supabase
@@ -1371,7 +1425,7 @@ export function PtClientDetailPage() {
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
-    enabled: !!selectedAssignedWorkoutId && active === "workout" && loadsOpen,
+    enabled: !!selectedAssignedWorkoutId && isWorkoutTab && loadsOpen,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workout_exercises")
@@ -1403,7 +1457,7 @@ export function PtClientDetailPage() {
       onboardingQuery.data?.initial_baseline_entry_id ?? null,
       active,
     ],
-    enabled: !!clientId && (active === "baseline" || active === "onboarding"),
+    enabled: !!clientId && needsBaselineData,
     queryFn: async () => {
       let query = supabase
         .from("baseline_entries")
@@ -1437,7 +1491,7 @@ export function PtClientDetailPage() {
 
   const baselineMetricsQuery = useQuery({
     queryKey: ["pt-client-baseline-metrics", baselineId],
-    enabled: !!baselineId && (active === "baseline" || active === "onboarding"),
+    enabled: !!baselineId && needsBaselineData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_metrics")
@@ -1453,7 +1507,7 @@ export function PtClientDetailPage() {
 
   const baselineMarkersQuery = useQuery({
     queryKey: ["pt-client-baseline-markers", baselineId],
-    enabled: !!baselineId && (active === "baseline" || active === "onboarding"),
+    enabled: !!baselineId && needsBaselineData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_values")
@@ -1482,7 +1536,7 @@ export function PtClientDetailPage() {
 
   const baselinePhotosQuery = useQuery({
     queryKey: ["pt-client-baseline-photos", baselineId],
-    enabled: !!baselineId && (active === "baseline" || active === "onboarding"),
+    enabled: !!baselineId && needsBaselineData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_photos")
@@ -1495,7 +1549,7 @@ export function PtClientDetailPage() {
 
   const checkinsQuery = useQuery({
     queryKey: ["pt-client-checkins", clientId, active, checkinsPage],
-    enabled: !!clientId && (active === "checkins" || active === "overview"),
+    enabled: !!clientId && needsCheckinsData,
     queryFn: async () => {
       const { error: ensureError } = await supabase.rpc(
         "ensure_client_checkins",
@@ -1560,10 +1614,7 @@ export function PtClientDetailPage() {
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
-    enabled:
-      !!clientId &&
-      !!habitsToday &&
-      (active === "habits" || active === "overview"),
+    enabled: !!clientId && !!habitsToday && needsHabitsSummaryData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
@@ -1581,7 +1632,7 @@ export function PtClientDetailPage() {
 
   const habitsAnyQuery = useQuery({
     queryKey: ["pt-client-habits-any", clientId],
-    enabled: !!clientId && (active === "habits" || active === "overview"),
+    enabled: !!clientId && isHabitsTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
@@ -1595,10 +1646,7 @@ export function PtClientDetailPage() {
 
   const habitsStreakQuery = useQuery({
     queryKey: ["pt-client-habits-streak", clientId, habitsToday],
-    enabled:
-      !!clientId &&
-      !!habitsToday &&
-      (active === "habits" || active === "overview"),
+    enabled: !!clientId && !!habitsToday && needsHabitsSummaryData,
     queryFn: async () => {
       const streakStart = addDaysToDateString(habitsToday, -29);
       const { data, error } = await supabase
@@ -1623,7 +1671,7 @@ export function PtClientDetailPage() {
 
   const habitLogByDateQuery = useQuery({
     queryKey: ["pt-client-habit-log", clientId, selectedHabitDate],
-    enabled: !!clientId && !!selectedHabitDate && active === "habits",
+    enabled: !!clientId && !!selectedHabitDate && isHabitsTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
@@ -1640,7 +1688,7 @@ export function PtClientDetailPage() {
 
   const coachActivityQuery = useQuery({
     queryKey: ["coach-activity-log", clientId, workspaceQuery.data],
-    enabled: !!clientId && !!workspaceQuery.data,
+    enabled: !!clientId && !!workspaceQuery.data && isOverviewTab,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("coach_activity_log")
@@ -1653,6 +1701,194 @@ export function PtClientDetailPage() {
       return (data ?? []) as CoachActivityRow[];
     },
   });
+
+  const buildAssignedWorkoutCacheRow = useCallback(
+    ({
+      id,
+      scheduledDate,
+      workoutTemplateId,
+      status = "planned",
+      completedAt = null,
+      dayType = null,
+      coachNote,
+    }: {
+      id: string;
+      scheduledDate: string | null;
+      workoutTemplateId: string | null;
+      status?: string | null;
+      completedAt?: string | null;
+      dayType?: string | null;
+      coachNote?: string | null;
+    }) => {
+      const template = (templatesQuery.data ?? []).find(
+        (item) => item.id === workoutTemplateId,
+      );
+
+      return {
+        id,
+        status,
+        day_type: dayType,
+        scheduled_date: scheduledDate,
+        created_at: null,
+        completed_at: completedAt,
+        coach_note: coachNote ?? null,
+        workout_template_id: workoutTemplateId,
+        workout_template: template
+          ? {
+              id: template.id ?? null,
+              name: template.name ?? null,
+              workout_type_tag: template.workout_type_tag ?? null,
+              description: template.description ?? null,
+            }
+          : workoutTemplateId
+            ? {
+                id: workoutTemplateId,
+                name: null,
+                workout_type_tag: null,
+                description: null,
+              }
+            : null,
+      };
+    },
+    [templatesQuery.data],
+  );
+
+  const syncAssignedWorkoutCaches = useCallback(
+    ({
+      row,
+      previousScheduledDate,
+      remove = false,
+    }: {
+      row: ReturnType<typeof buildAssignedWorkoutCacheRow>;
+      previousScheduledDate?: string | null;
+      remove?: boolean;
+    }) => {
+      queryClient.setQueryData<UpcomingWorkoutRow[]>(
+        ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+        (current = []) => {
+          const withoutRow = current.filter((item) => item.id !== row.id);
+          if (
+            remove ||
+            !row.scheduled_date ||
+            row.scheduled_date < todayKey ||
+            row.scheduled_date > planEndKey
+          ) {
+            return withoutRow;
+          }
+          return [...withoutRow, row].sort((a, b) =>
+            String(a.scheduled_date ?? "").localeCompare(
+              String(b.scheduled_date ?? ""),
+            ),
+          );
+        },
+      );
+
+      queryClient.setQueryData(
+        [
+          "pt-client-schedule-week",
+          clientId,
+          workspaceQuery.data ?? null,
+          scheduleStartKey,
+          scheduleEndKey,
+        ],
+        (current: Array<any> = []) => {
+          const withoutRow = current.filter((item) => item.id !== row.id);
+          if (
+            remove ||
+            !row.scheduled_date ||
+            row.scheduled_date < scheduleStartKey ||
+            row.scheduled_date > scheduleEndKey
+          ) {
+            return withoutRow;
+          }
+          return [...withoutRow, row].sort((a, b) =>
+            String(a.scheduled_date ?? "").localeCompare(
+              String(b.scheduled_date ?? ""),
+            ),
+          );
+        },
+      );
+
+      queryClient.setQueryData(
+        ["assigned-workout-today", clientId, todayKey],
+        (current: any) => {
+          const oldWasToday = previousScheduledDate === todayKey;
+          const newIsToday = row.scheduled_date === todayKey && !remove;
+          if (newIsToday) return row;
+          if (oldWasToday && current?.id === row.id) return null;
+          if (remove && current?.id === row.id) return null;
+          return current;
+        },
+      );
+    },
+    [
+      clientId,
+      planEndKey,
+      queryClient,
+      scheduleEndKey,
+      scheduleStartKey,
+      todayKey,
+      workspaceQuery.data,
+    ],
+  );
+
+  const refreshAssignedWorkoutSideEffects = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["assigned-workouts-week-plan", clientId],
+      }),
+    ]);
+  }, [clientId, queryClient]);
+
+  const buildClientProgramCacheRow = useCallback(
+    ({
+      id,
+      programTemplateId,
+      startDate,
+      isActive,
+      updatedAt,
+    }: {
+      id: string;
+      programTemplateId: string | null;
+      startDate: string | null;
+      isActive: boolean;
+      updatedAt?: string | null;
+    }) => {
+      const template = (programTemplatesQuery.data ?? []).find(
+        (item) => item.id === programTemplateId,
+      );
+
+      return {
+        id,
+        start_date: startDate,
+        program_template_id: programTemplateId,
+        is_active: isActive,
+        updated_at: updatedAt ?? null,
+        program_template: programTemplateId
+          ? {
+              id: programTemplateId,
+              name: template?.name ?? null,
+              weeks_count: template?.weeks_count ?? null,
+            }
+          : null,
+      } satisfies ClientProgramRow;
+    },
+    [programTemplatesQuery.data],
+  );
+
+  const syncProgramOverridesCache = useCallback(
+    (
+      programId: string,
+      updater: (current: ProgramOverrideRow[]) => ProgramOverrideRow[],
+    ) => {
+      queryClient.setQueryData<ProgramOverrideRow[]>(
+        ["client-program-overrides", programId, todayKey, planEndKey],
+        (current = []) => updater(current),
+      );
+    },
+    [planEndKey, queryClient, todayKey],
+  );
 
   const handleAssignWorkout = async () => {
     if (!clientId || !selectedTemplateId || !scheduledDate) return;
@@ -1696,22 +1932,17 @@ export function PtClientDetailPage() {
     setToastMessage("Workout assigned");
     setSelectedTemplateId("");
     setScheduledDate(todayKey);
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "pt-client-schedule-week",
-        clientId,
-        workspaceQuery.data ?? null,
-        scheduleStartKey,
-        scheduleEndKey,
-      ],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workout-today", clientId, todayKey],
-    });
-    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+    if (assignedWorkoutId) {
+      syncAssignedWorkoutCaches({
+        row: buildAssignedWorkoutCacheRow({
+          id: assignedWorkoutId,
+          scheduledDate,
+          workoutTemplateId: selectedTemplateId,
+          status: "planned",
+        }),
+      });
+    }
+    await refreshAssignedWorkoutSideEffects();
   };
 
   const handleApplyProgram = async () => {
@@ -1774,25 +2005,35 @@ export function PtClientDetailPage() {
   };
 
   const invalidateProgramAndSchedule = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["client-program-active", clientId],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["client-program-paused", clientId],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "pt-client-schedule-week",
-        clientId,
-        workspaceQuery.data ?? null,
-        scheduleStartKey,
-        scheduleEndKey,
-      ],
-    });
-    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: [
+          "assigned-workouts-upcoming",
+          clientId,
+          todayKey,
+          planEndKey,
+        ],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["client-program-active", clientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["client-program-paused", clientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [
+          "pt-client-schedule-week",
+          clientId,
+          workspaceQuery.data ?? null,
+          scheduleStartKey,
+          scheduleEndKey,
+        ],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["assigned-workout-today", clientId, todayKey],
+      }),
+      refreshAssignedWorkoutSideEffects(),
+    ]);
   };
 
   const handlePauseProgram = async () => {
@@ -1802,9 +2043,10 @@ export function PtClientDetailPage() {
     setProgramStatus("saving");
     setProgramMessage(null);
     try {
+      const updatedAt = new Date().toISOString();
       const { error: pauseProgramError } = await supabase
         .from("client_programs")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .update({ is_active: false, updated_at: updatedAt })
         .eq("id", activeProgram.id);
       if (pauseProgramError) throw pauseProgramError;
 
@@ -1824,6 +2066,17 @@ export function PtClientDetailPage() {
       setProgramMessage("Program paused.");
       setToastVariant("success");
       setToastMessage("Program paused");
+      queryClient.setQueryData(["client-program-active", clientId], null);
+      queryClient.setQueryData(
+        ["client-program-paused", clientId],
+        buildClientProgramCacheRow({
+          id: activeProgram.id,
+          programTemplateId: activeProgram.program_template_id,
+          startDate: activeProgram.start_date,
+          isActive: false,
+          updatedAt,
+        }),
+      );
       await invalidateProgramAndSchedule();
     } catch (error) {
       setProgramStatus("error");
@@ -1839,16 +2092,17 @@ export function PtClientDetailPage() {
     setProgramStatus("saving");
     setProgramMessage(null);
     try {
+      const updatedAt = new Date().toISOString();
       const { error: deactivateOthersError } = await supabase
         .from("client_programs")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .update({ is_active: false, updated_at: updatedAt })
         .eq("client_id", clientId)
         .eq("is_active", true);
       if (deactivateOthersError) throw deactivateOthersError;
 
       const { error: resumeProgramError } = await supabase
         .from("client_programs")
-        .update({ is_active: true, updated_at: new Date().toISOString() })
+        .update({ is_active: true, updated_at: updatedAt })
         .eq("id", pausedProgram.id);
       if (resumeProgramError) throw resumeProgramError;
 
@@ -1877,6 +2131,17 @@ export function PtClientDetailPage() {
       setProgramMessage("Program resumed.");
       setToastVariant("success");
       setToastMessage("Program resumed");
+      queryClient.setQueryData(
+        ["client-program-active", clientId],
+        buildClientProgramCacheRow({
+          id: pausedProgram.id,
+          programTemplateId: pausedProgram.program_template_id,
+          startDate: pausedProgram.start_date,
+          isActive: true,
+          updatedAt,
+        }),
+      );
+      queryClient.setQueryData(["client-program-paused", clientId], null);
       await invalidateProgramAndSchedule();
     } catch (error) {
       setProgramStatus("error");
@@ -1967,40 +2232,13 @@ export function PtClientDetailPage() {
         throw programDeleteError;
       }
 
-      await queryClient.invalidateQueries({
-        queryKey: ["client-program-active", clientId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["client-program-paused", clientId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [
-          "client-program-overrides",
-          targetProgram.id,
-          todayKey,
-          planEndKey,
-        ],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [
-          "assigned-workouts-upcoming",
-          clientId,
-          todayKey,
-          planEndKey,
-        ],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [
-          "pt-client-schedule-week",
-          clientId,
-          workspaceQuery.data ?? null,
-          scheduleStartKey,
-          scheduleEndKey,
-        ],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["assigned-workout-today", clientId, todayKey],
-      });
+      queryClient.setQueryData(["client-program-active", clientId], null);
+      queryClient.setQueryData(["client-program-paused", clientId], null);
+      queryClient.setQueryData(
+        ["client-program-overrides", targetProgram.id, todayKey, planEndKey],
+        [],
+      );
+      await invalidateProgramAndSchedule();
       setProgramMessage("Program unassigned.");
       setUnassignStatus("idle");
     } catch (error) {
@@ -2072,17 +2310,66 @@ export function PtClientDetailPage() {
       return;
     }
 
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "client-program-overrides",
-        activeProgram.id,
-        todayKey,
-        planEndKey,
-      ],
+    const overrideTemplate = (templatesQuery.data ?? []).find(
+      (item) => item.id === overrideTemplateId,
+    );
+    syncProgramOverridesCache(activeProgram.id, (current) => {
+      const nextRow = {
+        id:
+          current.find((row) => row.override_date === overrideDate)?.id ??
+          `${activeProgram.id}:${overrideDate}`,
+        override_date: overrideDate,
+        workout_template_id: overrideIsRest ? null : overrideTemplateId,
+        is_rest: overrideIsRest,
+        notes: overrideNotes.trim() || null,
+        workout_template:
+          overrideIsRest || !overrideTemplateId
+            ? null
+            : {
+                id: overrideTemplateId,
+                name: overrideTemplate?.name ?? null,
+              },
+      } satisfies ProgramOverrideRow;
+
+      return [
+        ...current.filter((row) => row.override_date !== overrideDate),
+        nextRow,
+      ]
+        .filter(
+          (row) =>
+            row.override_date &&
+            row.override_date >= todayKey &&
+            row.override_date <= planEndKey,
+        )
+        .sort((a, b) =>
+          String(a.override_date ?? "").localeCompare(
+            String(b.override_date ?? ""),
+          ),
+        );
     });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
-    });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: [
+          "assigned-workouts-upcoming",
+          clientId,
+          todayKey,
+          planEndKey,
+        ],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [
+          "pt-client-schedule-week",
+          clientId,
+          workspaceQuery.data ?? null,
+          scheduleStartKey,
+          scheduleEndKey,
+        ],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["assigned-workout-today", clientId, todayKey],
+      }),
+      refreshAssignedWorkoutSideEffects(),
+    ]);
 
     setOverrideStatus("idle");
     setOverrideOpen(false);
@@ -2105,22 +2392,24 @@ export function PtClientDetailPage() {
       setAssignMessage(getErrorMessage(error));
       return;
     }
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    const existing = (upcomingQuery.data ?? []).find(
+      (workout) => workout.id === id,
+    );
+    syncAssignedWorkoutCaches({
+      row: buildAssignedWorkoutCacheRow({
+        id,
+        scheduledDate: existing?.scheduled_date ?? null,
+        workoutTemplateId: existing?.workout_template_id ?? null,
+        status,
+        completedAt:
+          status === "completed"
+            ? ((payload as { completed_at?: string }).completed_at ?? null)
+            : null,
+        dayType: existing?.day_type ?? null,
+      }),
+      previousScheduledDate: existing?.scheduled_date ?? null,
     });
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "pt-client-schedule-week",
-        clientId,
-        workspaceQuery.data ?? null,
-        scheduleStartKey,
-        scheduleEndKey,
-      ],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workout-today", clientId, todayKey],
-    });
-    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+    await refreshAssignedWorkoutSideEffects();
   };
 
   const openEditDialog = (workout: {
@@ -2170,22 +2459,25 @@ export function PtClientDetailPage() {
     setAssignStatus("idle");
     setAssignMessage("Workout updated");
     setEditOpen(false);
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    const existing = (upcomingQuery.data ?? []).find(
+      (workout) => workout.id === editWorkoutId,
+    );
+    syncAssignedWorkoutCaches({
+      row: buildAssignedWorkoutCacheRow({
+        id: editWorkoutId,
+        scheduledDate: editDate,
+        workoutTemplateId: editTemplateId,
+        status: editStatus,
+        completedAt:
+          editStatus === "completed"
+            ? (existing?.completed_at ?? new Date().toISOString())
+            : null,
+        dayType: existing?.day_type ?? null,
+        coachNote: existing?.coach_note ?? null,
+      }),
+      previousScheduledDate: existing?.scheduled_date ?? null,
     });
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "pt-client-schedule-week",
-        clientId,
-        workspaceQuery.data ?? null,
-        scheduleStartKey,
-        scheduleEndKey,
-      ],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workout-today", clientId, todayKey],
-    });
-    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+    await refreshAssignedWorkoutSideEffects();
   };
 
   const handleDeleteWorkout = async () => {
@@ -2204,21 +2496,23 @@ export function PtClientDetailPage() {
     setAssignStatus("idle");
     setAssignMessage("Workout deleted");
     setDeleteOpen(false);
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    const existing = (upcomingQuery.data ?? []).find(
+      (workout) => workout.id === editWorkoutId,
+    );
+    syncAssignedWorkoutCaches({
+      row: buildAssignedWorkoutCacheRow({
+        id: editWorkoutId,
+        scheduledDate: existing?.scheduled_date ?? null,
+        workoutTemplateId: existing?.workout_template_id ?? null,
+        status: existing?.status ?? null,
+        completedAt: existing?.completed_at ?? null,
+        dayType: existing?.day_type ?? null,
+        coachNote: existing?.coach_note ?? null,
+      }),
+      previousScheduledDate: existing?.scheduled_date ?? null,
+      remove: true,
     });
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "pt-client-schedule-week",
-        clientId,
-        workspaceQuery.data ?? null,
-        scheduleStartKey,
-        scheduleEndKey,
-      ],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workout-today", clientId, todayKey],
-    });
+    await refreshAssignedWorkoutSideEffects();
   };
 
   const handleOpenDeleteDialog = (workoutId: string) => {
@@ -2238,22 +2532,22 @@ export function PtClientDetailPage() {
       setAssignMessage(getErrorMessage(error));
       return;
     }
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
+    const existing = (upcomingQuery.data ?? []).find(
+      (workout) => workout.id === id,
+    );
+    syncAssignedWorkoutCaches({
+      row: buildAssignedWorkoutCacheRow({
+        id,
+        scheduledDate: nextDate,
+        workoutTemplateId: existing?.workout_template_id ?? null,
+        status: existing?.status ?? null,
+        completedAt: existing?.completed_at ?? null,
+        dayType: existing?.day_type ?? null,
+        coachNote: existing?.coach_note ?? null,
+      }),
+      previousScheduledDate: existing?.scheduled_date ?? null,
     });
-    await queryClient.invalidateQueries({
-      queryKey: [
-        "pt-client-schedule-week",
-        clientId,
-        workspaceQuery.data ?? null,
-        scheduleStartKey,
-        scheduleEndKey,
-      ],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["assigned-workout-today", clientId, todayKey],
-    });
-    await queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] });
+    await refreshAssignedWorkoutSideEffects();
     setAssignStatus("idle");
     setAssignMessage("Workout rescheduled");
   };
@@ -2455,6 +2749,19 @@ export function PtClientDetailPage() {
     () => normalizeClientRiskFlags(clientOperationalQuery.data?.risk_flags),
     [clientOperationalQuery.data?.risk_flags],
   );
+  const clientRiskState = useMemo(
+    () =>
+      getClientRiskState({
+        lifecycle_state: clientSnapshot?.lifecycle_state,
+        manual_risk_flag: clientSnapshot?.manual_risk_flag,
+        risk_flags: clientOperationalQuery.data?.risk_flags,
+      }),
+    [
+      clientOperationalQuery.data?.risk_flags,
+      clientSnapshot?.lifecycle_state,
+      clientSnapshot?.manual_risk_flag,
+    ],
+  );
 
   const upcomingCheckins = useMemo(() => {
     if (!checkinsRows || checkinsRows.length === 0) return [];
@@ -2522,6 +2829,15 @@ export function PtClientDetailPage() {
   const clientAttentionReasons = useMemo(() => {
     const reasons: Array<{ id: string; title: string; helper: string }> = [];
 
+    if (clientSnapshot?.manual_risk_flag) {
+      reasons.push({
+        id: "manual-risk",
+        title: "Client is manually flagged at risk",
+        helper:
+          "A PT has manually marked this client as needing extra attention.",
+      });
+    }
+
     if (onboardingSnapshot && onboardingSnapshot.status !== "completed") {
       reasons.push({
         id: "onboarding",
@@ -2562,6 +2878,7 @@ export function PtClientDetailPage() {
   }, [
     adherenceStat,
     clientRiskFlags,
+    clientSnapshot?.manual_risk_flag,
     latestClientActivityAt,
     onboardingSnapshot,
     onboardingStatusMeta.description,
@@ -2821,6 +3138,18 @@ export function PtClientDetailPage() {
   ).length;
   const selectedCheckinAnswerCount =
     selectedCheckinAnswersQuery.data?.length ?? 0;
+  const selectedCheckinAnswersWindow = useWindowedRows({
+    rows: selectedCheckinAnswersQuery.data ?? [],
+    initialCount: 8,
+    step: 8,
+    resetKey: `${selectedCheckin?.id ?? "none"}:${selectedCheckinAnswerCount}`,
+  });
+  const selectedCheckinPhotosWindow = useWindowedRows({
+    rows: selectedCheckinPhotoCards,
+    initialCount: 6,
+    step: 6,
+    resetKey: `${selectedCheckin?.id ?? "none"}:${selectedCheckinPhotoCards.length}`,
+  });
 
   const baselinePhotoMap = useMemo(() => {
     const map: Record<(typeof baselinePhotoTypes)[number], string | null> = {
@@ -2919,8 +3248,7 @@ export function PtClientDetailPage() {
           ? {
               ...prev,
               status: updated.status ?? prev.status,
-              lifecycle_state:
-                updated.lifecycle_state ?? prev.lifecycle_state ?? "active",
+              lifecycle_state: updated.lifecycle_state ?? prev.lifecycle_state,
               lifecycle_changed_at:
                 updated.lifecycle_changed_at ?? prev.lifecycle_changed_at,
               paused_reason: updated.paused_reason ?? null,
@@ -2936,7 +3264,7 @@ export function PtClientDetailPage() {
                 ...prev,
                 status: updated.status ?? prev.status,
                 lifecycle_state:
-                  updated.lifecycle_state ?? prev.lifecycle_state ?? "active",
+                  updated.lifecycle_state ?? prev.lifecycle_state,
                 lifecycle_changed_at:
                   updated.lifecycle_changed_at ?? prev.lifecycle_changed_at,
                 paused_reason: updated.paused_reason ?? null,
@@ -2957,6 +3285,8 @@ export function PtClientDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["pt-checkins-queue"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
     ]);
 
     setLifecycleActionStatus("idle");
@@ -2964,6 +3294,61 @@ export function PtClientDetailPage() {
     setToastVariant("success");
     setToastMessage(
       `Client moved to ${lifecycleTargetState.replace(/_/g, " ")}.`,
+    );
+  };
+
+  const handleManualRiskToggle = async (nextValue: boolean) => {
+    if (!clientSnapshot?.id) return;
+
+    const { data, error } = await supabase.rpc("pt_set_client_manual_risk", {
+      p_client_id: clientSnapshot.id,
+      p_manual_risk_flag: nextValue,
+    });
+
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(
+        getSupabaseErrorMessage(error, "Could not update risk status."),
+      );
+      return;
+    }
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (updated) {
+      setClientProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              manual_risk_flag:
+                updated.manual_risk_flag ?? prev.manual_risk_flag ?? false,
+              updated_at: updated.updated_at ?? prev.updated_at,
+            }
+          : prev,
+      );
+
+      queryClient.setQueryData(
+        ["pt-client-profile", workspaceQuery.data, clientId],
+        (prev: PtClientProfile | undefined) =>
+          prev
+            ? {
+                ...prev,
+                manual_risk_flag:
+                  updated.manual_risk_flag ?? prev.manual_risk_flag ?? false,
+                updated_at: updated.updated_at ?? prev.updated_at,
+              }
+            : prev,
+      );
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
+    ]);
+    setToastVariant("success");
+    setToastMessage(
+      nextValue ? "Client marked at risk." : "At-risk flag cleared.",
     );
   };
 
@@ -3478,15 +3863,17 @@ export function PtClientDetailPage() {
                       <h2 className="text-xl font-semibold tracking-tight">
                         {clientSnapshot?.display_name ?? "Client profile"}
                       </h2>
-                      <StatusPill
-                        status={
-                          clientSnapshot?.lifecycle_state ??
-                          clientSnapshot?.status ??
-                          "active"
-                        }
+                      <LifecycleBadge
+                        lifecycleState={clientSnapshot?.lifecycle_state}
                       />
+                      <RiskBadge riskState={clientRiskState} />
                       {onboardingSnapshot ? (
-                        <StatusPill status={onboardingSnapshot.status} />
+                        <TagInfoBadge
+                          label={onboardingStatusMeta.label}
+                          variant={onboardingStatusMeta.variant}
+                          title="Onboarding status"
+                          description={onboardingStatusMeta.description}
+                        />
                       ) : null}
                       {hasClientAttentionFlag ? (
                         <button
@@ -3502,9 +3889,13 @@ export function PtClientDetailPage() {
                         const meta = getClientRiskFlagMeta(flag);
                         if (!meta) return null;
                         return (
-                          <Badge key={flag} variant={meta.variant}>
-                            {meta.shortLabel}
-                          </Badge>
+                          <TagInfoBadge
+                            key={flag}
+                            label={meta.shortLabel}
+                            variant={meta.variant}
+                            title={meta.label}
+                            description={meta.description}
+                          />
                         );
                       })}
                     </div>
@@ -3552,15 +3943,30 @@ export function PtClientDetailPage() {
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent
+                      variant="menu"
+                      size="compact"
+                      align="end"
+                      className="w-60"
+                    >
                       <DropdownMenuLabel>Client actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={openProfileEdit}>
+                        <span className="app-dropdown-icon-badge">
+                          <Pencil className="h-4 w-4" />
+                        </span>
                         Edit profile
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setIsOverviewCollapsed((prev) => !prev)}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          {isOverviewCollapsed ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </span>
                         {isOverviewCollapsed
                           ? "Show profile details"
                           : "Hide profile details"}
@@ -3569,26 +3975,47 @@ export function PtClientDetailPage() {
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("active")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <Play className="h-4 w-4" />
+                        </span>
                         Mark active
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("paused")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <Moon className="h-4 w-4" />
+                        </span>
                         Mark paused
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => openLifecycleDialog("at_risk")}
+                        onClick={() =>
+                          void handleManualRiskToggle(
+                            !(clientSnapshot?.manual_risk_flag ?? false),
+                          )
+                        }
                       >
-                        Mark at risk
+                        <span className="app-dropdown-icon-badge">
+                          <AlertTriangle className="h-4 w-4" />
+                        </span>
+                        {clientSnapshot?.manual_risk_flag
+                          ? "Clear at risk"
+                          : "Mark at risk"}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("completed")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </span>
                         Mark completed
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => openLifecycleDialog("churned")}
                       >
+                        <span className="app-dropdown-icon-badge">
+                          <Ban className="h-4 w-4" />
+                        </span>
                         Mark churned
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -3604,12 +4031,8 @@ export function PtClientDetailPage() {
                         Lifecycle
                       </span>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <StatusPill
-                          status={
-                            clientSnapshot?.lifecycle_state ??
-                            clientSnapshot?.status ??
-                            "active"
-                          }
+                        <LifecycleBadge
+                          lifecycleState={clientSnapshot?.lifecycle_state}
                         />
                         {clientSnapshot?.lifecycle_changed_at ? (
                           <span className="text-xs text-muted-foreground">
@@ -3624,9 +4047,30 @@ export function PtClientDetailPage() {
                       <span className="block text-xs text-muted-foreground">
                         Onboarding
                       </span>
-                      <span className="mt-0.5 block font-medium">
-                        {onboardingStatusMeta.label}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                        <TagInfoBadge
+                          label={onboardingStatusMeta.label}
+                          variant={onboardingStatusMeta.variant}
+                          title="Onboarding status"
+                          description={onboardingStatusMeta.description}
+                        />
+                      </div>
+                    </div>
+                    <div className="ops-stat">
+                      <span className="block text-xs text-muted-foreground">
+                        Risk
                       </span>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                        <RiskBadge riskState={clientRiskState} />
+                        {clientSnapshot?.manual_risk_flag ? (
+                          <TagInfoBadge
+                            label="Manual flag"
+                            variant="danger"
+                            title="Manual at-risk flag"
+                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
+                          />
+                        ) : null}
+                      </div>
                     </div>
                     <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
@@ -3697,25 +4141,35 @@ export function PtClientDetailPage() {
                         Risk signals
                       </span>
                       <div className="mt-1 flex flex-wrap gap-2">
+                        {clientSnapshot?.manual_risk_flag ? (
+                          <TagInfoBadge
+                            label="Manual at-risk flag"
+                            variant="danger"
+                            title="Manual at-risk flag"
+                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
+                            className="text-[10px]"
+                          />
+                        ) : null}
                         {clientRiskFlags.length > 0 ? (
                           clientRiskFlags.map((flag) => {
                             const meta = getClientRiskFlagMeta(flag);
                             if (!meta) return null;
                             return (
-                              <Badge
+                              <TagInfoBadge
                                 key={flag}
+                                label={meta.shortLabel}
                                 variant={meta.variant}
+                                title={meta.label}
+                                description={meta.description}
                                 className="text-[10px]"
-                              >
-                                {meta.shortLabel}
-                              </Badge>
+                              />
                             );
                           })
-                        ) : (
+                        ) : !clientSnapshot?.manual_risk_flag ? (
                           <span className="text-sm font-medium text-muted-foreground">
                             No active risk flags
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2">
@@ -3793,14 +4247,10 @@ export function PtClientDetailPage() {
             </div>
           </DashboardCard>
 
-          <DashboardCard
-            title="Live Client Signals"
-            subtitle="Secondary signals supporting the coaching decision."
-            className="lg:col-span-2"
-          >
+          <section className="lg:col-span-2 lg:h-full">
             {statsLoading ? (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
-                {Array.from({ length: 5 }).map((_, index) => (
+              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
+                {Array.from({ length: 4 }).map((_, index) => (
                   <Card key={index} className="border-border/70 bg-card/80">
                     <CardHeader className="space-y-2">
                       <Skeleton className="h-3 w-24" />
@@ -3810,12 +4260,14 @@ export function PtClientDetailPage() {
                 ))}
               </div>
             ) : clientSnapshot ? (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
                 <StatCard
                   label="Adherence"
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
                   helper="Last 7 days"
                   icon={Sparkles}
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                   delta={buildMetricDelta({
                     delta: adherenceDelta,
                     suffix: "%",
@@ -3826,6 +4278,8 @@ export function PtClientDetailPage() {
                   value={habitStreak > 0 ? `${habitStreak}d` : "--"}
                   helper="Habit streak"
                   icon={Rocket}
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                   delta={buildMetricDelta({
                     delta: habitStreak - previousHabitStreak,
                     suffix: "d",
@@ -3840,18 +4294,16 @@ export function PtClientDetailPage() {
                       : "No check-ins"
                   }
                   icon={CalendarDays}
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                 />
                 <StatCard
                   label="Last workout"
                   value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
                   helper={lastWorkoutStatus ?? "No workouts"}
                   icon={Sparkles}
-                />
-                <StatCard
-                  label="Program lane"
-                  value={activeProgram?.program_template?.name ?? "--"}
-                  helper={activeProgram?.start_date ?? "No active program"}
-                  icon={Rocket}
+                  className="h-full min-h-[150px] lg:min-h-0"
+                  disableHoverMotion
                 />
               </div>
             ) : (
@@ -3860,7 +4312,7 @@ export function PtClientDetailPage() {
                 description="Client activity will show here once sessions begin."
               />
             )}
-          </DashboardCard>
+          </section>
         </div>
 
         {scheduleLoading ? (
@@ -3873,6 +4325,7 @@ export function PtClientDetailPage() {
           </DashboardCard>
         ) : clientSnapshot ? (
           <PtClientScheduleCard
+            enabled={isWorkoutTab}
             clientId={clientId ?? null}
             workspaceId={workspaceQuery.data ?? null}
             timezone={clientSnapshot?.timezone ?? null}
@@ -4108,13 +4561,17 @@ export function PtClientDetailPage() {
                     clientId={clientId ?? null}
                     workspaceId={workspaceQuery.data ?? null}
                     todayKey={todayKey}
+                    enabled={isNutritionTab}
                   />
                 </TabsContent>
                 <TabsContent value="medical">
-                  <PtClientMedicalTab
-                    clientId={clientId ?? null}
-                    workspaceId={workspaceQuery.data ?? null}
-                  />
+                  <Suspense fallback={<ClientDetailDeferredTabFallback />}>
+                    <LazyPtClientMedicalTab
+                      clientId={clientId ?? null}
+                      workspaceId={workspaceQuery.data ?? null}
+                      enabled={isMedicalTab}
+                    />
+                  </Suspense>
                 </TabsContent>
                 <TabsContent value="habits">
                   <PtClientHabitsTab
@@ -4125,13 +4582,18 @@ export function PtClientDetailPage() {
                   />
                 </TabsContent>
                 <TabsContent value="progress">
-                  <PtClientProgressTab
-                    hasBaselineSubmission={Boolean(baselineEntryQuery.data?.id)}
-                    onOpenHabits={() => setActiveTab("habits")}
-                    onOpenBaseline={() => setActiveTab("baseline")}
-                    onOpenWorkout={() => setActiveTab("workout")}
-                    onOpenCheckins={() => setActiveTab("checkins")}
-                  />
+                  <Suspense fallback={<ClientDetailDeferredTabFallback />}>
+                    <LazyPtClientProgressTab
+                      hasBaselineSubmission={Boolean(
+                        baselineEntryQuery.data?.id,
+                      )}
+                      onOpenHabits={() => setActiveTab("habits")}
+                      onOpenBaseline={() => setActiveTab("baseline")}
+                      onOpenWorkout={() => setActiveTab("workout")}
+                      onOpenCheckins={() => setActiveTab("checkins")}
+                      enabled={isProgressTab}
+                    />
+                  </Suspense>
                 </TabsContent>
                 <TabsContent value="logs">
                   <PtClientLogsTab
@@ -4175,8 +4637,9 @@ export function PtClientDetailPage() {
                             <label className="text-xs font-semibold text-muted-foreground">
                               Template
                             </label>
-                            <select
-                              className="h-10 w-full app-field px-3 text-sm"
+                            <Select
+                              variant="field"
+                              className="h-10"
                               value={checkinTemplateId}
                               onChange={(event) =>
                                 setCheckinTemplateId(event.target.value)
@@ -4192,15 +4655,16 @@ export function PtClientDetailPage() {
                                   {template.name ?? "Untitled template"}
                                 </option>
                               ))}
-                            </select>
+                            </Select>
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-2">
                               <label className="text-xs font-semibold text-muted-foreground">
                                 Frequency
                               </label>
-                              <select
-                                className="h-10 w-full app-field px-3 text-sm"
+                              <Select
+                                variant="field"
+                                className="h-10"
                                 value={checkinFrequency}
                                 onChange={(event) =>
                                   setCheckinFrequency(event.target.value)
@@ -4214,13 +4678,17 @@ export function PtClientDetailPage() {
                                     {option.label}
                                   </option>
                                 ))}
-                              </select>
+                              </Select>
                             </div>
                             <div className="space-y-2">
-                              <label className="text-xs font-semibold text-muted-foreground">
+                              <label
+                                htmlFor="client-checkin-start-date"
+                                className="text-xs font-semibold text-muted-foreground"
+                              >
                                 First check-in
                               </label>
                               <Input
+                                id="client-checkin-start-date"
                                 type="date"
                                 value={checkinStartDate}
                                 onChange={(event) =>
@@ -4291,10 +4759,13 @@ export function PtClientDetailPage() {
                   </div>
                 </TabsContent>
                 <TabsContent value="notes">
-                  <PtClientNotesTab
-                    clientId={clientId ?? null}
-                    workspaceId={workspaceQuery.data ?? null}
-                  />
+                  <Suspense fallback={<ClientDetailDeferredTabFallback />}>
+                    <LazyPtClientNotesTab
+                      clientId={clientId ?? null}
+                      workspaceId={workspaceQuery.data ?? null}
+                      enabled={isNotesTab}
+                    />
+                  </Suspense>
                 </TabsContent>
                 <TabsContent value="baseline">
                   <PtClientBaselineTab
@@ -4435,10 +4906,14 @@ export function PtClientDetailPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="edit-workout-date"
+                className="text-xs font-semibold text-muted-foreground"
+              >
                 Date
               </label>
               <input
+                id="edit-workout-date"
                 type="date"
                 className="h-10 w-full app-field px-3 text-sm"
                 value={editDate}
@@ -4449,8 +4924,9 @@ export function PtClientDetailPage() {
               <label className="text-xs font-semibold text-muted-foreground">
                 Workout template
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={editTemplateId}
                 onChange={(event) => setEditTemplateId(event.target.value)}
               >
@@ -4463,14 +4939,15 @@ export function PtClientDetailPage() {
                       : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Status
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={editStatus}
                 onChange={(event) =>
                   setEditStatus(
@@ -4481,7 +4958,7 @@ export function PtClientDetailPage() {
                 <option value="planned">Planned</option>
                 <option value="completed">Completed</option>
                 <option value="skipped">Skipped</option>
-              </select>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -4659,31 +5136,49 @@ export function PtClientDetailPage() {
                   ) : selectedCheckinAnswersQuery.data &&
                     selectedCheckinAnswersQuery.data.length > 0 ? (
                     <div className="space-y-3">
-                      {selectedCheckinAnswersQuery.data.map((answer, index) => (
-                        <div
-                          key={answer.id}
-                          className="grid gap-2 rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
-                        >
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                              Prompt {index + 1}
-                            </p>
-                            <p className="text-sm font-medium leading-6 text-foreground">
-                              {answer.question?.question_text ??
-                                answer.question?.prompt ??
-                                "Question"}
-                            </p>
+                      {selectedCheckinAnswersWindow.visibleRows.map(
+                        (answer, index) => (
+                          <div
+                            key={answer.id}
+                            className="grid gap-2 rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
+                          >
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                Prompt {index + 1}
+                              </p>
+                              <p className="text-sm font-medium leading-6 text-foreground">
+                                {answer.question?.question_text ??
+                                  answer.question?.prompt ??
+                                  "Question"}
+                              </p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                Answer
+                              </p>
+                              <p className="rounded-xl border border-border/50 bg-background/45 px-3 py-2 text-sm leading-6 text-foreground">
+                                {renderCheckinAnswerValue(answer)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                              Answer
-                            </p>
-                            <p className="rounded-xl border border-border/50 bg-background/45 px-3 py-2 text-sm leading-6 text-foreground">
-                              {renderCheckinAnswerValue(answer)}
-                            </p>
-                          </div>
+                        ),
+                      )}
+                      {selectedCheckinAnswersWindow.hasHiddenRows ? (
+                        <div className="flex justify-center pt-1">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={selectedCheckinAnswersWindow.showMore}
+                          >
+                            Show{" "}
+                            {Math.min(
+                              selectedCheckinAnswersWindow.hiddenCount,
+                              8,
+                            )}{" "}
+                            more responses
+                          </Button>
                         </div>
-                      ))}
+                      ) : null}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
@@ -4727,69 +5222,87 @@ export function PtClientDetailPage() {
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                      {selectedCheckinPhotoCards.map((card) => {
-                        const photo = card.photo;
-                        const loadFailed = photo
-                          ? reviewPhotoLoadErrors[photo.id] === true
-                          : false;
-                        const isUnavailable =
-                          card.isMissing || !photo?.url || loadFailed;
-                        return (
-                          <div
-                            key={card.id}
-                            className="space-y-2 rounded-2xl border border-border/60 bg-muted/15 p-2"
-                          >
-                            {isUnavailable ? (
-                              <div className="flex aspect-[4/5] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 px-3 text-center text-xs text-muted-foreground">
-                                <div className="space-y-1">
-                                  <div className="font-medium text-foreground">
-                                    {card.label}
-                                  </div>
-                                  <div>
-                                    {card.isMissing
-                                      ? "No image uploaded"
-                                      : "Image unavailable"}
+                    <>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                        {selectedCheckinPhotosWindow.visibleRows.map((card) => {
+                          const photo = card.photo;
+                          const loadFailed = photo
+                            ? reviewPhotoLoadErrors[photo.id] === true
+                            : false;
+                          const isUnavailable =
+                            card.isMissing || !photo?.url || loadFailed;
+                          return (
+                            <div
+                              key={card.id}
+                              className="space-y-2 rounded-2xl border border-border/60 bg-muted/15 p-2"
+                            >
+                              {isUnavailable ? (
+                                <div className="flex aspect-[4/5] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+                                  <div className="space-y-1">
+                                    <div className="font-medium text-foreground">
+                                      {card.label}
+                                    </div>
+                                    <div>
+                                      {card.isMissing
+                                        ? "No image uploaded"
+                                        : "Image unavailable"}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                className="block w-full overflow-hidden rounded-xl border border-border/60 bg-background transition hover:border-border hover:shadow-sm"
-                                onClick={() => setReviewPhotoPreview(photo)}
-                              >
-                                <img
-                                  src={photo.url}
-                                  alt={`${card.label} progress photo`}
-                                  className="aspect-[4/5] w-full object-cover"
-                                  onError={() =>
-                                    setReviewPhotoLoadErrors((current) => ({
-                                      ...current,
-                                      [photo.id]: true,
-                                    }))
-                                  }
-                                />
-                              </button>
-                            )}
-                            <div className="flex items-center justify-between gap-2 px-1">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                {card.label}
-                              </p>
-                              {!isUnavailable ? (
+                              ) : (
                                 <button
                                   type="button"
-                                  className="text-[11px] font-medium text-foreground underline-offset-4 hover:underline"
+                                  className="block w-full overflow-hidden rounded-xl border border-border/60 bg-background transition hover:border-border hover:shadow-sm"
                                   onClick={() => setReviewPhotoPreview(photo)}
                                 >
-                                  Preview
+                                  <img
+                                    src={photo.url}
+                                    alt={`${card.label} progress photo`}
+                                    className="aspect-[4/5] w-full object-cover"
+                                    onError={() =>
+                                      setReviewPhotoLoadErrors((current) => ({
+                                        ...current,
+                                        [photo.id]: true,
+                                      }))
+                                    }
+                                  />
                                 </button>
-                              ) : null}
+                              )}
+                              <div className="flex items-center justify-between gap-2 px-1">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                  {card.label}
+                                </p>
+                                {!isUnavailable ? (
+                                  <button
+                                    type="button"
+                                    className="text-[11px] font-medium text-foreground underline-offset-4 hover:underline"
+                                    onClick={() => setReviewPhotoPreview(photo)}
+                                  >
+                                    Preview
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                      {selectedCheckinPhotosWindow.hasHiddenRows ? (
+                        <div className="mt-3 flex justify-center">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={selectedCheckinPhotosWindow.showMore}
+                          >
+                            Show{" "}
+                            {Math.min(
+                              selectedCheckinPhotosWindow.hiddenCount,
+                              6,
+                            )}{" "}
+                            more photos
+                          </Button>
+                        </div>
+                      ) : null}
+                    </>
                   )}
                 </div>
               </TabsContent>
@@ -5222,8 +5735,9 @@ export function PtClientDetailPage() {
               <label className="text-xs font-semibold text-muted-foreground">
                 Training type
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={profileEditForm.training_type}
                 onChange={(event) =>
                   setProfileEditForm((prev) => ({
@@ -5238,7 +5752,7 @@ export function PtClientDetailPage() {
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <label className="text-xs font-semibold text-muted-foreground">
@@ -5277,6 +5791,7 @@ export function PtClientDetailPage() {
 }
 
 function PtClientScheduleCard({
+  enabled,
   clientId,
   workspaceId,
   timezone,
@@ -5340,12 +5855,12 @@ function PtClientScheduleCard({
   const [dayNote, setDayNote] = useState("");
   const [dayNoteStatus, setDayNoteStatus] = useState<"idle" | "saving">("idle");
   const [dayNoteMessage, setDayNoteMessage] = useState<string | null>(null);
-  const [addWorkoutStatus, setAddWorkoutStatus] = useState<
-    "idle" | "saving"
-  >("idle");
-  const [addWorkoutMessage, setAddWorkoutMessage] = useState<
-    string | null
-  >(null);
+  const [addWorkoutStatus, setAddWorkoutStatus] = useState<"idle" | "saving">(
+    "idle",
+  );
+  const [addWorkoutMessage, setAddWorkoutMessage] = useState<string | null>(
+    null,
+  );
   const [nutritionAssignOpen, setNutritionAssignOpen] = useState(false);
   const [nutritionAssignDate, setNutritionAssignDate] = useState<string | null>(
     null,
@@ -5383,7 +5898,7 @@ function PtClientScheduleCard({
       scheduleStartKey,
       scheduleEndKey,
     ],
-    enabled: !!clientId,
+    enabled: enabled && !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
@@ -5430,7 +5945,7 @@ function PtClientScheduleCard({
       scheduleStartKey,
       scheduleEndKey,
     ],
-    enabled: !!clientId,
+    enabled: enabled && !!clientId,
     queryFn: async () => {
       const { error: ensureError } = await supabase.rpc(
         "ensure_client_checkins",
@@ -5456,7 +5971,7 @@ function PtClientScheduleCard({
 
   const nutritionTemplatesQuery = useQuery({
     queryKey: ["pt-client-nutrition-templates", workspaceId],
-    enabled: !!workspaceId,
+    enabled: enabled && !!workspaceId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("nutrition_templates")
@@ -5475,7 +5990,7 @@ function PtClientScheduleCard({
       scheduleStartKey,
       scheduleEndKey,
     ],
-    enabled: !!clientId,
+    enabled: enabled && !!clientId,
     queryFn: async () => {
       const { data: plans, error: planError } = await supabase
         .from("assigned_nutrition_plans")
@@ -5983,10 +6498,14 @@ function PtClientScheduleCard({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground">
+            <label
+              htmlFor="reschedule-workout-date"
+              className="text-xs font-semibold text-muted-foreground"
+            >
               Date
             </label>
             <Input
+              id="reschedule-workout-date"
               type="date"
               value={editDate}
               onChange={(event) => setEditDate(event.target.value)}
@@ -6092,7 +6611,9 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "completed")
                 }
-                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
+                disabled={
+                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                }
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Mark complete
@@ -6103,7 +6624,9 @@ function PtClientScheduleCard({
                   selectedWorkout &&
                   onStatusChange(selectedWorkout.id, "skipped")
                 }
-                disabled={!selectedWorkout || selectedWorkout.day_type === "rest"}
+                disabled={
+                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                }
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 Mark missed
@@ -6182,13 +6705,23 @@ function PtClientScheduleCard({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input
-              type="date"
-              value={nutritionAssignDate ?? ""}
-              onChange={(event) => setNutritionAssignDate(event.target.value)}
-            />
-            <select
-              className="h-10 w-full app-field px-3 text-sm"
+            <div className="space-y-2">
+              <label
+                htmlFor="nutrition-assign-date"
+                className="text-xs font-semibold text-muted-foreground"
+              >
+                Start date
+              </label>
+              <Input
+                id="nutrition-assign-date"
+                type="date"
+                value={nutritionAssignDate ?? ""}
+                onChange={(event) => setNutritionAssignDate(event.target.value)}
+              />
+            </div>
+            <Select
+              variant="field"
+              className="h-10"
               value={nutritionTemplateId}
               onChange={(event) => setNutritionTemplateId(event.target.value)}
             >
@@ -6198,7 +6731,7 @@ function PtClientScheduleCard({
                   {template.name ?? "Program"}
                 </option>
               ))}
-            </select>
+            </Select>
             <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
               <p className="mb-2 font-semibold text-foreground">
                 Next 7 days preview
@@ -6370,17 +6903,26 @@ function PtClientScheduleCard({
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="program-override-date"
+                className="text-xs font-semibold text-muted-foreground"
+              >
                 Date
               </label>
-              <Input type="date" value={overrideDate ?? ""} readOnly />
+              <Input
+                id="program-override-date"
+                type="date"
+                value={overrideDate ?? ""}
+                readOnly
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Workout template
               </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
+              <Select
+                variant="field"
+                className="h-10"
                 value={overrideTemplateId}
                 disabled={overrideIsRest}
                 onChange={(event) => {
@@ -6399,7 +6941,7 @@ function PtClientScheduleCard({
                       : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <input
@@ -7134,12 +7676,13 @@ function PtClientHabitsTab({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <StatCard
                 label="Adherence"
                 value={`${Number.isFinite(adherencePct) ? adherencePct : 0}%`}
                 helper="Logged days / 7"
                 icon={Sparkles}
+                className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta:
                     Number.isFinite(adherencePct) &&
@@ -7154,6 +7697,7 @@ function PtClientHabitsTab({
                 value={`${habitStreak} days`}
                 helper="Days logged in a row"
                 icon={Rocket}
+                className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta: habitStreak - previousHabitStreak,
                   suffix: "d",
@@ -7172,6 +7716,7 @@ function PtClientHabitsTab({
                 }
                 helper="7-day averages"
                 icon={Flame}
+                className="h-full min-h-[170px]"
                 delta={
                   typeof avgSteps === "number" &&
                   typeof habitTrends.previousAvgSteps === "number"
@@ -7648,8 +8193,9 @@ function PtClientPlanTab({
                     <label className="text-xs font-semibold text-muted-foreground">
                       Program
                     </label>
-                    <select
-                      className="h-10 w-full app-field px-3 text-sm"
+                    <Select
+                      variant="field"
+                      className="h-10"
                       value={selectedProgramId}
                       onChange={(event) => onProgramChange(event.target.value)}
                     >
@@ -7662,13 +8208,17 @@ function PtClientPlanTab({
                             : ""}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">
+                    <label
+                      htmlFor="program-start-date"
+                      className="text-xs font-semibold text-muted-foreground"
+                    >
                       Start date
                     </label>
                     <input
+                      id="program-start-date"
                       type="date"
                       className="h-10 w-full app-field px-3 text-sm"
                       value={programStartDate}
@@ -7816,8 +8366,9 @@ function PtClientPlanTab({
                     <label className="text-xs font-semibold text-muted-foreground">
                       Workout template
                     </label>
-                    <select
-                      className="h-10 w-full app-field px-3 text-sm"
+                    <Select
+                      variant="field"
+                      className="h-10"
                       value={selectedTemplateId}
                       onChange={(event) => onTemplateChange(event.target.value)}
                     >
@@ -7830,13 +8381,17 @@ function PtClientPlanTab({
                             : ""}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">
+                    <label
+                      htmlFor="assign-workout-date"
+                      className="text-xs font-semibold text-muted-foreground"
+                    >
                       Date
                     </label>
                     <input
+                      id="assign-workout-date"
                       type="date"
                       className="h-10 w-full app-field px-3 text-sm"
                       value={scheduledDate}
@@ -8020,10 +8575,13 @@ function PtClientNutritionTab({
   clientId,
   workspaceId,
   todayKey,
+  enabled,
 }: {
+  enabled: boolean;
   clientId: string | null;
   workspaceId: string | null;
   todayKey: string;
+  enabled: boolean;
 }) {
   const queryClient = useQueryClient();
   const [selectedNutritionProgramId, setSelectedNutritionProgramId] =
@@ -8039,7 +8597,7 @@ function PtClientNutritionTab({
 
   const nutritionProgramsQuery = useQuery({
     queryKey: ["pt-client-nutrition-programs", workspaceId],
-    enabled: !!workspaceId,
+    enabled: enabled && !!workspaceId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("nutrition_templates")
@@ -8053,7 +8611,7 @@ function PtClientNutritionTab({
 
   const activeNutritionPlanQuery = useQuery({
     queryKey: ["pt-client-active-nutrition-plan", clientId],
-    enabled: !!clientId,
+    enabled: enabled && !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_nutrition_plans")
@@ -8094,7 +8652,7 @@ function PtClientNutritionTab({
 
   const nutritionNext7Query = useQuery({
     queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
-    enabled: !!clientId,
+    enabled: enabled && !!clientId,
     queryFn: async () => {
       const { data: plans, error: plansError } = await supabase
         .from("assigned_nutrition_plans")
@@ -8211,8 +8769,9 @@ function PtClientNutritionTab({
                 <label className="text-xs font-semibold text-muted-foreground">
                   Nutrition program
                 </label>
-                <select
-                  className="h-10 w-full app-field px-3 text-sm"
+                <Select
+                  variant="field"
+                  className="h-10"
                   value={selectedNutritionProgramId}
                   onChange={(event) =>
                     setSelectedNutritionProgramId(event.target.value)
@@ -8227,13 +8786,17 @@ function PtClientNutritionTab({
                         : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
+                <label
+                  htmlFor="nutrition-program-start-date"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
                   Start date
                 </label>
                 <input
+                  id="nutrition-program-start-date"
                   type="date"
                   className="h-10 w-full app-field px-3 text-sm"
                   value={nutritionProgramStartDate}
@@ -8353,6 +8916,12 @@ function PtClientLogsTab({
   const activeCount =
     ptSessionsQuery.data?.filter((session) => !session.completed_at).length ??
     0;
+  const sessionsWindow = useWindowedRows({
+    rows: ptSessionsQuery.data ?? [],
+    initialCount: 10,
+    step: 10,
+    resetKey: ptSessionsQuery.data?.length ?? 0,
+  });
 
   return (
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
@@ -8399,7 +8968,7 @@ function PtClientLogsTab({
             </div>
 
             <div className="space-y-3">
-              {ptSessionsQuery.data.map((session) => {
+              {sessionsWindow.visibleRows.map((session) => {
                 const dateValue =
                   session.completed_at ??
                   session.started_at ??
@@ -8447,6 +9016,17 @@ function PtClientLogsTab({
                 );
               })}
             </div>
+            {sessionsWindow.hasHiddenRows ? (
+              <div className="flex justify-center pt-1">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={sessionsWindow.showMore}
+                >
+                  Show {Math.min(sessionsWindow.hiddenCount, 10)} more sessions
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : (
           <EmptyState
@@ -8458,1401 +9038,5 @@ function PtClientLogsTab({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function PtClientProgressTab({
-  hasBaselineSubmission,
-  onOpenHabits,
-  onOpenBaseline,
-  onOpenWorkout,
-  onOpenCheckins,
-}: {
-  hasBaselineSubmission: boolean;
-  onOpenHabits: () => void;
-  onOpenBaseline: () => void;
-  onOpenWorkout: () => void;
-  onOpenCheckins: () => void;
-}) {
-  const { clientId } = useParams();
-  const todayKey = formatDateKey(new Date());
-  const habitsStart = addDaysToDateString(todayKey, -55);
-  const sessionsStart = addDaysToDateString(todayKey, -83);
-  const checkinsStart = addDaysToDateString(todayKey, -83);
-
-  const progressHabitsQuery = useQuery({
-    queryKey: ["pt-client-progress-habits", clientId, habitsStart, todayKey],
-    enabled: !!clientId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("habit_logs")
-        .select(
-          "log_date, weight_value, weight_unit, steps, sleep_hours, protein_g, calories, energy, hunger, stress",
-        )
-        .eq("client_id", clientId ?? "")
-        .gte("log_date", habitsStart)
-        .lte("log_date", todayKey)
-        .order("log_date", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as HabitLog[];
-    },
-  });
-
-  const progressSessionsQuery = useQuery({
-    queryKey: [
-      "pt-client-progress-sessions",
-      clientId,
-      sessionsStart,
-      todayKey,
-    ],
-    enabled: !!clientId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workout_sessions")
-        .select("id, completed_at, created_at")
-        .eq("client_id", clientId ?? "")
-        .gte("created_at", `${sessionsStart}T00:00:00.000Z`)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Array<{
-        id: string;
-        completed_at: string | null;
-        created_at: string | null;
-      }>;
-    },
-  });
-
-  const progressSessionIds = useMemo(
-    () => (progressSessionsQuery.data ?? []).map((row) => row.id),
-    [progressSessionsQuery.data],
-  );
-
-  const progressSetLogsQuery = useQuery({
-    queryKey: ["pt-client-progress-set-logs", progressSessionIds],
-    enabled: progressSessionIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workout_set_logs")
-        .select(
-          "exercise_id, reps, weight, created_at, exercise:exercises(name), workout_session_id",
-        )
-        .in("workout_session_id", progressSessionIds)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Array<{
-        exercise_id: string | null;
-        reps: number | null;
-        weight: number | null;
-        created_at: string | null;
-        workout_session_id: string | null;
-        exercise: { name: string | null } | { name: string | null }[] | null;
-      }>;
-    },
-  });
-
-  const progressCheckinAnswersQuery = useQuery({
-    queryKey: [
-      "pt-client-progress-checkin-answers",
-      clientId,
-      checkinsStart,
-      todayKey,
-    ],
-    enabled: !!clientId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("checkin_answers")
-        .select(
-          "value_number, value_text, question:checkin_questions(question_text, prompt), checkin:checkins!inner(client_id, week_ending_saturday, submitted_at)",
-        )
-        .eq("checkin.client_id", clientId ?? "")
-        .gte("checkin.week_ending_saturday", checkinsStart)
-        .lte("checkin.week_ending_saturday", todayKey);
-      if (error) throw error;
-      return (data ?? []) as Array<{
-        value_number: number | null;
-        value_text: string | null;
-        question:
-          | { question_text: string | null; prompt: string | null }
-          | { question_text: string | null; prompt: string | null }[]
-          | null;
-        checkin:
-          | {
-              client_id: string | null;
-              week_ending_saturday: string | null;
-              submitted_at: string | null;
-            }
-          | {
-              client_id: string | null;
-              week_ending_saturday: string | null;
-              submitted_at: string | null;
-            }[]
-          | null;
-      }>;
-    },
-  });
-
-  const habitsAnalysis = useMemo(() => {
-    const logs = progressHabitsQuery.data ?? [];
-    if (logs.length === 0) return null;
-
-    const weightLogs = logs.filter(
-      (log) => typeof log.weight_value === "number",
-    );
-    const stepsLogs = logs.filter((log) => typeof log.steps === "number");
-    const midpoint = Math.floor(logs.length / 2);
-    const firstHalf = logs.slice(0, midpoint);
-    const secondHalf = logs.slice(midpoint);
-
-    const avg = (values: Array<number | null | undefined>) => {
-      const nums = values.filter(
-        (value) => typeof value === "number",
-      ) as number[];
-      if (nums.length === 0) return null;
-      return nums.reduce((sum, value) => sum + value, 0) / nums.length;
-    };
-
-    const firstWeight = weightLogs[0]?.weight_value ?? null;
-    const latestWeight =
-      weightLogs[weightLogs.length - 1]?.weight_value ?? null;
-    const weightChange =
-      firstWeight !== null && latestWeight !== null
-        ? latestWeight - firstWeight
-        : null;
-    const weightUnit =
-      weightLogs.find((log) => log.weight_unit)?.weight_unit ?? "kg";
-
-    return {
-      logsCount: logs.length,
-      latestWeight,
-      weightChange,
-      weightUnit,
-      avgStepsFirst: avg(firstHalf.map((log) => log.steps)),
-      avgStepsSecond: avg(secondHalf.map((log) => log.steps)),
-      avgSleepFirst: avg(firstHalf.map((log) => log.sleep_hours)),
-      avgSleepSecond: avg(secondHalf.map((log) => log.sleep_hours)),
-      avgProteinFirst: avg(firstHalf.map((log) => log.protein_g)),
-      avgProteinSecond: avg(secondHalf.map((log) => log.protein_g)),
-      avgCaloriesFirst: avg(firstHalf.map((log) => log.calories)),
-      avgCaloriesSecond: avg(secondHalf.map((log) => log.calories)),
-      latestSteps:
-        stepsLogs.length > 0 ? stepsLogs[stepsLogs.length - 1].steps : null,
-      firstSteps: stepsLogs.length > 0 ? stepsLogs[0].steps : null,
-    };
-  }, [progressHabitsQuery.data]);
-
-  const exerciseImprovements = useMemo(() => {
-    const logs = progressSetLogsQuery.data ?? [];
-    const byExercise = new Map<
-      string,
-      Array<{
-        created_at: string | null;
-        reps: number | null;
-        weight: number | null;
-        name: string;
-      }>
-    >();
-    logs.forEach((row) => {
-      if (!row.exercise_id) return;
-      const name = Array.isArray(row.exercise)
-        ? (row.exercise[0]?.name ?? "Exercise")
-        : (row.exercise?.name ?? "Exercise");
-      if (!byExercise.has(row.exercise_id)) byExercise.set(row.exercise_id, []);
-      byExercise.get(row.exercise_id)?.push({
-        created_at: row.created_at ?? null,
-        reps: row.reps ?? null,
-        weight: row.weight ?? null,
-        name,
-      });
-    });
-
-    const improved: Array<{
-      exerciseId: string;
-      exerciseName: string;
-      startWeight: number;
-      latestWeight: number;
-      change: number;
-    }> = [];
-
-    byExercise.forEach((rows, exerciseId) => {
-      const weighted = rows.filter(
-        (row) => typeof row.weight === "number",
-      ) as Array<(typeof rows)[number] & { weight: number }>;
-      if (weighted.length < 2) return;
-      const startWeight = weighted[0].weight;
-      const latestWeight = weighted[weighted.length - 1].weight;
-      if (latestWeight <= startWeight) return;
-      improved.push({
-        exerciseId,
-        exerciseName: rows[0]?.name ?? "Exercise",
-        startWeight,
-        latestWeight,
-        change: latestWeight - startWeight,
-      });
-    });
-
-    return improved.sort((a, b) => b.change - a.change).slice(0, 6);
-  }, [progressSetLogsQuery.data]);
-
-  const checkinQuestionTrends = useMemo(() => {
-    const rows = progressCheckinAnswersQuery.data ?? [];
-    const byQuestion = new Map<
-      string,
-      Array<{
-        value_number: number | null;
-        value_text: string | null;
-        date: string | null;
-      }>
-    >();
-
-    rows.forEach((row) => {
-      const question = Array.isArray(row.question)
-        ? (row.question[0] ?? null)
-        : row.question;
-      const checkin = Array.isArray(row.checkin)
-        ? (row.checkin[0] ?? null)
-        : row.checkin;
-      const key = question?.question_text ?? question?.prompt ?? "Question";
-      if (!byQuestion.has(key)) byQuestion.set(key, []);
-      byQuestion.get(key)?.push({
-        value_number: row.value_number ?? null,
-        value_text: row.value_text ?? null,
-        date: checkin?.week_ending_saturday ?? checkin?.submitted_at ?? null,
-      });
-    });
-
-    const numericChanges: Array<{
-      question: string;
-      from: number;
-      to: number;
-      delta: number;
-    }> = [];
-    const textChanges: Array<{
-      question: string;
-      previous: string;
-      latest: string;
-    }> = [];
-
-    byQuestion.forEach((entries, question) => {
-      const ordered = [...entries].sort((a, b) =>
-        String(a.date ?? "").localeCompare(String(b.date ?? "")),
-      );
-      const numeric = ordered.filter(
-        (entry) => typeof entry.value_number === "number",
-      ) as Array<(typeof ordered)[number] & { value_number: number }>;
-      if (numeric.length >= 2) {
-        const from = numeric[0].value_number;
-        const to = numeric[numeric.length - 1].value_number;
-        if (from !== to)
-          numericChanges.push({ question, from, to, delta: to - from });
-      }
-
-      const texts = ordered
-        .map((entry) => entry.value_text?.trim())
-        .filter((value): value is string => Boolean(value));
-      if (texts.length >= 2) {
-        const previous = texts[texts.length - 2];
-        const latest = texts[texts.length - 1];
-        if (previous !== latest)
-          textChanges.push({ question, previous, latest });
-      }
-    });
-
-    return {
-      numeric: numericChanges
-        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-        .slice(0, 6),
-      text: textChanges.slice(0, 4),
-    };
-  }, [progressCheckinAnswersQuery.data]);
-
-  const loading =
-    progressHabitsQuery.isLoading ||
-    progressSessionsQuery.isLoading ||
-    progressSetLogsQuery.isLoading ||
-    progressCheckinAnswersQuery.isLoading;
-
-  const hasCheckinTrendData =
-    checkinQuestionTrends.numeric.length > 0 ||
-    checkinQuestionTrends.text.length > 0;
-  const hasWorkoutHistory = (progressSessionsQuery.data?.length ?? 0) > 0;
-  const trendCards = useMemo(() => {
-    const items: Array<{
-      label: string;
-      value: string;
-      helper: string;
-      icon: ComponentType<{ className?: string }>;
-    }> = [];
-
-    if (
-      habitsAnalysis?.weightChange !== null &&
-      habitsAnalysis?.weightChange !== undefined
-    ) {
-      items.push({
-        label: "Weight delta",
-        value: `${habitsAnalysis.weightChange > 0 ? "+" : ""}${habitsAnalysis.weightChange.toFixed(1)} ${habitsAnalysis.weightUnit}`,
-        helper: "First to latest logged weight",
-        icon: Flame,
-      });
-    }
-
-    if (
-      typeof habitsAnalysis?.avgStepsFirst === "number" &&
-      typeof habitsAnalysis?.avgStepsSecond === "number"
-    ) {
-      const delta =
-        habitsAnalysis.avgStepsSecond - habitsAnalysis.avgStepsFirst;
-      items.push({
-        label: "Steps delta",
-        value: `${delta > 0 ? "+" : ""}${Math.round(delta).toLocaleString()}`,
-        helper: "Later average minus earlier average",
-        icon: Rocket,
-      });
-    }
-
-    if (exerciseImprovements.length > 0) {
-      items.push({
-        label: "Strength movers",
-        value: `${exerciseImprovements.length}`,
-        helper: "Exercises with higher logged loads",
-        icon: CheckCircle2,
-      });
-    }
-
-    if (hasCheckinTrendData) {
-      items.push({
-        label: "Check-in shifts",
-        value: `${checkinQuestionTrends.numeric.length + checkinQuestionTrends.text.length}`,
-        helper: "Questions with meaningful response changes",
-        icon: MessageCircle,
-      });
-    }
-
-    if (
-      items.length === 0 &&
-      typeof habitsAnalysis?.avgProteinFirst === "number" &&
-      typeof habitsAnalysis?.avgProteinSecond === "number"
-    ) {
-      const delta =
-        habitsAnalysis.avgProteinSecond - habitsAnalysis.avgProteinFirst;
-      items.push({
-        label: "Protein delta",
-        value: `${delta > 0 ? "+" : ""}${Math.round(delta)} g`,
-        helper: "Later average minus earlier average",
-        icon: Sparkles,
-      });
-    }
-
-    return items.slice(0, 4);
-  }, [
-    checkinQuestionTrends,
-    exerciseImprovements.length,
-    habitsAnalysis,
-    hasCheckinTrendData,
-  ]);
-
-  return (
-    <div className="space-y-6">
-      <DashboardCard
-        title="Trend snapshot"
-        subtitle="Actionable deltas across habits, training, and check-ins."
-      >
-        {loading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : trendCards.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {trendCards.map((item) => (
-              <StatCard
-                key={item.label}
-                label={item.label}
-                value={item.value}
-                helper={item.helper}
-                icon={item.icon}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="Not enough progress data yet"
-            description={
-              hasBaselineSubmission
-                ? "Once the client logs habits, training, or check-ins, the most useful trend changes will appear here."
-                : "Start by reviewing the baseline so future changes have a stronger point of comparison."
-            }
-            actionLabel={
-              hasBaselineSubmission ? "Open habits" : "Open baseline"
-            }
-            onAction={hasBaselineSubmission ? onOpenHabits : onOpenBaseline}
-          />
-        )}
-      </DashboardCard>
-
-      <DashboardCard
-        title="Habit shifts"
-        subtitle="Compare earlier and later habit patterns in the current window."
-      >
-        {loading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : habitsAnalysis ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">Steps average</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgStepsFirst !== null
-                  ? Math.round(habitsAnalysis.avgStepsFirst).toLocaleString()
-                  : "Not logged"}{" "}
-                to{" "}
-                {habitsAnalysis.avgStepsSecond !== null
-                  ? Math.round(habitsAnalysis.avgStepsSecond).toLocaleString()
-                  : "Not logged"}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">Sleep average</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgSleepFirst !== null
-                  ? habitsAnalysis.avgSleepFirst.toFixed(1)
-                  : "Not logged"}{" "}
-                hrs to{" "}
-                {habitsAnalysis.avgSleepSecond !== null
-                  ? habitsAnalysis.avgSleepSecond.toFixed(1)
-                  : "Not logged"}{" "}
-                hrs
-              </p>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">Protein average</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgProteinFirst !== null
-                  ? Math.round(habitsAnalysis.avgProteinFirst)
-                  : "Not logged"}{" "}
-                g to{" "}
-                {habitsAnalysis.avgProteinSecond !== null
-                  ? Math.round(habitsAnalysis.avgProteinSecond)
-                  : "Not logged"}{" "}
-                g
-              </p>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">Calories average</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgCaloriesFirst !== null
-                  ? Math.round(habitsAnalysis.avgCaloriesFirst)
-                  : "Not logged"}{" "}
-                to{" "}
-                {habitsAnalysis.avgCaloriesSecond !== null
-                  ? Math.round(habitsAnalysis.avgCaloriesSecond)
-                  : "Not logged"}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            title="No habit trend to review yet"
-            description="Habit deltas will appear once the client logs enough daily entries to compare earlier and later behavior."
-            actionLabel="Open habits"
-            onAction={onOpenHabits}
-          />
-        )}
-      </DashboardCard>
-
-      <DashboardCard
-        title="Training progression"
-        subtitle="Recent lift changes and workload context from logged sessions."
-      >
-        {loading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : exerciseImprovements.length > 0 ? (
-          <div className="space-y-2">
-            {exerciseImprovements.map((item) => (
-              <div
-                key={item.exerciseId}
-                className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
-              >
-                <span className="font-medium">{item.exerciseName}</span>
-                <span className="text-muted-foreground">
-                  {item.startWeight} to {item.latestWeight} (
-                  {item.change > 0 ? "+" : ""}
-                  {item.change})
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : hasWorkoutHistory ? (
-          <EmptyState
-            title="Workout history exists, but no clear load gains yet"
-            description="Sessions are being logged, but there is not enough evidence of meaningful load increases in the selected window."
-            actionLabel="Open workout tab"
-            onAction={onOpenWorkout}
-          />
-        ) : (
-          <EmptyState
-            title="No workout history yet"
-            description="Logged training sessions will unlock exercise-level progression here."
-            actionLabel="Open workout tab"
-            onAction={onOpenWorkout}
-          />
-        )}
-      </DashboardCard>
-
-      <DashboardCard
-        title="Check-in themes"
-        subtitle="Numeric deltas and message changes worth reviewing."
-      >
-        {loading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : hasCheckinTrendData ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">
-                Numeric question trends
-              </p>
-              {checkinQuestionTrends.numeric.length > 0 ? (
-                checkinQuestionTrends.numeric.map((row) => (
-                  <div
-                    key={row.question}
-                    className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
-                  >
-                    <span className="truncate pr-3">{row.question}</span>
-                    <span className="text-muted-foreground">
-                      {row.from} to {row.to} ({row.delta > 0 ? "+" : ""}
-                      {row.delta})
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No numeric answer changes detected.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">
-                Text response shifts
-              </p>
-              {checkinQuestionTrends.text.length > 0 ? (
-                checkinQuestionTrends.text.map((row) => (
-                  <div
-                    key={row.question}
-                    className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
-                  >
-                    <p className="font-medium">{row.question}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Previous: {row.previous}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Latest: {row.latest}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No text response changes detected.
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            title="No check-in trend shifts yet"
-            description="Once the client submits repeated check-ins, changing answers and themes will surface here for faster review."
-            actionLabel="Open check-ins"
-            onAction={onOpenCheckins}
-          />
-        )}
-      </DashboardCard>
-    </div>
-  );
-}
-
-function PtClientNotesTab({
-  clientId,
-  workspaceId,
-}: {
-  clientId: string | null;
-  workspaceId: string | null;
-}) {
-  const { user } = useSessionAuth();
-  const queryClient = useQueryClient();
-  const [noteDraft, setNoteDraft] = useState("");
-  const [noteStatus, setNoteStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
-  const [noteMessage, setNoteMessage] = useState<string | null>(null);
-
-  const notesQuery = useQuery({
-    queryKey: ["pt-client-notes", clientId, workspaceId],
-    enabled: !!clientId && !!workspaceId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("coach_activity_log")
-        .select("id, actor_user_id, created_at, metadata")
-        .eq("client_id", clientId ?? "")
-        .eq("workspace_id", workspaceId ?? "")
-        .eq("action", "pt_note")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return (data ?? []) as PtCoachNoteRow[];
-    },
-  });
-
-  const handleSaveNote = async () => {
-    const trimmed = noteDraft.trim();
-    if (!clientId || !workspaceId || !user?.id || trimmed.length === 0) return;
-    setNoteStatus("saving");
-    setNoteMessage(null);
-    const { error } = await supabase.from("coach_activity_log").insert({
-      client_id: clientId,
-      workspace_id: workspaceId,
-      actor_user_id: user.id,
-      action: "pt_note",
-      metadata: {
-        note: trimmed,
-        preview: trimmed.slice(0, 140),
-      },
-    });
-
-    if (error) {
-      setNoteStatus("error");
-      setNoteMessage(getErrorMessage(error));
-      return;
-    }
-
-    setNoteDraft("");
-    setNoteStatus("idle");
-    setNoteMessage("Note added.");
-    await queryClient.invalidateQueries({
-      queryKey: ["pt-client-notes", clientId, workspaceId],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["coach-activity-log", clientId, workspaceId],
-    });
-  };
-
-  const notes = notesQuery.data ?? [];
-
-  return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]">
-      <Card className="border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle>Add note</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Capture coaching context, handoff details, or anything you want
-            visible on this client over time.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <textarea
-            className="min-h-[220px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            value={noteDraft}
-            onChange={(event) => setNoteDraft(event.target.value)}
-            placeholder="Add a coaching note about goals, communication, programming decisions, or anything that matters for the next PT touchpoint."
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Button
-              variant="secondary"
-              disabled={
-                noteStatus === "saving" || noteDraft.trim().length === 0
-              }
-              onClick={handleSaveNote}
-            >
-              {noteStatus === "saving" ? "Saving..." : "Add note"}
-            </Button>
-            {noteMessage ? (
-              <span className="text-xs text-muted-foreground">
-                {noteMessage}
-              </span>
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                Notes are visible only inside this client workspace.
-              </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle>Recent notes</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            A running PT-side note trail for future planning and handoff.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {notesQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          ) : notesQuery.error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {getFriendlyErrorMessage()}
-            </div>
-          ) : notes.length > 0 ? (
-            notes.map((note) => {
-              const noteText =
-                typeof note.metadata?.note === "string"
-                  ? note.metadata.note
-                  : typeof note.metadata?.preview === "string"
-                    ? note.metadata.preview
-                    : "No note body recorded.";
-              return (
-                <div
-                  key={note.id}
-                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-foreground">
-                      {note.actor_user_id === user?.id ? "You" : "Coach note"}
-                    </p>
-                    <span className="text-xs text-muted-foreground">
-                      {formatShortDateTime(note.created_at)}
-                    </span>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                    {noteText}
-                  </p>
-                </div>
-              );
-            })
-          ) : (
-            <EmptyState
-              title="No PT notes yet"
-              description="Use notes to capture coaching context, decision history, and anything another coach would need when they open this client."
-              icon={<Pencil className="h-5 w-5" />}
-            />
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function PtClientMedicalTab({
-  clientId,
-  workspaceId,
-}: {
-  clientId: string | null;
-  workspaceId: string | null;
-}) {
-  const { user } = useSessionAuth();
-  const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [historyTitle, setHistoryTitle] = useState("");
-  const [historyDate, setHistoryDate] = useState("");
-  const [historyNotes, setHistoryNotes] = useState("");
-  const [historyStatus, setHistoryStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
-  const [historyMessage, setHistoryMessage] = useState<string | null>(null);
-  const [labName, setLabName] = useState("");
-  const [labValue, setLabValue] = useState("");
-  const [labUnit, setLabUnit] = useState("");
-  const [labDate, setLabDate] = useState("");
-  const [labNotes, setLabNotes] = useState("");
-  const [labStatus, setLabStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
-  const [labMessage, setLabMessage] = useState<string | null>(null);
-  const [documentLabel, setDocumentLabel] = useState("");
-  const [documentDate, setDocumentDate] = useState("");
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  const [documentStatus, setDocumentStatus] = useState<
-    "idle" | "saving" | "error"
-  >("idle");
-  const [documentMessage, setDocumentMessage] = useState<string | null>(null);
-  const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(
-    null,
-  );
-
-  const recordsQuery = useQuery({
-    queryKey: ["pt-client-medical-records", clientId, workspaceId],
-    enabled: !!clientId && !!workspaceId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_medical_records")
-        .select(
-          "id, entry_type, title, result_value, unit, observed_at, notes, created_at",
-        )
-        .eq("client_id", clientId ?? "")
-        .eq("workspace_id", workspaceId ?? "")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const documentsQuery = useQuery({
-    queryKey: ["pt-client-medical-documents", clientId, workspaceId],
-    enabled: !!clientId && !!workspaceId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_medical_documents")
-        .select(
-          "id, label, file_name, mime_type, file_size, storage_path, observed_at, created_at",
-        )
-        .eq("client_id", clientId ?? "")
-        .eq("workspace_id", workspaceId ?? "")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const historyEntries = useMemo(
-    () =>
-      (recordsQuery.data ?? []).filter(
-        (entry) => entry.entry_type === "history",
-      ),
-    [recordsQuery.data],
-  );
-
-  const labEntries = useMemo(
-    () =>
-      (recordsQuery.data ?? []).filter(
-        (entry) => entry.entry_type === "lab_result",
-      ),
-    [recordsQuery.data],
-  );
-
-  const handleSaveHistory = async () => {
-    const trimmedTitle = historyTitle.trim();
-    const trimmedNotes = historyNotes.trim();
-    if (!clientId || !workspaceId || !user?.id || trimmedTitle.length === 0) {
-      return;
-    }
-    setHistoryStatus("saving");
-    setHistoryMessage(null);
-    const { error } = await supabase.from("client_medical_records").insert({
-      client_id: clientId,
-      workspace_id: workspaceId,
-      entry_type: "history",
-      title: trimmedTitle,
-      observed_at: historyDate || null,
-      notes: trimmedNotes || null,
-      created_by: user.id,
-    });
-
-    if (error) {
-      setHistoryStatus("error");
-      setHistoryMessage(getErrorMessage(error));
-      return;
-    }
-
-    setHistoryTitle("");
-    setHistoryDate("");
-    setHistoryNotes("");
-    setHistoryStatus("idle");
-    setHistoryMessage("Medical history saved.");
-    await queryClient.invalidateQueries({
-      queryKey: ["pt-client-medical-records", clientId, workspaceId],
-    });
-  };
-
-  const handleSaveLabResult = async () => {
-    const trimmedName = labName.trim();
-    const trimmedValue = labValue.trim();
-    const trimmedUnit = labUnit.trim();
-    const trimmedNotes = labNotes.trim();
-    if (
-      !clientId ||
-      !workspaceId ||
-      !user?.id ||
-      trimmedName.length === 0 ||
-      trimmedValue.length === 0
-    ) {
-      return;
-    }
-    setLabStatus("saving");
-    setLabMessage(null);
-    const { error } = await supabase.from("client_medical_records").insert({
-      client_id: clientId,
-      workspace_id: workspaceId,
-      entry_type: "lab_result",
-      title: trimmedName,
-      result_value: trimmedValue,
-      unit: trimmedUnit || null,
-      observed_at: labDate || null,
-      notes: trimmedNotes || null,
-      created_by: user.id,
-    });
-
-    if (error) {
-      setLabStatus("error");
-      setLabMessage(getErrorMessage(error));
-      return;
-    }
-
-    setLabName("");
-    setLabValue("");
-    setLabUnit("");
-    setLabDate("");
-    setLabNotes("");
-    setLabStatus("idle");
-    setLabMessage("Lab result saved.");
-    await queryClient.invalidateQueries({
-      queryKey: ["pt-client-medical-records", clientId, workspaceId],
-    });
-  };
-
-  const handleUploadDocument = async () => {
-    if (!clientId || !workspaceId || !user?.id || !documentFile) return;
-    setDocumentStatus("saving");
-    setDocumentMessage(null);
-
-    const sanitizedFileName = sanitizeStorageFileName(documentFile.name);
-    const storagePath = `${clientId}/${crypto.randomUUID()}-${sanitizedFileName}`;
-    const { error: uploadError } = await supabase.storage
-      .from("medical_documents")
-      .upload(storagePath, documentFile, {
-        upsert: false,
-        contentType: documentFile.type || "application/octet-stream",
-      });
-
-    if (uploadError) {
-      setDocumentStatus("error");
-      setDocumentMessage(getErrorMessage(uploadError));
-      return;
-    }
-
-    const { error: insertError } = await supabase
-      .from("client_medical_documents")
-      .insert({
-        client_id: clientId,
-        workspace_id: workspaceId,
-        label: documentLabel.trim() || null,
-        file_name: documentFile.name,
-        mime_type: documentFile.type || null,
-        file_size: documentFile.size || null,
-        storage_path: storagePath,
-        observed_at: documentDate || null,
-        uploaded_by: user.id,
-      });
-
-    if (insertError) {
-      await supabase.storage.from("medical_documents").remove([storagePath]);
-      setDocumentStatus("error");
-      setDocumentMessage(getErrorMessage(insertError));
-      return;
-    }
-
-    setDocumentLabel("");
-    setDocumentDate("");
-    setDocumentFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    setDocumentStatus("idle");
-    setDocumentMessage("Medical report uploaded.");
-    await queryClient.invalidateQueries({
-      queryKey: ["pt-client-medical-documents", clientId, workspaceId],
-    });
-  };
-
-  const handleOpenDocument = async (documentRow: {
-    id: string;
-    storage_path: string | null;
-  }) => {
-    if (!documentRow.storage_path) return;
-    setOpeningDocumentId(documentRow.id);
-    const { data, error } = await supabase.storage
-      .from("medical_documents")
-      .createSignedUrl(documentRow.storage_path, 60 * 10);
-    setOpeningDocumentId(null);
-
-    if (error || !data?.signedUrl) {
-      setDocumentStatus("error");
-      setDocumentMessage(error ? getErrorMessage(error) : "Unable to open file.");
-      return;
-    }
-
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-  };
-
-  return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]">
-      <div className="space-y-6">
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HeartPulse className="h-4 w-4 text-primary" />
-              Medical history
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Record diagnoses, surgeries, medications, injuries, or anything
-              that should stay in the coaching workspace.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                History item
-              </label>
-              <Input
-                value={historyTitle}
-                onChange={(event) => setHistoryTitle(event.target.value)}
-                placeholder="Ex: Prior ACL reconstruction, thyroid medication, low back pain history"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Relevant date
-              </label>
-              <Input
-                type="date"
-                value={historyDate}
-                onChange={(event) => setHistoryDate(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Notes
-              </label>
-              <textarea
-                className="min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={historyNotes}
-                onChange={(event) => setHistoryNotes(event.target.value)}
-                placeholder="Capture context that should follow programming and check-in decisions."
-              />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Button
-                variant="secondary"
-                onClick={handleSaveHistory}
-                disabled={
-                  historyStatus === "saving" || historyTitle.trim().length === 0
-                }
-              >
-                {historyStatus === "saving" ? "Saving..." : "Add history item"}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {historyMessage ?? "Visible only in the client medical record."}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FlaskConical className="h-4 w-4 text-primary" />
-              Add lab result
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Log individual test values without leaving the client workspace.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1.1fr)_120px_120px]">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Test name
-                </label>
-                <Input
-                  value={labName}
-                  onChange={(event) => setLabName(event.target.value)}
-                  placeholder="Ex: HbA1c, Vitamin D, LDL"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Value
-                </label>
-                <Input
-                  value={labValue}
-                  onChange={(event) => setLabValue(event.target.value)}
-                  placeholder="5.7"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Unit
-                </label>
-                <Input
-                  value={labUnit}
-                  onChange={(event) => setLabUnit(event.target.value)}
-                  placeholder="%"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Test date
-              </label>
-              <Input
-                type="date"
-                value={labDate}
-                onChange={(event) => setLabDate(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Notes
-              </label>
-              <textarea
-                className="min-h-[96px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={labNotes}
-                onChange={(event) => setLabNotes(event.target.value)}
-                placeholder="Optional context, trend notes, or coaching implications."
-              />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Button
-                variant="secondary"
-                onClick={handleSaveLabResult}
-                disabled={
-                  labStatus === "saving" ||
-                  labName.trim().length === 0 ||
-                  labValue.trim().length === 0
-                }
-              >
-                {labStatus === "saving" ? "Saving..." : "Add test result"}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {labMessage ?? "Name, value, and unit keep results scan-friendly."}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-4 w-4 text-primary" />
-              Upload report
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Attach a lab report, bloodwork PDF, or photo of medical results.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Label
-                </label>
-                <Input
-                  value={documentLabel}
-                  onChange={(event) => setDocumentLabel(event.target.value)}
-                  placeholder="Ex: March blood panel"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Report date
-                </label>
-                <Input
-                  type="date"
-                  value={documentDate}
-                  onChange={(event) => setDocumentDate(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                File
-              </label>
-              <Input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,image/*"
-                onChange={(event) =>
-                  setDocumentFile(event.target.files?.[0] ?? null)
-                }
-              />
-            </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
-              Accepts PDF and image uploads. Files stay private and open through
-              signed URLs.
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Button
-                variant="secondary"
-                onClick={handleUploadDocument}
-                disabled={documentStatus === "saving" || !documentFile}
-              >
-                {documentStatus === "saving" ? "Uploading..." : "Upload report"}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {documentMessage ??
-                  (documentFile
-                    ? `${documentFile.name} selected`
-                    : "Attach a PDF or image file.")}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-6">
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle>Medical history timeline</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Operational history that should shape programming and coaching
-              decisions.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recordsQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : recordsQuery.error ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                {getFriendlyErrorMessage()}
-              </div>
-            ) : historyEntries.length > 0 ? (
-              historyEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-foreground">
-                      {entry.title}
-                    </p>
-                    <span className="text-xs text-muted-foreground">
-                      {formatShortDate(entry.observed_at, "No date recorded")}
-                    </span>
-                  </div>
-                  {entry.notes ? (
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                      {entry.notes}
-                    </p>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <EmptyState
-                title="No medical history recorded"
-                description="Add history items here so key context stays attached to the client, not buried in messages."
-                icon={<HeartPulse className="h-5 w-5" />}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle>Lab results</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Structured test values stay easy to compare at a glance.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recordsQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : recordsQuery.error ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                {getFriendlyErrorMessage()}
-              </div>
-            ) : labEntries.length > 0 ? (
-              labEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {entry.title}
-                      </p>
-                      <p className="mt-1 text-lg font-semibold text-foreground">
-                        {entry.result_value}
-                        {entry.unit ? ` ${entry.unit}` : ""}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatShortDate(entry.observed_at, "No date recorded")}
-                    </span>
-                  </div>
-                  {entry.notes ? (
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                      {entry.notes}
-                    </p>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <EmptyState
-                title="No lab results yet"
-                description="Use structured values for labs you want to review quickly during programming and check-ins."
-                icon={<FlaskConical className="h-5 w-5" />}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle>Uploaded reports</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              File attachments for PDFs, scans, screenshots, and report photos.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {documentsQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : documentsQuery.error ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                {getFriendlyErrorMessage()}
-              </div>
-            ) : (documentsQuery.data ?? []).length > 0 ? (
-              (documentsQuery.data ?? []).map((documentRow) => (
-                <div
-                  key={documentRow.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/35 p-4"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {documentRow.label?.trim() || documentRow.file_name}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {documentRow.file_name}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatFileSize(documentRow.file_size)}</span>
-                      <span>•</span>
-                      <span>
-                        {formatShortDate(
-                          documentRow.observed_at,
-                          formatShortDate(documentRow.created_at),
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleOpenDocument(documentRow)}
-                    disabled={openingDocumentId === documentRow.id}
-                  >
-                    {openingDocumentId === documentRow.id ? "Opening..." : "Open"}
-                  </Button>
-                </div>
-              ))
-            ) : (
-              <EmptyState
-                title="No uploaded reports yet"
-                description="Upload bloodwork PDFs or result screenshots here so the medical record stays attached to the client."
-                icon={<FileText className="h-5 w-5" />}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
   );
 }

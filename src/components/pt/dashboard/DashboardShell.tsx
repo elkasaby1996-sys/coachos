@@ -1,3 +1,9 @@
+import { StaggerGroup } from "../../common/motion-primitives";
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  return <div className="space-y-6">{children}</div>;
+  return (
+    <StaggerGroup className="space-y-6" stagger={0.08} delayChildren={0.04}>
+      {children}
+    </StaggerGroup>
+  );
 }

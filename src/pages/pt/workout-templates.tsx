@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
@@ -279,18 +280,22 @@ export function PtWorkoutTemplatesPage() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          className="w-full sm:w-72"
-          placeholder="Search templates"
-          value={searchQuery}
-          onChange={(event) => {
-            const next = event.target.value;
-            setSearchQuery(next);
-            updateParams({ q: next });
-          }}
-        />
-        <select
-          className="workspace-filter-chip w-full sm:w-auto"
+        <div className="relative w-full sm:w-72">
+          <Search className="app-search-icon h-4 w-4" />
+          <Input
+            className="app-search-input"
+            placeholder="Search templates"
+            value={searchQuery}
+            onChange={(event) => {
+              const next = event.target.value;
+              setSearchQuery(next);
+              updateParams({ q: next });
+            }}
+          />
+        </div>
+        <Select
+          variant="filter"
+          className="w-full sm:w-auto sm:min-w-[12rem]"
           value={typeFilter}
           onChange={(event) => {
             const next = event.target.value;
@@ -304,9 +309,10 @@ export function PtWorkoutTemplatesPage() {
               {value}
             </option>
           ))}
-        </select>
-        <select
-          className="workspace-filter-chip w-full sm:w-auto"
+        </Select>
+        <Select
+          variant="filter"
+          className="w-full sm:w-auto sm:min-w-[11rem]"
           value={sortBy}
           onChange={(event) => {
             const next = event.target.value;
@@ -316,7 +322,7 @@ export function PtWorkoutTemplatesPage() {
         >
           <option value="newest">Sort by newest</option>
           <option value="name">Sort by name</option>
-        </select>
+        </Select>
         <Button
           onClick={() => {
             setCreateError(null);

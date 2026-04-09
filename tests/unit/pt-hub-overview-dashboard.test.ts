@@ -138,6 +138,7 @@ function createClient(
     displayName: "Taylor Client",
     status: "active",
     lifecycleState: "active",
+    manualRiskFlag: false,
     lifecycleChangedAt: null,
     pausedReason: null,
     churnReason: null,
@@ -287,7 +288,8 @@ describe("PT Hub overview dashboard model", () => {
         }),
         createClient({
           id: "client-risk",
-          lifecycleState: "at_risk",
+          lifecycleState: "active",
+          manualRiskFlag: true,
           riskFlags: ["missed_checkins"],
         }),
       ],

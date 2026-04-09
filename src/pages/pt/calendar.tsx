@@ -330,6 +330,7 @@ export function PtCalendarPage() {
               <Button
                 size="icon"
                 variant="secondary"
+                aria-label="Previous month"
                 onClick={() =>
                   setMonthCursor(
                     (prev) =>
@@ -342,6 +343,7 @@ export function PtCalendarPage() {
               <Button
                 size="icon"
                 variant="secondary"
+                aria-label="Next month"
                 onClick={() =>
                   setMonthCursor(
                     (prev) =>
@@ -661,10 +663,14 @@ export function PtCalendarPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">
+                <label
+                  htmlFor="calendar-event-date"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
                   Date
                 </label>
                 <Input
+                  id="calendar-event-date"
                   type="date"
                   value={eventDate}
                   onChange={(event) => setEventDate(event.target.value)}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Building,
   Check,
@@ -19,6 +20,7 @@ import {
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { PageContainer } from "../common/page-container";
+import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,75 +32,150 @@ import {
 import { cn } from "../../lib/utils";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
-import { usePtHubProfile, usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
+import {
+  usePtHubSettings,
+  usePtHubProfile,
+  usePtHubWorkspaces,
+} from "../../features/pt-hub/lib/pt-hub";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
+import { AppFooter } from "../common/app-footer";
+import { RouteTransition } from "../common/route-transition";
 import { supabase } from "../../lib/supabase";
 import { getUserDisplayName } from "../../lib/account-profiles";
+import {
+  getSemanticToneClasses,
+  getSemanticToneForStatus,
+} from "../../lib/semantic-status";
+import {
+  getModuleToneClasses,
+  getModuleToneStyle,
+  type ModuleTone,
+} from "../../lib/module-tone";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
+import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
   {
     label: "Home",
     items: [
-      { label: "Overview", to: "/pt-hub", icon: PanelsTopLeft, end: true },
-      { label: "Coach Profile", to: "/pt-hub/profile", icon: UserRound },
-      { label: "Profile Preview", to: "/pt-hub/profile/preview", icon: Globe },
+      {
+        label: "Overview",
+        to: "/pt-hub",
+        icon: PanelsTopLeft,
+        end: true,
+        module: "overview" as const,
+      },
+      {
+        label: "Coach Profile",
+        to: "/pt-hub/profile",
+        icon: UserRound,
+        module: "profile" as const,
+      },
+      {
+        label: "Profile Preview",
+        to: "/pt-hub/profile/preview",
+        icon: Globe,
+        module: "profile" as const,
+      },
     ],
   },
   {
     label: "Clients",
     items: [
-      { label: "Leads", to: "/pt-hub/leads", icon: MessageSquarePlus },
-      { label: "Clients", to: "/pt-hub/clients", icon: UsersRound },
-      { label: "Coaching Spaces", to: "/pt-hub/workspaces", icon: Building },
-      { label: "Payments", to: "/pt-hub/payments", icon: Wallet },
-      { label: "Analytics", to: "/pt-hub/analytics", icon: PanelsTopLeft },
+      {
+        label: "Leads",
+        to: "/pt-hub/leads",
+        icon: MessageSquarePlus,
+        module: "leads" as const,
+      },
+      {
+        label: "Clients",
+        to: "/pt-hub/clients",
+        icon: UsersRound,
+        module: "clients" as const,
+      },
+      {
+        label: "Coaching Spaces",
+        to: "/pt-hub/workspaces",
+        icon: Building,
+        module: "coaching" as const,
+      },
+      {
+        label: "Payments",
+        to: "/pt-hub/payments",
+        icon: Wallet,
+        module: "billing" as const,
+      },
+      {
+        label: "Analytics",
+        to: "/pt-hub/analytics",
+        icon: PanelsTopLeft,
+        module: "analytics" as const,
+      },
     ],
   },
   {
     label: "Account",
     items: [
-      { label: "Settings", to: "/pt-hub/settings", icon: SlidersHorizontal },
+      {
+        label: "Settings",
+        to: "/pt-hub/settings",
+        icon: SlidersHorizontal,
+        module: "settings" as const,
+      },
     ],
   },
 ] as const;
 
-const routeMeta: Record<string, { title: string; description: string }> = {
+const routeMeta: Record<
+  string,
+  { title: string; description: string; module: ModuleTone }
+> = {
   "/pt-hub": {
     title: "Overview",
     description: "Run your coaching business from one dashboard.",
+    module: "overview",
   },
   "/pt-hub/profile": {
     title: "Coach Profile",
     description: "Update the public trainer page clients will see.",
+    module: "profile",
   },
   "/pt-hub/profile/preview": {
     title: "Profile Preview",
     description: "Preview your public trainer page before sharing it.",
+    module: "profile",
   },
   "/pt-hub/leads": {
     title: "Leads",
     description: "Review new inquiries and follow up faster.",
+    module: "leads",
   },
   "/pt-hub/clients": {
     title: "Clients",
     description: "See every client across your coaching spaces.",
+    module: "clients",
   },
   "/pt-hub/workspaces": {
     title: "Coaching Spaces",
     description: "Open, create, and manage your coaching spaces.",
+    module: "coaching",
   },
   "/pt-hub/payments": {
     title: "Payments",
     description: "Check billing, invoices, and revenue at a glance.",
+    module: "billing",
   },
   "/pt-hub/analytics": {
     title: "Analytics",
     description: "Track inquiries, conversions, and client growth.",
+    module: "analytics",
   },
   "/pt-hub/settings": {
-    title: "Account Settings",
+    title: "PT Hub Settings",
     description:
-      "Manage account details, notifications, and profile visibility.",
+      "Manage account identity, security, billing, and notifications.",
+    module: "settings",
   },
 };
 
@@ -107,55 +184,30 @@ const PT_HUB_THEME_STORAGE_KEY = "coachos-pt-hub-theme-mode";
 
 type PtHubThemeMode = "dark" | "light";
 
-function getPtHubDropdownContentClassName(isLightMode: boolean) {
-  return cn(
-    "w-60 rounded-[22px] border p-1.5 text-foreground backdrop-blur-3xl",
-    isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(236,241,245,0.78),rgba(220,228,235,0.68))] shadow-[0_26px_62px_-36px_rgba(15,23,42,0.16)]"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(16,20,18,0.94),rgba(9,12,11,0.92))] shadow-[0_30px_72px_-40px_rgba(0,0,0,0.92)]",
+function getPtHubRouteMeta(pathname: string) {
+  return (
+    Object.entries(routeMeta)
+      .sort((a, b) => b[0].length - a[0].length)
+      .find(
+        ([routePath]) =>
+          pathname === routePath || pathname.startsWith(`${routePath}/`),
+      )?.[1] ?? defaultRouteMeta
   );
 }
 
-function getPtHubDropdownItemClassName(isLightMode: boolean) {
-  return cn(
-    "group rounded-[14px] px-3 py-2.5 text-sm text-foreground transition-colors duration-200 focus:text-foreground data-[highlighted]:text-foreground",
-    isLightMode
-      ? "bg-transparent focus:bg-slate-900/[0.05] data-[highlighted]:bg-slate-900/[0.05]"
-      : "bg-transparent focus:bg-white/[0.05] data-[highlighted]:bg-white/[0.05]",
-  );
-}
-
-function getPtHubDropdownLabelClassName(isLightMode: boolean) {
-  return cn("px-3 py-2", isLightMode ? "" : "");
-}
-
-function getPtHubDropdownSeparatorClassName(isLightMode: boolean) {
-  return cn(
-    "-mx-1 my-1.5 h-px",
-    isLightMode ? "bg-slate-900/[0.08]" : "bg-white/[0.08]",
-  );
-}
-
-function getPtHubDropdownUtilityRowClassName(isLightMode: boolean) {
-  return cn(
-    "flex items-center justify-between gap-3 rounded-[14px] px-3 py-2.5 text-sm text-foreground",
-    isLightMode ? "bg-[rgba(255,255,255,0.18)]" : "bg-white/[0.03]",
-  );
-}
-
-function getPtHubDropdownGlyphClassName(isLightMode: boolean) {
-  return cn(
-    "flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-200",
-    isLightMode ? "text-slate-600" : "text-primary",
-  );
+function getPtHubRouteTransitionKey(pathname: string) {
+  if (/^\/pt-hub\/settings\/[^/]+(?:\/.*)?$/.test(pathname)) {
+    return "/pt-hub/settings";
+  }
+  return pathname;
 }
 
 function getPtHubHeaderPillClassName(isLightMode: boolean) {
   return cn(
     "group hidden h-[58px] w-[236px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)] hover:border-primary/16 hover:bg-[linear-gradient(180deg,rgba(238,243,247,0.78),rgba(223,232,239,0.68))] hover:shadow-[0_24px_54px_-34px_rgba(15,23,42,0.18),0_0_0_1px_rgba(79,143,170,0.08),inset_0_1px_0_rgba(255,255,255,0.44)]"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))] hover:shadow-[0_24px_52px_-34px_rgba(0,0,0,0.88),0_0_0_1px_rgba(116,201,164,0.08),inset_0_1px_0_rgba(255,255,255,0.08)]",
+      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.94),oklch(var(--bg-surface)/0.82))] hover:shadow-[0_24px_54px_-36px_oklch(var(--accent)/0.16)]"
+      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.78))] hover:shadow-[0_24px_52px_-36px_oklch(var(--accent)/0.18)]",
   );
 }
 
@@ -163,7 +215,7 @@ function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
     "flex h-9 w-9 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
     isLightMode
-      ? "text-[rgb(79,143,170)] group-hover:text-slate-900"
+      ? "text-primary group-hover:text-foreground"
       : "text-primary group-hover:text-foreground",
   );
 }
@@ -172,8 +224,8 @@ function getPtHubHeaderPillChevronClassName(isLightMode: boolean) {
   return cn(
     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
     isLightMode
-      ? "border-slate-900/8 bg-white/22 text-[rgb(79,143,170)] group-hover:border-primary/16 group-hover:text-slate-800"
-      : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
+      ? "border-border/70 bg-[oklch(var(--bg-surface-elevated)/0.72)] text-primary group-hover:border-primary/18 group-hover:text-foreground"
+      : "border-border/60 bg-[oklch(var(--bg-surface-elevated)/0.3)] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
   );
 }
 
@@ -181,8 +233,8 @@ function getPtHubStatusPillClassName(isLightMode: boolean) {
   return cn(
     "hidden h-[58px] min-w-[176px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl sm:flex",
     isLightMode
-      ? "border-slate-900/8 bg-[linear-gradient(180deg,rgba(233,239,244,0.72),rgba(218,227,235,0.62))] shadow-[0_22px_48px_-34px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.38)]"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)]",
+      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)]"
+      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)]",
   );
 }
 
@@ -190,15 +242,13 @@ function getPtHubStatusPillIconClassName(params: {
   isLightMode: boolean;
   published: boolean;
 }) {
+  const toneStyles = getSemanticToneClasses(
+    getSemanticToneForStatus(params.published ? "Published" : "Unpublished"),
+  );
+
   return cn(
-    "flex h-9 w-9 shrink-0 items-center justify-center transition-colors duration-200",
-    params.published
-      ? params.isLightMode
-        ? "text-emerald-700"
-        : "text-success"
-      : params.isLightMode
-        ? "text-amber-700"
-        : "text-warning",
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition-colors duration-200",
+    toneStyles.surface,
   );
 }
 
@@ -206,16 +256,11 @@ function getPtHubStatusPillToneClassName(params: {
   isLightMode: boolean;
   published: boolean;
 }) {
-  return cn(
-    "text-[0.92rem] font-medium",
-    params.published
-      ? params.isLightMode
-        ? "text-emerald-700"
-        : "text-success"
-      : params.isLightMode
-        ? "text-amber-700"
-        : "text-warning",
+  const toneStyles = getSemanticToneClasses(
+    getSemanticToneForStatus(params.published ? "Published" : "Unpublished"),
   );
+
+  return cn("text-[0.92rem] font-medium", toneStyles.text);
 }
 
 function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
@@ -223,76 +268,11 @@ function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
     "group relative flex items-start gap-3 rounded-[22px] border px-3.5 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
     isActive
       ? isLightMode
-        ? "translate-x-1 border-primary/26 bg-[linear-gradient(180deg,rgba(236,242,246,0.72),rgba(221,230,238,0.6))] text-slate-900 shadow-[0_22px_54px_-36px_rgba(15,23,42,0.14)]"
-        : "translate-x-1 border-primary/28 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.98),oklch(var(--bg-surface)/0.92))] text-foreground shadow-[0_22px_54px_-36px_oklch(var(--accent)/0.42)]"
+        ? "translate-x-1 border-transparent bg-transparent text-slate-900"
+        : "translate-x-1 border-transparent bg-transparent text-foreground"
       : isLightMode
         ? "border-transparent bg-transparent text-slate-800 hover:border-border/80 hover:bg-white/24 hover:text-slate-950"
         : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
-  );
-}
-
-function PtHubThemeToggle({
-  mode,
-  onToggle,
-}: {
-  mode: PtHubThemeMode;
-  onToggle: () => void;
-}) {
-  const isLightMode = mode === "light";
-
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={isLightMode}
-      onClick={onToggle}
-      aria-label={
-        isLightMode
-          ? "Switch PT Hub to dark mode"
-          : "Switch PT Hub to light mode"
-      }
-      className={cn(
-        "group relative inline-flex h-[30px] w-[92px] items-center rounded-full border px-1 backdrop-blur-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
-        isLightMode
-          ? "border-black/10 bg-[linear-gradient(180deg,rgba(232,239,235,0.72),rgba(216,225,219,0.62))] text-foreground shadow-[0_16px_32px_-24px_rgba(15,23,42,0.18)]"
-          : "border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-foreground shadow-[0_16px_30px_-24px_rgba(0,0,0,0.78)]",
-      )}
-    >
-      <span
-        className={cn(
-          "pointer-events-none absolute top-1/2 h-[22px] w-[42px] -translate-y-1/2 rounded-full transition-all duration-200",
-          isLightMode
-            ? "left-[45px] border border-slate-900/85 bg-slate-900 shadow-[0_10px_18px_-12px_rgba(15,23,42,0.5)]"
-            : "left-1 border border-white/12 bg-[linear-gradient(180deg,oklch(var(--accent)),oklch(var(--chart-2)))] shadow-[0_10px_18px_-12px_oklch(var(--accent)/0.6)]",
-        )}
-      />
-      <span
-        className={cn(
-          "pointer-events-none absolute inset-[3px] rounded-full",
-          isLightMode
-            ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.04))]"
-            : "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01))]",
-        )}
-      />
-      <span className="relative z-10 grid w-full grid-cols-2 items-center">
-        <span
-          className={cn(
-            "flex h-[22px] items-center justify-center transition-colors duration-200",
-            isLightMode ? "text-foreground/45" : "text-slate-950",
-          )}
-        >
-          <Moon className="h-3.5 w-3.5" />
-        </span>
-        <span
-          className={cn(
-            "flex h-[22px] items-center justify-center transition-colors duration-200",
-            isLightMode ? "text-white" : "text-foreground/45",
-          )}
-        >
-          <Sun className="h-3.5 w-3.5" />
-        </span>
-      </span>
-    </button>
   );
 }
 
@@ -303,19 +283,26 @@ export function PtHubLayout() {
   const { user } = useSessionAuth();
   const { workspaceId, switchWorkspace } = useWorkspace();
   const workspacesQuery = usePtHubWorkspaces();
+  const settingsQuery = usePtHubSettings();
   const profileQuery = usePtHubProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
+  const routeTransitionKey = getPtHubRouteTransitionKey(location.pathname);
 
-  const meta = routeMeta[location.pathname] ?? defaultRouteMeta;
+  const meta = getPtHubRouteMeta(location.pathname);
+  const currentModuleClasses = getModuleToneClasses(meta.module);
   const workspaces = workspacesQuery.data ?? [];
   const publishedProfile = Boolean(profileQuery.data?.isPublished);
   const latestWorkspace = workspaces[0] ?? null;
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === workspaceId) ??
     latestWorkspace;
+  const settingsFullName = settingsQuery.data?.fullName.trim();
   const coachDisplayName =
+    (settingsFullName && settingsFullName.length > 0
+      ? settingsFullName
+      : null) ||
     ptProfile?.full_name?.trim() ||
     ptProfile?.display_name?.trim() ||
     getUserDisplayName(user) ||
@@ -357,9 +344,10 @@ export function PtHubLayout() {
   return (
     <div
       className={cn(
-        "pt-hub-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden",
+        "pt-hub-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
       )}
+      style={getModuleToneStyle(meta.module)}
     >
       <AppShellBackgroundLayer animated mode={themeMode} />
 
@@ -389,6 +377,7 @@ export function PtHubLayout() {
               variant="ghost"
               size="icon"
               onClick={() => setMobileOpen(false)}
+              aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -403,16 +392,16 @@ export function PtHubLayout() {
         </div>
       </aside>
 
-      <PageContainer className="relative z-10 py-4 sm:py-5 lg:py-6">
-        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-6">
-          <aside className="hidden lg:block">
-            <div className="sticky top-5">
+      <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-6">
+        <div className="grid items-start gap-5 lg:h-full lg:grid-cols-[300px_minmax(0,1fr)] lg:items-stretch xl:gap-6">
+          <aside className="hidden lg:block lg:h-full lg:min-h-0">
+            <div className="sticky top-0 h-full min-h-0">
               <div
                 className={cn(
-                  "surface-panel-strong min-h-[calc(100vh-2.5rem)] overflow-hidden rounded-[34px] border-border/70",
+                  "surface-panel-strong h-full min-h-0 overflow-hidden rounded-[34px] border-border/70",
                   isLightMode
-                    ? "shadow-[0_30px_72px_-52px_rgba(15,23,42,0.14)]"
-                    : "shadow-[0_40px_100px_-64px_rgba(0,0,0,0.98)]",
+                    ? "shadow-[var(--surface-strong-shadow)]"
+                    : "shadow-[var(--surface-strong-shadow)]",
                 )}
               >
                 <SidebarContent
@@ -424,22 +413,22 @@ export function PtHubLayout() {
             </div>
           </aside>
 
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
             <header
               className={cn(
                 "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
                 isLightMode
-                  ? "shadow-[0_28px_76px_-56px_rgba(15,23,42,0.16)]"
-                  : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
+                  ? "shadow-[var(--surface-strong-shadow)]"
+                  : "shadow-[var(--surface-strong-shadow)]",
               )}
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.2),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-2)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--success)/0.06))]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--accent)/0.04))]" />
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-6 top-0 h-px",
                   isLightMode
-                    ? "bg-[linear-gradient(90deg,transparent,rgba(15,23,42,0.12),transparent)]"
-                    : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)]",
+                    ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.22),transparent)]"
+                    : "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]",
                 )}
               />
               <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -454,8 +443,28 @@ export function PtHubLayout() {
                     <span className="sr-only">Open PT Hub navigation</span>
                   </Button>
                   <div className="min-w-0 space-y-3">
-                    <div className="space-y-1">
-                      <p className="text-[2.15rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.45rem]">
+                    <div className="space-y-2">
+                      <p
+                        className={cn(
+                          "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
+                          currentModuleClasses.text,
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            currentModuleClasses.dot,
+                          )}
+                        />
+                        {meta.title}
+                      </p>
+                      <p
+                        className={cn(
+                          "text-[2.15rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.45rem]",
+                          currentModuleClasses.title,
+                        )}
+                      >
                         {meta.title}
                       </p>
                       <p className="max-w-2xl text-[0.95rem] leading-6 text-muted-foreground">
@@ -477,14 +486,27 @@ export function PtHubLayout() {
                     </div>
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <p className="pt-hub-kicker">Profile status</p>
-                      <p
-                        className={getPtHubStatusPillToneClassName({
-                          isLightMode,
-                          published: publishedProfile,
-                        })}
-                      >
-                        {publishedProfile ? "Published" : "Unpublished"}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "h-2 w-2 rounded-full",
+                            getSemanticToneClasses(
+                              getSemanticToneForStatus(
+                                publishedProfile ? "Published" : "Unpublished",
+                              ),
+                            ).marker,
+                          )}
+                        />
+                        <p
+                          className={getPtHubStatusPillToneClassName({
+                            isLightMode,
+                            published: publishedProfile,
+                          })}
+                        >
+                          {publishedProfile ? "Published" : "Unpublished"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -506,9 +528,7 @@ export function PtHubLayout() {
                           <Building className="h-4 w-4 [stroke-width:1.7]" />
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                          <p className="pt-hub-kicker">
-                            Coaching space
-                          </p>
+                          <p className="pt-hub-kicker">Coaching space</p>
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {currentWorkspace?.name ?? "No workspace selected"}
                           </p>
@@ -523,39 +543,23 @@ export function PtHubLayout() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
+                      variant="menu"
                       align="end"
                       sideOffset={10}
-                      className={cn(
-                        getPtHubDropdownContentClassName(isLightMode),
-                        "w-72",
-                      )}
+                      className="w-72"
                     >
-                      <DropdownMenuLabel
-                        className={getPtHubDropdownLabelClassName(isLightMode)}
-                      >
+                      <DropdownMenuLabel>
                         <span className="pt-hub-kicker block">
                           Coaching Spaces
                         </span>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator
-                        className={getPtHubDropdownSeparatorClassName(
-                          isLightMode,
-                        )}
-                      />
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className={cn(
-                          "mt-1 px-3 py-3",
-                          getPtHubDropdownItemClassName(isLightMode),
-                        )}
+                        className="mt-1"
                         onClick={() => navigate("/pt-hub")}
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <span
-                            className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
-                              isLightMode ? "text-slate-600" : "text-primary",
-                            )}
-                          >
+                          <span className="app-dropdown-icon-badge">
                             <PanelsTopLeft className="h-4 w-4 [stroke-width:1.7]" />
                           </span>
                           <p className="truncate font-medium text-foreground">
@@ -569,22 +573,14 @@ export function PtHubLayout() {
                       {workspaces.map((workspace) => (
                         <DropdownMenuItem
                           key={workspace.id}
-                          className={cn(
-                            "mt-1 px-3 py-3",
-                            getPtHubDropdownItemClassName(isLightMode),
-                          )}
+                          className="mt-1"
                           onClick={() => {
                             switchWorkspace(workspace.id);
                             navigate("/pt/dashboard");
                           }}
                         >
                           <div className="flex min-w-0 flex-1 items-center gap-3">
-                            <span
-                              className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200",
-                                isLightMode ? "text-slate-600" : "text-primary",
-                              )}
-                            >
+                            <span className="app-dropdown-icon-badge">
                               <Building className="h-4 w-4 [stroke-width:1.7]" />
                             </span>
                             <p className="truncate font-medium text-foreground">
@@ -617,9 +613,7 @@ export function PtHubLayout() {
                           {userInitial}
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="pt-hub-kicker">
-                            Profile
-                          </p>
+                          <p className="pt-hub-kicker">Profile</p>
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {coachDisplayName}
                           </p>
@@ -634,43 +628,28 @@ export function PtHubLayout() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
+                      variant="menu"
                       align="end"
                       sideOffset={10}
-                      className={getPtHubDropdownContentClassName(isLightMode)}
+                      className="w-64"
                     >
-                      <DropdownMenuLabel
-                        className={getPtHubDropdownLabelClassName(isLightMode)}
-                      >
-                        <span className="pt-hub-kicker block">
-                          Account
-                        </span>
+                      <DropdownMenuLabel>
+                        <span className="pt-hub-kicker block">Account</span>
                         <span className="mt-1 block truncate text-sm font-medium text-foreground">
                           {coachDisplayName}
                         </span>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator
-                        className={getPtHubDropdownSeparatorClassName(
-                          isLightMode,
-                        )}
-                      />
-                      <div
-                        className={getPtHubDropdownUtilityRowClassName(
-                          isLightMode,
-                        )}
-                      >
+                      <DropdownMenuSeparator />
+                      <div className="app-dropdown-utility-row">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            className={getPtHubDropdownGlyphClassName(
-                              isLightMode,
-                            )}
-                          >
+                          <span className="app-dropdown-icon-badge">
                             <Moon className="h-4 w-4 [stroke-width:1.7]" />
                           </span>
                           <span className="truncate font-medium text-foreground">
                             Theme
                           </span>
                         </div>
-                        <PtHubThemeToggle
+                        <ThemeModeSwitch
                           mode={themeMode}
                           onToggle={() =>
                             setThemeMode((current) =>
@@ -679,24 +658,12 @@ export function PtHubLayout() {
                           }
                         />
                       </div>
-                      <DropdownMenuSeparator
-                        className={getPtHubDropdownSeparatorClassName(
-                          isLightMode,
-                        )}
-                      />
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className={cn(
-                          "mt-1",
-                          getPtHubDropdownItemClassName(isLightMode),
-                        )}
+                        className="mt-1"
                         onClick={() => navigate("/pt-hub/settings")}
                       >
-                        <span
-                          className={cn(
-                            "mr-3",
-                            getPtHubDropdownGlyphClassName(isLightMode),
-                          )}
-                        >
+                        <span className="app-dropdown-icon-badge">
                           <SlidersHorizontal className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
@@ -704,18 +671,12 @@ export function PtHubLayout() {
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        className={getPtHubDropdownItemClassName(isLightMode)}
                         disabled={isSigningOut}
                         onClick={() => {
                           void signOut();
                         }}
                       >
-                        <span
-                          className={cn(
-                            "mr-3",
-                            getPtHubDropdownGlyphClassName(isLightMode),
-                          )}
-                        >
+                        <span className="app-dropdown-icon-badge">
                           <LogOut className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
@@ -728,12 +689,19 @@ export function PtHubLayout() {
               </div>
             </header>
 
-            <main className="min-w-0">
-              <Outlet />
+            <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
+              <div className="pt-content-zoom">
+                <WorkspaceHeaderModeProvider value="shell">
+                  <RouteTransition routeKey={routeTransitionKey}>
+                    <Outlet />
+                  </RouteTransition>
+                </WorkspaceHeaderModeProvider>
+              </div>
             </main>
           </div>
         </div>
       </PageContainer>
+      <AppFooter />
     </div>
   );
 }
@@ -752,14 +720,13 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const isLightMode = themeMode === "light";
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col px-5 py-5", className)}>
       <div className="space-y-4 border-b border-border/60 pb-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-primary/16 bg-background/22 text-primary backdrop-blur-xl">
-            <Building className="h-5 w-5 [stroke-width:1.7]" />
-          </div>
+          <Building className="mt-0.5 h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
           <div className="min-w-0 space-y-1">
             <p
               className={cn(
@@ -781,14 +748,10 @@ function SidebarContent({
         </div>
       </div>
 
-      <nav className="mt-5 flex-1 overflow-y-auto pr-1 lg:flex lg:flex-col lg:justify-center lg:gap-6">
+      <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-4 pr-1">
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
-            <p
-              className="pt-hub-kicker px-2"
-            >
-              {group.label}
-            </p>
+            <p className="pt-hub-kicker px-2">{group.label}</p>
             <div className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
@@ -798,31 +761,63 @@ function SidebarContent({
                     to={item.to}
                     end={"end" in item ? item.end : undefined}
                     onClick={onNavigate}
-                    className={({ isActive }) => sidebarLinkClasses(isActive, isLightMode)}
+                    className={({ isActive }) =>
+                      sidebarLinkClasses(isActive, isLightMode)
+                    }
                   >
                     {({ isActive }) => (
                       <>
+                        {isActive ? (
+                          <motion.span
+                            layoutId="pt-hub-nav-active-pill"
+                            className={cn(
+                              "absolute inset-0 rounded-[24px] border",
+                              getModuleToneClasses(item.module).navActive,
+                            )}
+                            style={getModuleToneStyle(item.module)}
+                            transition={
+                              reduceMotion
+                                ? { duration: 0 }
+                                : {
+                                    type: "spring",
+                                    stiffness: 280,
+                                    damping: 30,
+                                  }
+                            }
+                          />
+                        ) : null}
                         <span
+                          style={getModuleToneStyle(item.module)}
                           className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[15px] border transition-colors",
+                            "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center transition-colors",
                             isActive
-                              ? "border-primary/20 bg-primary/10 text-primary"
+                              ? "section-accent-nav-icon-active"
                               : isLightMode
-                                ? "border-slate-400/40 bg-[linear-gradient(180deg,rgba(245,248,246,0.34),rgba(228,235,231,0.22))] text-slate-600 group-hover:border-primary/22 group-hover:text-primary"
-                                : "border-border/70 bg-background/75 text-muted-foreground group-hover:border-primary/20 group-hover:text-primary",
+                                ? "text-slate-600 group-hover:text-foreground"
+                                : "text-muted-foreground group-hover:text-foreground",
+                            getModuleToneClasses(item.module).navIcon,
                           )}
                         >
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
-                        <div className="min-w-0 self-center">
+                        <motion.div
+                          className="min-w-0 self-center"
+                          animate={
+                            reduceMotion
+                              ? { opacity: 1, x: 0 }
+                              : { opacity: 1, x: isActive ? 2 : 0 }
+                          }
+                          transition={{ duration: 0.18, ease: "easeOut" }}
+                        >
                           <p
                             className={cn(
+                              "relative z-10",
                               isLightMode ? "text-slate-900" : "text-inherit",
                             )}
                           >
                             {item.label}
                           </p>
-                        </div>
+                        </motion.div>
                       </>
                     )}
                   </NavLink>

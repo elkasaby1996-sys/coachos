@@ -984,10 +984,14 @@ export function ClientProfilePage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
+                  <label
+                    htmlFor="client-profile-birthdate"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
                     Birthdate
                   </label>
                   <Input
+                    id="client-profile-birthdate"
                     type="date"
                     value={formState.dob}
                     onChange={(event) =>

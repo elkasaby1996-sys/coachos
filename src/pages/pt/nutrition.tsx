@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, Plus, Trash2 } from "lucide-react";
+import { Copy, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { PageContainer } from "../../components/common/page-container";
@@ -205,12 +205,15 @@ export function PtNutritionPage() {
       <WorkspacePageHeader title="Nutrition Programs" />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          className="w-full sm:w-72"
-          placeholder="Search templates"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="relative w-full sm:w-72">
+          <Search className="app-search-icon h-4 w-4" />
+          <Input
+            className="app-search-input"
+            placeholder="Search templates"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <Button
           onClick={() => {
             setCreateError(null);
