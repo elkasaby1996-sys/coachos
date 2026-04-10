@@ -25,6 +25,7 @@ import type {
   PTProfileReadiness,
   PTPublicationState,
 } from "../types";
+import { PtHubPackageManager } from "./pt-hub-package-manager";
 import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { useSessionAuth } from "../../../lib/auth";
@@ -1197,6 +1198,13 @@ export function PtHubProfileEditor({
                 </div>
               </div>
             </div>
+          </PtHubSectionCard>
+
+          <PtHubSectionCard
+            title="Package management"
+            description="Manage draft, active, and archived packages for public lead intake."
+          >
+            <PtHubPackageManager />
           </PtHubSectionCard>
         </TabsContent>
 

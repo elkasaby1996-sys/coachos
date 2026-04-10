@@ -27,6 +27,8 @@ import type {
   PTLead,
   PTLeadNote,
   PTLeadStatus,
+  PTPackage,
+  PTPackageStatus,
   PTInvoiceSummary,
   PTOverviewStats,
   PTPublicPackageOption,
@@ -265,6 +267,25 @@ type PtHubLeadChatSummaryRow = {
   last_message_at: string | null;
   last_message_preview: string | null;
   unread_count: number | null;
+};
+
+type PtPackageRow = {
+  id: string;
+  pt_user_id: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  price_label: string | null;
+  billing_cadence_label: string | null;
+  cta_label: string | null;
+  features: unknown;
+  status: string;
+  is_public: boolean;
+  sort_order: number | null;
+  currency_code: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string | null;
 };
 
 function isPresent(value: string | null | undefined) {
@@ -1666,43 +1687,216 @@ export async function setPtHubProfilePublication(publish: boolean) {
   if (error) throw error;
 }
 
-function normalizePublicPackageLabel(row: Record<string, unknown>) {
-  const labelCandidates = [
-    row.public_label,
-    row.label,
-    row.title,
-    row.name,
-  ];
-
-  for (const candidate of labelCandidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
-      return candidate.trim();
-    }
+function normalizePtPackageStatus(value: unknown): PTPackageStatus {
+  if (value === "active" || value === "archived" || value === "draft") {
+    return value;
   }
-
-  return "";
+  return "draft";
 }
 
-function mapPublicPackageOptions(rows: Record<string, unknown>[]) {
-  const options: PTPublicPackageOption[] = [];
+function normalizePtPackageFeatures(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
 
-  for (const row of rows) {
-    const id = typeof row.id === "string" ? row.id.trim() : "";
-    if (!id) continue;
+  const nextFeatures = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
-    const isActive =
-      typeof row.is_active === "boolean" ? row.is_active : true;
-    const isPublic =
-      typeof row.is_public === "boolean" ? row.is_public : true;
-    if (!isActive || !isPublic) continue;
+  return nextFeatures.length > 0 ? nextFeatures : null;
+}
 
-    const label = normalizePublicPackageLabel(row);
-    if (!label) continue;
+function mapPtPackage(row: PtPackageRow): PTPackage {
+  return {
+    id: row.id,
+    ptUserId: row.pt_user_id,
+    title: row.title.trim(),
+    subtitle: row.subtitle?.trim() || null,
+    description: row.description?.trim() || null,
+    priceLabel: row.price_label?.trim() || null,
+    billingCadenceLabel: row.billing_cadence_label?.trim() || null,
+    ctaLabel: row.cta_label?.trim() || null,
+    features: normalizePtPackageFeatures(row.features),
+    status: normalizePtPackageStatus(row.status),
+    isPublic: Boolean(row.is_public),
+    sortOrder: Number.isFinite(row.sort_order) ? Number(row.sort_order) : 0,
+    currencyCode: row.currency_code?.trim() || null,
+    archivedAt: row.archived_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
-    options.push({ id, label });
-  }
+type PtPackageMutationInput = {
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  priceLabel?: string | null;
+  billingCadenceLabel?: string | null;
+  ctaLabel?: string | null;
+  features?: string[] | null;
+  status: PTPackageStatus;
+  isPublic: boolean;
+  sortOrder: number;
+  currencyCode?: string | null;
+};
 
-  return options;
+function toPtPackageMutationPayload(input: PtPackageMutationInput) {
+  const normalizedFeatures =
+    input.features
+      ?.map((item) => item.trim())
+      .filter(Boolean) ?? null;
+
+  return {
+    title: input.title.trim(),
+    subtitle: input.subtitle?.trim() || null,
+    description: input.description?.trim() || null,
+    price_label: input.priceLabel?.trim() || null,
+    billing_cadence_label: input.billingCadenceLabel?.trim() || null,
+    cta_label: input.ctaLabel?.trim() || null,
+    features: normalizedFeatures && normalizedFeatures.length > 0 ? normalizedFeatures : null,
+    status: input.status,
+    is_public: input.isPublic,
+    sort_order: Number.isFinite(input.sortOrder)
+      ? Math.max(0, Math.trunc(input.sortOrder))
+      : 0,
+    currency_code: input.currencyCode?.trim() || null,
+  };
+}
+
+export function mapPublicPtPackageOptions(
+  rows: Array<Record<string, unknown>>,
+): PTPublicPackageOption[] {
+  return rows
+    .map((row) => {
+      const id = typeof row.id === "string" ? row.id.trim() : "";
+      const label = typeof row.title === "string" ? row.title.trim() : "";
+      const status = normalizePtPackageStatus(row.status);
+      const isPublic = row.is_public === true;
+      const sortOrder =
+        typeof row.sort_order === "number" && Number.isFinite(row.sort_order)
+          ? Math.trunc(row.sort_order)
+          : Number.MAX_SAFE_INTEGER;
+      const createdAt =
+        typeof row.created_at === "string" ? row.created_at.trim() : "";
+
+      return {
+        id,
+        label,
+        status,
+        isPublic,
+        sortOrder,
+        createdAt,
+      };
+    })
+    .filter(
+      (row) =>
+        row.id.length > 0 &&
+        row.label.length > 0 &&
+        row.status === "active" &&
+        row.isPublic,
+    )
+    .sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      if (a.createdAt !== b.createdAt) return a.createdAt.localeCompare(b.createdAt);
+      return a.id.localeCompare(b.id);
+    })
+    .map((row) => ({ id: row.id, label: row.label }));
+}
+
+export function usePtPackages() {
+  const { user } = useSessionAuth();
+
+  return useQuery({
+    queryKey: ["pt-packages", user?.id],
+    enabled: Boolean(user?.id),
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const userId = user?.id;
+      if (!userId) return [] as PTPackage[];
+
+      const { data, error } = await supabase
+        .from("pt_packages")
+        .select(
+          "id, pt_user_id, title, subtitle, description, price_label, billing_cadence_label, cta_label, features, status, is_public, sort_order, currency_code, archived_at, created_at, updated_at",
+        )
+        .eq("pt_user_id", userId)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .returns<PtPackageRow[]>();
+
+      if (error) throw error;
+
+      return (data ?? []).map((row) => mapPtPackage(row));
+    },
+  });
+}
+
+export async function createPtPackage(params: {
+  ptUserId: string;
+  input: PtPackageMutationInput;
+}) {
+  const payload = toPtPackageMutationPayload(params.input);
+
+  const { error } = await supabase.from("pt_packages").insert({
+    pt_user_id: params.ptUserId,
+    ...payload,
+  });
+
+  if (error) throw error;
+}
+
+export async function updatePtPackage(params: {
+  ptUserId: string;
+  packageId: string;
+  input: PtPackageMutationInput;
+}) {
+  const payload = toPtPackageMutationPayload(params.input);
+
+  const { error } = await supabase
+    .from("pt_packages")
+    .update(payload)
+    .eq("id", params.packageId)
+    .eq("pt_user_id", params.ptUserId);
+
+  if (error) throw error;
+}
+
+export async function archivePtPackage(params: {
+  ptUserId: string;
+  packageId: string;
+}) {
+  const { error } = await supabase
+    .from("pt_packages")
+    .update({
+      status: "archived",
+      is_public: false,
+      archived_at: new Date().toISOString(),
+    })
+    .eq("id", params.packageId)
+    .eq("pt_user_id", params.ptUserId);
+
+  if (error) throw error;
+}
+
+export async function reorderPtPackages(params: {
+  ptUserId: string;
+  orderedIds: string[];
+}) {
+  const orderedIds = params.orderedIds.filter((id) => id.trim().length > 0);
+  if (orderedIds.length === 0) return;
+
+  await Promise.all(
+    orderedIds.map(async (packageId, index) => {
+      const { error } = await supabase
+        .from("pt_packages")
+        .update({ sort_order: index * 10 })
+        .eq("id", packageId)
+        .eq("pt_user_id", params.ptUserId);
+
+      if (error) throw error;
+    }),
+  );
 }
 
 export function usePublicPtPackageOptions(
@@ -1716,27 +1910,13 @@ export function usePublicPtPackageOptions(
       if (!coachUserId) return [] as PTPublicPackageOption[];
 
       const { data, error } = await supabase
-        .from("pt_hub_packages")
-        .select("*")
-        .eq("user_id", coachUserId)
-        .order("created_at", { ascending: true });
+        .from("pt_packages")
+        .select("id, title, status, is_public, sort_order, created_at")
+        .eq("pt_user_id", coachUserId);
 
-      if (error) {
-        const code = (error as { code?: string }).code ?? "";
-        const message = (
-          (error as { message?: string }).message ?? ""
-        ).toLowerCase();
-        if (
-          code === "PGRST205" ||
-          message.includes("relation") ||
-          message.includes("does not exist")
-        ) {
-          return [] as PTPublicPackageOption[];
-        }
-        throw error;
-      }
+      if (error) throw error;
 
-      return mapPublicPackageOptions(
+      return mapPublicPtPackageOptions(
         (data ?? []) as Array<Record<string, unknown>>,
       );
     },

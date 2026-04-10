@@ -80,6 +80,35 @@ export function PublicPtApplyForm({
     }
   }, [identity.fullName, identity.phone, success]);
 
+  useEffect(() => {
+    if (packageOptions.length === 0) {
+      setForm((prev) => ({
+        ...prev,
+        packageInterestId: "",
+        packageInterestLabelSnapshot: "",
+      }));
+      return;
+    }
+
+    setForm((prev) => {
+      const matchingOption = packageOptions.find(
+        (option) => option.id === prev.packageInterestId,
+      );
+      if (matchingOption) {
+        return {
+          ...prev,
+          packageInterestLabelSnapshot: matchingOption.label,
+        };
+      }
+
+      return {
+        ...prev,
+        packageInterestId: "",
+        packageInterestLabelSnapshot: "",
+      };
+    });
+  }, [packageOptions]);
+
   const fullNameLimitState = getCharacterLimitState({
     value: form.fullName,
     kind: "full_name",
@@ -214,39 +243,42 @@ export function PublicPtApplyForm({
           limit={trainingExperienceLimitState.limit}
           errorText={trainingExperienceLimitState.errorText}
         />
-        <div className="space-y-2">
-          <Select
-            value={form.packageInterestId}
-            onChange={(event) => {
-              const selectedId = event.target.value;
-              const selectedOption =
-                packageOptions.find((option) => option.id === selectedId) ??
-                null;
-              setForm((prev) => ({
-                ...prev,
-                packageInterestId: selectedId,
-                packageInterestLabelSnapshot: selectedOption?.label ?? "",
-              }));
-            }}
-            disabled={preview || !hasPackages}
-          >
-            <option value="">
-              {hasPackages
-                ? "No specific package yet"
-                : "Packages will be shared after intro chat"}
-            </option>
-            {packageOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-          <FieldCharacterMeta
-            count={packageInterestLimitState.count}
-            limit={packageInterestLimitState.limit}
-            errorText={packageInterestLimitState.errorText}
-          />
-        </div>
+        {hasPackages ? (
+          <div className="space-y-2">
+            <Select
+              value={form.packageInterestId}
+              onChange={(event) => {
+                const selectedId = event.target.value;
+                const selectedOption =
+                  packageOptions.find((option) => option.id === selectedId) ??
+                  null;
+                setForm((prev) => ({
+                  ...prev,
+                  packageInterestId: selectedId,
+                  packageInterestLabelSnapshot: selectedOption?.label ?? "",
+                }));
+              }}
+              disabled={preview}
+            >
+              <option value="">No specific package yet</option>
+              {packageOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <FieldCharacterMeta
+              count={packageInterestLimitState.count}
+              limit={packageInterestLimitState.limit}
+              errorText={packageInterestLimitState.errorText}
+            />
+          </div>
+        ) : (
+          <p className="text-xs leading-5 text-muted-foreground">
+            No public packages are published yet. You can still apply and share
+            your goals.
+          </p>
+        )}
       </div>
 
       <Button

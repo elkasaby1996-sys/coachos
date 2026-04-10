@@ -340,6 +340,27 @@ export interface PTPublicPackageOption {
   label: string;
 }
 
+export type PTPackageStatus = "draft" | "active" | "archived";
+
+export interface PTPackage {
+  id: string;
+  ptUserId: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  priceLabel: string | null;
+  billingCadenceLabel: string | null;
+  ctaLabel: string | null;
+  features: string[] | null;
+  status: PTPackageStatus;
+  isPublic: boolean;
+  sortOrder: number;
+  currencyCode: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 export interface PTPublicationState {
   canPublish: boolean;
   isPublished: boolean;
