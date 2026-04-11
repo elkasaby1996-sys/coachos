@@ -4,6 +4,8 @@ import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-he
 import { PtHubProfilePreview } from "../../features/pt-hub/components/pt-hub-profile-preview";
 import {
   getPtProfilePreviewData,
+  mapPublicPtPackageOptionsFromPackages,
+  usePtPackages,
   usePtHubPublicationState,
   usePtHubProfile,
   usePtHubProfileReadiness,
@@ -11,9 +13,12 @@ import {
 
 export function PtHubProfilePreviewPage() {
   const profileQuery = usePtHubProfile();
+  const packagesQuery = usePtPackages();
   const readinessQuery = usePtHubProfileReadiness();
   const publicationQuery = usePtHubPublicationState();
   const previewData = getPtProfilePreviewData(profileQuery.data);
+  const packages = packagesQuery.data ?? [];
+  const packageOptions = mapPublicPtPackageOptionsFromPackages(packages);
 
   return (
     <section className="space-y-6">
@@ -42,27 +47,26 @@ export function PtHubProfilePreviewPage() {
       />
 
       {previewData ? (
-        <div className="space-y-6">
-          <PtHubProfilePreview
-            profile={previewData}
-            statusBadges={[
-              {
-                label: publicationQuery.data?.isPublished
-                  ? "Published"
-                  : "Unpublished",
-                tone: publicationQuery.data?.isPublished ? "success" : "warning",
-              },
-              ...(readinessQuery.data
-                ? [
-                    {
-                      label: `${readinessQuery.data.completionPercent}% ready`,
-                      tone: "info" as const,
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        </div>
+        <PtHubProfilePreview
+          profile={previewData}
+          packageOptions={packageOptions}
+          statusBadges={[
+            {
+              label: publicationQuery.data?.isPublished
+                ? "Published"
+                : "Unpublished",
+              tone: publicationQuery.data?.isPublished ? "success" : "warning",
+            },
+            ...(readinessQuery.data
+              ? [
+                  {
+                    label: `${readinessQuery.data.completionPercent}% ready`,
+                    tone: "info" as const,
+                  },
+                ]
+              : []),
+          ]}
+        />
       ) : (
         <div className="rounded-[28px] border border-border/70 bg-card/80 p-8 text-sm text-muted-foreground">
           No profile data yet. Add profile details first to see the preview.

@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ExternalLink,
@@ -23,6 +23,10 @@ import type {
   PTPublicPackageOption,
   PTPublicProfile,
 } from "../../pt-hub/types";
+import {
+  getPublicPackageFeatureBullets,
+  shouldRenderPublicPackagesSection,
+} from "../lib/public-pt-package-ux";
 import { PublicPtApplyForm } from "./public-pt-apply-form";
 
 const coachingModeLabels: Record<string, string> = {
@@ -70,10 +74,23 @@ export function PublicPtProfileView({
   const reduceMotion = useReducedMotion();
   const heroGlowRef = useRef<HTMLDivElement | null>(null);
   const profileCardRef = useRef<HTMLDivElement | null>(null);
+  const applyFormRef = useRef<HTMLDivElement | null>(null);
   const sectionRefs = useRef<Array<HTMLElement | null>>([]);
+  const hasPackages = shouldRenderPublicPackagesSection(packageOptions);
+  const [packagePrefill, setPackagePrefill] = useState<{
+    id: string;
+    nonce: number;
+  } | null>(null);
+  const packageCards = useMemo(() => packageOptions, [packageOptions]);
 
   useEffect(() => {
     if (reduceMotion) {
+      sectionRefs.current.forEach((section) => {
+        if (!section) {
+          return;
+        }
+        gsap.set(section, { opacity: 1, y: 0 });
+      });
       return;
     }
 
@@ -131,10 +148,21 @@ export function PublicPtProfileView({
     });
 
     return () => ctx.revert();
-  }, [reduceMotion]);
+  }, [reduceMotion, hasPackages, packageCards.length]);
 
   const registerSection = (index: number) => (node: HTMLElement | null) => {
     sectionRefs.current[index] = node;
+  };
+
+  const handleApplyForPackage = (packageId: string) => {
+    setPackagePrefill((prev) => ({
+      id: packageId,
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
+    applyFormRef.current?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start",
+    });
   };
 
   return (
@@ -242,7 +270,7 @@ export function PublicPtProfileView({
             </div>
           </div>
 
-          <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[minmax(0,1.15fr)_360px]">
+          <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.15fr)_360px]">
             <div className="space-y-8">
               <section ref={registerSection(0)} className="space-y-4 opacity-0">
                 <SectionHeader
@@ -311,7 +339,21 @@ export function PublicPtProfileView({
                 </div>
               </section>
 
-              <section ref={registerSection(2)} className="space-y-4 opacity-0">
+              {hasPackages ? (
+                <section
+                  ref={registerSection(2)}
+                  className="hidden space-y-4 opacity-0 lg:block"
+                  data-testid="packages-section-desktop"
+                >
+                  <PublicPackageSection
+                    packageOptions={packageCards}
+                    onApply={handleApplyForPackage}
+                    reduceMotion={Boolean(reduceMotion)}
+                  />
+                </section>
+              ) : null}
+
+              <section ref={registerSection(3)} className="space-y-4 opacity-0">
                 <SectionHeader
                   icon={<Star className="h-4 w-4" />}
                   title="Proof"
@@ -394,9 +436,27 @@ export function PublicPtProfileView({
             </div>
 
             <div className="space-y-6">
+              {hasPackages ? (
+                <section
+                  ref={registerSection(4)}
+                  className="space-y-4 opacity-0 lg:hidden"
+                  data-testid="packages-section-mobile"
+                >
+                  <PublicPackageSection
+                    packageOptions={packageCards}
+                    onApply={handleApplyForPackage}
+                    reduceMotion={Boolean(reduceMotion)}
+                  />
+                </section>
+              ) : null}
+
               <div
-                ref={registerSection(3)}
+                ref={(node) => {
+                  registerSection(5)(node);
+                  applyFormRef.current = node;
+                }}
                 className="rounded-[28px] border border-primary/20 bg-primary/8 p-6 opacity-0"
+                id="public-pt-apply-form"
               >
                 <p className="text-sm font-medium text-primary">
                   Work with {title}
@@ -428,7 +488,8 @@ export function PublicPtProfileView({
                         submitting={submitting}
                         success={success}
                         identity={applicantIdentity}
-                        packageOptions={packageOptions}
+                        packageOptions={packageCards}
+                        packagePrefill={packagePrefill}
                         onSubmit={onSubmitApplication}
                       />
                     </div>
@@ -437,7 +498,7 @@ export function PublicPtProfileView({
               </div>
 
               <div
-                ref={registerSection(4)}
+                ref={registerSection(6)}
                 className="rounded-[28px] bg-background/28 p-6 opacity-0"
               >
                 <SectionHeader title="Social links" />
@@ -481,6 +542,97 @@ export function PublicPtProfileView({
         </motion.div>
       </div>
     </div>
+  );
+}
+
+function PublicPackageSection({
+  packageOptions,
+  onApply,
+  reduceMotion = false,
+}: {
+  packageOptions: PTPublicPackageOption[];
+  onApply: (packageId: string) => void;
+  reduceMotion?: boolean;
+}) {
+  return (
+    <>
+      <SectionHeader title="Packages" />
+      <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          {packageOptions.map((packageOption) => {
+            const featureBullets = getPublicPackageFeatureBullets(packageOption);
+            const hasFeatureBullets = featureBullets.length > 0;
+            return (
+              <motion.article
+                key={packageOption.id}
+                whileHover={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        y: -6,
+                        scale: 1.01,
+                        boxShadow:
+                          "0 32px 72px -44px rgba(56,189,248,0.48), 0 26px 56px -36px rgba(0,0,0,0.86)",
+                      }
+                }
+                transition={{ duration: 0.24, ease: "easeOut" }}
+                className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,14,22,0.94),rgba(7,11,18,0.96))] p-4 shadow-[0_24px_54px_-38px_rgba(0,0,0,0.85)] transition-[border-color,background-color] duration-300 hover:border-primary/45"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {packageOption.label}
+                  </h3>
+                  {packageOption.subtitle ? (
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {packageOption.subtitle}
+                    </p>
+                  ) : null}
+                  {packageOption.priceLabel || packageOption.billingCadenceLabel ? (
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+                      {packageOption.priceLabel ? (
+                        <span className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1">
+                          {packageOption.priceLabel}
+                        </span>
+                      ) : null}
+                      {packageOption.billingCadenceLabel ? (
+                        <span className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1">
+                          {packageOption.billingCadenceLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+
+                {hasFeatureBullets ? (
+                  <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                    {featureBullets.map((feature) => (
+                      <li key={`${packageOption.id}-${feature}`} className="flex gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : packageOption.description ? (
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                    {packageOption.description}
+                  </p>
+                ) : null}
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-4 w-full justify-between"
+                  onClick={() => onApply(packageOption.id)}
+                >
+                  Apply for this package
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </motion.article>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
 

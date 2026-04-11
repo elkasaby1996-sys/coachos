@@ -153,6 +153,11 @@ export const PtHubProfilePreviewPage = lazy(() =>
     default: m.PtHubProfilePreviewPage,
   })),
 );
+export const PtHubPackagesPage = lazy(() =>
+  import("../pages/pt-hub/packages").then((m) => ({
+    default: m.PtHubPackagesPage,
+  })),
+);
 export const PtHubWorkspacesPage = lazy(() =>
   import("../pages/pt-hub/workspaces").then((m) => ({
     default: m.PtHubWorkspacesPage,

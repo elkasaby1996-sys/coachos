@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Building,
@@ -10,6 +10,7 @@ import {
   MessageSquarePlus,
   Moon,
   PanelsTopLeft,
+  Package,
   SlidersHorizontal,
   Sun,
   UserRound,
@@ -69,6 +70,12 @@ const hubNavGroups = [
         label: "Coach Profile",
         to: "/pt-hub/profile",
         icon: UserRound,
+        module: "profile" as const,
+      },
+      {
+        label: "Packages",
+        to: "/pt-hub/packages",
+        icon: Package,
         module: "profile" as const,
       },
       {
@@ -139,6 +146,11 @@ const routeMeta: Record<
   "/pt-hub/profile": {
     title: "Coach Profile",
     description: "Update the public trainer page clients will see.",
+    module: "profile",
+  },
+  "/pt-hub/packages": {
+    title: "Packages",
+    description: "Manage package visibility and ordering for public lead intake.",
     module: "profile",
   },
   "/pt-hub/profile/preview": {
@@ -292,12 +304,25 @@ export function PtHubLayout() {
 
   const meta = getPtHubRouteMeta(location.pathname);
   const currentModuleClasses = getModuleToneClasses(meta.module);
-  const workspaces = workspacesQuery.data ?? [];
+  const workspaces = useMemo(
+    () => workspacesQuery.data ?? [],
+    [workspacesQuery.data],
+  );
   const publishedProfile = Boolean(profileQuery.data?.isPublished);
-  const latestWorkspace = workspaces[0] ?? null;
+  const fallbackWorkspace =
+    workspaceId && workspaces.some((workspace) => workspace.id === workspaceId)
+      ? null
+      : (workspaces[0] ?? null);
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === workspaceId) ??
-    latestWorkspace;
+    fallbackWorkspace;
+  const workspacePillLabel =
+    currentWorkspace?.name ??
+    (workspacesQuery.isLoading
+      ? "Loading workspace..."
+      : workspaceId
+        ? "Current workspace"
+        : "No workspace selected");
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const coachDisplayName =
     (settingsFullName && settingsFullName.length > 0
@@ -334,6 +359,15 @@ export function PtHubLayout() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PT_HUB_THEME_STORAGE_KEY, themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    const firstWorkspace = workspaces[0];
+    if (!firstWorkspace) return;
+    if (workspaceId && workspaces.some((workspace) => workspace.id === workspaceId)) {
+      return;
+    }
+    switchWorkspace(firstWorkspace.id);
+  }, [workspaceId, workspaces, switchWorkspace]);
 
   const signOut = async () => {
     setIsSigningOut(true);
@@ -530,7 +564,7 @@ export function PtHubLayout() {
                         <div className="min-w-0 flex-1 space-y-0.5 text-left">
                           <p className="pt-hub-kicker">Coaching space</p>
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                            {currentWorkspace?.name ?? "No workspace selected"}
+                            {workspacePillLabel}
                           </p>
                         </div>
                         <span
@@ -591,7 +625,7 @@ export function PtHubLayout() {
                             <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                               {workspace.clientCount ?? 0}
                             </span>
-                            {workspace.id === currentWorkspace?.id ? (
+                            {workspace.id === workspaceId ? (
                               <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
                             ) : null}
                           </div>

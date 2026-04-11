@@ -3,6 +3,12 @@ import { supabase } from "./supabase";
 import { useBootstrapAuth, useSessionAuth } from "./auth";
 
 const ACTIVE_WORKSPACE_STORAGE_KEY = "coachos_workspace_id";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string | null | undefined): value is string {
+  return Boolean(value && UUID_PATTERN.test(value));
+}
 
 type WorkspaceSnapshot = {
   workspaceId: string | null;
@@ -38,7 +44,7 @@ export function useWorkspace() {
   const requestIdRef = useRef(0);
 
   const switchWorkspace = useCallback((nextWorkspaceId: string) => {
-    if (!nextWorkspaceId) return;
+    if (!isUuid(nextWorkspaceId)) return;
     setWorkspaceId(nextWorkspaceId);
     setWorkspaceIds((current) =>
       current.includes(nextWorkspaceId) ? current : [nextWorkspaceId, ...current],
@@ -109,10 +115,11 @@ export function useWorkspace() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const cached = window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
-      if (cached) {
+      if (isUuid(cached)) {
         setWorkspaceId(cached);
         setHasCached(true);
-        setLoading(false);
+      } else if (cached) {
+        window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
       }
     }
 
@@ -199,31 +206,56 @@ export function useWorkspace() {
       setError(null);
 
       try {
-        const { data: memberData, error: memberError } = await withTimeout(
-          supabase
-            .from("workspace_members")
-            .select("workspace_id, created_at")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: true })
-            .returns<
-              Array<{ workspace_id: string | null; created_at: string }>
-            >(),
-          8000,
-          "Workspace lookup timed out (8s).",
-        );
+        const [memberResult, ownedResult] = await Promise.all([
+          withTimeout(
+            supabase
+              .from("workspace_members")
+              .select("workspace_id, created_at")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: true })
+              .returns<
+                Array<{ workspace_id: string | null; created_at: string }>
+              >(),
+            8000,
+            "Workspace lookup timed out (8s).",
+          ),
+          withTimeout(
+            supabase
+              .from("workspaces")
+              .select("id, owner_user_id, created_at")
+              .eq("owner_user_id", user.id)
+              .order("created_at", { ascending: true })
+              .returns<
+                Array<{
+                  id: string;
+                  owner_user_id: string | null;
+                  created_at: string;
+                }>
+              >(),
+            8000,
+            "Owned workspace lookup timed out (8s).",
+          ),
+        ]);
 
-        if (memberError) throw memberError;
+        if (memberResult.error) throw memberResult.error;
+        if (ownedResult.error) throw ownedResult.error;
         if (!mounted || currentRequestId !== requestIdRef.current) return;
-        const memberWorkspaceIds = (memberData ?? [])
+        const memberWorkspaceIds = (memberResult.data ?? [])
           .map((member) => member.workspace_id)
           .filter((id): id is string => Boolean(id));
-        if (memberWorkspaceIds.length > 0) {
+        const ownerWorkspaceIds = (ownedResult.data ?? [])
+          .map((workspace) => workspace.id)
+          .filter((id): id is string => Boolean(id));
+        const combinedWorkspaceIds = Array.from(
+          new Set([...memberWorkspaceIds, ...ownerWorkspaceIds]),
+        );
+        if (combinedWorkspaceIds.length > 0) {
           const { data: workspaceData, error: workspaceError } =
             await withTimeout(
               supabase
                 .from("workspaces")
                 .select("id, owner_user_id")
-                .in("id", memberWorkspaceIds)
+                .in("id", combinedWorkspaceIds)
                 .returns<Array<{ id: string; owner_user_id: string | null }>>(),
               8000,
               "Workspace owner lookup timed out (8s).",
@@ -237,9 +269,9 @@ export function useWorkspace() {
               ? window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)
               : null;
           const selectedWorkspaceId =
-            cachedWorkspaceId && memberWorkspaceIds.includes(cachedWorkspaceId)
+            cachedWorkspaceId && combinedWorkspaceIds.includes(cachedWorkspaceId)
               ? cachedWorkspaceId
-              : (memberWorkspaceIds[0] ?? null);
+              : (combinedWorkspaceIds[0] ?? null);
           if (!selectedWorkspaceId) {
             throw new Error("Workspace not found for this user.");
           }
@@ -253,7 +285,7 @@ export function useWorkspace() {
           if (mounted) {
             applyWorkspaceSnapshot({
               workspaceId: selectedWorkspaceId,
-              workspaceIds: memberWorkspaceIds,
+              workspaceIds: combinedWorkspaceIds,
               ownerUserId: selectedWorkspace.owner_user_id,
             });
             setError(null);

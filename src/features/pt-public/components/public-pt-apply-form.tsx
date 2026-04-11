@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
@@ -15,6 +15,7 @@ import type {
   PTPublicLeadInput,
   PTPublicPackageOption,
 } from "../../pt-hub/types";
+import { resolvePublicPackageSelection } from "../lib/public-pt-package-ux";
 
 type PublicApplyFormState = {
   fullName: string;
@@ -34,10 +35,16 @@ const EMPTY_FORM: PublicApplyFormState = {
   packageInterestLabelSnapshot: "",
 };
 
+type PackageSelectionFeedback = {
+  tone: "info" | "warning";
+  text: string;
+};
+
 export function PublicPtApplyForm({
   slug,
   identity,
   packageOptions = [],
+  packagePrefill,
   preview = false,
   submitting = false,
   success = false,
@@ -46,6 +53,7 @@ export function PublicPtApplyForm({
   slug: string;
   identity: PTPublicApplicantIdentity;
   packageOptions?: PTPublicPackageOption[];
+  packagePrefill?: { id: string; nonce: number } | null;
   preview?: boolean;
   submitting?: boolean;
   success?: boolean;
@@ -57,6 +65,9 @@ export function PublicPtApplyForm({
     phone: identity.phone.trim(),
   });
   const [error, setError] = useState<string | null>(null);
+  const [packageFeedback, setPackageFeedback] =
+    useState<PackageSelectionFeedback | null>(null);
+  const lastAppliedPrefillNonceRef = useRef<number | null>(null);
 
   const requiresFullName = !identity.fullName.trim();
   const hasPackages = packageOptions.length > 0;
@@ -77,37 +88,81 @@ export function PublicPtApplyForm({
         phone: identity.phone.trim(),
       });
       setError(null);
+      setPackageFeedback(null);
     }
   }, [identity.fullName, identity.phone, success]);
 
   useEffect(() => {
-    if (packageOptions.length === 0) {
+    const resolution = resolvePublicPackageSelection({
+      packageOptions,
+      currentPackageId: form.packageInterestId,
+    });
+
+    if (
+      resolution.packageInterestId !== form.packageInterestId ||
+      resolution.packageInterestLabelSnapshot !==
+        form.packageInterestLabelSnapshot
+    ) {
       setForm((prev) => ({
         ...prev,
-        packageInterestId: "",
-        packageInterestLabelSnapshot: "",
+        packageInterestId: resolution.packageInterestId,
+        packageInterestLabelSnapshot: resolution.packageInterestLabelSnapshot,
       }));
+    }
+
+    if (resolution.notice) {
+      setPackageFeedback({ tone: "warning", text: resolution.notice });
       return;
     }
 
-    setForm((prev) => {
-      const matchingOption = packageOptions.find(
-        (option) => option.id === prev.packageInterestId,
-      );
-      if (matchingOption) {
-        return {
-          ...prev,
-          packageInterestLabelSnapshot: matchingOption.label,
-        };
-      }
+    if (!resolution.packageInterestId) {
+      setPackageFeedback((prev) => (prev?.tone === "warning" ? null : prev));
+    }
+  }, [form.packageInterestId, form.packageInterestLabelSnapshot, packageOptions]);
 
-      return {
-        ...prev,
-        packageInterestId: "",
-        packageInterestLabelSnapshot: "",
-      };
+  useEffect(() => {
+    if (!packagePrefill?.id) return;
+    if (lastAppliedPrefillNonceRef.current === packagePrefill.nonce) {
+      return;
+    }
+    lastAppliedPrefillNonceRef.current = packagePrefill.nonce;
+
+    const resolution = resolvePublicPackageSelection({
+      packageOptions,
+      currentPackageId: form.packageInterestId,
+      requestedPackageId: packagePrefill.id,
     });
-  }, [packageOptions]);
+
+    if (
+      resolution.packageInterestId !== form.packageInterestId ||
+      resolution.packageInterestLabelSnapshot !==
+        form.packageInterestLabelSnapshot
+    ) {
+      setForm((prev) => ({
+        ...prev,
+        packageInterestId: resolution.packageInterestId,
+        packageInterestLabelSnapshot: resolution.packageInterestLabelSnapshot,
+      }));
+    }
+
+    if (resolution.notice) {
+      setPackageFeedback({ tone: "warning", text: resolution.notice });
+      return;
+    }
+
+    if (resolution.selectedLabel) {
+      setPackageFeedback({
+        tone: "info",
+        text: `Selected package: ${resolution.selectedLabel}`,
+      });
+    }
+  }, [
+    form.packageInterestId,
+    form.packageInterestLabelSnapshot,
+    packageOptions,
+    packagePrefill?.id,
+    packagePrefill?.nonce,
+  ]);
 
   const fullNameLimitState = getCharacterLimitState({
     value: form.fullName,
@@ -212,6 +267,64 @@ export function PublicPtApplyForm({
           limit={phoneLimitState.limit}
           errorText={phoneLimitState.errorText}
         />
+        {hasPackages ? (
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Interested package
+            </p>
+            <Select
+              value={form.packageInterestId}
+              onChange={(event) => {
+                const selectedId = event.target.value;
+                const selectedOption =
+                  packageOptions.find((option) => option.id === selectedId) ??
+                  null;
+                setForm((prev) => ({
+                  ...prev,
+                  packageInterestId: selectedId,
+                  packageInterestLabelSnapshot: selectedOption?.label ?? "",
+                }));
+                if (selectedOption?.label) {
+                  setPackageFeedback({
+                    tone: "info",
+                    text: `Selected package: ${selectedOption.label}`,
+                  });
+                } else {
+                  setPackageFeedback(null);
+                }
+              }}
+              disabled={preview}
+              aria-label="Interested package"
+            >
+              <option value="">No specific package yet</option>
+              {packageOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <FieldCharacterMeta
+              count={packageInterestLimitState.count}
+              limit={packageInterestLimitState.limit}
+              errorText={packageInterestLimitState.errorText}
+            />
+            {packageFeedback ? (
+              <p
+                className={
+                  packageFeedback.tone === "warning"
+                    ? "text-xs leading-5 text-warning"
+                    : "text-xs leading-5 text-muted-foreground"
+                }
+              >
+                {packageFeedback.text}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-xs leading-5 text-muted-foreground">
+            You can still apply and discuss options with the coach.
+          </p>
+        )}
         <Textarea
           isInvalid={goalSummaryLimitState.overLimit}
           value={form.goalSummary}
@@ -243,42 +356,6 @@ export function PublicPtApplyForm({
           limit={trainingExperienceLimitState.limit}
           errorText={trainingExperienceLimitState.errorText}
         />
-        {hasPackages ? (
-          <div className="space-y-2">
-            <Select
-              value={form.packageInterestId}
-              onChange={(event) => {
-                const selectedId = event.target.value;
-                const selectedOption =
-                  packageOptions.find((option) => option.id === selectedId) ??
-                  null;
-                setForm((prev) => ({
-                  ...prev,
-                  packageInterestId: selectedId,
-                  packageInterestLabelSnapshot: selectedOption?.label ?? "",
-                }));
-              }}
-              disabled={preview}
-            >
-              <option value="">No specific package yet</option>
-              {packageOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-            <FieldCharacterMeta
-              count={packageInterestLimitState.count}
-              limit={packageInterestLimitState.limit}
-              errorText={packageInterestLimitState.errorText}
-            />
-          </div>
-        ) : (
-          <p className="text-xs leading-5 text-muted-foreground">
-            No public packages are published yet. You can still apply and share
-            your goals.
-          </p>
-        )}
       </div>
 
       <Button

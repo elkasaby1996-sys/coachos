@@ -10,6 +10,7 @@ import {
   approvePtHubLead,
   updatePtHubLeadStatus,
   usePtHubLeads,
+  usePtPackages,
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import {
@@ -25,6 +26,7 @@ export function PtHubLeadDetailPage() {
   const queryClient = useQueryClient();
   const { user } = useSessionAuth();
   const leadsQuery = usePtHubLeads();
+  const packagesQuery = usePtPackages();
   const workspacesQuery = usePtHubWorkspaces();
   const [saving, setSaving] = useState(false);
   const [sendingLeadMessage, setSendingLeadMessage] = useState(false);
@@ -34,6 +36,17 @@ export function PtHubLeadDetailPage() {
     () => (leadsQuery.data ?? []).find((item) => item.id === leadId) ?? null,
     [leadId, leadsQuery.data],
   );
+  const currentPackage = useMemo(() => {
+    if (!lead?.packageInterestId) return null;
+    return (
+      (packagesQuery.data ?? []).find(
+        (pkg) => pkg.id === lead.packageInterestId,
+      ) ?? null
+    );
+  }, [lead?.packageInterestId, packagesQuery.data]);
+  const currentPackageLookupLoading = lead?.packageInterestId
+    ? packagesQuery.isLoading
+    : false;
   const leadChatThreadQuery = useLeadConversationThread(lead?.id ?? null);
 
   useEffect(() => {
@@ -91,6 +104,8 @@ export function PtHubLeadDetailPage() {
   return (
     <PtHubLeadDetailView
       lead={lead}
+      currentPackage={currentPackage}
+      currentPackageLookupLoading={currentPackageLookupLoading}
       workspaces={(workspacesQuery.data ?? []).map((workspace) => ({
         id: workspace.id,
         name: workspace.name,

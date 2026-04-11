@@ -338,6 +338,12 @@ export interface PTPublicApplicantIdentity {
 export interface PTPublicPackageOption {
   id: string;
   label: string;
+  subtitle: string | null;
+  description: string | null;
+  priceLabel: string | null;
+  billingCadenceLabel: string | null;
+  features: string[] | null;
+  ctaLabel: string | null;
 }
 
 export type PTPackageStatus = "draft" | "active" | "archived";

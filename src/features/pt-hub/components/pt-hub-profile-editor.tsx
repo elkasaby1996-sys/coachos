@@ -25,7 +25,6 @@ import type {
   PTProfileReadiness,
   PTPublicationState,
 } from "../types";
-import { PtHubPackageManager } from "./pt-hub-package-manager";
 import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { useSessionAuth } from "../../../lib/auth";
@@ -1202,9 +1201,20 @@ export function PtHubProfileEditor({
 
           <PtHubSectionCard
             title="Package management"
-            description="Manage draft, active, and archived packages for public lead intake."
+            description="Package editing now lives in the dedicated PT Hub Packages surface."
           >
-            <PtHubPackageManager />
+            <div className="rounded-[20px] border border-border/60 bg-background/35 p-4">
+              <p className="text-sm text-muted-foreground">
+                Use PT Hub Packages to create, publish or hide, archive, and
+                reorder packages. This keeps one canonical package-management
+                surface.
+              </p>
+              <div className="mt-3">
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/pt-hub/packages">Open Packages</Link>
+                </Button>
+              </div>
+            </div>
           </PtHubSectionCard>
         </TabsContent>
 

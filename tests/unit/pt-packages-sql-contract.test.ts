@@ -13,6 +13,12 @@ describe("PT packages SQL contracts", () => {
   const migration = readMigration(
     "20260410100000_add_pt_packages_canonical_model.sql",
   );
+  const deleteGuardMigration = readMigration(
+    "20260411140000_add_guarded_pt_package_delete.sql",
+  );
+  const publicProfileRlsFixMigration = readMigration(
+    "20260411152000_fix_public_profile_rls_visibility.sql",
+  );
 
   it("creates canonical pt_packages schema with state and visibility", () => {
     expect(migration).toContain("create table if not exists public.pt_packages");
@@ -53,5 +59,71 @@ describe("PT packages SQL contracts", () => {
     expect(migration).toContain("v_selected_package.title");
     expect(migration).toContain("package_interest_label_snapshot = v_package_interest_label");
     expect(migration).toContain("package_interest = v_package_interest_label");
+  });
+
+  it("enforces stale and tampered package rejection server-side", () => {
+    expect(migration).toContain("if p_package_interest_id is not null then");
+    expect(migration).toContain("raise exception 'Selected package is no longer available.'");
+    expect(migration).toContain("and pkg.status = 'active'");
+    expect(migration).toContain("and pkg.is_public = true");
+    expect(migration).toContain("and pkg.pt_user_id = v_profile.user_id");
+  });
+
+  it("supports no-package submissions while preserving nullable package fields", () => {
+    expect(migration).toContain("p_package_interest_id uuid default null");
+    expect(migration).toContain("p_package_interest_label_snapshot text default null");
+    expect(migration).toContain("package_interest_id = p_package_interest_id");
+    expect(migration).toContain("v_package_interest_label := nullif(");
+  });
+
+  it("keeps server-side canonical snapshot assignment when package id is provided", () => {
+    expect(migration).toContain("if p_package_interest_id is not null then");
+    expect(migration).toContain("v_package_interest_label := nullif(");
+    expect(migration).toContain("coalesce(v_selected_package.title, '')");
+    expect(migration).toContain("else");
+    expect(migration).toContain("coalesce(p_package_interest_label_snapshot, '')");
+  });
+
+  it("adds guarded package delete function with ownership checks", () => {
+    expect(deleteGuardMigration).toContain(
+      "create or replace function public.delete_pt_package_guarded",
+    );
+    expect(deleteGuardMigration).toContain("v_actor_user_id := auth.uid()");
+    expect(deleteGuardMigration).toContain("detail = 'FORBIDDEN'");
+    expect(deleteGuardMigration).toContain("v_package.pt_user_id <> v_actor_user_id");
+  });
+
+  it("blocks delete when leads reference package and returns explicit error code", () => {
+    expect(deleteGuardMigration).toContain("from public.pt_hub_leads lead");
+    expect(deleteGuardMigration).toContain(
+      "where lead.package_interest_id = v_package.id",
+    );
+    expect(deleteGuardMigration).toContain(
+      "detail = 'PACKAGE_DELETE_BLOCKED_REFERENCED'",
+    );
+    expect(deleteGuardMigration).toContain("Archive it instead");
+  });
+
+  it("allows guarded hard delete only when unreferenced and grants execute to authenticated", () => {
+    expect(deleteGuardMigration).toContain("delete from public.pt_packages pkg");
+    expect(deleteGuardMigration).toContain("grant execute on function public.delete_pt_package_guarded(uuid)");
+    expect(deleteGuardMigration).toContain("to authenticated, service_role");
+    expect(deleteGuardMigration).not.toContain("update public.pt_hub_leads");
+  });
+
+  it("keeps public coach profile readable for anon without depending on pt_hub_settings RLS", () => {
+    expect(publicProfileRlsFixMigration).toContain(
+      "drop policy if exists pt_hub_profiles_select_access",
+    );
+    expect(publicProfileRlsFixMigration).toContain(
+      "drop policy if exists pt_hub_profiles_select_published",
+    );
+    expect(publicProfileRlsFixMigration).toContain(
+      "create policy pt_hub_profiles_select_published",
+    );
+    expect(publicProfileRlsFixMigration).toContain("to anon");
+    expect(publicProfileRlsFixMigration).toContain("is_published = true");
+    expect(publicProfileRlsFixMigration).toContain("btrim(slug) <> ''");
+    expect(publicProfileRlsFixMigration).not.toContain("pt_hub_settings");
   });
 });

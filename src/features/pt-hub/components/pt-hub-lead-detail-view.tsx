@@ -16,7 +16,9 @@ import { PtHubPageHeader } from "./pt-hub-page-header";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { PtHubLeadStatusBadge } from "./pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "./pt-hub-lead-statuses";
-import type { PTLead, PTLeadMessage, PTLeadStatus } from "../types";
+import { getPackageDisplayState } from "../lib/pt-hub-package-state";
+import { getLeadPrimaryPackageContext } from "../lib/pt-hub-lead-package-context";
+import type { PTLead, PTLeadMessage, PTLeadStatus, PTPackage } from "../types";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { getCharacterLimitState } from "../../../lib/character-limits";
 
@@ -25,6 +27,8 @@ const CREATE_NEW_WORKSPACE_VALUE = "__create_new__";
 
 export function PtHubLeadDetailView({
   lead,
+  currentPackage,
+  currentPackageLookupLoading,
   workspaces,
   currentUserId,
   leadChatMessages,
@@ -39,6 +43,8 @@ export function PtHubLeadDetailView({
   onAddNote,
 }: {
   lead: PTLead;
+  currentPackage: PTPackage | null;
+  currentPackageLookupLoading: boolean;
   workspaces: Array<{ id: string; name: string }>;
   currentUserId: string | null;
   leadChatMessages: PTLeadMessage[];
@@ -82,6 +88,10 @@ export function PtHubLeadDetailView({
   });
 
   const initialStatus = useMemo(() => lead.status ?? "new", [lead.status]);
+  const packageSelection = useMemo(
+    () => getLeadPrimaryPackageContext(lead),
+    [lead],
+  );
   const statusSelectValue = manualStatusOptions.includes(nextStatus)
     ? nextStatus
     : "contacted";
@@ -103,6 +113,13 @@ export function PtHubLeadDetailView({
     saving ||
     workspaceNameLimitState.overLimit ||
     (isCreatingWorkspace && !newWorkspaceName.trim());
+  const selectedAtApplicationLabel =
+    packageSelection.label ?? "No package selected";
+  const showCurrentPackageUnavailableMessage =
+    packageSelection.label !== null &&
+    Boolean(lead.packageInterestId) &&
+    !currentPackage &&
+    !currentPackageLookupLoading;
 
   return (
     <section className="space-y-6">
@@ -151,14 +168,40 @@ export function PtHubLeadDetailView({
             {lead.budgetInterest ? (
               <DetailRow label="Budget (legacy)" value={lead.budgetInterest} />
             ) : null}
+          </PtHubSectionCard>
+
+          <PtHubSectionCard
+            module="leads"
+            title="Package interest"
+            description="Package context captured for qualification review."
+          >
             <DetailRow
-              label="Package interest"
-              value={
-                lead.packageInterestLabelSnapshot ||
-                lead.packageInterest ||
-                "Not provided"
-              }
+              label="Selected at application"
+              value={selectedAtApplicationLabel}
             />
+            <p className="text-xs text-muted-foreground">
+              Captured from the applicant&apos;s selection at the time they applied.
+            </p>
+            {currentPackage ? (
+              <>
+                <DetailRow label="Current package" value={currentPackage.title} />
+                <DetailRow
+                  label="Current state"
+                  value={getPackageDisplayState(currentPackage)}
+                />
+              </>
+            ) : null}
+            {currentPackageLookupLoading && lead.packageInterestId ? (
+              <p className="text-xs text-muted-foreground">
+                Loading current package reference...
+              </p>
+            ) : null}
+            {showCurrentPackageUnavailableMessage ? (
+              <p className="text-xs text-muted-foreground">
+                Current package record is unavailable, but the selected-at-application
+                label remains preserved.
+              </p>
+            ) : null}
           </PtHubSectionCard>
 
           <PtHubSectionCard

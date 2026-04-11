@@ -552,6 +552,11 @@ export function PtLayout() {
   const pageHeader = getPtRouteHeader(location.pathname, navGroups);
   const currentModule = getModuleToneForPath(location.pathname);
   const routeTransitionKey = getWorkspaceRouteTransitionKey(location.pathname);
+  const workspaceSettingsRouteMatch = location.pathname.match(
+    /^\/workspace\/([^/]+)\/settings(?:\/|$)/,
+  );
+  const routeWorkspaceId = workspaceSettingsRouteMatch?.[1] ?? null;
+  const headerWorkspaceId = routeWorkspaceId ?? workspaceId;
   const currentModuleClasses = getModuleToneClasses(currentModule);
   const errorMessage =
     error?.message ??
@@ -594,7 +599,7 @@ export function PtLayout() {
   });
   const workspaces = workspaceSwitcherQuery.data ?? [];
   const currentWorkspace =
-    workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
+    workspaces.find((workspace) => workspace.id === headerWorkspaceId) ?? null;
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const profileDisplayName =
@@ -625,6 +630,13 @@ export function PtLayout() {
     window.addEventListener("mousedown", handlePointerDown);
     return () => window.removeEventListener("mousedown", handlePointerDown);
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (!routeWorkspaceId) return;
+    if (routeWorkspaceId === workspaceId) return;
+    if (!workspaceIds.includes(routeWorkspaceId)) return;
+    switchWorkspace(routeWorkspaceId);
+  }, [routeWorkspaceId, workspaceId, workspaceIds, switchWorkspace]);
 
   const searchQuery = useQuery({
     queryKey: ["pt-header-search", workspaceId, normalizedSearch],
@@ -1143,7 +1155,7 @@ export function PtLayout() {
                                       {workspace.name?.trim() || "PT Workspace"}
                                     </p>
                                   </div>
-                                  {workspace.id === workspaceId ? (
+                                  {workspace.id === headerWorkspaceId ? (
                                     <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
                                   ) : null}
                                 </DropdownMenuItem>
