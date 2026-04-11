@@ -19,6 +19,16 @@ describe("workspace resolution hardening", () => {
     expect(source).toContain("new Set([...memberWorkspaceIds, ...ownerWorkspaceIds])");
   });
 
+  it("keeps user-selected workspace authoritative and syncs switches across mounted hooks", () => {
+    const source = readSource("src/lib/use-workspace.ts");
+
+    expect(source).toContain("const WORKSPACE_CHANGE_EVENT =");
+    expect(source).toContain("window.dispatchEvent(");
+    expect(source).toContain("window.addEventListener(");
+    expect(source).toContain("WORKSPACE_CHANGE_EVENT");
+    expect(source).toContain("(!workspaceId ||");
+  });
+
   it("self-heals invalid dashboard workspace context before calling pt_dashboard_summary", () => {
     const source = readSource("src/pages/pt/dashboard.tsx");
 

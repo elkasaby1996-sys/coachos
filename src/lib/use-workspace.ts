@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import { useBootstrapAuth, useSessionAuth } from "./auth";
 
 const ACTIVE_WORKSPACE_STORAGE_KEY = "coachos_workspace_id";
+const WORKSPACE_CHANGE_EVENT = "coachos:workspace-change";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -62,6 +63,11 @@ export function useWorkspace() {
         ACTIVE_WORKSPACE_STORAGE_KEY,
         nextWorkspaceId,
       );
+      window.dispatchEvent(
+        new CustomEvent<{ workspaceId: string }>(WORKSPACE_CHANGE_EVENT, {
+          detail: { workspaceId: nextWorkspaceId },
+        }),
+      );
     }
   }, []);
 
@@ -113,9 +119,11 @@ export function useWorkspace() {
   };
 
   useEffect(() => {
+    let cachedWorkspaceId: string | null = null;
     if (typeof window !== "undefined") {
       const cached = window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
       if (isUuid(cached)) {
+        cachedWorkspaceId = cached;
         setWorkspaceId(cached);
         setHasCached(true);
       } else if (cached) {
@@ -126,7 +134,8 @@ export function useWorkspace() {
     if (
       bootstrapWorkspaceId &&
       (bootstrapResolved || (bootstrapStale && hasStableBootstrap)) &&
-      (workspaceId !== bootstrapWorkspaceId ||
+      (!workspaceId ||
+        (!cachedWorkspaceId && !hasCached) ||
         (hasWorkspaceMembership &&
           accountType === "pt" &&
           !workspaceIds.includes(bootstrapWorkspaceId)))
@@ -157,10 +166,63 @@ export function useWorkspace() {
     bootstrapStale,
     bootstrapWorkspaceId,
     hasStableBootstrap,
+    hasCached,
     hasWorkspaceMembership,
     workspaceId,
     workspaceIds,
   ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const applyIncomingWorkspace = (nextWorkspaceId: string) => {
+      if (!isUuid(nextWorkspaceId)) return;
+
+      setWorkspaceId(nextWorkspaceId);
+      setWorkspaceIds((current) =>
+        current.includes(nextWorkspaceId)
+          ? current
+          : [nextWorkspaceId, ...current],
+      );
+      setHasCached(true);
+      lastStableWorkspaceRef.current = {
+        workspaceId: nextWorkspaceId,
+        workspaceIds: lastStableWorkspaceRef.current.workspaceIds.includes(
+          nextWorkspaceId,
+        )
+          ? lastStableWorkspaceRef.current.workspaceIds
+          : [nextWorkspaceId, ...lastStableWorkspaceRef.current.workspaceIds],
+        ownerUserId: lastStableWorkspaceRef.current.ownerUserId,
+      };
+    };
+
+    const handleWorkspaceEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ workspaceId?: string }>;
+      const nextWorkspaceId = customEvent.detail?.workspaceId;
+      if (!nextWorkspaceId) return;
+      applyIncomingWorkspace(nextWorkspaceId);
+    };
+
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key !== ACTIVE_WORKSPACE_STORAGE_KEY) return;
+      if (!event.newValue) return;
+      applyIncomingWorkspace(event.newValue);
+    };
+
+    window.addEventListener(
+      WORKSPACE_CHANGE_EVENT,
+      handleWorkspaceEvent as EventListener,
+    );
+    window.addEventListener("storage", handleStorageEvent);
+
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_CHANGE_EVENT,
+        handleWorkspaceEvent as EventListener,
+      );
+      window.removeEventListener("storage", handleStorageEvent);
+    };
+  }, []);
 
   useEffect(() => {
     if (!bootstrapWorkspaceId || !bootstrapError) return;
