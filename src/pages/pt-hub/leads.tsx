@@ -1,14 +1,22 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import { ChevronRight, MessageSquarePlus, Search, UsersRound } from "lucide-react";
+import { ChevronRight, MessageSquarePlus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { PtHubLeadStatusBadge } from "../../features/pt-hub/components/pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "../../features/pt-hub/components/pt-hub-lead-statuses";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
+import {
+  deriveLeadPackageFilterOptions,
+  filterLeadsByPackageContext,
+  getLeadPrimaryPackageLabel,
+  LEAD_PACKAGE_FILTER_ALL,
+  type LeadPackageFilterValue,
+} from "../../features/pt-hub/lib/pt-hub-lead-package-context";
 import { usePtHubLeads } from "../../features/pt-hub/lib/pt-hub";
 import type { PTLeadStatus } from "../../features/pt-hub/types";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -23,12 +31,22 @@ export function PtHubLeadsPage() {
   const leadsQuery = usePtHubLeads();
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<PTLeadStatus | "all">("all");
+  const [packageFilterValue, setPackageFilterValue] =
+    useState<LeadPackageFilterValue>(LEAD_PACKAGE_FILTER_ALL);
   const deferredSearchValue = useDeferredValue(searchValue);
 
   const leads = useMemo(() => leadsQuery.data ?? [], [leadsQuery.data]);
+  const packageFilterOptions = useMemo(
+    () => deriveLeadPackageFilterOptions(leads),
+    [leads],
+  );
   const filteredLeads = useMemo(() => {
+    const packageFilteredLeads = filterLeadsByPackageContext(
+      leads,
+      packageFilterValue,
+    );
     const normalizedSearch = deferredSearchValue.trim().toLowerCase();
-    return leads.filter((lead) => {
+    return packageFilteredLeads.filter((lead) => {
       const matchesStatus =
         statusFilter === "all" ? true : lead.status === statusFilter;
       const haystack = [
@@ -38,7 +56,8 @@ export function PtHubLeadsPage() {
         lead.goalSummary,
         lead.trainingExperience ?? "",
         lead.budgetInterest ?? "",
-        lead.packageInterest ?? "",
+        getLeadPrimaryPackageLabel(lead) ?? "",
+        lead.leadLastMessagePreview ?? "",
         lead.notesPreview ?? "",
         lead.sourceLabel,
       ]
@@ -49,16 +68,16 @@ export function PtHubLeadsPage() {
         : true;
       return matchesStatus && matchesSearch;
     });
-  }, [deferredSearchValue, leads, statusFilter]);
+  }, [deferredSearchValue, leads, packageFilterValue, statusFilter]);
 
   const stats = useMemo(
     () => ({
       total: leads.length,
       fresh: leads.filter((lead) => lead.status === "new").length,
       activePipeline: leads.filter((lead) =>
-        ["reviewed", "contacted", "consultation_booked"].includes(lead.status),
+        ["contacted", "approved_pending_workspace"].includes(lead.status),
       ).length,
-      accepted: leads.filter((lead) => lead.status === "accepted").length,
+      converted: leads.filter((lead) => lead.status === "converted").length,
     }),
     [leads],
   );
@@ -90,13 +109,13 @@ export function PtHubLeadsPage() {
           surface="pt-hub"
           label="In Progress"
           value={stats.activePipeline}
-          helper="Reviewed, contacted, or booked"
+          helper="Contacted or awaiting workspace"
         />
         <StatCard
           surface="pt-hub"
-          label="Accepted"
-          value={stats.accepted}
-          helper="Accepted or converted"
+          label="Converted"
+          value={stats.converted}
+          helper="Approved and assigned"
         />
       </div>
 
@@ -128,6 +147,20 @@ export function PtHubLeadsPage() {
                   {status === "all" ? "All" : status.replace(/_/g, " ")}
                 </Button>
               ))}
+              <Select
+                size="sm"
+                value={packageFilterValue}
+                onChange={(event) =>
+                  setPackageFilterValue(event.target.value as LeadPackageFilterValue)
+                }
+                aria-label="Filter by package interest"
+              >
+                {packageFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.count})
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
         </div>
@@ -151,54 +184,68 @@ export function PtHubLeadsPage() {
               <span>Status</span>
             </div>
             <div className="space-y-2">
-              {filteredLeads.map((lead) => (
-                <button
-                  key={lead.id}
-                  type="button"
-                  className="grid w-full gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] lg:items-center"
-                  onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}
-                >
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-foreground">
-                        {lead.fullName}
+              {filteredLeads.map((lead) => {
+                const packageLabel = getLeadPrimaryPackageLabel(lead);
+                return (
+                  <button
+                    key={lead.id}
+                    type="button"
+                    className="grid w-full gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] lg:items-center"
+                    onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-foreground">
+                          {lead.fullName}
+                        </p>
+                        <span className="rounded-full border border-border/70 bg-background/72 px-2 py-0.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                          {lead.sourceLabel}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {lead.email || lead.phone || "No contact info"}
                       </p>
-                      <span className="rounded-full border border-border/70 bg-background/72 px-2 py-0.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                        {lead.sourceLabel}
-                      </span>
+                      <p className="line-clamp-1 text-xs text-muted-foreground">
+                        {lead.leadLastMessagePreview ||
+                          lead.notesPreview ||
+                          "No lead chat activity yet"}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {lead.email || lead.phone || "No contact info"}
-                    </p>
-                    <p className="line-clamp-1 text-xs text-muted-foreground">
-                      {lead.notesPreview || "No internal notes yet"}
-                    </p>
-                  </div>
 
-                  <div className="space-y-1">
-                    <p className="line-clamp-2 text-sm text-foreground">
-                      {lead.goalSummary}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {lead.budgetInterest ||
-                        lead.packageInterest ||
-                        "Budget not specified"}
-                    </p>
-                  </div>
+                    <div className="space-y-1">
+                      <p className="line-clamp-2 text-sm text-foreground">
+                        {lead.goalSummary}
+                      </p>
+                      {packageLabel ? (
+                        <p className="text-xs text-muted-foreground">
+                          Package: {packageLabel}
+                        </p>
+                      ) : null}
+                    </div>
 
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>{formatRelativeTime(lead.submittedAt)}</p>
-                    <p className="text-xs">
-                      {lead.trainingExperience || "Experience not specified"}
-                    </p>
-                  </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p>
+                        {formatRelativeTime(
+                          lead.leadLastMessageAt ?? lead.submittedAt,
+                        )}
+                      </p>
+                      <p className="text-xs">
+                        {lead.trainingExperience || "Experience not specified"}
+                      </p>
+                    </div>
 
-                  <div className="flex items-center justify-between gap-3 lg:justify-end">
-                    <PtHubLeadStatusBadge status={lead.status} />
-                    <ChevronRight className="h-4 w-4 text-muted-foreground [stroke-width:1.7]" />
-                  </div>
-                </button>
-              ))}
+                    <div className="flex items-center justify-between gap-3 lg:justify-end">
+                      {lead.leadUnreadCount > 0 ? (
+                        <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                          {lead.leadUnreadCount} unread
+                        </span>
+                      ) : null}
+                      <PtHubLeadStatusBadge status={lead.status} />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground [stroke-width:1.7]" />
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

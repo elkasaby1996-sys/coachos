@@ -14,12 +14,10 @@ export type PTAvailabilityMode = "online" | "in_person";
 
 export type PTLeadStatus =
   | "new"
-  | "reviewed"
   | "contacted"
-  | "consultation_booked"
-  | "accepted"
-  | "rejected"
-  | "archived";
+  | "approved_pending_workspace"
+  | "converted"
+  | "declined";
 
 export interface PTProfile {
   id: string | null;
@@ -86,8 +84,19 @@ export interface PTLeadNote {
   createdAt: string;
 }
 
+export type PTLeadConversationStatus = "open" | "archived";
+
+export interface PTLeadMessage {
+  id: string;
+  conversationId: string;
+  senderUserId: string;
+  body: string;
+  sentAt: string;
+}
+
 export interface PTLead {
   id: string;
+  applicantUserId: string | null;
   fullName: string;
   email: string | null;
   phone: string | null;
@@ -95,9 +104,17 @@ export interface PTLead {
   trainingExperience: string | null;
   budgetInterest: string | null;
   packageInterest: string | null;
+  packageInterestId: string | null;
+  packageInterestLabelSnapshot: string | null;
   status: PTLeadStatus;
   submittedAt: string;
   notesPreview: string | null;
+  leadConversationId: string | null;
+  leadConversationStatus: PTLeadConversationStatus | null;
+  leadConversationArchivedReason: "converted" | "declined" | "manual" | null;
+  leadLastMessagePreview: string | null;
+  leadLastMessageAt: string | null;
+  leadUnreadCount: number;
   notes: PTLeadNote[];
   source: string;
   sourceLabel: string;
@@ -304,12 +321,50 @@ export interface PTPublicProfile {
 export interface PTPublicLeadInput {
   slug: string;
   fullName: string;
-  email: string;
   phone: string;
   goalSummary: string;
   trainingExperience: string;
-  budgetInterest: string;
-  packageInterest: string;
+  packageInterestId: string | null;
+  packageInterestLabelSnapshot: string | null;
+}
+
+export interface PTPublicApplicantIdentity {
+  isAuthenticated: boolean;
+  email: string;
+  fullName: string;
+  phone: string;
+}
+
+export interface PTPublicPackageOption {
+  id: string;
+  label: string;
+  subtitle: string | null;
+  description: string | null;
+  priceLabel: string | null;
+  billingCadenceLabel: string | null;
+  features: string[] | null;
+  ctaLabel: string | null;
+}
+
+export type PTPackageStatus = "draft" | "active" | "archived";
+
+export interface PTPackage {
+  id: string;
+  ptUserId: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  priceLabel: string | null;
+  billingCadenceLabel: string | null;
+  ctaLabel: string | null;
+  features: string[] | null;
+  status: PTPackageStatus;
+  isPublic: boolean;
+  sortOrder: number;
+  currencyCode: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 export interface PTPublicationState {

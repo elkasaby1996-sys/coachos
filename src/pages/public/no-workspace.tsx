@@ -68,6 +68,14 @@ export function NoWorkspacePage() {
       return;
     }
     if (
+      accountType === "client" &&
+      clientAccountComplete &&
+      !hasWorkspaceMembership
+    ) {
+      navigate("/app/home", { replace: true });
+      return;
+    }
+    if (
       (accountType === "client" || accountType === "unknown") &&
       clientAccountComplete &&
       hasWorkspaceMembership

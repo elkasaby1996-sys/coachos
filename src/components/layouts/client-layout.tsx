@@ -110,7 +110,8 @@ export function ClientLayout() {
     useBootstrapAuth();
   const onboardingQuery = useClientOnboarding();
   const onboardingSummary = onboardingQuery.data ?? null;
-  const basicsGateRequired = Boolean(
+  const preWorkspaceMode = !hasWorkspaceMembership;
+  const basicsGateRequired = !preWorkspaceMode && Boolean(
     onboardingSummary &&
     onboardingSummary.canEdit &&
     !onboardingSummary.progress.basics.complete,
@@ -141,34 +142,41 @@ export function ClientLayout() {
     !isOnboardingBannerDismissed,
   );
   const topStatusText = onboardingSummary
-    ? onboardingSummary.onboarding.status === "completed"
+    ? preWorkspaceMode
+      ? "Lead dashboard active"
+      : onboardingSummary.onboarding.status === "completed"
       ? "Workspace setup complete"
       : onboardingSummary.awaitingReview
         ? "Onboarding with coach"
         : `${onboardingSummary.completionPercent}% onboarding complete`
-    : "Private coaching workspace";
+    : preWorkspaceMode
+      ? "Lead dashboard active"
+      : "Private coaching workspace";
   const shouldShowTopStatusText = Boolean(
     onboardingSummary
       ? onboardingSummary.onboarding.status !== "completed"
       : false,
   );
   const reduceMotion = useReducedMotion();
+  const visibleNavItems = useMemo(
+    () =>
+      preWorkspaceMode
+        ? navItems.filter((item) => item.to === "/app/home")
+        : navItems,
+    [preWorkspaceMode],
+  );
 
   useEffect(() => {
-    if (!loading && !hasWorkspaceMembership) {
-      navigate("/no-workspace", { replace: true });
+    if (!loading && preWorkspaceMode && location.pathname !== "/app/home") {
+      navigate("/app/home", { replace: true });
     }
-  }, [hasWorkspaceMembership, loading, navigate]);
+  }, [loading, location.pathname, navigate, preWorkspaceMode]);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
   }
 
-  if (!hasWorkspaceMembership) {
-    return <LoadingScreen message="Redirecting..." />;
-  }
-
-  if (errorMessage) {
+  if (errorMessage && !preWorkspaceMode) {
     return (
       <div
         className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
@@ -237,7 +245,7 @@ export function ClientLayout() {
             </span>
           </div>
           <nav className="flex flex-1 flex-col gap-2">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -432,7 +440,7 @@ export function ClientLayout() {
           <AppFooter className="pb-20 md:pb-3" size="portal" />
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
             <PageContainer size="portal" className="grid grid-cols-6 gap-1">
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

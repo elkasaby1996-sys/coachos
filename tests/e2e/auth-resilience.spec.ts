@@ -23,8 +23,8 @@ test.describe("Auth resilience", () => {
     await waitForAuthSessionReady(page);
     await waitForBootstrapResolved(page);
     await waitForPageReady(page, {
-      testId: "no-workspace-page",
-      urlPattern: /\/no-workspace$/,
+      testId: "client-lead-dashboard",
+      urlPattern: /\/app\/home$/,
     });
 
     await page.context().clearCookies();
@@ -43,8 +43,8 @@ test.describe("Auth resilience", () => {
     );
     await waitForAuthSessionReady(page);
     await waitForPageReady(page, {
-      testId: "no-workspace-page",
-      urlPattern: /\/no-workspace$/,
+      testId: "client-lead-dashboard",
+      urlPattern: /\/app\/home$/,
     });
   });
 });

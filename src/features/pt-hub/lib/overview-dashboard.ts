@@ -172,18 +172,17 @@ function getBusinessSetupCompletionPercent(params: {
 }
 
 function getUnrepliedLeadCount(leads: PTLead[]) {
-  return leads.filter((lead) => ["new", "reviewed"].includes(lead.status))
-    .length;
+  return leads.filter((lead) => lead.status === "new").length;
 }
 
 function getPipelineLeadCount(leads: PTLead[]) {
   return leads.filter((lead) =>
-    ["contacted", "consultation_booked"].includes(lead.status),
+    ["contacted", "approved_pending_workspace"].includes(lead.status),
   ).length;
 }
 
 function getAcceptedLeadCount(leads: PTLead[]) {
-  return leads.filter((lead) => lead.status === "accepted").length;
+  return leads.filter((lead) => lead.status === "converted").length;
 }
 
 function getClientsNeedingAttention(clients: PTClientSummary[]) {
@@ -662,10 +661,10 @@ function buildPipelineSummary(params: {
       tone: getSemanticToneForStatus("In progress"),
     },
     {
-      id: "accepted",
-      label: "Accepted",
+      id: "converted",
+      label: "Converted",
       value: formatCount(getAcceptedLeadCount(params.leads), "lead"),
-      tone: getSemanticToneForStatus("Accepted"),
+      tone: getSemanticToneForStatus("Converted"),
     },
     {
       id: "new-this-month",

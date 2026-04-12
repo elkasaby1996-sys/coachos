@@ -7,22 +7,18 @@ const statusVariant: Record<
   BadgeVariant
 > = {
   new: "warning",
-  reviewed: "info",
   contacted: "info",
-  consultation_booked: "success",
-  accepted: "success",
-  rejected: "danger",
-  archived: "neutral",
+  approved_pending_workspace: "warning",
+  converted: "success",
+  declined: "danger",
 };
 
 const statusLabel: Record<PTLeadStatus, string> = {
   new: "New",
-  reviewed: "Reviewed",
   contacted: "Contacted",
-  consultation_booked: "Consultation booked",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  archived: "Archived",
+  approved_pending_workspace: "Approved pending workspace",
+  converted: "Converted",
+  declined: "Declined",
 };
 
 export function PtHubLeadStatusBadge({ status }: { status: PTLeadStatus }) {

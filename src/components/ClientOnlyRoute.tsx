@@ -17,7 +17,7 @@ export function ClientOnlyRoute() {
   }
 
   if (role === "none") {
-    return <Navigate to="/no-workspace" replace />;
+    return <Navigate to="/app/home" replace />;
   }
 
   return <Outlet />;

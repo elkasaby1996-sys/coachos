@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ClientReminders } from "../../components/common/client-reminders";
 import {
@@ -22,11 +30,16 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak } from "../../lib/habits";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
+import { ClientLeadDashboard } from "../../features/lead-chat/components/client-lead-dashboard";
+import {
+  clearInviteJoinParams,
+  deriveInviteJoinContext,
+} from "../../features/lead-chat/lib/invite-join-context";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -110,7 +123,7 @@ const getWorkoutTemplateInfo = (row: any) => {
   };
 };
 
-export function ClientHomePage() {
+function ClientWorkspaceHomePage() {
   const navigate = useNavigate();
   const { session } = useSessionAuth();
   const today = useMemo(() => new Date(), []);
@@ -1223,5 +1236,86 @@ export function ClientHomePage() {
         </SurfaceCard>
       </div>
     </div>
+  );
+}
+
+export function ClientHomePage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { hasWorkspaceMembership } = useBootstrapAuth();
+  const inviteJoinContext = useMemo(
+    () =>
+      deriveInviteJoinContext({
+        searchParams,
+        hasWorkspaceMembership,
+      }),
+    [hasWorkspaceMembership, searchParams],
+  );
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(
+    inviteJoinContext.shouldShowModal,
+  );
+
+  useEffect(() => {
+    setIsInviteModalOpen(inviteJoinContext.shouldShowModal);
+  }, [inviteJoinContext.shouldShowModal]);
+
+  const clearInviteJoinSearchParams = () => {
+    setSearchParams(clearInviteJoinParams(searchParams), { replace: true });
+  };
+
+  return (
+    <>
+      {hasWorkspaceMembership ? (
+        <ClientWorkspaceHomePage />
+      ) : (
+        <ClientLeadDashboard />
+      )}
+
+      <Dialog
+        open={isInviteModalOpen && inviteJoinContext.shouldShowModal}
+        onOpenChange={(open) => {
+          setIsInviteModalOpen(open);
+          if (!open) {
+            clearInviteJoinSearchParams();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Workspace access activated</DialogTitle>
+            <DialogDescription>
+              You have been added to{" "}
+              <span className="font-medium text-foreground">
+                {inviteJoinContext.workspaceName}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-[18px] border border-border/70 bg-background/45 p-3 text-sm text-muted-foreground">
+            {inviteJoinContext.message}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsInviteModalOpen(false);
+                clearInviteJoinSearchParams();
+              }}
+            >
+              Continue to dashboard
+            </Button>
+            <Button
+              onClick={() => {
+                setIsInviteModalOpen(false);
+                clearInviteJoinSearchParams();
+                navigate("/app/messages");
+              }}
+            >
+              Open messages
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -75,6 +75,7 @@ function buildModuleToneClasses(_module: ModuleTone): ModuleToneClasses {
 }
 
 const routeToneMatchers: Array<{ prefix: string; tone: ModuleTone }> = [
+  { prefix: "/pt-hub/packages", tone: "profile" },
   { prefix: "/pt-hub/profile/preview", tone: "profile" },
   { prefix: "/pt-hub/profile", tone: "profile" },
   { prefix: "/pt-hub/leads", tone: "leads" },

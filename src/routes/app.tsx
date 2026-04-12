@@ -48,6 +48,7 @@ import {
   PtHubLayout,
   PtHubOverviewPage,
   PtHubPaymentsPage,
+  PtHubPackagesPage,
   PtHubProfilePage,
   PtHubProfilePreviewPage,
   PtHubSettingsAccountTab,
@@ -164,11 +165,15 @@ function getProtectedRedirect(params: {
       return getClientAccountOnboardingPath(params.pendingInviteToken);
     }
     if (!params.hasWorkspaceMembership) {
-      return "/no-workspace";
+      if (params.allow.includes("client") && params.pathname.startsWith("/app/home")) {
+        return null;
+      }
+      return "/app/home";
     }
     if (
       params.clientWorkspaceOnboardingHardGateRequired &&
-      !params.pathname.startsWith("/app/onboarding")
+      !params.pathname.startsWith("/app/onboarding") &&
+      !params.pathname.startsWith("/app/home")
     ) {
       return "/app/onboarding";
     }
@@ -572,6 +577,7 @@ export function App() {
           <Route index element={<PtHubOverviewPage />} />
           <Route path="profile" element={<PtHubProfilePage />} />
           <Route path="profile/preview" element={<PtHubProfilePreviewPage />} />
+          <Route path="packages" element={<PtHubPackagesPage />} />
           <Route path="leads" element={<PtHubLeadsPage />} />
           <Route path="leads/:leadId" element={<PtHubLeadDetailPage />} />
           <Route path="clients" element={<PtHubClientsPage />} />

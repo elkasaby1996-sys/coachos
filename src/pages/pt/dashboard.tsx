@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -49,6 +49,9 @@ import {
 } from "../../lib/checkin-review";
 import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ClientRecord = {
   id: string;
@@ -159,7 +162,9 @@ export function PtDashboardPage() {
     workspaceId: cachedWorkspaceId,
     loading: workspaceLoading,
     error: workspaceError,
+    refreshWorkspace,
   } = useWorkspace();
+  const workspaceRecoveryAttemptRef = useRef<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -198,6 +203,12 @@ export function PtDashboardPage() {
           setIsLoading(false);
           return;
         }
+        if (!UUID_PATTERN.test(cachedWorkspaceId)) {
+          setLoadError("Workspace context is invalid. Refreshing workspace...");
+          refreshWorkspace();
+          setIsLoading(false);
+          return;
+        }
         setWorkspaceId(cachedWorkspaceId);
 
         const { data, error } = await supabase.rpc("pt_dashboard_summary", {
@@ -233,15 +244,36 @@ export function PtDashboardPage() {
         } else {
           setOnboardingRows([]);
         }
+        workspaceRecoveryAttemptRef.current = null;
       } catch (error: any) {
-        setLoadError(error?.message ?? "Failed to load dashboard.");
+        const message = String(error?.message ?? "");
+        const shouldRecoverWorkspace =
+          Boolean(cachedWorkspaceId) &&
+          (message.includes("Not authorized") ||
+            message.includes("Workspace is required") ||
+            message.includes("invalid input syntax for type uuid"));
+        if (shouldRecoverWorkspace) {
+          const recoveryKey = `${cachedWorkspaceId}:${message}`;
+          if (workspaceRecoveryAttemptRef.current !== recoveryKey) {
+            workspaceRecoveryAttemptRef.current = recoveryKey;
+            refreshWorkspace();
+          }
+        }
+        setClients([]);
+        setAssignedWorkouts([]);
+        setCheckins([]);
+        setMessages([]);
+        setUnreadCount(0);
+        setOnboardingRows([]);
+        setCoachTodos([]);
+        setLoadError(message || "Failed to load dashboard.");
       } finally {
         setIsLoading(false);
       }
     };
 
     void loadDashboard();
-  }, [cachedWorkspaceId, messagesEnabled, user?.id, workspaceLoading]);
+  }, [cachedWorkspaceId, messagesEnabled, refreshWorkspace, user?.id, workspaceLoading]);
 
   useEffect(() => {
     if (workspaceError) {
@@ -785,9 +817,10 @@ export function PtDashboardPage() {
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <LifecycleBadge
                           lifecycleState={client.lifecycleState}
+                          interactive={false}
                         />
                         {client.attentionLabel === "Manual at-risk flag" ? (
-                          <RiskBadge riskState="at_risk" />
+                          <RiskBadge riskState="at_risk" interactive={false} />
                         ) : null}
                         {client.onboardingLabel ? (
                           <TagInfoBadge
@@ -795,6 +828,7 @@ export function PtDashboardPage() {
                             variant="warning"
                             title="Onboarding status"
                             description="This client still has onboarding work pending before coaching is fully settled."
+                            disabled
                           />
                         ) : null}
                         {client.checkinState ? (
@@ -830,6 +864,7 @@ export function PtDashboardPage() {
                         description={getAttentionDescription(
                           client.attentionLabel,
                         )}
+                        disabled
                       />
                     </div>
                   </button>

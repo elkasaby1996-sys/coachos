@@ -3,6 +3,13 @@ import { supabase } from "./supabase";
 import { useBootstrapAuth, useSessionAuth } from "./auth";
 
 const ACTIVE_WORKSPACE_STORAGE_KEY = "coachos_workspace_id";
+const WORKSPACE_CHANGE_EVENT = "coachos:workspace-change";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string | null | undefined): value is string {
+  return Boolean(value && UUID_PATTERN.test(value));
+}
 
 type WorkspaceSnapshot = {
   workspaceId: string | null;
@@ -15,6 +22,31 @@ const emptyWorkspaceSnapshot: WorkspaceSnapshot = {
   workspaceIds: [],
   ownerUserId: null,
 };
+
+function readCachedWorkspaceId() {
+  if (typeof window === "undefined") return null;
+  const cachedWorkspaceId = window.localStorage.getItem(
+    ACTIVE_WORKSPACE_STORAGE_KEY,
+  );
+  if (isUuid(cachedWorkspaceId)) return cachedWorkspaceId;
+  if (cachedWorkspaceId) {
+    window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+  }
+  return null;
+}
+
+function prioritizeWorkspaceIds(
+  selectedWorkspaceId: string,
+  workspaceIds: string[],
+) {
+  const uniqueWorkspaceIds = Array.from(new Set(workspaceIds));
+  return [
+    selectedWorkspaceId,
+    ...uniqueWorkspaceIds.filter(
+      (workspaceId) => workspaceId !== selectedWorkspaceId,
+    ),
+  ];
+}
 
 export function useWorkspace() {
   const { user } = useSessionAuth();
@@ -33,28 +65,35 @@ export function useWorkspace() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hasCached, setHasCached] = useState(false);
+  const [storageHydrated, setStorageHydrated] = useState(
+    typeof window === "undefined",
+  );
   const [reloadNonce, setReloadNonce] = useState(0);
   const lastStableWorkspaceRef = useRef<WorkspaceSnapshot>(emptyWorkspaceSnapshot);
   const requestIdRef = useRef(0);
 
   const switchWorkspace = useCallback((nextWorkspaceId: string) => {
-    if (!nextWorkspaceId) return;
+    if (!isUuid(nextWorkspaceId)) return;
     setWorkspaceId(nextWorkspaceId);
-    setWorkspaceIds((current) =>
-      current.includes(nextWorkspaceId) ? current : [nextWorkspaceId, ...current],
-    );
+    setWorkspaceIds((current) => prioritizeWorkspaceIds(nextWorkspaceId, current));
     setHasCached(true);
     lastStableWorkspaceRef.current = {
       workspaceId: nextWorkspaceId,
-      workspaceIds: lastStableWorkspaceRef.current.workspaceIds.includes(nextWorkspaceId)
-        ? lastStableWorkspaceRef.current.workspaceIds
-        : [nextWorkspaceId, ...lastStableWorkspaceRef.current.workspaceIds],
+      workspaceIds: prioritizeWorkspaceIds(
+        nextWorkspaceId,
+        lastStableWorkspaceRef.current.workspaceIds,
+      ),
       ownerUserId: lastStableWorkspaceRef.current.ownerUserId,
     };
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         ACTIVE_WORKSPACE_STORAGE_KEY,
         nextWorkspaceId,
+      );
+      window.dispatchEvent(
+        new CustomEvent<{ workspaceId: string }>(WORKSPACE_CHANGE_EVENT, {
+          detail: { workspaceId: nextWorkspaceId },
+        }),
       );
     }
   }, []);
@@ -64,11 +103,19 @@ export function useWorkspace() {
   }, []);
 
   const applyWorkspaceSnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
+    const normalizedWorkspaceIds =
+      snapshot.workspaceId && isUuid(snapshot.workspaceId)
+        ? prioritizeWorkspaceIds(snapshot.workspaceId, snapshot.workspaceIds)
+        : snapshot.workspaceIds;
     setWorkspaceId(snapshot.workspaceId);
-    setWorkspaceIds(snapshot.workspaceIds);
+    setWorkspaceIds(normalizedWorkspaceIds);
     setOwnerUserId(snapshot.ownerUserId);
     if (snapshot.workspaceId) {
-      lastStableWorkspaceRef.current = snapshot;
+      lastStableWorkspaceRef.current = {
+        workspaceId: snapshot.workspaceId,
+        workspaceIds: normalizedWorkspaceIds,
+        ownerUserId: snapshot.ownerUserId,
+      };
       if (typeof window !== "undefined") {
         window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, snapshot.workspaceId);
       }
@@ -107,28 +154,43 @@ export function useWorkspace() {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const cached = window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
-      if (cached) {
-        setWorkspaceId(cached);
-        setHasCached(true);
-        setLoading(false);
-      }
+    if (typeof window === "undefined") {
+      setStorageHydrated(true);
+      return;
     }
 
+    const cachedWorkspaceId = readCachedWorkspaceId();
+    if (cachedWorkspaceId) {
+      setWorkspaceId(cachedWorkspaceId);
+      setWorkspaceIds((current) =>
+        current.includes(cachedWorkspaceId)
+          ? current
+          : [cachedWorkspaceId, ...current],
+      );
+      setHasCached(true);
+      lastStableWorkspaceRef.current = {
+        workspaceId: cachedWorkspaceId,
+        workspaceIds: prioritizeWorkspaceIds(
+          cachedWorkspaceId,
+          lastStableWorkspaceRef.current.workspaceIds,
+        ),
+        ownerUserId: lastStableWorkspaceRef.current.ownerUserId,
+      };
+    }
+
+    setStorageHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!storageHydrated) return;
     if (
       bootstrapWorkspaceId &&
       (bootstrapResolved || (bootstrapStale && hasStableBootstrap)) &&
-      (workspaceId !== bootstrapWorkspaceId ||
-        (hasWorkspaceMembership &&
-          accountType === "pt" &&
-          !workspaceIds.includes(bootstrapWorkspaceId)))
+      !workspaceId
     ) {
       const seededWorkspaceIds =
         hasWorkspaceMembership && accountType === "pt"
-          ? workspaceIds.includes(bootstrapWorkspaceId)
-            ? workspaceIds
-            : [bootstrapWorkspaceId, ...workspaceIds]
+          ? prioritizeWorkspaceIds(bootstrapWorkspaceId, workspaceIds)
           : [bootstrapWorkspaceId];
       const seededSnapshot = {
         workspaceId: bootstrapWorkspaceId,
@@ -150,10 +212,58 @@ export function useWorkspace() {
     bootstrapStale,
     bootstrapWorkspaceId,
     hasStableBootstrap,
+    storageHydrated,
     hasWorkspaceMembership,
     workspaceId,
     workspaceIds,
   ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const applyIncomingWorkspace = (nextWorkspaceId: string) => {
+      if (!isUuid(nextWorkspaceId)) return;
+
+      setWorkspaceId(nextWorkspaceId);
+      setWorkspaceIds((current) => prioritizeWorkspaceIds(nextWorkspaceId, current));
+      setHasCached(true);
+      lastStableWorkspaceRef.current = {
+        workspaceId: nextWorkspaceId,
+        workspaceIds: prioritizeWorkspaceIds(
+          nextWorkspaceId,
+          lastStableWorkspaceRef.current.workspaceIds,
+        ),
+        ownerUserId: lastStableWorkspaceRef.current.ownerUserId,
+      };
+    };
+
+    const handleWorkspaceEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ workspaceId?: string }>;
+      const nextWorkspaceId = customEvent.detail?.workspaceId;
+      if (!nextWorkspaceId) return;
+      applyIncomingWorkspace(nextWorkspaceId);
+    };
+
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key !== ACTIVE_WORKSPACE_STORAGE_KEY) return;
+      if (!event.newValue) return;
+      applyIncomingWorkspace(event.newValue);
+    };
+
+    window.addEventListener(
+      WORKSPACE_CHANGE_EVENT,
+      handleWorkspaceEvent as EventListener,
+    );
+    window.addEventListener("storage", handleStorageEvent);
+
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_CHANGE_EVENT,
+        handleWorkspaceEvent as EventListener,
+      );
+      window.removeEventListener("storage", handleStorageEvent);
+    };
+  }, []);
 
   useEffect(() => {
     if (!bootstrapWorkspaceId || !bootstrapError) return;
@@ -167,11 +277,29 @@ export function useWorkspace() {
     let mounted = true;
     const currentRequestId = ++requestIdRef.current;
     const loadWorkspace = async () => {
+      if (!storageHydrated) {
+        setLoading(true);
+        return;
+      }
+
       if (!user?.id) {
         setWorkspaceId(null);
         setWorkspaceIds([]);
         setOwnerUserId(null);
         setHasCached(false);
+        setLoading(false);
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+        }
+        return;
+      }
+
+      if (accountType === "client" && !hasWorkspaceMembership) {
+        setWorkspaceId(null);
+        setWorkspaceIds([]);
+        setOwnerUserId(null);
+        setHasCached(false);
+        setError(null);
         setLoading(false);
         if (typeof window !== "undefined") {
           window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
@@ -186,31 +314,56 @@ export function useWorkspace() {
       setError(null);
 
       try {
-        const { data: memberData, error: memberError } = await withTimeout(
-          supabase
-            .from("workspace_members")
-            .select("workspace_id, created_at")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: true })
-            .returns<
-              Array<{ workspace_id: string | null; created_at: string }>
-            >(),
-          8000,
-          "Workspace lookup timed out (8s).",
-        );
+        const [memberResult, ownedResult] = await Promise.all([
+          withTimeout(
+            supabase
+              .from("workspace_members")
+              .select("workspace_id, created_at")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: true })
+              .returns<
+                Array<{ workspace_id: string | null; created_at: string }>
+              >(),
+            8000,
+            "Workspace lookup timed out (8s).",
+          ),
+          withTimeout(
+            supabase
+              .from("workspaces")
+              .select("id, owner_user_id, created_at")
+              .eq("owner_user_id", user.id)
+              .order("created_at", { ascending: true })
+              .returns<
+                Array<{
+                  id: string;
+                  owner_user_id: string | null;
+                  created_at: string;
+                }>
+              >(),
+            8000,
+            "Owned workspace lookup timed out (8s).",
+          ),
+        ]);
 
-        if (memberError) throw memberError;
+        if (memberResult.error) throw memberResult.error;
+        if (ownedResult.error) throw ownedResult.error;
         if (!mounted || currentRequestId !== requestIdRef.current) return;
-        const memberWorkspaceIds = (memberData ?? [])
+        const memberWorkspaceIds = (memberResult.data ?? [])
           .map((member) => member.workspace_id)
           .filter((id): id is string => Boolean(id));
-        if (memberWorkspaceIds.length > 0) {
+        const ownerWorkspaceIds = (ownedResult.data ?? [])
+          .map((workspace) => workspace.id)
+          .filter((id): id is string => Boolean(id));
+        const combinedWorkspaceIds = Array.from(
+          new Set([...memberWorkspaceIds, ...ownerWorkspaceIds]),
+        );
+        if (combinedWorkspaceIds.length > 0) {
           const { data: workspaceData, error: workspaceError } =
             await withTimeout(
               supabase
                 .from("workspaces")
                 .select("id, owner_user_id")
-                .in("id", memberWorkspaceIds)
+                .in("id", combinedWorkspaceIds)
                 .returns<Array<{ id: string; owner_user_id: string | null }>>(),
               8000,
               "Workspace owner lookup timed out (8s).",
@@ -219,14 +372,18 @@ export function useWorkspace() {
           if (workspaceError) throw workspaceError;
           if (!mounted || currentRequestId !== requestIdRef.current) return;
 
-          const cachedWorkspaceId =
-            typeof window !== "undefined"
-              ? window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)
-              : null;
+          const cachedWorkspaceId = readCachedWorkspaceId();
+          const preferredWorkspaceId = [
+            workspaceId,
+            cachedWorkspaceId,
+            preservedSnapshot.workspaceId,
+            bootstrapWorkspaceId,
+          ].find(
+            (candidate): candidate is string =>
+              Boolean(candidate && combinedWorkspaceIds.includes(candidate)),
+          );
           const selectedWorkspaceId =
-            cachedWorkspaceId && memberWorkspaceIds.includes(cachedWorkspaceId)
-              ? cachedWorkspaceId
-              : (memberWorkspaceIds[0] ?? null);
+            preferredWorkspaceId ?? combinedWorkspaceIds[0] ?? null;
           if (!selectedWorkspaceId) {
             throw new Error("Workspace not found for this user.");
           }
@@ -237,10 +394,14 @@ export function useWorkspace() {
           if (!selectedWorkspace?.owner_user_id) {
             throw new Error("Workspace owner not found for this user.");
           }
+          const orderedWorkspaceIds = prioritizeWorkspaceIds(
+            selectedWorkspaceId,
+            combinedWorkspaceIds,
+          );
           if (mounted) {
             applyWorkspaceSnapshot({
               workspaceId: selectedWorkspaceId,
-              workspaceIds: memberWorkspaceIds,
+              workspaceIds: orderedWorkspaceIds,
               ownerUserId: selectedWorkspace.owner_user_id,
             });
             setError(null);
@@ -313,10 +474,14 @@ export function useWorkspace() {
     accountType,
     applyStaleWorkspaceSnapshot,
     applyWorkspaceSnapshot,
+    bootstrapWorkspaceId,
     bootstrapStale,
+    hasWorkspaceMembership,
     hasCached,
     reloadNonce,
+    storageHydrated,
     user?.id,
+    workspaceId,
   ]);
 
   return {

@@ -59,7 +59,7 @@ test.describe("Smoke: auth and onboarding", () => {
     });
   });
 
-  test("Client without workspace lands on no-workspace", async ({ page }) => {
+  test("Client without workspace lands on dashboard lead mode", async ({ page }) => {
     await signInWithEmail(
       page,
       authSmokeFixtures.clientNoWorkspace.email,
@@ -68,8 +68,8 @@ test.describe("Smoke: auth and onboarding", () => {
     await waitForAuthSessionReady(page);
     await waitForBootstrapResolved(page);
     await waitForPageReady(page, {
-      testId: "no-workspace-page",
-      urlPattern: /\/no-workspace$/,
+      testId: "client-lead-dashboard",
+      urlPattern: /\/app\/home$/,
     });
   });
 
@@ -82,8 +82,8 @@ test.describe("Smoke: auth and onboarding", () => {
     await waitForAuthSessionReady(page);
     await waitForBootstrapResolved(page);
     await waitForPageReady(page, {
-      testId: "no-workspace-page",
-      urlPattern: /\/no-workspace$/,
+      testId: "client-lead-dashboard",
+      urlPattern: /\/app\/home$/,
     });
 
     await page.goto(`/invite/${authSmokeFixtures.clientInvite.inviteToken}`);

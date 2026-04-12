@@ -1,13 +1,19 @@
 import { getPublicCoachUrl } from "../lib/pt-hub";
 import type { BadgeVariant } from "../../../components/ui/badge";
-import type { PTProfilePreviewData, PTPublicProfile } from "../types";
+import type {
+  PTProfilePreviewData,
+  PTPublicPackageOption,
+  PTPublicProfile,
+} from "../types";
 import { PublicPtProfileView } from "../../pt-public/components/public-pt-profile-view";
 
 export function PtHubProfilePreview({
   profile,
+  packageOptions = [],
   statusBadges,
 }: {
   profile: PTProfilePreviewData;
+  packageOptions?: PTPublicPackageOption[];
   statusBadges?: Array<{
     label: string;
     tone?: BadgeVariant;
@@ -44,6 +50,13 @@ export function PtHubProfilePreview({
     <PublicPtProfileView
       profile={publicProfile}
       preview
+      applicantIdentity={{
+        isAuthenticated: true,
+        email: "preview@coachos.local",
+        fullName: "Preview Applicant",
+        phone: "",
+      }}
+      packageOptions={packageOptions}
       previewStatusBadges={statusBadges}
     />
   );

@@ -1198,6 +1198,24 @@ export function PtHubProfileEditor({
               </div>
             </div>
           </PtHubSectionCard>
+
+          <PtHubSectionCard
+            title="Package management"
+            description="Package editing now lives in the dedicated PT Hub Packages surface."
+          >
+            <div className="rounded-[20px] border border-border/60 bg-background/35 p-4">
+              <p className="text-sm text-muted-foreground">
+                Use PT Hub Packages to create, publish or hide, archive, and
+                reorder packages. This keeps one canonical package-management
+                surface.
+              </p>
+              <div className="mt-3">
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/pt-hub/packages">Open Packages</Link>
+                </Button>
+              </div>
+            </div>
+          </PtHubSectionCard>
         </TabsContent>
 
         <TabsContent value="social" className="space-y-5">
