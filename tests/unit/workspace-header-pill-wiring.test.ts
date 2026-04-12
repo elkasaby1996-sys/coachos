@@ -20,6 +20,7 @@ describe("workspace header pill wiring", () => {
   it("uses fallback-and-heal wiring in PT Hub header pill when cached workspace is stale", () => {
     const ptHubLayout = readSource("src/components/layouts/pt-hub-layout.tsx");
 
+    expect(ptHubLayout).toContain("const inPtHubWorkspace = location.pathname.startsWith(\"/pt-hub\")");
     expect(ptHubLayout).toContain(
       "const fallbackWorkspace =",
     );
@@ -30,5 +31,7 @@ describe("workspace header pill wiring", () => {
     expect(ptHubLayout).toContain("const firstWorkspace = workspaces[0];");
     expect(ptHubLayout).toContain("switchWorkspace(firstWorkspace.id);");
     expect(ptHubLayout).toContain("const workspacePillLabel =");
+    expect(ptHubLayout).toContain("? \"Repsync PT Hub\"");
+    expect(ptHubLayout).toContain("{!inPtHubWorkspace && workspace.id === workspaceId ? (");
   });
 });

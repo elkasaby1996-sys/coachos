@@ -20,11 +20,13 @@ import {
 } from "../../features/lead-chat/lib/lead-chat";
 import type { PTLead } from "../../features/pt-hub/types";
 import { useSessionAuth } from "../../lib/auth";
+import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtHubLeadDetailPage() {
   const { leadId } = useParams<{ leadId: string }>();
   const queryClient = useQueryClient();
   const { user } = useSessionAuth();
+  const { switchWorkspace, refreshWorkspace } = useWorkspace();
   const leadsQuery = usePtHubLeads();
   const packagesQuery = usePtPackages();
   const workspacesQuery = usePtHubWorkspaces();
@@ -137,11 +139,33 @@ export function PtHubLeadDetailPage() {
       onApprove={async (nextLeadId, params) => {
         setSaving(true);
         try {
-          await approvePtHubLead({
+          const approvalResult = await approvePtHubLead({
             leadId: nextLeadId,
             workspaceId: params.workspaceId,
             workspaceName: params.workspaceName,
+            allowTransfer: params.allowTransfer,
           });
+          if (approvalResult?.workspace_id) {
+            switchWorkspace(approvalResult.workspace_id);
+            refreshWorkspace();
+          }
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: ["pt-hub-workspaces", user?.id],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["pt-hub-clients"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["pt-hub-clients-page"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["pt-hub-client-stats"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["pt-dashboard"],
+            }),
+          ]);
           await refreshLeads();
         } finally {
           setSaving(false);

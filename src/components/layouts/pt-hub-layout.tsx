@@ -308,6 +308,7 @@ export function PtHubLayout() {
     () => workspacesQuery.data ?? [],
     [workspacesQuery.data],
   );
+  const inPtHubWorkspace = location.pathname.startsWith("/pt-hub");
   const publishedProfile = Boolean(profileQuery.data?.isPublished);
   const fallbackWorkspace =
     workspaceId && workspaces.some((workspace) => workspace.id === workspaceId)
@@ -317,12 +318,14 @@ export function PtHubLayout() {
     workspaces.find((workspace) => workspace.id === workspaceId) ??
     fallbackWorkspace;
   const workspacePillLabel =
-    currentWorkspace?.name ??
-    (workspacesQuery.isLoading
-      ? "Loading workspace..."
-      : workspaceId
-        ? "Current workspace"
-        : "No workspace selected");
+    inPtHubWorkspace
+      ? "Repsync PT Hub"
+      : (currentWorkspace?.name ??
+        (workspacesQuery.isLoading
+          ? "Loading workspace..."
+          : workspaceId
+            ? "Current workspace"
+            : "No workspace selected"));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const coachDisplayName =
     (settingsFullName && settingsFullName.length > 0
@@ -600,7 +603,7 @@ export function PtHubLayout() {
                             Repsync PT Hub
                           </p>
                         </div>
-                        {location.pathname.startsWith("/pt-hub") ? (
+                        {inPtHubWorkspace ? (
                           <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
                         ) : null}
                       </DropdownMenuItem>
@@ -625,7 +628,7 @@ export function PtHubLayout() {
                             <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                               {workspace.clientCount ?? 0}
                             </span>
-                            {workspace.id === workspaceId ? (
+                            {!inPtHubWorkspace && workspace.id === workspaceId ? (
                               <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
                             ) : null}
                           </div>

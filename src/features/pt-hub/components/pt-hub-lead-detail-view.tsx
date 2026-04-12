@@ -6,6 +6,15 @@ import {
   XCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../components/ui/alert-dialog";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -18,6 +27,10 @@ import { PtHubLeadStatusBadge } from "./pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "./pt-hub-lead-statuses";
 import { getPackageDisplayState } from "../lib/pt-hub-package-state";
 import { getLeadPrimaryPackageContext } from "../lib/pt-hub-lead-package-context";
+import {
+  getPtHubLeadApproveErrorCode,
+  PT_HUB_LEAD_APPROVE_ERROR_TRANSFER_REQUIRED,
+} from "../lib/pt-hub";
 import type { PTLead, PTLeadMessage, PTLeadStatus, PTPackage } from "../types";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { getCharacterLimitState } from "../../../lib/character-limits";
@@ -55,7 +68,11 @@ export function PtHubLeadDetailView({
   onUpdateStatus: (leadId: string, status: PTLeadStatus) => Promise<void>;
   onApprove: (
     leadId: string,
-    params: { workspaceId?: string | null; workspaceName?: string | null },
+    params: {
+      workspaceId?: string | null;
+      workspaceName?: string | null;
+      allowTransfer?: boolean;
+    },
   ) => Promise<void>;
   onDecline: (leadId: string) => Promise<void>;
   onSendLeadMessage: (leadId: string, body: string) => Promise<void>;
@@ -68,6 +85,11 @@ export function PtHubLeadDetailView({
     ASSIGN_WORKSPACE_LATER_VALUE,
   );
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [approvalFeedback, setApprovalFeedback] = useState<{
+    tone: "error";
+    text: string;
+  } | null>(null);
+  const [transferConfirmOpen, setTransferConfirmOpen] = useState(false);
   const manualStatusOptions = ptHubLeadStatuses.filter(
     (status) => status !== "converted",
   ) as PTLeadStatus[];
@@ -100,6 +122,8 @@ export function PtHubLeadDetailView({
     setNextStatus(lead.status ?? "new");
     setNoteBody("");
     setLeadMessageBody("");
+    setApprovalFeedback(null);
+    setTransferConfirmOpen(false);
     setWorkspaceAssignment(
       lead.convertedWorkspaceId ??
         workspaces[0]?.id ??
@@ -109,6 +133,29 @@ export function PtHubLeadDetailView({
   }, [lead, workspaces]);
 
   const isCreatingWorkspace = workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE;
+  const selectedWorkspaceId =
+    workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE ||
+    workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE
+      ? null
+      : workspaceAssignment;
+  const selectedWorkspaceName = isCreatingWorkspace
+    ? newWorkspaceName.trim()
+    : null;
+  const currentWorkspaceName =
+    workspaces.find((workspace) => workspace.id === lead.convertedWorkspaceId)?.name ??
+    "current workspace";
+  const transferTargetWorkspaceName = isCreatingWorkspace
+    ? selectedWorkspaceName || "new workspace"
+    : selectedWorkspaceId
+      ? workspaces.find((workspace) => workspace.id === selectedWorkspaceId)?.name ??
+        "selected workspace"
+      : null;
+  const isConvertedLead = lead.status === "converted";
+  const requiresTransferConfirmation =
+    isConvertedLead &&
+    (Boolean(selectedWorkspaceName) ||
+      (selectedWorkspaceId !== null &&
+        selectedWorkspaceId !== lead.convertedWorkspaceId));
   const approveDisabled =
     saving ||
     workspaceNameLimitState.overLimit ||
@@ -120,6 +167,35 @@ export function PtHubLeadDetailView({
     Boolean(lead.packageInterestId) &&
     !currentPackage &&
     !currentPackageLookupLoading;
+
+  const submitApproval = async (allowTransfer: boolean) => {
+    try {
+      setApprovalFeedback(null);
+      await onApprove(lead.id, {
+        workspaceId: selectedWorkspaceId,
+        workspaceName: selectedWorkspaceName,
+        allowTransfer,
+      });
+      setTransferConfirmOpen(false);
+    } catch (error) {
+      const errorCode = getPtHubLeadApproveErrorCode(error);
+      if (errorCode === PT_HUB_LEAD_APPROVE_ERROR_TRANSFER_REQUIRED) {
+        setApprovalFeedback({
+          tone: "error",
+          text:
+            "Transfer confirmation is required before moving this lead to a different workspace.",
+        });
+        return;
+      }
+      setApprovalFeedback({
+        tone: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Unable to update workspace assignment right now.",
+      });
+    }
+  };
 
   return (
     <section className="space-y-6">
@@ -425,40 +501,99 @@ export function PtHubLeadDetailView({
                 </>
               ) : null}
 
+              {isConvertedLead ? (
+                <p className="text-xs text-muted-foreground">
+                  This lead has been converted and assigned to "{currentWorkspaceName}" workspace.
+                </p>
+              ) : null}
+              {isConvertedLead && requiresTransferConfirmation ? (
+                <p className="text-xs text-muted-foreground">
+                  Transferring to {transferTargetWorkspaceName ? `"${transferTargetWorkspaceName}"` : "another workspace"}{" "}
+                  will reset workspace-related client data, and the client will start over.
+                </p>
+              ) : null}
+              {approvalFeedback ? (
+                <p className="text-xs text-destructive">{approvalFeedback.text}</p>
+              ) : null}
+
               <div className="flex flex-wrap gap-2">
                 <Button
                   className="flex-1"
-                  disabled={approveDisabled}
-                  onClick={() =>
-                    onApprove(lead.id, {
-                      workspaceId:
-                        workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE ||
-                        workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE
-                          ? null
-                          : workspaceAssignment,
-                      workspaceName: isCreatingWorkspace
-                        ? newWorkspaceName.trim()
-                        : null,
-                    })
-                  }
+                  disabled={approveDisabled || isConvertedLead}
+                  onClick={() => {
+                    if (requiresTransferConfirmation) {
+                      setTransferConfirmOpen(true);
+                      return;
+                    }
+                    void submitApproval(false);
+                  }}
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  {workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE
+                  {isConvertedLead
+                    ? "Lead already converted"
+                    : workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE
                     ? "Approve (workspace later)"
-                    : "Approve and convert"}
+                    : requiresTransferConfirmation
+                      ? "Transfer lead"
+                      : "Approve and convert"}
                 </Button>
                 <Button
                   variant="secondary"
                   className="flex-1"
-                  disabled={saving}
+                  disabled={saving || isConvertedLead}
                   onClick={() => onDecline(lead.id)}
                 >
                   <XCircle className="h-4 w-4" />
                   Decline lead
                 </Button>
+                {isConvertedLead ? (
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    disabled={saving || !requiresTransferConfirmation || approveDisabled}
+                    onClick={() => {
+                      setTransferConfirmOpen(true);
+                    }}
+                  >
+                    Transfer workspace
+                  </Button>
+                ) : null}
               </div>
             </div>
           </PtHubSectionCard>
+
+          <AlertDialog
+            open={transferConfirmOpen}
+            onOpenChange={(open) => {
+              if (!open && !saving) {
+                setTransferConfirmOpen(false);
+              }
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Transfer lead to another workspace?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This lead is already assigned to {currentWorkspaceName}. If you transfer them,
+                  they will lose workspace-related client data in the current workspace and start
+                  over in the new workspace.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+                <Button
+                  variant="secondary"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={saving}
+                  onClick={() => {
+                    void submitApproval(true);
+                  }}
+                >
+                  Transfer lead and reset workspace data
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <PtHubSectionCard
             module="profile"

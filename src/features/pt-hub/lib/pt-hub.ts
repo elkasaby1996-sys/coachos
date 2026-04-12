@@ -1511,15 +1511,30 @@ export type PtHubLeadApprovalResult = {
   client_id: string | null;
 };
 
+export const PT_HUB_LEAD_APPROVE_ERROR_TRANSFER_REQUIRED =
+  "LEAD_TRANSFER_REQUIRES_CONFIRMATION";
+
+export function getPtHubLeadApproveErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return null;
+  const details =
+    "details" in error && typeof error.details === "string"
+      ? error.details.trim()
+      : "";
+  if (details === PT_HUB_LEAD_APPROVE_ERROR_TRANSFER_REQUIRED) return details;
+  return null;
+}
+
 export async function approvePtHubLead(params: {
   leadId: string;
   workspaceId?: string | null;
   workspaceName?: string | null;
+  allowTransfer?: boolean;
 }) {
   const { data, error } = await supabase.rpc("pt_hub_approve_lead", {
     p_lead_id: params.leadId,
     p_workspace_id: params.workspaceId ?? null,
     p_workspace_name: params.workspaceName?.trim() || null,
+    p_allow_transfer: params.allowTransfer ?? false,
   });
 
   if (error) throw error;

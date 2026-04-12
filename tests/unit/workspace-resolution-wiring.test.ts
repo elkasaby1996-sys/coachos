@@ -26,7 +26,11 @@ describe("workspace resolution hardening", () => {
     expect(source).toContain("window.dispatchEvent(");
     expect(source).toContain("window.addEventListener(");
     expect(source).toContain("WORKSPACE_CHANGE_EVENT");
-    expect(source).toContain("(!workspaceId ||");
+    expect(source).toContain("const preferredWorkspaceId = [");
+    expect(source).toContain("workspaceId,");
+    expect(source).toContain("preferredWorkspaceId ?? combinedWorkspaceIds[0] ?? null");
+    expect(source).toContain("if (!storageHydrated) return;");
+    expect(source).toContain("!workspaceId");
   });
 
   it("self-heals invalid dashboard workspace context before calling pt_dashboard_summary", () => {
