@@ -31,10 +31,10 @@ export function deriveInviteJoinContext(params: {
   const shouldShowModal = inviteJoined && params.hasWorkspaceMembership;
 
   let message =
-    "Your coach assigned you to a workspace. Continue from your dashboard modules.";
+    "Your coach assigned you to a workspace. Continue from home, workouts, and messages.";
   if (joinedWorkspaceId) {
     message =
-      "Your coach assigned your account to this workspace. Use Home, Messages, and your training modules to continue.";
+      "Your account is now connected to your coach. Use Home, Messages, and training to continue.";
   }
   if (joinedPtDisplayName) {
     message = `You can now continue with ${joinedPtDisplayName} from your dashboard.`;

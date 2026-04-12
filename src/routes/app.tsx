@@ -737,6 +737,10 @@ export function App() {
         >
           <Route path="onboarding" element={<ClientOnboardingPage />} />
           <Route path="home" element={<ClientHomePage />} />
+          <Route
+            path="workouts"
+            element={<Navigate to="/app/workouts/today" replace />}
+          />
           <Route path="workouts/today" element={<ClientWorkoutTodayPage />} />
           <Route
             path="workouts/:assignedWorkoutId"
@@ -756,6 +760,14 @@ export function App() {
           <Route path="profile" element={<ClientProfilePage />} />
           <Route path="habits" element={<ClientHabitsPage />} />
           <Route path="progress" element={<ClientProgressPage />} />
+          <Route
+            path="nutrition"
+            element={<Navigate to="/app/home?module=nutrition" replace />}
+          />
+          <Route
+            path="find-coach"
+            element={<Navigate to="/app/home?module=find-coach" replace />}
+          />
           <Route path="medical" element={<ClientMedicalPage />} />
           <Route path="baseline" element={<ClientBaselinePage />} />
           <Route

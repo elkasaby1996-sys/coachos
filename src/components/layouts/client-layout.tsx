@@ -2,16 +2,17 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CircleDot,
-  HeartPulse,
+  Compass,
+  Dumbbell,
   Home,
-  LineChart,
   LogOut,
   MessageCircle,
   PanelLeftClose,
   PanelTop,
+  UtensilsCrossed,
   UserCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
@@ -45,22 +46,22 @@ const navItems = [
     module: "overview" as ModuleTone,
   },
   {
+    label: "Workouts",
+    to: "/app/workouts/today",
+    icon: Dumbbell,
+    module: "checkins" as ModuleTone,
+  },
+  {
+    label: "Nutrition",
+    to: "/app/nutrition",
+    icon: UtensilsCrossed,
+    module: "checkins" as ModuleTone,
+  },
+  {
     label: "Habits",
     to: "/app/habits",
     icon: CalendarDays,
     module: "checkins" as ModuleTone,
-  },
-  {
-    label: "Progress",
-    to: "/app/progress",
-    icon: LineChart,
-    module: "analytics" as ModuleTone,
-  },
-  {
-    label: "Medical",
-    to: "/app/medical",
-    icon: HeartPulse,
-    module: "clients" as ModuleTone,
   },
   {
     label: "Messages",
@@ -69,19 +70,27 @@ const navItems = [
     module: "coaching" as ModuleTone,
   },
   {
-    label: "Settings",
-    to: "/app/settings",
+    label: "Find a Coach",
+    to: "/app/find-coach",
+    icon: Compass,
+    module: "leads" as ModuleTone,
+  },
+  {
+    label: "Profile",
+    to: "/app/profile",
     icon: UserCircle,
-    module: "settings" as ModuleTone,
+    module: "profile" as ModuleTone,
   },
 ];
 
 const getRouteLabel = (pathname: string) => {
   if (pathname.startsWith("/app/home")) return "Home";
+  if (pathname.startsWith("/app/workouts")) return "Workouts";
+  if (pathname.startsWith("/app/workout")) return "Workouts";
+  if (pathname.startsWith("/app/nutrition")) return "Nutrition";
   if (pathname.startsWith("/app/habits")) return "Habits";
-  if (pathname.startsWith("/app/progress")) return "Progress";
-  if (pathname.startsWith("/app/medical")) return "Medical";
   if (pathname.startsWith("/app/messages")) return "Messages";
+  if (pathname.startsWith("/app/find-coach")) return "Find a Coach";
   if (pathname.startsWith("/app/notifications")) return "Notifications";
   if (pathname.startsWith("/app/profile")) return "Profile";
   if (pathname.startsWith("/app/settings")) return "Settings";
@@ -91,21 +100,20 @@ const getRouteLabel = (pathname: string) => {
   if (pathname.startsWith("/app/workout-run")) return "Workout session";
   if (pathname.startsWith("/app/workouts/")) return "Workout details";
   if (pathname.startsWith("/app/onboarding")) return "Onboarding";
-  return "Client workspace";
+  return "Client app";
 };
 
 const shouldShowOnboardingBanner = (pathname: string) => {
   return (
     pathname.startsWith("/app/home") ||
-    pathname.startsWith("/app/profile") ||
-    pathname.startsWith("/app/settings")
+    pathname.startsWith("/app/profile")
   );
 };
 
 export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { workspaceId, loading, error } = useWorkspace();
+  const { loading, error } = useWorkspace();
   const { bootstrapError: authError, hasWorkspaceMembership } =
     useBootstrapAuth();
   const onboardingQuery = useClientOnboarding();
@@ -143,34 +151,22 @@ export function ClientLayout() {
   );
   const topStatusText = onboardingSummary
     ? preWorkspaceMode
-      ? "Lead dashboard active"
+      ? "Lead and discovery home"
       : onboardingSummary.onboarding.status === "completed"
-      ? "Workspace setup complete"
+      ? "Coach setup complete"
       : onboardingSummary.awaitingReview
         ? "Onboarding with coach"
         : `${onboardingSummary.completionPercent}% onboarding complete`
     : preWorkspaceMode
-      ? "Lead dashboard active"
-      : "Private coaching workspace";
+      ? "Lead and discovery home"
+      : "Private coaching app";
   const shouldShowTopStatusText = Boolean(
     onboardingSummary
       ? onboardingSummary.onboarding.status !== "completed"
       : false,
   );
   const reduceMotion = useReducedMotion();
-  const visibleNavItems = useMemo(
-    () =>
-      preWorkspaceMode
-        ? navItems.filter((item) => item.to === "/app/home")
-        : navItems,
-    [preWorkspaceMode],
-  );
-
-  useEffect(() => {
-    if (!loading && preWorkspaceMode && location.pathname !== "/app/home") {
-      navigate("/app/home", { replace: true });
-    }
-  }, [loading, location.pathname, navigate, preWorkspaceMode]);
+  const visibleNavItems = useMemo(() => navItems, []);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -186,7 +182,7 @@ export function ClientLayout() {
         <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle>Workspace error</CardTitle>
+              <CardTitle>Client app error</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>{errorMessage}</p>
@@ -237,7 +233,7 @@ export function ClientLayout() {
                 Repsync
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                Client workspace
+                Client app
               </p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-[18px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.52))] text-sm font-semibold text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] xl:hidden">
@@ -344,7 +340,7 @@ export function ClientLayout() {
                       currentModuleClasses.title,
                     )}
                   />
-                  <span>Repsync client workspace</span>
+                  <span>Repsync client app</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                   <span>{routeLabel}</span>
@@ -439,7 +435,13 @@ export function ClientLayout() {
           </main>
           <AppFooter className="pb-20 md:pb-3" size="portal" />
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
-            <PageContainer size="portal" className="grid grid-cols-6 gap-1">
+            <PageContainer
+              size="portal"
+              className={cn(
+                "grid gap-1",
+                visibleNavItems.length > 6 ? "grid-cols-7" : "grid-cols-6",
+              )}
+            >
               {visibleNavItems.map((item) => (
                 <NavLink
                   key={item.to}

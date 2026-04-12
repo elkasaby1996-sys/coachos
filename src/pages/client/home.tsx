@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "../../components/ui/badge";
@@ -36,10 +36,19 @@ import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak } from "../../lib/habits";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientLeadDashboard } from "../../features/lead-chat/components/client-lead-dashboard";
+import { useMyLeadChatThreads } from "../../features/lead-chat/lib/lead-chat";
 import {
   clearInviteJoinParams,
   deriveInviteJoinContext,
 } from "../../features/lead-chat/lib/invite-join-context";
+import {
+  buildSourceLabel,
+  buildWorkoutRunPath,
+  resolveUnifiedClientHomeState,
+  shouldShowFindCoachSection,
+  sortWorkoutsByUrgency,
+  type WorkoutLike,
+} from "./home-unified";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -83,6 +92,18 @@ const writeChecklist = (dateKey: string, state: ChecklistState) => {
 };
 
 type DayStatus = { completed: boolean; timestamp: string };
+type HomeConversationPreviewRow = {
+  id: string;
+  workspace_id: string | null;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+};
+type DiscoverCoachRow = {
+  slug: string | null;
+  display_name: string | null;
+  full_name: string | null;
+  headline: string | null;
+};
 
 const readDayStatus = (dateKey: string): DayStatus | null => {
   if (typeof window === "undefined") return null;
@@ -120,12 +141,20 @@ const getWorkoutTemplateInfo = (row: any) => {
     name: template?.name ?? null,
     workout_type_tag: template?.workout_type_tag ?? null,
     description: template?.description ?? null,
+    workspace_id: template?.workspace_id ?? null,
   };
 };
 
-function ClientWorkspaceHomePage() {
+function ClientWorkspaceHomePage({
+  focusModule,
+  hasWorkspaceMembership,
+}: {
+  focusModule: string | null;
+  hasWorkspaceMembership: boolean;
+}) {
   const navigate = useNavigate();
   const { session } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const weekStart = useMemo(() => {
@@ -156,7 +185,7 @@ function ClientWorkspaceHomePage() {
   }, [todayKey, checklist]);
 
   const clientQuery = useQuery({
-    queryKey: ["client", session?.user?.id],
+    queryKey: ["client-home-profiles", session?.user?.id],
     enabled: !!session?.user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -165,14 +194,22 @@ function ClientWorkspaceHomePage() {
           "id, workspace_id, display_name, goal, tags, created_at, phone, location, timezone, unit_preference, dob, gender, gym_name, days_per_week, injuries, limitations, height_cm, current_weight, photo_url",
         )
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
-  const clientId = clientQuery.data?.id ?? null;
-  const clientTimezone = clientQuery.data?.timezone ?? null;
+  const clientProfiles = useMemo(() => clientQuery.data ?? [], [clientQuery.data]);
+  const clientProfile = useMemo(
+    () =>
+      clientProfiles.find((row) => row.id === activeClientId) ??
+      clientProfiles[0] ??
+      null,
+    [activeClientId, clientProfiles],
+  );
+  const clientId = clientProfile?.id ?? null;
+  const clientTimezone = clientProfile?.timezone ?? null;
   const onboardingSummary = useClientOnboarding().data ?? null;
   const todayStr = useMemo(
     () => getTodayInTimezone(clientTimezone),
@@ -204,14 +241,14 @@ function ClientWorkspaceHomePage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, coach_note, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
+          "id, status, day_type, scheduled_date, created_at, completed_at, coach_note, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description, workspace_id)",
         )
         .eq("client_id", clientId)
         .eq("scheduled_date", todayKey)
         .order("created_at", { ascending: false })
-        .maybeSingle();
+        .returns<Array<Record<string, unknown>>>();
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
@@ -226,18 +263,18 @@ function ClientWorkspaceHomePage() {
       if (planError) throw planError;
 
       const planIds = (plans ?? []).map((row: { id: string }) => row.id);
-      if (!planIds.length) return null;
+      if (!planIds.length) return [];
 
       const { data, error } = await supabase
         .from("assigned_nutrition_days")
         .select(
-          "id, date, assigned_nutrition_plan:assigned_nutrition_plans(id, client_id, nutrition_template:nutrition_templates(id, name)), meals:assigned_nutrition_meals(id, assigned_nutrition_day_id, calories, protein_g, carbs_g, fat_g, logs:nutrition_meal_logs(id, is_completed, actual_calories, actual_protein_g, actual_carbs_g, actual_fat_g, consumed_at))",
+          "id, date, assigned_nutrition_plan:assigned_nutrition_plans(id, client_id, nutrition_template:nutrition_templates(id, name, workspace_id)), meals:assigned_nutrition_meals(id, assigned_nutrition_day_id, calories, protein_g, carbs_g, fat_g, logs:nutrition_meal_logs(id, is_completed, actual_calories, actual_protein_g, actual_carbs_g, actual_fat_g, consumed_at))",
         )
         .in("assigned_nutrition_plan_id", planIds)
         .eq("date", todayKey)
-        .maybeSingle();
+        .order("date", { ascending: true });
       if (error) throw error;
-      return data ?? null;
+      return data ?? [];
     },
   });
 
@@ -283,16 +320,16 @@ function ClientWorkspaceHomePage() {
   });
 
   const weeklyPlanQuery = useQuery({
-    queryKey: ["assigned-workouts-week-plan", clientId, todayKey, weekEnd],
+    queryKey: ["assigned-workouts-week-plan", clientId, weekStart, weekEnd],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, scheduled_date, status, day_type, coach_note, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description)",
+          "id, scheduled_date, status, day_type, coach_note, created_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description, workspace_id)",
         )
         .eq("client_id", clientId)
-        .gte("scheduled_date", todayKey)
+        .gte("scheduled_date", weekStart)
         .lte("scheduled_date", weekEnd)
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
@@ -329,15 +366,62 @@ function ClientWorkspaceHomePage() {
       return (data ?? []) as Array<{ log_date: string; steps: number | null }>;
     },
   });
+  const leadThreadsQuery = useMyLeadChatThreads();
 
-  const todayWorkout = todayWorkoutQuery.data ?? null;
+  const workspaceConversationPreviewQuery = useQuery({
+    queryKey: ["client-home-conversation-preview", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("id, workspace_id, last_message_at, last_message_preview")
+        .eq("client_id", clientId ?? "")
+        .order("last_message_at", { ascending: false })
+        .limit(4);
+      if (error) throw error;
+      return (data ?? []) as HomeConversationPreviewRow[];
+    },
+  });
+
+  const discoverCoachesQuery = useQuery({
+    queryKey: ["client-home-discover-coaches"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pt_hub_profiles")
+        .select("slug, display_name, full_name, headline")
+        .eq("is_published", true)
+        .eq("marketplace_visible", true)
+        .limit(4);
+      if (error) {
+        return [] as DiscoverCoachRow[];
+      }
+      return (data ?? []) as DiscoverCoachRow[];
+    },
+  });
+
+  const todayWorkoutList = useMemo(
+    () =>
+      sortWorkoutsByUrgency(
+        ((todayWorkoutQuery.data ?? []) as WorkoutLike[]).map((row) => ({
+          ...row,
+          created_at: row.created_at ?? null,
+        })),
+      ),
+    [todayWorkoutQuery.data],
+  );
+  const todayWorkout = todayWorkoutList[0] ?? null;
   const isRestDay = todayWorkout?.day_type === "rest";
   const todayWorkoutStatus =
     todayWorkout?.status === "pending"
       ? "planned"
       : (todayWorkout?.status ?? null);
   const targets = targetsQuery.data ?? null;
-  const todayNutrition = todayNutritionQuery.data ?? null;
+  const todayNutritionDays = useMemo(
+    () => (todayNutritionQuery.data ?? []) as Array<Record<string, unknown>>,
+    [todayNutritionQuery.data],
+  );
+  const todayNutrition = todayNutritionDays[0] ?? null;
+  const upcomingNutritionDay = (nutritionWeekQuery.data ?? [])[0] ?? null;
   const todayNutritionPlan = Array.isArray(
     (todayNutrition as any)?.assigned_nutrition_plan,
   )
@@ -388,6 +472,74 @@ function ClientWorkspaceHomePage() {
     () => weeklyPlanQuery.data ?? [],
     [weeklyPlanQuery.data],
   );
+  const sourceWorkspaceIds = useMemo(() => {
+    const ids = new Set<string>();
+    const add = (value: string | null | undefined) => {
+      if (value && value.trim().length > 0) {
+        ids.add(value);
+      }
+    };
+
+    add(getWorkoutTemplateInfo(todayWorkout).workspace_id);
+    weeklyPlan.forEach((row) => {
+      add(getWorkoutTemplateInfo(row).workspace_id);
+    });
+    todayNutritionDays.forEach((row) => {
+      const assignedPlan = Array.isArray(
+        (row as { assigned_nutrition_plan?: unknown })?.assigned_nutrition_plan,
+      )
+        ? (row as { assigned_nutrition_plan?: Array<Record<string, unknown>> })
+            .assigned_nutrition_plan?.[0]
+        : ((row as { assigned_nutrition_plan?: Record<string, unknown> })
+            .assigned_nutrition_plan ??
+          null);
+      const nutritionTemplate = Array.isArray(
+        assignedPlan?.nutrition_template as unknown,
+      )
+        ? (assignedPlan?.nutrition_template as Array<Record<string, unknown>>)[0]
+        : (assignedPlan?.nutrition_template as Record<string, unknown> | null);
+      add((nutritionTemplate?.workspace_id as string | null | undefined) ?? null);
+    });
+    (workspaceConversationPreviewQuery.data ?? []).forEach((conversation) => {
+      add(conversation.workspace_id ?? null);
+    });
+    add(clientProfile?.workspace_id ?? null);
+
+    return Array.from(ids);
+  }, [
+    clientProfile?.workspace_id,
+    todayNutritionDays,
+    todayWorkout,
+    weeklyPlan,
+    workspaceConversationPreviewQuery.data,
+  ]);
+  const sourceWorkspacesQuery = useQuery({
+    queryKey: ["client-home-source-workspaces", sourceWorkspaceIds.join(",")],
+    enabled: sourceWorkspaceIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, name")
+        .in("id", sourceWorkspaceIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const workspaceNameById = useMemo(
+    () =>
+      Object.fromEntries(
+        (sourceWorkspacesQuery.data ?? []).map((row) => [row.id, row.name]),
+      ) as Record<string, string>,
+    [sourceWorkspacesQuery.data],
+  );
+  const getSourceMetaLabel = useCallback(
+    (workspaceId: string | null | undefined) =>
+      buildSourceLabel({
+        workspaceId,
+        workspaceName: workspaceId ? workspaceNameById[workspaceId] : null,
+      }),
+    [workspaceNameById],
+  );
   const hasTargets = Boolean(targets);
 
   const getTemplateInfo = (row: unknown) => {
@@ -414,6 +566,7 @@ function ClientWorkspaceHomePage() {
 
   const todayTemplateInfo = getTemplateInfo(todayWorkout);
   const todayTemplate = getWorkoutTemplateInfo(todayWorkout);
+  const todaySourceLabel = getSourceMetaLabel(todayTemplate.workspace_id);
 
   const checklistProgress = Math.round(
     (Object.values(checklist).filter(Boolean).length / checklistKeys.length) *
@@ -436,31 +589,40 @@ function ClientWorkspaceHomePage() {
     () => computeStreak(habitLogDates, today, 30),
     [habitLogDates, today],
   );
+  const hasClientProfile = Boolean(clientId);
   const workoutsCompletedThisWeek = workoutsWeek.length;
-  const summaryTrainingStatus = isRestDay
-    ? "Rest day"
-    : todayWorkoutStatus === "completed"
-      ? "completed"
-      : todayWorkoutStatus === "skipped"
-        ? "skipped"
-        : todayWorkout
-          ? "planned"
-          : "Rest day";
+  const summaryTrainingStatus = !hasClientProfile
+    ? "No plan yet"
+    : isRestDay
+      ? "Rest day"
+      : todayWorkoutStatus === "completed"
+        ? "completed"
+        : todayWorkoutStatus === "skipped"
+          ? "skipped"
+          : todayWorkout
+            ? "planned"
+            : "Rest day";
   const summaryTrainingBadgeLabel =
-    summaryTrainingStatus === "completed"
+    summaryTrainingStatus === "No plan yet"
+      ? "Not connected"
+      : summaryTrainingStatus === "completed"
       ? "Completed"
       : summaryTrainingStatus === "skipped"
         ? "Skipped"
         : summaryTrainingStatus === "planned"
           ? "Scheduled"
           : "Rest day";
-  const summaryTrainingTitle = isRestDay
+  const summaryTrainingTitle = !hasClientProfile
+    ? "Find your first coach"
+    : isRestDay
     ? "Rest day"
     : (todayTemplate.name ??
       (todayWorkout as { workout_template_name?: string } | null)
         ?.workout_template_name ??
       "Rest day");
-  const summaryTrainingHint = isRestDay
+  const summaryTrainingHint = !hasClientProfile
+    ? "No assigned plan yet. Explore coaches to start your training flow."
+    : isRestDay
     ? "Rest day. Steps + nutrition still count."
     : todayWorkoutStatus === "completed"
       ? "Session logged"
@@ -478,6 +640,96 @@ function ClientWorkspaceHomePage() {
       ? `${targets.protein_g}g protein target`
       : "Ask coach for targets";
   const summaryHabitHint = `${Object.values(checklist).filter(Boolean).length} of ${checklistKeys.length} complete`;
+  const leadThreads = useMemo(
+    () => leadThreadsQuery.data ?? [],
+    [leadThreadsQuery.data],
+  );
+  const pendingApplicationsCount = leadThreads.filter(
+    (thread) => thread.leadStatus === "new" || thread.leadStatus === "contacted",
+  ).length;
+  const approvedPendingWorkspaceCount = leadThreads.filter(
+    (thread) => thread.leadStatus === "approved_pending_workspace",
+  ).length;
+  const savedCoachCount = leadThreads.filter((thread) => Boolean(thread.ptSlug))
+    .length;
+  const hasPersonalSource = Boolean(
+    !clientProfile?.workspace_id ||
+      getWorkoutTemplateInfo(todayWorkout).workspace_id === null ||
+      todayNutritionDays.some((row) => {
+        const assignedPlan = Array.isArray(
+          (row as { assigned_nutrition_plan?: unknown })?.assigned_nutrition_plan,
+        )
+          ? (row as { assigned_nutrition_plan?: Array<Record<string, unknown>> })
+              .assigned_nutrition_plan?.[0]
+          : ((row as { assigned_nutrition_plan?: Record<string, unknown> })
+              .assigned_nutrition_plan ??
+            null);
+        const nutritionTemplate = Array.isArray(
+          assignedPlan?.nutrition_template as unknown,
+        )
+          ? (
+              assignedPlan?.nutrition_template as Array<Record<string, unknown>>
+            )[0]
+          : (assignedPlan?.nutrition_template as Record<string, unknown> | null);
+        return !nutritionTemplate?.workspace_id;
+      }),
+  );
+  const coachSourceCount = sourceWorkspaceIds.length;
+  const unifiedHomeState = resolveUnifiedClientHomeState({
+    hasWorkspaceMembership,
+    coachSourceCount,
+    hasPersonalSource,
+  });
+  const showFindCoachSection = shouldShowFindCoachSection({
+    hasWorkspaceMembership,
+    pendingApplications: pendingApplicationsCount,
+    approvedPendingWorkspace: approvedPendingWorkspaceCount,
+    savedCoachCount,
+  });
+  const featuredCoach = leadThreads.find((thread) => Boolean(thread.ptSlug));
+  const discoverCoachProfiles = discoverCoachesQuery.data ?? [];
+  const discoverCoachFallback =
+    discoverCoachProfiles.find((coach) => Boolean(coach.slug)) ?? null;
+  const findCoachHref = featuredCoach?.ptSlug
+    ? `/coach/${featuredCoach.ptSlug}`
+    : discoverCoachFallback?.slug
+      ? `/coach/${discoverCoachFallback.slug}`
+      : "/signup/client";
+  const workoutFeedItems = useMemo(
+    () => sortWorkoutsByUrgency((weeklyPlan as WorkoutLike[]) ?? []),
+    [weeklyPlan],
+  );
+  const inboxPreviewItems = useMemo(() => {
+    const workspaceItems = (workspaceConversationPreviewQuery.data ?? []).map(
+      (conversation) => ({
+        id: `workspace:${conversation.id}`,
+        title: "Coach inbox",
+        preview: conversation.last_message_preview ?? "No messages yet",
+        timestamp: conversation.last_message_at ?? null,
+        sourceLabel: getSourceMetaLabel(conversation.workspace_id),
+        href: "/app/messages",
+      }),
+    );
+    const leadItems = leadThreads.map((thread) => ({
+      id: `lead:${thread.leadId}`,
+      title: thread.ptDisplayName,
+      preview: thread.lastMessagePreview ?? "No messages yet",
+      timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,
+      sourceLabel: "Lead chat",
+      href: thread.ptSlug ? `/coach/${thread.ptSlug}` : "/app/home",
+    }));
+    return [...workspaceItems, ...leadItems]
+      .sort((a, b) => {
+        const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return bTime - aTime;
+      })
+      .slice(0, 5);
+  }, [
+    getSourceMetaLabel,
+    leadThreads,
+    workspaceConversationPreviewQuery.data,
+  ]);
 
   const defaultPlan = useMemo(
     () => ["30-45 min strength OR 20 min conditioning", "10 min mobility"],
@@ -504,8 +756,8 @@ function ClientWorkspaceHomePage() {
     : "Coach review pending";
 
   const profileCompletion = useMemo(() => {
-    if (!clientQuery.data) return null;
-    const client = clientQuery.data as {
+    if (!clientProfile) return null;
+    const client = clientProfile as {
       display_name?: string | null;
       photo_url?: string | null;
       phone?: string | null;
@@ -548,7 +800,7 @@ function ClientWorkspaceHomePage() {
     ];
     const completed = items.filter((item) => item.ok).length;
     return { completed, total: items.length };
-  }, [clientQuery.data]);
+  }, [clientProfile]);
 
   const weekRows = useMemo(() => {
     const rows = Array.from({ length: 7 }).map((_, idx) => {
@@ -570,6 +822,9 @@ function ClientWorkspaceHomePage() {
   }, [todayWorkoutStatus, checklist.workout]);
 
   const missionCopy = useMemo(() => {
+    if (!clientId) {
+      return "You can explore coaches, keep your habits active, and start your first guided plan from here.";
+    }
     if (isRestDay || !todayWorkout)
       return "Rest day. Steps + nutrition still count.";
     if (todayWorkoutStatus === "completed") {
@@ -586,6 +841,7 @@ function ClientWorkspaceHomePage() {
     }
     return "Rest day. Steps + nutrition still count.";
   }, [
+    clientId,
     isRestDay,
     todayWorkout,
     todayWorkoutStatus,
@@ -607,7 +863,7 @@ function ClientWorkspaceHomePage() {
     if (error || !data?.id) {
       return;
     }
-    navigate(`/app/workout-run/${data.id}`);
+    navigate(buildWorkoutRunPath(data.id));
   };
 
   const handleRequestAdjustment = () => {
@@ -621,7 +877,9 @@ function ClientWorkspaceHomePage() {
   const checklistCompletedCount =
     Object.values(checklist).filter(Boolean).length;
   const trainingStatusVariant =
-    summaryTrainingStatus === "completed"
+    summaryTrainingStatus === "No plan yet"
+      ? "muted"
+      : summaryTrainingStatus === "completed"
       ? "success"
       : summaryTrainingStatus === "skipped"
         ? "danger"
@@ -634,6 +892,13 @@ function ClientWorkspaceHomePage() {
     "Can you set my nutrition targets for this week?",
   );
   const primaryAction = (() => {
+    if (!clientId) {
+      return {
+        label: "Find a Coach",
+        onClick: () => navigate(findCoachHref),
+      };
+    }
+
     if (todayWorkout && !isRestDay) {
       if (todayWorkoutStatus === "completed") {
         return {
@@ -649,7 +914,7 @@ function ClientWorkspaceHomePage() {
       }
       return {
         label: "Start workout",
-        onClick: () => navigate(`/app/workout-run/${todayWorkout.id}`),
+        onClick: () => navigate(buildWorkoutRunPath(todayWorkout.id)),
       };
     }
 
@@ -665,6 +930,30 @@ function ClientWorkspaceHomePage() {
       onClick: handleStartDefaultSession,
     };
   })();
+
+  useEffect(() => {
+    if (!focusModule) return;
+
+    const targetId =
+      focusModule === "workouts"
+        ? "home-section-workouts"
+        : focusModule === "nutrition"
+          ? "home-section-nutrition"
+          : focusModule === "messages"
+            ? "home-section-messages"
+            : focusModule === "find-coach"
+              ? "home-section-find-coach"
+              : null;
+    if (!targetId) return;
+
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(targetId);
+      element?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [focusModule]);
+
   const weeklyStats = useMemo(() => {
     const weeklyWorkouts = weekRows.filter(
       (row) => row.workout && row.workout.day_type !== "rest",
@@ -692,14 +981,24 @@ function ClientWorkspaceHomePage() {
     nutritionWeekQuery.error ??
     weeklyPlanQuery.error ??
     targetsQuery.error ??
-    habitLogsQuery.error;
+    habitLogsQuery.error ??
+    sourceWorkspacesQuery.error ??
+    workspaceConversationPreviewQuery.error ??
+    leadThreadsQuery.error;
+  const homeSubtitle = hasClientProfile
+    ? `${subtitleDate}. Your plan, targets, and recovery for today.`
+    : `${subtitleDate}. One client app for workouts, habits, messages, and finding your coach.`;
+  const homeStateText =
+    unifiedHomeState === "lead_only"
+      ? "Lead and discovery mode"
+      : coachBadgeLabel;
 
   return (
     <div className="portal-shell">
       <PortalPageHeader
         title="Home"
-        subtitle={`${subtitleDate}. Your plan, targets, and recovery for today.`}
-        stateText={coachBadgeLabel}
+        subtitle={homeSubtitle}
+        stateText={homeStateText}
       />
 
       {homeDataError ? (
@@ -714,13 +1013,18 @@ function ClientWorkspaceHomePage() {
         />
       ) : null}
 
-      <SurfaceCard>
+      <SurfaceCard id="home-section-next-up">
         <SurfaceCardHeader className="pb-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
               <SurfaceCardTitle className="text-2xl">
                 {summaryTrainingTitle}
               </SurfaceCardTitle>
+              {todayWorkout ? (
+                <Badge variant="muted" className="w-fit">
+                  {todaySourceLabel}
+                </Badge>
+              ) : null}
               <SurfaceCardDescription>
                 {summaryTrainingHint}
               </SurfaceCardDescription>
@@ -751,11 +1055,14 @@ function ClientWorkspaceHomePage() {
             {!todayWorkout && !isRestDay ? (
               <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 p-4">
                 <p className="text-sm font-semibold text-foreground">
-                  No workout scheduled yet
+                  {hasClientProfile
+                    ? "No workout scheduled yet"
+                    : "No workout flow yet"}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Your coach hasn&apos;t scheduled a session for today yet. Use
-                  the fallback plan if you still want to train.
+                  {hasClientProfile
+                    ? "Your coach hasn&apos;t scheduled a session for today yet. Use the fallback plan if you still want to train."
+                    : "Start by finding a coach, then your assigned and personal training can both appear here."}
                 </p>
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                   {defaultPlan.map((item) => (
@@ -773,7 +1080,7 @@ function ClientWorkspaceHomePage() {
                 variant="secondary"
                 onClick={() => navigate("/app/messages")}
               >
-                Message your coach
+                {hasWorkspaceMembership ? "Message your coach" : "Open inbox"}
               </Button>
             </div>
           </SectionCard>
@@ -861,11 +1168,11 @@ function ClientWorkspaceHomePage() {
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <SurfaceCard>
+        <SurfaceCard id="home-section-workouts">
           <SurfaceCardHeader>
-            <SurfaceCardTitle>Today's training and nutrition</SurfaceCardTitle>
+            <SurfaceCardTitle>Workouts and nutrition</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Keep today's work, nutrition, and recovery targets in one place.
+              One account-level view of today and next-up actions across personal and coached plans.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="grid gap-6 lg:grid-cols-2">
@@ -873,7 +1180,7 @@ function ClientWorkspaceHomePage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-foreground">
-                    Today&apos;s training
+                    Workouts
                   </p>
                   <p className="text-lg font-semibold text-foreground">
                     {summaryTrainingTitle}
@@ -891,6 +1198,67 @@ function ClientWorkspaceHomePage() {
               <p className="text-sm leading-6 text-muted-foreground">
                 {summaryTrainingHint}
               </p>
+              {workoutFeedItems.length > 0 ? (
+                <div className="space-y-2">
+                  {workoutFeedItems.slice(0, 4).map((workout) => {
+                    const template = getWorkoutTemplateInfo(workout);
+                    const sourceLabel = getSourceMetaLabel(template.workspace_id);
+                    const workoutName =
+                      template.name ??
+                      (workout as { workout_template_name?: string })
+                        .workout_template_name ??
+                      "Workout";
+                    const workoutAction =
+                      workout.status === "completed"
+                        ? {
+                            label: "Summary",
+                            onClick: () =>
+                              navigate(`/app/workout-summary/${workout.id}`),
+                          }
+                        : workout.status === "skipped"
+                          ? {
+                              label: "Details",
+                              onClick: () =>
+                                navigate(`/app/workouts/${workout.id}`),
+                            }
+                          : {
+                              label: "Start",
+                              onClick: () =>
+                                navigate(buildWorkoutRunPath(workout.id)),
+                            };
+                    return (
+                      <div
+                        key={workout.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-2"
+                      >
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {workoutName}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="muted">{sourceLabel}</Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {workout.scheduled_date ?? todayKey}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={workoutAction.onClick}
+                        >
+                          {workoutAction.label}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyStateBlock
+                  title="No workouts queued"
+                  description="As soon as a personal or coached workout is available, it will appear here."
+                />
+              )}
               <div className="flex flex-wrap gap-3">
                 <Button onClick={primaryAction.onClick}>
                   {primaryAction.label}
@@ -899,19 +1267,24 @@ function ClientWorkspaceHomePage() {
                   variant="secondary"
                   onClick={() => navigate("/app/messages")}
                 >
-                  Message your coach
+                  {hasWorkspaceMembership ? "Message your coach" : "Open inbox"}
                 </Button>
               </div>
             </SectionCard>
 
-            <SectionCard className="space-y-5">
+            <SectionCard id="home-section-nutrition" className="space-y-5">
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">
-                  Nutrition + habits
+                  Nutrition
                 </p>
                 <p className="text-lg font-semibold text-foreground">
                   {todayNutritionTemplate?.name ?? "Nutrition plan pending"}
                 </p>
+                {todayNutritionTemplate ? (
+                  <Badge variant="muted">
+                    {getSourceMetaLabel(todayNutritionTemplate.workspace_id)}
+                  </Badge>
+                ) : null}
               </div>
 
               {todayNutritionQuery.isLoading ? (
@@ -921,6 +1294,73 @@ function ClientWorkspaceHomePage() {
                 />
               ) : todayNutrition ? (
                 <>
+                  {todayNutritionDays.length > 1 ? (
+                    <div className="space-y-2">
+                      {todayNutritionDays.slice(0, 4).map((day) => {
+                        const assignedPlan = Array.isArray(
+                          (day as { assigned_nutrition_plan?: unknown })
+                            .assigned_nutrition_plan,
+                        )
+                          ? (
+                              day as {
+                                assigned_nutrition_plan?: Array<
+                                  Record<string, unknown>
+                                >;
+                              }
+                            ).assigned_nutrition_plan?.[0]
+                          : (
+                              day as {
+                                assigned_nutrition_plan?: Record<string, unknown>;
+                              }
+                            ).assigned_nutrition_plan;
+                        const nutritionTemplate = Array.isArray(
+                          assignedPlan?.nutrition_template as unknown,
+                        )
+                          ? (
+                              assignedPlan?.nutrition_template as Array<
+                                Record<string, unknown>
+                              >
+                            )[0]
+                          : (assignedPlan?.nutrition_template as
+                              | Record<string, unknown>
+                              | null);
+                        return (
+                          <div
+                            key={String((day as { id?: string }).id ?? "")}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-2"
+                          >
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium text-foreground">
+                                {(nutritionTemplate?.name as string | undefined) ??
+                                  "Nutrition plan"}
+                              </p>
+                              <Badge variant="muted">
+                                {getSourceMetaLabel(
+                                  (nutritionTemplate?.workspace_id as
+                                    | string
+                                    | null
+                                    | undefined) ?? null,
+                                )}
+                              </Badge>
+                            </div>
+                            {(day as { id?: string }).id ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() =>
+                                  navigate(
+                                    `/app/nutrition/${(day as { id: string }).id}`,
+                                  )
+                                }
+                              >
+                                Open
+                              </Button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   <div className="grid grid-cols-2 gap-4 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4 text-center sm:grid-cols-4">
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Calories</p>
@@ -960,6 +1400,18 @@ function ClientWorkspaceHomePage() {
                 <EmptyStateBlock
                   title="No nutrition plan yet"
                   description="You can still focus on protein, hydration, and steps while your coach finalizes your targets."
+                  actions={
+                    upcomingNutritionDay?.id ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          navigate(`/app/nutrition/${upcomingNutritionDay.id}`)
+                        }
+                      >
+                        Open next nutrition day
+                      </Button>
+                    ) : undefined
+                  }
                 />
               )}
 
@@ -1097,6 +1549,160 @@ function ClientWorkspaceHomePage() {
           </SurfaceCardContent>
         </SurfaceCard>
       </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <SurfaceCard id="home-section-messages">
+          <SurfaceCardHeader>
+            <SurfaceCardTitle>Messages and inbox</SurfaceCardTitle>
+            <SurfaceCardDescription>
+              A single preview across coaching inbox and lead conversations.
+            </SurfaceCardDescription>
+          </SurfaceCardHeader>
+          <SurfaceCardContent className="space-y-3">
+            {inboxPreviewItems.length > 0 ? (
+              inboxPreviewItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.title}
+                    </p>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {item.preview}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="muted">{item.sourceLabel}</Badge>
+                      <span>
+                        {item.timestamp
+                          ? formatRelativeTime(item.timestamp)
+                          : "No activity yet"}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => navigate(item.href)}
+                  >
+                    Open
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <EmptyStateBlock
+                title="No messages yet"
+                description="When you start a lead or coach conversation, it will appear here."
+              />
+            )}
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => navigate("/app/messages")}>
+                Open messages
+              </Button>
+              {leadThreads.length > 0 ? (
+                <Button variant="secondary" onClick={() => navigate(findCoachHref)}>
+                  View coach profiles
+                </Button>
+              ) : null}
+            </div>
+          </SurfaceCardContent>
+        </SurfaceCard>
+
+        {showFindCoachSection ? (
+          <SurfaceCard id="home-section-find-coach">
+            <SurfaceCardHeader>
+              <SurfaceCardTitle>Find a Coach</SurfaceCardTitle>
+              <SurfaceCardDescription>
+                Discovery and application status in one place.
+              </SurfaceCardDescription>
+            </SurfaceCardHeader>
+            <SurfaceCardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <SectionCard className="p-3">
+                  <p className="field-label">Pending applications</p>
+                  <p className="mt-2 text-xl font-semibold text-foreground">
+                    <AnimatedValue value={pendingApplicationsCount} />
+                  </p>
+                </SectionCard>
+                <SectionCard className="p-3">
+                  <p className="field-label">Invite waiting</p>
+                  <p className="mt-2 text-xl font-semibold text-foreground">
+                    <AnimatedValue value={approvedPendingWorkspaceCount} />
+                  </p>
+                </SectionCard>
+                <SectionCard className="p-3">
+                  <p className="field-label">Saved coaches</p>
+                  <p className="mt-2 text-xl font-semibold text-foreground">
+                    <AnimatedValue value={savedCoachCount} />
+                  </p>
+                </SectionCard>
+              </div>
+
+              {discoverCoachProfiles.length > 0 ? (
+                <div className="space-y-2">
+                  {discoverCoachProfiles.slice(0, 3).map((coach) => (
+                    <div
+                      key={coach.slug ?? coach.full_name ?? coach.display_name ?? "coach"}
+                      className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
+                    >
+                      <p className="text-sm font-semibold text-foreground">
+                        {coach.display_name ?? coach.full_name ?? "Coach profile"}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                        {coach.headline ?? "Public coach profile"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyStateBlock
+                  title="Coach discovery is ready"
+                  description="Use Find a Coach to open public profiles and begin your application flow."
+                />
+              )}
+
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => navigate(findCoachHref)}>Find a Coach</Button>
+                {approvedPendingWorkspaceCount > 0 ? (
+                  <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                    Refresh join status
+                  </Button>
+                ) : null}
+              </div>
+            </SurfaceCardContent>
+          </SurfaceCard>
+        ) : (
+          <SurfaceCard id="home-section-find-coach">
+            <SurfaceCardHeader>
+              <SurfaceCardTitle>Find a Coach</SurfaceCardTitle>
+              <SurfaceCardDescription>
+                Your discovery and applications are up to date.
+              </SurfaceCardDescription>
+            </SurfaceCardHeader>
+            <SurfaceCardContent>
+              <EmptyStateBlock
+                title="No discovery actions right now"
+                description="When you have pending applications, saved coaches, or invites, they will appear here."
+              />
+            </SurfaceCardContent>
+          </SurfaceCard>
+        )}
+      </div>
+
+      {!hasWorkspaceMembership && leadThreads.length > 0 ? (
+        <SurfaceCard id="home-section-progress">
+          <SurfaceCardHeader>
+            <SurfaceCardTitle>Lead conversations</SurfaceCardTitle>
+            <SurfaceCardDescription>
+              Continue pre-workspace chat in the same home surface.
+            </SurfaceCardDescription>
+          </SurfaceCardHeader>
+          <SurfaceCardContent>
+            <ClientLeadDashboard embedded />
+          </SurfaceCardContent>
+        </SurfaceCard>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.15fr)]">
         <ClientReminders clientId={clientId} timezone={clientTimezone} />
@@ -1262,14 +1868,14 @@ export function ClientHomePage() {
   const clearInviteJoinSearchParams = () => {
     setSearchParams(clearInviteJoinParams(searchParams), { replace: true });
   };
+  const focusModule = searchParams.get("module");
 
   return (
     <>
-      {hasWorkspaceMembership ? (
-        <ClientWorkspaceHomePage />
-      ) : (
-        <ClientLeadDashboard />
-      )}
+      <ClientWorkspaceHomePage
+        focusModule={focusModule}
+        hasWorkspaceMembership={hasWorkspaceMembership}
+      />
 
       <Dialog
         open={isInviteModalOpen && inviteJoinContext.shouldShowModal}
@@ -1282,9 +1888,9 @@ export function ClientHomePage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Workspace access activated</DialogTitle>
+            <DialogTitle>Coach access activated</DialogTitle>
             <DialogDescription>
-              You have been added to{" "}
+              You are now connected to{" "}
               <span className="font-medium text-foreground">
                 {inviteJoinContext.workspaceName}
               </span>
@@ -1302,7 +1908,7 @@ export function ClientHomePage() {
                 clearInviteJoinSearchParams();
               }}
             >
-              Continue to dashboard
+              Continue to home
             </Button>
             <Button
               onClick={() => {
