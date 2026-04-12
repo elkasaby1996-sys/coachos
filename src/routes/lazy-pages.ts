@@ -334,6 +334,11 @@ export const ClientWorkoutTodayPage = lazy(() =>
     default: m.ClientWorkoutTodayPage,
   })),
 );
+export const ClientWorkoutsPage = lazy(() =>
+  import("../pages/client/workouts").then((m) => ({
+    default: m.ClientWorkoutsPage,
+  })),
+);
 export const ClientWorkoutRunPage = lazy(() =>
   import("../pages/client/workout-run").then((m) => ({
     default: m.ClientWorkoutRunPage,

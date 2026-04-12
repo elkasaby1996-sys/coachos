@@ -710,8 +710,25 @@ function ClientWorkspaceHomePage({
         href: "/app/messages",
       }),
     );
-    const leadItems = leadThreads.map((thread) => ({
-      id: `lead:${thread.leadId}`,
+    const dedupedLeadThreads = Array.from(
+      leadThreads
+        .reduce((map, thread) => {
+          const key =
+            thread.leadId ||
+            `${thread.ptSlug ?? "unknown-coach"}:${thread.submittedAt ?? thread.lastMessageAt ?? "unknown-time"}`;
+          const current = map.get(key);
+          const threadTime = thread.lastMessageAt ?? thread.submittedAt ?? "";
+          const currentTime = current?.lastMessageAt ?? current?.submittedAt ?? "";
+          if (!current || threadTime > currentTime) {
+            map.set(key, thread);
+          }
+          return map;
+        }, new Map<string, (typeof leadThreads)[number]>())
+        .values(),
+    );
+
+    const leadItems = dedupedLeadThreads.map((thread, index) => ({
+      id: `lead:${thread.leadId || thread.ptSlug || thread.submittedAt || index}`,
       title: thread.ptDisplayName,
       preview: thread.lastMessagePreview ?? "No messages yet",
       timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,

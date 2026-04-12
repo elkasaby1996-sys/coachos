@@ -672,7 +672,7 @@ export function ClientProgressPage() {
                   Complete baseline
                 </Button>
               ) : null}
-              <Button onClick={() => navigate("/app/workouts/today")}>
+              <Button onClick={() => navigate("/app/workouts")}>
                 Start workout
               </Button>
             </>
@@ -797,7 +797,7 @@ export function ClientProgressPage() {
                   description="Log a couple of sessions with working sets and this chart will start to show useful changes."
                   className="min-h-[19rem]"
                   actions={
-                    <Button onClick={() => navigate("/app/workouts/today")}>
+                    <Button onClick={() => navigate("/app/workouts")}>
                       Start workout
                     </Button>
                   }
@@ -1006,7 +1006,7 @@ export function ClientProgressPage() {
                     actions={
                       <Button
                         variant="secondary"
-                        onClick={() => navigate("/app/workouts/today")}
+                        onClick={() => navigate("/app/workouts")}
                       >
                         Start workout
                       </Button>

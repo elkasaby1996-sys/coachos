@@ -47,7 +47,7 @@ const navItems = [
   },
   {
     label: "Workouts",
-    to: "/app/workouts/today",
+    to: "/app/workouts",
     icon: Dumbbell,
     module: "checkins" as ModuleTone,
   },

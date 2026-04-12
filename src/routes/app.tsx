@@ -23,7 +23,7 @@ import {
   ClientWorkoutDetailPage,
   ClientWorkoutRunPage,
   ClientWorkoutSummaryPage,
-  ClientWorkoutTodayPage,
+  ClientWorkoutsPage,
   ClientSignupPage,
   HealthPage,
   InvitePage,
@@ -737,11 +737,11 @@ export function App() {
         >
           <Route path="onboarding" element={<ClientOnboardingPage />} />
           <Route path="home" element={<ClientHomePage />} />
+          <Route path="workouts" element={<ClientWorkoutsPage />} />
           <Route
-            path="workouts"
-            element={<Navigate to="/app/workouts/today" replace />}
+            path="workouts/today"
+            element={<Navigate to="/app/workouts" replace />}
           />
-          <Route path="workouts/today" element={<ClientWorkoutTodayPage />} />
           <Route
             path="workouts/:assignedWorkoutId"
             element={<ClientWorkoutDetailPage />}

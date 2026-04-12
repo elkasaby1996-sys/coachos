@@ -619,6 +619,12 @@ export function ClientWorkoutRunPage() {
 
   const handleStartWorkout = async () => {
     if (!workoutId || !clientId) return;
+    if (exercises.length === 0) {
+      setSaveError(
+        "This workout has no exercises yet, so it can't be started.",
+      );
+      return;
+    }
     setSaveError(null);
     const startedAt = new Date().toISOString();
     const { error: createError } = await supabase
@@ -1042,6 +1048,9 @@ export function ClientWorkoutRunPage() {
     );
   }
 
+  const isExerciseStructureLoading =
+    assignedExercisesQuery.isLoading || templateExercisesQuery.isLoading;
+
   return (
     <div className="w-full space-y-6 pb-16 md:pb-0">
       <section className="flex flex-wrap items-center justify-between gap-3">
@@ -1111,7 +1120,14 @@ export function ClientWorkoutRunPage() {
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>Ready to start this workout?</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleStartWorkout}>Start workout</Button>
+                  <Button
+                    onClick={handleStartWorkout}
+                    disabled={isExerciseStructureLoading}
+                  >
+                    {isExerciseStructureLoading
+                      ? "Loading exercises..."
+                      : "Start workout"}
+                  </Button>
                   <Button
                     variant="secondary"
                     onClick={() => navigate("/app/home")}
@@ -1128,8 +1144,23 @@ export function ClientWorkoutRunPage() {
               <CardHeader>
                 <CardTitle>Workout</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                This workout has no exercises yet. Message your coach.
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  This workout has no exercises yet, so it is not runnable.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {workoutSession ? (
+                    <Button variant="secondary" onClick={handleSkipWorkout}>
+                      Close empty workout
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate("/app/workouts")}
+                  >
+                    Back to workouts
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : null}
@@ -1152,8 +1183,13 @@ export function ClientWorkoutRunPage() {
                     <CardContent className="space-y-2 text-sm text-muted-foreground">
                       <p>Start the session to begin logging sets.</p>
                       <div className="flex flex-wrap gap-2">
-                        <Button onClick={handleStartWorkout}>
-                          Start workout
+                        <Button
+                          onClick={handleStartWorkout}
+                          disabled={isExerciseStructureLoading}
+                        >
+                          {isExerciseStructureLoading
+                            ? "Loading exercises..."
+                            : "Start workout"}
                         </Button>
                         <Button
                           variant="secondary"
