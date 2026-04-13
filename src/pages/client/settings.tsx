@@ -22,20 +22,13 @@ import {
 } from "../../components/ui/alert-dialog";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
   EmptyStateBlock,
-  PortalPageHeader,
-  SectionCard,
   StatusBanner,
-  SurfaceCard,
-  SurfaceCardContent,
-  SurfaceCardDescription,
-  SurfaceCardHeader,
-  SurfaceCardTitle,
 } from "../../components/client/portal";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { safeSelect } from "../../lib/supabase-safe";
@@ -52,9 +45,13 @@ import {
 } from "../../features/notifications/hooks/use-notifications";
 import type { NotificationPreferences } from "../../features/notifications/lib/types";
 import {
+  type SettingsTabLink,
   DisabledSettingField,
+  SettingsHeader,
   SettingsFieldRow,
+  SettingsPageShell,
   SettingsSectionCard,
+  SettingsTabs,
   StickySaveBar,
 } from "../../features/settings/components/settings-primitives";
 
@@ -368,7 +365,7 @@ function NotificationToggleField({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <SectionCard className="space-y-3 p-3 sm:p-4">
+    <Card className="rounded-[18px] border border-border/70 bg-background/55 p-3 sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">{label}</p>
@@ -376,7 +373,7 @@ function NotificationToggleField({
         </div>
         <Switch checked={checked} onCheckedChange={onCheckedChange} />
       </div>
-    </SectionCard>
+    </Card>
   );
 }
 
@@ -413,6 +410,24 @@ export function ClientSettingsPage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [signOutSessionsSaving, setSignOutSessionsSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const settingsTabLinks = useMemo<SettingsTabLink[]>(
+    () =>
+      CLIENT_SETTINGS_TABS.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        to: `/app/settings?tab=${tab.id}`,
+      })),
+    [],
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && CLIENT_SETTINGS_TAB_SET.has(tab as ClientSettingsTab)) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", "profile");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!banner) return;
@@ -591,13 +606,6 @@ export function ClientSettingsPage() {
           },
         ]
       : [];
-
-  const handleTabChange = (value: string) => {
-    if (!CLIENT_SETTINGS_TAB_SET.has(value as ClientSettingsTab)) return;
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("tab", value);
-    setSearchParams(nextParams, { replace: true });
-  };
 
   const handleProfileSave = async () => {
     if (!clientProfileQuery.data?.id) return;
@@ -845,57 +853,30 @@ export function ClientSettingsPage() {
     clientProfileQuery.data?.email?.trim() || session?.user?.email || "Not available";
 
   return (
-    <div className="portal-shell-tight">
-      <PortalPageHeader
-        module="settings"
-        title="Settings"
-        subtitle="Account-level profile, preferences, notifications, privacy, and billing."
-        stateText="Client account settings"
-      />
+    <div className="space-y-5">
+      <SettingsPageShell
+        header={
+          <SettingsHeader
+            scope="Client"
+            title="Client Profile & Settings"
+            description="Account-level profile, preferences, notifications, privacy, and billing."
+            actions={<Badge variant="secondary">Account-level</Badge>}
+          />
+        }
+        tabs={<SettingsTabs tabs={settingsTabLinks} />}
+      >
+        {banner ? (
+          <StatusBanner
+            variant={
+              banner.tone === "error" ? "error" : banner.tone === "warning" ? "warning" : "success"
+            }
+            title={banner.title}
+            description={banner.description}
+          />
+        ) : null}
 
-      {banner ? (
-        <StatusBanner
-          variant={
-            banner.tone === "error" ? "error" : banner.tone === "warning" ? "warning" : "success"
-          }
-          title={banner.title}
-          description={banner.description}
-        />
-      ) : null}
-
-      <SurfaceCard module="settings">
-        <SurfaceCardHeader className="pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1">
-              <SurfaceCardTitle>Client Profile & Settings</SurfaceCardTitle>
-              <SurfaceCardDescription>
-                Keep this account-level page focused on your personal profile, preferences, and
-                service status.
-              </SurfaceCardDescription>
-            </div>
-            <Badge variant="muted">Account-level</Badge>
-          </div>
-        </SurfaceCardHeader>
-        <SurfaceCardContent className="space-y-5">
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList
-              module="settings"
-              className="grid h-auto w-full grid-cols-1 gap-2 rounded-[20px] bg-transparent p-0 sm:grid-cols-2 lg:grid-cols-5"
-            >
-              {CLIENT_SETTINGS_TABS.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  module="settings"
-                  value={tab.id}
-                  className="justify-start gap-2 rounded-[16px] border border-border/70 bg-background/45 px-3.5 py-3"
-                >
-                  <tab.icon className="h-4 w-4" />
-                  <span className="truncate">{tab.label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            <TabsContent value="profile" className="space-y-4">
+        {activeTab === "profile" ? (
+          <div className="space-y-4">
               {clientProfileQuery.isLoading ? (
                 <StatusBanner
                   variant="info"
@@ -1111,9 +1092,11 @@ export function ClientSettingsPage() {
                   }
                 />
               )}
-            </TabsContent>
+          </div>
+        ) : null}
 
-            <TabsContent value="preferences" className="space-y-4">
+        {activeTab === "preferences" ? (
+          <div className="space-y-4">
               <SettingsSectionCard title="App Preferences">
                 <SettingsFieldRow label="Units">
                   <Select
@@ -1203,9 +1186,11 @@ export function ClientSettingsPage() {
                 onDiscard={() => setPreferencesForm(preferencesInitial)}
                 onSave={handlePreferencesSave}
               />
-            </TabsContent>
+          </div>
+        ) : null}
 
-            <TabsContent value="notifications" className="space-y-4">
+        {activeTab === "notifications" ? (
+          <div className="space-y-4">
               <SettingsSectionCard title="Delivery Channels">
                 <SettingsFieldRow label="Channel defaults">
                   <div className="grid gap-3 sm:grid-cols-3">
@@ -1274,9 +1259,11 @@ export function ClientSettingsPage() {
                 onDiscard={() => setNotificationForm(notificationsInitial)}
                 onSave={handleNotificationsSave}
               />
-            </TabsContent>
+          </div>
+        ) : null}
 
-            <TabsContent value="privacy-security" className="space-y-4">
+        {activeTab === "privacy-security" ? (
+          <div className="space-y-4">
               <SettingsSectionCard title="Sign-in Security">
                 <SettingsFieldRow label="Authentication">
                   <DisabledSettingField
@@ -1380,9 +1367,11 @@ export function ClientSettingsPage() {
                   </div>
                 </SettingsFieldRow>
               </SettingsSectionCard>
-            </TabsContent>
+          </div>
+        ) : null}
 
-            <TabsContent value="billing" className="space-y-4">
+        {activeTab === "billing" ? (
+          <div className="space-y-4">
               {billingQuery.isLoading ? (
                 <StatusBanner
                   variant="info"
@@ -1402,30 +1391,30 @@ export function ClientSettingsPage() {
                 <>
                   <SettingsSectionCard title="Current Service">
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      <SectionCard className="space-y-1 p-4">
+                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
                         <p className="field-label">Provider</p>
                         <p className="text-sm font-medium text-foreground">
                           {billingQuery.data?.providerName ?? "Coaching team"}
                         </p>
-                      </SectionCard>
-                      <SectionCard className="space-y-1 p-4">
+                      </Card>
+                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
                         <p className="field-label">Service</p>
                         <p className="text-sm font-medium text-foreground">
                           {billingQuery.data?.serviceName ?? "Active coaching service"}
                         </p>
-                      </SectionCard>
-                      <SectionCard className="space-y-1 p-4">
+                      </Card>
+                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
                         <p className="field-label">Price</p>
                         <p className="text-sm font-medium text-foreground">
                           {billingQuery.data?.priceLabel ?? "Not yet connected"}
                         </p>
-                      </SectionCard>
-                      <SectionCard className="space-y-1 p-4">
+                      </Card>
+                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
                         <p className="field-label">Next billing date</p>
                         <p className="text-sm font-medium text-foreground">
                           {formatDateLabel(billingQuery.data?.nextBillingDate ?? null)}
                         </p>
-                      </SectionCard>
+                      </Card>
                     </div>
                   </SettingsSectionCard>
 
@@ -1445,9 +1434,9 @@ export function ClientSettingsPage() {
                     {invoices.length > 0 ? (
                       <div className="space-y-2">
                         {invoices.map((invoice) => (
-                          <SectionCard
+                          <Card
                             key={invoice.id}
-                            className="flex items-center justify-between gap-3 p-3"
+                            className="flex items-center justify-between gap-3 rounded-[16px] border border-border/70 bg-background/50 p-3"
                           >
                             <div>
                               <p className="text-sm font-medium text-foreground">{invoice.label}</p>
@@ -1456,7 +1445,7 @@ export function ClientSettingsPage() {
                               </p>
                             </div>
                             <Badge variant="muted">{invoice.amount}</Badge>
-                          </SectionCard>
+                          </Card>
                         ))}
                       </div>
                     ) : (
@@ -1476,10 +1465,9 @@ export function ClientSettingsPage() {
                   </SettingsSectionCard>
                 </>
               )}
-            </TabsContent>
-          </Tabs>
-        </SurfaceCardContent>
-      </SurfaceCard>
+          </div>
+        ) : null}
+      </SettingsPageShell>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

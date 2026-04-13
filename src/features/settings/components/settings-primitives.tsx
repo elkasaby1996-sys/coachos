@@ -21,7 +21,11 @@ export type SettingsTabLink = {
   to: string;
 };
 
-export function ScopeBadge({ scope }: { scope: "PT Hub" | "Workspace" }) {
+export function ScopeBadge({
+  scope,
+}: {
+  scope: "PT Hub" | "Workspace" | "Client";
+}) {
   return <Badge variant="secondary">{scope}</Badge>;
 }
 
@@ -34,7 +38,7 @@ export function SettingsHeader({
   title: string;
   description: string;
   actions?: React.ReactNode;
-  scope: "PT Hub" | "Workspace";
+  scope: "PT Hub" | "Workspace" | "Client";
 }) {
   const toneClasses = getModuleToneClasses("settings");
 
@@ -79,8 +83,20 @@ export function SettingsTabs({ tabs }: { tabs: SettingsTabLink[] }) {
   const activePath = location.pathname.replace(/\/+$/, "");
 
   const isTabActive = (to: string) => {
-    const tabPath = to.replace(/\/+$/, "");
-    return activePath === tabPath || activePath.startsWith(`${tabPath}/`);
+    const [rawPath = "", rawQuery = ""] = to.split("?");
+    const tabPath = rawPath.replace(/\/+$/, "");
+    const pathMatches = activePath === tabPath || activePath.startsWith(`${tabPath}/`);
+    if (!pathMatches) return false;
+    if (!rawQuery) return true;
+
+    const expectedParams = new URLSearchParams(rawQuery);
+    const activeParams = new URLSearchParams(location.search);
+    for (const [key, value] of expectedParams.entries()) {
+      if (activeParams.get(key) !== value) {
+        return false;
+      }
+    }
+    return true;
   };
 
   return (
