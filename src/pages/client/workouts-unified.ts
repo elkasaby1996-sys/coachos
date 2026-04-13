@@ -93,6 +93,106 @@ const normalizeSupersetGroup = (value: string) =>
     .toUpperCase()
     .slice(0, 16);
 
+const cleanupSupersetGroups = (drafts: PersonalWorkoutExerciseDraft[]) => {
+  const normalized = drafts.map((draft) => ({
+    ...draft,
+    supersetGroup: normalizeSupersetGroup(draft.supersetGroup),
+  }));
+  const counts = new Map<string, number>();
+  normalized.forEach((draft) => {
+    if (!draft.supersetGroup) return;
+    counts.set(draft.supersetGroup, (counts.get(draft.supersetGroup) ?? 0) + 1);
+  });
+  return normalized.map((draft) =>
+    draft.supersetGroup && (counts.get(draft.supersetGroup) ?? 0) < 2
+      ? { ...draft, supersetGroup: "" }
+      : draft,
+  );
+};
+
+export const getNextSupersetGroup = (drafts: PersonalWorkoutExerciseDraft[]) => {
+  const used = new Set(
+    cleanupSupersetGroups(drafts)
+      .map((draft) => draft.supersetGroup)
+      .filter((group): group is string => Boolean(group)),
+  );
+  for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+    if (!used.has(letter)) return letter;
+  }
+  let index = 1;
+  while (used.has(`G${index}`)) index += 1;
+  return `G${index}`;
+};
+
+export function applySupersetDragGrouping(
+  drafts: PersonalWorkoutExerciseDraft[],
+  sourceIndex: number,
+  targetIndex: number,
+) {
+  if (
+    sourceIndex < 0 ||
+    targetIndex < 0 ||
+    sourceIndex >= drafts.length ||
+    targetIndex >= drafts.length ||
+    sourceIndex === targetIndex
+  ) {
+    return cleanupSupersetGroups(drafts);
+  }
+
+  const normalized = cleanupSupersetGroups(drafts);
+  const sourceRow = normalized[sourceIndex];
+  const targetRow = normalized[targetIndex];
+  if (!sourceRow || !targetRow) {
+    return cleanupSupersetGroups(normalized);
+  }
+  const sourceGroup = normalizeSupersetGroup(sourceRow.supersetGroup);
+  const targetGroup = normalizeSupersetGroup(targetRow.supersetGroup);
+
+  if (!sourceGroup && !targetGroup) {
+    const group = getNextSupersetGroup(normalized);
+    normalized[sourceIndex] = { ...sourceRow, supersetGroup: group };
+    normalized[targetIndex] = { ...targetRow, supersetGroup: group };
+    return cleanupSupersetGroups(normalized);
+  }
+
+  if (!sourceGroup && targetGroup) {
+    normalized[sourceIndex] = {
+      ...sourceRow,
+      supersetGroup: targetGroup,
+    };
+    return cleanupSupersetGroups(normalized);
+  }
+
+  if (sourceGroup && !targetGroup) {
+    normalized[targetIndex] = {
+      ...targetRow,
+      supersetGroup: sourceGroup,
+    };
+    return cleanupSupersetGroups(normalized);
+  }
+
+  if (sourceGroup && targetGroup && sourceGroup !== targetGroup) {
+    normalized[sourceIndex] = {
+      ...sourceRow,
+      supersetGroup: targetGroup,
+    };
+    return cleanupSupersetGroups(normalized);
+  }
+
+  return cleanupSupersetGroups(normalized);
+}
+
+export function removeExerciseFromSuperset(
+  drafts: PersonalWorkoutExerciseDraft[],
+  index: number,
+) {
+  if (index < 0 || index >= drafts.length) return cleanupSupersetGroups(drafts);
+  const next = drafts.map((draft, rowIndex) =>
+    rowIndex === index ? { ...draft, supersetGroup: "" } : draft,
+  );
+  return cleanupSupersetGroups(next);
+}
+
 const parseExerciseSets = (value: string) => {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed) || parsed < 1) {
@@ -122,7 +222,8 @@ export function preparePersonalWorkoutDraft(params: {
   }
 
   const deduped = new Set<string>();
-  const exercises = params.exerciseDrafts
+  const cleanedDrafts = cleanupSupersetGroups(params.exerciseDrafts);
+  const exercises = cleanedDrafts
     .map((draft) => {
       const name = normalizeExerciseName(draft.name);
       if (!name) return null;

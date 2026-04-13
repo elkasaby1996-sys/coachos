@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { GripVertical } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
@@ -32,11 +33,13 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { supabase } from "../../lib/supabase";
 import { buildSourceLabel } from "./home-unified";
 import {
+  applySupersetDragGrouping,
   applyUnifiedWorkoutFilter,
   canManagePersonalWorkout,
   groupUnifiedWorkoutsByState,
   isTerminalWorkoutStatus,
   preparePersonalWorkoutDraft,
+  removeExerciseFromSuperset,
   resolveWorkoutPrimaryAction,
   type PreparedPersonalWorkoutDraft,
   unifiedWorkoutFilters,
@@ -211,6 +214,12 @@ export function ClientWorkoutsPage() {
   const [exerciseDrafts, setExerciseDrafts] = useState<
     PersonalWorkoutExerciseDraft[]
   >([createExerciseDraft()]);
+  const [createDragFromIndex, setCreateDragFromIndex] = useState<number | null>(
+    null,
+  );
+  const [createDragOverIndex, setCreateDragOverIndex] = useState<number | null>(
+    null,
+  );
   const [isEditWorkoutOpen, setIsEditWorkoutOpen] = useState(false);
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [editingWorkoutName, setEditingWorkoutName] = useState("");
@@ -218,6 +227,8 @@ export function ClientWorkoutsPage() {
   const [editingExerciseDrafts, setEditingExerciseDrafts] = useState<
     PersonalWorkoutExerciseDraft[]
   >([createExerciseDraft()]);
+  const [editDragFromIndex, setEditDragFromIndex] = useState<number | null>(null);
+  const [editDragOverIndex, setEditDragOverIndex] = useState<number | null>(null);
   const [hydratedEditWorkoutId, setHydratedEditWorkoutId] = useState<
     string | null
   >(null);
@@ -440,6 +451,8 @@ export function ClientWorkoutsPage() {
     setPersonalWorkoutName("");
     setPersonalWorkoutDate(todayKey);
     setExerciseDrafts([createExerciseDraft()]);
+    setCreateDragFromIndex(null);
+    setCreateDragOverIndex(null);
   };
 
   const resetEditWorkoutForm = () => {
@@ -448,6 +461,8 @@ export function ClientWorkoutsPage() {
     setEditingWorkoutDate(todayKey);
     setEditingExerciseDrafts([createExerciseDraft()]);
     setHydratedEditWorkoutId(null);
+    setEditDragFromIndex(null);
+    setEditDragOverIndex(null);
   };
 
   useEffect(() => {
@@ -845,7 +860,8 @@ export function ClientWorkoutsPage() {
   const removeExerciseDraft = (index: number) => {
     setExerciseDrafts((prev) => {
       const next = prev.filter((_, rowIndex) => rowIndex !== index);
-      return next.length > 0 ? next : [createExerciseDraft()];
+      const filled = next.length > 0 ? next : [createExerciseDraft()];
+      return applySupersetDragGrouping(filled, -1, -1);
     });
   };
 
@@ -864,8 +880,43 @@ export function ClientWorkoutsPage() {
   const removeEditingExerciseDraft = (index: number) => {
     setEditingExerciseDrafts((prev) => {
       const next = prev.filter((_, rowIndex) => rowIndex !== index);
-      return next.length > 0 ? next : [createExerciseDraft()];
+      const filled = next.length > 0 ? next : [createExerciseDraft()];
+      return applySupersetDragGrouping(filled, -1, -1);
     });
+  };
+
+  const clearCreateDragState = () => {
+    setCreateDragFromIndex(null);
+    setCreateDragOverIndex(null);
+  };
+
+  const clearEditDragState = () => {
+    setEditDragFromIndex(null);
+    setEditDragOverIndex(null);
+  };
+
+  const handleCreateSupersetDrop = (targetIndex: number) => {
+    if (createDragFromIndex === null) return;
+    setExerciseDrafts((prev) =>
+      applySupersetDragGrouping(prev, createDragFromIndex, targetIndex),
+    );
+    clearCreateDragState();
+  };
+
+  const handleEditSupersetDrop = (targetIndex: number) => {
+    if (editDragFromIndex === null) return;
+    setEditingExerciseDrafts((prev) =>
+      applySupersetDragGrouping(prev, editDragFromIndex, targetIndex),
+    );
+    clearEditDragState();
+  };
+
+  const clearCreateExerciseSuperset = (index: number) => {
+    setExerciseDrafts((prev) => removeExerciseFromSuperset(prev, index));
+  };
+
+  const clearEditExerciseSuperset = (index: number) => {
+    setEditingExerciseDrafts((prev) => removeExerciseFromSuperset(prev, index));
   };
 
   const openEditWorkoutDialog = (workout: UnifiedWorkoutRow) => {
@@ -955,15 +1006,15 @@ export function ClientWorkoutsPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="w-[min(94vw,52rem)] max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Create personal workout</DialogTitle>
             <DialogDescription>
               Build a personal session with a workout name and at least one
               exercise, then run it with the same workout runner.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="mt-4 flex-1 min-h-0 space-y-6 overflow-y-auto pr-1 sm:pr-2">
             <SectionCard className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="personal-workout-name">Workout name</Label>
@@ -991,97 +1042,186 @@ export function ClientWorkoutsPage() {
                 <SurfaceCardTitle>Exercises</SurfaceCardTitle>
                 <SurfaceCardDescription>
                   Add one or more exercises so the workout opens with a runnable
-                  structure. Use the same superset label (like A) to pair
-                  exercises.
+                  structure. Drag one exercise onto another to create or extend a
+                  superset.
                 </SurfaceCardDescription>
               </SurfaceCardHeader>
-              <SurfaceCardContent className="space-y-3">
-                {exerciseDrafts.map((exercise, index) => (
-                  <SectionCard
-                    key={`exercise-draft-${index}`}
-                    className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_88px_108px_96px_auto]"
+              <SurfaceCardContent className="space-y-1">
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Tip: drag the grip handle onto a target exercise. Grouped
+                  exercises share a superset badge.
+                </p>
+                {exerciseDrafts.map((exercise, index) => {
+                  const prev = exerciseDrafts[index - 1];
+                  const next = exerciseDrafts[index + 1];
+                  const hasSuperset = Boolean(exercise.supersetGroup);
+                  const sameAsPrev =
+                    hasSuperset && prev?.supersetGroup === exercise.supersetGroup;
+                  const sameAsNext =
+                    hasSuperset && next?.supersetGroup === exercise.supersetGroup;
+                  const groupShapeClass = sameAsPrev
+                    ? sameAsNext
+                      ? "rounded-none border-b-0"
+                      : "rounded-t-none"
+                    : sameAsNext
+                      ? "rounded-b-none border-b-0"
+                      : "";
+                  const spacingClass = sameAsPrev ? "mt-0" : index === 0 ? "mt-0" : "mt-3";
+                  const isSupersetDropTarget =
+                    createDragFromIndex !== null &&
+                    createDragFromIndex !== index &&
+                    createDragOverIndex === index;
+                  return (
+                    <SectionCard
+                      key={`exercise-draft-${index}`}
+                      onDragEnter={() => {
+                        if (
+                          createDragFromIndex !== null &&
+                          createDragFromIndex !== index
+                        ) {
+                          setCreateDragOverIndex(index);
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        if (
+                          createDragFromIndex === null ||
+                          createDragFromIndex === index
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        if (createDragOverIndex !== index) {
+                          setCreateDragOverIndex(index);
+                        }
+                      }}
+                      onDrop={(event) => {
+                        if (
+                          createDragFromIndex === null ||
+                          createDragFromIndex === index
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        handleCreateSupersetDrop(index);
+                      }}
+                      className={`${spacingClass} ${groupShapeClass} ${isSupersetDropTarget ? "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-emerald-400/40" : hasSuperset ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}
+                    >
+                      <div className="grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)_88px_108px_auto_auto]">
+                        <button
+                          type="button"
+                          aria-label="Drag to create superset"
+                          draggable={!createPersonalWorkoutMutation.isPending}
+                          onDragStart={() => {
+                            setCreateDragFromIndex(index);
+                            setCreateDragOverIndex(null);
+                          }}
+                          onDragEnd={clearCreateDragState}
+                          className="rounded-md border border-border bg-background/60 p-1 text-muted-foreground transition hover:cursor-grab hover:text-foreground active:cursor-grabbing"
+                          disabled={createPersonalWorkoutMutation.isPending}
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </button>
+                        <div className="space-y-1">
+                          <Label className="sr-only" htmlFor={`exercise-name-${index}`}>
+                            Exercise name
+                          </Label>
+                          <Input
+                            id={`exercise-name-${index}`}
+                            placeholder="Exercise name"
+                            value={exercise.name}
+                            onChange={(event) =>
+                              updateExerciseDraft(index, "name", event.target.value)
+                            }
+                            maxLength={80}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="sr-only" htmlFor={`exercise-sets-${index}`}>
+                            Sets
+                          </Label>
+                          <Input
+                            id={`exercise-sets-${index}`}
+                            inputMode="numeric"
+                            type="number"
+                            min={1}
+                            max={20}
+                            placeholder="Sets"
+                            value={exercise.sets}
+                            onChange={(event) =>
+                              updateExerciseDraft(index, "sets", event.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="sr-only" htmlFor={`exercise-reps-${index}`}>
+                            Reps
+                          </Label>
+                          <Input
+                            id={`exercise-reps-${index}`}
+                            placeholder="Reps"
+                            value={exercise.reps}
+                            onChange={(event) =>
+                              updateExerciseDraft(index, "reps", event.target.value)
+                            }
+                            maxLength={20}
+                          />
+                        </div>
+                        <div className="flex items-center justify-end gap-2 sm:justify-start">
+                          {hasSuperset ? (
+                            <>
+                              <Badge variant="muted">
+                                Superset {exercise.supersetGroup}
+                              </Badge>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 px-0"
+                                disabled={createPersonalWorkoutMutation.isPending}
+                                onClick={() => clearCreateExerciseSuperset(index)}
+                                aria-label="Remove from superset"
+                              >
+                                x
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-10 justify-self-end"
+                          onClick={() => removeExerciseDraft(index)}
+                          disabled={createPersonalWorkoutMutation.isPending}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </SectionCard>
+                  );
+                })}
+                <div className="mt-5 flex pt-1">
+                  <Button
+                    variant="secondary"
+                    className="h-9 w-9 px-0"
+                    aria-label="Add exercise"
+                    onClick={() =>
+                      setExerciseDrafts((prev) => [
+                        ...applySupersetDragGrouping(prev, -1, -1),
+                        createExerciseDraft(),
+                      ])
+                    }
+                    disabled={createPersonalWorkoutMutation.isPending}
                   >
-                    <div className="space-y-2">
-                      <Label htmlFor={`exercise-name-${index}`}>Exercise name</Label>
-                      <Input
-                        id={`exercise-name-${index}`}
-                        placeholder="Example: Goblet Squat"
-                        value={exercise.name}
-                        onChange={(event) =>
-                          updateExerciseDraft(index, "name", event.target.value)
-                        }
-                        maxLength={80}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`exercise-sets-${index}`}>Sets</Label>
-                      <Input
-                        id={`exercise-sets-${index}`}
-                        inputMode="numeric"
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={exercise.sets}
-                        onChange={(event) =>
-                          updateExerciseDraft(index, "sets", event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`exercise-reps-${index}`}>Reps</Label>
-                      <Input
-                        id={`exercise-reps-${index}`}
-                        placeholder="8-12"
-                        value={exercise.reps}
-                        onChange={(event) =>
-                          updateExerciseDraft(index, "reps", event.target.value)
-                        }
-                        maxLength={20}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`exercise-superset-${index}`}>Superset</Label>
-                      <Input
-                        id={`exercise-superset-${index}`}
-                        placeholder="A"
-                        value={exercise.supersetGroup}
-                        onChange={(event) =>
-                          updateExerciseDraft(
-                            index,
-                            "supersetGroup",
-                            event.target.value,
-                          )
-                        }
-                        maxLength={16}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        variant="ghost"
-                        className="w-full"
-                        onClick={() => removeExerciseDraft(index)}
-                        disabled={createPersonalWorkoutMutation.isPending}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </SectionCard>
-                ))}
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    setExerciseDrafts((prev) => [...prev, createExerciseDraft()])
-                  }
-                  disabled={createPersonalWorkoutMutation.isPending}
-                >
-                  Add exercise
-                </Button>
+                    +
+                  </Button>
+                </div>
               </SurfaceCardContent>
             </SurfaceCard>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-6 shrink-0 flex-row flex-wrap justify-end gap-3 border-t border-border/50 pt-4 sm:pt-5">
             <Button
               variant="secondary"
+              className="min-w-[7rem]"
               onClick={() => {
                 setIsCreateWorkoutOpen(false);
                 resetPersonalWorkoutForm();
@@ -1091,6 +1231,7 @@ export function ClientWorkoutsPage() {
               Cancel
             </Button>
             <Button
+              className="min-w-[7rem]"
               onClick={() => createPersonalWorkoutMutation.mutate()}
               disabled={!clientId || createPersonalWorkoutMutation.isPending}
             >
@@ -1111,15 +1252,15 @@ export function ClientWorkoutsPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="w-[min(94vw,52rem)] max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Edit personal workout</DialogTitle>
             <DialogDescription>
               Update your personal workout details while keeping the same shared
               runner/session flow.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="mt-4 flex-1 min-h-0 space-y-6 overflow-y-auto pr-1 sm:pr-2">
             {editWorkoutExercisesQuery.error ? (
               <StatusBanner
                 variant="error"
@@ -1182,115 +1323,203 @@ export function ClientWorkoutsPage() {
                     <SurfaceCardTitle>Exercises</SurfaceCardTitle>
                     <SurfaceCardDescription>
                       Keep at least one exercise so the workout remains runnable.
-                      Match superset labels to keep exercises paired.
+                      Drag one exercise onto another to create or extend a
+                      superset.
                     </SurfaceCardDescription>
                   </SurfaceCardHeader>
-                  <SurfaceCardContent className="space-y-3">
-                    {editingExerciseDrafts.map((exercise, index) => (
-                      <SectionCard
-                        key={`editing-exercise-draft-${index}`}
-                        className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_88px_108px_96px_auto]"
+                  <SurfaceCardContent className="space-y-1">
+                    <p className="mb-3 text-xs text-muted-foreground">
+                      Drag the grip handle onto a target exercise to group them.
+                    </p>
+                    {editingExerciseDrafts.map((exercise, index) => {
+                      const prev = editingExerciseDrafts[index - 1];
+                      const next = editingExerciseDrafts[index + 1];
+                      const hasSuperset = Boolean(exercise.supersetGroup);
+                      const sameAsPrev =
+                        hasSuperset && prev?.supersetGroup === exercise.supersetGroup;
+                      const sameAsNext =
+                        hasSuperset && next?.supersetGroup === exercise.supersetGroup;
+                      const groupShapeClass = sameAsPrev
+                        ? sameAsNext
+                          ? "rounded-none border-b-0"
+                          : "rounded-t-none"
+                        : sameAsNext
+                          ? "rounded-b-none border-b-0"
+                          : "";
+                      const spacingClass = sameAsPrev
+                        ? "mt-0"
+                        : index === 0
+                          ? "mt-0"
+                          : "mt-3";
+                      const isSupersetDropTarget =
+                        editDragFromIndex !== null &&
+                        editDragFromIndex !== index &&
+                        editDragOverIndex === index;
+                      return (
+                        <SectionCard
+                          key={`editing-exercise-draft-${index}`}
+                          onDragEnter={() => {
+                            if (
+                              editDragFromIndex !== null &&
+                              editDragFromIndex !== index
+                            ) {
+                              setEditDragOverIndex(index);
+                            }
+                          }}
+                          onDragOver={(event) => {
+                            if (
+                              editDragFromIndex === null ||
+                              editDragFromIndex === index
+                            ) {
+                              return;
+                            }
+                            event.preventDefault();
+                            if (editDragOverIndex !== index) {
+                              setEditDragOverIndex(index);
+                            }
+                          }}
+                          onDrop={(event) => {
+                            if (
+                              editDragFromIndex === null ||
+                              editDragFromIndex === index
+                            ) {
+                              return;
+                            }
+                            event.preventDefault();
+                            handleEditSupersetDrop(index);
+                          }}
+                          className={`${spacingClass} ${groupShapeClass} ${isSupersetDropTarget ? "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-emerald-400/40" : hasSuperset ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}
+                        >
+                          <div className="grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)_88px_108px_auto_auto]">
+                            <button
+                              type="button"
+                              aria-label="Drag to create superset"
+                              draggable={!editPersonalWorkoutMutation.isPending}
+                              onDragStart={() => {
+                                setEditDragFromIndex(index);
+                                setEditDragOverIndex(null);
+                              }}
+                              onDragEnd={clearEditDragState}
+                              className="rounded-md border border-border bg-background/60 p-1 text-muted-foreground transition hover:cursor-grab hover:text-foreground active:cursor-grabbing"
+                              disabled={editPersonalWorkoutMutation.isPending}
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </button>
+                            <div className="space-y-1">
+                              <Label className="sr-only" htmlFor={`editing-exercise-name-${index}`}>
+                                Exercise name
+                              </Label>
+                              <Input
+                                id={`editing-exercise-name-${index}`}
+                                placeholder="Exercise name"
+                                value={exercise.name}
+                                onChange={(event) =>
+                                  updateEditingExerciseDraft(
+                                    index,
+                                    "name",
+                                    event.target.value,
+                                  )
+                                }
+                                maxLength={80}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="sr-only" htmlFor={`editing-exercise-sets-${index}`}>
+                                Sets
+                              </Label>
+                              <Input
+                                id={`editing-exercise-sets-${index}`}
+                                inputMode="numeric"
+                                type="number"
+                                min={1}
+                                max={20}
+                                placeholder="Sets"
+                                value={exercise.sets}
+                                onChange={(event) =>
+                                  updateEditingExerciseDraft(
+                                    index,
+                                    "sets",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="sr-only" htmlFor={`editing-exercise-reps-${index}`}>
+                                Reps
+                              </Label>
+                              <Input
+                                id={`editing-exercise-reps-${index}`}
+                                placeholder="Reps"
+                                value={exercise.reps}
+                                onChange={(event) =>
+                                  updateEditingExerciseDraft(
+                                    index,
+                                    "reps",
+                                    event.target.value,
+                                  )
+                                }
+                                maxLength={20}
+                              />
+                            </div>
+                            <div className="flex items-center justify-end gap-2 sm:justify-start">
+                              {hasSuperset ? (
+                                <>
+                                  <Badge variant="muted">
+                                    Superset {exercise.supersetGroup}
+                                  </Badge>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 px-0"
+                                    disabled={editPersonalWorkoutMutation.isPending}
+                                    onClick={() => clearEditExerciseSuperset(index)}
+                                    aria-label="Remove from superset"
+                                  >
+                                    x
+                                  </Button>
+                                </>
+                              ) : null}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="h-10 justify-self-end"
+                              disabled={editPersonalWorkoutMutation.isPending}
+                              onClick={() => removeEditingExerciseDraft(index)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </SectionCard>
+                      );
+                    })}
+                    <div className="mt-5 flex pt-1">
+                      <Button
+                        variant="secondary"
+                        className="h-9 w-9 px-0"
+                        aria-label="Add exercise"
+                        disabled={editPersonalWorkoutMutation.isPending}
+                        onClick={() =>
+                          setEditingExerciseDrafts((prev) => [
+                            ...applySupersetDragGrouping(prev, -1, -1),
+                            createExerciseDraft(),
+                          ])
+                        }
                       >
-                        <div className="space-y-2">
-                          <Label htmlFor={`editing-exercise-name-${index}`}>
-                            Exercise name
-                          </Label>
-                          <Input
-                            id={`editing-exercise-name-${index}`}
-                            value={exercise.name}
-                            onChange={(event) =>
-                              updateEditingExerciseDraft(
-                                index,
-                                "name",
-                                event.target.value,
-                              )
-                            }
-                            maxLength={80}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`editing-exercise-sets-${index}`}>Sets</Label>
-                          <Input
-                            id={`editing-exercise-sets-${index}`}
-                            inputMode="numeric"
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={exercise.sets}
-                            onChange={(event) =>
-                              updateEditingExerciseDraft(
-                                index,
-                                "sets",
-                                event.target.value,
-                              )
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`editing-exercise-reps-${index}`}>Reps</Label>
-                          <Input
-                            id={`editing-exercise-reps-${index}`}
-                            value={exercise.reps}
-                            onChange={(event) =>
-                              updateEditingExerciseDraft(
-                                index,
-                                "reps",
-                                event.target.value,
-                              )
-                            }
-                            maxLength={20}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`editing-exercise-superset-${index}`}>
-                            Superset
-                          </Label>
-                          <Input
-                            id={`editing-exercise-superset-${index}`}
-                            placeholder="A"
-                            value={exercise.supersetGroup}
-                            onChange={(event) =>
-                              updateEditingExerciseDraft(
-                                index,
-                                "supersetGroup",
-                                event.target.value,
-                              )
-                            }
-                            maxLength={16}
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <Button
-                            variant="ghost"
-                            className="w-full"
-                            disabled={editPersonalWorkoutMutation.isPending}
-                            onClick={() => removeEditingExerciseDraft(index)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </SectionCard>
-                    ))}
-                    <Button
-                      variant="secondary"
-                      disabled={editPersonalWorkoutMutation.isPending}
-                      onClick={() =>
-                        setEditingExerciseDrafts((prev) => [
-                          ...prev,
-                          createExerciseDraft(),
-                        ])
-                      }
-                    >
-                      Add exercise
-                    </Button>
+                        +
+                      </Button>
+                    </div>
                   </SurfaceCardContent>
                 </SurfaceCard>
               </>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-6 shrink-0 flex-row flex-wrap justify-end gap-3 border-t border-border/50 pt-4 sm:pt-5">
             <Button
               variant="secondary"
+              className="min-w-[7rem]"
               disabled={editPersonalWorkoutMutation.isPending}
               onClick={() => {
                 setIsEditWorkoutOpen(false);
@@ -1300,6 +1529,7 @@ export function ClientWorkoutsPage() {
               Cancel
             </Button>
             <Button
+              className="min-w-[7rem]"
               disabled={!editDialogReady || editPersonalWorkoutMutation.isPending}
               onClick={() => editPersonalWorkoutMutation.mutate()}
             >

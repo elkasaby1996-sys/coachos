@@ -16,9 +16,11 @@ import {
   ClientLayout,
   ClientMedicalPage,
   ClientMessagesPage,
+  ClientNutritionCreatePlanPage,
+  ClientNutritionPage,
   ClientNutritionDayPage,
   ClientOnboardingPage,
-  ClientProfilePage,
+  ClientSettingsPage,
   ClientProgressPage,
   ClientWorkoutDetailPage,
   ClientWorkoutRunPage,
@@ -165,7 +167,13 @@ function getProtectedRedirect(params: {
       return getClientAccountOnboardingPath(params.pendingInviteToken);
     }
     if (!params.hasWorkspaceMembership) {
-      if (params.allow.includes("client") && params.pathname.startsWith("/app/home")) {
+      if (
+        params.allow.includes("client") &&
+        (params.pathname.startsWith("/app/home") ||
+          params.pathname.startsWith("/app/messages") ||
+          params.pathname.startsWith("/app/settings") ||
+          params.pathname.startsWith("/app/profile"))
+      ) {
         return null;
       }
       return "/app/home";
@@ -757,12 +765,17 @@ export function App() {
           <Route path="checkin" element={<ClientCheckinPage />} />
           <Route path="messages" element={<ClientMessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="profile" element={<ClientProfilePage />} />
+          <Route path="settings" element={<ClientSettingsPage />} />
+          <Route
+            path="profile"
+            element={<Navigate to="/app/settings?tab=profile" replace />}
+          />
           <Route path="habits" element={<ClientHabitsPage />} />
           <Route path="progress" element={<ClientProgressPage />} />
+          <Route path="nutrition" element={<ClientNutritionPage />} />
           <Route
-            path="nutrition"
-            element={<Navigate to="/app/home?module=nutrition" replace />}
+            path="nutrition/new"
+            element={<ClientNutritionCreatePlanPage />}
           />
           <Route
             path="find-coach"

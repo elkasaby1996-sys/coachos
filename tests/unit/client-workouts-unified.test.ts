@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  applySupersetDragGrouping,
   applyUnifiedWorkoutFilter,
   buildWorkoutSummaryPath,
   canManagePersonalWorkout,
   groupUnifiedWorkoutsByState,
   preparePersonalWorkoutDraft,
+  removeExerciseFromSuperset,
   resolveWorkoutPrimaryAction,
   type UnifiedWorkoutRow,
 } from "../../src/pages/client/workouts-unified";
@@ -269,6 +271,20 @@ describe("preparePersonalWorkoutDraft", () => {
     ]);
   });
 
+  it("clears invalid single-member supersets before saving", () => {
+    const payload = preparePersonalWorkoutDraft({
+      workoutName: "Personal Session",
+      scheduledDate: "2026-04-12",
+      exerciseDrafts: [
+        { name: "Rows", sets: "3", reps: "10", supersetGroup: "A" },
+      ],
+    });
+
+    expect(payload.exercises).toEqual([
+      { name: "Rows", sets: 3, reps: "10", supersetGroup: null, sortOrder: 10 },
+    ]);
+  });
+
   it("keeps standalone exercises without a superset group", () => {
     const payload = preparePersonalWorkoutDraft({
       workoutName: "Personal Session",
@@ -303,5 +319,50 @@ describe("preparePersonalWorkoutDraft", () => {
         exerciseDrafts: [{ name: " ", sets: "3", reps: "10", supersetGroup: "" }],
       }),
     ).toThrow("Add at least one exercise to create a workout.");
+  });
+});
+
+describe("superset drag helpers", () => {
+  it("creates a new superset group when dragging between standalone exercises", () => {
+    const next = applySupersetDragGrouping(
+      [
+        { name: "A", sets: "3", reps: "10", supersetGroup: "" },
+        { name: "B", sets: "3", reps: "10", supersetGroup: "" },
+      ],
+      0,
+      1,
+    );
+
+    expect(next[0].supersetGroup).toBe("A");
+    expect(next[1].supersetGroup).toBe("A");
+  });
+
+  it("adds dragged exercise to target's existing superset group", () => {
+    const next = applySupersetDragGrouping(
+      [
+        { name: "A", sets: "3", reps: "10", supersetGroup: "" },
+        { name: "B", sets: "3", reps: "10", supersetGroup: "C" },
+        { name: "C", sets: "3", reps: "10", supersetGroup: "C" },
+      ],
+      0,
+      1,
+    );
+
+    expect(next[0].supersetGroup).toBe("C");
+    expect(next[1].supersetGroup).toBe("C");
+    expect(next[2].supersetGroup).toBe("C");
+  });
+
+  it("removes an exercise from superset and cleans up orphaned groups", () => {
+    const next = removeExerciseFromSuperset(
+      [
+        { name: "A", sets: "3", reps: "10", supersetGroup: "D" },
+        { name: "B", sets: "3", reps: "10", supersetGroup: "D" },
+      ],
+      0,
+    );
+
+    expect(next[0].supersetGroup).toBe("");
+    expect(next[1].supersetGroup).toBe("");
   });
 });

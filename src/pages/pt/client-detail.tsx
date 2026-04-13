@@ -5977,6 +5977,7 @@ function PtClientScheduleCard({
         .from("nutrition_templates")
         .select("id, name, duration_weeks")
         .eq("workspace_id", workspaceId ?? "")
+        .is("owner_client_id", null)
         .order("name", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -8603,6 +8604,7 @@ function PtClientNutritionTab({
         .from("nutrition_templates")
         .select("id, name, duration_weeks")
         .eq("workspace_id", workspaceId ?? "")
+        .is("owner_client_id", null)
         .order("name", { ascending: true });
       if (error) throw error;
       return data ?? [];

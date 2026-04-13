@@ -1,570 +1,1507 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Lock, Palette, User } from "lucide-react";
+import {
+  Bell,
+  CalendarClock,
+  CreditCard,
+  LogOut,
+  Moon,
+  Shield,
+  Trash2,
+  User,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
-import { PortalPageHeader } from "../../components/client/portal";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
-  SettingsActions,
-  SettingsBlock,
-  SettingsPageShell,
-  SettingsRow,
-  SettingsToast,
-} from "../settings/sections/shared";
+  EmptyStateBlock,
+  PortalPageHeader,
+  SectionCard,
+  StatusBanner,
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
+} from "../../components/client/portal";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { safeSelect } from "../../lib/supabase-safe";
 import { supabase } from "../../lib/supabase";
-import { useSessionAuth } from "../../lib/auth";
 import {
   AVAILABLE_THEME_PREFERENCES,
   LIGHT_MODE_ENABLED,
+  type ThemePreference,
 } from "../../lib/theme";
 import { useThemePreference } from "../../lib/use-theme-preference";
-import { cn } from "../../lib/utils";
+import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from "../../features/notifications/hooks/use-notifications";
+import type { NotificationPreferences } from "../../features/notifications/lib/types";
+import {
+  DisabledSettingField,
+  SettingsFieldRow,
+  SettingsSectionCard,
+  StickySaveBar,
+} from "../../features/settings/components/settings-primitives";
 
-type ClientSettingsProfile = {
+type ClientSettingsTab =
+  | "profile"
+  | "preferences"
+  | "notifications"
+  | "privacy-security"
+  | "billing";
+
+type ClientProfileRow = {
   id: string;
+  workspace_id: string | null;
   display_name: string | null;
+  full_name: string | null;
+  email: string | null;
   phone: string | null;
-  location: string | null;
-  timezone: string | null;
-  unit_preference: string | null;
+  avatar_url: string | null;
+  photo_url: string | null;
+  date_of_birth: string | null;
   dob: string | null;
   gender: string | null;
-  gym_name: string | null;
-  days_per_week: number | null;
-  goal: string | null;
-  injuries: string | null;
-  limitations: string | null;
+  sex: string | null;
+  height_value: number | null;
+  height_unit: string | null;
   height_cm: number | null;
+  weight_value_current: number | null;
+  weight_unit: string | null;
   current_weight: number | null;
+  unit_preference: string | null;
+  timezone: string | null;
+  created_at: string | null;
 };
 
-type ProfileForm = {
-  display_name: string;
+type ProfileFormState = {
+  avatarUrl: string;
+  fullName: string;
   phone: string;
-  location: string;
-  timezone: string;
-  unit_preference: string;
-  dob: string;
+  dateOfBirth: string;
   gender: string;
-  gym_name: string;
-  days_per_week: string;
-  goal: string;
-  injuries: string;
-  limitations: string;
-  height_cm: string;
-  current_weight: string;
+  heightValue: string;
+  heightUnit: string;
+  weightValue: string;
+  weightUnit: string;
+  timezone: string;
 };
 
-const emptyForm: ProfileForm = {
-  display_name: "",
-  phone: "",
-  location: "",
-  timezone: "",
-  unit_preference: "",
-  dob: "",
-  gender: "",
-  gym_name: "",
-  days_per_week: "",
-  goal: "",
-  injuries: "",
-  limitations: "",
-  height_cm: "",
-  current_weight: "",
+type PreferencesFormState = {
+  units: string;
+  dateFormat: string;
+  language: string;
+  themePreference: ThemePreference;
 };
+
+type NotificationFormState = Pick<
+  NotificationPreferences,
+  | "in_app_enabled"
+  | "email_enabled"
+  | "push_enabled"
+  | "message_received"
+  | "workout_assigned"
+  | "workout_updated"
+  | "reminders_enabled"
+  | "checkin_requested"
+  | "checkin_submitted"
+  | "milestone_events"
+  | "inactivity_alerts"
+  | "system_events"
+>;
+
+type BillingSnapshot = {
+  providerName: string | null;
+  serviceName: string | null;
+  priceLabel: string | null;
+  billingStatus: "active" | "none";
+  nextBillingDate: string | null;
+};
+
+const CLIENT_SETTINGS_TABS: Array<{
+  id: ClientSettingsTab;
+  label: string;
+  icon: typeof User;
+}> = [
+  { id: "profile", label: "Profile", icon: User },
+  { id: "preferences", label: "Preferences", icon: Moon },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "privacy-security", label: "Privacy & Security", icon: Shield },
+  { id: "billing", label: "Billing", icon: CreditCard },
+];
+
+const CLIENT_SETTINGS_TAB_SET = new Set<ClientSettingsTab>(
+  CLIENT_SETTINGS_TABS.map((tab) => tab.id),
+);
+
+const CLIENT_DATE_FORMAT_STORAGE_KEY = "coachos-client-date-format";
+const CLIENT_LANGUAGE_STORAGE_KEY = "coachos-client-language";
+
+const DATE_FORMAT_OPTIONS = [
+  { value: "dd-mm-yyyy", label: "DD/MM/YYYY" },
+  { value: "mm-dd-yyyy", label: "MM/DD/YYYY" },
+  { value: "yyyy-mm-dd", label: "YYYY-MM-DD" },
+] as const;
+
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "ar", label: "Arabic" },
+] as const;
+
+const HEIGHT_UNIT_OPTIONS = [
+  { value: "cm", label: "cm" },
+  { value: "in", label: "in" },
+] as const;
+
+const WEIGHT_UNIT_OPTIONS = [
+  { value: "kg", label: "kg" },
+  { value: "lb", label: "lb" },
+] as const;
+
+const defaultProfileFormState: ProfileFormState = {
+  avatarUrl: "",
+  fullName: "",
+  phone: "",
+  dateOfBirth: "",
+  gender: "",
+  heightValue: "",
+  heightUnit: "cm",
+  weightValue: "",
+  weightUnit: "kg",
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+};
+
+const defaultNotificationFormState: NotificationFormState = {
+  in_app_enabled: true,
+  email_enabled: false,
+  push_enabled: false,
+  message_received: true,
+  workout_assigned: true,
+  workout_updated: true,
+  reminders_enabled: true,
+  checkin_requested: true,
+  checkin_submitted: true,
+  milestone_events: true,
+  inactivity_alerts: true,
+  system_events: true,
+};
+
+const notificationGroups: Array<{
+  title: string;
+  items: Array<{
+    key: keyof NotificationFormState;
+    label: string;
+    description: string;
+  }>;
+}> = [
+  {
+    title: "Messages",
+    items: [
+      {
+        key: "message_received",
+        label: "Coach messages and lead replies",
+        description: "Get notified when any conversation in your inbox receives a reply.",
+      },
+    ],
+  },
+  {
+    title: "Training and Nutrition",
+    items: [
+      {
+        key: "workout_assigned",
+        label: "Workout due today",
+        description: "Alerts when new workout tasks are assigned to your account.",
+      },
+      {
+        key: "workout_updated",
+        label: "Plan updates",
+        description: "Updates when your training or nutrition plan details change.",
+      },
+      {
+        key: "reminders_enabled",
+        label: "Workout, meal, and day reminders",
+        description: "Reminders for scheduled workouts, nutrition logging, and missed actions.",
+      },
+    ],
+  },
+  {
+    title: "Progress and Check-ins",
+    items: [
+      {
+        key: "checkin_requested",
+        label: "Check-in reminders",
+        description: "Prompt when coach review check-ins are requested.",
+      },
+      {
+        key: "checkin_submitted",
+        label: "Check-in confirmations",
+        description: "Confirmation when check-ins are submitted or processed.",
+      },
+      {
+        key: "inactivity_alerts",
+        label: "Habit and consistency nudges",
+        description: "Nudges when activity drops so you can get back on track.",
+      },
+      {
+        key: "milestone_events",
+        label: "Progress milestones",
+        description: "Celebrate streaks and milestone events in your coaching journey.",
+      },
+    ],
+  },
+  {
+    title: "Service",
+    items: [
+      {
+        key: "system_events",
+        label: "Coach/service updates and billing reminders",
+        description: "Important account, service, and system-level updates.",
+      },
+    ],
+  },
+];
 
 const toInput = (value: string | number | null | undefined) =>
   value === null || value === undefined ? "" : String(value);
 
+const normalizeText = (value: string) => {
+  const nextValue = value.trim();
+  return nextValue.length > 0 ? nextValue : null;
+};
+
 const toNumberOrNull = (value: string) => {
-  const parsed = Number(value);
+  const parsed = Number(value.trim());
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-export function ClientSettingsPage() {
-  const { session } = useSessionAuth();
-  const queryClient = useQueryClient();
-  const { themePreference, compactDensity, updateAppearance, isSaving } =
-    useThemePreference();
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "error">(
-    "success",
+const parseActiveTab = (value: string | null): ClientSettingsTab => {
+  if (!value) return "profile";
+  return CLIENT_SETTINGS_TAB_SET.has(value as ClientSettingsTab)
+    ? (value as ClientSettingsTab)
+    : "profile";
+};
+
+const isMissingColumnError = (message: string | undefined) =>
+  typeof message === "string" &&
+  /column .* does not exist|schema cache/i.test(message);
+
+const readStoredDateFormat = () => {
+  if (typeof window === "undefined") return DATE_FORMAT_OPTIONS[0].value;
+  const stored = window.localStorage.getItem(CLIENT_DATE_FORMAT_STORAGE_KEY);
+  return DATE_FORMAT_OPTIONS.some((option) => option.value === stored)
+    ? (stored as (typeof DATE_FORMAT_OPTIONS)[number]["value"])
+    : DATE_FORMAT_OPTIONS[0].value;
+};
+
+const readStoredLanguage = () => {
+  if (typeof window === "undefined") return LANGUAGE_OPTIONS[0].value;
+  const stored = window.localStorage.getItem(CLIENT_LANGUAGE_STORAGE_KEY);
+  return LANGUAGE_OPTIONS.some((option) => option.value === stored)
+    ? (stored as (typeof LANGUAGE_OPTIONS)[number]["value"])
+    : LANGUAGE_OPTIONS[0].value;
+};
+
+const buildInitialProfileForm = (
+  row: ClientProfileRow | null | undefined,
+): ProfileFormState => {
+  if (!row) return defaultProfileFormState;
+  return {
+    avatarUrl: toInput(row.avatar_url ?? row.photo_url),
+    fullName: toInput(row.full_name ?? row.display_name),
+    phone: toInput(row.phone),
+    dateOfBirth: toInput(row.date_of_birth ?? row.dob),
+    gender: toInput(row.gender ?? row.sex),
+    heightValue: toInput(row.height_value ?? row.height_cm),
+    heightUnit: toInput(row.height_unit) || "cm",
+    weightValue: toInput(row.weight_value_current ?? row.current_weight),
+    weightUnit:
+      toInput(row.weight_unit) || (row.unit_preference === "imperial" ? "lb" : "kg"),
+    timezone: toInput(row.timezone) || defaultProfileFormState.timezone,
+  };
+};
+
+const buildInitialPreferencesForm = (params: {
+  profile: ClientProfileRow | null | undefined;
+  themePreference: ThemePreference;
+}): PreferencesFormState => ({
+  units: toInput(params.profile?.unit_preference) || "metric",
+  dateFormat: readStoredDateFormat(),
+  language: readStoredLanguage(),
+  themePreference: params.themePreference,
+});
+
+const formatDateLabel = (value: string | null) => {
+  if (!value) return "Not available";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Not available";
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+function NotificationToggleField({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <SectionCard className="space-y-3 p-3 sm:p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+        <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      </div>
+    </SectionCard>
   );
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
-  const [passwordSaveStatus, setPasswordSaveStatus] = useState<
-    "idle" | "saving"
-  >("idle");
-  const [formState, setFormState] = useState<ProfileForm>(emptyForm);
-  const [appearanceTheme, setAppearanceTheme] = useState(themePreference);
-  const [appearanceCompactDensity, setAppearanceCompactDensity] =
-    useState(compactDensity);
+}
+
+export function ClientSettingsPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parseActiveTab(searchParams.get("tab"));
+  const { session, user } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
+  const { themePreference, updateAppearance } = useThemePreference();
+
+  const [banner, setBanner] = useState<{
+    tone: "success" | "warning" | "error";
+    title: string;
+    description: string;
+  } | null>(null);
+
+  const [profileForm, setProfileForm] = useState<ProfileFormState>(defaultProfileFormState);
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  const [preferencesForm, setPreferencesForm] = useState<PreferencesFormState>(() =>
+    buildInitialPreferencesForm({ profile: null, themePreference }),
+  );
+  const [preferencesSaving, setPreferencesSaving] = useState(false);
+
+  const [notificationForm, setNotificationForm] =
+    useState<NotificationFormState>(defaultNotificationFormState);
+  const [notificationsSaving, setNotificationsSaving] = useState(false);
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [activeSection, setActiveSection] = useState<
-    "profile" | "appearance" | "security"
-  >("profile");
-
-  const clientSettingsNav = [
-    {
-      id: "profile" as const,
-      label: "Profile",
-      description: "Your personal and coaching profile fields.",
-      icon: User,
-    },
-    {
-      id: "appearance" as const,
-      label: "Appearance",
-      description: "Theme and density preferences.",
-      icon: Palette,
-    },
-    {
-      id: "security" as const,
-      label: "Security",
-      description: "Password and account security settings.",
-      icon: Lock,
-    },
-  ];
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [signOutSessionsSaving, setSignOutSessionsSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (!toastMessage) return;
-    const timeout = window.setTimeout(() => setToastMessage(null), 2400);
+    if (!banner) return;
+    const timeout = window.setTimeout(() => setBanner(null), 2800);
     return () => window.clearTimeout(timeout);
-  }, [toastMessage]);
+  }, [banner]);
 
-  useEffect(() => {
-    setAppearanceTheme(themePreference);
-  }, [themePreference]);
-
-  useEffect(() => {
-    setAppearanceCompactDensity(compactDensity);
-  }, [compactDensity]);
-
-  const profileQuery = useQuery({
-    queryKey: ["client-settings-profile", session?.user?.id],
+  const clientProfileQuery = useQuery({
+    queryKey: ["client-settings-profile", session?.user?.id, activeClientId],
     enabled: !!session?.user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select(
-          "id, display_name, phone, location, timezone, unit_preference, dob, gender, gym_name, days_per_week, goal, injuries, limitations, height_cm, current_weight",
-        )
-        .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+    queryFn: async (): Promise<ClientProfileRow | null> => {
+      if (!session?.user?.id) return null;
+
+      const { data, error } = await safeSelect<ClientProfileRow>({
+        table: "clients",
+        columns:
+          "id, workspace_id, display_name, full_name, email, phone, avatar_url, photo_url, date_of_birth, dob, gender, sex, height_value, height_unit, height_cm, weight_value_current, weight_unit, current_weight, unit_preference, timezone, created_at",
+        fallbackColumns:
+          "id, workspace_id, display_name, email, phone, photo_url, dob, gender, height_cm, current_weight, unit_preference, timezone, created_at",
+        filter: (query) =>
+          query
+            .eq("user_id", session.user.id)
+            .order("created_at", { ascending: true })
+            .limit(25),
+      });
       if (error) throw error;
-      return data as ClientSettingsProfile | null;
+
+      const rows = data ?? [];
+      if (rows.length === 0) return null;
+      if (activeClientId) {
+        return (
+          rows.find((row) => row.id === activeClientId) ??
+          rows.find((row) => !row.workspace_id) ??
+          rows[0] ??
+          null
+        );
+      }
+      return rows.find((row) => !row.workspace_id) ?? rows[0] ?? null;
     },
   });
 
-  useEffect(() => {
-    const profile = profileQuery.data;
-    if (!profile) return;
-    setFormState({
-      display_name: toInput(profile.display_name),
-      phone: toInput(profile.phone),
-      location: toInput(profile.location),
-      timezone: toInput(profile.timezone),
-      unit_preference: toInput(profile.unit_preference),
-      dob: toInput(profile.dob),
-      gender: toInput(profile.gender),
-      gym_name: toInput(profile.gym_name),
-      days_per_week: toInput(profile.days_per_week),
-      goal: toInput(profile.goal),
-      injuries: toInput(profile.injuries),
-      limitations: toInput(profile.limitations),
-      height_cm: toInput(profile.height_cm),
-      current_weight: toInput(profile.current_weight),
-    });
-  }, [profileQuery.data]);
+  const notificationPreferencesQuery = useNotificationPreferences(user?.id ?? null);
+  const updateNotificationPreferences = useUpdateNotificationPreferences(user?.id ?? null);
 
-  const hasProfileChanges = useMemo(() => {
-    const p = profileQuery.data;
-    if (!p) return false;
-    return (
-      formState.display_name !== toInput(p.display_name) ||
-      formState.phone !== toInput(p.phone) ||
-      formState.location !== toInput(p.location) ||
-      formState.timezone !== toInput(p.timezone) ||
-      formState.unit_preference !== toInput(p.unit_preference) ||
-      formState.dob !== toInput(p.dob) ||
-      formState.gender !== toInput(p.gender) ||
-      formState.gym_name !== toInput(p.gym_name) ||
-      formState.days_per_week !== toInput(p.days_per_week) ||
-      formState.goal !== toInput(p.goal) ||
-      formState.injuries !== toInput(p.injuries) ||
-      formState.limitations !== toInput(p.limitations) ||
-      formState.height_cm !== toInput(p.height_cm) ||
-      formState.current_weight !== toInput(p.current_weight)
-    );
-  }, [formState, profileQuery.data]);
+  const billingQuery = useQuery({
+    queryKey: ["client-settings-billing", clientProfileQuery.data?.id],
+    enabled: Boolean(clientProfileQuery.data?.id),
+    queryFn: async (): Promise<BillingSnapshot> => {
+      const profile = clientProfileQuery.data;
+      if (!profile?.workspace_id) {
+        return {
+          providerName: null,
+          serviceName: null,
+          priceLabel: null,
+          billingStatus: "none",
+          nextBillingDate: null,
+        };
+      }
 
-  const hasAppearanceChanges = useMemo(
-    () =>
-      appearanceTheme !== themePreference ||
-      appearanceCompactDensity !== compactDensity,
-    [
-      appearanceCompactDensity,
-      appearanceTheme,
-      compactDensity,
-      themePreference,
-    ],
+      const [{ data: workspaceRow, error: workspaceError }, { data: conversationRow }] =
+        await Promise.all([
+          supabase
+            .from("workspaces")
+            .select("id, name")
+            .eq("id", profile.workspace_id)
+            .maybeSingle(),
+          supabase
+            .from("conversations")
+            .select("last_message_sender_name, last_message_sender_role")
+            .eq("client_id", profile.id)
+            .eq("workspace_id", profile.workspace_id)
+            .order("last_message_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+      if (workspaceError) throw workspaceError;
+
+      const workspaceName = (workspaceRow as { name?: string | null } | null)?.name ?? null;
+      const coachName =
+        (conversationRow as {
+          last_message_sender_name?: string | null;
+          last_message_sender_role?: string | null;
+        } | null)?.last_message_sender_role === "pt"
+          ? ((conversationRow as { last_message_sender_name?: string | null } | null)
+              ?.last_message_sender_name ?? null)
+          : null;
+
+      const providerName = coachName?.trim() || workspaceName?.trim() || "Coaching team";
+      const serviceName = workspaceName?.trim()
+        ? `${workspaceName.trim()} Coaching`
+        : "Active coaching relationship";
+
+      return {
+        providerName,
+        serviceName,
+        priceLabel: null,
+        billingStatus: "active",
+        nextBillingDate: null,
+      };
+    },
+  });
+
+  const profileInitial = useMemo(
+    () => buildInitialProfileForm(clientProfileQuery.data),
+    [clientProfileQuery.data],
   );
 
-  const handleSaveProfile = async () => {
-    if (!profileQuery.data?.id) return;
-    setSaveStatus("saving");
-    const { error } = await supabase
-      .from("clients")
-      .update({
-        display_name: formState.display_name.trim() || null,
-        phone: formState.phone.trim() || null,
-        location: formState.location.trim() || null,
-        timezone: formState.timezone.trim() || null,
-        unit_preference: formState.unit_preference.trim() || null,
-        dob: formState.dob.trim() || null,
-        gender: formState.gender.trim() || null,
-        gym_name: formState.gym_name.trim() || null,
-        days_per_week: toNumberOrNull(formState.days_per_week),
-        goal: formState.goal.trim() || null,
-        injuries: formState.injuries.trim() || null,
-        limitations: formState.limitations.trim() || null,
-        height_cm: toNumberOrNull(formState.height_cm),
-        current_weight: toNumberOrNull(formState.current_weight),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", profileQuery.data.id);
+  const preferencesInitial = useMemo(
+    () =>
+      buildInitialPreferencesForm({
+        profile: clientProfileQuery.data,
+        themePreference,
+      }),
+    [clientProfileQuery.data, themePreference],
+  );
 
-    setSaveStatus("idle");
-    if (error) {
-      setToastVariant("error");
-      setToastMessage(error.message || "Unable to save profile.");
+  const notificationsInitial = useMemo(() => {
+    const source = notificationPreferencesQuery.data;
+    if (!source) return defaultNotificationFormState;
+    return {
+      in_app_enabled: source.in_app_enabled,
+      email_enabled: source.email_enabled,
+      push_enabled: source.push_enabled,
+      message_received: source.message_received,
+      workout_assigned: source.workout_assigned,
+      workout_updated: source.workout_updated,
+      reminders_enabled: source.reminders_enabled,
+      checkin_requested: source.checkin_requested,
+      checkin_submitted: source.checkin_submitted,
+      milestone_events: source.milestone_events,
+      inactivity_alerts: source.inactivity_alerts,
+      system_events: source.system_events,
+    } satisfies NotificationFormState;
+  }, [notificationPreferencesQuery.data]);
+
+  useEffect(() => {
+    setProfileForm(profileInitial);
+  }, [profileInitial]);
+
+  useEffect(() => {
+    setPreferencesForm(preferencesInitial);
+  }, [preferencesInitial]);
+
+  useEffect(() => {
+    setNotificationForm(notificationsInitial);
+  }, [notificationsInitial]);
+
+  const profileDirty = useMemo(
+    () => JSON.stringify(profileForm) !== JSON.stringify(profileInitial),
+    [profileForm, profileInitial],
+  );
+
+  const preferencesDirty = useMemo(
+    () => JSON.stringify(preferencesForm) !== JSON.stringify(preferencesInitial),
+    [preferencesForm, preferencesInitial],
+  );
+
+  const notificationsDirty = useMemo(
+    () => JSON.stringify(notificationForm) !== JSON.stringify(notificationsInitial),
+    [notificationForm, notificationsInitial],
+  );
+
+  const avatarPreview = normalizeText(profileForm.avatarUrl);
+  const profileTitleInitial = (profileForm.fullName.trim().charAt(0) || "C").toUpperCase();
+  const passwordTooShort = newPassword.length > 0 && newPassword.length < 8;
+  const passwordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+
+  const invoices =
+    billingQuery.data?.billingStatus === "active"
+      ? [
+          {
+            id: "placeholder-invoice",
+            label: "Invoice history will appear here once billing sync is connected.",
+            amount: "Pending",
+          },
+        ]
+      : [];
+
+  const handleTabChange = (value: string) => {
+    if (!CLIENT_SETTINGS_TAB_SET.has(value as ClientSettingsTab)) return;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", value);
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handleProfileSave = async () => {
+    if (!clientProfileQuery.data?.id) return;
+    setProfileSaving(true);
+    setBanner(null);
+
+    const payload = {
+      display_name: normalizeText(profileForm.fullName),
+      full_name: normalizeText(profileForm.fullName),
+      phone: normalizeText(profileForm.phone),
+      date_of_birth: normalizeText(profileForm.dateOfBirth),
+      dob: normalizeText(profileForm.dateOfBirth),
+      gender: normalizeText(profileForm.gender),
+      sex: normalizeText(profileForm.gender),
+      height_value: toNumberOrNull(profileForm.heightValue),
+      height_unit: normalizeText(profileForm.heightUnit),
+      height_cm: profileForm.heightUnit === "cm" ? toNumberOrNull(profileForm.heightValue) : null,
+      weight_value_current: toNumberOrNull(profileForm.weightValue),
+      weight_unit: normalizeText(profileForm.weightUnit),
+      current_weight: toNumberOrNull(profileForm.weightValue),
+      unit_preference: profileForm.weightUnit === "lb" ? "imperial" : "metric",
+      timezone: normalizeText(profileForm.timezone),
+      avatar_url: normalizeText(profileForm.avatarUrl),
+      photo_url: normalizeText(profileForm.avatarUrl),
+      updated_at: new Date().toISOString(),
+    };
+
+    const fallbackPayload = {
+      display_name: normalizeText(profileForm.fullName),
+      phone: normalizeText(profileForm.phone),
+      dob: normalizeText(profileForm.dateOfBirth),
+      gender: normalizeText(profileForm.gender),
+      height_cm: toNumberOrNull(profileForm.heightValue),
+      current_weight: toNumberOrNull(profileForm.weightValue),
+      unit_preference: profileForm.weightUnit === "lb" ? "imperial" : "metric",
+      timezone: normalizeText(profileForm.timezone),
+      photo_url: normalizeText(profileForm.avatarUrl),
+      updated_at: new Date().toISOString(),
+    };
+
+    let updateError: { message?: string } | null = null;
+
+    const primary = await supabase
+      .from("clients")
+      .update(payload)
+      .eq("id", clientProfileQuery.data.id);
+
+    if (primary.error && isMissingColumnError(primary.error.message)) {
+      const fallback = await supabase
+        .from("clients")
+        .update(fallbackPayload)
+        .eq("id", clientProfileQuery.data.id);
+      updateError = fallback.error;
+    } else {
+      updateError = primary.error;
+    }
+
+    setProfileSaving(false);
+    if (updateError) {
+      setBanner({
+        tone: "error",
+        title: "Unable to save profile",
+        description: updateError.message ?? "Please try again.",
+      });
       return;
     }
 
-    await queryClient.invalidateQueries({
-      queryKey: ["client-settings-profile", session?.user?.id],
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["client-settings-profile", session?.user?.id, activeClientId],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["bootstrap-auth"] }),
+    ]);
+
+    setBanner({
+      tone: "success",
+      title: "Profile updated",
+      description: "Your account profile changes are now saved.",
     });
-    setToastVariant("success");
-    setToastMessage("Profile settings saved.");
   };
 
-  const handleSaveAppearance = async () => {
+  const handlePreferencesSave = async () => {
+    setPreferencesSaving(true);
+    setBanner(null);
+
     try {
+      if (clientProfileQuery.data?.id) {
+        const { error } = await supabase
+          .from("clients")
+          .update({
+            unit_preference: preferencesForm.units,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", clientProfileQuery.data.id);
+        if (error) throw error;
+      }
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(CLIENT_DATE_FORMAT_STORAGE_KEY, preferencesForm.dateFormat);
+        window.localStorage.setItem(CLIENT_LANGUAGE_STORAGE_KEY, preferencesForm.language);
+      }
+
       await updateAppearance({
-        themePreference: appearanceTheme,
-        compactDensity: appearanceCompactDensity,
+        themePreference: preferencesForm.themePreference,
         persist: true,
       });
-      setToastVariant("success");
-      setToastMessage("Appearance saved.");
-    } catch {
-      setToastVariant("error");
-      setToastMessage("Unable to save appearance settings.");
+
+      await queryClient.invalidateQueries({
+        queryKey: ["client-settings-profile", session?.user?.id, activeClientId],
+      });
+
+      setBanner({
+        tone: "success",
+        title: "Preferences saved",
+        description: "Display and app preference changes were applied.",
+      });
+    } catch (error) {
+      setBanner({
+        tone: "error",
+        title: "Unable to save preferences",
+        description:
+          error instanceof Error ? error.message : "Please try again in a moment.",
+      });
+    } finally {
+      setPreferencesSaving(false);
+    }
+  };
+
+  const handleNotificationsSave = async () => {
+    if (!user?.id) return;
+    setNotificationsSaving(true);
+    setBanner(null);
+
+    try {
+      await updateNotificationPreferences.mutateAsync(notificationForm);
+      setBanner({
+        tone: "success",
+        title: "Notification settings saved",
+        description: "Your inbox and reminder preferences are now updated.",
+      });
+    } catch (error) {
+      setBanner({
+        tone: "error",
+        title: "Unable to save notifications",
+        description:
+          error instanceof Error ? error.message : "Please try again in a moment.",
+      });
+    } finally {
+      setNotificationsSaving(false);
     }
   };
 
   const handleChangePassword = async () => {
+    if (!session?.user?.email) return;
     if (!currentPassword) {
-      setToastVariant("error");
-      setToastMessage("Current password is required.");
+      setBanner({
+        tone: "error",
+        title: "Current password required",
+        description: "Enter your current password before setting a new one.",
+      });
       return;
     }
     if (newPassword.length < 8) {
-      setToastVariant("error");
-      setToastMessage("Password must be at least 8 characters.");
+      setBanner({
+        tone: "error",
+        title: "Password too short",
+        description: "Use at least 8 characters for your new password.",
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setToastVariant("error");
-      setToastMessage("Passwords do not match.");
-      return;
-    }
-
-    const email = session?.user?.email;
-    if (!email) {
-      setToastVariant("error");
-      setToastMessage("No email found for this account.");
-      return;
-    }
-
-    setPasswordSaveStatus("saving");
-    const { data: reauthData, error: reauthError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password: currentPassword,
+      setBanner({
+        tone: "error",
+        title: "Passwords do not match",
+        description: "Confirm password must match the new password exactly.",
       });
-    if (reauthError || !reauthData.user) {
-      setPasswordSaveStatus("idle");
-      setToastVariant("error");
-      setToastMessage("Current password is incorrect.");
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setPasswordSaveStatus("idle");
-    if (error) {
-      setToastVariant("error");
-      setToastMessage(error.message || "Unable to change password.");
-      return;
-    }
+    setPasswordSaving(true);
+    setBanner(null);
+    try {
+      const { data: reauthData, error: reauthError } =
+        await supabase.auth.signInWithPassword({
+          email: session.user.email,
+          password: currentPassword,
+        });
+      if (reauthError || !reauthData.user) {
+        throw new Error("Current password is incorrect.");
+      }
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setToastVariant("success");
-    setToastMessage("Password updated.");
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setBanner({
+        tone: "success",
+        title: "Password updated",
+        description: "Your account password has been changed.",
+      });
+    } catch (error) {
+      setBanner({
+        tone: "error",
+        title: "Unable to change password",
+        description:
+          error instanceof Error ? error.message : "Please try again in a moment.",
+      });
+    } finally {
+      setPasswordSaving(false);
+    }
   };
+
+  const handleSignOutAllSessions = async () => {
+    setSignOutSessionsSaving(true);
+    setBanner(null);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "global" });
+      if (error) throw error;
+      navigate("/login", { replace: true });
+    } catch (error) {
+      setBanner({
+        tone: "error",
+        title: "Unable to sign out sessions",
+        description:
+          error instanceof Error ? error.message : "Please try again in a moment.",
+      });
+      setSignOutSessionsSaving(false);
+    }
+  };
+
+  const handleRequestAccountDeletion = () => {
+    const email = session?.user?.email ?? "";
+    const userId = session?.user?.id ?? "";
+    const subject = encodeURIComponent("Account deletion request");
+    const body = encodeURIComponent(
+      `Please delete my account.\n\nUser ID: ${userId}\nEmail: ${email}\n\nI understand this action is irreversible.`,
+    );
+    window.location.href = `mailto:support@repsync.app?subject=${subject}&body=${body}`;
+    setDeleteDialogOpen(false);
+  };
+
+  const profileEmail =
+    clientProfileQuery.data?.email?.trim() || session?.user?.email || "Not available";
 
   return (
     <div className="portal-shell-tight">
-      <SettingsToast message={toastMessage} variant={toastVariant} />
-
       <PortalPageHeader
+        module="settings"
         title="Settings"
-        subtitle="Manage account, profile, and app preferences."
+        subtitle="Account-level profile, preferences, notifications, privacy, and billing."
+        stateText="Client account settings"
       />
 
-      <div className="md:hidden">
-        <label
-          htmlFor="client-settings-section-select"
-          className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-        >
-          Settings section
-        </label>
-        <select
-          id="client-settings-section-select"
-          className="h-10 w-full app-field px-3 text-sm"
-          value={activeSection}
-          onChange={(event) =>
-            setActiveSection(
-              event.target.value as "profile" | "appearance" | "security",
-            )
+      {banner ? (
+        <StatusBanner
+          variant={
+            banner.tone === "error" ? "error" : banner.tone === "warning" ? "warning" : "success"
           }
-        >
-          {clientSettingsNav.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-      </div>
+          title={banner.title}
+          description={banner.description}
+        />
+      ) : null}
 
-      <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="hidden md:block">
-          <nav className="sticky top-24 rounded-2xl border border-border bg-card/70 p-2">
-            {clientSettingsNav.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.id}
-                  to="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setActiveSection(item.id);
-                  }}
-                  className={cn(
-                    "flex items-start gap-3 rounded-xl px-3 py-3 transition",
-                    activeSection === item.id
-                      ? "bg-accent/10 text-foreground"
-                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                  )}
-                >
-                  <span className="mt-0.5 rounded-md border border-border bg-background p-1.5">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="space-y-1">
-                    <span className="block text-sm font-medium">
-                      {item.label}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {item.description}
-                    </span>
-                  </span>
-                </NavLink>
-              );
-            })}
-          </nav>
-        </aside>
-
-        <div className="min-w-0">
-          {activeSection === "profile" ? (
-            <SettingsPageShell
-              title="Profile"
-              description="Your coaching profile details visible in the client app."
+      <SurfaceCard module="settings">
+        <SurfaceCardHeader className="pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <SurfaceCardTitle>Client Profile & Settings</SurfaceCardTitle>
+              <SurfaceCardDescription>
+                Keep this account-level page focused on your personal profile, preferences, and
+                service status.
+              </SurfaceCardDescription>
+            </div>
+            <Badge variant="muted">Account-level</Badge>
+          </div>
+        </SurfaceCardHeader>
+        <SurfaceCardContent className="space-y-5">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList
+              module="settings"
+              className="grid h-auto w-full grid-cols-1 gap-2 rounded-[20px] bg-transparent p-0 sm:grid-cols-2 lg:grid-cols-5"
             >
-              <SettingsBlock title="Profile details" noBorder>
-                <SettingsRow label="Display name">
-                  <Input
-                    value={formState.display_name}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        display_name: e.target.value,
-                      }))
-                    }
+              {CLIENT_SETTINGS_TABS.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  module="settings"
+                  value={tab.id}
+                  className="justify-start gap-2 rounded-[16px] border border-border/70 bg-background/45 px-3.5 py-3"
+                >
+                  <tab.icon className="h-4 w-4" />
+                  <span className="truncate">{tab.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="profile" className="space-y-4">
+              {clientProfileQuery.isLoading ? (
+                <StatusBanner
+                  variant="info"
+                  title="Loading profile"
+                  description="Fetching your current account details."
+                />
+              ) : clientProfileQuery.isError ? (
+                <StatusBanner
+                  variant="error"
+                  title="Unable to load profile"
+                  description={
+                    clientProfileQuery.error instanceof Error
+                      ? clientProfileQuery.error.message
+                      : "Could not load profile data."
+                  }
+                />
+              ) : clientProfileQuery.data ? (
+                <>
+                  <SettingsSectionCard title="Identity">
+                    <SettingsFieldRow label="Avatar">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-background/45 text-base font-semibold text-muted-foreground">
+                          {avatarPreview ? (
+                            <img
+                              src={avatarPreview}
+                              alt={profileForm.fullName || "Client avatar"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            profileTitleInitial
+                          )}
+                        </div>
+                        <Input
+                          id="client-settings-avatar-url"
+                          value={profileForm.avatarUrl}
+                          onChange={(event) =>
+                            setProfileForm((prev) => ({
+                              ...prev,
+                              avatarUrl: event.target.value,
+                            }))
+                          }
+                          placeholder="Paste avatar URL"
+                        />
+                      </div>
+                    </SettingsFieldRow>
+
+                    <SettingsFieldRow label="Full name">
+                      <Input
+                        id="client-settings-full-name"
+                        value={profileForm.fullName}
+                        onChange={(event) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            fullName: event.target.value,
+                          }))
+                        }
+                        placeholder="Your full name"
+                      />
+                    </SettingsFieldRow>
+
+                    <SettingsFieldRow label="Email">
+                      <DisabledSettingField value={profileEmail} />
+                    </SettingsFieldRow>
+
+                    <SettingsFieldRow label="Phone number">
+                      <Input
+                        id="client-settings-phone"
+                        value={profileForm.phone}
+                        onChange={(event) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            phone: event.target.value,
+                          }))
+                        }
+                        placeholder="+966 ..."
+                      />
+                    </SettingsFieldRow>
+                  </SettingsSectionCard>
+
+                  <SettingsSectionCard title="Personal Details">
+                    <SettingsFieldRow label="Date of birth">
+                      <Input
+                        id="client-settings-dob"
+                        type="date"
+                        value={profileForm.dateOfBirth}
+                        onChange={(event) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            dateOfBirth: event.target.value,
+                          }))
+                        }
+                      />
+                    </SettingsFieldRow>
+
+                    <SettingsFieldRow label="Gender">
+                      <Select
+                        id="client-settings-gender"
+                        value={profileForm.gender}
+                        onChange={(event) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            gender: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Select</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                        <option value="prefer_not_to_say">Prefer not to say</option>
+                      </Select>
+                    </SettingsFieldRow>
+
+                    <SettingsFieldRow label="Height">
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+                        <Input
+                          id="client-settings-height"
+                          type="number"
+                          min="0"
+                          value={profileForm.heightValue}
+                          onChange={(event) =>
+                            setProfileForm((prev) => ({
+                              ...prev,
+                              heightValue: event.target.value,
+                            }))
+                          }
+                          placeholder="170"
+                        />
+                        <Select
+                          id="client-settings-height-unit"
+                          value={profileForm.heightUnit}
+                          onChange={(event) =>
+                            setProfileForm((prev) => ({
+                              ...prev,
+                              heightUnit: event.target.value,
+                            }))
+                          }
+                        >
+                          {HEIGHT_UNIT_OPTIONS.map((unit) => (
+                            <option key={unit.value} value={unit.value}>
+                              {unit.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </SettingsFieldRow>
+
+                    <SettingsFieldRow label="Weight">
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+                        <Input
+                          id="client-settings-weight"
+                          type="number"
+                          min="0"
+                          value={profileForm.weightValue}
+                          onChange={(event) =>
+                            setProfileForm((prev) => ({
+                              ...prev,
+                              weightValue: event.target.value,
+                            }))
+                          }
+                          placeholder="70"
+                        />
+                        <Select
+                          id="client-settings-weight-unit"
+                          value={profileForm.weightUnit}
+                          onChange={(event) =>
+                            setProfileForm((prev) => ({
+                              ...prev,
+                              weightUnit: event.target.value,
+                            }))
+                          }
+                        >
+                          {WEIGHT_UNIT_OPTIONS.map((unit) => (
+                            <option key={unit.value} value={unit.value}>
+                              {unit.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </SettingsFieldRow>
+
+                    <SettingsFieldRow label="Timezone">
+                      <Input
+                        id="client-settings-timezone"
+                        value={profileForm.timezone}
+                        onChange={(event) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            timezone: event.target.value,
+                          }))
+                        }
+                        placeholder="Asia/Riyadh"
+                      />
+                    </SettingsFieldRow>
+                  </SettingsSectionCard>
+
+                  <StickySaveBar
+                    isDirty={profileDirty}
+                    isSaving={profileSaving}
+                    statusText="Unsaved profile changes"
+                    onDiscard={() => setProfileForm(profileInitial)}
+                    onSave={handleProfileSave}
                   />
-                </SettingsRow>
-                <SettingsRow label="Phone">
-                  <Input
-                    value={formState.phone}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
+                </>
+              ) : (
+                <EmptyStateBlock
+                  title="Profile not available"
+                  description="We could not find a client profile for this account yet."
+                  actions={
+                    <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                      Back to home
+                    </Button>
+                  }
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="preferences" className="space-y-4">
+              <SettingsSectionCard title="App Preferences">
+                <SettingsFieldRow label="Units">
+                  <Select
+                    id="client-settings-units"
+                    value={preferencesForm.units}
+                    onChange={(event) =>
+                      setPreferencesForm((prev) => ({
                         ...prev,
-                        phone: e.target.value,
+                        units: event.target.value,
                       }))
-                    }
-                  />
-                </SettingsRow>
-                <SettingsRow label="Location">
-                  <Input
-                    value={formState.location}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        location: e.target.value,
-                      }))
-                    }
-                  />
-                </SettingsRow>
-                <SettingsRow label="Timezone">
-                  <Input
-                    value={formState.timezone}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        timezone: e.target.value,
-                      }))
-                    }
-                  />
-                </SettingsRow>
-                <SettingsRow label="Goal">
-                  <Input
-                    value={formState.goal}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        goal: e.target.value,
-                      }))
-                    }
-                  />
-                </SettingsRow>
-                <SettingsActions>
-                  <Button
-                    type="button"
-                    onClick={handleSaveProfile}
-                    disabled={
-                      profileQuery.isLoading ||
-                      saveStatus === "saving" ||
-                      !hasProfileChanges
                     }
                   >
-                    {saveStatus === "saving" ? "Saving..." : "Save profile"}
-                  </Button>
-                </SettingsActions>
-              </SettingsBlock>
-            </SettingsPageShell>
-          ) : null}
+                    <option value="metric">Metric</option>
+                    <option value="imperial">Imperial</option>
+                  </Select>
+                </SettingsFieldRow>
 
-          {activeSection === "appearance" ? (
-            <SettingsPageShell
-              title="Appearance"
-              description="Theme and density controls aligned with PT settings."
-            >
-              <SettingsBlock title="Interface preferences" noBorder>
-                <SettingsRow label="Theme">
-                  <div className="space-y-2">
-                    <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
-                      {AVAILABLE_THEME_PREFERENCES.map((theme) => (
-                        <Button
-                          key={theme}
-                          type="button"
-                          size="sm"
-                          variant={
-                            appearanceTheme === theme ? "default" : "ghost"
-                          }
-                          onClick={() => setAppearanceTheme(theme)}
-                        >
-                          {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                        </Button>
-                      ))}
-                    </div>
-                    {!LIGHT_MODE_ENABLED ? (
-                      <p className="text-xs text-muted-foreground">
-                        Light mode is temporarily disabled while the shared
-                        theme system is being corrected.
-                      </p>
-                    ) : null}
-                  </div>
-                </SettingsRow>
-                <SettingsRow
-                  label="Density"
-                  hint="Compact mode reduces spacing in lists and cards."
-                >
-                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
-                    <div className="text-sm">Compact mode</div>
-                    <Switch
-                      checked={appearanceCompactDensity}
-                      onCheckedChange={setAppearanceCompactDensity}
+                <SettingsFieldRow label="Date format">
+                  <Select
+                    id="client-settings-date-format"
+                    value={preferencesForm.dateFormat}
+                    onChange={(event) =>
+                      setPreferencesForm((prev) => ({
+                        ...prev,
+                        dateFormat: event.target.value,
+                      }))
+                    }
+                  >
+                    {DATE_FORMAT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </SettingsFieldRow>
+
+                <SettingsFieldRow label="Language">
+                  <Select
+                    id="client-settings-language"
+                    value={preferencesForm.language}
+                    onChange={(event) =>
+                      setPreferencesForm((prev) => ({
+                        ...prev,
+                        language: event.target.value,
+                      }))
+                    }
+                  >
+                    {LANGUAGE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </SettingsFieldRow>
+
+                <SettingsFieldRow label="Theme">
+                  <Select
+                    id="client-settings-theme"
+                    value={preferencesForm.themePreference}
+                    onChange={(event) =>
+                      setPreferencesForm((prev) => ({
+                        ...prev,
+                        themePreference: event.target.value as ThemePreference,
+                      }))
+                    }
+                  >
+                    {AVAILABLE_THEME_PREFERENCES.map((option) => (
+                      <option key={option} value={option}>
+                        {option === "system"
+                          ? "System default"
+                          : option.charAt(0).toUpperCase() + option.slice(1)}
+                      </option>
+                    ))}
+                  </Select>
+                  {!LIGHT_MODE_ENABLED ? (
+                    <p className="text-xs text-muted-foreground">
+                      Light mode is currently disabled in this environment.
+                    </p>
+                  ) : null}
+                </SettingsFieldRow>
+              </SettingsSectionCard>
+
+              <StickySaveBar
+                isDirty={preferencesDirty}
+                isSaving={preferencesSaving}
+                statusText="Unsaved preference changes"
+                onDiscard={() => setPreferencesForm(preferencesInitial)}
+                onSave={handlePreferencesSave}
+              />
+            </TabsContent>
+
+            <TabsContent value="notifications" className="space-y-4">
+              <SettingsSectionCard title="Delivery Channels">
+                <SettingsFieldRow label="Channel defaults">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <NotificationToggleField
+                      label="In-app"
+                      description="Show notifications in your app inbox."
+                      checked={notificationForm.in_app_enabled}
+                      onCheckedChange={(checked) =>
+                        setNotificationForm((prev) => ({
+                          ...prev,
+                          in_app_enabled: checked,
+                        }))
+                      }
+                    />
+                    <NotificationToggleField
+                      label="Email"
+                      description="Send a copy of important updates by email."
+                      checked={notificationForm.email_enabled}
+                      onCheckedChange={(checked) =>
+                        setNotificationForm((prev) => ({
+                          ...prev,
+                          email_enabled: checked,
+                        }))
+                      }
+                    />
+                    <NotificationToggleField
+                      label="Push"
+                      description="Mobile push support when enabled on your device."
+                      checked={notificationForm.push_enabled}
+                      onCheckedChange={(checked) =>
+                        setNotificationForm((prev) => ({
+                          ...prev,
+                          push_enabled: checked,
+                        }))
+                      }
                     />
                   </div>
-                </SettingsRow>
-                <SettingsActions>
-                  <Button
-                    type="button"
-                    onClick={handleSaveAppearance}
-                    disabled={!hasAppearanceChanges || isSaving}
-                  >
-                    {isSaving ? "Saving..." : "Save appearance"}
-                  </Button>
-                </SettingsActions>
-              </SettingsBlock>
-            </SettingsPageShell>
-          ) : null}
+                </SettingsFieldRow>
+              </SettingsSectionCard>
 
-          {activeSection === "security" ? (
-            <SettingsPageShell
-              title="Security"
-              description="Update your account password."
-            >
-              <SettingsBlock title="Password" noBorder>
-                <SettingsRow label="Current password">
+              {notificationGroups.map((group) => (
+                <SettingsSectionCard key={group.title} title={group.title}>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {group.items.map((item) => (
+                      <NotificationToggleField
+                        key={item.key}
+                        label={item.label}
+                        description={item.description}
+                        checked={notificationForm[item.key]}
+                        onCheckedChange={(checked) =>
+                          setNotificationForm((prev) => ({
+                            ...prev,
+                            [item.key]: checked,
+                          }))
+                        }
+                      />
+                    ))}
+                  </div>
+                </SettingsSectionCard>
+              ))}
+
+              <StickySaveBar
+                isDirty={notificationsDirty}
+                isSaving={notificationsSaving}
+                statusText="Unsaved notification changes"
+                onDiscard={() => setNotificationForm(notificationsInitial)}
+                onSave={handleNotificationsSave}
+              />
+            </TabsContent>
+
+            <TabsContent value="privacy-security" className="space-y-4">
+              <SettingsSectionCard title="Sign-in Security">
+                <SettingsFieldRow label="Authentication">
+                  <DisabledSettingField
+                    value={session?.user?.email ? "Email + password" : "Unknown"}
+                  />
+                </SettingsFieldRow>
+
+                <SettingsFieldRow label="Current password">
                   <Input
+                    id="client-settings-current-password"
                     type="password"
                     value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    placeholder="Current password"
                   />
-                </SettingsRow>
-                <SettingsRow label="New password">
+                </SettingsFieldRow>
+
+                <SettingsFieldRow label="New password">
                   <Input
+                    id="client-settings-new-password"
                     type="password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder="New password"
                   />
-                </SettingsRow>
-                <SettingsRow label="Confirm password">
+                  {passwordTooShort ? (
+                    <p className="text-xs text-danger">Password must be at least 8 characters.</p>
+                  ) : null}
+                </SettingsFieldRow>
+
+                <SettingsFieldRow label="Confirm password">
                   <Input
+                    id="client-settings-confirm-password"
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="Confirm password"
                   />
-                </SettingsRow>
-                <SettingsActions>
-                  <Button
-                    type="button"
-                    onClick={handleChangePassword}
-                    disabled={passwordSaveStatus === "saving"}
-                  >
-                    {passwordSaveStatus === "saving"
-                      ? "Updating..."
-                      : "Change password"}
+                  {passwordMismatch ? (
+                    <p className="text-xs text-danger">Passwords do not match.</p>
+                  ) : null}
+                </SettingsFieldRow>
+
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button onClick={handleChangePassword} disabled={passwordSaving}>
+                    {passwordSaving ? "Updating..." : "Change password"}
                   </Button>
-                </SettingsActions>
-              </SettingsBlock>
-            </SettingsPageShell>
-          ) : null}
-        </div>
-      </div>
+                </div>
+              </SettingsSectionCard>
+
+              <SettingsSectionCard title="Sessions">
+                <SettingsFieldRow label="Active sessions">
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Session management is account-wide. Use this action to sign out of other devices.
+                  </p>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="secondary"
+                      onClick={handleSignOutAllSessions}
+                      disabled={signOutSessionsSaving}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      {signOutSessionsSaving ? "Signing out..." : "Sign out all sessions"}
+                    </Button>
+                  </div>
+                </SettingsFieldRow>
+              </SettingsSectionCard>
+
+              <SettingsSectionCard title="Privacy">
+                <SettingsFieldRow label="Policy links">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button asChild variant="secondary">
+                      <Link to="/privacy" target="_blank" rel="noreferrer">
+                        Privacy policy
+                      </Link>
+                    </Button>
+                    <Button asChild variant="secondary">
+                      <Link to="/terms" target="_blank" rel="noreferrer">
+                        Terms of use
+                      </Link>
+                    </Button>
+                  </div>
+                </SettingsFieldRow>
+              </SettingsSectionCard>
+
+              <SettingsSectionCard title="Account deletion">
+                <SettingsFieldRow label="Request account deletion">
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Deletion and deactivation requests are handled through support to protect
+                    historical coaching records.
+                  </p>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="secondary"
+                      className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
+                      onClick={() => setDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Request account deletion
+                    </Button>
+                  </div>
+                </SettingsFieldRow>
+              </SettingsSectionCard>
+            </TabsContent>
+
+            <TabsContent value="billing" className="space-y-4">
+              {billingQuery.isLoading ? (
+                <StatusBanner
+                  variant="info"
+                  title="Loading billing"
+                  description="Fetching your active service and billing summary."
+                />
+              ) : billingQuery.data?.billingStatus === "none" ? (
+                <EmptyStateBlock
+                  icon={<CreditCard className="h-5 w-5" />}
+                  title="No active billing relationship"
+                  description="You do not have an active paid coaching service attached to this account yet."
+                  actions={
+                    <Button onClick={() => navigate("/app/find-coach")}>Find a Coach</Button>
+                  }
+                />
+              ) : (
+                <>
+                  <SettingsSectionCard title="Current Service">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <SectionCard className="space-y-1 p-4">
+                        <p className="field-label">Provider</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {billingQuery.data?.providerName ?? "Coaching team"}
+                        </p>
+                      </SectionCard>
+                      <SectionCard className="space-y-1 p-4">
+                        <p className="field-label">Service</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {billingQuery.data?.serviceName ?? "Active coaching service"}
+                        </p>
+                      </SectionCard>
+                      <SectionCard className="space-y-1 p-4">
+                        <p className="field-label">Price</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {billingQuery.data?.priceLabel ?? "Not yet connected"}
+                        </p>
+                      </SectionCard>
+                      <SectionCard className="space-y-1 p-4">
+                        <p className="field-label">Next billing date</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {formatDateLabel(billingQuery.data?.nextBillingDate ?? null)}
+                        </p>
+                      </SectionCard>
+                    </div>
+                  </SettingsSectionCard>
+
+                  <SettingsSectionCard title="Billing Status">
+                    <SettingsFieldRow label="Status">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="success">Active</Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Billing details remain in placeholder mode until payment integration is
+                          connected.
+                        </span>
+                      </div>
+                    </SettingsFieldRow>
+                  </SettingsSectionCard>
+
+                  <SettingsSectionCard title="Invoice History">
+                    {invoices.length > 0 ? (
+                      <div className="space-y-2">
+                        {invoices.map((invoice) => (
+                          <SectionCard
+                            key={invoice.id}
+                            className="flex items-center justify-between gap-3 p-3"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{invoice.label}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Invoice sync placeholder
+                              </p>
+                            </div>
+                            <Badge variant="muted">{invoice.amount}</Badge>
+                          </SectionCard>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyStateBlock
+                        centered
+                        icon={<CalendarClock className="h-4 w-4" />}
+                        title="No invoices yet"
+                        description="Your invoice history will appear here once billing sync is connected."
+                      />
+                    )}
+                  </SettingsSectionCard>
+
+                  <SettingsSectionCard title="Payment Method">
+                    <SettingsFieldRow label="Saved card">
+                      <p className="text-sm text-muted-foreground">No payment method wired yet.</p>
+                    </SettingsFieldRow>
+                  </SettingsSectionCard>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </SurfaceCardContent>
+      </SurfaceCard>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Request account deletion?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This opens a support request so we can safely process account deletion without
+              damaging historical logs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="secondary"
+              className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
+              onClick={handleRequestAccountDeletion}
+            >
+              Continue
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

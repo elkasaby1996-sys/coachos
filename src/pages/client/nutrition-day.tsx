@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
@@ -12,6 +12,7 @@ import {
 } from "../../components/ui/coachos";
 import { PageContainer } from "../../components/common/page-container";
 import { supabase } from "../../lib/supabase";
+import { buildUnifiedSourceLabel } from "../../lib/source-labels";
 import {
   useAssignedNutritionDay,
   useAssignedNutritionMeals,
@@ -19,6 +20,9 @@ import {
 
 const n = (value: number | null | undefined) =>
   typeof value === "number" ? value : 0;
+
+const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 export function ClientNutritionDayPage() {
   const { assigned_nutrition_day_id } = useParams();
@@ -39,6 +43,29 @@ export function ClientNutritionDayPage() {
   const [saving, setSaving] = useState(false);
 
   const meals = useMemo(() => mealsQuery.data ?? [], [mealsQuery.data]);
+  const dayPlan = getSingleRelation(dayQuery.data?.plan as any);
+  const dayTemplate = getSingleRelation(dayPlan?.nutrition_template as any);
+  const sourceWorkspaceId =
+    (dayTemplate?.workspace_id as string | null | undefined) ?? null;
+
+  const sourceWorkspaceQuery = useQuery({
+    queryKey: ["client-nutrition-day-workspace", sourceWorkspaceId],
+    enabled: Boolean(sourceWorkspaceId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, name")
+        .eq("id", sourceWorkspaceId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+
+  const sourceLabel = buildUnifiedSourceLabel({
+    workspaceId: sourceWorkspaceId,
+    workspaceName: sourceWorkspaceQuery.data?.name ?? null,
+  });
 
   useEffect(() => {
     const firstMeal = meals[0];
@@ -202,6 +229,7 @@ export function ClientNutritionDayPage() {
           <p className="text-sm text-muted-foreground">{dayQuery.data.date}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Badge variant="muted">{sourceLabel}</Badge>
           <StatusPill
             status={
               mealsQuery.completion.percent === 100 &&
@@ -210,7 +238,7 @@ export function ClientNutritionDayPage() {
                 : "planned"
             }
           />
-          <Button variant="secondary" onClick={() => navigate("/app/home")}>
+          <Button variant="secondary" onClick={() => navigate("/app/nutrition")}>
             Back
           </Button>
         </div>
@@ -219,7 +247,7 @@ export function ClientNutritionDayPage() {
       {meals.length === 0 ? (
         <EmptyState
           title="No meals assigned"
-          description="Your coach has not assigned meals for this day yet."
+          description="This nutrition day has no meals yet."
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

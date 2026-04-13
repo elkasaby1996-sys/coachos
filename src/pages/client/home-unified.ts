@@ -1,3 +1,8 @@
+import {
+  buildUnifiedSourceLabel,
+  classifyUnifiedSourceKind,
+} from "../../lib/source-labels";
+
 export type UnifiedClientHomeState =
   | "lead_only"
   | "personal_only"
@@ -39,13 +44,11 @@ type SourceLabelParams = {
 };
 
 export function buildSourceLabel(params: SourceLabelParams) {
-  if (!params.workspaceId) return "Personal";
+  return buildUnifiedSourceLabel(params);
+}
 
-  const normalizedName = params.workspaceName?.trim() ?? "";
-  if (!normalizedName) return "Coach";
-
-  if (/^coach\s+/i.test(normalizedName)) return normalizedName;
-  return `Coach ${normalizedName}`;
+export function classifySourceKind(params: SourceLabelParams) {
+  return classifyUnifiedSourceKind(params);
 }
 
 export type WorkoutLike = {

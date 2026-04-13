@@ -56,7 +56,8 @@ export type NutritionTemplateDay = {
 
 export type NutritionTemplate = {
   id: string;
-  workspace_id: string;
+  workspace_id: string | null;
+  owner_client_id: string | null;
   name: string;
   description: string | null;
   duration_weeks: number;
@@ -81,6 +82,9 @@ export type AssignedNutritionPlan = {
     id: string;
     name: string;
     duration_weeks: number;
+    workspace_id: string | null;
+    owner_client_id: string | null;
+    is_active: boolean;
   } | null;
 };
 
@@ -224,9 +228,10 @@ export function useNutritionTemplates(workspaceId: string | null) {
       const { data: templates, error: templateError } = await supabase
         .from("nutrition_templates")
         .select(
-          "id, workspace_id, name, description, duration_weeks, is_active, created_at, updated_at",
+          "id, workspace_id, owner_client_id, name, description, duration_weeks, is_active, created_at, updated_at",
         )
         .eq("workspace_id", workspaceId ?? "")
+        .is("owner_client_id", null)
         .order("created_at", { ascending: false });
       if (templateError) throw templateError;
 
@@ -294,7 +299,7 @@ export function useNutritionTemplate(templateId: string | null) {
       const { data: template, error: templateError } = await supabase
         .from("nutrition_templates")
         .select(
-          "id, workspace_id, name, description, duration_weeks, is_active, created_at, updated_at",
+          "id, workspace_id, owner_client_id, name, description, duration_weeks, is_active, created_at, updated_at",
         )
         .eq("id", templateId ?? "")
         .maybeSingle();
@@ -365,7 +370,7 @@ export function useAssignedNutritionDay(assignedDayId: string | null) {
       const { data, error } = await supabase
         .from("assigned_nutrition_days")
         .select(
-          "id, assigned_nutrition_plan_id, date, week_index, day_of_week, notes, created_at, updated_at, plan:assigned_nutrition_plans(id, client_id, nutrition_template_id, start_date, end_date, status, created_at, updated_at, nutrition_template:nutrition_templates(id, name, duration_weeks))",
+          "id, assigned_nutrition_plan_id, date, week_index, day_of_week, notes, created_at, updated_at, plan:assigned_nutrition_plans(id, client_id, nutrition_template_id, start_date, end_date, status, created_at, updated_at, nutrition_template:nutrition_templates(id, name, duration_weeks, workspace_id, owner_client_id, is_active))",
         )
         .eq("id", assignedDayId ?? "")
         .maybeSingle();

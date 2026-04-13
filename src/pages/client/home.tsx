@@ -42,8 +42,13 @@ import {
   deriveInviteJoinContext,
 } from "../../features/lead-chat/lib/invite-join-context";
 import {
+  buildClientInboxThreadParam,
+  dedupeLeadThreadSummaries,
+} from "../../features/lead-chat/lib/client-inbox";
+import {
   buildSourceLabel,
   buildWorkoutRunPath,
+  classifySourceKind,
   resolveUnifiedClientHomeState,
   shouldShowFindCoachSection,
   sortWorkoutsByUrgency,
@@ -654,7 +659,9 @@ function ClientWorkspaceHomePage({
     .length;
   const hasPersonalSource = Boolean(
     !clientProfile?.workspace_id ||
-      getWorkoutTemplateInfo(todayWorkout).workspace_id === null ||
+      classifySourceKind({
+        workspaceId: getWorkoutTemplateInfo(todayWorkout).workspace_id,
+      }) === "personal" ||
       todayNutritionDays.some((row) => {
         const assignedPlan = Array.isArray(
           (row as { assigned_nutrition_plan?: unknown })?.assigned_nutrition_plan,
@@ -671,7 +678,13 @@ function ClientWorkspaceHomePage({
               assignedPlan?.nutrition_template as Array<Record<string, unknown>>
             )[0]
           : (assignedPlan?.nutrition_template as Record<string, unknown> | null);
-        return !nutritionTemplate?.workspace_id;
+        return (
+          classifySourceKind({
+            workspaceId:
+              (nutritionTemplate?.workspace_id as string | null | undefined) ??
+              null,
+          }) === "personal"
+        );
       }),
   );
   const coachSourceCount = sourceWorkspaceIds.length;
@@ -707,25 +720,15 @@ function ClientWorkspaceHomePage({
         preview: conversation.last_message_preview ?? "No messages yet",
         timestamp: conversation.last_message_at ?? null,
         sourceLabel: getSourceMetaLabel(conversation.workspace_id),
-        href: "/app/messages",
+        href: `/app/messages?thread=${encodeURIComponent(
+          buildClientInboxThreadParam({
+            type: "workspace",
+            conversationId: conversation.id,
+          }),
+        )}`,
       }),
     );
-    const dedupedLeadThreads = Array.from(
-      leadThreads
-        .reduce((map, thread) => {
-          const key =
-            thread.leadId ||
-            `${thread.ptSlug ?? "unknown-coach"}:${thread.submittedAt ?? thread.lastMessageAt ?? "unknown-time"}`;
-          const current = map.get(key);
-          const threadTime = thread.lastMessageAt ?? thread.submittedAt ?? "";
-          const currentTime = current?.lastMessageAt ?? current?.submittedAt ?? "";
-          if (!current || threadTime > currentTime) {
-            map.set(key, thread);
-          }
-          return map;
-        }, new Map<string, (typeof leadThreads)[number]>())
-        .values(),
-    );
+    const dedupedLeadThreads = dedupeLeadThreadSummaries(leadThreads);
 
     const leadItems = dedupedLeadThreads.map((thread, index) => ({
       id: `lead:${thread.leadId || thread.ptSlug || thread.submittedAt || index}`,
@@ -733,7 +736,12 @@ function ClientWorkspaceHomePage({
       preview: thread.lastMessagePreview ?? "No messages yet",
       timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,
       sourceLabel: "Lead chat",
-      href: thread.ptSlug ? `/coach/${thread.ptSlug}` : "/app/home",
+      href: `/app/messages?thread=${encodeURIComponent(
+        buildClientInboxThreadParam({
+          type: "lead",
+          leadId: thread.leadId,
+        }),
+      )}`,
     }));
     return [...workspaceItems, ...leadItems]
       .sort((a, b) => {
@@ -1177,7 +1185,7 @@ function ClientWorkspaceHomePage({
           title="Complete your profile"
           description={`${profileCompletion.completed}/${profileCompletion.total} fields complete. Filling in the rest helps your coach tailor the plan.`}
           actions={
-            <Button onClick={() => navigate("/app/profile")}>
+            <Button onClick={() => navigate("/app/settings?tab=profile")}>
               Finish profile
             </Button>
           }
