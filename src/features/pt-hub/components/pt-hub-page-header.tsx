@@ -7,7 +7,7 @@ import {
   type ModuleTone,
 } from "../../../lib/module-tone";
 import { cn } from "../../../lib/utils";
-import { useWorkspaceHeaderMode } from "../../../components/pt/workspace-page-header";
+import { useWorkspaceHeaderMode } from "../../../components/pt/workspace-header-mode";
 
 export function PtHubPageHeader({
   eyebrow,

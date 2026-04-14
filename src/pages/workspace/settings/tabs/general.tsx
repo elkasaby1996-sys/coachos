@@ -16,7 +16,7 @@ import {
 } from "../../../../lib/character-limits";
 import { supabase } from "../../../../lib/supabase";
 import { refreshWorkspaceNameAcrossApp } from "../../../../lib/workspace-query";
-import { useWorkspaceSettingsOutletContext } from "../layout";
+import { useWorkspaceSettingsOutletContext } from "../outlet-context";
 
 type GeneralFormState = {
   workspaceName: string;

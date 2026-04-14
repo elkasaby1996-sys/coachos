@@ -5,7 +5,7 @@ import {
   SettingsSectionCard,
 } from "../../../../features/settings/components/settings-primitives";
 import { supabase } from "../../../../lib/supabase";
-import { useWorkspaceSettingsOutletContext } from "../layout";
+import { useWorkspaceSettingsOutletContext } from "../outlet-context";
 
 type WorkspaceMemberRow = {
   user_id: string;

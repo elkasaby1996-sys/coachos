@@ -19,7 +19,7 @@ import {
   getSemanticToneClasses,
   type SemanticTone,
 } from "../../../lib/semantic-status";
-import { useWorkspaceHeaderMode } from "../../pt/workspace-page-header";
+import { useWorkspaceHeaderMode } from "../../pt/workspace-header-mode";
 
 type PortalPageHeaderProps = {
   title: React.ReactNode;

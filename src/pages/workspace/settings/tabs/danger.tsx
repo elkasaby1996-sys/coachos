@@ -17,7 +17,7 @@ import {
 } from "../../../../features/settings/components/settings-primitives";
 import { useBootstrapAuth, useSessionAuth } from "../../../../lib/auth";
 import { supabase } from "../../../../lib/supabase";
-import { useWorkspaceSettingsOutletContext } from "../layout";
+import { useWorkspaceSettingsOutletContext } from "../outlet-context";
 
 export function WorkspaceSettingsDangerTab() {
   const navigate = useNavigate();

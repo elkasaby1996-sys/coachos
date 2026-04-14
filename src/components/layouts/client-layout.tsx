@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  ClipboardCheck,
   CalendarDays,
   ChevronDown,
   CircleDot,
@@ -9,13 +10,11 @@ import {
   LogOut,
   MessageCircle,
   Moon,
-  PanelLeftClose,
-  PanelTop,
   Settings,
   UtensilsCrossed,
   UserCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
@@ -48,7 +47,7 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
-import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
 
 const navItems = [
   {
@@ -73,6 +72,12 @@ const navItems = [
     label: "Habits",
     to: "/app/habits",
     icon: CalendarDays,
+    module: "checkins" as ModuleTone,
+  },
+  {
+    label: "Check-ins",
+    to: "/app/checkins",
+    icon: ClipboardCheck,
     module: "checkins" as ModuleTone,
   },
   {
@@ -106,7 +111,8 @@ const getRouteLabel = (pathname: string) => {
   if (pathname.startsWith("/app/notifications")) return "Notifications";
   if (pathname.startsWith("/app/settings")) return "Settings";
   if (pathname.startsWith("/app/profile")) return "Profile";
-  if (pathname.startsWith("/app/checkin")) return "Monthly check-in";
+  if (pathname.startsWith("/app/checkins")) return "Check-ins";
+  if (pathname.startsWith("/app/checkin")) return "Check-ins";
   if (pathname.startsWith("/app/baseline")) return "Baseline";
   if (pathname.startsWith("/app/workout-today")) return "Workout today";
   if (pathname.startsWith("/app/workout-run")) return "Workout session";
@@ -182,6 +188,8 @@ export function ClientLayout() {
       );
     });
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [footerHeight, setFooterHeight] = useState(0);
+  const footerHostRef = useRef<HTMLDivElement | null>(null);
   const errorMessage = error?.message ?? authError?.message ?? null;
   const shouldRenderOnboardingBanner = Boolean(
     onboardingSummary &&
@@ -214,6 +222,23 @@ export function ClientLayout() {
   const isLightMode = resolvedTheme === "light";
   const reduceMotion = useReducedMotion();
   const visibleNavItems = useMemo(() => navItems, []);
+
+  useEffect(() => {
+    const host = footerHostRef.current;
+    if (!host) return;
+    const resolveFooterHeight = () => {
+      const next = Math.max(0, Math.ceil(host.getBoundingClientRect().height));
+      setFooterHeight(next);
+    };
+    resolveFooterHeight();
+    const observer = new ResizeObserver(resolveFooterHeight);
+    observer.observe(host);
+    window.addEventListener("resize", resolveFooterHeight);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", resolveFooterHeight);
+    };
+  }, []);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -273,19 +298,22 @@ export function ClientLayout() {
     >
       <AppShellBackgroundLayer />
       <div className="relative z-10 flex min-h-screen w-full">
-        <aside className="hidden w-20 shrink-0 p-3 md:flex xl:w-64 xl:p-4">
-          <div className="surface-panel-strong flex h-full min-h-0 flex-col overflow-hidden rounded-[34px] border-border/70 px-3 py-5 backdrop-blur-xl xl:px-4">
+        <aside
+          className="hidden w-28 p-1 md:fixed md:left-0 md:top-0 md:z-30 md:flex md:w-[248px] md:p-2"
+          style={{ bottom: footerHeight > 0 ? `${footerHeight}px` : undefined }}
+        >
+          <div className="surface-panel-strong flex h-full min-h-0 flex-col overflow-hidden rounded-[34px] border-border/70 px-3 py-5 backdrop-blur-xl md:px-4">
             <div className="mb-6 flex items-center justify-between">
-              <div className="hidden xl:block">
+              <div className="hidden md:block">
                 <span className="text-lg font-semibold tracking-tight text-foreground">
                   RepsyncME
                 </span>
               </div>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-[18px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.52))] text-sm font-semibold text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] xl:hidden">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-[18px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.52))] text-sm font-semibold text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] md:hidden">
                 RM
               </span>
             </div>
-            <nav className="flex flex-1 flex-col gap-2">
+            <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-6 pr-1">
               {visibleNavItems.map((item) => (
                 <NavLink
                   key={item.to}
@@ -294,7 +322,7 @@ export function ClientLayout() {
                   title={item.label}
                   className={({ isActive }) =>
                     cn(
-                      "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
+                      "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground md:justify-start",
                       isActive && "text-foreground",
                     )
                   }
@@ -332,7 +360,7 @@ export function ClientLayout() {
                         <item.icon className="h-4 w-4" />
                       </span>
                       <motion.span
-                        className="relative z-10 hidden xl:inline"
+                        className="relative z-10 hidden md:inline"
                         animate={
                           reduceMotion
                             ? undefined
@@ -350,163 +378,167 @@ export function ClientLayout() {
                 </NavLink>
               ))}
             </nav>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="mt-4 w-full justify-center gap-2 rounded-full border border-border/70 bg-card/72 xl:justify-start"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              aria-label="Log out"
-              title="Log out"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden xl:inline">
-                {isSigningOut ? "Logging out..." : "Log out"}
-              </span>
-            </Button>
           </div>
         </aside>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="px-4 pt-4">
+        <div className="flex min-w-0 flex-1 flex-col md:ml-[248px]">
+          <header className="pt-4 sm:pt-5 lg:pt-6">
             <PageContainer
-              size="portal"
+              size="client-shell"
+              align="left"
               className="flex flex-wrap items-center justify-between gap-3"
             >
-              <div className="surface-panel-strong relative w-full overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--accent)/0.04))]" />
-                <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
-                <div className="relative flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <PanelTop
+              <div
+                className={cn(
+                  "surface-panel-strong relative w-full overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
+                  isLightMode
+                    ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
+                    : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
+                )}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--chart-2)/0.06))]" />
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-x-6 top-0 h-px",
+                    isLightMode
+                      ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]"
+                      : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
+                  )}
+                />
+                <div className="relative space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0 space-y-2">
+                      <p
                         className={cn(
-                          "hidden h-4 w-4 sm:inline-flex",
+                          "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
+                          currentModuleClasses.text,
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            currentModuleClasses.dot,
+                          )}
+                        />
+                        RepsyncME
+                      </p>
+                      <p
+                        className={cn(
+                          "truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]",
                           currentModuleClasses.title,
                         )}
-                      />
-                      <PanelLeftClose
-                        className={cn(
-                          "h-4 w-4 md:hidden",
-                          currentModuleClasses.title,
-                        )}
-                      />
-                      <span>RepsyncME</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                      <span>{routeLabel}</span>
+                      >
+                        {routeLabel}
+                      </p>
                       {shouldShowTopStatusText ? (
-                        <>
-                          <span className="hidden text-border sm:inline">|</span>
-                          <span className="inline-flex items-center gap-1.5 text-foreground/80">
+                        <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
+                          <span className="inline-flex items-center gap-2">
                             <CircleDot
-                              className={cn(
-                                "h-3.5 w-3.5",
-                                currentModuleClasses.title,
-                              )}
+                              className={cn("h-3.5 w-3.5", currentModuleClasses.title)}
                             />
                             {topStatusText}
                           </span>
-                        </>
+                        </p>
                       ) : null}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <NotificationBell viewAllHref="/app/notifications" />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className={getHeaderProfilePillClassName(isLightMode)}
-                          aria-label="Profile menu"
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <NotificationBell viewAllHref="/app/notifications" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className={getHeaderProfilePillClassName(isLightMode)}
+                            aria-label="Profile menu"
+                          >
+                            <div className={getHeaderProfilePillIconClassName(isLightMode)}>
+                              {profileInitial}
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                                Profile
+                              </p>
+                              <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                {profileDisplayName}
+                              </p>
+                            </div>
+                            <span className={getHeaderProfilePillChevronClassName(isLightMode)}>
+                              <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                            </span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          variant="menu"
+                          align="end"
+                          sideOffset={10}
+                          className="w-56"
                         >
-                          <div className={getHeaderProfilePillIconClassName(isLightMode)}>
-                            {profileInitial}
-                          </div>
-                          <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                              Profile
-                            </p>
-                            <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                              {profileDisplayName}
-                            </p>
-                          </div>
-                          <span className={getHeaderProfilePillChevronClassName(isLightMode)}>
-                            <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                          </span>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        variant="menu"
-                        align="end"
-                        sideOffset={10}
-                        className="w-56"
-                      >
-                        <DropdownMenuLabel>Profile</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => navigate("/app/settings?tab=profile")}
-                        >
-                          <span className="app-dropdown-icon-badge">
-                            <UserCircle className="h-4 w-4 [stroke-width:1.7]" />
-                          </span>
-                          Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => navigate("/app/settings?tab=preferences")}
-                        >
-                          <span className="app-dropdown-icon-badge">
-                            <Settings className="h-4 w-4 [stroke-width:1.7]" />
-                          </span>
-                          Preferences
-                        </DropdownMenuItem>
-                        <div className="app-dropdown-utility-row">
-                          <div className="flex min-w-0 items-center gap-3">
+                          <DropdownMenuLabel>Profile</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => navigate("/app/settings?tab=profile")}
+                          >
                             <span className="app-dropdown-icon-badge">
-                              <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                              <UserCircle className="h-4 w-4 [stroke-width:1.7]" />
                             </span>
-                            <span className="text-sm font-medium text-foreground">
-                              Theme
+                            Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => navigate("/app/settings?tab=preferences")}
+                          >
+                            <span className="app-dropdown-icon-badge">
+                              <Settings className="h-4 w-4 [stroke-width:1.7]" />
+                            </span>
+                            Preferences
+                          </DropdownMenuItem>
+                          <div className="app-dropdown-utility-row">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className="app-dropdown-icon-badge">
+                                <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                              </span>
+                              <span className="text-sm font-medium text-foreground">
+                                Theme
+                              </span>
+                            </div>
+                            <span className="shrink-0">
+                              <ThemeModeSwitch
+                                mode={resolvedTheme}
+                                onToggle={toggleTheme}
+                              />
                             </span>
                           </div>
-                          <span className="shrink-0">
-                            <ThemeModeSwitch
-                              mode={resolvedTheme}
-                              onToggle={toggleTheme}
-                            />
-                          </span>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          disabled={isSigningOut}
-                          onClick={() => {
-                            void handleSignOut();
-                          }}
-                        >
-                          <span className="app-dropdown-icon-badge">
-                            <LogOut className="h-4 w-4 [stroke-width:1.7]" />
-                          </span>
-                          {isSigningOut ? "Signing out..." : "Sign out"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="rounded-full border border-border/70 bg-card/72 md:hidden"
-                      onClick={handleSignOut}
-                      disabled={isSigningOut}
-                      aria-label="Log out"
-                      title="Log out"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </Button>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            disabled={isSigningOut}
+                            onClick={() => {
+                              void handleSignOut();
+                            }}
+                          >
+                            <span className="app-dropdown-icon-badge">
+                              <LogOut className="h-4 w-4 [stroke-width:1.7]" />
+                            </span>
+                            {isSigningOut ? "Signing out..." : "Sign out"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="rounded-full border border-border/70 bg-card/72 md:hidden"
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
+                        aria-label="Log out"
+                        title="Log out"
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             </PageContainer>
           </header>
-          <main className="min-w-0 flex-1 py-8">
-            <PageContainer size="portal">
+          <main className="min-w-0 flex-1 py-4 sm:py-5 lg:py-6">
+            <PageContainer size="client-shell" align="left">
               {shouldRenderOnboardingBanner && onboardingSummary ? (
                 <div className="mb-6">
                   <ClientOnboardingSoftGate
@@ -561,13 +593,18 @@ export function ClientLayout() {
               )}
             </PageContainer>
           </main>
-          <AppFooter size="portal" />
+          <div ref={footerHostRef}>
+            <AppFooter className="z-40 md:relative md:-ml-[248px] md:w-[calc(100%+248px)]" />
+          </div>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
             <PageContainer
-              size="portal"
               className={cn(
                 "grid gap-1",
-                visibleNavItems.length > 6 ? "grid-cols-7" : "grid-cols-6",
+                visibleNavItems.length > 7
+                  ? "grid-cols-8"
+                  : visibleNavItems.length > 6
+                    ? "grid-cols-7"
+                    : "grid-cols-6",
               )}
             >
               {visibleNavItems.map((item) => (

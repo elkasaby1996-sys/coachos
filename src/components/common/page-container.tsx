@@ -5,7 +5,8 @@ type PageContainerProps<T extends ElementType> = {
   as?: T;
   children: ReactNode;
   className?: string;
-  size?: "default" | "portal";
+  size?: "default" | "portal" | "client-shell";
+  align?: "center" | "left";
 } & Omit<HTMLAttributes<HTMLElement>, "className">;
 
 export function PageContainer<T extends ElementType = "div">({
@@ -13,15 +14,19 @@ export function PageContainer<T extends ElementType = "div">({
   children,
   className,
   size = "default",
+  align = "center",
   ...props
 }: PageContainerProps<T>) {
   const Component = (as ?? "div") as ElementType;
   return (
     <Component
       className={cn(
+        align === "left" ? "ml-0 mr-auto" : "mx-auto",
         size === "portal"
-          ? "mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 xl:px-10"
-          : "mx-auto w-full max-w-[1800px] 2xl:max-w-[2000px] px-4 sm:px-6 lg:px-8",
+          ? "w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 xl:px-10"
+          : size === "client-shell"
+            ? "w-full max-w-[1380px] px-4 sm:px-6 lg:px-6 xl:px-6"
+            : "w-full max-w-[1800px] 2xl:max-w-[2000px] px-4 sm:px-6 lg:px-8",
         className,
       )}
       {...props}

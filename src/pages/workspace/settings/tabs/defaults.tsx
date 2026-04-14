@@ -12,7 +12,7 @@ import {
 import { useDirtyNavigationGuard } from "../../../../features/settings/hooks/use-dirty-navigation-guard";
 import { safeSelect } from "../../../../lib/supabase-safe";
 import { supabase } from "../../../../lib/supabase";
-import { useWorkspaceSettingsOutletContext } from "../layout";
+import { useWorkspaceSettingsOutletContext } from "../outlet-context";
 
 type DefaultsFormState = {
   defaultCheckinTemplateId: string;

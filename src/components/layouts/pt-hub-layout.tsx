@@ -52,7 +52,7 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
-import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
 import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
@@ -430,9 +430,9 @@ export function PtHubLayout() {
       </aside>
 
       <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-6">
-        <div className="grid items-start gap-5 lg:h-full lg:grid-cols-[300px_minmax(0,1fr)] lg:items-stretch xl:gap-6">
-          <aside className="hidden lg:block lg:h-full lg:min-h-0">
-            <div className="sticky top-0 h-full min-h-0">
+        <div className="lg:h-full lg:pl-[336px]">
+          <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[324px] lg:p-3">
+            <div className="h-full min-h-0">
               <div
                 className={cn(
                   "surface-panel-strong h-full min-h-0 overflow-hidden rounded-[34px] border-border/70",

@@ -762,6 +762,7 @@ export function App() {
             path="workout-summary/:assignedWorkoutId"
             element={<ClientWorkoutSummaryPage />}
           />
+          <Route path="checkins" element={<ClientCheckinPage />} />
           <Route path="checkin" element={<ClientCheckinPage />} />
           <Route path="messages" element={<ClientMessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />

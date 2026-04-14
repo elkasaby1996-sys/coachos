@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Check, Circle, Droplets, Dumbbell, Moon, Target } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
@@ -12,7 +13,6 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
-import { ClientReminders } from "../../components/common/client-reminders";
 import {
   ActionStatusMessage,
   AnimatedValue,
@@ -415,7 +415,7 @@ function ClientWorkspaceHomePage({
     [todayWorkoutQuery.data],
   );
   const todayWorkout = todayWorkoutList[0] ?? null;
-  const isRestDay = todayWorkout?.day_type === "rest";
+  const isRestDay = !todayWorkout || todayWorkout.day_type === "rest";
   const todayWorkoutStatus =
     todayWorkout?.status === "pending"
       ? "planned"
@@ -595,7 +595,6 @@ function ClientWorkspaceHomePage({
     [habitLogDates, today],
   );
   const hasClientProfile = Boolean(clientId);
-  const workoutsCompletedThisWeek = workoutsWeek.length;
   const summaryTrainingStatus = !hasClientProfile
     ? "No plan yet"
     : isRestDay
@@ -636,15 +635,56 @@ function ClientWorkspaceHomePage({
         : todayWorkout
           ? "Ready when you are"
           : "Rest day. Steps + nutrition still count.";
-  const summaryNutritionValue =
-    typeof targets?.calories === "number"
-      ? `${targets.calories.toLocaleString()} kcal`
-      : "Coach setting in progress";
-  const summaryNutritionHint =
-    typeof targets?.protein_g === "number"
-      ? `${targets.protein_g}g protein target`
-      : "Ask coach for targets";
-  const summaryHabitHint = `${Object.values(checklist).filter(Boolean).length} of ${checklistKeys.length} complete`;
+  const handleChecklistToggle = useCallback(
+    (key: ChecklistKey) => {
+      setChecklist((prev) => {
+        if (key === "workout" && todayWorkoutStatus === "completed") {
+          return prev;
+        }
+        return { ...prev, [key]: !prev[key] };
+      });
+    },
+    [todayWorkoutStatus],
+  );
+  const checklistCards = useMemo(
+    () =>
+      checklistKeys.map((key) => {
+        const isWorkout = key === "workout";
+        const isLocked = isWorkout && todayWorkoutStatus === "completed";
+        const checked = checklist[key] || isLocked;
+        const label =
+          key === "workout"
+            ? "Workout"
+            : key === "steps" && typeof targets?.steps === "number"
+              ? `Steps (${targets.steps.toLocaleString()})`
+              : key === "steps"
+                ? "Steps"
+                : key === "water"
+                  ? "Hydration"
+                  : "Sleep";
+        const hint = isWorkout
+          ? todayWorkoutStatus === "completed"
+            ? "Auto-checked from workout log"
+            : isRestDay
+              ? "Rest day"
+              : "Tap when you finish"
+          : key === "steps"
+            ? "Daily movement target"
+            : key === "water"
+              ? "Hydration consistency"
+              : "Recovery quality";
+        const Icon =
+          key === "workout"
+            ? Dumbbell
+            : key === "steps"
+              ? Target
+              : key === "water"
+                ? Droplets
+                : Moon;
+        return { key, checked, isLocked, label, hint, Icon };
+      }),
+    [checklist, isRestDay, targets?.steps, todayWorkoutStatus],
+  );
   const leadThreads = useMemo(
     () => leadThreadsQuery.data ?? [],
     [leadThreadsQuery.data],
@@ -755,11 +795,6 @@ function ClientWorkspaceHomePage({
     leadThreads,
     workspaceConversationPreviewQuery.data,
   ]);
-
-  const defaultPlan = useMemo(
-    () => ["30-45 min strength OR 20 min conditioning", "10 min mobility"],
-    [],
-  );
 
   const subtitleDate = useMemo(
     () =>
@@ -873,24 +908,6 @@ function ClientWorkspaceHomePage({
     todayTemplateInfo.description,
   ]);
 
-  const handleStartDefaultSession = async () => {
-    if (!clientId) return;
-    const { data, error } = await supabase
-      .from("assigned_workouts")
-      .insert({
-        client_id: clientId,
-        scheduled_date: todayKey,
-        status: "planned",
-        day_type: "workout",
-      })
-      .select("id")
-      .maybeSingle();
-    if (error || !data?.id) {
-      return;
-    }
-    navigate(buildWorkoutRunPath(data.id));
-  };
-
   const handleRequestAdjustment = () => {
     navigate(
       `/app/messages?draft=${encodeURIComponent(
@@ -951,8 +968,8 @@ function ClientWorkspaceHomePage({
     }
 
     return {
-      label: "Start fallback workout",
-      onClick: handleStartDefaultSession,
+      label: "Open workouts",
+      onClick: () => navigate("/app/workouts"),
     };
   })();
 
@@ -1017,6 +1034,7 @@ function ClientWorkspaceHomePage({
     unifiedHomeState === "lead_only"
       ? "Lead and discovery mode"
       : coachBadgeLabel;
+  const showWorkoutsAndNutritionCard = false;
 
   return (
     <div className="portal-shell">
@@ -1077,26 +1095,6 @@ function ClientWorkspaceHomePage({
               </div>
             ) : null}
 
-            {!todayWorkout && !isRestDay ? (
-              <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 p-4">
-                <p className="text-sm font-semibold text-foreground">
-                  {hasClientProfile
-                    ? "No workout scheduled yet"
-                    : "No workout flow yet"}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {hasClientProfile
-                    ? "Your coach hasn&apos;t scheduled a session for today yet. Use the fallback plan if you still want to train."
-                    : "Start by finding a coach, then your assigned and personal training can both appear here."}
-                </p>
-                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                  {defaultPlan.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
             <div className="flex flex-wrap gap-3">
               <Button onClick={primaryAction.onClick}>
                 {primaryAction.label}
@@ -1114,9 +1112,9 @@ function ClientWorkspaceHomePage({
             <SectionCard className="space-y-4">
               <div className="space-y-1">
                 <div>
-                  <p className="field-label">Today at a glance</p>
+                  <p className="field-label">Overview</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    The essentials that matter most today.
+                    Today&apos;s workout and nutrition snapshot.
                   </p>
                 </div>
               </div>
@@ -1124,41 +1122,39 @@ function ClientWorkspaceHomePage({
                 <div className="flex flex-col gap-3 border-b border-border/50 pb-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Training
+                      Today&apos;s workout
                     </p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
                       {summaryTrainingTitle}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    <AnimatedValue value={`${workoutsCompletedThisWeek} done this week`} />
-                  </span>
-                </div>
-                <div className="flex flex-col gap-3 border-b border-border/50 pb-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Checklist
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {summaryHabitHint}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    <AnimatedValue value={`${checklistProgress}%`} />
-                  </span>
+                  <Badge variant={trainingStatusVariant}>
+                    {summaryTrainingBadgeLabel}
+                  </Badge>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Nutrition
+                      Today&apos;s nutrition
                     </p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {summaryNutritionHint}
+                      {todayNutritionTemplate?.name ?? "Nutrition plan pending"}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    <AnimatedValue value={summaryNutritionValue} />
-                  </span>
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                      {Math.round(todayNutritionTotals.calories)} kcal
+                    </span>
+                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                      P {Math.round(todayNutritionTotals.protein_g)}g
+                    </span>
+                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                      C {Math.round(todayNutritionTotals.carbs_g)}g
+                    </span>
+                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                      F {Math.round(todayNutritionTotals.fat_g)}g
+                    </span>
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -1173,6 +1169,118 @@ function ClientWorkspaceHomePage({
                 rest of the week.
               </p>
             </SectionCard>
+          </div>
+        </SurfaceCardContent>
+      </SurfaceCard>
+
+      <SurfaceCard id="home-section-checklist">
+        <SurfaceCardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <SurfaceCardTitle>Today&apos;s checklist</SurfaceCardTitle>
+              <SurfaceCardDescription>
+                Track the daily basics. Tap any check to log it instantly.
+              </SurfaceCardDescription>
+            </div>
+            <Badge variant={checklistProgress === 100 ? "success" : "secondary"}>
+              <AnimatedValue
+                value={`${checklistCompletedCount}/${checklistKeys.length} complete`}
+              />
+            </Badge>
+          </div>
+        </SurfaceCardHeader>
+        <SurfaceCardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SectionCard className="p-3">
+              <p className="field-label">Progress</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                <AnimatedValue value={`${checklistProgress}%`} />
+              </p>
+            </SectionCard>
+            <SectionCard className="p-3">
+              <p className="field-label">Completed</p>
+              <p className="mt-2 text-2xl font-semibold text-success">
+                <AnimatedValue value={checklistCompletedCount} />
+              </p>
+            </SectionCard>
+            <SectionCard className="p-3">
+              <p className="field-label">Streak</p>
+              <p className="mt-2 text-2xl font-semibold text-info">
+                <AnimatedValue value={`${consistencyStreak}d`} />
+              </p>
+            </SectionCard>
+          </div>
+
+          <div className="h-2 w-full rounded-full bg-muted">
+            <div
+              className="h-2 rounded-full bg-primary transition-all"
+              style={{ width: `${checklistProgress}%` }}
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {checklistCards.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => handleChecklistToggle(item.key)}
+                disabled={item.isLocked}
+                className={`flex items-center gap-3 rounded-[var(--radius-lg)] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  item.checked
+                    ? "border-primary/45 bg-primary/12"
+                    : "border-border/70 bg-background/45 hover:border-border"
+                } ${item.isLocked ? "cursor-default opacity-90" : "cursor-pointer"}`}
+              >
+                <span
+                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
+                    item.checked
+                      ? "border-primary/45 bg-primary/18 text-primary"
+                      : "border-border/70 bg-background/50 text-muted-foreground"
+                  }`}
+                >
+                  <item.Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-foreground">
+                    {item.label}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {item.hint}
+                  </span>
+                </span>
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center">
+                  {item.checked ? (
+                    <Check className="h-5 w-5 text-success" />
+                  ) : (
+                    <Circle className="h-5 w-5 text-muted-foreground/70" />
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {dayStatus?.completed ? (
+            <ActionStatusMessage tone="success">
+              Perfect day logged. All checklist items are complete for today.
+            </ActionStatusMessage>
+          ) : null}
+
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={() => navigate("/app/habits")}>
+              Open habit log
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setChecklist(
+                  todayWorkoutStatus === "completed"
+                    ? { ...emptyChecklist, workout: true }
+                    : emptyChecklist,
+                )
+              }
+            >
+              Reset today
+            </Button>
           </div>
         </SurfaceCardContent>
       </SurfaceCard>
@@ -1192,7 +1300,7 @@ function ClientWorkspaceHomePage({
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      {showWorkoutsAndNutritionCard ? (
         <SurfaceCard id="home-section-workouts">
           <SurfaceCardHeader>
             <SurfaceCardTitle>Workouts and nutrition</SurfaceCardTitle>
@@ -1498,82 +1606,7 @@ function ClientWorkspaceHomePage({
             </SectionCard>
           </SurfaceCardContent>
         </SurfaceCard>
-
-        <SurfaceCard>
-          <SurfaceCardHeader>
-            <SurfaceCardTitle>Today's checklist</SurfaceCardTitle>
-            <SurfaceCardDescription>
-              Tick off the daily basics so training, recovery, and habits stay
-              visible.
-            </SurfaceCardDescription>
-          </SurfaceCardHeader>
-          <SurfaceCardContent className="space-y-4">
-            <SectionCard className="space-y-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Progress</span>
-                <span>
-                  <AnimatedValue value={`${checklistProgress}%`} />
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-primary transition-all"
-                  style={{ width: `${checklistProgress}%` }}
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                <AnimatedValue
-                  value={`${checklistCompletedCount} of ${checklistKeys.length} complete`}
-                />
-              </p>
-            </SectionCard>
-
-            <div className="space-y-2">
-              {checklistKeys.map((key) => (
-                <label
-                  key={key}
-                  className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm"
-                >
-                  <span className="font-medium capitalize text-foreground">
-                    {key === "steps" && typeof targets?.steps === "number"
-                      ? `Steps (${targets.steps.toLocaleString()})`
-                      : key}
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded border-input bg-background accent-[oklch(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    checked={checklist[key]}
-                    onChange={() =>
-                      setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-
-            {dayStatus?.completed ? (
-              <ActionStatusMessage tone="success">
-                Perfect day logged. All checklist items are complete for today.
-              </ActionStatusMessage>
-            ) : null}
-
-            <div className="flex flex-wrap gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => navigate("/app/habits")}
-              >
-                Open habit log
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setChecklist(emptyChecklist)}
-              >
-                Reset today
-              </Button>
-            </div>
-          </SurfaceCardContent>
-        </SurfaceCard>
-      </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <SurfaceCard id="home-section-messages">
@@ -1729,14 +1762,11 @@ function ClientWorkspaceHomePage({
         </SurfaceCard>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.15fr)]">
-        <ClientReminders clientId={clientId} timezone={clientTimezone} />
-
-        <SurfaceCard>
+      <SurfaceCard>
           <SurfaceCardHeader>
             <SurfaceCardTitle>Calendar</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Training and recovery mapped across the next 7 days.
+              Assigned training and recovery across the next 7 days.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
@@ -1750,25 +1780,25 @@ function ClientWorkspaceHomePage({
                 <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
                   <SectionCard className="p-3">
                     <p className="field-label">Completed</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                    <p className="mt-2 text-2xl font-semibold text-success">
                       <AnimatedValue value={weeklyStats.completed} />
                     </p>
                   </SectionCard>
                   <SectionCard className="p-3">
                     <p className="field-label">Planned</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                    <p className="mt-2 text-2xl font-semibold text-info">
                       <AnimatedValue value={weeklyStats.planned} />
                     </p>
                   </SectionCard>
                   <SectionCard className="p-3">
                     <p className="field-label">Skipped</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                    <p className="mt-2 text-2xl font-semibold text-danger">
                       <AnimatedValue value={weeklyStats.skipped} />
                     </p>
                   </SectionCard>
                   <SectionCard className="p-3">
                     <p className="field-label">Rest</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                    <p className="mt-2 text-2xl font-semibold text-warning">
                       <AnimatedValue value={weeklyStats.rest} />
                     </p>
                   </SectionCard>
@@ -1777,13 +1807,12 @@ function ClientWorkspaceHomePage({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
                   {weekRows.map((row) => {
                     const workout = row.workout;
-                    const rowIsRestDay = workout?.day_type === "rest";
+                    const rowIsRestDay = !workout || workout.day_type === "rest";
                     const status = rowIsRestDay
                       ? "rest day"
-                      : workout?.status === "pending"
+                      : workout.status === "pending"
                         ? "planned"
-                        : (workout?.status ??
-                          (workout ? "planned" : "rest day"));
+                        : (workout.status ?? "planned");
                     const statusLabel =
                       status === "completed"
                         ? "Completed"
@@ -1839,7 +1868,7 @@ function ClientWorkspaceHomePage({
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {rowIsRestDay
-                                ? "Recovery focus"
+                                ? "Steps + nutrition still count."
                                 : (getWorkoutTemplateInfo(workout)
                                     .workout_type_tag ?? "Workout")}
                             </p>
@@ -1865,7 +1894,6 @@ function ClientWorkspaceHomePage({
             )}
           </SurfaceCardContent>
         </SurfaceCard>
-      </div>
     </div>
   );
 }
