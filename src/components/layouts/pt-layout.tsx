@@ -51,7 +51,7 @@ import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { RouteTransition } from "../common/route-transition";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { PtMessageComposeProvider } from "../pt/pt-message-compose";
-import { WorkspaceHeaderModeProvider } from "../pt/workspace-page-header";
+import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
@@ -911,14 +911,17 @@ export function PtLayout() {
       <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-6">
         <div
           className={cn(
-            "grid items-start gap-5 lg:h-full lg:items-stretch xl:gap-6",
-            desktopNavCollapsed
-              ? "lg:grid-cols-[104px_minmax(0,1fr)]"
-              : "lg:grid-cols-[296px_minmax(0,1fr)]",
+            "lg:h-full",
+            desktopNavCollapsed ? "lg:pl-[136px]" : "lg:pl-[328px]",
           )}
         >
-          <aside className="hidden lg:block lg:h-full lg:min-h-0">
-            <div className="sticky top-0 h-full min-h-0">
+          <aside
+            className={cn(
+              "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:p-3",
+              desktopNavCollapsed ? "lg:w-[128px]" : "lg:w-[320px]",
+            )}
+          >
+            <div className="h-full min-h-0">
               <div className="surface-panel-strong h-full min-h-0 overflow-hidden rounded-[34px] border-border/70">
                 <div className="flex h-full min-h-0 flex-col px-4 py-5">
                   <div

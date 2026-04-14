@@ -16,6 +16,11 @@ import {
   StatusBanner,
   StepIndicator,
   StickyActionBar,
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceCardDescription,
+  SurfaceCardHeader,
+  SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
@@ -85,6 +90,7 @@ type CheckinRow = {
   client_id: string;
   week_ending_saturday: string;
   submitted_at: string | null;
+  reviewed_at?: string | null;
   template_id?: string | null;
   pt_feedback?: string | null;
 };
@@ -203,6 +209,9 @@ export function ClientCheckinPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<"success" | "error">(
     "success",
+  );
+  const [selectedCheckinId, setSelectedCheckinId] = useState<string | null>(
+    null,
   );
   const [submitting, setSubmitting] = useState(false);
   const [hydratedCheckinId, setHydratedCheckinId] = useState<string | null>(
@@ -336,31 +345,52 @@ export function ClientCheckinPage() {
         .lte("week_ending_saturday", checkinWindowEnd ?? "")
         .order("week_ending_saturday", { ascending: true });
       if (error) throw error;
-      return getPrimaryClientCheckin((data ?? []) as CheckinRow[], todayStr);
+      return (data ?? []) as CheckinRow[];
     },
   });
 
+  const checkinRows = useMemo(
+    () => (checkinQuery.data ?? []) as CheckinRow[],
+    [checkinQuery.data],
+  );
+  const primaryCheckin = useMemo(
+    () => getPrimaryClientCheckin(checkinRows, todayStr),
+    [checkinRows, todayStr],
+  );
+  const currentCheckin = useMemo(() => {
+    if (!selectedCheckinId) return primaryCheckin;
+    return checkinRows.find((row) => row.id === selectedCheckinId) ?? primaryCheckin;
+  }, [checkinRows, primaryCheckin, selectedCheckinId]);
+
+  useEffect(() => {
+    if (!selectedCheckinId) return;
+    const stillExists = checkinRows.some((row) => row.id === selectedCheckinId);
+    if (!stillExists) {
+      setSelectedCheckinId(null);
+    }
+  }, [checkinRows, selectedCheckinId]);
+
   const answersQuery = useQuery({
-    queryKey: ["client-checkin-answers", checkinQuery.data?.id],
-    enabled: !!checkinQuery.data?.id,
+    queryKey: ["client-checkin-answers", currentCheckin?.id],
+    enabled: !!currentCheckin?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("checkin_answers")
         .select("id, question_id, value_text, value_number")
-        .eq("checkin_id", checkinQuery.data?.id ?? "");
+        .eq("checkin_id", currentCheckin?.id ?? "");
       if (error) throw error;
       return (data ?? []) as CheckinAnswerRow[];
     },
   });
 
   const photosQuery = useQuery({
-    queryKey: ["client-checkin-photos", checkinQuery.data?.id],
-    enabled: !!checkinQuery.data?.id,
+    queryKey: ["client-checkin-photos", currentCheckin?.id],
+    enabled: !!currentCheckin?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("checkin_photos")
         .select("id, checkin_id, client_id, url, storage_path, photo_type")
-        .eq("checkin_id", checkinQuery.data?.id ?? "");
+        .eq("checkin_id", currentCheckin?.id ?? "");
       if (error) throw error;
       return (data ?? []) as CheckinPhotoRow[];
     },
@@ -375,8 +405,8 @@ export function ClientCheckinPage() {
     });
   }, [templateQuery.data]);
 
-  const checkinState = checkinQuery.data
-    ? getCheckinOperationalState(checkinQuery.data, todayStr)
+  const checkinState = currentCheckin
+    ? getCheckinOperationalState(currentCheckin, todayStr)
     : null;
   const isSubmitted =
     checkinState === "submitted" || checkinState === "reviewed";
@@ -412,7 +442,7 @@ export function ClientCheckinPage() {
   }, [toastMessage]);
 
   useEffect(() => {
-    const checkinId = checkinQuery.data?.id ?? null;
+    const checkinId = currentCheckin?.id ?? null;
     if (!checkinId) {
       setAnswers({});
       setPhotos({
@@ -500,7 +530,7 @@ export function ClientCheckinPage() {
     setPhotos(nextPhotos);
     setHydratedCheckinId(checkinId);
   }, [
-    checkinQuery.data?.id,
+    currentCheckin?.id,
     answersQuery.data,
     photosQuery.data,
     hydratedCheckinId,
@@ -549,7 +579,7 @@ export function ClientCheckinPage() {
   };
 
   const handleSubmit = async () => {
-    const dueDate = checkinQuery.data?.week_ending_saturday ?? null;
+    const dueDate = currentCheckin?.week_ending_saturday ?? null;
     if (!clientQuery.data?.id || !dueDate || !templateQuery.data?.id) return;
     setSubmitting(true);
     setToastMessage(null);
@@ -691,7 +721,7 @@ export function ClientCheckinPage() {
   const canProceed = hasTemplate && !isLoading;
   const checkinLocked = isSubmitted;
   const checkinDueDateLabel = formatCheckinDueDate(
-    checkinQuery.data?.week_ending_saturday ?? "",
+    currentCheckin?.week_ending_saturday ?? "",
   );
   const checkinFrequencyLabel = getCheckinFrequencyLabel(
     clientQuery.data?.checkin_frequency,
@@ -703,7 +733,7 @@ export function ClientCheckinPage() {
         ? "overdue"
         : checkinState === "upcoming"
           ? "upcoming"
-          : checkinQuery.data
+          : currentCheckin
             ? "active"
             : "due";
   const pageError =
@@ -714,6 +744,47 @@ export function ClientCheckinPage() {
     checkinQuery.error ||
     answersQuery.error ||
     photosQuery.error;
+  const checkinRowsWithState = useMemo(
+    () =>
+      checkinRows.map((row) => ({
+        row,
+        state: getCheckinOperationalState(row, todayStr),
+      })),
+    [checkinRows, todayStr],
+  );
+  const assignedCheckins = useMemo(
+    () =>
+      checkinRowsWithState
+        .filter(
+          (item) =>
+            item.state === "due" ||
+            item.state === "overdue" ||
+            item.state === "upcoming",
+        )
+        .sort((left, right) =>
+          left.row.week_ending_saturday.localeCompare(
+            right.row.week_ending_saturday,
+          ),
+        ),
+    [checkinRowsWithState],
+  );
+  const previousCheckins = useMemo(
+    () =>
+      checkinRowsWithState
+        .filter(
+          (item) =>
+            item.state === "submitted" ||
+            item.state === "reviewed" ||
+            item.row.week_ending_saturday < todayStr,
+        )
+        .sort((left, right) =>
+          right.row.week_ending_saturday.localeCompare(
+            left.row.week_ending_saturday,
+          ),
+        )
+        .slice(0, 6),
+    [checkinRowsWithState, todayStr],
+  );
   const requiredQuestions = questions.filter(
     (question) => question.is_required,
   );
@@ -820,13 +891,14 @@ export function ClientCheckinPage() {
       ) : null}
 
       <PortalPageHeader
-        title="Check-in"
+        title="Check-ins"
         subtitle={`Stay aligned with your coach every ${checkinFrequencyLabel.toLowerCase().replace("-", " ")} cycle.`}
         stateText={headerStateText}
         actions={<StatusPill status={statusKey} statusMap={statusMap} />}
+        className="mx-auto w-full max-w-5xl"
       />
 
-      <div className="portal-form-shell space-y-6">
+      <div className="portal-form-shell space-y-5 lg:space-y-6">
         <StatusBanner
           variant={summaryVariant}
           title={summaryTitle}
@@ -839,6 +911,210 @@ export function ClientCheckinPage() {
             ) : undefined
           }
         />
+
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-foreground">
+            Assigned and previous check-ins
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Choose an active cycle to complete or review recent submissions.
+          </p>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-2">
+          <SurfaceCard>
+            <SurfaceCardHeader className="border-b border-border/55 pb-4">
+              <SurfaceCardTitle className="text-base">
+                Assigned check-ins
+              </SurfaceCardTitle>
+              <SurfaceCardDescription>
+                Due, overdue, and upcoming cycles.
+              </SurfaceCardDescription>
+            </SurfaceCardHeader>
+            <SurfaceCardContent className="space-y-2 pt-4">
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </>
+              ) : assignedCheckins.length > 0 ? (
+                assignedCheckins.slice(0, 6).map((item) => {
+                  const isCurrent = currentCheckin?.id === item.row.id;
+                  const isClosed =
+                    item.state === "submitted" || item.state === "reviewed";
+
+                  return (
+                    <div
+                      key={item.row.id}
+                      className={cn(
+                        "rounded-[var(--radius-lg)] border bg-background/45 px-3 py-3",
+                        isCurrent
+                          ? "border-primary/35 shadow-[0_0_0_1px_oklch(var(--primary)/0.18)]"
+                          : "border-border/70",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            {formatCheckinDueDate(item.row.week_ending_saturday)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.state === "overdue"
+                              ? "Overdue assignment"
+                              : item.state === "due"
+                                ? "Due now"
+                                : "Scheduled cycle"}
+                          </p>
+                        </div>
+                        <StatusPill status={item.state} statusMap={statusMap} />
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant={isCurrent ? "default" : "secondary"}
+                          onClick={() => {
+                            setSelectedCheckinId(item.row.id);
+                            setStep(isClosed ? 2 : 0);
+                          }}
+                        >
+                          {isClosed ? "View" : "Complete"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 px-4 py-6 text-sm text-muted-foreground">
+                  No active assignments yet.
+                </div>
+              )}
+            </SurfaceCardContent>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <SurfaceCardHeader className="border-b border-border/55 pb-4">
+              <SurfaceCardTitle className="text-base">
+                Previous check-ins
+              </SurfaceCardTitle>
+              <SurfaceCardDescription>
+                Recent submitted and reviewed cycles.
+              </SurfaceCardDescription>
+            </SurfaceCardHeader>
+            <SurfaceCardContent className="space-y-2 pt-4">
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </>
+              ) : previousCheckins.length > 0 ? (
+                previousCheckins.map((item) => (
+                  <div
+                    key={item.row.id}
+                    className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <p className="text-sm font-semibold text-foreground">
+                          {formatCheckinDueDate(item.row.week_ending_saturday)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.row.submitted_at
+                            ? `Submitted ${new Date(item.row.submitted_at).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                },
+                              )}`
+                            : "No submission saved"}
+                        </p>
+                      </div>
+                      <StatusPill status={item.state} statusMap={statusMap} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedCheckinId(item.row.id);
+                          setStep(2);
+                        }}
+                      >
+                        View details
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 px-4 py-6 text-sm text-muted-foreground">
+                  No previous check-ins yet.
+                </div>
+              )}
+            </SurfaceCardContent>
+          </SurfaceCard>
+        </div>
+
+        <SurfaceCard>
+          <SurfaceCardHeader className="border-b border-border/55 pb-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <SurfaceCardTitle className="text-base">
+                  Selected cycle
+                </SurfaceCardTitle>
+                <SurfaceCardDescription>
+                  {currentCheckin
+                    ? `${formatCheckinDueDate(currentCheckin.week_ending_saturday)} • ${statusMap[statusKey].label}`
+                    : "Choose a check-in cycle to continue."}
+                </SurfaceCardDescription>
+              </div>
+              {currentCheckin ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setStep(0)}
+                    disabled={checkinLocked}
+                  >
+                    Questions
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setStep(1)}
+                    disabled={checkinLocked}
+                  >
+                    Photos
+                  </Button>
+                  <Button size="sm" onClick={() => setStep(2)}>
+                    Review
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </SurfaceCardHeader>
+          <SurfaceCardContent className="pt-4">
+            <StepIndicator
+              steps={steps.map((label, index) => ({
+                label,
+                state: checkinLocked
+                  ? index < steps.length - 1
+                    ? "completed"
+                    : "current"
+                  : index < step
+                    ? "completed"
+                    : index === step
+                      ? "current"
+                      : "upcoming",
+                onClick:
+                  !checkinLocked && (index <= step || canProceed)
+                    ? () => setStep(index)
+                    : undefined,
+              }))}
+            />
+          </SurfaceCardContent>
+        </SurfaceCard>
 
         {/* legacy placeholder removed during final onboarding integration
         <EmptyState
@@ -853,39 +1129,19 @@ export function ClientCheckinPage() {
         />
       */}
 
-        {checkinState === "reviewed" && checkinQuery.data?.pt_feedback ? (
+        {checkinState === "reviewed" && currentCheckin?.pt_feedback ? (
           <DashboardCard
             title="Coach feedback"
             subtitle="Your coach reviewed this check-in."
           >
             <p className="text-sm text-foreground">
-              {checkinQuery.data.pt_feedback}
+              {currentCheckin.pt_feedback}
             </p>
           </DashboardCard>
         ) : null}
 
-        <StepIndicator
-          steps={steps.map((label, index) => ({
-            label,
-            state: checkinLocked
-              ? index < steps.length - 1
-                ? "completed"
-                : "current"
-              : index < step
-                ? "completed"
-                : index === step
-                  ? "current"
-                  : "upcoming",
-            onClick:
-              !checkinLocked && (index <= step || canProceed)
-                ? () => setStep(index)
-                : undefined,
-          }))}
-        />
-
         {step === 0 ? (
           <DashboardCard
-            className="portal-form-step"
             title={`${checkinFrequencyLabel} questions`}
             subtitle="Share the latest updates for this check-in period."
           >
@@ -1125,7 +1381,6 @@ export function ClientCheckinPage() {
 
         {step === 1 ? (
           <DashboardCard
-            className="portal-form-step"
             title="Progress photos"
             subtitle={
               checkinLocked
@@ -1279,7 +1534,6 @@ export function ClientCheckinPage() {
 
         {step === 2 ? (
           <DashboardCard
-            className="portal-form-step"
             title="Review and submit"
             subtitle={
               checkinLocked

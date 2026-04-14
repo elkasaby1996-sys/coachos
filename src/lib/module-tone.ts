@@ -104,6 +104,8 @@ const routeToneMatchers: Array<{ prefix: string; tone: ModuleTone }> = [
   { prefix: "/app/workout-run", tone: "checkins" },
   { prefix: "/app/workout-summary", tone: "checkins" },
   { prefix: "/app/workout-today", tone: "checkins" },
+  { prefix: "/app/find-coach", tone: "leads" },
+  { prefix: "/app/nutrition", tone: "checkins" },
   { prefix: "/app/progress", tone: "analytics" },
   { prefix: "/app/messages", tone: "coaching" },
   { prefix: "/app/checkin", tone: "checkins" },

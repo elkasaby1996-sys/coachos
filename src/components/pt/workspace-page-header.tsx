@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext } from "react";
+import { type ReactNode, useContext } from "react";
 import { useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import {
@@ -7,28 +7,7 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
-
-const WorkspaceHeaderModeContext = createContext<"default" | "shell">(
-  "default",
-);
-
-export function useWorkspaceHeaderMode() {
-  return useContext(WorkspaceHeaderModeContext);
-}
-
-export function WorkspaceHeaderModeProvider({
-  children,
-  value,
-}: {
-  children: ReactNode;
-  value: "default" | "shell";
-}) {
-  return (
-    <WorkspaceHeaderModeContext.Provider value={value}>
-      {children}
-    </WorkspaceHeaderModeContext.Provider>
-  );
-}
+import { WorkspaceHeaderModeContext } from "./workspace-header-mode";
 
 export function WorkspacePageHeader({
   eyebrow,

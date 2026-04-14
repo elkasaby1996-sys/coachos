@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBeforeUnload, useBlocker } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
 import {
@@ -53,22 +53,22 @@ export function useDirtyNavigationGuard(params: DirtyGuardParams) {
     }
   }, [blocker?.state]);
 
-  const closeAndReset = () => {
+  const closeAndReset = useCallback(() => {
     setDialogOpen(false);
     if (blocker?.state === "blocked") {
       blocker.reset();
     }
-  };
+  }, [blocker]);
 
-  const discardAndContinue = () => {
+  const discardAndContinue = useCallback(() => {
     params.onDiscard?.();
     setDialogOpen(false);
     if (blocker?.state === "blocked") {
       blocker.proceed();
     }
-  };
+  }, [blocker, params]);
 
-  const saveAndContinue = async () => {
+  const saveAndContinue = useCallback(async () => {
     if (!params.onSave) {
       if (blocker?.state === "blocked") {
         blocker.proceed();
@@ -88,7 +88,7 @@ export function useDirtyNavigationGuard(params: DirtyGuardParams) {
     } finally {
       setSaveAndLeaveLoading(false);
     }
-  };
+  }, [blocker, params]);
 
   const guardDialog = useMemo(
     () => (

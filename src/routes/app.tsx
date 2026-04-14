@@ -16,14 +16,16 @@ import {
   ClientLayout,
   ClientMedicalPage,
   ClientMessagesPage,
+  ClientNutritionCreatePlanPage,
+  ClientNutritionPage,
   ClientNutritionDayPage,
   ClientOnboardingPage,
-  ClientProfilePage,
+  ClientSettingsPage,
   ClientProgressPage,
   ClientWorkoutDetailPage,
   ClientWorkoutRunPage,
   ClientWorkoutSummaryPage,
-  ClientWorkoutTodayPage,
+  ClientWorkoutsPage,
   ClientSignupPage,
   HealthPage,
   InvitePage,
@@ -737,7 +739,11 @@ export function App() {
         >
           <Route path="onboarding" element={<ClientOnboardingPage />} />
           <Route path="home" element={<ClientHomePage />} />
-          <Route path="workouts/today" element={<ClientWorkoutTodayPage />} />
+          <Route path="workouts" element={<ClientWorkoutsPage />} />
+          <Route
+            path="workouts/today"
+            element={<Navigate to="/app/workouts" replace />}
+          />
           <Route
             path="workouts/:assignedWorkoutId"
             element={<ClientWorkoutDetailPage />}
@@ -750,12 +756,26 @@ export function App() {
             path="workout-summary/:assignedWorkoutId"
             element={<ClientWorkoutSummaryPage />}
           />
+          <Route path="checkins" element={<ClientCheckinPage />} />
           <Route path="checkin" element={<ClientCheckinPage />} />
           <Route path="messages" element={<ClientMessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="profile" element={<ClientProfilePage />} />
+          <Route path="settings" element={<ClientSettingsPage />} />
+          <Route
+            path="profile"
+            element={<Navigate to="/app/settings?tab=profile" replace />}
+          />
           <Route path="habits" element={<ClientHabitsPage />} />
           <Route path="progress" element={<ClientProgressPage />} />
+          <Route path="nutrition" element={<ClientNutritionPage />} />
+          <Route
+            path="nutrition/new"
+            element={<ClientNutritionCreatePlanPage />}
+          />
+          <Route
+            path="find-coach"
+            element={<Navigate to="/app/home?module=find-coach" replace />}
+          />
           <Route path="medical" element={<ClientMedicalPage />} />
           <Route path="baseline" element={<ClientBaselinePage />} />
           <Route

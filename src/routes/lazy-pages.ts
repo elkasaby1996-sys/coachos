@@ -334,6 +334,11 @@ export const ClientWorkoutTodayPage = lazy(() =>
     default: m.ClientWorkoutTodayPage,
   })),
 );
+export const ClientWorkoutsPage = lazy(() =>
+  import("../pages/client/workouts").then((m) => ({
+    default: m.ClientWorkoutsPage,
+  })),
+);
 export const ClientWorkoutRunPage = lazy(() =>
   import("../pages/client/workout-run").then((m) => ({
     default: m.ClientWorkoutRunPage,
@@ -359,6 +364,11 @@ export const ClientProfilePage = lazy(() =>
     default: m.ClientProfilePage,
   })),
 );
+export const ClientSettingsPage = lazy(() =>
+  import("../pages/client/settings").then((m) => ({
+    default: m.ClientSettingsPage,
+  })),
+);
 export const ClientHabitsPage = lazy(() =>
   import("../pages/client/habits").then((m) => ({
     default: m.ClientHabitsPage,
@@ -382,6 +392,16 @@ export const ClientMedicalPage = lazy(() =>
 export const ClientNutritionDayPage = lazy(() =>
   import("../pages/client/nutrition-day").then((m) => ({
     default: m.ClientNutritionDayPage,
+  })),
+);
+export const ClientNutritionPage = lazy(() =>
+  import("../pages/client/nutrition").then((m) => ({
+    default: m.ClientNutritionPage,
+  })),
+);
+export const ClientNutritionCreatePlanPage = lazy(() =>
+  import("../pages/client/nutrition-create-plan").then((m) => ({
+    default: m.ClientNutritionCreatePlanPage,
   })),
 );
 export const ClientOnboardingPage = lazy(() =>

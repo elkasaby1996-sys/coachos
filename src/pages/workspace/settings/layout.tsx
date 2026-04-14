@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Navigate,
   Outlet,
-  useOutletContext,
   useParams,
 } from "react-router-dom";
 import {
@@ -14,28 +13,9 @@ import {
 import { useWorkspaceSettingsAccess } from "../../../features/settings/hooks/use-workspace-settings-access";
 import { workspaceSettingsTabs } from "../../../features/settings/lib/settings-route-mapping";
 import { supabase } from "../../../lib/supabase";
+import { type WorkspaceSettingsOutletContext } from "./outlet-context";
 
-type WorkspaceSettingsRow = {
-  id: string;
-  name: string | null;
-  logo_url: string | null;
-  owner_user_id: string | null;
-  default_checkin_template_id: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-};
-
-export type WorkspaceSettingsOutletContext = {
-  workspaceId: string;
-  canManage: boolean;
-  isOwner: boolean;
-  role: string | null;
-  workspace: WorkspaceSettingsRow | null;
-};
-
-export function useWorkspaceSettingsOutletContext() {
-  return useOutletContext<WorkspaceSettingsOutletContext>();
-}
+type WorkspaceSettingsRow = WorkspaceSettingsOutletContext["workspace"];
 
 export function WorkspaceSettingsLayoutPage() {
   const { workspaceId: routeWorkspaceId } = useParams<{

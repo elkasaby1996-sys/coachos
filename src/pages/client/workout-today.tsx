@@ -161,31 +161,6 @@ export function ClientWorkoutTodayPage() {
     },
   });
 
-  const startDefaultSession = useMutation({
-    mutationFn: async () => {
-      if (!clientId) throw new Error("Client not found.");
-      const { data, error } = await supabase
-        .from("assigned_workouts")
-        .insert({
-          client_id: clientId,
-          scheduled_date: todayKey,
-          status: "planned",
-          day_type: "workout",
-        })
-        .select("id")
-        .maybeSingle();
-      if (error || !data?.id)
-        throw error ?? new Error("Unable to start session.");
-      return data.id;
-    },
-    onSuccess: (assignedWorkoutId) => {
-      queryClient.invalidateQueries({
-        queryKey: ["assigned-workout-today", clientId, todayKey],
-      });
-      navigate(`/app/workout-run/${assignedWorkoutId}`);
-    },
-  });
-
   const refetchPage = () => {
     clientQuery.refetch();
     workoutQuery.refetch();
@@ -205,7 +180,7 @@ export function ClientWorkoutTodayPage() {
     assignedExercisesQuery.error ||
     templateExercisesQuery.error ||
     updateStatus.error ||
-    startDefaultSession.error;
+    null;
 
   const workout = workoutQuery.data ?? null;
   const workoutStatusLabel =
@@ -299,16 +274,11 @@ export function ClientWorkoutTodayPage() {
         <EmptyStateBlock
           icon={<Dumbbell className="h-5 w-5" />}
           title="No workout scheduled for today"
-          description="Your coach has not added a workout for today yet. You can check back later, message your coach, or start a fallback session now."
+          description="Your coach has not added a workout for today yet. You can check back later, message your coach, or create a personal workout."
           actions={
             <>
-              <Button
-                onClick={() => startDefaultSession.mutate()}
-                disabled={startDefaultSession.isPending || !clientId}
-              >
-                {startDefaultSession.isPending
-                  ? "Starting..."
-                  : "Start fallback workout"}
+              <Button onClick={() => navigate("/app/workouts")}>
+                Create workout
               </Button>
               <Button
                 variant="secondary"

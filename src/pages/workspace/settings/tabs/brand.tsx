@@ -14,7 +14,7 @@ import {
 import { useDirtyNavigationGuard } from "../../../../features/settings/hooks/use-dirty-navigation-guard";
 import { supabase } from "../../../../lib/supabase";
 import { getCharacterLimitState } from "../../../../lib/character-limits";
-import { useWorkspaceSettingsOutletContext } from "../layout";
+import { useWorkspaceSettingsOutletContext } from "../outlet-context";
 
 type BrandFormState = {
   logoUrl: string;
