@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import {
   Suspense,
   useCallback,
@@ -111,6 +111,10 @@ import {
 import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
+import {
+  buildBaselineMarkerSelection,
+  shouldShowPtBaselineMarkerAssignment,
+} from "../../lib/baseline-marker-assignments";
 import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { usePtMessageCompose } from "../../components/pt/pt-message-compose-context";
@@ -383,6 +387,8 @@ type ClientOperationalSummaryRow = {
 
 type BaselineEntry = {
   id: string;
+  status?: string | null;
+  created_at?: string | null;
   submitted_at: string | null;
   coach_notes: string | null;
 };
@@ -404,6 +410,17 @@ type BaselineMarkerRow = {
   value_number: number | null;
   value_text: string | null;
   template: { name: string | null; unit_label: string | null } | null;
+};
+
+type BaselineMarkerTemplateOption = {
+  id: string;
+  name: string | null;
+  unit_label: string | null;
+  value_type: "number" | "text" | null;
+};
+
+type BaselineMarkerAssignmentRow = {
+  template_id: string | null;
 };
 
 type BaselinePhotoRow = {
@@ -671,7 +688,7 @@ export function PtClientDetailPage() {
   const isCheckinsTab = active === "checkins";
   const isNotesTab = active === "notes";
   const isBaselineTab = active === "baseline";
-  const needsOnboardingData = isOverviewTab || isOnboardingTab;
+  const needsOnboardingData = isOverviewTab || isOnboardingTab || isBaselineTab;
   const needsWorkoutPlanningData = isOverviewTab || isWorkoutTab;
   const needsBaselineData =
     isOverviewTab || isOnboardingTab || isBaselineTab || isProgressTab;
@@ -737,6 +754,15 @@ export function PtClientDetailPage() {
   const [baselineNotesMessage, setBaselineNotesMessage] = useState<
     string | null
   >(null);
+  const [baselineAssignStatus, setBaselineAssignStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
+  const [baselineAssignMessage, setBaselineAssignMessage] = useState<
+    string | null
+  >(null);
+  const [selectedBaselineMarkerIds, setSelectedBaselineMarkerIds] = useState<
+    string[]
+  >([]);
   const [onboardingReviewNotes, setOnboardingReviewNotes] = useState("");
   const [onboardingReviewStatus, setOnboardingReviewStatus] = useState<
     "idle" | "saving" | "error"
@@ -932,11 +958,17 @@ export function PtClientDetailPage() {
           "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
         )
         .eq("id", clientId ?? "")
-        .eq("workspace_id", workspaceQuery.data ?? "")
         .maybeSingle();
       if (error) throw error;
-      if (!data) throw new Error("Client not found in this workspace.");
-      return data;
+      if (!data) return null;
+      if (
+        data.workspace_id &&
+        workspaceQuery.data &&
+        data.workspace_id !== workspaceQuery.data
+      ) {
+        throw new Error("Client not found in this workspace.");
+      }
+      return data as PtClientProfile | null;
     },
   });
 
@@ -958,17 +990,26 @@ export function PtClientDetailPage() {
     },
   });
 
+  const shouldEnsureOnboardingRow = isOverviewTab || isOnboardingTab;
+
   const onboardingQuery = useQuery({
-    queryKey: ["pt-client-onboarding", clientId, workspaceQuery.data],
+    queryKey: [
+      "pt-client-onboarding",
+      clientId,
+      workspaceQuery.data,
+      shouldEnsureOnboardingRow ? "ensure" : "read",
+    ],
     enabled: !!clientId && !!workspaceQuery.data && needsOnboardingData,
     queryFn: async () => {
-      const { error: ensureError } = await supabase.rpc(
-        "ensure_workspace_client_onboarding",
-        {
-          p_client_id: clientId ?? "",
-        },
-      );
-      if (ensureError) throw ensureError;
+      if (shouldEnsureOnboardingRow) {
+        const { error: ensureError } = await supabase.rpc(
+          "ensure_workspace_client_onboarding",
+          {
+            p_client_id: clientId ?? "",
+          },
+        );
+        if (ensureError) throw ensureError;
+      }
 
       const { data, error } = await supabase
         .from("workspace_client_onboardings")
@@ -1475,6 +1516,65 @@ export function PtClientDetailPage() {
     },
   });
 
+  const baselineDraftQuery = useQuery({
+    queryKey: [
+      "pt-client-baseline-draft",
+      clientId,
+      onboardingQuery.data?.initial_baseline_entry_id ?? null,
+      active,
+    ],
+    enabled: !!clientId && needsBaselineData,
+    queryFn: async () => {
+      let query = supabase
+        .from("baseline_entries")
+        .select("id, status, created_at, submitted_at, coach_notes")
+        .eq("client_id", clientId ?? "")
+        .eq("status", "draft");
+
+      if (onboardingQuery.data?.initial_baseline_entry_id) {
+        query = query.eq("id", onboardingQuery.data.initial_baseline_entry_id);
+      } else {
+        query = query.order("created_at", { ascending: false }).limit(1);
+      }
+
+      const { data, error } = await query.maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as BaselineEntry | null;
+    },
+  });
+
+  const baselineMarkerTemplatesQuery = useQuery({
+    queryKey: ["pt-client-baseline-marker-templates", workspaceQuery.data],
+    enabled: !!workspaceQuery.data && needsBaselineData,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_marker_templates")
+        .select("id, name, unit_label, value_type")
+        .eq("workspace_id", workspaceQuery.data ?? "")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as BaselineMarkerTemplateOption[];
+    },
+  });
+
+  const baselineDraftMarkerAssignmentsQuery = useQuery({
+    queryKey: [
+      "pt-client-baseline-marker-assignments",
+      baselineDraftQuery.data?.id ?? null,
+    ],
+    enabled: !!baselineDraftQuery.data?.id && needsBaselineData,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_entry_marker_templates")
+        .select("template_id")
+        .eq("baseline_id", baselineDraftQuery.data?.id ?? "");
+      if (error) throw error;
+      return (data ?? []) as BaselineMarkerAssignmentRow[];
+    },
+  });
+
   const baselineId = baselineEntryQuery.data?.id ?? null;
 
   useEffect(() => {
@@ -1488,6 +1588,49 @@ export function PtClientDetailPage() {
   useEffect(() => {
     setOnboardingReviewNotes(onboardingQuery.data?.coach_review_notes ?? "");
   }, [onboardingQuery.data?.coach_review_notes]);
+
+  const baselineMarkerSelectionSeed = useMemo(() => {
+    const templateIds = (baselineMarkerTemplatesQuery.data ?? []).map(
+      (template) => template.id,
+    );
+    const assignedIds = (baselineDraftMarkerAssignmentsQuery.data ?? [])
+      .map((row) => row.template_id)
+      .filter((value): value is string => Boolean(value));
+    return `${baselineDraftQuery.data?.id ?? "new"}|${templateIds.join(",")}|${assignedIds.join(",")}`;
+  }, [
+    baselineDraftMarkerAssignmentsQuery.data,
+    baselineDraftQuery.data?.id,
+    baselineMarkerTemplatesQuery.data,
+  ]);
+
+  const baselineMarkerSelectionSeedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (baselineMarkerTemplatesQuery.isLoading) return;
+    if (baselineDraftQuery.data && baselineDraftMarkerAssignmentsQuery.isLoading) {
+      return;
+    }
+    if (baselineMarkerSelectionSeedRef.current === baselineMarkerSelectionSeed) {
+      return;
+    }
+    baselineMarkerSelectionSeedRef.current = baselineMarkerSelectionSeed;
+
+    const nextSelection = buildBaselineMarkerSelection(
+      baselineMarkerTemplatesQuery.data ?? [],
+      (baselineDraftMarkerAssignmentsQuery.data ?? [])
+        .map((row) => row.template_id)
+        .filter((value): value is string => Boolean(value)),
+    );
+
+    setSelectedBaselineMarkerIds(nextSelection);
+  }, [
+    baselineDraftMarkerAssignmentsQuery.data,
+    baselineDraftMarkerAssignmentsQuery.isLoading,
+    baselineDraftQuery.data,
+    baselineMarkerSelectionSeed,
+    baselineMarkerTemplatesQuery.data,
+    baselineMarkerTemplatesQuery.isLoading,
+  ]);
 
   const baselineMetricsQuery = useQuery({
     queryKey: ["pt-client-baseline-metrics", baselineId],
@@ -3517,6 +3660,102 @@ export function PtClientDetailPage() {
     });
   };
 
+  const handleAssignBaseline = async () => {
+    if (!clientId || !workspaceQuery.data) {
+      const message = "Client not found in this workspace.";
+      setBaselineAssignStatus("error");
+      setBaselineAssignMessage(message);
+      setToastVariant("error");
+      setToastMessage(message);
+      return;
+    }
+
+    const availableMarkerTemplates = baselineMarkerTemplatesQuery.data ?? [];
+    if (
+      availableMarkerTemplates.length > 0 &&
+      selectedBaselineMarkerIds.length === 0
+    ) {
+      const message =
+        "Choose at least one performance marker before assigning the initial assessment.";
+      setBaselineAssignStatus("error");
+      setBaselineAssignMessage(message);
+      setToastVariant("error");
+      setToastMessage(message);
+      return;
+    }
+
+    setBaselineAssignStatus("saving");
+    setBaselineAssignMessage(null);
+    const { data: assignmentResult, error: assignmentError } = await supabase.rpc(
+      "pt_assign_baseline_markers",
+      {
+        p_client_id: clientId,
+        p_template_ids: selectedBaselineMarkerIds,
+        p_workspace_id: workspaceQuery.data,
+      },
+    );
+
+    if (assignmentError) {
+      const message = getErrorMessage(assignmentError);
+      setBaselineAssignStatus("error");
+      setBaselineAssignMessage(message);
+      setToastVariant("error");
+      setToastMessage(message);
+      return;
+    }
+
+    const assignmentRow = Array.isArray(assignmentResult)
+      ? assignmentResult[0]
+      : assignmentResult;
+    const assignedBaselineId =
+      assignmentRow && typeof assignmentRow === "object"
+        ? ((assignmentRow as { baseline_id?: string | null }).baseline_id ??
+          null)
+        : null;
+
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-baseline-draft", clientId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-baseline-entry", clientId],
+    });
+    if (assignedBaselineId) {
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-client-baseline-marker-assignments", assignedBaselineId],
+      });
+    } else {
+      await queryClient.invalidateQueries({
+        queryKey: ["pt-client-baseline-marker-assignments"],
+      });
+    }
+    await invalidateOnboardingViews();
+
+    setBaselineAssignStatus("idle");
+    setBaselineAssignMessage(
+      `${selectedBaselineMarkerIds.length} performance marker${selectedBaselineMarkerIds.length === 1 ? "" : "s"} assigned.`,
+    );
+    setToastVariant("success");
+    setToastMessage("Initial assessment assigned");
+  };
+
+  const handleToggleBaselineMarker = useCallback((templateId: string) => {
+    setSelectedBaselineMarkerIds((current) =>
+      current.includes(templateId)
+        ? current.filter((value) => value !== templateId)
+        : [...current, templateId],
+    );
+  }, []);
+
+  const handleSelectAllBaselineMarkers = useCallback(() => {
+    setSelectedBaselineMarkerIds(
+      (baselineMarkerTemplatesQuery.data ?? []).map((template) => template.id),
+    );
+  }, [baselineMarkerTemplatesQuery.data]);
+
+  const handleClearBaselineMarkers = useCallback(() => {
+    setSelectedBaselineMarkerIds([]);
+  }, []);
+
   const handleSaveOnboardingReviewNotes = async () => {
     if (!onboardingSnapshot?.id) return;
     setOnboardingReviewStatus("saving");
@@ -3906,8 +4145,8 @@ export function PtClientDetailPage() {
                         clientSnapshot?.timezone,
                       ]
                         .filter(Boolean)
-                        .join(" • ") || "Client coaching view"}
-                      {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
+                        .join(" â€¢ ") || "Client coaching view"}
+                      {joinedLabel ? ` â€¢ Joined ${joinedLabel}` : ""}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       <span className="ops-chip text-muted-foreground">
@@ -4579,6 +4818,9 @@ export function PtClientDetailPage() {
                     hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
                     habitsToday={habitsToday}
                     habitStreak={habitStreak}
+                    previousHabitStreak={previousHabitStreak}
+                    previousAdherenceStat={previousAdherenceStat}
+                    habitTrends={habitTrends}
                   />
                 </TabsContent>
                 <TabsContent value="progress">
@@ -4770,15 +5012,30 @@ export function PtClientDetailPage() {
                 <TabsContent value="baseline">
                   <PtClientBaselineTab
                     baselineEntryQuery={baselineEntryQuery}
+                    baselineDraftQuery={baselineDraftQuery}
+                    linkedOnboardingBaselineId={
+                      onboardingQuery.data?.initial_baseline_entry_id ?? null
+                    }
+                    baselineMarkerTemplatesQuery={baselineMarkerTemplatesQuery}
+                    baselineDraftMarkerAssignmentsQuery={
+                      baselineDraftMarkerAssignmentsQuery
+                    }
                     baselineMetricsQuery={baselineMetricsQuery}
                     baselineMarkersQuery={baselineMarkersQuery}
                     baselinePhotosQuery={baselinePhotosQuery}
                     baselineNotes={baselineNotes}
                     baselineNotesStatus={baselineNotesStatus}
                     baselineNotesMessage={baselineNotesMessage}
+                    baselineAssignStatus={baselineAssignStatus}
+                    baselineAssignMessage={baselineAssignMessage}
                     baselinePhotoMap={baselinePhotoMap}
+                    selectedBaselineMarkerIds={selectedBaselineMarkerIds}
                     onNotesChange={setBaselineNotes}
                     onNotesSave={handleBaselineNotesSave}
+                    onAssignBaseline={handleAssignBaseline}
+                    onToggleBaselineMarker={handleToggleBaselineMarker}
+                    onSelectAllBaselineMarkers={handleSelectAllBaselineMarkers}
+                    onClearBaselineMarkers={handleClearBaselineMarkers}
                   />
                 </TabsContent>
               </Tabs>
@@ -6993,26 +7250,50 @@ function PtClientScheduleCard({
 
 function PtClientBaselineTab({
   baselineEntryQuery,
+  baselineDraftQuery,
+  linkedOnboardingBaselineId,
+  baselineMarkerTemplatesQuery,
+  baselineDraftMarkerAssignmentsQuery,
   baselineMetricsQuery,
   baselineMarkersQuery,
   baselinePhotosQuery,
   baselineNotes,
   baselineNotesStatus,
   baselineNotesMessage,
+  baselineAssignStatus,
+  baselineAssignMessage,
   baselinePhotoMap,
+  selectedBaselineMarkerIds,
   onNotesChange,
   onNotesSave,
+  onAssignBaseline,
+  onToggleBaselineMarker,
+  onSelectAllBaselineMarkers,
+  onClearBaselineMarkers,
 }: {
   baselineEntryQuery: QueryResult<BaselineEntry | null>;
+  baselineDraftQuery: QueryResult<BaselineEntry | null>;
+  linkedOnboardingBaselineId: string | null;
+  baselineMarkerTemplatesQuery: QueryResult<BaselineMarkerTemplateOption[]>;
+  baselineDraftMarkerAssignmentsQuery: QueryResult<
+    BaselineMarkerAssignmentRow[]
+  >;
   baselineMetricsQuery: QueryResult<BaselineMetrics | null>;
   baselineMarkersQuery: QueryResult<BaselineMarkerRow[]>;
   baselinePhotosQuery: QueryResult<BaselinePhotoRow[]>;
   baselineNotes: string;
   baselineNotesStatus: "idle" | "saving" | "error";
   baselineNotesMessage: string | null;
+  baselineAssignStatus: "idle" | "saving" | "error";
+  baselineAssignMessage: string | null;
   baselinePhotoMap: Record<(typeof baselinePhotoTypes)[number], string | null>;
+  selectedBaselineMarkerIds: string[];
   onNotesChange: (value: string) => void;
   onNotesSave: () => void;
+  onAssignBaseline: () => void;
+  onToggleBaselineMarker: (templateId: string) => void;
+  onSelectAllBaselineMarkers: () => void;
+  onClearBaselineMarkers: () => void;
 }) {
   const metricCards = [
     {
@@ -7073,6 +7354,113 @@ function PtClientBaselineTab({
   const photoCount = baselinePhotoTypes.filter((type) =>
     Boolean(baselinePhotoMap[type]),
   ).length;
+  const markerTemplateOptions = baselineMarkerTemplatesQuery.data ?? [];
+  const assignButtonLabel = baselineDraftQuery.data
+    ? "Update baseline assignment"
+    : "Assign baseline";
+  const showMarkerAssignmentPanel = shouldShowPtBaselineMarkerAssignment({
+    onboardingBaselineId: linkedOnboardingBaselineId,
+    submittedBaselineId: baselineEntryQuery.data?.id ?? null,
+    submittedAt: baselineEntryQuery.data?.submitted_at ?? null,
+  });
+
+  const markerSelectionPanel = (
+    <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-foreground">
+          Performance markers to assign
+        </p>
+        {markerTemplateOptions.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button size="sm" variant="ghost" onClick={onClearBaselineMarkers}>
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={onSelectAllBaselineMarkers}
+            >
+              Select all
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      {markerTemplateOptions.length > 0 ? (
+        <>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {markerTemplateOptions.map((template) => {
+              const isSelected = selectedBaselineMarkerIds.includes(
+                template.id,
+              );
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => onToggleBaselineMarker(template.id)}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                    isSelected
+                      ? "border-primary/50 bg-primary/10 text-foreground"
+                      : "border-border/50 bg-muted/15 text-muted-foreground hover:border-border/80 hover:bg-muted/25",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border/70 bg-background/70",
+                    )}
+                  >
+                    {isSelected ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : null}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium leading-none text-foreground">
+                      {template.name ?? "Marker"}
+                    </span>
+                    <span className="mt-1 block text-[11px] text-muted-foreground">
+                      {template.value_type === "number"
+                        ? "Number" +
+                          (template.unit_label
+                            ? ` · ${template.unit_label}`
+                            : "")
+                        : "Text response"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {baselineAssignStatus === "error" && baselineAssignMessage ? (
+            <p className="mt-3 text-xs text-destructive">
+              {baselineAssignMessage}
+            </p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={baselineAssignStatus === "saving"}
+              onClick={onAssignBaseline}
+            >
+              {baselineAssignStatus === "saving"
+                ? "Saving..."
+                : assignButtonLabel}
+            </Button>
+          </div>
+        </>
+      ) : (
+          <EmptyState
+            title="No active marker templates"
+            description="Add workspace baseline markers in PT settings first, then come back here to assign them."
+            centered={false}
+          />
+      )}
+    </div>
+  );
 
   return (
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
@@ -7084,6 +7472,11 @@ function PtClientBaselineTab({
       </CardHeader>
       <CardContent className="space-y-3">
         {baselineEntryQuery.isLoading ||
+        baselineDraftQuery.isLoading ||
+        baselineMarkerTemplatesQuery.isLoading ||
+        (baselineDraftQuery.data
+          ? baselineDraftMarkerAssignmentsQuery.isLoading
+          : false) ||
         baselineMetricsQuery.isLoading ||
         baselineMarkersQuery.isLoading ||
         baselinePhotosQuery.isLoading ? (
@@ -7200,6 +7593,7 @@ function PtClientBaselineTab({
               </div>
 
               <div className="space-y-4">
+                {showMarkerAssignmentPanel ? markerSelectionPanel : null}
                 <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
@@ -7286,10 +7680,7 @@ function PtClientBaselineTab({
             </div>
           </div>
         ) : (
-          <EmptyState
-            title="No baseline submitted yet"
-            description="This client has not completed the initial assessment. Measurements, markers, and progress photos will appear here after the first baseline submission."
-          />
+          showMarkerAssignmentPanel ? markerSelectionPanel : null
         )}
       </CardContent>
     </Card>
@@ -7514,11 +7905,17 @@ function PtClientHabitsTab({
   hasAnyHabits,
   habitsToday,
   habitStreak,
+  previousHabitStreak,
+  previousAdherenceStat,
+  habitTrends,
 }: {
   habitsQuery: QueryResult<HabitLog[]>;
   hasAnyHabits: boolean;
   habitsToday: string;
   habitStreak: number;
+  previousHabitStreak: number;
+  previousAdherenceStat: number | null;
+  habitTrends: HabitTrends;
 }) {
   const [selectedHabitMetric, setSelectedHabitMetric] = useState<{
     metric: HabitMetricKey;
@@ -9042,3 +9439,5 @@ function PtClientLogsTab({
     </Card>
   );
 }
+
+

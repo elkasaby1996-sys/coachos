@@ -218,9 +218,18 @@ async function ensureFreshSession(
       10_000,
       "Session refresh timed out (10s).",
     );
-    if (error || !data.session) return session;
+    if (error) {
+      if (isInvalidRefreshTokenError(error)) {
+        throw error;
+      }
+      return session;
+    }
+    if (!data.session) return session;
     return data.session;
-  } catch {
+  } catch (error) {
+    if (isInvalidRefreshTokenError(error)) {
+      throw error;
+    }
     return session;
   }
 }
@@ -235,12 +244,37 @@ function isInvalidRefreshTokenError(error: unknown) {
   );
 }
 
+function clearSupabaseStorageArtifacts() {
+  if (typeof window === "undefined") return;
+
+  const clearKeys = (storage: Storage) => {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (!key) continue;
+      if (
+        key.startsWith("sb-") ||
+        key.startsWith("supabase.auth.") ||
+        key.startsWith(BOOTSTRAP_CACHE_PREFIX) ||
+        key === "coachos_workspace_id"
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => storage.removeItem(key));
+  };
+
+  clearKeys(window.localStorage);
+  clearKeys(window.sessionStorage);
+}
+
 async function clearBrokenLocalSession() {
   try {
     await supabase.auth.signOut({ scope: "local" });
   } catch {
     // Ignore cleanup failures; the important part is clearing app state.
   }
+  clearSupabaseStorageArtifacts();
 }
 
 function getCurrentPathname() {

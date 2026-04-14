@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -21,6 +21,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
+import { resolveAssignedBaselineMarkerTemplates } from "../../lib/baseline-marker-assignments";
 
 type BaselineEntry = {
   id: string;
@@ -67,6 +68,17 @@ type MarkerValueRow = {
   template_id: string | null;
   value_number: number | null;
   value_text: string | null;
+};
+
+type BaselineMarkerAssignmentRow = {
+  template_id: string | null;
+};
+
+type ClientBaselineOnboardingRow = {
+  id: string;
+  status: string | null;
+  initial_baseline_entry_id: string | null;
+  started_at: string | null;
 };
 
 type BaselinePhotoRow = {
@@ -202,21 +214,55 @@ export function ClientBaselinePage() {
   const onboardingMode = searchParams.get("onboarding") === "1";
   const returnTo = searchParams.get("returnTo");
 
+  const onboardingBaselineQuery = useQuery({
+    queryKey: ["client-baseline-onboarding", clientId, workspaceId],
+    enabled: !!clientId && !!workspaceId,
+    queryFn: async () => {
+      const { error: ensureError } = await supabase.rpc(
+        "ensure_workspace_client_onboarding",
+        { p_client_id: clientId ?? "" },
+      );
+      if (ensureError) throw ensureError;
+
+      const { data, error } = await supabase
+        .from("workspace_client_onboardings")
+        .select("id, status, initial_baseline_entry_id, started_at")
+        .eq("client_id", clientId ?? "")
+        .eq("workspace_id", workspaceId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as ClientBaselineOnboardingRow | null;
+    },
+  });
+
   useEffect(() => {
     if (!clientId || !workspaceId || initializationRef.current) return;
+    if (onboardingMode && onboardingBaselineQuery.isLoading) return;
     initializationRef.current = true;
 
     const loadBaselineEntry = async () => {
       setBaselineLoading(true);
       setBaselineError(null);
 
-      const { data, error } = await supabase
+      const linkedBaselineId =
+        onboardingMode
+          ? (onboardingBaselineQuery.data?.initial_baseline_entry_id ?? null)
+          : null;
+
+      let baselineQuery = supabase
         .from("baseline_entries")
         .select("id, status, created_at, submitted_at, coach_notes")
-        .eq("client_id", clientId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq("client_id", clientId);
+
+      if (linkedBaselineId) {
+        baselineQuery = baselineQuery.eq("id", linkedBaselineId);
+      } else {
+        baselineQuery = baselineQuery
+          .order("created_at", { ascending: false })
+          .limit(1);
+      }
+
+      const { data, error } = await baselineQuery.maybeSingle();
 
       if (error) {
         setBaselineError(formatSupabaseError(error));
@@ -240,6 +286,33 @@ export function ClientBaselinePage() {
           setBaselineError(formatSupabaseError(insertError));
           setBaselineLoading(false);
           return;
+        }
+        if (onboardingMode && onboardingBaselineQuery.data?.id && inserted?.id) {
+          const onboardingUpdate: {
+            initial_baseline_entry_id: string;
+            started_at?: string;
+            status?: string;
+          } = {
+            initial_baseline_entry_id: inserted.id,
+          };
+          if (!onboardingBaselineQuery.data.started_at) {
+            onboardingUpdate.started_at = new Date().toISOString();
+          }
+          if (onboardingBaselineQuery.data.status === "invited") {
+            onboardingUpdate.status = "in_progress";
+          }
+          const { error: linkError } = await supabase
+            .from("workspace_client_onboardings")
+            .update(onboardingUpdate)
+            .eq("id", onboardingBaselineQuery.data.id);
+          if (linkError) {
+            setBaselineError(formatSupabaseError(linkError));
+            setBaselineLoading(false);
+            return;
+          }
+          await queryClient.invalidateQueries({
+            queryKey: ["client-baseline-onboarding", clientId, workspaceId],
+          });
         }
         setBaselineEntry(inserted ?? null);
         setBaselineLoading(false);
@@ -273,7 +346,17 @@ export function ClientBaselinePage() {
     };
 
     loadBaselineEntry();
-  }, [clientId, onboardingMode, workspaceId]);
+  }, [
+    clientId,
+    onboardingBaselineQuery.data?.id,
+    onboardingBaselineQuery.data?.initial_baseline_entry_id,
+    onboardingBaselineQuery.data?.started_at,
+    onboardingBaselineQuery.data?.status,
+    onboardingBaselineQuery.isLoading,
+    onboardingMode,
+    queryClient,
+    workspaceId,
+  ]);
 
   const baselineId = baselineEntry?.id ?? null;
 
@@ -334,6 +417,31 @@ export function ClientBaselinePage() {
     };
   }, [clientWorkspaceId, queryClient]);
 
+  useEffect(() => {
+    if (!baselineId) return;
+    const channel = supabase
+      .channel(`baseline-marker-assignment-${baselineId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "baseline_entry_marker_templates",
+          filter: `baseline_id=eq.${baselineId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["baseline-marker-assignments", baselineId],
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [baselineId, queryClient]);
+
   const markerValuesQuery = useQuery({
     queryKey: ["baseline-marker-values", baselineId],
     enabled: !!baselineId,
@@ -344,6 +452,19 @@ export function ClientBaselinePage() {
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as MarkerValueRow[];
+    },
+  });
+
+  const markerAssignmentsQuery = useQuery({
+    queryKey: ["baseline-marker-assignments", baselineId],
+    enabled: !!baselineId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_entry_marker_templates")
+        .select("template_id")
+        .eq("baseline_id", baselineId ?? "");
+      if (error) throw error;
+      return (data ?? []) as BaselineMarkerAssignmentRow[];
     },
   });
 
@@ -391,17 +512,34 @@ export function ClientBaselinePage() {
     showImperial,
   ]);
 
+  const assignedTemplateIds = useMemo(
+    () =>
+      (markerAssignmentsQuery.data ?? [])
+        .map((row) => row.template_id)
+        .filter((value): value is string => Boolean(value)),
+    [markerAssignmentsQuery.data],
+  );
+  const templates = useMemo(
+    () => templatesQuery.data ?? [],
+    [templatesQuery.data],
+  );
+  const visibleTemplates = useMemo(
+    () =>
+      resolveAssignedBaselineMarkerTemplates(templates, assignedTemplateIds),
+    [templates, assignedTemplateIds],
+  );
+
   useEffect(() => {
     if (
       markerInitRef.current ||
       templatesQuery.isLoading ||
+      markerAssignmentsQuery.isLoading ||
       markerValuesQuery.isLoading
     )
       return;
-    const templates = templatesQuery.data ?? [];
     const values = markerValuesQuery.data ?? [];
     const initial: Record<string, string> = {};
-    templates.forEach((template) => {
+    visibleTemplates.forEach((template) => {
       const row = values.find((item) => item.template_id === template.id);
       if (template.value_type === "number") {
         initial[template.id] =
@@ -416,7 +554,8 @@ export function ClientBaselinePage() {
     markerInitRef.current = true;
   }, [
     templatesQuery.isLoading,
-    templatesQuery.data,
+    markerAssignmentsQuery.isLoading,
+    visibleTemplates,
     markerValuesQuery.isLoading,
     markerValuesQuery.data,
   ]);
@@ -434,11 +573,9 @@ export function ClientBaselinePage() {
   }, [photosQuery.isLoading, photosQuery.data, photoMap]);
 
   const metricsRequiredFilled = metricsState.weight.trim().length > 0;
-
-  const templates = templatesQuery.data ?? [];
   const markersComplete =
-    templates.length === 0 ||
-    templates.every((template) => {
+    visibleTemplates.length === 0 ||
+    visibleTemplates.every((template) => {
       const value = markerValues[template.id] ?? "";
       if (template.value_type === "number") {
         return value.trim().length > 0 && !Number.isNaN(Number(value));
@@ -507,7 +644,7 @@ export function ClientBaselinePage() {
 
   const handleMarkersSave = async () => {
     if (!baselineId) return;
-    if (templates.length === 0) {
+    if (visibleTemplates.length === 0) {
       setActiveStep(2);
       return;
     }
@@ -516,7 +653,7 @@ export function ClientBaselinePage() {
     setActionError(null);
     setLastSupabaseError(null);
 
-    const payload = templates.map((template) => {
+    const payload = visibleTemplates.map((template) => {
       const rawValue = markerValues[template.id];
       return {
         baseline_id: baselineId,
@@ -722,6 +859,7 @@ export function ClientBaselinePage() {
     clientQuery.error,
     metricsQuery.error,
     templatesQuery.error,
+    markerAssignmentsQuery.error,
     markerValuesQuery.error,
     photosQuery.error,
     baselineError ? new Error(baselineError) : null,
@@ -1109,19 +1247,19 @@ export function ClientBaselinePage() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {templatesQuery.isLoading ? (
+              {templatesQuery.isLoading || markerAssignmentsQuery.isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-8 w-full" />
                   <Skeleton className="h-8 w-full" />
                 </div>
-              ) : templates.length === 0 ? (
+              ) : visibleTemplates.length === 0 ? (
                 <EmptyStateBlock
                   title="Performance markers are not ready yet"
-                  description="Your coach has not added baseline markers for this phase. You can still move on to photos and return later if needed."
+                  description="Your coach has not assigned performance markers for this assessment yet. You can still move on to photos and return later if needed."
                 />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {templates.map((template) => (
+                  {visibleTemplates.map((template) => (
                     <div key={template.id} className="space-y-2">
                       <label className="text-xs font-semibold text-muted-foreground">
                         {template.name ?? "Marker"}

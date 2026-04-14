@@ -308,31 +308,42 @@ export function ClientLayout() {
                 RM
               </span>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-[18px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.52))] text-sm font-semibold text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] xl:hidden">
-              C
-            </span>
-          </div>
-          <nav className="flex flex-1 flex-col gap-2">
-            {visibleNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                aria-label={item.label}
-                title={item.label}
-                className={({ isActive }) =>
-                  cn(
-                    "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
-                    isActive && "text-foreground",
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive ? (
-                      <motion.span
-                        layoutId={
-                          reduceMotion ? undefined : "client-nav-active-pill"
-                        }
+            <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-6 pr-1">
+              {visibleNavItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  aria-label={item.label}
+                  title={item.label}
+                  className={({ isActive }) =>
+                    cn(
+                      "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground md:justify-start",
+                      isActive && "text-foreground",
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive ? (
+                        <motion.span
+                          layoutId={
+                            reduceMotion ? undefined : "client-nav-active-pill"
+                          }
+                          className={cn(
+                            "absolute inset-0 rounded-[20px] border",
+                            getModuleToneClasses(item.module).navActive,
+                          )}
+                          style={getModuleToneStyle(item.module)}
+                          transition={{
+                            type: "spring",
+                            stiffness: 250,
+                            damping: 28,
+                            mass: 0.9,
+                          }}
+                        />
+                      ) : null}
+                      <span
+                        style={getModuleToneStyle(item.module)}
                         className={cn(
                           "relative z-10 flex h-9 w-9 items-center justify-center transition-colors",
                           isActive

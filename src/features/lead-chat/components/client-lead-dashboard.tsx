@@ -24,7 +24,11 @@ import {
   useMyLeadChatThreads,
 } from "../lib/lead-chat";
 
-export function ClientLeadDashboard() {
+export function ClientLeadDashboard({
+  embedded = false,
+}: {
+  embedded?: boolean;
+} = {}) {
   const queryClient = useQueryClient();
   const threadsQuery = useMyLeadChatThreads();
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -166,10 +170,12 @@ export function ClientLeadDashboard() {
   return (
     <div className="space-y-6">
       <div data-testid="client-lead-dashboard" />
-      <PortalPageHeader
-        title="Your coaching dashboard"
-        subtitle="Track and reply to lead conversations before workspace assignment."
-      />
+      {!embedded ? (
+        <PortalPageHeader
+          title="Your coaching dashboard"
+          subtitle="Track and reply to lead conversations before workspace assignment."
+        />
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <SurfaceCard>
