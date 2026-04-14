@@ -200,15 +200,15 @@ export function ClientLayout() {
   );
   const topStatusText = onboardingSummary
     ? preWorkspaceMode
-      ? "Lead and discovery home"
+      ? "Lead dashboard active"
       : onboardingSummary.onboarding.status === "completed"
-      ? "Coach setup complete"
+      ? "Workspace setup complete"
       : onboardingSummary.awaitingReview
         ? "Onboarding with coach"
         : `${onboardingSummary.completionPercent}% onboarding complete`
     : preWorkspaceMode
-      ? "Lead and discovery home"
-      : "Private coaching app";
+      ? "Lead dashboard active"
+      : "Private coaching workspace";
   const shouldShowTopStatusText = Boolean(
     onboardingSummary
       ? onboardingSummary.onboarding.status !== "completed"
@@ -221,24 +221,19 @@ export function ClientLayout() {
   const profileInitial = (profileDisplayName.charAt(0) || "C").toUpperCase();
   const isLightMode = resolvedTheme === "light";
   const reduceMotion = useReducedMotion();
-  const visibleNavItems = useMemo(() => navItems, []);
+  const visibleNavItems = useMemo(
+    () =>
+      preWorkspaceMode
+        ? navItems.filter((item) => item.to === "/app/home")
+        : navItems,
+    [preWorkspaceMode],
+  );
 
   useEffect(() => {
-    const host = footerHostRef.current;
-    if (!host) return;
-    const resolveFooterHeight = () => {
-      const next = Math.max(0, Math.ceil(host.getBoundingClientRect().height));
-      setFooterHeight(next);
-    };
-    resolveFooterHeight();
-    const observer = new ResizeObserver(resolveFooterHeight);
-    observer.observe(host);
-    window.addEventListener("resize", resolveFooterHeight);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", resolveFooterHeight);
-    };
-  }, []);
+    if (!loading && preWorkspaceMode && location.pathname !== "/app/home") {
+      navigate("/app/home", { replace: true });
+    }
+  }, [loading, location.pathname, navigate, preWorkspaceMode]);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -313,42 +308,31 @@ export function ClientLayout() {
                 RM
               </span>
             </div>
-            <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-6 pr-1">
-              {visibleNavItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  aria-label={item.label}
-                  title={item.label}
-                  className={({ isActive }) =>
-                    cn(
-                      "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground md:justify-start",
-                      isActive && "text-foreground",
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive ? (
-                        <motion.span
-                          layoutId={
-                            reduceMotion ? undefined : "client-nav-active-pill"
-                          }
-                          className={cn(
-                            "absolute inset-0 rounded-[20px] border",
-                            getModuleToneClasses(item.module).navActive,
-                          )}
-                          style={getModuleToneStyle(item.module)}
-                          transition={{
-                            type: "spring",
-                            stiffness: 250,
-                            damping: 28,
-                            mass: 0.9,
-                          }}
-                        />
-                      ) : null}
-                      <span
-                        style={getModuleToneStyle(item.module)}
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-[18px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.52))] text-sm font-semibold text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] xl:hidden">
+              C
+            </span>
+          </div>
+          <nav className="flex flex-1 flex-col gap-2">
+            {visibleNavItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                aria-label={item.label}
+                title={item.label}
+                className={({ isActive }) =>
+                  cn(
+                    "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground xl:justify-start",
+                    isActive && "text-foreground",
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive ? (
+                      <motion.span
+                        layoutId={
+                          reduceMotion ? undefined : "client-nav-active-pill"
+                        }
                         className={cn(
                           "relative z-10 flex h-9 w-9 items-center justify-center transition-colors",
                           isActive
@@ -597,16 +581,7 @@ export function ClientLayout() {
             <AppFooter className="z-40 md:relative md:-ml-[248px] md:w-[calc(100%+248px)]" />
           </div>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
-            <PageContainer
-              className={cn(
-                "grid gap-1",
-                visibleNavItems.length > 7
-                  ? "grid-cols-8"
-                  : visibleNavItems.length > 6
-                    ? "grid-cols-7"
-                    : "grid-cols-6",
-              )}
-            >
+            <PageContainer size="portal" className="grid grid-cols-6 gap-1">
               {visibleNavItems.map((item) => (
                 <NavLink
                   key={item.to}

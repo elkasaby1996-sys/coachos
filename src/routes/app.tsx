@@ -167,13 +167,7 @@ function getProtectedRedirect(params: {
       return getClientAccountOnboardingPath(params.pendingInviteToken);
     }
     if (!params.hasWorkspaceMembership) {
-      if (
-        params.allow.includes("client") &&
-        (params.pathname.startsWith("/app/home") ||
-          params.pathname.startsWith("/app/messages") ||
-          params.pathname.startsWith("/app/settings") ||
-          params.pathname.startsWith("/app/profile"))
-      ) {
+      if (params.allow.includes("client") && params.pathname.startsWith("/app/home")) {
         return null;
       }
       return "/app/home";

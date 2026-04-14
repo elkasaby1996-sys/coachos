@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Circle, Droplets, Dumbbell, Moon, Target } from "lucide-react";
@@ -36,24 +36,10 @@ import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak } from "../../lib/habits";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientLeadDashboard } from "../../features/lead-chat/components/client-lead-dashboard";
-import { useMyLeadChatThreads } from "../../features/lead-chat/lib/lead-chat";
 import {
   clearInviteJoinParams,
   deriveInviteJoinContext,
 } from "../../features/lead-chat/lib/invite-join-context";
-import {
-  buildClientInboxThreadParam,
-  dedupeLeadThreadSummaries,
-} from "../../features/lead-chat/lib/client-inbox";
-import {
-  buildSourceLabel,
-  buildWorkoutRunPath,
-  classifySourceKind,
-  resolveUnifiedClientHomeState,
-  shouldShowFindCoachSection,
-  sortWorkoutsByUrgency,
-  type WorkoutLike,
-} from "./home-unified";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -150,13 +136,7 @@ const getWorkoutTemplateInfo = (row: any) => {
   };
 };
 
-function ClientWorkspaceHomePage({
-  focusModule,
-  hasWorkspaceMembership,
-}: {
-  focusModule: string | null;
-  hasWorkspaceMembership: boolean;
-}) {
+function ClientWorkspaceHomePage() {
   const navigate = useNavigate();
   const { session } = useSessionAuth();
   const { activeClientId } = useBootstrapAuth();
@@ -1921,14 +1901,14 @@ export function ClientHomePage() {
   const clearInviteJoinSearchParams = () => {
     setSearchParams(clearInviteJoinParams(searchParams), { replace: true });
   };
-  const focusModule = searchParams.get("module");
 
   return (
     <>
-      <ClientWorkspaceHomePage
-        focusModule={focusModule}
-        hasWorkspaceMembership={hasWorkspaceMembership}
-      />
+      {hasWorkspaceMembership ? (
+        <ClientWorkspaceHomePage />
+      ) : (
+        <ClientLeadDashboard />
+      )}
 
       <Dialog
         open={isInviteModalOpen && inviteJoinContext.shouldShowModal}
@@ -1941,9 +1921,9 @@ export function ClientHomePage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Coach access activated</DialogTitle>
+            <DialogTitle>Workspace access activated</DialogTitle>
             <DialogDescription>
-              You are now connected to{" "}
+              You have been added to{" "}
               <span className="font-medium text-foreground">
                 {inviteJoinContext.workspaceName}
               </span>
@@ -1961,7 +1941,7 @@ export function ClientHomePage() {
                 clearInviteJoinSearchParams();
               }}
             >
-              Continue to home
+              Continue to dashboard
             </Button>
             <Button
               onClick={() => {
