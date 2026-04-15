@@ -128,29 +128,49 @@ export function getUserDisplayName(user: User | null | undefined) {
   const metadata = user.user_metadata ?? {};
   const candidates = [
     metadata.full_name,
+    metadata.display_name,
     metadata.name,
     metadata.user_name,
     user.email?.split("@")[0],
   ];
 
-  return (
-    candidates.find((value) => typeof value === "string" && value.trim()) ?? ""
-  );
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (!trimmed || isRoleLikeDisplayName(trimmed)) continue;
+    return trimmed;
+  }
+
+  return "";
 }
 
 function isRoleLikeDisplayName(value: string | null | undefined) {
-  const normalized = value?.trim().toLowerCase() ?? "";
-  if (!normalized) return false;
+  const raw = value?.trim().toLowerCase() ?? "";
+  if (!raw) return false;
+
+  const normalized = raw.replace(/[_-]+/g, " ");
+  const collapsed = normalized.replace(/\s+/g, " ").trim();
+
+  if (
+    raw.startsWith("pt_") ||
+    raw.startsWith("pt-") ||
+    /^pt[_\-\s]?(owner|coach|admin)$/.test(raw)
+  ) {
+    return true;
+  }
 
   return [
+    "pt",
     "pt owner",
     "pt coach",
+    "pt admin",
     "coach",
     "trainer",
     "trainer account",
     "coach account",
     "owner",
-  ].includes(normalized);
+    "client",
+  ].includes(collapsed);
 }
 
 export function getPreferredPersonDisplayName(

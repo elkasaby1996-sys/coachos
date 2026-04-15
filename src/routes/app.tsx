@@ -114,13 +114,17 @@ function FullPageLoader() {
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { authLoading, session } = useSessionAuth();
   const location = useLocation();
+  const loginRedirectState = useMemo(
+    () => ({ from: location.pathname }),
+    [location.pathname],
+  );
 
   return (
     <BootstrapGate>
       {authLoading ? (
         <FullPageLoader />
       ) : !session ? (
-        <Navigate to="/login" replace state={{ from: location.pathname }} />
+        <Navigate to="/login" replace state={loginRedirectState} />
       ) : (
         <>{children}</>
       )}
