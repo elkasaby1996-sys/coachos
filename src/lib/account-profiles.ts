@@ -138,6 +138,33 @@ export function getUserDisplayName(user: User | null | undefined) {
   );
 }
 
+function isRoleLikeDisplayName(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (!normalized) return false;
+
+  return [
+    "pt owner",
+    "pt coach",
+    "coach",
+    "trainer",
+    "trainer account",
+    "coach account",
+    "owner",
+  ].includes(normalized);
+}
+
+export function getPreferredPersonDisplayName(
+  ...candidates: Array<string | null | undefined>
+) {
+  for (const candidate of candidates) {
+    const value = candidate?.trim() ?? "";
+    if (!value || isRoleLikeDisplayName(value)) continue;
+    return value;
+  }
+
+  return "";
+}
+
 export function getUserAvatarUrl(user: User | null | undefined) {
   if (!user) return "";
   const metadata = user.user_metadata ?? {};

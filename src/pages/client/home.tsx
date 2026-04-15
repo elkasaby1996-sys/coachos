@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Circle, Droplets, Dumbbell, Moon, Target } from "lucide-react";
@@ -36,10 +36,24 @@ import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { computeStreak } from "../../lib/habits";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientLeadDashboard } from "../../features/lead-chat/components/client-lead-dashboard";
+import { useMyLeadChatThreads } from "../../features/lead-chat/lib/lead-chat";
+import {
+  buildClientInboxThreadParam,
+  dedupeLeadThreadSummaries,
+} from "../../features/lead-chat/lib/client-inbox";
 import {
   clearInviteJoinParams,
   deriveInviteJoinContext,
 } from "../../features/lead-chat/lib/invite-join-context";
+import {
+  buildSourceLabel,
+  buildWorkoutRunPath,
+  classifySourceKind,
+  resolveUnifiedClientHomeState,
+  shouldShowFindCoachSection,
+  sortWorkoutsByUrgency,
+  type WorkoutLike,
+} from "./home-unified";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -138,8 +152,9 @@ const getWorkoutTemplateInfo = (row: any) => {
 
 function ClientWorkspaceHomePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session } = useSessionAuth();
-  const { activeClientId } = useBootstrapAuth();
+  const { activeClientId, hasWorkspaceMembership } = useBootstrapAuth();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
   const weekStart = useMemo(() => {
@@ -159,6 +174,7 @@ function ClientWorkspaceHomePage() {
   const [dayStatus, setDayStatus] = useState<DayStatus | null>(() =>
     readDayStatus(todayKey),
   );
+  const focusModule = searchParams.get("focus");
 
   useEffect(() => {
     setChecklist(readChecklist(todayKey));
@@ -1904,11 +1920,7 @@ export function ClientHomePage() {
 
   return (
     <>
-      {hasWorkspaceMembership ? (
-        <ClientWorkspaceHomePage />
-      ) : (
-        <ClientLeadDashboard />
-      )}
+      <ClientWorkspaceHomePage />
 
       <Dialog
         open={isInviteModalOpen && inviteJoinContext.shouldShowModal}

@@ -5,6 +5,7 @@ import {
   useState,
   type ComponentType,
 } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -37,7 +38,10 @@ import {
   createPtWorkspace,
   usePtHubSettings,
 } from "../../features/pt-hub/lib/pt-hub";
-import { getUserDisplayName } from "../../lib/account-profiles";
+import {
+  getPreferredPersonDisplayName,
+  getUserDisplayName,
+} from "../../lib/account-profiles";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { cn } from "../../lib/utils";
@@ -564,6 +568,7 @@ export function PtLayout() {
     (workspaceId ? null : "Workspace not found.");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
+  const [headerCondensed, setHeaderCondensed] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -581,7 +586,15 @@ export function PtLayout() {
   const [debouncedSearchInput, setDebouncedSearchInput] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchHighlightIndex, setSearchHighlightIndex] = useState(0);
+  const [searchPanelLayout, setSearchPanelLayout] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const searchShellRef = useRef<HTMLDivElement | null>(null);
+  const searchTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
   const workspaceSwitcherQuery = useQuery({
     queryKey: ["pt-workspace-switcher", user?.id, workspaceIds],
     enabled: workspaceIds.length > 0,
@@ -603,11 +616,11 @@ export function PtLayout() {
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const profileDisplayName =
-    (settingsFullName && settingsFullName.length > 0
-      ? settingsFullName
-      : null) ||
-    getUserDisplayName(user) ||
-    "Trainer account";
+    getPreferredPersonDisplayName(
+      settingsFullName,
+      getUserDisplayName(user),
+      user?.email?.split("@")[0],
+    ) || "Account";
   const normalizedSearch = debouncedSearchInput.trim().toLowerCase();
 
   useEffect(() => {
@@ -622,13 +635,67 @@ export function PtLayout() {
     if (!searchOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!searchShellRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !searchShellRef.current?.contains(target) &&
+        !searchTriggerRef.current?.contains(target)
+      ) {
         setSearchOpen(false);
       }
     };
 
     window.addEventListener("mousedown", handlePointerDown);
     return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen || typeof window === "undefined") {
+      setSearchPanelLayout(null);
+      return;
+    }
+
+    let frame = 0;
+    const updateLayout = () => {
+      const rect = searchTriggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = Math.min(448, window.innerWidth - 32);
+      const left = Math.min(
+        Math.max(16, rect.right - width),
+        window.innerWidth - width - 16,
+      );
+
+      setSearchPanelLayout({
+        top: rect.bottom + 12,
+        left,
+        width,
+      });
+    };
+
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(updateLayout);
+    };
+
+    scheduleUpdate();
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("scroll", scheduleUpdate, true);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("scroll", scheduleUpdate, true);
+    };
   }, [searchOpen]);
 
   useEffect(() => {
@@ -807,6 +874,111 @@ export function PtLayout() {
     "U"
   ).toUpperCase();
 
+  const searchOverlay =
+    searchOpen &&
+    searchPanelLayout &&
+    typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={searchShellRef}
+            id="pt-workspace-search-panel"
+            className="fixed z-50"
+            style={{
+              top: searchPanelLayout.top,
+              left: searchPanelLayout.left,
+              width: searchPanelLayout.width,
+            }}
+          >
+            <div className="surface-panel-subtle rounded-[28px] border border-border/70 p-3 shadow-[var(--popover-shadow)] backdrop-blur-2xl sm:p-4">
+              <div className="relative w-full">
+                <Search className="app-search-icon h-3.5 w-3.5" />
+                <Input
+                  ref={searchInputRef}
+                  placeholder="Search clients, programs, tags..."
+                  className="app-search-input"
+                  aria-label="Search workspace"
+                  value={searchInput}
+                  onChange={(event) => {
+                    setSearchInput(event.target.value);
+                    setSearchOpen(true);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setSearchOpen(false);
+                      return;
+                    }
+
+                    if (!searchResults.length) return;
+
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setSearchHighlightIndex((current) =>
+                        Math.min(current + 1, searchResults.length - 1),
+                      );
+                    }
+
+                    if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setSearchHighlightIndex((current) =>
+                        Math.max(current - 1, 0),
+                      );
+                    }
+
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      const selected =
+                        searchResults[searchHighlightIndex] ?? searchResults[0];
+                      if (selected) {
+                        handleSearchSelect(selected);
+                      }
+                    }
+                  }}
+                />
+              </div>
+              <div className="mt-3 overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
+                {searchQuery.isLoading ? (
+                  <div className="px-3 py-3 text-sm text-muted-foreground">
+                    Searching workspace...
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="px-3 py-3 text-sm text-muted-foreground">
+                    No matching results. Try a client name, program, or
+                    template.
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {searchResults.map((result, index) => (
+                      <button
+                        key={result.id}
+                        type="button"
+                        className={cn(
+                          "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
+                          index === searchHighlightIndex
+                            ? "bg-card/80 text-foreground"
+                            : "text-foreground/90 hover:bg-card/72",
+                        )}
+                        onMouseEnter={() => setSearchHighlightIndex(index)}
+                        onClick={() => handleSearchSelect(result)}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {result.label}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {result.meta}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(PT_SIDEBAR_COLLAPSE_KEY);
@@ -820,6 +992,19 @@ export function PtLayout() {
       desktopNavCollapsed ? "1" : "0",
     );
   }, [desktopNavCollapsed]);
+
+  useEffect(() => {
+    const mainElement = mainScrollRef.current;
+    if (!mainElement) return;
+
+    const handleScroll = () => {
+      setHeaderCondensed(mainElement.scrollTop > 24);
+    };
+
+    handleScroll();
+    mainElement.addEventListener("scroll", handleScroll, { passive: true });
+    return () => mainElement.removeEventListener("scroll", handleScroll);
+  }, [routeTransitionKey]);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -908,7 +1093,11 @@ export function PtLayout() {
         </div>
       </aside>
 
-      <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-6">
+      <PageContainer
+        size="pt-shell"
+        align="left"
+        className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-4"
+      >
         <div
           className={cn(
             "lg:h-full",
@@ -992,7 +1181,8 @@ export function PtLayout() {
               <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
                 <header
                   className={cn(
-                    "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
+                    "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-6",
+                    headerCondensed ? "py-3" : "py-4",
                     isLightMode
                       ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
                       : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
@@ -1007,7 +1197,7 @@ export function PtLayout() {
                         : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
                     )}
                   />
-                  <div className="relative space-y-4">
+                  <div className="relative">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <Button
@@ -1019,32 +1209,32 @@ export function PtLayout() {
                           <Menu className="h-5 w-5 [stroke-width:1.7]" />
                           <span className="sr-only">Open PT navigation</span>
                         </Button>
-                        <div className="min-w-0 space-y-2">
+                        <div
+                          className={cn(
+                            "min-w-0 transition-[gap] duration-200",
+                            headerCondensed ? "space-y-1" : "space-y-2",
+                          )}
+                        >
                           <p
                             className={cn(
-                              "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
-                              currentModuleClasses.text,
-                            )}
-                          >
-                            <span
-                              aria-hidden
-                              className={cn(
-                                "h-1.5 w-1.5 rounded-full",
-                                currentModuleClasses.dot,
-                              )}
-                            />
-                            {pageHeader.title}
-                          </p>
-                          <p
-                            className={cn(
-                              "truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]",
+                              "truncate font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
+                              headerCondensed
+                                ? "text-[1.58rem] leading-none sm:text-[1.86rem]"
+                                : "text-[2rem] sm:text-[2.25rem]",
                               currentModuleClasses.title,
                             )}
                           >
                             {pageHeader.title}
                           </p>
                           {pageHeader.description ? (
-                            <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
+                            <p
+                              className={cn(
+                                "max-w-3xl text-muted-foreground transition-[font-size,line-height,opacity] duration-200",
+                                headerCondensed
+                                  ? "text-[12px] leading-4 opacity-80"
+                                  : "text-sm leading-5",
+                              )}
+                            >
                               {pageHeader.description}
                             </p>
                           ) : null}
@@ -1052,6 +1242,29 @@ export function PtLayout() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
+                        <div className="relative">
+                          <Button
+                            ref={searchTriggerRef}
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={getHeaderBellButtonClassName(isLightMode)}
+                            aria-expanded={searchOpen}
+                            aria-controls="pt-workspace-search-panel"
+                            aria-label="Open workspace search"
+                            title="Search"
+                            onClick={() => {
+                              setSearchOpen((current) => !current);
+                              if (!searchOpen) {
+                                setSearchHighlightIndex(0);
+                              }
+                            }}
+                          >
+                            <Search className="h-4 w-4 [stroke-width:1.7]" />
+                            <span className="sr-only">Search</span>
+                          </Button>
+                        </div>
+
                         <NotificationBell
                           viewAllHref="/pt/notifications"
                           buttonClassName={getHeaderBellButtonClassName(
@@ -1088,10 +1301,7 @@ export function PtLayout() {
                               >
                                 <Building2 className="h-4 w-4 [stroke-width:1.7]" />
                               </div>
-                              <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                                  Workspace
-                                </p>
+                              <div className="min-w-0 flex-1 text-left">
                                 <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                                   {workspaceDisplayName}
                                 </p>
@@ -1193,10 +1403,7 @@ export function PtLayout() {
                               >
                                 {userInitial}
                               </div>
-                              <div className="min-w-0 flex-1 space-y-0.5">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                                  Profile
-                                </p>
+                              <div className="min-w-0 flex-1">
                                 <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                                   {profileDisplayName}
                                 </p>
@@ -1256,105 +1463,13 @@ export function PtLayout() {
                         </DropdownMenu>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div
-                        ref={searchShellRef}
-                        className="relative w-full lg:max-w-[32rem]"
-                      >
-                        <Search className="app-search-icon h-3.5 w-3.5" />
-                        <Input
-                          placeholder="Search clients, programs, tags..."
-                          className="app-search-input"
-                          aria-label="Search clients"
-                          value={searchInput}
-                          onChange={(event) => {
-                            setSearchInput(event.target.value);
-                            setSearchOpen(true);
-                          }}
-                          onFocus={() => setSearchOpen(true)}
-                          onKeyDown={(event) => {
-                            if (!searchResults.length) return;
-
-                            if (event.key === "ArrowDown") {
-                              event.preventDefault();
-                              setSearchOpen(true);
-                              setSearchHighlightIndex((current) =>
-                                Math.min(current + 1, searchResults.length - 1),
-                              );
-                            }
-
-                            if (event.key === "ArrowUp") {
-                              event.preventDefault();
-                              setSearchHighlightIndex((current) =>
-                                Math.max(current - 1, 0),
-                              );
-                            }
-
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              const selected =
-                                searchResults[searchHighlightIndex] ??
-                                searchResults[0];
-                              if (selected) {
-                                handleSearchSelect(selected);
-                              }
-                            }
-
-                            if (event.key === "Escape") {
-                              setSearchOpen(false);
-                            }
-                          }}
-                        />
-                        {searchOpen ? (
-                          <div className="absolute inset-x-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[24px] border border-border/75 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
-                            {searchQuery.isLoading ? (
-                              <div className="px-3 py-3 text-sm text-muted-foreground">
-                                Searching workspace...
-                              </div>
-                            ) : searchResults.length === 0 ? (
-                              <div className="px-3 py-3 text-sm text-muted-foreground">
-                                No matching results.
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                {searchResults.map((result, index) => (
-                                  <button
-                                    key={result.id}
-                                    type="button"
-                                    className={cn(
-                                      "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
-                                      index === searchHighlightIndex
-                                        ? "bg-card/80 text-foreground"
-                                        : "text-foreground/90 hover:bg-card/72",
-                                    )}
-                                    onMouseEnter={() =>
-                                      setSearchHighlightIndex(index)
-                                    }
-                                    onClick={() => handleSearchSelect(result)}
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-medium text-foreground">
-                                        {result.label}
-                                      </p>
-                                      <p className="truncate text-xs text-muted-foreground">
-                                        {result.meta}
-                                      </p>
-                                    </div>
-                                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                      {result.type}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
                   </div>
                 </header>
 
-                <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
+                <main
+                  ref={mainScrollRef}
+                  className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1"
+                >
                   <div className="pt-content-zoom">
                     <RouteTransition
                       className="grid gap-6"
@@ -1431,6 +1546,7 @@ export function PtLayout() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {searchOverlay}
     </div>
   );
 }

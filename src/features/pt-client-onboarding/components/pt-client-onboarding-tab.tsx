@@ -472,6 +472,7 @@ export function PtClientOnboardingTab({
               )}
             </CardContent>
           </Card>
+
         </div>
 
         <div className="space-y-5">

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -16,6 +16,7 @@ import {
   EmptyState,
   Skeleton,
 } from "../../components/ui/coachos";
+import { ActionStatusMessage } from "../../components/common/action-feedback";
 import { PageContainer } from "../../components/common/page-container";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
@@ -62,6 +63,7 @@ export function PtNutritionTemplateBuilderPage() {
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [selectedDay, setSelectedDay] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [componentOpen, setComponentOpen] = useState(false);
   const [componentMealId, setComponentMealId] = useState<string | null>(null);
@@ -121,17 +123,23 @@ export function PtNutritionTemplateBuilderPage() {
     ]);
   };
 
-  const ensureDay = async () => {
+  const getDayFor = (weekIndex: number, dayOfWeek: number) =>
+    template?.days.find(
+      (day) => day.week_index === weekIndex && day.day_of_week === dayOfWeek,
+    ) ?? null;
+
+  const ensureDay = async (weekIndex = selectedWeek, dayOfWeek = selectedDay) => {
     if (!templateId) return null;
-    if (activeDay?.id) return activeDay.id;
+    const existingDay = getDayFor(weekIndex, dayOfWeek);
+    if (existingDay?.id) return existingDay.id;
 
     const { data, error } = await supabase
       .from("nutrition_template_days")
       .insert({
         nutrition_template_id: templateId,
-        week_index: selectedWeek,
-        day_of_week: selectedDay,
-        title: `${DAY_LABELS[selectedDay - 1]} plan`,
+        week_index: weekIndex,
+        day_of_week: dayOfWeek,
+        title: `${DAY_LABELS[dayOfWeek - 1]} plan`,
       })
       .select("id")
       .maybeSingle();
@@ -145,22 +153,48 @@ export function PtNutritionTemplateBuilderPage() {
     return data.id as string;
   };
 
-  const ensureSlot = async (slotName: string) => {
-    const existing = slots.find((slot) => slot.slot === slotName);
+  const getSlotsFor = (weekIndex: number, dayOfWeek: number) => {
+    const day = getDayFor(weekIndex, dayOfWeek);
+    const map = new Map<
+      string,
+      { id: string | null; components: any[]; meal_order: number }
+    >();
+
+    SLOT_NAMES.forEach((slot, idx) => {
+      map.set(slot, { id: null, components: [], meal_order: idx + 1 });
+    });
+
+    (day?.meals ?? []).forEach((meal) => {
+      map.set(meal.meal_name, {
+        id: meal.id,
+        components: meal.components,
+        meal_order: meal.meal_order,
+      });
+    });
+
+    return Array.from(map.entries())
+      .map(([slot, value]) => ({ slot, ...value }))
+      .sort((a, b) => a.meal_order - b.meal_order);
+  };
+
+  const ensureSlot = async (
+    slotName: string,
+    weekIndex = selectedWeek,
+    dayOfWeek = selectedDay,
+  ) => {
+    const existing = getSlotsFor(weekIndex, dayOfWeek).find(
+      (slot) => slot.slot === slotName,
+    );
     if (existing?.id) return existing.id;
 
-    const dayId = await ensureDay();
+    const dayId = await ensureDay(weekIndex, dayOfWeek);
     if (!dayId) return null;
-
-    const nextOrder = slots.length
-      ? Math.max(...slots.map((s) => s.meal_order)) + 1
-      : 1;
 
     const { data, error } = await supabase
       .from("nutrition_template_meals")
       .insert({
         nutrition_template_day_id: dayId,
-        meal_order: nextOrder,
+        meal_order: SLOT_NAMES.indexOf(slotName) + 1,
         meal_name: slotName,
       })
       .select("id")
@@ -175,29 +209,8 @@ export function PtNutritionTemplateBuilderPage() {
     return data.id as string;
   };
 
-  const initializeSlots = async () => {
-    const dayId = await ensureDay();
-    if (!dayId) return;
-
-    for (const slot of SLOT_NAMES) {
-      const existing = slots.find((s) => s.slot === slot);
-      if (existing?.id) continue;
-
-      const { error } = await supabase.from("nutrition_template_meals").insert({
-        nutrition_template_day_id: dayId,
-        meal_order: SLOT_NAMES.indexOf(slot) + 1,
-        meal_name: slot,
-      });
-      if (error) {
-        setErrorMessage(error.message);
-        return;
-      }
-    }
-
-    await invalidate();
-  };
-
   const addComponent = async () => {
+    setSuccessMessage(null);
     if (!componentMealId || !componentName.trim()) {
       setErrorMessage("Component name is required.");
       return;
@@ -242,6 +255,7 @@ export function PtNutritionTemplateBuilderPage() {
   };
 
   const removeComponent = async (componentId: string) => {
+    setSuccessMessage(null);
     const { error } = await supabase
       .from("nutrition_template_meal_components")
       .delete()
@@ -258,6 +272,7 @@ export function PtNutritionTemplateBuilderPage() {
     componentId: string,
     direction: "up" | "down",
   ) => {
+    setSuccessMessage(null);
     const slot = slots.find((s) => s.id === mealId);
     const list = (slot?.components ?? [])
       .slice()
@@ -291,10 +306,77 @@ export function PtNutritionTemplateBuilderPage() {
   };
 
   const openAddComponent = async (slotName: string) => {
+    setSuccessMessage(null);
     const mealId = await ensureSlot(slotName);
     if (!mealId) return;
     setComponentMealId(mealId);
     setComponentOpen(true);
+  };
+
+  const duplicateSlotToAllDays = async (slotName: string) => {
+    if (!template) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const sourceSlot = slots.find((slot) => slot.slot === slotName);
+    const sourceComponents = sourceSlot?.components ?? [];
+    if (!sourceComponents.length) {
+      setErrorMessage("Add at least one component before applying this slot to all days.");
+      return;
+    }
+
+    let appliedCount = 0;
+
+    for (let weekIndex = 1; weekIndex <= template.duration_weeks; weekIndex += 1) {
+      for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek += 1) {
+        if (weekIndex === selectedWeek && dayOfWeek === selectedDay) continue;
+
+        const targetMealId = await ensureSlot(slotName, weekIndex, dayOfWeek);
+        if (!targetMealId) return;
+
+        const { error: clearError } = await supabase
+          .from("nutrition_template_meal_components")
+          .delete()
+          .eq("nutrition_template_meal_id", targetMealId);
+        if (clearError) {
+          setErrorMessage(clearError.message);
+          return;
+        }
+
+        const payload = sourceComponents.map((component, index) => ({
+          nutrition_template_meal_id: targetMealId,
+          sort_order: index + 1,
+          component_name: component.component_name,
+          quantity: component.quantity,
+          unit: component.unit,
+          calories: component.calories,
+          protein_g: component.protein_g,
+          carbs_g: component.carbs_g,
+          fat_g: component.fat_g,
+          recipe_text: component.recipe_text,
+          notes: component.notes,
+        }));
+
+        if (payload.length) {
+          const { error: insertError } = await supabase
+            .from("nutrition_template_meal_components")
+            .insert(payload);
+          if (insertError) {
+            setErrorMessage(insertError.message);
+            return;
+          }
+        }
+
+        appliedCount += 1;
+      }
+    }
+
+    await invalidate();
+    setSuccessMessage(
+      `${slotName} was applied to ${appliedCount} ${
+        appliedCount === 1 ? "day" : "days"
+      } in this program.`,
+    );
   };
 
   if (templateQuery.isLoading) {
@@ -341,6 +423,9 @@ export function PtNutritionTemplateBuilderPage() {
           {errorMessage}
         </div>
       ) : null}
+      {successMessage ? (
+        <ActionStatusMessage tone="success">{successMessage}</ActionStatusMessage>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <DashboardCard title="Program Scope" subtitle="Week + day selector">
@@ -377,9 +462,6 @@ export function PtNutritionTemplateBuilderPage() {
               })}
             </div>
 
-            <Button variant="secondary" onClick={initializeSlots}>
-              Initialize default slots
-            </Button>
           </div>
         </DashboardCard>
 
@@ -399,14 +481,25 @@ export function PtNutritionTemplateBuilderPage() {
                         {slot.components.length} components
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => openAddComponent(slot.slot)}
-                    >
-                      <Plus className="mr-1 h-3.5 w-3.5" />
-                      Add
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => duplicateSlotToAllDays(slot.slot)}
+                        disabled={slot.components.length === 0}
+                      >
+                        <Copy className="mr-1 h-3.5 w-3.5" />
+                        All days
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openAddComponent(slot.slot)}
+                      >
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        Add
+                      </Button>
+                    </div>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {Math.round(slotTotals.calories)} cals |{" "}
@@ -427,9 +520,7 @@ export function PtNutritionTemplateBuilderPage() {
           {slots.every((slot) => slot.components.length === 0) ? (
             <EmptyState
               title="No components yet"
-              description="Initialize slots and start adding meal components."
-              actionLabel="Initialize slots"
-              onAction={initializeSlots}
+              description="Start adding meal components to the slot you want to build."
             />
           ) : (
             <div className="space-y-3">

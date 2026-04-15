@@ -218,21 +218,115 @@ async function ensureFreshSession(
       10_000,
       "Session refresh timed out (10s).",
     );
-    if (error || !data.session) return session;
+    if (error) {
+      if (isInvalidRefreshTokenError(error)) {
+        throw error;
+      }
+      if (isTransientAuthError(error)) {
+        return session;
+      }
+      throw error;
+    }
+    if (!data.session) return session;
     return data.session;
-  } catch {
-    return session;
+  } catch (error) {
+    if (isInvalidRefreshTokenError(error)) {
+      throw error;
+    }
+    if (isTransientAuthError(error)) {
+      return session;
+    }
+    throw error;
   }
 }
 
 function isInvalidRefreshTokenError(error: unknown) {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : null;
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "").toLowerCase()
+      : "";
   const message =
     error instanceof Error ? error.message : typeof error === "string" ? error : "";
   const normalized = message.toLowerCase();
   return (
     normalized.includes("invalid refresh token") ||
-    normalized.includes("refresh token not found")
+    normalized.includes("refresh token not found") ||
+    normalized.includes("invalid jwt") ||
+    normalized.includes("jwt expired") ||
+    normalized.includes("auth session missing") ||
+    normalized.includes("session not found") ||
+    normalized.includes("invalid_grant") ||
+    normalized.includes("token has expired") ||
+    code === "invalid_refresh_token" ||
+    code === "session_not_found" ||
+    status === 401
   );
+}
+
+function isTransientAuthError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("timed out") ||
+    normalized.includes("network") ||
+    normalized.includes("failed to fetch") ||
+    normalized.includes("load failed")
+  );
+}
+
+function isAuthPermissionError(error: unknown) {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : null;
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "").toLowerCase()
+      : "";
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const normalized = message.toLowerCase();
+
+  return (
+    status === 401 ||
+    code === "401" ||
+    code === "pgrst301" ||
+    code === "pgrst302" ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("not authenticated") ||
+    normalized.includes("jwt") ||
+    normalized.includes("invalid token") ||
+    normalized.includes("session expired")
+  );
+}
+
+function clearSupabaseStorageArtifacts() {
+  if (typeof window === "undefined") return;
+
+  const clearKeys = (storage: Storage) => {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (!key) continue;
+      if (
+        key.startsWith("sb-") ||
+        key.startsWith("supabase.auth.") ||
+        key.startsWith(BOOTSTRAP_CACHE_PREFIX) ||
+        key === "coachos_workspace_id"
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => storage.removeItem(key));
+  };
+
+  clearKeys(window.localStorage);
+  clearKeys(window.sessionStorage);
 }
 
 async function clearBrokenLocalSession() {
@@ -241,6 +335,7 @@ async function clearBrokenLocalSession() {
   } catch {
     // Ignore cleanup failures; the important part is clearing app state.
   }
+  clearSupabaseStorageArtifacts();
 }
 
 function getCurrentPathname() {
@@ -861,6 +956,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastStableBootstrapRef.current ??
         (hasMeaningfulBootstrapState(cachedState) ? cachedState : null);
 
+      if (isAuthPermissionError(resolution.error)) {
+        await clearBrokenLocalSession();
+        sessionRef.current = null;
+        setSession(null);
+        resetBootstrapState();
+        setAuthError(
+          resolution.error instanceof Error
+            ? resolution.error
+            : new Error("Session expired. Please sign in again."),
+        );
+        return;
+      }
+
       if (fallbackState) {
         applyStaleBootstrapState({
           fallback: fallbackState,
@@ -875,7 +983,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBootstrapStale(false);
       setBootstrapError(resolution.error);
     },
-    [applyResolvedBootstrapState, applyStaleBootstrapState],
+    [applyResolvedBootstrapState, applyStaleBootstrapState, resetBootstrapState],
   );
 
   const refreshBootstrap = useCallback(async () => {

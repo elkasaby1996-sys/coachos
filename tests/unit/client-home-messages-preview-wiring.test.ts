@@ -8,6 +8,15 @@ const homePage = readFileSync(
 );
 
 describe("client home message preview wiring", () => {
+  it("renders the unified client home shell instead of falling back to the standalone lead dashboard", () => {
+    expect(homePage).toContain("<ClientWorkspaceHomePage />");
+    expect(homePage).not.toContain(`{hasWorkspaceMembership ? (
+        <ClientWorkspaceHomePage />
+      ) : (
+        <ClientLeadDashboard />
+      )}`);
+  });
+
   it("uses unified inbox thread params for workspace and lead preview links", () => {
     expect(homePage).toContain("buildClientInboxThreadParam");
     expect(homePage).toContain("/app/messages?thread=");

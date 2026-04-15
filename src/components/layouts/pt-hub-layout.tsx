@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Building,
@@ -42,7 +42,10 @@ import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { AppFooter } from "../common/app-footer";
 import { RouteTransition } from "../common/route-transition";
 import { supabase } from "../../lib/supabase";
-import { getUserDisplayName } from "../../lib/account-profiles";
+import {
+  getPreferredPersonDisplayName,
+  getUserDisplayName,
+} from "../../lib/account-profiles";
 import {
   getSemanticToneClasses,
   getSemanticToneForStatus,
@@ -298,8 +301,10 @@ export function PtHubLayout() {
   const settingsQuery = usePtHubSettings();
   const profileQuery = usePtHubProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [headerCondensed, setHeaderCondensed] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
+  const mainScrollRef = useRef<HTMLElement | null>(null);
   const routeTransitionKey = getPtHubRouteTransitionKey(location.pathname);
 
   const meta = getPtHubRouteMeta(location.pathname);
@@ -328,13 +333,13 @@ export function PtHubLayout() {
             : "No workspace selected"));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const coachDisplayName =
-    (settingsFullName && settingsFullName.length > 0
-      ? settingsFullName
-      : null) ||
-    ptProfile?.full_name?.trim() ||
-    ptProfile?.display_name?.trim() ||
-    getUserDisplayName(user) ||
-    "Trainer account";
+    getPreferredPersonDisplayName(
+      settingsFullName,
+      ptProfile?.full_name,
+      ptProfile?.display_name,
+      getUserDisplayName(user),
+      user?.email?.split("@")[0],
+    ) || "Account";
   const userInitial = (
     coachDisplayName.charAt(0) ||
     user?.email?.charAt(0) ||
@@ -371,6 +376,19 @@ export function PtHubLayout() {
     }
     switchWorkspace(firstWorkspace.id);
   }, [workspaceId, workspaces, switchWorkspace]);
+
+  useEffect(() => {
+    const mainElement = mainScrollRef.current;
+    if (!mainElement) return;
+
+    const handleScroll = () => {
+      setHeaderCondensed(mainElement.scrollTop > 24);
+    };
+
+    handleScroll();
+    mainElement.addEventListener("scroll", handleScroll, { passive: true });
+    return () => mainElement.removeEventListener("scroll", handleScroll);
+  }, [routeTransitionKey]);
 
   const signOut = async () => {
     setIsSigningOut(true);
@@ -429,9 +447,13 @@ export function PtHubLayout() {
         </div>
       </aside>
 
-      <PageContainer className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-6">
-        <div className="lg:h-full lg:pl-[336px]">
-          <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[324px] lg:p-3">
+      <PageContainer
+        size="pt-shell"
+        align="left"
+        className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-4"
+      >
+        <div className="lg:h-full lg:pl-[328px]">
+          <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[320px] lg:p-3">
             <div className="h-full min-h-0">
               <div
                 className={cn(
@@ -453,7 +475,8 @@ export function PtHubLayout() {
           <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
             <header
               className={cn(
-                "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
+                "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-6",
+                headerCondensed ? "py-3" : "py-4",
                 isLightMode
                   ? "shadow-[var(--surface-strong-shadow)]"
                   : "shadow-[var(--surface-strong-shadow)]",
@@ -468,7 +491,12 @@ export function PtHubLayout() {
                     : "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]",
                 )}
               />
-              <div className="relative flex flex-wrap items-start justify-between gap-4">
+              <div
+                className={cn(
+                  "relative flex flex-wrap items-start justify-between transition-[gap] duration-200",
+                  headerCondensed ? "gap-3" : "gap-4",
+                )}
+              >
                 <div className="flex min-w-0 items-start gap-3">
                   <Button
                     variant="ghost"
@@ -479,32 +507,37 @@ export function PtHubLayout() {
                     <Menu className="h-5 w-5 [stroke-width:1.7]" />
                     <span className="sr-only">Open PT Hub navigation</span>
                   </Button>
-                  <div className="min-w-0 space-y-3">
-                    <div className="space-y-2">
+                  <div
+                    className={cn(
+                      "min-w-0 transition-[gap] duration-200",
+                      headerCondensed ? "space-y-2" : "space-y-3",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "transition-[gap] duration-200",
+                        headerCondensed ? "space-y-1" : "space-y-2",
+                      )}
+                    >
                       <p
                         className={cn(
-                          "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
-                          currentModuleClasses.text,
-                        )}
-                      >
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            currentModuleClasses.dot,
-                          )}
-                        />
-                        {meta.title}
-                      </p>
-                      <p
-                        className={cn(
-                          "text-[2.15rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.45rem]",
+                          "font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
+                          headerCondensed
+                            ? "text-[1.7rem] leading-none sm:text-[2rem]"
+                            : "text-[2.15rem] sm:text-[2.45rem]",
                           currentModuleClasses.title,
                         )}
                       >
                         {meta.title}
                       </p>
-                      <p className="max-w-2xl text-[0.95rem] leading-6 text-muted-foreground">
+                      <p
+                        className={cn(
+                          "max-w-3xl text-muted-foreground transition-[font-size,line-height,opacity] duration-200",
+                          headerCondensed
+                            ? "text-[12px] leading-4 opacity-80"
+                            : "text-[0.95rem] leading-6",
+                        )}
+                      >
                         {meta.description}
                       </p>
                     </div>
@@ -564,8 +597,7 @@ export function PtHubLayout() {
                         >
                           <Building className="h-4 w-4 [stroke-width:1.7]" />
                         </div>
-                        <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                          <p className="pt-hub-kicker">Coaching space</p>
+                        <div className="min-w-0 flex-1 text-left">
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {workspacePillLabel}
                           </p>
@@ -649,8 +681,7 @@ export function PtHubLayout() {
                         >
                           {userInitial}
                         </div>
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="pt-hub-kicker">Profile</p>
+                        <div className="min-w-0 flex-1">
                           <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                             {coachDisplayName}
                           </p>
@@ -726,7 +757,10 @@ export function PtHubLayout() {
               </div>
             </header>
 
-            <main className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
+            <main
+              ref={mainScrollRef}
+              className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1"
+            >
               <div className="pt-content-zoom">
                 <WorkspaceHeaderModeProvider value="shell">
                   <RouteTransition routeKey={routeTransitionKey}>

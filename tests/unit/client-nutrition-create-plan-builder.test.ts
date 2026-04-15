@@ -14,6 +14,12 @@ describe("client nutrition create-plan builder", () => {
     expect(createPlanPage).toContain("dayTabValue");
   });
 
+  it("supports duplicating a meal across all days in the same plan", () => {
+    expect(createPlanPage).toContain("duplicateMealToAllDays");
+    expect(createPlanPage).toContain("Apply to all days");
+    expect(createPlanPage).toContain("normalizeMealDraftSignature");
+  });
+
   it("persists meal components in the shared nutrition model", () => {
     expect(createPlanPage).toContain("nutrition_template_meal_components");
     expect(createPlanPage).toContain("component_name");

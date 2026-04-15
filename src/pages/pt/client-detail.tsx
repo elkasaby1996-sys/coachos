@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import {
   Suspense,
   useCallback,
@@ -94,7 +94,7 @@ import {
   getClientRiskState,
   normalizeClientRiskFlags,
 } from "../../lib/client-lifecycle";
-import { getWorkspaceIdForUser } from "../../lib/workspace";
+import { useWorkspace } from "../../lib/use-workspace";
 import { cn } from "../../lib/utils";
 import { getProfileCompletion } from "../../lib/profile-completion";
 import {
@@ -383,6 +383,8 @@ type ClientOperationalSummaryRow = {
 
 type BaselineEntry = {
   id: string;
+  status?: string | null;
+  created_at?: string | null;
   submitted_at: string | null;
   coach_notes: string | null;
 };
@@ -404,6 +406,13 @@ type BaselineMarkerRow = {
   value_number: number | null;
   value_text: string | null;
   template: { name: string | null; unit_label: string | null } | null;
+};
+
+type BaselineMarkerTemplateOption = {
+  id: string;
+  name: string | null;
+  unit_label: string | null;
+  value_type: "number" | "text" | null;
 };
 
 type BaselinePhotoRow = {
@@ -613,6 +622,12 @@ const baselinePhotoTypes = ["front", "side", "back"] as const;
 
 export function PtClientDetailPage() {
   const { user } = useSessionAuth();
+  const {
+    workspaceId: activeWorkspaceId,
+    ownerUserId: performanceMarkerOwnerId,
+    loading: workspaceLoading,
+    error: workspaceError,
+  } = useWorkspace();
   const { clientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -671,7 +686,7 @@ export function PtClientDetailPage() {
   const isCheckinsTab = active === "checkins";
   const isNotesTab = active === "notes";
   const isBaselineTab = active === "baseline";
-  const needsOnboardingData = isOverviewTab || isOnboardingTab;
+  const needsOnboardingData = isOverviewTab || isOnboardingTab || isBaselineTab;
   const needsWorkoutPlanningData = isOverviewTab || isWorkoutTab;
   const needsBaselineData =
     isOverviewTab || isOnboardingTab || isBaselineTab || isProgressTab;
@@ -881,15 +896,15 @@ export function PtClientDetailPage() {
   }, [today]);
   const showLogs = isLogsTab;
 
-  const workspaceQuery = useQuery({
-    queryKey: ["pt-workspace", user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const workspaceId = await getWorkspaceIdForUser(user?.id ?? "");
-      if (!workspaceId) throw new Error("Workspace not found for this PT.");
-      return workspaceId;
-    },
-  });
+  const workspaceQuery = useMemo(
+    () => ({
+      data: activeWorkspaceId,
+      error: workspaceError,
+      isLoading: workspaceLoading,
+      isFetching: workspaceLoading,
+    }),
+    [activeWorkspaceId, workspaceError, workspaceLoading],
+  );
 
   const workspaceDetailsQuery = useQuery({
     queryKey: ["pt-workspace-details", workspaceQuery.data],
@@ -932,11 +947,17 @@ export function PtClientDetailPage() {
           "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
         )
         .eq("id", clientId ?? "")
-        .eq("workspace_id", workspaceQuery.data ?? "")
         .maybeSingle();
       if (error) throw error;
-      if (!data) throw new Error("Client not found in this workspace.");
-      return data;
+      if (!data) return null;
+      if (
+        data.workspace_id &&
+        workspaceQuery.data &&
+        data.workspace_id !== workspaceQuery.data
+      ) {
+        throw new Error("Client not found in this workspace.");
+      }
+      return data as PtClientProfile | null;
     },
   });
 
@@ -958,17 +979,26 @@ export function PtClientDetailPage() {
     },
   });
 
+  const shouldEnsureOnboardingRow = isOverviewTab || isOnboardingTab;
+
   const onboardingQuery = useQuery({
-    queryKey: ["pt-client-onboarding", clientId, workspaceQuery.data],
+    queryKey: [
+      "pt-client-onboarding",
+      clientId,
+      workspaceQuery.data,
+      shouldEnsureOnboardingRow ? "ensure" : "read",
+    ],
     enabled: !!clientId && !!workspaceQuery.data && needsOnboardingData,
     queryFn: async () => {
-      const { error: ensureError } = await supabase.rpc(
-        "ensure_workspace_client_onboarding",
-        {
-          p_client_id: clientId ?? "",
-        },
-      );
-      if (ensureError) throw ensureError;
+      if (shouldEnsureOnboardingRow) {
+        const { error: ensureError } = await supabase.rpc(
+          "ensure_workspace_client_onboarding",
+          {
+            p_client_id: clientId ?? "",
+          },
+        );
+        if (ensureError) throw ensureError;
+      }
 
       const { data, error } = await supabase
         .from("workspace_client_onboardings")
@@ -1472,6 +1502,25 @@ export function PtClientDetailPage() {
       const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return (data ?? null) as BaselineEntry | null;
+    },
+  });
+
+  const baselineMarkerTemplatesQuery = useQuery({
+    queryKey: [
+      "pt-client-performance-marker-templates",
+      performanceMarkerOwnerId,
+    ],
+    enabled: !!performanceMarkerOwnerId && needsBaselineData,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("baseline_marker_templates")
+        .select("id, name, unit_label, value_type")
+        .eq("owner_user_id", performanceMarkerOwnerId ?? "")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as BaselineMarkerTemplateOption[];
     },
   });
 
@@ -3906,8 +3955,8 @@ export function PtClientDetailPage() {
                         clientSnapshot?.timezone,
                       ]
                         .filter(Boolean)
-                        .join(" • ") || "Client coaching view"}
-                      {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
+                        .join(" â€¢ ") || "Client coaching view"}
+                      {joinedLabel ? ` â€¢ Joined ${joinedLabel}` : ""}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       <span className="ops-chip text-muted-foreground">
@@ -4579,6 +4628,9 @@ export function PtClientDetailPage() {
                     hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
                     habitsToday={habitsToday}
                     habitStreak={habitStreak}
+                    previousHabitStreak={previousHabitStreak}
+                    previousAdherenceStat={previousAdherenceStat}
+                    habitTrends={habitTrends}
                   />
                 </TabsContent>
                 <TabsContent value="progress">
@@ -4770,6 +4822,7 @@ export function PtClientDetailPage() {
                 <TabsContent value="baseline">
                   <PtClientBaselineTab
                     baselineEntryQuery={baselineEntryQuery}
+                    baselineMarkerTemplatesQuery={baselineMarkerTemplatesQuery}
                     baselineMetricsQuery={baselineMetricsQuery}
                     baselineMarkersQuery={baselineMarkersQuery}
                     baselinePhotosQuery={baselinePhotosQuery}
@@ -6373,7 +6426,7 @@ function PtClientScheduleCard({
                     }
                   }}
                   className={cn(
-                    "group ops-surface-strong min-h-[220px] w-full px-4 py-4 text-left transition hover:border-border",
+                    "group ops-surface-strong min-h-[220px] w-full overflow-hidden px-4 py-4 text-left transition hover:border-border",
                     isSelected
                       ? "border-primary/55 bg-primary/12 shadow-[0_0_0_1px_oklch(var(--primary)/0.24),0_18px_32px_-24px_oklch(var(--primary)/0.8)]"
                       : hasSubmittedCheckin
@@ -6392,7 +6445,7 @@ function PtClientScheduleCard({
                     isFuture && !isSelected ? "opacity-90" : "",
                   )}
                 >
-                  <div className="space-y-3">
+                  <div className="min-w-0 space-y-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <span className="uppercase tracking-[0.2em]">
@@ -6424,15 +6477,18 @@ function PtClientScheduleCard({
                         {dayTypeLabel}
                       </p>
                       {workoutTemplateLabel ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p
+                          className="truncate text-sm text-muted-foreground"
+                          title={workoutTemplateLabel}
+                        >
                           {workoutTemplateLabel}
                         </p>
                       ) : null}
                     </div>
 
                     <div className="grid gap-2">
-                      <div className="ops-stat py-2">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="ops-stat min-w-0 overflow-hidden py-2">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
                           <span
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
                             title="Workout"
@@ -6440,13 +6496,16 @@ function PtClientScheduleCard({
                           >
                             <Dumbbell className="h-3.5 w-3.5" />
                           </span>
-                          <span className="text-sm font-semibold text-foreground">
+                          <span
+                            className="block min-w-0 flex-1 truncate text-right text-sm font-semibold text-foreground"
+                            title={workoutTemplateLabel || "Rest"}
+                          >
                             {workoutTemplateLabel || "Rest"}
                           </span>
                         </div>
                       </div>
-                      <div className="ops-stat py-2">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="ops-stat min-w-0 overflow-hidden py-2">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
                           <span
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
                             title="Nutrition"
@@ -6454,15 +6513,15 @@ function PtClientScheduleCard({
                           >
                             <Apple className="h-3.5 w-3.5" />
                           </span>
-                          <span className="text-sm font-semibold text-foreground">
+                          <span className="block min-w-0 flex-1 truncate text-right text-sm font-semibold text-foreground">
                             {nutrition
                               ? `${Math.round(nutritionCaloriesTotal)} kcal`
                               : "None"}
                           </span>
                         </div>
                       </div>
-                      <div className="ops-stat py-2">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="ops-stat min-w-0 overflow-hidden py-2">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
                           <span
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
                             title="Check-in"
@@ -6470,7 +6529,7 @@ function PtClientScheduleCard({
                           >
                             <ClipboardCheck className="h-3.5 w-3.5" />
                           </span>
-                          <span className="text-sm font-semibold text-foreground">
+                          <span className="block min-w-0 flex-1 truncate text-right text-sm font-semibold text-foreground">
                             {checkinState === "reviewed"
                               ? "Reviewed"
                               : checkinState === "submitted"
@@ -6993,6 +7052,7 @@ function PtClientScheduleCard({
 
 function PtClientBaselineTab({
   baselineEntryQuery,
+  baselineMarkerTemplatesQuery,
   baselineMetricsQuery,
   baselineMarkersQuery,
   baselinePhotosQuery,
@@ -7004,6 +7064,7 @@ function PtClientBaselineTab({
   onNotesSave,
 }: {
   baselineEntryQuery: QueryResult<BaselineEntry | null>;
+  baselineMarkerTemplatesQuery: QueryResult<BaselineMarkerTemplateOption[]>;
   baselineMetricsQuery: QueryResult<BaselineMetrics | null>;
   baselineMarkersQuery: QueryResult<BaselineMarkerRow[]>;
   baselinePhotosQuery: QueryResult<BaselinePhotoRow[]>;
@@ -7014,6 +7075,7 @@ function PtClientBaselineTab({
   onNotesChange: (value: string) => void;
   onNotesSave: () => void;
 }) {
+  const navigate = useNavigate();
   const metricCards = [
     {
       label: "Weight",
@@ -7073,6 +7135,50 @@ function PtClientBaselineTab({
   const photoCount = baselinePhotoTypes.filter((type) =>
     Boolean(baselinePhotoMap[type]),
   ).length;
+  const markerTemplateOptions = baselineMarkerTemplatesQuery.data ?? [];
+  const markerReadoutPanel = (
+    <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+      <p className="text-sm font-semibold text-foreground">
+        Performance markers
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Active markers are managed in PT Settings and appear automatically in
+        the client's onboarding baseline assessment.
+      </p>
+      {markerTemplateOptions.length > 0 ? (
+        <>
+          <div className="mt-3 grid gap-2">
+            {markerTemplateOptions.map((template) => (
+              <div
+                key={template.id}
+                className="rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5"
+              >
+                <p className="text-sm font-medium text-foreground">
+                  {template.name ?? "Marker"}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {template.value_type === "number"
+                    ? `Number${template.unit_label ? ` · ${template.unit_label}` : ""}`
+                    : "Text response"}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+            <Button size="sm" variant="secondary" onClick={() => navigate("/pt/settings/baseline")}>
+              Manage in settings
+            </Button>
+          </div>
+        </>
+      ) : (
+        <EmptyState
+          title="No active performance markers"
+          description="Enable performance markers in PT Settings to make them appear automatically during the client's onboarding baseline assessment."
+          centered={false}
+        />
+      )}
+    </div>
+  );
 
   return (
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
@@ -7084,6 +7190,7 @@ function PtClientBaselineTab({
       </CardHeader>
       <CardContent className="space-y-3">
         {baselineEntryQuery.isLoading ||
+        baselineMarkerTemplatesQuery.isLoading ||
         baselineMetricsQuery.isLoading ||
         baselineMarkersQuery.isLoading ||
         baselinePhotosQuery.isLoading ? (
@@ -7200,6 +7307,7 @@ function PtClientBaselineTab({
               </div>
 
               <div className="space-y-4">
+                {markerReadoutPanel}
                 <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
@@ -7286,10 +7394,7 @@ function PtClientBaselineTab({
             </div>
           </div>
         ) : (
-          <EmptyState
-            title="No baseline submitted yet"
-            description="This client has not completed the initial assessment. Measurements, markers, and progress photos will appear here after the first baseline submission."
-          />
+          markerReadoutPanel
         )}
       </CardContent>
     </Card>
@@ -7514,11 +7619,17 @@ function PtClientHabitsTab({
   hasAnyHabits,
   habitsToday,
   habitStreak,
+  previousHabitStreak,
+  previousAdherenceStat,
+  habitTrends,
 }: {
   habitsQuery: QueryResult<HabitLog[]>;
   hasAnyHabits: boolean;
   habitsToday: string;
   habitStreak: number;
+  previousHabitStreak: number;
+  previousAdherenceStat: number | null;
+  habitTrends: HabitTrends;
 }) {
   const [selectedHabitMetric, setSelectedHabitMetric] = useState<{
     metric: HabitMetricKey;
@@ -9042,3 +9153,5 @@ function PtClientLogsTab({
     </Card>
   );
 }
+
+

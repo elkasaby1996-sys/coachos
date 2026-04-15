@@ -23,11 +23,12 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
-import { getWorkspaceIdForUser } from "../../lib/workspace";
+import { useWorkspace } from "../../lib/use-workspace";
 
 type MarkerTemplate = {
   id: string;
   workspace_id: string | null;
+  owner_user_id: string | null;
   name: string | null;
   value_type: "number" | "text" | null;
   unit_label: string | null;
@@ -90,8 +91,9 @@ const normalizeSortOrder = (value: string) => {
   return Math.max(0, Math.round(parsed));
 };
 
-export function PtBaselineTemplatesPage() {
+export function PtPerformanceMarkersPage() {
   const { user } = useSessionAuth();
+  const { workspaceId, ownerUserId, loading: workspaceLoading } = useWorkspace();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -109,28 +111,18 @@ export function PtBaselineTemplatesPage() {
     return () => window.clearTimeout(timer);
   }, [statusMessage]);
 
-  const workspaceQuery = useQuery({
-    queryKey: ["pt-workspace", user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const workspaceId = await getWorkspaceIdForUser(user?.id ?? "");
-      if (!workspaceId) throw new Error("Workspace not found for this PT.");
-      return workspaceId;
-    },
-  });
-
-  const workspaceId = workspaceQuery.data ?? null;
+  const markerLibraryOwnerId = ownerUserId ?? null;
 
   const templatesQuery = useQuery({
-    queryKey: ["baseline_marker_templates", workspaceId],
-    enabled: !!workspaceId,
+    queryKey: ["performance_marker_templates", markerLibraryOwnerId],
+    enabled: !!markerLibraryOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_templates")
         .select(
-          "id, workspace_id, name, value_type, unit_label, help_text, sort_order, is_active, created_at",
+          "id, workspace_id, owner_user_id, name, value_type, unit_label, help_text, sort_order, is_active, created_at",
         )
-        .eq("workspace_id", workspaceId ?? "")
+        .eq("owner_user_id", markerLibraryOwnerId ?? "")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -152,12 +144,9 @@ export function PtBaselineTemplatesPage() {
   }, [templates]);
 
   const invalidateTemplates = async () => {
-    if (!workspaceId) return;
+    if (!markerLibraryOwnerId) return;
     await queryClient.invalidateQueries({
-      queryKey: ["baseline_marker_templates", workspaceId],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["baseline-marker-templates", workspaceId],
+      queryKey: ["performance_marker_templates", markerLibraryOwnerId],
     });
   };
 
@@ -186,7 +175,7 @@ export function PtBaselineTemplatesPage() {
   };
 
   const handleSaveTemplate = async () => {
-    if (!workspaceId || !user?.id) return;
+    if (!workspaceId || !markerLibraryOwnerId || !user?.id) return;
     if (!formState.name.trim()) {
       setInlineError({ code: "validation", message: "Name is required." });
       return;
@@ -208,19 +197,20 @@ export function PtBaselineTemplatesPage() {
         .from("baseline_marker_templates")
         .update(payload)
         .eq("id", editId)
-        .eq("workspace_id", workspaceId);
+        .eq("owner_user_id", markerLibraryOwnerId);
       if (error) {
         setInlineError(getSupabaseErrorDetails(error));
         setSaveStatus("idle");
         return;
       }
       setStatusVariant("success");
-      setStatusMessage("Template updated.");
+      setStatusMessage("Performance marker updated.");
     } else {
       const { error } = await supabase
         .from("baseline_marker_templates")
         .insert({
           workspace_id: workspaceId,
+          owner_user_id: markerLibraryOwnerId,
           ...payload,
           created_by_user_id: user.id,
         });
@@ -230,7 +220,7 @@ export function PtBaselineTemplatesPage() {
         return;
       }
       setStatusVariant("success");
-      setStatusMessage("Template created.");
+      setStatusMessage("Performance marker created.");
     }
 
     setSaveStatus("idle");
@@ -239,13 +229,13 @@ export function PtBaselineTemplatesPage() {
   };
 
   const handleToggleActive = async (template: MarkerTemplate) => {
-    if (!workspaceId) return;
+    if (!markerLibraryOwnerId) return;
     const nextValue = !(template.is_active ?? true);
     const { error } = await supabase
       .from("baseline_marker_templates")
       .update({ is_active: nextValue })
       .eq("id", template.id)
-      .eq("workspace_id", workspaceId);
+      .eq("owner_user_id", markerLibraryOwnerId);
     if (error) {
       setStatusVariant("error");
       setStatusMessage(null);
@@ -253,12 +243,16 @@ export function PtBaselineTemplatesPage() {
       return;
     }
     setStatusVariant("success");
-    setStatusMessage(nextValue ? "Template enabled." : "Template disabled.");
+    setStatusMessage(
+      nextValue
+        ? "Performance marker enabled."
+        : "Performance marker disabled.",
+    );
     await invalidateTemplates();
   };
 
   const normalizeOrder = async () => {
-    if (!workspaceId || templates.length === 0) return;
+    if (!markerLibraryOwnerId || templates.length === 0) return;
     const ordered = [...templates].sort((a, b) => {
       const orderA = a.sort_order ?? 0;
       const orderB = b.sort_order ?? 0;
@@ -277,7 +271,7 @@ export function PtBaselineTemplatesPage() {
         .from("baseline_marker_templates")
         .update({ sort_order: update.sort_order })
         .eq("id", update.id)
-        .eq("workspace_id", workspaceId);
+        .eq("owner_user_id", markerLibraryOwnerId);
       if (error) {
         setInlineError(getSupabaseErrorDetails(error));
         return;
@@ -290,7 +284,7 @@ export function PtBaselineTemplatesPage() {
     template: MarkerTemplate,
     direction: "up" | "down",
   ) => {
-    if (!workspaceId) return;
+    if (!markerLibraryOwnerId) return;
     const ordered = [...templates];
     const index = ordered.findIndex((item) => item.id === template.id);
     if (index === -1) return;
@@ -310,7 +304,7 @@ export function PtBaselineTemplatesPage() {
       .from("baseline_marker_templates")
       .update({ sort_order: targetOrder })
       .eq("id", template.id)
-      .eq("workspace_id", workspaceId);
+      .eq("owner_user_id", markerLibraryOwnerId);
     if (firstError) {
       setInlineError(getSupabaseErrorDetails(firstError));
       return;
@@ -320,7 +314,7 @@ export function PtBaselineTemplatesPage() {
       .from("baseline_marker_templates")
       .update({ sort_order: currentOrder })
       .eq("id", target.id)
-      .eq("workspace_id", workspaceId);
+      .eq("owner_user_id", markerLibraryOwnerId);
     if (secondError) {
       setInlineError(getSupabaseErrorDetails(secondError));
       return;
@@ -332,37 +326,37 @@ export function PtBaselineTemplatesPage() {
   };
 
   const handleDelete = async (template: MarkerTemplate) => {
-    if (!workspaceId) return;
-    const confirmed = window.confirm(
-      `Delete "${template.name ?? "template"}"? This cannot be undone.`,
-    );
+    if (!markerLibraryOwnerId) return;
+      const confirmed = window.confirm(
+        `Delete "${template.name ?? "performance marker"}"? This cannot be undone.`,
+      );
     if (!confirmed) return;
     const { error } = await supabase
       .from("baseline_marker_templates")
       .delete()
       .eq("id", template.id)
-      .eq("workspace_id", workspaceId);
+      .eq("owner_user_id", markerLibraryOwnerId);
     if (error) {
       setInlineError(getSupabaseErrorDetails(error));
       return;
     }
     setStatusVariant("success");
-    setStatusMessage("Template deleted.");
+      setStatusMessage("Performance marker deleted.");
     await invalidateTemplates();
   };
 
   return (
     <div className="space-y-6">
       <WorkspacePageHeader
-        title="Baseline Templates"
-        description="Create the marker system clients will complete during baseline and that coaches will use for before-and-after comparison."
+        title="Performance Markers"
+        description="Build the shared Performance Marker library your clients can be assigned across every workspace you coach in."
         actions={
           <>
             <Button asChild variant="secondary" size="sm">
               <Link to="/settings/defaults">Back to settings</Link>
             </Button>
             <Button size="sm" onClick={openCreateDialog}>
-              New template
+              New performance marker
             </Button>
           </>
         }
@@ -383,7 +377,7 @@ export function PtBaselineTemplatesPage() {
         </div>
         <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Template order
+            Marker order
           </div>
           <div className="mt-2 text-sm font-semibold text-foreground">
             Control the assessment flow
@@ -395,13 +389,13 @@ export function PtBaselineTemplatesPage() {
         </div>
         <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Template usage
+            Library usage
           </div>
           <div className="mt-2 text-sm font-semibold text-foreground">
             Reusable assessment system
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            Active templates stay available for future client baselines, while
+            Active markers stay available for future client baselines, while
             inactive items stay out of the workflow.
           </div>
         </div>
@@ -436,10 +430,10 @@ export function PtBaselineTemplatesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Templates</CardTitle>
+          <CardTitle>Performance marker library</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {workspaceQuery.isLoading || templatesQuery.isLoading ? (
+          {workspaceLoading || templatesQuery.isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
@@ -467,11 +461,11 @@ export function PtBaselineTemplatesPage() {
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-[24px] border border-dashed border-border bg-muted/20 p-5">
                 <div className="text-sm font-semibold text-foreground">
-                  No baseline templates yet
+                  No performance markers yet
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  Add your first marker so clients know exactly what they will
-                  record during the initial assessment.
+                  Add your first performance marker so clients know exactly
+                  what they will record during the initial assessment.
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   {[
@@ -505,7 +499,7 @@ export function PtBaselineTemplatesPage() {
               </div>
               <div className="rounded-[24px] border border-border/70 bg-background/35 p-5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Recommended first template
+                  Recommended first marker
                 </div>
                 <div className="mt-3 rounded-[20px] border border-border/70 bg-background/45 p-4">
                   <div className="text-sm font-semibold text-foreground">
@@ -531,7 +525,7 @@ export function PtBaselineTemplatesPage() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold">
-                        {template.name ?? "Template"}
+                        {template.name ?? "Performance marker"}
                       </p>
                       <Badge variant="muted">
                         {(template.value_type ?? "number") === "number"
@@ -558,7 +552,7 @@ export function PtBaselineTemplatesPage() {
                         checked={template.is_active ?? false}
                         onChange={() => handleToggleActive(template)}
                         className="h-4 w-4 rounded border-border"
-                        aria-label={`Toggle ${template.name ?? "template"} active`}
+                        aria-label={`Toggle ${template.name ?? "performance marker"} active`}
                       />
                     </label>
                     <Button
@@ -602,11 +596,11 @@ export function PtBaselineTemplatesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
-            <DialogTitle>
-              {editId ? "Edit template" : "New template"}
+              <DialogTitle>
+              {editId ? "Edit performance marker" : "New performance marker"}
             </DialogTitle>
             <DialogDescription>
-              Configure the baseline marker clients will log.
+              Configure the performance marker clients will log.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -738,3 +732,5 @@ export function PtBaselineTemplatesPage() {
     </div>
   );
 }
+
+export const PtBaselineTemplatesPage = PtPerformanceMarkersPage;

@@ -198,7 +198,7 @@ export function WorkspaceSettingsDefaultsTab() {
             <Link to="/pt/checkins/templates">Manage check-in templates</Link>
           </Button>
           <Button asChild variant="secondary" size="sm">
-            <Link to="/pt/settings/baseline">Manage baseline templates</Link>
+            <Link to="/pt/settings/baseline">Manage performance markers</Link>
           </Button>
         </div>
       </SettingsSectionCard>

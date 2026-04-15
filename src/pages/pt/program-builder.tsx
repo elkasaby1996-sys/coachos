@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/button";
 import {
@@ -97,6 +97,7 @@ export function PtProgramBuilderPage() {
   const { id } = useParams();
   const templateId = isUuid(id) ? id : null;
   const isNew = !id;
+  const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { workspaceId } = useWorkspace();
@@ -112,6 +113,7 @@ export function PtProgramBuilderPage() {
   );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [draggingTemplateId, setDraggingTemplateId] = useState<string | null>(
     null,
   );
@@ -176,6 +178,14 @@ export function PtProgramBuilderPage() {
   }, [templateQuery.data, templateDaysQuery.data]);
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get("saved") !== "1") return;
+
+    setSaveNotice("Program saved. Your weekly structure is now in the library.");
+    navigate(location.pathname, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
     if (form.weeksCount < 1) return;
     setDaysMap((prev) => {
       const next = { ...prev };
@@ -218,6 +228,7 @@ export function PtProgramBuilderPage() {
     day: number,
     payload: Partial<ProgramDayState>,
   ) => {
+    if (saveNotice) setSaveNotice(null);
     const key = getDayKey(week, day);
     const emptyDay: ProgramDayState = {
       workout_template_id: null,
@@ -343,12 +354,22 @@ export function PtProgramBuilderPage() {
       }
     }
 
-    await queryClient.invalidateQueries({
-      queryKey: ["program-templates", workspaceId],
-    });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["program-templates", workspaceId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["program-template", programId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["program-template-days", programId],
+      }),
+    ]);
     if (isNew) {
-      navigate(`/pt/programs/${programId}/edit`);
+      navigate(`/pt/programs/${programId}/edit?saved=1`);
+      return;
     }
+    setSaveNotice("Program saved. Your weekly structure is now in the library.");
     setSaveStatus("idle");
   };
 
@@ -409,6 +430,25 @@ export function PtProgramBuilderPage() {
         }
       />
 
+      {saveNotice ? (
+        <Card className="border-emerald-400/25 bg-emerald-500/8">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-emerald-100">
+                Program saved
+              </p>
+              <p className="text-xs text-emerald-100/80">{saveNotice}</p>
+            </div>
+            <Badge
+              variant="secondary"
+              className="border-emerald-300/20 bg-emerald-500/12 text-[10px] uppercase tracking-[0.18em] text-emerald-100"
+            >
+              Synced
+            </Badge>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {(templateQuery.isLoading && !isNew) || templateDaysQuery.isLoading ? (
         <Card className="border-border/70 bg-card/80">
           <CardHeader>
@@ -445,7 +485,10 @@ export function PtProgramBuilderPage() {
               <Input
                 value={form.name}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, name: event.target.value }))
+                  {
+                    if (saveNotice) setSaveNotice(null);
+                    setForm((prev) => ({ ...prev, name: event.target.value }));
+                  }
                 }
                 placeholder="e.g., 8-Week Strength Block"
               />
@@ -459,10 +502,13 @@ export function PtProgramBuilderPage() {
                 min={1}
                 value={form.weeksCount}
                 onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    weeksCount: Math.max(1, Number(event.target.value) || 1),
-                  }))
+                  {
+                    if (saveNotice) setSaveNotice(null);
+                    setForm((prev) => ({
+                      ...prev,
+                      weeksCount: Math.max(1, Number(event.target.value) || 1),
+                    }));
+                  }
                 }
               />
             </div>
@@ -474,10 +520,13 @@ export function PtProgramBuilderPage() {
                 className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
                 onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    description: event.target.value,
-                  }))
+                  {
+                    if (saveNotice) setSaveNotice(null);
+                    setForm((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }));
+                  }
                 }
               />
             </div>
