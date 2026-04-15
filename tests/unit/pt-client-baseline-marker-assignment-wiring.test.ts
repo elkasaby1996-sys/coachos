@@ -12,23 +12,20 @@ const clientBaselinePage = readFileSync(
   "utf8",
 );
 
-describe("PT client baseline marker assignment wiring", () => {
-  it("lets PT choose markers inside the baseline tab", () => {
-    expect(ptClientDetailPage).toContain("Performance markers to assign");
-    expect(ptClientDetailPage).toContain("selectedBaselineMarkerIds");
-    expect(ptClientDetailPage).toContain("pt_assign_baseline_markers");
-    expect(ptClientDetailPage).toContain("p_workspace_id: workspaceQuery.data");
+describe("PT performance marker baseline wiring", () => {
+  it("keeps PT baseline tab settings-driven instead of per-client assignment", () => {
+    expect(ptClientDetailPage).toContain("Active markers are managed in PT Settings");
+    expect(ptClientDetailPage).toContain("Manage in settings");
+    expect(ptClientDetailPage).not.toContain("Performance markers to assign");
+    expect(ptClientDetailPage).not.toContain("pt_assign_performance_markers");
   });
 
-  it("makes the client baseline page honor assigned marker rows before fallback", () => {
-    expect(clientBaselinePage).toContain("baseline-marker-assignments");
+  it("makes the client baseline page use the active marker library directly", () => {
     expect(clientBaselinePage).toContain("client-baseline-onboarding");
     expect(clientBaselinePage).toContain("initial_baseline_entry_id");
     expect(clientBaselinePage).toContain(
-      "resolveAssignedBaselineMarkerTemplates",
+      "No active performance markers are enabled for your coaching space yet.",
     );
-    expect(clientBaselinePage).toContain(
-      "Your coach has not assigned performance markers for this assessment yet.",
-    );
+    expect(clientBaselinePage).not.toContain("baseline_entry_marker_templates");
   });
 });

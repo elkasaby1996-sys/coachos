@@ -21,7 +21,6 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
-import { resolveAssignedBaselineMarkerTemplates } from "../../lib/baseline-marker-assignments";
 
 type BaselineEntry = {
   id: string;
@@ -68,10 +67,6 @@ type MarkerValueRow = {
   template_id: string | null;
   value_number: number | null;
   value_text: string | null;
-};
-
-type BaselineMarkerAssignmentRow = {
-  template_id: string | null;
 };
 
 type ClientBaselineOnboardingRow = {
@@ -211,6 +206,20 @@ export function ClientBaselinePage() {
   const unitPreference = clientQuery.data?.unit_preference ?? null;
   const showImperial = isImperial(unitPreference);
   const clientWorkspaceId = clientQuery.data?.workspace_id ?? null;
+  const workspaceOwnerQuery = useQuery({
+    queryKey: ["client-baseline-workspace-owner", clientWorkspaceId],
+    enabled: !!clientWorkspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("owner_user_id")
+        .eq("id", clientWorkspaceId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.owner_user_id ?? null) as string | null;
+    },
+  });
+  const performanceMarkerOwnerId = workspaceOwnerQuery.data ?? null;
   const onboardingMode = searchParams.get("onboarding") === "1";
   const returnTo = searchParams.get("returnTo");
 
@@ -377,13 +386,13 @@ export function ClientBaselinePage() {
   });
 
   const templatesQuery = useQuery({
-    queryKey: ["baseline-marker-templates", clientWorkspaceId],
-    enabled: !!clientWorkspaceId,
+    queryKey: ["performance-marker-templates", performanceMarkerOwnerId],
+    enabled: !!performanceMarkerOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("baseline_marker_templates")
         .select("id, name, unit_label, value_type")
-        .eq("workspace_id", clientWorkspaceId ?? "")
+        .eq("owner_user_id", performanceMarkerOwnerId ?? "")
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
@@ -393,20 +402,20 @@ export function ClientBaselinePage() {
   });
 
   useEffect(() => {
-    if (!clientWorkspaceId) return;
+    if (!performanceMarkerOwnerId) return;
     const channel = supabase
-      .channel(`baseline-marker-templates-${clientWorkspaceId}`)
+      .channel(`performance-marker-templates-${performanceMarkerOwnerId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "baseline_marker_templates",
-          filter: `workspace_id=eq.${clientWorkspaceId}`,
+          filter: `owner_user_id=eq.${performanceMarkerOwnerId}`,
         },
         () => {
           queryClient.invalidateQueries({
-            queryKey: ["baseline-marker-templates", clientWorkspaceId],
+            queryKey: ["performance-marker-templates", performanceMarkerOwnerId],
           });
         },
       )
@@ -415,32 +424,7 @@ export function ClientBaselinePage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [clientWorkspaceId, queryClient]);
-
-  useEffect(() => {
-    if (!baselineId) return;
-    const channel = supabase
-      .channel(`baseline-marker-assignment-${baselineId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "baseline_entry_marker_templates",
-          filter: `baseline_id=eq.${baselineId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({
-            queryKey: ["baseline-marker-assignments", baselineId],
-          });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [baselineId, queryClient]);
+  }, [performanceMarkerOwnerId, queryClient]);
 
   const markerValuesQuery = useQuery({
     queryKey: ["baseline-marker-values", baselineId],
@@ -452,19 +436,6 @@ export function ClientBaselinePage() {
         .eq("baseline_id", baselineId ?? "");
       if (error) throw error;
       return (data ?? []) as MarkerValueRow[];
-    },
-  });
-
-  const markerAssignmentsQuery = useQuery({
-    queryKey: ["baseline-marker-assignments", baselineId],
-    enabled: !!baselineId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("baseline_entry_marker_templates")
-        .select("template_id")
-        .eq("baseline_id", baselineId ?? "");
-      if (error) throw error;
-      return (data ?? []) as BaselineMarkerAssignmentRow[];
     },
   });
 
@@ -512,28 +483,16 @@ export function ClientBaselinePage() {
     showImperial,
   ]);
 
-  const assignedTemplateIds = useMemo(
-    () =>
-      (markerAssignmentsQuery.data ?? [])
-        .map((row) => row.template_id)
-        .filter((value): value is string => Boolean(value)),
-    [markerAssignmentsQuery.data],
-  );
   const templates = useMemo(
     () => templatesQuery.data ?? [],
     [templatesQuery.data],
   );
-  const visibleTemplates = useMemo(
-    () =>
-      resolveAssignedBaselineMarkerTemplates(templates, assignedTemplateIds),
-    [templates, assignedTemplateIds],
-  );
+  const visibleTemplates = templates;
 
   useEffect(() => {
     if (
       markerInitRef.current ||
       templatesQuery.isLoading ||
-      markerAssignmentsQuery.isLoading ||
       markerValuesQuery.isLoading
     )
       return;
@@ -554,7 +513,6 @@ export function ClientBaselinePage() {
     markerInitRef.current = true;
   }, [
     templatesQuery.isLoading,
-    markerAssignmentsQuery.isLoading,
     visibleTemplates,
     markerValuesQuery.isLoading,
     markerValuesQuery.data,
@@ -857,9 +815,9 @@ export function ClientBaselinePage() {
 
   const errors = [
     clientQuery.error,
+    workspaceOwnerQuery.error,
     metricsQuery.error,
     templatesQuery.error,
-    markerAssignmentsQuery.error,
     markerValuesQuery.error,
     photosQuery.error,
     baselineError ? new Error(baselineError) : null,
@@ -1247,7 +1205,7 @@ export function ClientBaselinePage() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {templatesQuery.isLoading || markerAssignmentsQuery.isLoading ? (
+              {templatesQuery.isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-8 w-full" />
                   <Skeleton className="h-8 w-full" />
@@ -1255,7 +1213,7 @@ export function ClientBaselinePage() {
               ) : visibleTemplates.length === 0 ? (
                 <EmptyStateBlock
                   title="Performance markers are not ready yet"
-                  description="Your coach has not assigned performance markers for this assessment yet. You can still move on to photos and return later if needed."
+                  description="No active performance markers are enabled for your coaching space yet. You can still move on to photos and return later if needed."
                 />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">

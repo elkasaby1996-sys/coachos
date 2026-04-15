@@ -1920,11 +1920,7 @@ export function ClientHomePage() {
 
   return (
     <>
-      {hasWorkspaceMembership ? (
-        <ClientWorkspaceHomePage />
-      ) : (
-        <ClientLeadDashboard />
-      )}
+      <ClientWorkspaceHomePage />
 
       <Dialog
         open={isInviteModalOpen && inviteJoinContext.shouldShowModal}

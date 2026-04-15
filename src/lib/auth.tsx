@@ -222,7 +222,10 @@ async function ensureFreshSession(
       if (isInvalidRefreshTokenError(error)) {
         throw error;
       }
-      return session;
+      if (isTransientAuthError(error)) {
+        return session;
+      }
+      throw error;
     }
     if (!data.session) return session;
     return data.session;
@@ -230,17 +233,75 @@ async function ensureFreshSession(
     if (isInvalidRefreshTokenError(error)) {
       throw error;
     }
-    return session;
+    if (isTransientAuthError(error)) {
+      return session;
+    }
+    throw error;
   }
 }
 
 function isInvalidRefreshTokenError(error: unknown) {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : null;
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "").toLowerCase()
+      : "";
   const message =
     error instanceof Error ? error.message : typeof error === "string" ? error : "";
   const normalized = message.toLowerCase();
   return (
     normalized.includes("invalid refresh token") ||
-    normalized.includes("refresh token not found")
+    normalized.includes("refresh token not found") ||
+    normalized.includes("invalid jwt") ||
+    normalized.includes("jwt expired") ||
+    normalized.includes("auth session missing") ||
+    normalized.includes("session not found") ||
+    normalized.includes("invalid_grant") ||
+    normalized.includes("token has expired") ||
+    code === "invalid_refresh_token" ||
+    code === "session_not_found" ||
+    status === 401
+  );
+}
+
+function isTransientAuthError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("timed out") ||
+    normalized.includes("network") ||
+    normalized.includes("failed to fetch") ||
+    normalized.includes("load failed")
+  );
+}
+
+function isAuthPermissionError(error: unknown) {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : null;
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "").toLowerCase()
+      : "";
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const normalized = message.toLowerCase();
+
+  return (
+    status === 401 ||
+    code === "401" ||
+    code === "pgrst301" ||
+    code === "pgrst302" ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("not authenticated") ||
+    normalized.includes("jwt") ||
+    normalized.includes("invalid token") ||
+    normalized.includes("session expired")
   );
 }
 
@@ -895,6 +956,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastStableBootstrapRef.current ??
         (hasMeaningfulBootstrapState(cachedState) ? cachedState : null);
 
+      if (isAuthPermissionError(resolution.error)) {
+        await clearBrokenLocalSession();
+        sessionRef.current = null;
+        setSession(null);
+        resetBootstrapState();
+        setAuthError(
+          resolution.error instanceof Error
+            ? resolution.error
+            : new Error("Session expired. Please sign in again."),
+        );
+        return;
+      }
+
       if (fallbackState) {
         applyStaleBootstrapState({
           fallback: fallbackState,
@@ -909,7 +983,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBootstrapStale(false);
       setBootstrapError(resolution.error);
     },
-    [applyResolvedBootstrapState, applyStaleBootstrapState],
+    [applyResolvedBootstrapState, applyStaleBootstrapState, resetBootstrapState],
   );
 
   const refreshBootstrap = useCallback(async () => {

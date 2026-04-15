@@ -221,19 +221,12 @@ export function ClientLayout() {
   const profileInitial = (profileDisplayName.charAt(0) || "C").toUpperCase();
   const isLightMode = resolvedTheme === "light";
   const reduceMotion = useReducedMotion();
-  const visibleNavItems = useMemo(
-    () =>
-      preWorkspaceMode
-        ? navItems.filter((item) => item.to === "/app/home")
-        : navItems,
-    [preWorkspaceMode],
-  );
-
-  useEffect(() => {
-    if (!loading && preWorkspaceMode && location.pathname !== "/app/home") {
-      navigate("/app/home", { replace: true });
-    }
-  }, [loading, location.pathname, navigate, preWorkspaceMode]);
+  const visibleNavItems = navItems;
+  const mobileNavGridClassName = useMemo(() => {
+    if (visibleNavItems.length <= 4) return "grid-cols-4";
+    if (visibleNavItems.length === 5) return "grid-cols-5";
+    return "grid-cols-6";
+  }, [visibleNavItems.length]);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -402,21 +395,6 @@ export function ClientLayout() {
                 <div className="relative space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0 space-y-2">
-                      <p
-                        className={cn(
-                          "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
-                          currentModuleClasses.text,
-                        )}
-                      >
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            currentModuleClasses.dot,
-                          )}
-                        />
-                        RepsyncME
-                      </p>
                       <p
                         className={cn(
                           "truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]",
@@ -592,7 +570,10 @@ export function ClientLayout() {
             <AppFooter className="z-40 md:relative md:-ml-[248px] md:w-[calc(100%+248px)]" />
           </div>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
-            <PageContainer size="portal" className="grid grid-cols-6 gap-1">
+            <PageContainer
+              size="portal"
+              className={cn("grid gap-1", mobileNavGridClassName)}
+            >
               {visibleNavItems.map((item) => (
                 <NavLink
                   key={item.to}

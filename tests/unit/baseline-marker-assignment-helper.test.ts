@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildBaselineMarkerSelection,
-  resolveAssignedBaselineMarkerTemplates,
-  shouldShowPtBaselineMarkerAssignment,
-} from "../../src/lib/baseline-marker-assignments";
+  buildPerformanceMarkerSelection,
+  resolveAssignedPerformanceMarkerTemplates,
+  shouldShowPtPerformanceMarkerAssignment,
+} from "../../src/lib/performance-marker-assignments";
 
 const templates = [
   { id: "marker-a" },
@@ -11,23 +11,26 @@ const templates = [
   { id: "marker-c" },
 ];
 
-describe("resolveAssignedBaselineMarkerTemplates", () => {
+describe("resolveAssignedPerformanceMarkerTemplates", () => {
   it("falls back to all templates when no assignment rows exist", () => {
-    expect(resolveAssignedBaselineMarkerTemplates(templates, [])).toEqual(
+    expect(resolveAssignedPerformanceMarkerTemplates(templates, [])).toEqual(
       templates,
     );
   });
 
   it("returns only assigned templates when PT has chosen a subset", () => {
     expect(
-      resolveAssignedBaselineMarkerTemplates(templates, ["marker-b", "marker-c"]),
+      resolveAssignedPerformanceMarkerTemplates(templates, [
+        "marker-b",
+        "marker-c",
+      ]),
     ).toEqual([{ id: "marker-b" }, { id: "marker-c" }]);
   });
 });
 
-describe("buildBaselineMarkerSelection", () => {
+describe("buildPerformanceMarkerSelection", () => {
   it("defaults to the full active library when nothing is assigned yet", () => {
-    expect(buildBaselineMarkerSelection(templates, [])).toEqual([
+    expect(buildPerformanceMarkerSelection(templates, [])).toEqual([
       "marker-a",
       "marker-b",
       "marker-c",
@@ -35,16 +38,16 @@ describe("buildBaselineMarkerSelection", () => {
   });
 
   it("preserves only the assigned markers for an existing draft", () => {
-    expect(buildBaselineMarkerSelection(templates, ["marker-c"])).toEqual([
+    expect(buildPerformanceMarkerSelection(templates, ["marker-c"])).toEqual([
       "marker-c",
     ]);
   });
 });
 
-describe("shouldShowPtBaselineMarkerAssignment", () => {
+describe("shouldShowPtPerformanceMarkerAssignment", () => {
   it("keeps the assignment UI visible when there is no onboarding-linked baseline yet", () => {
     expect(
-      shouldShowPtBaselineMarkerAssignment({
+      shouldShowPtPerformanceMarkerAssignment({
         onboardingBaselineId: null,
         submittedBaselineId: "submitted-1",
         submittedAt: "2026-04-14T10:00:00.000Z",
@@ -54,7 +57,7 @@ describe("shouldShowPtBaselineMarkerAssignment", () => {
 
   it("keeps the assignment UI visible when only historical submissions exist", () => {
     expect(
-      shouldShowPtBaselineMarkerAssignment({
+      shouldShowPtPerformanceMarkerAssignment({
         onboardingBaselineId: "draft-1",
         submittedBaselineId: "submitted-1",
         submittedAt: "2026-04-14T10:00:00.000Z",
@@ -64,7 +67,7 @@ describe("shouldShowPtBaselineMarkerAssignment", () => {
 
   it("hides the assignment UI once the onboarding-linked baseline is submitted", () => {
     expect(
-      shouldShowPtBaselineMarkerAssignment({
+      shouldShowPtPerformanceMarkerAssignment({
         onboardingBaselineId: "submitted-1",
         submittedBaselineId: "submitted-1",
         submittedAt: "2026-04-14T10:00:00.000Z",

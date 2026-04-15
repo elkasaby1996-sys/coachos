@@ -120,12 +120,12 @@ export function DefaultsSettings() {
           noBorder
         >
           <SettingsRow
-            label="Baseline templates"
-            hint="Configure baseline marker templates used in onboarding."
+            label="Performance markers"
+            hint="Configure the shared performance marker library used in onboarding."
           >
             <SettingsActions>
               <Button asChild variant="secondary" size="sm">
-                <Link to="/pt/settings/baseline">Manage templates</Link>
+                <Link to="/pt/settings/baseline">Manage performance markers</Link>
               </Button>
             </SettingsActions>
           </SettingsRow>

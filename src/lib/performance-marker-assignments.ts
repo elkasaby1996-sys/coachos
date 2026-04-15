@@ -1,9 +1,9 @@
-export type BaselineMarkerTemplateLike = {
+export type PerformanceMarkerTemplateLike = {
   id: string;
 };
 
-export function resolveAssignedBaselineMarkerTemplates<
-  Template extends BaselineMarkerTemplateLike,
+export function resolveAssignedPerformanceMarkerTemplates<
+  Template extends PerformanceMarkerTemplateLike,
 >(templates: Template[], assignedTemplateIds: string[]) {
   const assignedIds = new Set(
     assignedTemplateIds.filter((value): value is string => Boolean(value)),
@@ -16,8 +16,8 @@ export function resolveAssignedBaselineMarkerTemplates<
   return templates.filter((template) => assignedIds.has(template.id));
 }
 
-export function buildBaselineMarkerSelection(
-  templates: BaselineMarkerTemplateLike[],
+export function buildPerformanceMarkerSelection(
+  templates: PerformanceMarkerTemplateLike[],
   assignedTemplateIds: string[],
 ) {
   const assignedIds = new Set(
@@ -33,7 +33,7 @@ export function buildBaselineMarkerSelection(
     .filter((templateId) => assignedIds.has(templateId));
 }
 
-export function shouldShowPtBaselineMarkerAssignment({
+export function shouldShowPtPerformanceMarkerAssignment({
   onboardingBaselineId,
   submittedBaselineId,
   submittedAt,

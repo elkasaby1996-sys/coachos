@@ -450,13 +450,13 @@ export function PtSettingsPage() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Baseline templates</CardTitle>
+            <CardTitle>Performance markers</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Manage performance marker templates shown in the baseline wizard.
+              Manage the shared performance marker library used in baseline assessments.
             </p>
           </div>
           <Button asChild size="sm">
-            <Link to="/pt/settings/baseline">Manage templates</Link>
+            <Link to="/pt/settings/baseline">Manage performance markers</Link>
           </Button>
         </CardHeader>
       </Card>
