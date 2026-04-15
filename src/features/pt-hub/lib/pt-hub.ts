@@ -1368,6 +1368,7 @@ export function usePtHubClientsPage(params: {
   lifecycle?: string;
   segment?: ClientSegmentKey;
   search?: string;
+  enabled?: boolean;
 }) {
   const { user } = useSessionAuth();
   const page = Math.max(0, params.page);
@@ -1381,6 +1382,7 @@ export function usePtHubClientsPage(params: {
   const segment =
     params.segment && params.segment !== "all" ? params.segment : null;
   const search = normalizePtHubClientSearch(params.search);
+  const enabled = params.enabled ?? true;
 
   return useQuery({
     queryKey: [
@@ -1393,7 +1395,7 @@ export function usePtHubClientsPage(params: {
       segment ?? "all",
       search ?? "",
     ],
-    enabled: Boolean(user?.id),
+    enabled: Boolean(user?.id) && enabled,
     staleTime: 1000 * 30,
     placeholderData: (previous) => previous,
     queryFn: async () => {

@@ -190,14 +190,20 @@ export function ClientBaselinePage() {
         .from("clients")
         .select("id, workspace_id, unit_preference, height_cm")
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as {
+      const clientRows = ((data ?? []) as Array<{
         id: string;
         workspace_id: string | null;
         unit_preference: string | null;
         height_cm: number | null;
-      } | null;
+      }>).filter(Boolean);
+
+      return (
+        clientRows.find((row) => Boolean(row.workspace_id)) ??
+        clientRows[0] ??
+        null
+      );
     },
   });
 
@@ -205,21 +211,6 @@ export function ClientBaselinePage() {
   const workspaceId = clientQuery.data?.workspace_id ?? null;
   const unitPreference = clientQuery.data?.unit_preference ?? null;
   const showImperial = isImperial(unitPreference);
-  const clientWorkspaceId = clientQuery.data?.workspace_id ?? null;
-  const workspaceOwnerQuery = useQuery({
-    queryKey: ["client-baseline-workspace-owner", clientWorkspaceId],
-    enabled: !!clientWorkspaceId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workspaces")
-        .select("owner_user_id")
-        .eq("id", clientWorkspaceId ?? "")
-        .maybeSingle();
-      if (error) throw error;
-      return (data?.owner_user_id ?? null) as string | null;
-    },
-  });
-  const performanceMarkerOwnerId = workspaceOwnerQuery.data ?? null;
   const onboardingMode = searchParams.get("onboarding") === "1";
   const returnTo = searchParams.get("returnTo");
 
@@ -386,36 +377,33 @@ export function ClientBaselinePage() {
   });
 
   const templatesQuery = useQuery({
-    queryKey: ["performance-marker-templates", performanceMarkerOwnerId],
-    enabled: !!performanceMarkerOwnerId,
+    queryKey: ["performance-marker-templates", workspaceId],
+    enabled: !!workspaceId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("baseline_marker_templates")
-        .select("id, name, unit_label, value_type")
-        .eq("owner_user_id", performanceMarkerOwnerId ?? "")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
+      const { data, error } = await supabase.rpc(
+        "client_visible_performance_markers",
+        { p_workspace_id: workspaceId ?? null },
+      );
       if (error) throw error;
       return (data ?? []) as MarkerTemplate[];
     },
   });
 
   useEffect(() => {
-    if (!performanceMarkerOwnerId) return;
+    if (!workspaceId) return;
     const channel = supabase
-      .channel(`performance-marker-templates-${performanceMarkerOwnerId}`)
+      .channel(`performance-marker-templates-${workspaceId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "baseline_marker_templates",
-          filter: `owner_user_id=eq.${performanceMarkerOwnerId}`,
+          filter: `workspace_id=eq.${workspaceId}`,
         },
         () => {
           queryClient.invalidateQueries({
-            queryKey: ["performance-marker-templates", performanceMarkerOwnerId],
+            queryKey: ["performance-marker-templates", workspaceId],
           });
         },
       )
@@ -424,7 +412,7 @@ export function ClientBaselinePage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [performanceMarkerOwnerId, queryClient]);
+  }, [queryClient, workspaceId]);
 
   const markerValuesQuery = useQuery({
     queryKey: ["baseline-marker-values", baselineId],
@@ -815,7 +803,6 @@ export function ClientBaselinePage() {
 
   const errors = [
     clientQuery.error,
-    workspaceOwnerQuery.error,
     metricsQuery.error,
     templatesQuery.error,
     markerValuesQuery.error,

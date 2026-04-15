@@ -6426,7 +6426,7 @@ function PtClientScheduleCard({
                     }
                   }}
                   className={cn(
-                    "group ops-surface-strong min-h-[220px] w-full px-4 py-4 text-left transition hover:border-border",
+                    "group ops-surface-strong min-h-[220px] w-full overflow-hidden px-4 py-4 text-left transition hover:border-border",
                     isSelected
                       ? "border-primary/55 bg-primary/12 shadow-[0_0_0_1px_oklch(var(--primary)/0.24),0_18px_32px_-24px_oklch(var(--primary)/0.8)]"
                       : hasSubmittedCheckin
@@ -6445,7 +6445,7 @@ function PtClientScheduleCard({
                     isFuture && !isSelected ? "opacity-90" : "",
                   )}
                 >
-                  <div className="space-y-3">
+                  <div className="min-w-0 space-y-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <span className="uppercase tracking-[0.2em]">
@@ -6477,15 +6477,18 @@ function PtClientScheduleCard({
                         {dayTypeLabel}
                       </p>
                       {workoutTemplateLabel ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p
+                          className="truncate text-sm text-muted-foreground"
+                          title={workoutTemplateLabel}
+                        >
                           {workoutTemplateLabel}
                         </p>
                       ) : null}
                     </div>
 
                     <div className="grid gap-2">
-                      <div className="ops-stat py-2">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="ops-stat min-w-0 overflow-hidden py-2">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
                           <span
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
                             title="Workout"
@@ -6493,13 +6496,16 @@ function PtClientScheduleCard({
                           >
                             <Dumbbell className="h-3.5 w-3.5" />
                           </span>
-                          <span className="text-sm font-semibold text-foreground">
+                          <span
+                            className="block min-w-0 flex-1 truncate text-right text-sm font-semibold text-foreground"
+                            title={workoutTemplateLabel || "Rest"}
+                          >
                             {workoutTemplateLabel || "Rest"}
                           </span>
                         </div>
                       </div>
-                      <div className="ops-stat py-2">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="ops-stat min-w-0 overflow-hidden py-2">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
                           <span
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
                             title="Nutrition"
@@ -6507,15 +6513,15 @@ function PtClientScheduleCard({
                           >
                             <Apple className="h-3.5 w-3.5" />
                           </span>
-                          <span className="text-sm font-semibold text-foreground">
+                          <span className="block min-w-0 flex-1 truncate text-right text-sm font-semibold text-foreground">
                             {nutrition
                               ? `${Math.round(nutritionCaloriesTotal)} kcal`
                               : "None"}
                           </span>
                         </div>
                       </div>
-                      <div className="ops-stat py-2">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="ops-stat min-w-0 overflow-hidden py-2">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
                           <span
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/55 text-muted-foreground"
                             title="Check-in"
@@ -6523,7 +6529,7 @@ function PtClientScheduleCard({
                           >
                             <ClipboardCheck className="h-3.5 w-3.5" />
                           </span>
-                          <span className="text-sm font-semibold text-foreground">
+                          <span className="block min-w-0 flex-1 truncate text-right text-sm font-semibold text-foreground">
                             {checkinState === "reviewed"
                               ? "Reviewed"
                               : checkinState === "submitted"

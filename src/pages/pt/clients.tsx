@@ -20,8 +20,6 @@ import type { PTClientSummary } from "../../features/pt-hub/types";
 import { type ClientSegmentKey } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
 
-const WORKSPACE_PLACEHOLDER_ID = "00000000-0000-0000-0000-000000000000";
-
 export function PtClientsPage() {
   const navigate = useNavigate();
   const {
@@ -34,19 +32,21 @@ export function PtClientsPage() {
   const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
   const [page, setPage] = useState(0);
   const deferredSearchValue = useDeferredValue(searchValue);
-  const scopedWorkspaceId = workspaceId ?? WORKSPACE_PLACEHOLDER_ID;
+  const hasWorkspaceContext = Boolean(workspaceId);
   const clientsQuery = usePtHubClientsPage({
     page,
     pageSize: 25,
-    workspaceId: scopedWorkspaceId,
+    workspaceId: workspaceId ?? undefined,
     lifecycle: lifecycleFilter,
     segment: segmentFilter,
     search: deferredSearchValue,
+    enabled: hasWorkspaceContext,
   });
   const statsQuery = usePtHubClientsPage({
     page: 0,
     pageSize: 5000,
-    workspaceId: scopedWorkspaceId,
+    workspaceId: workspaceId ?? undefined,
+    enabled: hasWorkspaceContext,
   });
 
   const stats = useMemo(
@@ -61,6 +61,7 @@ export function PtClientsPage() {
     totalCount === 0 ? 0 : Math.min((page + 1) * pageSize, totalCount);
   const isTableLoading =
     workspaceLoading ||
+    !hasWorkspaceContext ||
     clientsQuery.isLoading ||
     (clientsQuery.isFetching && !clientsQuery.data);
   const hasAnyClients = stats.totalClients > 0;

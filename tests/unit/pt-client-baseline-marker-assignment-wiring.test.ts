@@ -24,6 +24,12 @@ describe("PT performance marker baseline wiring", () => {
     expect(clientBaselinePage).toContain("client-baseline-onboarding");
     expect(clientBaselinePage).toContain("initial_baseline_entry_id");
     expect(clientBaselinePage).toContain(
+      'clientRows.find((row) => Boolean(row.workspace_id))',
+    );
+    expect(clientBaselinePage).toContain(
+      '"client_visible_performance_markers"',
+    );
+    expect(clientBaselinePage).toContain(
       "No active performance markers are enabled for your coaching space yet.",
     );
     expect(clientBaselinePage).not.toContain("baseline_entry_marker_templates");

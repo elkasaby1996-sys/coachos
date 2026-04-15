@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Plus, X } from "lucide-react";
+import { ChevronDown, Copy, Plus, X } from "lucide-react";
 import { ActionStatusMessage } from "../../components/common/action-feedback";
 import {
   EmptyStateBlock,
@@ -78,8 +78,41 @@ const createMealDraft = (): PersonalMealDraft => ({
   notes: "",
   components: [createComponentDraft()],
 });
+const cloneMealDraft = (meal: PersonalMealDraft): PersonalMealDraft => ({
+  mealName: meal.mealName,
+  notes: meal.notes,
+  components: meal.components.map((component) => ({ ...component })),
+});
 const createWeekMealsDraft = (): PersonalMealDraft[][] =>
   Array.from({ length: 7 }, () => [createMealDraft()]);
+const normalizeMealDraftSignature = (meal: PersonalMealDraft) =>
+  JSON.stringify({
+    mealName: meal.mealName.trim().toLowerCase(),
+    notes: meal.notes.trim().toLowerCase(),
+    components: meal.components.map((component) => ({
+      componentName: component.componentName.trim().toLowerCase(),
+      quantity: component.quantity.trim(),
+      unit: component.unit.trim().toLowerCase(),
+      calories: component.calories.trim(),
+      protein: component.protein.trim(),
+      carbs: component.carbs.trim(),
+      fat: component.fat.trim(),
+    })),
+  });
+const mealHasDraftContent = (meal: PersonalMealDraft) =>
+  meal.mealName.trim().length > 0 ||
+  meal.notes.trim().length > 0 ||
+  meal.components.some((component) =>
+    [
+      component.componentName,
+      component.quantity,
+      component.unit,
+      component.calories,
+      component.protein,
+      component.carbs,
+      component.fat,
+    ].some((value) => value.trim().length > 0),
+  );
 
 const toIntOrNull = (value: string) => {
   const parsed = Number(value);
@@ -116,6 +149,10 @@ export function ClientNutritionCreatePlanPage() {
   const [planStartDate, setPlanStartDate] = useState("");
   const [weekMeals, setWeekMeals] = useState<PersonalMealDraft[][]>(createWeekMealsDraft());
   const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({});
+  const [duplicationMessage, setDuplicationMessage] = useState<{
+    tone: "success" | "info";
+    text: string;
+  } | null>(null);
 
   const clientQuery = useQuery({
     queryKey: ["client-nutrition-create-profile", session?.user?.id],
@@ -186,22 +223,29 @@ export function ClientNutritionCreatePlanPage() {
     const nextIndex = selectedDayMeals.length;
     updateSelectedDayMeals((previous) => [...previous, createMealDraft()]);
     setExpandedMeals((previous) => ({ ...previous, [mealKey(selectedDay, nextIndex)]: true }));
+    setDuplicationMessage(null);
   };
-  const removeMeal = (mealIndex: number) =>
+  const removeMeal = (mealIndex: number) => {
     updateSelectedDayMeals((previous) =>
       previous.length <= 1 ? previous : previous.filter((_, index) => index !== mealIndex),
     );
-  const updateMealField = (mealIndex: number, field: keyof Omit<PersonalMealDraft, "components">, value: string) =>
+    setDuplicationMessage(null);
+  };
+  const updateMealField = (mealIndex: number, field: keyof Omit<PersonalMealDraft, "components">, value: string) => {
     updateSelectedDayMeals((previous) =>
       previous.map((meal, index) => (index === mealIndex ? { ...meal, [field]: value } : meal)),
     );
-  const addMealComponent = (mealIndex: number) =>
+    setDuplicationMessage(null);
+  };
+  const addMealComponent = (mealIndex: number) => {
     updateSelectedDayMeals((previous) =>
       previous.map((meal, index) =>
         index === mealIndex ? { ...meal, components: [...meal.components, createComponentDraft()] } : meal,
       ),
     );
-  const removeMealComponent = (mealIndex: number, componentIndex: number) =>
+    setDuplicationMessage(null);
+  };
+  const removeMealComponent = (mealIndex: number, componentIndex: number) => {
     updateSelectedDayMeals((previous) =>
       previous.map((meal, index) => {
         if (index !== mealIndex || meal.components.length <= 1) return meal;
@@ -211,12 +255,14 @@ export function ClientNutritionCreatePlanPage() {
         };
       }),
     );
+    setDuplicationMessage(null);
+  };
   const updateMealComponentField = (
     mealIndex: number,
     componentIndex: number,
     field: keyof PersonalMealComponentDraft,
     value: string,
-  ) =>
+  ) => {
     updateSelectedDayMeals((previous) =>
       previous.map((meal, index) => {
         if (index !== mealIndex) return meal;
@@ -228,6 +274,48 @@ export function ClientNutritionCreatePlanPage() {
         };
       }),
     );
+    setDuplicationMessage(null);
+  };
+  const duplicateMealToAllDays = (mealIndex: number) => {
+    const sourceMeal = selectedDayMeals[mealIndex];
+    if (!sourceMeal || !mealHasDraftContent(sourceMeal)) return;
+
+    const sourceSignature = normalizeMealDraftSignature(sourceMeal);
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    setWeekMeals((previous) =>
+      previous.map((dayMeals, dayIndex) => {
+        if (dayIndex === selectedDay - 1) return dayMeals;
+        if (dayMeals.some((meal) => normalizeMealDraftSignature(meal) === sourceSignature)) {
+          skippedCount += 1;
+          return dayMeals;
+        }
+        addedCount += 1;
+        return [...dayMeals, cloneMealDraft(sourceMeal)];
+      }),
+    );
+
+    const mealLabel = sourceMeal.mealName.trim() || `Meal ${mealIndex + 1}`;
+    if (addedCount > 0 && skippedCount > 0) {
+      setDuplicationMessage({
+        tone: "success",
+        text: `"${mealLabel}" was added to ${addedCount} ${addedCount === 1 ? "day" : "days"} and skipped on ${skippedCount} where it already exists.`,
+      });
+      return;
+    }
+    if (addedCount > 0) {
+      setDuplicationMessage({
+        tone: "success",
+        text: `"${mealLabel}" was added to ${addedCount} ${addedCount === 1 ? "day" : "days"}.`,
+      });
+      return;
+    }
+    setDuplicationMessage({
+      tone: "info",
+      text: `"${mealLabel}" is already present across the other days in this plan.`,
+    });
+  };
 
   const createPersonalPlanMutation = useMutation({
     mutationFn: async () => {
@@ -440,7 +528,10 @@ export function ClientNutritionCreatePlanPage() {
               value={dayTabValue(selectedDay)}
               onValueChange={(value) => {
                 const nextDay = Number(value.replace("day-", ""));
-                if (!Number.isNaN(nextDay)) setSelectedDay(nextDay);
+                if (!Number.isNaN(nextDay)) {
+                  setSelectedDay(nextDay);
+                  setDuplicationMessage(null);
+                }
               }}
             >
               <TabsList className="pt-hub-tab-rail h-auto min-h-[3.75rem] w-full justify-center !border-border/60 [background:none] !bg-card/45 !shadow-none backdrop-blur-0">
@@ -519,6 +610,12 @@ export function ClientNutritionCreatePlanPage() {
                 </div>
 
                 <div className="space-y-3">
+                  {duplicationMessage ? (
+                    <ActionStatusMessage tone={duplicationMessage.tone}>
+                      {duplicationMessage.text}
+                    </ActionStatusMessage>
+                  ) : null}
+
                   {selectedDayMeals.map((meal, mealIndex) => {
                     const mealTotals = meal.components.reduce(
                       (acc, component) => ({
@@ -536,45 +633,72 @@ export function ClientNutritionCreatePlanPage() {
                         key={`day-${selectedDay}-meal-${mealIndex}`}
                         className="overflow-hidden border-border/70 bg-card p-0"
                       >
-                        <div className="flex items-start justify-between gap-2 px-3.5 py-3">
-                          <button
-                            type="button"
-                            onClick={() => toggleMealExpanded(mealIndex)}
-                            className="flex min-w-0 flex-1 items-start gap-2 text-left"
-                          >
-                            <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-0" : "-rotate-90"}`} />
-                            <div className="min-w-0">
-                              <p className="truncate text-[15px] font-semibold text-foreground">
-                                {meal.mealName.trim() || `Meal ${mealIndex + 1}`}
-                              </p>
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
-                                  {Math.round(mealTotals.calories)} CAL
-                                </Badge>
-                                <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
-                                  P {Math.round(mealTotals.protein)}G
-                                </Badge>
-                                <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
-                                  F {Math.round(mealTotals.fat)}G
-                                </Badge>
-                                <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
-                                  C {Math.round(mealTotals.carbs)}G
-                                </Badge>
+                        <div className="space-y-2 px-3.5 py-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleMealExpanded(mealIndex)}
+                              className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                            >
+                              <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-0" : "-rotate-90"}`} />
+                              <div className="min-w-0">
+                                <p className="truncate text-[15px] font-semibold text-foreground">
+                                  {meal.mealName.trim() || `Meal ${mealIndex + 1}`}
+                                </p>
+                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                    {Math.round(mealTotals.calories)} CAL
+                                  </Badge>
+                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                    P {Math.round(mealTotals.protein)}G
+                                  </Badge>
+                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                    F {Math.round(mealTotals.fat)}G
+                                  </Badge>
+                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                    C {Math.round(mealTotals.carbs)}G
+                                  </Badge>
+                                </div>
                               </div>
-                            </div>
-                          </button>
+                            </button>
 
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            onClick={() => removeMeal(mealIndex)}
-                            disabled={selectedDayMeals.length <= 1}
-                          >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Remove meal</span>
-                          </Button>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                onClick={() => removeMeal(mealIndex)}
+                                disabled={selectedDayMeals.length <= 1}
+                              >
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Remove meal</span>
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/10 px-2.5 py-2">
+                            <div className="space-y-0.5">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Reuse this meal
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Copy it to the other days in this week.
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="h-8 px-2.5"
+                              onClick={() => duplicateMealToAllDays(mealIndex)}
+                              disabled={!mealHasDraftContent(meal)}
+                              title="Duplicate this meal across all days"
+                            >
+                              <Copy className="mr-1 h-3.5 w-3.5" />
+                              Apply to all days
+                            </Button>
+                          </div>
                         </div>
 
                         {expanded ? (
