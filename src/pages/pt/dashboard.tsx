@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   CalendarDays,
+  Clock3,
   Info,
   MessageCircle,
   Rocket,
@@ -273,7 +275,13 @@ export function PtDashboardPage() {
     };
 
     void loadDashboard();
-  }, [cachedWorkspaceId, messagesEnabled, refreshWorkspace, user?.id, workspaceLoading]);
+  }, [
+    cachedWorkspaceId,
+    messagesEnabled,
+    refreshWorkspace,
+    user?.id,
+    workspaceLoading,
+  ]);
 
   useEffect(() => {
     if (workspaceError) {
@@ -441,7 +449,48 @@ export function PtDashboardPage() {
       }).length,
     [checkinRows, upcomingWindowEnd],
   );
+  const queueSegments = useMemo(() => {
+    const total = Math.max(
+      checkinDueNowCount + checkinOverdueCount + checkinSoonCount,
+      1,
+    );
 
+    return [
+      {
+        key: "overdue",
+        label: "Overdue",
+        helper: "Past the due date and needs follow-up first.",
+        value: checkinOverdueCount,
+        icon: AlertTriangle,
+        toneClassName:
+          "border-rose-500/30 bg-rose-500/10 text-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-rose-400/90",
+      },
+      {
+        key: "due",
+        label: "Due now",
+        helper: "Ready for review in the current queue window.",
+        value: checkinDueNowCount,
+        icon: Clock3,
+        toneClassName:
+          "border-amber-500/30 bg-amber-500/10 text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-amber-300/90",
+      },
+      {
+        key: "soon",
+        label: "Due soon",
+        helper: "Upcoming check-ins inside the next 7 days.",
+        value: checkinSoonCount,
+        icon: CalendarDays,
+        toneClassName:
+          "border-sky-500/30 bg-sky-500/10 text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-sky-400/90",
+      },
+    ].map((item) => ({
+      ...item,
+      widthPercent: `${Math.max((item.value / total) * 100, item.value > 0 ? 10 : 0)}%`,
+    }));
+  }, [checkinDueNowCount, checkinOverdueCount, checkinSoonCount]);
   const checkinsTodayCount = useMemo(() => {
     if (checkinRows.length === 0) return 0;
     return checkinRows.filter(
@@ -450,6 +499,7 @@ export function PtDashboardPage() {
         checkin.week_ending_saturday === todayStr,
     ).length;
   }, [checkinRows, todayStr]);
+
   const activeClientsDelta = useMemo(() => {
     const currentWindow = clients.filter((client) => {
       return (
@@ -1029,30 +1079,59 @@ export function PtDashboardPage() {
                 description="Rebuilding your check-in pressure points."
               />
             ) : (
-              <div className="surface-subtle grid grid-cols-3 gap-2 rounded-[1.35rem] p-2">
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Due now
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    <AnimatedValue value={checkinDueNowCount} />
-                  </p>
+              <div className="space-y-3">
+                <div className="h-2.5 overflow-hidden rounded-full bg-background/65">
+                  <div className="flex h-full w-full gap-px overflow-hidden rounded-full">
+                    {queueSegments.map((segment) => (
+                      <div
+                        key={segment.key}
+                        className={segment.meterClassName}
+                        style={{ width: segment.widthPercent }}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Overdue
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    <AnimatedValue value={checkinOverdueCount} />
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Due soon
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    <AnimatedValue value={checkinSoonCount} />
-                  </p>
+
+                <div className="space-y-2">
+                  {queueSegments.map((segment) => {
+                    const Icon = segment.icon;
+
+                    return (
+                      <button
+                        key={segment.key}
+                        type="button"
+                        onClick={() => navigate("/pt/checkins")}
+                        className="surface-subtle flex w-full items-center gap-3 rounded-[1.2rem] border border-border/65 px-3.5 py-3 text-left transition duration-200 hover:border-border hover:bg-background/70"
+                      >
+                        <span
+                          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${segment.toneClassName}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground">
+                              {segment.label}
+                            </p>
+                            <span className="text-[11px] text-muted-foreground">
+                              <AnimatedValue value={segment.value} />
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {segment.helper}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            <AnimatedValue value={segment.value} />
+                          </p>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                            items
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

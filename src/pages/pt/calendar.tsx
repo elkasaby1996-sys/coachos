@@ -27,7 +27,6 @@ import {
   getTodayInTimezone,
   getWeekStartSunday,
 } from "../../lib/date-utils";
-import { formatRelativeTime } from "../../lib/relative-time";
 import {
   checkinOperationalStatusMap,
   getCheckinOperationalState,
@@ -43,6 +42,23 @@ const getMonthStartKey = (date: Date) => {
 
 const getMonthLabel = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+const getClientFirstName = (displayName: string | null) => {
+  const value = displayName?.trim();
+  if (!value) return "Client";
+  return value.split(/\s+/)[0] ?? "Client";
+};
+
+const getPossessiveLabel = (displayName: string | null) => {
+  const firstName = getClientFirstName(displayName);
+  if (firstName.toLowerCase().endsWith("s")) {
+    return `${firstName}'`;
+  }
+  return `${firstName}'s`;
+};
+
+const getCalendarCheckinLabel = (displayName: string | null) =>
+  `${getPossessiveLabel(displayName)} check-in`;
 
 const buildCalendarDays = (monthCursor: Date) => {
   const monthStartKey = getMonthStartKey(monthCursor);
@@ -379,6 +395,16 @@ export function PtCalendarPage() {
               {days.map((day) => {
                 const checkins = checkinsByDate.get(day.key) ?? [];
                 const events = eventsByDate.get(day.key) ?? [];
+                const visibleCheckins = checkins.slice(0, 2);
+                const visibleEvents =
+                  visibleCheckins.length >= 2
+                    ? []
+                    : events.slice(0, 2 - visibleCheckins.length);
+                const hiddenItemCount =
+                  checkins.length +
+                  events.length -
+                  visibleCheckins.length -
+                  visibleEvents.length;
                 const isToday = day.key === todayKey;
                 const isSelected = day.key === selectedDateKey;
                 const hasItems = checkins.length + events.length > 0;
@@ -409,7 +435,7 @@ export function PtCalendarPage() {
                       }
                     }}
                     className={cn(
-                      "min-h-[160px] rounded-2xl border border-border/70 bg-background/40 p-3 text-left transition hover:border-border",
+                      "flex min-h-[176px] flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40 p-4 text-left transition hover:border-border",
                       !day.inMonth && "opacity-50",
                       isToday && "border-accent/60 bg-accent/10",
                       isSelected && "border-primary/40 bg-primary/[0.08]",
@@ -433,28 +459,14 @@ export function PtCalendarPage() {
                       >
                         {day.key.slice(-2)}
                       </span>
-                      {dayState ? (
-                        <StatusPill
-                          status={dayState}
-                          statusMap={checkinOperationalStatusMap}
-                        />
-                      ) : null}
                     </div>
 
-                    <div className="mt-3 space-y-2">
-                      {checkins.slice(0, 2).map((row) => {
+                    <div className="mt-4 flex-1 space-y-2.5">
+                      {visibleCheckins.map((row) => {
                         const client = row.client_id
                           ? clientMap.get(row.client_id)
                           : null;
-                        const label = client?.display_name?.trim()
-                          ? client.display_name
-                          : "Client";
                         const state = getCheckinOperationalState(row, todayKey);
-                        const detail = row.reviewed_at
-                          ? `Reviewed ${formatRelativeTime(row.reviewed_at)}`
-                          : row.submitted_at
-                            ? `Submitted ${formatRelativeTime(row.submitted_at)}`
-                            : checkinOperationalStatusMap[state].label;
                         return (
                           <button
                             key={row.id}
@@ -469,23 +481,26 @@ export function PtCalendarPage() {
                                 );
                               }
                             }}
-                            className="w-full rounded-lg border border-border/60 bg-muted/30 px-2 py-1 text-left text-xs transition hover:border-border"
+                            aria-label={`Open ${getCalendarCheckinLabel(client?.display_name ?? null)}`}
+                            className={cn(
+                              "group w-full rounded-xl border px-3 py-2 text-left text-xs transition",
+                              state === "overdue"
+                                ? "border-destructive/30 bg-destructive/[0.06] hover:border-destructive/45"
+                                : state === "submitted" || state === "reviewed"
+                                  ? "border-primary/25 bg-primary/[0.06] hover:border-primary/40"
+                                  : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30",
+                            )}
                           >
-                            <div className="font-semibold text-foreground">
-                              {label}
-                            </div>
-                            <div className="flex items-center justify-between gap-2 text-muted-foreground">
-                              <span>{detail}</span>
-                              <StatusPill
-                                status={state}
-                                statusMap={checkinOperationalStatusMap}
-                              />
+                            <div className="truncate font-medium text-foreground transition-colors group-hover:text-primary">
+                              {getCalendarCheckinLabel(
+                                client?.display_name ?? null,
+                              )}
                             </div>
                           </button>
                         );
                       })}
 
-                      {events.slice(0, 2).map((row) => (
+                      {visibleEvents.map((row) => (
                         <button
                           key={row.id}
                           type="button"
@@ -494,40 +509,39 @@ export function PtCalendarPage() {
                             setSelectedEvent(row);
                             setEventDetailsOpen(true);
                           }}
-                          className="w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-left text-xs transition hover:border-border"
+                          aria-label={`Open event ${row.title}`}
+                          className="group w-full rounded-xl border border-border/60 bg-background/55 px-3 py-2 text-left text-xs transition hover:border-border hover:bg-background/75"
                         >
-                          <div className="font-semibold text-foreground">
+                          <div className="truncate font-medium text-foreground transition-colors group-hover:text-primary">
                             {row.title}
                           </div>
-                          {row.description ? (
-                            <div className="text-muted-foreground line-clamp-1">
-                              {row.description}
-                            </div>
-                          ) : null}
                         </button>
                       ))}
 
                       {!hasItems ? (
-                        <div className="pt-10">
+                        <div className="pt-12">
                           <div className="h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
                         </div>
-                      ) : checkins.length + events.length > 4 ? (
-                        <div className="text-[11px] text-muted-foreground">
-                          +{checkins.length + events.length - 4} more items
+                      ) : hiddenItemCount > 0 ? (
+                        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                          +{hiddenItemCount} more
                         </div>
                       ) : null}
                     </div>
 
                     {hasItems ? (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+                      <div className="mt-4 border-t border-border/55 pt-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                         {checkins.length > 0 ? (
-                          <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          <span>
                             {checkins.length} check-in
                             {checkins.length > 1 ? "s" : ""}
                           </span>
                         ) : null}
+                        {checkins.length > 0 && events.length > 0 ? (
+                          <span className="px-1.5">/</span>
+                        ) : null}
                         {events.length > 0 ? (
-                          <span className="rounded-full border border-border/70 bg-secondary/18 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          <span>
                             {events.length} event
                             {events.length > 1 ? "s" : ""}
                           </span>

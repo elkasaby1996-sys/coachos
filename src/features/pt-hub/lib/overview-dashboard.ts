@@ -62,6 +62,9 @@ export interface PtHubOverviewSummaryItem {
   value: string;
   detail?: string;
   tone?: SummaryTone;
+  href?: string;
+  ctaLabel?: string;
+  workspaceId?: string | null;
 }
 
 export interface PtHubOverviewQuickAction {
@@ -653,24 +656,32 @@ function buildPipelineSummary(params: {
       label: "Awaiting response",
       value: formatCount(getUnrepliedLeadCount(params.leads), "lead"),
       tone: getSemanticToneForStatus("Awaiting response"),
+      href: "/pt-hub/leads",
+      ctaLabel: "Open leads",
     },
     {
       id: "pipeline-moving",
       label: "In progress",
       value: formatCount(getPipelineLeadCount(params.leads), "lead"),
       tone: getSemanticToneForStatus("In progress"),
+      href: "/pt-hub/leads",
+      ctaLabel: "Open pipeline",
     },
     {
       id: "converted",
       label: "Converted",
       value: formatCount(getAcceptedLeadCount(params.leads), "lead"),
       tone: getSemanticToneForStatus("Converted"),
+      href: "/pt-hub/leads",
+      ctaLabel: "View conversions",
     },
     {
       id: "new-this-month",
       label: "New this month",
       value: formatCount(params.stats?.applicationsThisMonth ?? 0, "lead"),
       tone: getSemanticToneForStatus("New this month"),
+      href: "/pt-hub/leads",
+      ctaLabel: "Open leads",
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }
@@ -685,18 +696,24 @@ function buildClientHealthSummary(params: {
       label: "Needs attention",
       value: formatCount(params.clientsNeedingAttentionCount, "client"),
       tone: getSemanticToneForStatus("Needs attention"),
+      href: "/pt-hub/clients",
+      ctaLabel: "Open clients",
     },
     {
       id: "at-risk",
       label: "At risk",
       value: formatCount(params.clientStats.atRiskClients, "client"),
       tone: getSemanticToneForStatus("At risk"),
+      href: "/pt-hub/clients",
+      ctaLabel: "Review risk",
     },
     {
       id: "checkin-overdue",
       label: "Check-ins overdue",
       value: formatCount(params.clientStats.overdueCheckinClients, "client"),
       tone: getSemanticToneForStatus("Overdue"),
+      href: "/pt/checkins",
+      ctaLabel: "Open check-ins",
     },
     {
       id: "onboarding-incomplete",
@@ -706,6 +723,8 @@ function buildClientHealthSummary(params: {
         "client",
       ),
       tone: getSemanticToneForStatus("Onboarding incomplete"),
+      href: "/pt-hub/clients",
+      ctaLabel: "Review onboarding",
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }

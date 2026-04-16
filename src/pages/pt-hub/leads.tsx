@@ -3,7 +3,6 @@ import { ChevronRight, MessageSquarePlus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
-import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { PtHubLeadStatusBadge } from "../../features/pt-hub/components/pt-hub-lead-status-badge";
@@ -20,11 +19,32 @@ import {
 import { usePtHubLeads } from "../../features/pt-hub/lib/pt-hub";
 import type { PTLeadStatus } from "../../features/pt-hub/types";
 import { formatRelativeTime } from "../../lib/relative-time";
+import {
+  getSemanticToneClasses,
+  type SemanticTone,
+} from "../../lib/semantic-status";
 
 const statusOptions: Array<PTLeadStatus | "all"> = [
   "all",
   ...ptHubLeadStatuses,
 ];
+
+const statusOptionLabels: Record<PTLeadStatus | "all", string> = {
+  all: "All",
+  new: "New",
+  contacted: "Contacted",
+  approved_pending_workspace: "Approved pending workspace",
+  converted: "Converted",
+  declined: "Declined",
+};
+
+const leadStatusTone: Record<PTLeadStatus, SemanticTone> = {
+  new: "warning",
+  contacted: "info",
+  approved_pending_workspace: "warning",
+  converted: "success",
+  declined: "danger",
+};
 
 export function PtHubLeadsPage() {
   const navigate = useNavigate();
@@ -53,9 +73,6 @@ export function PtHubLeadsPage() {
         lead.fullName,
         lead.email ?? "",
         lead.phone ?? "",
-        lead.goalSummary,
-        lead.trainingExperience ?? "",
-        lead.budgetInterest ?? "",
         getLeadPrimaryPackageLabel(lead) ?? "",
         lead.leadLastMessagePreview ?? "",
         lead.notesPreview ?? "",
@@ -120,38 +137,47 @@ export function PtHubLeadsPage() {
       </div>
 
       <PtHubSectionCard
-        title="Lead Inbox"
+        title="Lead Pipeline"
         description="Search, filter, and open any inquiry."
         contentClassName="space-y-6"
       >
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div className="relative">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 flex-1">
               <Search className="app-search-icon h-4 w-4" />
               <Input
                 className="app-search-input"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search name, contact, goal, or notes"
+                placeholder="Search lead name or package"
               />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {statusOptions.map((status) => (
-                <Button
-                  key={status}
-                  type="button"
-                  size="sm"
-                  variant={statusFilter === status ? "default" : "secondary"}
-                  onClick={() => setStatusFilter(status)}
-                >
-                  {status === "all" ? "All" : status.replace(/_/g, " ")}
-                </Button>
-              ))}
+            <div className="w-full lg:w-[220px] lg:flex-none">
               <Select
                 size="sm"
+                className="w-full"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as PTLeadStatus | "all")
+                }
+                aria-label="Filter by lead status"
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {statusOptionLabels[status]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="w-full lg:w-[240px] lg:flex-none">
+              <Select
+                size="sm"
+                className="w-full"
                 value={packageFilterValue}
                 onChange={(event) =>
-                  setPackageFilterValue(event.target.value as LeadPackageFilterValue)
+                  setPackageFilterValue(
+                    event.target.value as LeadPackageFilterValue,
+                  )
                 }
                 aria-label="Filter by package interest"
               >
@@ -177,50 +203,45 @@ export function PtHubLeadsPage() {
           />
         ) : (
           <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
-            <div className="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+            <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_160px_170px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
               <span>Lead</span>
-              <span>Goal and interest</span>
+              <span>Package</span>
               <span>Submitted</span>
               <span>Status</span>
             </div>
             <div className="space-y-2">
               {filteredLeads.map((lead) => {
                 const packageLabel = getLeadPrimaryPackageLabel(lead);
+                const statusMarkerTone = getSemanticToneClasses(
+                  leadStatusTone[lead.status],
+                ).marker;
                 return (
                   <button
                     key={lead.id}
                     type="button"
-                    className="grid w-full gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_160px_150px] lg:items-center"
+                    className="relative grid w-full gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_160px_170px] lg:items-center"
                     onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}
                   >
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">
-                          {lead.fullName}
-                        </p>
-                        <span className="rounded-full border border-border/70 bg-background/72 px-2 py-0.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                          {lead.sourceLabel}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {lead.email || lead.phone || "No contact info"}
-                      </p>
-                      <p className="line-clamp-1 text-xs text-muted-foreground">
-                        {lead.leadLastMessagePreview ||
-                          lead.notesPreview ||
-                          "No lead chat activity yet"}
+                    <span
+                      aria-hidden
+                      className={`absolute bottom-4 left-1 top-4 w-[2px] rounded-full ${statusMarkerTone}`}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {lead.fullName}
                       </p>
                     </div>
 
-                    <div className="space-y-1">
-                      <p className="line-clamp-2 text-sm text-foreground">
-                        {lead.goalSummary}
-                      </p>
+                    <div>
                       {packageLabel ? (
-                        <p className="text-xs text-muted-foreground">
-                          Package: {packageLabel}
+                        <p className="text-sm text-foreground">
+                          {packageLabel}
                         </p>
-                      ) : null}
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No package selected
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1 text-sm text-muted-foreground">
@@ -229,9 +250,7 @@ export function PtHubLeadsPage() {
                           lead.leadLastMessageAt ?? lead.submittedAt,
                         )}
                       </p>
-                      <p className="text-xs">
-                        {lead.trainingExperience || "Experience not specified"}
-                      </p>
+                      <p className="text-xs">Submitted</p>
                     </div>
 
                     <div className="flex items-center justify-between gap-3 lg:justify-end">

@@ -48,6 +48,14 @@ const socialPlatformIcons = {
   youtube: Youtube,
 } as const;
 
+function getExternalHref(url: string) {
+  const value = url.trim();
+  if (!value) return "#";
+  if (/^[a-z][a-z\d+.-]*:/i.test(value)) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  return `https://${value}`;
+}
+
 export function PublicPtProfileView({
   profile,
   preview = false,
@@ -514,7 +522,7 @@ export function PublicPtProfileView({
                         return (
                           <a
                             key={link.platform}
-                            href={link.url}
+                            href={getExternalHref(link.url)}
                             target="_blank"
                             rel="noreferrer"
                             className="flex items-center justify-between rounded-[20px] bg-background/45 px-4 py-3 transition hover:bg-background/65"

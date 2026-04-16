@@ -10,6 +10,8 @@ import { EmptyState } from "../../../components/ui/coachos/empty-state";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { NotificationItem } from "../../notifications/components/notification-item";
+import type { NotificationRecord } from "../../notifications/lib/types";
 import type { ModuleTone } from "../../../lib/module-tone";
 import {
   getSemanticBadgeVariant,
@@ -210,7 +212,11 @@ export function PtHubActionCenter({
         </div>
 
         {items.length > 0 ? (
-          <div className="space-y-3" role="list" aria-label="Action center items">
+          <div
+            className="space-y-3"
+            role="list"
+            aria-label="Action center items"
+          >
             {items.map((item) => (
               <PtHubActionCenterRow
                 key={item.id}
@@ -242,63 +248,60 @@ export function PtHubActionCenter({
 }
 
 export function PtHubRecentActivityCard({
-  items,
+  notifications,
+  unreadCount,
+  isLoading = false,
+  errorMessage,
+  onOpenNotification,
   module,
 }: {
-  items: PtHubOverviewActivityItem[];
+  notifications: NotificationRecord[];
+  unreadCount: number;
+  isLoading?: boolean;
+  errorMessage?: string | null;
+  onOpenNotification: (notification: NotificationRecord) => void;
   module?: ModuleTone;
 }) {
   return (
-    <PtHubSectionCard title="Recent activity" module={module}>
-      {items.length > 0 ? (
-        <div className="-mx-1 divide-y divide-border/60">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="pt-hub-interactive group space-y-2 rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-start gap-2.5">
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
-                        getSemanticToneClasses(item.tone).marker,
-                      )}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
-                        {item.title}
-                      </p>
-                      <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
-                        {item.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  asChild
-                  size="sm"
-                  variant="ghost"
-                  className="shrink-0 px-0 text-primary hover:bg-transparent hover:text-foreground"
-                >
-                  <Link to={item.href}>{item.ctaLabel}</Link>
-                </Button>
-              </div>
-            </div>
+    <PtHubSectionCard
+      title="Recent activity"
+      module={module}
+      className="h-full"
+    >
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton
+              key={`overview-notification-skeleton-${index}`}
+              className="h-24 rounded-[22px] border border-border/60"
+            />
           ))}
         </div>
+      ) : notifications.length > 0 ? (
+        <div className="-mx-1 divide-y divide-border/60">
+          {notifications.map((notification) => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              audience="pt"
+              compact
+              className="rounded-[22px] border-transparent bg-transparent px-4 py-4 shadow-none hover:border-transparent hover:bg-background/18"
+              onClick={() => onOpenNotification(notification)}
+            />
+          ))}
+        </div>
+      ) : errorMessage ? (
+        <EmptyState
+          title="Notifications are unavailable"
+          description={errorMessage}
+          icon={<Sparkles className="h-5 w-5 [stroke-width:1.7]" />}
+          className="rounded-[26px] border-border/70 bg-background/34"
+        />
       ) : (
         <EmptyState
-          title="Activity will build as you use the hub"
-          description="Lead movement, client activity, and workspace changes will surface here once the business starts moving."
+          title="No notifications yet"
+          description="Client, check-in, message, and workspace updates from every coaching space will appear here."
           icon={<Sparkles className="h-5 w-5 [stroke-width:1.7]" />}
-          action={
-            <Button asChild variant="secondary">
-              <Link to="/pt-hub/workspaces">Open coaching spaces</Link>
-            </Button>
-          }
           className="rounded-[26px] border-border/70 bg-background/34"
         />
       )}
@@ -329,6 +332,7 @@ export function PtHubLaunchChecklistCard({
       description={description}
       actions={actions}
       module={module}
+      className="h-full"
       contentClassName={collapsed ? "hidden" : undefined}
     >
       {!collapsed ? (
@@ -336,42 +340,44 @@ export function PtHubLaunchChecklistCard({
           <div className="rounded-[20px] border border-border/55 bg-background/24 px-4 py-4 backdrop-blur-xl">
             <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               <span>Completion</span>
-            <span>{completionPercent}%</span>
-          </div>
-          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/70">
-            <div
-              className="h-full rounded-full bg-[linear-gradient(90deg,oklch(var(--accent)),oklch(var(--chart-3)),oklch(var(--primary)/0.78))] transition-[width]"
-              style={{ width: `${completionPercent}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="-mx-1 divide-y divide-border/60">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="pt-hub-interactive flex flex-col gap-4 rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0 flex items-start gap-3">
-                <CheckCircle2
-                  className={cn(
-                    "mt-0.5 h-5 w-5 shrink-0 [stroke-width:1.7]",
-                    item.complete ? "text-success" : "text-primary opacity-55",
-                  )}
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
-                    {item.label}
-                  </p>
-                  <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
-                    {item.description}
-                  </p>
-                </div>
-              </div>
-              <Button asChild variant={item.complete ? "ghost" : "secondary"}>
-                <Link to={item.href}>{item.ctaLabel}</Link>
-              </Button>
+              <span>{completionPercent}%</span>
             </div>
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/70">
+              <div
+                className="h-full rounded-full bg-[linear-gradient(90deg,oklch(var(--accent)),oklch(var(--chart-3)),oklch(var(--primary)/0.78))] transition-[width]"
+                style={{ width: `${completionPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="-mx-1 divide-y divide-border/60">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="pt-hub-interactive flex flex-col gap-4 rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex items-start gap-3">
+                  <CheckCircle2
+                    className={cn(
+                      "mt-0.5 h-5 w-5 shrink-0 [stroke-width:1.7]",
+                      item.complete
+                        ? "text-success"
+                        : "text-primary opacity-55",
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
+                      {item.label}
+                    </p>
+                    <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild variant={item.complete ? "ghost" : "secondary"}>
+                  <Link to={item.href}>{item.ctaLabel}</Link>
+                </Button>
+              </div>
             ))}
           </div>
         </div>
@@ -438,67 +444,94 @@ export function PtHubSummaryCard({
   collapsed?: boolean;
   module?: ModuleTone;
 }) {
+  const navigate = useNavigate();
+  const { switchWorkspace } = useWorkspace();
+
+  const handleItemClick = (item: PtHubOverviewSummaryItem) => {
+    if (!item.href) return;
+    if (item.workspaceId) {
+      switchWorkspace(item.workspaceId);
+    }
+    navigate(item.href);
+  };
+
   return (
     <PtHubSectionCard
       title={title}
       description={description}
       actions={actions}
       module={module}
+      className="h-full"
       contentClassName={collapsed ? "hidden" : undefined}
     >
       {!collapsed ? (
         emptyState && isEmpty ? (
-        <EmptyState
-          title={emptyState.title}
-          description={emptyState.description}
-          action={
-            <Button asChild variant="secondary">
-              <Link to={emptyState.href}>{emptyState.ctaLabel}</Link>
-            </Button>
-          }
-          className="rounded-[26px] border-border/70 bg-background/34"
-        />
-      ) : (
-        <div className="-mx-1 divide-y divide-border/60">
-          {items.map((item) =>
-            (() => {
-              const toneStyles = getSemanticToneClasses(item.tone);
+          <EmptyState
+            title={emptyState.title}
+            description={emptyState.description}
+            action={
+              <Button asChild variant="secondary">
+                <Link to={emptyState.href}>{emptyState.ctaLabel}</Link>
+              </Button>
+            }
+            className="rounded-[26px] border-border/70 bg-background/34"
+          />
+        ) : (
+          <div className="-mx-1 divide-y divide-border/60">
+            {items.map((item) =>
+              (() => {
+                const toneStyles = getSemanticToneClasses(item.tone);
+                const isInteractive = Boolean(item.href);
 
-              return (
-                <div
-                  key={item.id}
-                  className="pt-hub-interactive rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18"
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
-                        toneStyles.marker,
-                      )}
-                    />
-                    <div className="min-w-0 space-y-2">
-                      <Badge
-                        variant={getSemanticBadgeVariant(item.tone)}
-                        className="px-2.5 py-1 text-[10px] tracking-[0.2em]"
-                      >
-                        {item.label}
-                      </Badge>
-                      <p className="text-[1.1rem] font-medium uppercase tracking-[0.03em] text-foreground">
-                        {item.value}
-                      </p>
-                      {item.detail ? (
-                        <p className="pt-hub-meta-text text-[0.92rem] leading-6">
-                          {item.detail}
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleItemClick(item)}
+                    disabled={!isInteractive}
+                    className={cn(
+                      "pt-hub-interactive group w-full rounded-[22px] border border-transparent bg-transparent px-4 py-4 text-left",
+                      isInteractive
+                        ? "hover:bg-background/18"
+                        : "cursor-default hover:bg-transparent",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
+                          toneStyles.marker,
+                        )}
+                      />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <Badge
+                          variant={getSemanticBadgeVariant(item.tone)}
+                          className="px-2.5 py-1 text-[10px] tracking-[0.2em]"
+                        >
+                          {item.label}
+                        </Badge>
+                        <p className="text-[1.1rem] font-medium uppercase tracking-[0.03em] text-foreground">
+                          {item.value}
                         </p>
+                        {item.detail ? (
+                          <p className="pt-hub-meta-text text-[0.92rem] leading-6">
+                            {item.detail}
+                          </p>
+                        ) : null}
+                      </div>
+                      {isInteractive ? (
+                        <span className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-primary transition-colors group-hover:text-foreground">
+                          {item.ctaLabel ?? "Open"}
+                          <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
+                        </span>
                       ) : null}
                     </div>
-                  </div>
-                </div>
-              );
-            })(),
-          )}
-        </div>
+                  </button>
+                );
+              })(),
+            )}
+          </div>
         )
       ) : null}
     </PtHubSectionCard>

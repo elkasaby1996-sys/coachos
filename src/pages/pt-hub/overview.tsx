@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import {
   PtHubActionCenter,
@@ -18,8 +18,13 @@ import {
   PtHubOverviewLoadingState,
   PtHubRecentActivityCard,
   PtHubSummaryCard,
-  type PtHubOverviewActivityItem,
 } from "../../features/pt-hub/components/pt-hub-overview-sections";
+import {
+  useMarkNotificationRead,
+  useNotificationsList,
+  useUnreadNotificationCount,
+} from "../../features/notifications/hooks/use-notifications";
+import type { NotificationRecord } from "../../features/notifications/lib/types";
 import { getPtHubOverviewDashboardModel } from "../../features/pt-hub/lib/overview-dashboard";
 import {
   usePtHubAnalytics,
@@ -32,20 +37,10 @@ import {
   usePtHubPublicationState,
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
-import type {
-  PTClientSummary,
-  PTLead,
-  PTProfileReadiness,
-  PTWorkspaceSummary,
-} from "../../features/pt-hub/types";
-import { isClientAtRisk } from "../../lib/client-lifecycle";
-import {
-  getSemanticToneForStatus,
-  type SemanticTone,
-} from "../../lib/semantic-status";
+import { useSessionAuth } from "../../lib/auth";
 import { getModuleToneForPath } from "../../lib/module-tone";
-import { formatRelativeTime } from "../../lib/relative-time";
 import { cn } from "../../lib/utils";
+import { useWorkspace } from "../../lib/use-workspace";
 
 const metricIconMap = {
   "active-clients": UsersRound,
@@ -64,37 +59,25 @@ function getMetricGridClassName(metricCount: number) {
   return "grid-cols-1";
 }
 
-function formatActivityDayStamp(value: Date | string | null | undefined) {
-  if (!value) return "Today";
+function getNotificationWorkspaceId(notification: NotificationRecord) {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object") return null;
 
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "Today";
+  if (typeof metadata.workspace_id === "string") {
+    return metadata.workspace_id;
+  }
 
-  const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
-  const startOfDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
-  const diffDays = Math.round(
-    (startOfToday.getTime() - startOfDate.getTime()) / (1000 * 60 * 60 * 24),
-  );
+  if (typeof metadata.workspaceId === "string") {
+    return metadata.workspaceId;
+  }
 
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+  return null;
 }
 
 export function PtHubOverviewPage() {
+  const navigate = useNavigate();
+  const { user } = useSessionAuth();
+  const { switchWorkspace } = useWorkspace();
   const [businessSetupCollapsed, setBusinessSetupCollapsed] = useState(false);
   const [billingCollapsed, setBillingCollapsed] = useState(false);
   const overviewQuery = usePtHubOverview();
@@ -106,6 +89,17 @@ export function PtHubOverviewPage() {
   const leadsQuery = usePtHubLeads();
   const clientsQuery = usePtHubClients();
   const publicationQuery = usePtHubPublicationState();
+  const notificationsQuery = useNotificationsList({
+    userId: user?.id ?? null,
+    limit: 4,
+    filter: "all",
+  });
+  const unreadNotificationCountQuery = useUnreadNotificationCount(
+    user?.id ?? null,
+  );
+  const markNotificationReadMutation = useMarkNotificationRead(
+    user?.id ?? null,
+  );
 
   const queries = [
     overviewQuery,
@@ -154,6 +148,8 @@ export function PtHubOverviewPage() {
   const leads = leadsQuery.data ?? [];
   const clients = clientsQuery.data ?? [];
   const publicationState = publicationQuery.data;
+  const notifications = notificationsQuery.data ?? [];
+  const unreadNotificationCount = unreadNotificationCountQuery.data ?? 0;
 
   const dashboardModel = getPtHubOverviewDashboardModel({
     stats,
@@ -168,19 +164,27 @@ export function PtHubOverviewPage() {
     revenue: payments?.revenue,
   });
 
-  const recentActivityItems = buildRecentActivityItems({
-    leads,
-    clients,
-    workspaces,
-    readiness,
-    profilePublished: publicationState?.isPublished ?? false,
-  });
   const showBusinessSetup = dashboardModel.setupCompletionPercent < 100;
   const metricGridClassName = getMetricGridClassName(
     dashboardModel.metrics.length,
   );
   const businessSetupToggleId = "pt-hub-business-setup-panel";
   const billingToggleId = "pt-hub-revenue-billing-panel";
+
+  const handleOpenNotification = async (notification: NotificationRecord) => {
+    const workspaceId = getNotificationWorkspaceId(notification);
+    if (workspaceId) {
+      switchWorkspace(workspaceId);
+    }
+
+    if (!notification.is_read) {
+      await markNotificationReadMutation.mutateAsync(notification.id);
+    }
+
+    if (notification.action_url) {
+      navigate(notification.action_url);
+    }
+  };
 
   return (
     <section className="space-y-7" data-testid="pt-hub-page">
@@ -197,7 +201,9 @@ export function PtHubOverviewPage() {
               icon={Icon}
               accent={metric.accent}
               delta={metric.delta}
-              module={metric.href ? getModuleToneForPath(metric.href) : "overview"}
+              module={
+                metric.href ? getModuleToneForPath(metric.href) : "overview"
+              }
               className="h-full"
             />
           );
@@ -244,7 +250,22 @@ export function PtHubOverviewPage() {
             ctaLabel: "Open coaching spaces",
           }}
         />
-        <PtHubRecentActivityCard items={recentActivityItems} module="overview" />
+        <PtHubRecentActivityCard
+          notifications={notifications}
+          unreadCount={unreadNotificationCount}
+          isLoading={notificationsQuery.isLoading}
+          errorMessage={
+            notificationsQuery.error instanceof Error
+              ? notificationsQuery.error.message
+              : notificationsQuery.error
+                ? "Notifications could not be loaded right now."
+                : null
+          }
+          onOpenNotification={(notification) => {
+            void handleOpenNotification(notification);
+          }}
+          module="overview"
+        />
       </div>
 
       {showBusinessSetup ? (
@@ -319,90 +340,4 @@ export function PtHubOverviewPage() {
       ) : null}
     </section>
   );
-}
-
-function buildRecentActivityItems(params: {
-  leads: PTLead[] | null | undefined;
-  clients: PTClientSummary[] | null | undefined;
-  workspaces: PTWorkspaceSummary[] | null | undefined;
-  readiness: PTProfileReadiness | null | undefined;
-  profilePublished: boolean;
-}): PtHubOverviewActivityItem[] {
-  const leads = params.leads ?? [];
-  const clients = params.clients ?? [];
-  const workspaces = params.workspaces ?? [];
-  const readiness = params.readiness;
-  const latestLead = leads[0] ?? null;
-  const latestClientAttention = [...clients]
-    .filter(
-      (client) =>
-        client.hasOverdueCheckin ||
-        client.onboardingIncomplete ||
-        isClientAtRisk(client),
-    )
-    .sort((left, right) => {
-      const leftTime = new Date(
-        left.lastActivityAt ?? left.updatedAt ?? 0,
-      ).getTime();
-      const rightTime = new Date(
-        right.lastActivityAt ?? right.updatedAt ?? 0,
-      ).getTime();
-      return rightTime - leftTime;
-    })[0];
-  const latestCoachingSpace = workspaces[0] ?? null;
-
-  const items = [
-    latestLead
-      ? {
-          id: "recent-lead",
-          title: `${latestLead.fullName} submitted an inquiry`,
-          description: formatActivityDayStamp(latestLead.submittedAt),
-          href: "/pt-hub/leads",
-          ctaLabel: "Open lead",
-          tone: "info" satisfies SemanticTone,
-        }
-      : null,
-    latestClientAttention
-      ? {
-          id: "recent-client",
-          title: `${latestClientAttention.displayName} needs coach attention`,
-          description: latestClientAttention.lastActivityAt
-            ? formatActivityDayStamp(latestClientAttention.lastActivityAt)
-            : "Today",
-          href: "/pt-hub/clients",
-          ctaLabel: "Open clients",
-          tone:
-            latestClientAttention.hasOverdueCheckin ||
-            isClientAtRisk(latestClientAttention)
-              ? getSemanticToneForStatus("At risk")
-              : getSemanticToneForStatus("Needs attention"),
-        }
-      : null,
-    latestCoachingSpace?.lastUpdated
-      ? {
-          id: "recent-space",
-          title: `${latestCoachingSpace.name} was updated`,
-          description: formatActivityDayStamp(latestCoachingSpace.lastUpdated),
-          href: "/pt-hub/workspaces",
-          ctaLabel: "Open coaching spaces",
-          tone: "neutral" satisfies SemanticTone,
-        }
-      : null,
-    readiness
-      ? {
-          id: "recent-profile",
-          title: params.profilePublished
-            ? "Your public profile is live"
-            : `Your public profile is ${readiness.completionPercent}% complete`,
-          description: "Today",
-          href: "/pt-hub/profile",
-          ctaLabel: "Open profile",
-          tone: getSemanticToneForStatus(
-            params.profilePublished ? "Published" : "Onboarding incomplete",
-          ),
-        }
-      : null,
-  ].filter(Boolean) as PtHubOverviewActivityItem[];
-
-  return items.slice(0, 3);
 }

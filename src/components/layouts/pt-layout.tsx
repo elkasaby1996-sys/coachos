@@ -258,6 +258,13 @@ const ptSearchRoutes: SearchResult[] = [
     href: "/pt/templates/workouts",
   },
   {
+    id: "route-nutrition",
+    type: "route",
+    label: "Nutrition Programs",
+    meta: "Nutrition templates and planning",
+    href: "/pt/nutrition-programs",
+  },
+  {
     id: "route-checkins",
     type: "route",
     label: "Check-in Templates",
@@ -711,37 +718,53 @@ export function PtLayout() {
     queryFn: async () => {
       const wildcard = `%${normalizedSearch}%`;
 
-      const [clientsResult, programsResult, workoutsResult, checkinsResult] =
-        await Promise.all([
-          supabase
-            .from("clients")
-            .select("id, display_name, goal")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`display_name.ilike.${wildcard},goal.ilike.${wildcard}`)
-            .limit(5),
-          supabase
-            .from("program_templates")
-            .select("id, name, description")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
-            .limit(5),
-          supabase
-            .from("workout_templates")
-            .select("id, name, workout_type_tag")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`name.ilike.${wildcard},workout_type_tag.ilike.${wildcard}`)
-            .limit(5),
-          supabase
-            .from("checkin_templates")
-            .select("id, name, description")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
-            .limit(5),
-        ]);
+      const [
+        clientsResult,
+        programsResult,
+        workoutsResult,
+        nutritionResult,
+        checkinsResult,
+      ] = await Promise.all([
+        supabase
+          .from("clients")
+          .select("id, display_name, goal")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(`display_name.ilike.${wildcard},goal.ilike.${wildcard}`)
+          .limit(5),
+        supabase
+          .from("program_templates")
+          .select("id, name, description, program_type_tag")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(
+            `name.ilike.${wildcard},description.ilike.${wildcard},program_type_tag.ilike.${wildcard}`,
+          )
+          .limit(5),
+        supabase
+          .from("workout_templates")
+          .select("id, name, workout_type_tag")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(`name.ilike.${wildcard},workout_type_tag.ilike.${wildcard}`)
+          .limit(5),
+        supabase
+          .from("nutrition_templates")
+          .select("id, name, description, nutrition_type_tag")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(
+            `name.ilike.${wildcard},description.ilike.${wildcard},nutrition_type_tag.ilike.${wildcard}`,
+          )
+          .limit(5),
+        supabase
+          .from("checkin_templates")
+          .select("id, name, description")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
+          .limit(5),
+      ]);
 
       if (clientsResult.error) throw clientsResult.error;
       if (programsResult.error) throw programsResult.error;
       if (workoutsResult.error) throw workoutsResult.error;
+      if (nutritionResult.error) throw nutritionResult.error;
       if (checkinsResult.error) throw checkinsResult.error;
 
       const routeMatches = searchRoutes.filter((item) =>
@@ -763,7 +786,10 @@ export function PtLayout() {
           id: `program-${program.id}`,
           type: "program",
           label: program.name?.trim() || "Program",
-          meta: program.description?.trim() || "Program template",
+          meta:
+            program.program_type_tag?.trim() ||
+            program.description?.trim() ||
+            "Program template",
           href: `/pt/programs/${program.id}/edit`,
         }),
       );
@@ -775,6 +801,19 @@ export function PtLayout() {
           label: workout.name?.trim() || "Workout template",
           meta: workout.workout_type_tag?.trim() || "Workout template",
           href: `/pt/templates/workouts/${workout.id}`,
+        }),
+      );
+
+      const nutritionResults: SearchResult[] = (nutritionResult.data ?? []).map(
+        (program) => ({
+          id: `nutrition-${program.id}`,
+          type: "program",
+          label: program.name?.trim() || "Nutrition program",
+          meta:
+            program.nutrition_type_tag?.trim() ||
+            program.description?.trim() ||
+            "Nutrition program",
+          href: `/pt/nutrition/programs/${program.id}`,
         }),
       );
 
@@ -793,6 +832,7 @@ export function PtLayout() {
         ...clientResults,
         ...programResults,
         ...workoutResults,
+        ...nutritionResults,
         ...checkinResults,
       ].slice(0, 10);
     },
@@ -875,9 +915,7 @@ export function PtLayout() {
   ).toUpperCase();
 
   const searchOverlay =
-    searchOpen &&
-    searchPanelLayout &&
-    typeof document !== "undefined"
+    searchOpen && searchPanelLayout && typeof document !== "undefined"
       ? createPortal(
           <div
             ref={searchShellRef}
@@ -1248,7 +1286,9 @@ export function PtLayout() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className={getHeaderBellButtonClassName(isLightMode)}
+                            className={getHeaderBellButtonClassName(
+                              isLightMode,
+                            )}
                             aria-expanded={searchOpen}
                             aria-controls="pt-workspace-search-panel"
                             aria-label="Open workspace search"

@@ -1,11 +1,22 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Pencil, Archive, Trash2 } from "lucide-react";
+import {
+  Archive,
+  Copy,
+  Layers3,
+  Pencil,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Badge } from "../../components/ui/badge";
+import { StatCard } from "../../components/ui/coachos/stat-card";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
 import { EmptyState } from "../../components/pt/dashboard/EmptyState";
@@ -18,6 +29,7 @@ type ProgramTemplateRow = {
   id: string;
   name: string | null;
   description: string | null;
+  program_type_tag: string | null;
   weeks_count: number | null;
   is_active: boolean | null;
   updated_at: string | null;
@@ -45,6 +57,9 @@ const getErrorDetails = (error: unknown) => {
   return { code: "unknown", message: "Unknown error" };
 };
 
+const formatProgramTypeTag = (value: string | null | undefined) =>
+  value && value.trim().length > 0 ? value.trim() : "Program";
+
 export function PtProgramsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -58,6 +73,9 @@ export function PtProgramsPage() {
   const [actionMode, setActionMode] = useState<
     "duplicate" | "archive" | "delete" | null
   >(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("updated");
 
   const programsQuery = useQuery({
     queryKey: ["program-templates", workspaceId],
@@ -66,7 +84,7 @@ export function PtProgramsPage() {
       const { data, error } = await supabase
         .from("program_templates")
         .select(
-          "id, name, description, weeks_count, is_active, updated_at, created_at",
+          "id, name, description, program_type_tag, weeks_count, is_active, updated_at, created_at",
         )
         .eq("workspace_id", workspaceId ?? "")
         .order("updated_at", { ascending: false })
@@ -80,6 +98,7 @@ export function PtProgramsPage() {
     return (programsQuery.data ?? []).map((program) => ({
       ...program,
       name: program.name?.trim() || "Untitled program",
+      typeTagLabel: formatProgramTypeTag(program.program_type_tag),
       updatedLabel: program.updated_at
         ? formatRelativeTime(program.updated_at)
         : program.created_at
@@ -98,6 +117,55 @@ export function PtProgramsPage() {
     () => formattedPrograms.filter((program) => !program.is_active).length,
     [formattedPrograms],
   );
+  const programTypeOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    formattedPrograms.forEach((program) => {
+      const value = program.program_type_tag?.trim();
+      if (!value) return;
+      const key = value.toLowerCase();
+      if (!seen.has(key)) {
+        seen.set(key, value);
+      }
+    });
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [formattedPrograms]);
+  const filteredPrograms = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const matches = formattedPrograms.filter((program) => {
+      const name = program.name?.toLowerCase() ?? "";
+      const description = program.description?.toLowerCase() ?? "";
+      const typeTag = program.typeTagLabel.toLowerCase();
+      if (typeFilter !== "all" && typeTag !== typeFilter.toLowerCase()) {
+        return false;
+      }
+      if (!query) return true;
+      return (
+        name.includes(query) ||
+        description.includes(query) ||
+        typeTag.includes(query)
+      );
+    });
+
+    if (sortBy === "name") {
+      return matches.sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+          sensitivity: "base",
+        }),
+      );
+    }
+
+    return matches.sort((a, b) => {
+      const aTime = new Date(a.updated_at ?? a.created_at ?? 0).getTime();
+      const bTime = new Date(b.updated_at ?? b.created_at ?? 0).getTime();
+      return bTime - aTime;
+    });
+  }, [formattedPrograms, searchQuery, sortBy, typeFilter]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+    setSortBy("updated");
+  };
 
   const handleArchive = async (programId: string) => {
     setActionId(programId);
@@ -134,6 +202,7 @@ export function PtProgramsPage() {
         workspace_id: workspaceId,
         name: `${program.name ?? "Program"} Copy`,
         description: program.description,
+        program_type_tag: program.program_type_tag,
         weeks_count: program.weeks_count ?? 4,
         is_active: true,
       })
@@ -225,12 +294,13 @@ export function PtProgramsPage() {
       <WorkspacePageHeader
         title="Programs"
         description="Design reusable multi-week training systems and keep edit actions close to the list."
-        actions={
-          <Button onClick={() => navigate("/pt/programs/new")}>
-            New Program
-          </Button>
-        }
       />
+
+      <div className="flex justify-end">
+        <Button onClick={() => navigate("/pt/programs/new")}>
+          New Program
+        </Button>
+      </div>
 
       {actionError ? (
         <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
@@ -239,39 +309,62 @@ export function PtProgramsPage() {
       ) : null}
 
       <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Reusable programs
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-foreground">
-            {formattedPrograms.length}
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            Multi-week systems you can reuse across clients.
-          </div>
+        <StatCard
+          label="Reusable Programs"
+          value={formattedPrograms.length}
+          helper="Multi-week systems ready to reuse"
+          icon={Layers3}
+          accent
+          className="h-full"
+        />
+        <StatCard
+          label="Active"
+          value={activeProgramsCount}
+          helper="Available for assignment and edits"
+          icon={Sparkles}
+          className="h-full"
+        />
+        <StatCard
+          label="Archived"
+          value={archivedProgramsCount}
+          helper="Stored for reference without clutter"
+          icon={Archive}
+          className="h-full"
+        />
+      </div>
+
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">
+        <div className="relative min-w-0">
+          <Search className="app-search-icon h-4 w-4" />
+          <Input
+            className="app-search-input"
+            placeholder="Search programs"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
         </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Active
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-foreground">
-            {activeProgramsCount}
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            Available for current planning and assignment.
-          </div>
-        </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Archived
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-foreground">
-            {archivedProgramsCount}
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            Older systems kept for reference without cluttering planning.
-          </div>
-        </div>
+        <Select
+          variant="filter"
+          className="w-full min-w-0"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+        >
+          <option value="all">All program types</option>
+          {programTypeOptions.map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </Select>
+        <Select
+          variant="filter"
+          className="w-full min-w-0"
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value)}
+        >
+          <option value="updated">Sort by updated</option>
+          <option value="name">Sort by name</option>
+        </Select>
       </div>
 
       {workspaceLoading || programsQuery.isLoading ? (
@@ -290,9 +383,9 @@ export function PtProgramsPage() {
           {getErrorDetails(programsQuery.error).code}:{" "}
           {getErrorDetails(programsQuery.error).message}
         </Card>
-      ) : formattedPrograms.length > 0 ? (
+      ) : filteredPrograms.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {formattedPrograms.map((program) => {
+          {filteredPrograms.map((program) => {
             const isBusy = actionId === program.id;
             return (
               <DashboardCard
@@ -312,7 +405,7 @@ export function PtProgramsPage() {
                       variant="secondary"
                       className="text-[10px] uppercase"
                     >
-                      {program.weeksLabel}
+                      {program.typeTagLabel}
                     </Badge>
                     <Badge variant="muted" className="text-[10px] uppercase">
                       Updated {program.updatedLabel}
@@ -372,6 +465,15 @@ export function PtProgramsPage() {
             );
           })}
         </div>
+      ) : formattedPrograms.length > 0 ? (
+        <DashboardCard title="No programs match" className="bg-card/90">
+          <EmptyState
+            title="No programs match"
+            description="Clear the search or try another filter."
+            actionLabel="Clear filters"
+            onAction={clearFilters}
+          />
+        </DashboardCard>
       ) : (
         <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
           <DashboardCard

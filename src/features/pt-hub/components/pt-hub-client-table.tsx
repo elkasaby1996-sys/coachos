@@ -70,9 +70,6 @@ export function PtHubClientTable({
                 <p className="text-sm font-medium text-foreground">
                   {client.displayName}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {client.goal || "No goal captured yet"}
-                </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span>Recent activity {client.recentActivityLabel}</span>
                   {reason ? <span>- {reason}</span> : null}

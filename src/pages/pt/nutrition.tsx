@@ -1,14 +1,26 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Archive,
+  Copy,
+  Layers3,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { PageContainer } from "../../components/common/page-container";
+import { Badge } from "../../components/ui/badge";
 import {
   DashboardCard,
   EmptyState,
   Skeleton,
+  StatCard,
+  StatusPill,
 } from "../../components/ui/coachos";
 import {
   Dialog,
@@ -25,6 +37,10 @@ import {
   useNutritionTemplates,
 } from "../../lib/nutrition";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { formatRelativeTime } from "../../lib/relative-time";
+
+const formatNutritionTypeTag = (value: string | null | undefined) =>
+  value && value.trim().length > 0 ? value.trim() : "Nutrition";
 
 export function PtNutritionPage() {
   const navigate = useNavigate();
@@ -38,7 +54,10 @@ export function PtNutritionPage() {
   const [templateActionError, setTemplateActionError] = useState<string | null>(
     null,
   );
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("updated");
   const [name, setName] = useState("");
+  const [typeTag, setTypeTag] = useState("");
   const [description, setDescription] = useState("");
   const [weeks, setWeeks] = useState("1");
 
@@ -48,20 +67,56 @@ export function PtNutritionPage() {
   );
   const filteredTemplates = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return templates;
-    return templates.filter((t) =>
-      `${t.name} ${t.description ?? ""}`.toLowerCase().includes(q),
-    );
-  }, [templates, search]);
+    const matches = templates.filter((template) => {
+      const typeValue = formatNutritionTypeTag(template.nutrition_type_tag);
+      if (typeFilter !== "all" && typeValue.toLowerCase() !== typeFilter) {
+        return false;
+      }
+      if (!q) return true;
+      return `${template.name} ${template.description ?? ""} ${typeValue}`
+        .toLowerCase()
+        .includes(q);
+    });
+
+    if (sortBy === "name") {
+      return matches.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      );
+    }
+
+    return matches.sort((a, b) => {
+      const aTime = new Date(a.updated_at ?? a.created_at).getTime();
+      const bTime = new Date(b.updated_at ?? b.created_at).getTime();
+      return bTime - aTime;
+    });
+  }, [templates, search, sortBy, typeFilter]);
+  const activeTemplatesCount = useMemo(
+    () => templates.filter((template) => template.is_active).length,
+    [templates],
+  );
+  const archivedTemplatesCount = useMemo(
+    () => templates.filter((template) => !template.is_active).length,
+    [templates],
+  );
   const buildTemplateTags = (template: NutritionTemplate) => {
     const tags = [
-      template.description?.trim() || null,
-      `${template.duration_weeks} wk`,
-      `${template.meal_count} meals`,
-      template.is_active ? "Active" : "Draft",
+      formatNutritionTypeTag(template.nutrition_type_tag),
+      `Updated ${formatRelativeTime(template.updated_at ?? template.created_at)}`,
     ].filter((value): value is string => Boolean(value));
-    return tags.slice(0, 3);
+    return tags.slice(0, 2);
   };
+  const nutritionTypeOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    templates.forEach((template) => {
+      const value = template.nutrition_type_tag?.trim();
+      if (!value) return;
+      const key = value.toLowerCase();
+      if (!seen.has(key)) {
+        seen.set(key, value);
+      }
+    });
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [templates]);
 
   const invalidateTemplates = async () => {
     await queryClient.invalidateQueries({
@@ -82,6 +137,7 @@ export function PtNutritionPage() {
       .insert({
         workspace_id: workspaceId,
         name: name.trim(),
+        nutrition_type_tag: typeTag.trim() || null,
         description: description.trim() || null,
         duration_weeks: durationWeeks,
       })
@@ -95,6 +151,7 @@ export function PtNutritionPage() {
 
     setCreateOpen(false);
     setName("");
+    setTypeTag("");
     setDescription("");
     setWeeks("1");
     await invalidateTemplates();
@@ -109,6 +166,7 @@ export function PtNutritionPage() {
         workspace_id: template.workspace_id,
         name: `${template.name} Copy`,
         description: template.description,
+        nutrition_type_tag: template.nutrition_type_tag,
         duration_weeks: template.duration_weeks,
         is_active: true,
       })
@@ -199,21 +257,20 @@ export function PtNutritionPage() {
   };
 
   const loading = workspaceLoading || templatesQuery.isLoading;
+  const clearFilters = () => {
+    setSearch("");
+    setTypeFilter("all");
+    setSortBy("updated");
+  };
 
   return (
     <PageContainer className="max-w-screen-2xl space-y-6">
-      <WorkspacePageHeader title="Nutrition Programs" />
+      <WorkspacePageHeader
+        title="Nutrition Programs"
+        description="Build reusable multi-week nutrition systems and keep edits close to the list."
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-72">
-          <Search className="app-search-icon h-4 w-4" />
-          <Input
-            className="app-search-input"
-            placeholder="Search templates"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+      <div className="flex justify-end">
         <Button
           onClick={() => {
             setCreateError(null);
@@ -225,6 +282,65 @@ export function PtNutritionPage() {
         </Button>
       </div>
 
+      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
+        <StatCard
+          label="Nutrition Programs"
+          value={templates.length}
+          helper="Reusable plans ready to assign"
+          icon={Layers3}
+          accent
+          className="h-full"
+        />
+        <StatCard
+          label="Active"
+          value={activeTemplatesCount}
+          helper="Available for current assignments"
+          icon={Sparkles}
+          className="h-full"
+        />
+        <StatCard
+          label="Archived"
+          value={archivedTemplatesCount}
+          helper="Stored for reference without clutter"
+          icon={Archive}
+          className="h-full"
+        />
+      </div>
+
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="app-search-icon h-4 w-4" />
+          <Input
+            className="app-search-input"
+            placeholder="Search templates"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select
+          variant="filter"
+          className="w-full min-w-0"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+        >
+          <option value="all">All nutrition types</option>
+          {nutritionTypeOptions.map((value) => (
+            <option key={value} value={value.toLowerCase()}>
+              {value}
+            </option>
+          ))}
+        </Select>
+        <Select
+          variant="filter"
+          className="w-full min-w-0"
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value)}
+        >
+          <option value="updated">Sort by updated</option>
+          <option value="name">Sort by name</option>
+        </Select>
+      </div>
+
       {templateActionError ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {templateActionError}
@@ -232,14 +348,14 @@ export function PtNutritionPage() {
       ) : null}
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-52 w-full" />
           ))}
         </div>
       ) : filteredTemplates.length === 0 ? (
         templates.length === 0 ? (
-          <DashboardCard title="No nutrition programs">
+          <DashboardCard title="No nutrition programs" className="bg-card/90">
             <EmptyState
               title="Create the first program"
               description="Start with one template."
@@ -250,69 +366,57 @@ export function PtNutritionPage() {
         ) : (
           <EmptyState
             title="No programs match"
-            description="Clear the search or try another name."
-            actionLabel="Clear search"
-            onAction={() => setSearch("")}
+            description="Clear the search or try another filter."
+            actionLabel="Clear filters"
+            onAction={clearFilters}
           />
         )
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredTemplates.map((template) => (
             <DashboardCard
               key={template.id}
               title={template.name}
               subtitle={template.description ?? "No description"}
+              action={
+                <StatusPill
+                  status={template.is_active ? "active" : "archived"}
+                />
+              }
+              className="bg-card/90"
             >
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   {buildTemplateTags(template).map((tag) => (
-                    <span
+                    <Badge
                       key={`${template.id}-${tag}`}
-                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1 text-[11px] font-medium text-muted-foreground"
+                      variant={
+                        tag ===
+                        formatNutritionTypeTag(template.nutrition_type_tag)
+                          ? "secondary"
+                          : "muted"
+                      }
+                      className="text-[10px] uppercase"
                     >
                       {tag}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
-                <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
-                  <div>
-                    <p className="text-muted-foreground">Cals</p>
-                    <p className="font-semibold">
-                      {Math.round(template.totals.calories)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">P</p>
-                    <p className="font-semibold">
-                      {Math.round(template.totals.protein_g)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">C</p>
-                    <p className="font-semibold">
-                      {Math.round(template.totals.carbs_g)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">F</p>
-                    <p className="font-semibold">
-                      {Math.round(template.totals.fat_g)}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="flex-1"
                     onClick={() =>
                       navigate(`/pt/nutrition/programs/${template.id}`)
                     }
                   >
-                    Open builder
+                    Edit
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="flex-1"
                     onClick={() => duplicateTemplate(template)}
                   >
                     <Copy className="mr-1 h-3.5 w-3.5" />
@@ -321,6 +425,7 @@ export function PtNutritionPage() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="flex-1 text-destructive hover:text-destructive"
                     onClick={() => deleteTemplate(template)}
                   >
                     <Trash2 className="mr-1 h-3.5 w-3.5" />
@@ -351,6 +456,11 @@ export function PtNutritionPage() {
               placeholder="Description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+            />
+            <Input
+              placeholder="Nutrition type"
+              value={typeTag}
+              onChange={(e) => setTypeTag(e.target.value)}
             />
             <Input
               type="number"

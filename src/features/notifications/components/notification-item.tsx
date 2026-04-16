@@ -57,14 +57,11 @@ export function NotificationItem({
       >
         <Icon className={cn("h-4 w-4", moduleClasses.title)} />
       </div>
-      <div className="min-w-0 flex-1 space-y-2">
+      <div
+        className={cn("min-w-0 flex-1", compact ? "space-y-1.5" : "space-y-2")}
+      >
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "text-xs font-medium",
-              moduleClasses.text,
-            )}
-          >
+          <span className={cn("text-xs font-medium", moduleClasses.text)}>
             {typeLabel}
           </span>
           {notification.priority === "high" ? (
@@ -83,9 +80,11 @@ export function NotificationItem({
             <p className="line-clamp-1 text-sm font-semibold text-foreground">
               {notification.title}
             </p>
-            <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-              {notification.body}
-            </p>
+            {!compact ? (
+              <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                {notification.body}
+              </p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2 sm:pl-2">
             <span className="shrink-0 text-xs text-muted-foreground">
@@ -99,9 +98,11 @@ export function NotificationItem({
             />
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>{hasAction ? "Open update" : "For reference"}</span>
-        </div>
+        {!compact ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>{hasAction ? "Open update" : "For reference"}</span>
+          </div>
+        ) : null}
       </div>
     </button>
   );

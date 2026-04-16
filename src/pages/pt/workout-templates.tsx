@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  Dumbbell,
+  Layers3,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +22,7 @@ import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PageContainer } from "../../components/common/page-container";
+import { StatCard } from "../../components/ui/coachos/stat-card";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
@@ -178,16 +187,18 @@ export function PtWorkoutTemplatesPage() {
             })
           : "Recently",
         workoutTypeLabel: formatWorkoutTypeTag(template.workout_type_tag),
-        badgeTags: [
-          formatWorkoutTypeTag(template.workout_type_tag),
-          template.workout_type?.trim() || null,
-          "Template",
-        ].filter((value, index, list): value is string => {
-          return Boolean(value) && list.indexOf(value) === index;
-        }),
       })),
     [templates],
   );
+  const recentTemplatesCount = useMemo(() => {
+    const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return templates.filter((template) => {
+      const createdAt = template.created_at
+        ? new Date(template.created_at).getTime()
+        : 0;
+      return createdAt >= monthAgo;
+    }).length;
+  }, [templates]);
 
   const workoutTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -279,8 +290,45 @@ export function PtWorkoutTemplatesPage() {
         description="Manage the workout template library in the same operational layout as nutrition programs."
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-72">
+      <div className="flex justify-end">
+        <Button
+          onClick={() => {
+            setCreateError(null);
+            setCreateOpen(true);
+          }}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          New template
+        </Button>
+      </div>
+
+      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
+        <StatCard
+          label="Workout Templates"
+          value={formattedTemplates.length}
+          helper="Reusable sessions ready to build from"
+          icon={Layers3}
+          accent
+          className="h-full"
+        />
+        <StatCard
+          label="Workout Types"
+          value={workoutTypeOptions.length}
+          helper="Distinct training tags in this workspace"
+          icon={Dumbbell}
+          className="h-full"
+        />
+        <StatCard
+          label="New This Month"
+          value={recentTemplatesCount}
+          helper="Created in the last 30 days"
+          icon={CalendarClock}
+          className="h-full"
+        />
+      </div>
+
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem] xl:items-center">
+        <div className="relative min-w-0 flex-1">
           <Search className="app-search-icon h-4 w-4" />
           <Input
             className="app-search-input"
@@ -295,7 +343,7 @@ export function PtWorkoutTemplatesPage() {
         </div>
         <Select
           variant="filter"
-          className="w-full sm:w-auto sm:min-w-[12rem]"
+          className="w-full min-w-0"
           value={typeFilter}
           onChange={(event) => {
             const next = event.target.value;
@@ -312,7 +360,7 @@ export function PtWorkoutTemplatesPage() {
         </Select>
         <Select
           variant="filter"
-          className="w-full sm:w-auto sm:min-w-[11rem]"
+          className="w-full min-w-0"
           value={sortBy}
           onChange={(event) => {
             const next = event.target.value;
@@ -323,15 +371,6 @@ export function PtWorkoutTemplatesPage() {
           <option value="newest">Sort by newest</option>
           <option value="name">Sort by name</option>
         </Select>
-        <Button
-          onClick={() => {
-            setCreateError(null);
-            setCreateOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          New template
-        </Button>
       </div>
 
       {workspaceError ? (
@@ -349,14 +388,14 @@ export function PtWorkoutTemplatesPage() {
       ) : null}
 
       {workspaceLoading || templatesQuery.isLoading ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-52 w-full" />
           ))}
         </div>
       ) : filteredTemplates.length === 0 ? (
         templates.length === 0 ? (
-          <DashboardCard title="No workout templates">
+          <DashboardCard title="No workout templates" className="bg-card/90">
             <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
               <p className="text-sm font-semibold">Create the first template</p>
               <p className="mt-2 text-xs text-muted-foreground">
@@ -372,7 +411,7 @@ export function PtWorkoutTemplatesPage() {
             </div>
           </DashboardCard>
         ) : (
-          <DashboardCard title="No templates match">
+          <DashboardCard title="No templates match" className="bg-card/90">
             <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
               <p className="text-sm font-semibold">No templates match</p>
               <p className="mt-2 text-xs text-muted-foreground">
@@ -385,57 +424,38 @@ export function PtWorkoutTemplatesPage() {
           </DashboardCard>
         )
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredTemplates.map((template) => (
             <DashboardCard
               key={template.id}
               title={template.name ?? "Workout template"}
               subtitle={template.description ?? "No description"}
+              className="bg-card/90"
             >
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {template.badgeTags.map((tag) => (
-                    <span
-                      key={`${template.id}-${tag}`}
-                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1 text-[11px] font-medium text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="secondary" className="text-[10px] uppercase">
+                    {template.workoutTypeLabel}
+                  </Badge>
+                  <Badge variant="muted" className="text-[10px] uppercase">
+                    Updated {template.updated}
+                  </Badge>
                 </div>
-                <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
-                  <div>
-                    <p className="text-muted-foreground">Type</p>
-                    <p className="font-semibold">{template.workoutTypeLabel}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Format</p>
-                    <p className="font-semibold">
-                      {template.workout_type?.trim() || "--"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Status</p>
-                    <p className="font-semibold">Ready</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Updated</p>
-                    <p className="font-semibold">{template.updated}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="flex-1"
                     onClick={() =>
                       navigate(`/pt/templates/workouts/${template.id}`)
                     }
                   >
-                    Open builder
+                    Edit
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="flex-1 text-destructive hover:text-destructive"
                     onClick={() => {
                       setDeleteTarget(template);
                       setDeleteError(null);

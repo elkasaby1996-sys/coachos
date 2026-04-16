@@ -153,7 +153,8 @@ const routeMeta: Record<
   },
   "/pt-hub/packages": {
     title: "Packages",
-    description: "Manage package visibility and ordering for public lead intake.",
+    description:
+      "Manage package visibility and ordering for public lead intake.",
     module: "profile",
   },
   "/pt-hub/profile/preview": {
@@ -322,15 +323,14 @@ export function PtHubLayout() {
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === workspaceId) ??
     fallbackWorkspace;
-  const workspacePillLabel =
-    inPtHubWorkspace
-      ? "Repsync PT Hub"
-      : (currentWorkspace?.name ??
-        (workspacesQuery.isLoading
-          ? "Loading workspace..."
-          : workspaceId
-            ? "Current workspace"
-            : "No workspace selected"));
+  const workspacePillLabel = inPtHubWorkspace
+    ? "Repsync PT Hub"
+    : (currentWorkspace?.name ??
+      (workspacesQuery.isLoading
+        ? "Loading workspace..."
+        : workspaceId
+          ? "Current workspace"
+          : "No workspace selected"));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const coachDisplayName =
     getPreferredPersonDisplayName(
@@ -371,7 +371,10 @@ export function PtHubLayout() {
   useEffect(() => {
     const firstWorkspace = workspaces[0];
     if (!firstWorkspace) return;
-    if (workspaceId && workspaces.some((workspace) => workspace.id === workspaceId)) {
+    if (
+      workspaceId &&
+      workspaces.some((workspace) => workspace.id === workspaceId)
+    ) {
       return;
     }
     switchWorkspace(firstWorkspace.id);
@@ -453,7 +456,7 @@ export function PtHubLayout() {
         className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-4"
       >
         <div className="lg:h-full lg:pl-[328px]">
-          <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[320px] lg:p-3">
+          <aside className="hidden lg:fixed lg:bottom-[72px] lg:left-0 lg:top-0 lg:z-30 lg:block lg:w-[320px] lg:p-3">
             <div className="h-full min-h-0">
               <div
                 className={cn(
@@ -660,7 +663,8 @@ export function PtHubLayout() {
                             <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                               {workspace.clientCount ?? 0}
                             </span>
-                            {!inPtHubWorkspace && workspace.id === workspaceId ? (
+                            {!inPtHubWorkspace &&
+                            workspace.id === workspaceId ? (
                               <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
                             ) : null}
                           </div>
@@ -819,7 +823,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-4 pr-1">
+      <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-8 pr-1">
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
             <p className="pt-hub-kicker px-2">{group.label}</p>

@@ -5,7 +5,6 @@ import { ImageIcon, Plus, Save, Sparkles, Upload, X } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { Switch } from "../../../components/ui/switch";
 import { Textarea } from "../../../components/ui/textarea";
 import {
   Tabs,
@@ -272,20 +271,6 @@ export function PtHubProfileEditor({
       fieldLabel: "Transformation summary",
     }),
   );
-  const transformationBeforeUrlStates = form.transformations.map((item) =>
-    getCharacterLimitState({
-      value: item.beforeImageUrl ?? "",
-      kind: "default_text",
-      fieldLabel: "Before photo URL",
-    }),
-  );
-  const transformationAfterUrlStates = form.transformations.map((item) =>
-    getCharacterLimitState({
-      value: item.afterImageUrl ?? "",
-      kind: "default_text",
-      fieldLabel: "After photo URL",
-    }),
-  );
   const socialLinkStates = form.socialLinks.map((link) =>
     getCharacterLimitState({
       value: link.url,
@@ -305,8 +290,6 @@ export function PtHubProfileEditor({
     locationLimitState,
     ...transformationTitleStates,
     ...transformationSummaryStates,
-    ...transformationBeforeUrlStates,
-    ...transformationAfterUrlStates,
     ...socialLinkStates,
   ]);
 
@@ -650,20 +633,41 @@ export function PtHubProfileEditor({
               <label className="text-sm font-medium text-foreground">
                 Short bio
               </label>
-              <Textarea
-                isInvalid={shortBioLimitState.overLimit}
-                className="min-h-[160px]"
-                value={form.shortBio}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, shortBio: event.target.value }))
-                }
-                placeholder="Outline your mission, outcomes, and the type of client transformation you specialize in."
-              />
-              <FieldCharacterMeta
-                count={shortBioLimitState.count}
-                limit={shortBioLimitState.limit}
-                errorText={shortBioLimitState.errorText}
-              />
+              <div className="space-y-1">
+                <div className="relative">
+                  <Textarea
+                    isInvalid={shortBioLimitState.overLimit}
+                    className="h-[160px] resize-none pb-10"
+                    value={form.shortBio}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        shortBio: event.target.value,
+                      }))
+                    }
+                    placeholder="Outline your mission, outcomes, and the type of client transformation you specialize in."
+                  />
+                  <div className="pointer-events-none absolute bottom-3 right-3">
+                    <span
+                      className={cn(
+                        "inline-flex min-w-[4.4rem] justify-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                        shortBioLimitState.overLimit
+                          ? "border-danger/40 bg-danger/10 text-danger"
+                          : "border-border/80 bg-background/85 text-muted-foreground",
+                      )}
+                      title={`Max ${shortBioLimitState.limit} chars`}
+                      aria-label={`Character count ${shortBioLimitState.count} out of ${shortBioLimitState.limit}`}
+                    >
+                      {shortBioLimitState.count}/{shortBioLimitState.limit}
+                    </span>
+                  </div>
+                </div>
+                {shortBioLimitState.errorText ? (
+                  <p role="alert" className="text-xs text-danger">
+                    {shortBioLimitState.errorText}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </PtHubSectionCard>
         </TabsContent>
@@ -931,21 +935,6 @@ export function PtHubProfileEditor({
                               </Button>
                             ) : null}
                           </div>
-                          <Input
-                            isInvalid={transformationBeforeUrlStates[index]?.overLimit}
-                            value={item.beforeImageUrl ?? ""}
-                            onChange={(event) =>
-                              updateTransformation(item.id, {
-                                beforeImageUrl: event.target.value || null,
-                              })
-                            }
-                            placeholder="Or paste a public before-photo URL"
-                          />
-                          <FieldCharacterMeta
-                            count={transformationBeforeUrlStates[index]?.count ?? 0}
-                            limit={transformationBeforeUrlStates[index]?.limit ?? 255}
-                            errorText={transformationBeforeUrlStates[index]?.errorText}
-                          />
                         </div>
 
                         <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/55 p-4">
@@ -999,21 +988,6 @@ export function PtHubProfileEditor({
                               </Button>
                             ) : null}
                           </div>
-                          <Input
-                            isInvalid={transformationAfterUrlStates[index]?.overLimit}
-                            value={item.afterImageUrl ?? ""}
-                            onChange={(event) =>
-                              updateTransformation(item.id, {
-                                afterImageUrl: event.target.value || null,
-                              })
-                            }
-                            placeholder="Or paste a public after-photo URL"
-                          />
-                          <FieldCharacterMeta
-                            count={transformationAfterUrlStates[index]?.count ?? 0}
-                            limit={transformationAfterUrlStates[index]?.limit ?? 255}
-                            errorText={transformationAfterUrlStates[index]?.errorText}
-                          />
                         </div>
                       </div>
                     </div>
@@ -1173,27 +1147,6 @@ export function PtHubProfileEditor({
                     limit={locationLimitState.limit}
                     errorText={locationLimitState.errorText}
                   />
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-foreground">
-                        Marketplace visibility
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Controls future coach-directory discoverability.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={form.marketplaceVisible}
-                      onCheckedChange={(checked) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          marketplaceVisible: checked,
-                        }))
-                      }
-                    />
-                  </div>
                 </div>
               </div>
             </div>

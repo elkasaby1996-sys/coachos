@@ -1,19 +1,8 @@
 import { ArrowUpRight, Clock3, UsersRound } from "lucide-react";
-import { Badge } from "../../../components/ui/badge";
-import type { BadgeVariant } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import type { PTWorkspaceSummary } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
-
-const statusVariant: Record<
-  PTWorkspaceSummary["status"],
-  BadgeVariant
-> = {
-  current: "info",
-  active: "success",
-  new: "warning",
-};
 
 export function PtHubWorkspaceCard({
   workspace,
@@ -29,19 +18,6 @@ export function PtHubWorkspaceCard({
       className="h-full"
       contentClassName="gap-5"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={statusVariant[workspace.status]}>
-          {workspace.status === "current"
-            ? "Current space"
-            : workspace.status === "active"
-              ? "Active"
-              : "New space"}
-        </Badge>
-        {workspace.role ? (
-          <Badge variant="neutral">{workspace.role.replace("_", " ")}</Badge>
-        ) : null}
-      </div>
-
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-[22px] border border-border/70 bg-background/60 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -51,9 +27,6 @@ export function PtHubWorkspaceCard({
             <UsersRound className="h-4 w-4 text-primary [stroke-width:1.7]" />
             <span>{workspace.clientCount ?? 0}</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Clients currently managed in this space
-          </p>
         </div>
         <div className="rounded-[22px] border border-border/70 bg-background/60 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -63,9 +36,6 @@ export function PtHubWorkspaceCard({
             <Clock3 className="h-4 w-4 text-primary [stroke-width:1.7]" />
             <span>{formatRelativeTime(workspace.lastUpdated)}</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Most recent activity in this space
-          </p>
         </div>
       </div>
 

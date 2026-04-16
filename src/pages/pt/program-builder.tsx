@@ -25,6 +25,7 @@ type ProgramTemplateRow = {
   id: string;
   name: string | null;
   description: string | null;
+  program_type_tag: string | null;
   weeks_count: number | null;
   is_active: boolean | null;
 };
@@ -104,6 +105,7 @@ export function PtProgramBuilderPage() {
 
   const [form, setForm] = useState({
     name: "",
+    programTypeTag: "",
     description: "",
     weeksCount: 4,
   });
@@ -127,7 +129,9 @@ export function PtProgramBuilderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("program_templates")
-        .select("id, name, description, weeks_count, is_active")
+        .select(
+          "id, name, description, program_type_tag, weeks_count, is_active",
+        )
         .eq("id", templateId ?? "")
         .maybeSingle();
       if (error) throw error;
@@ -170,6 +174,7 @@ export function PtProgramBuilderPage() {
     const weeksCount = template.weeks_count ?? 4;
     setForm({
       name: template.name ?? "",
+      programTypeTag: template.program_type_tag ?? "",
       description: template.description ?? "",
       weeksCount,
     });
@@ -181,7 +186,9 @@ export function PtProgramBuilderPage() {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get("saved") !== "1") return;
 
-    setSaveNotice("Program saved. Your weekly structure is now in the library.");
+    setSaveNotice(
+      "Program saved. Your weekly structure is now in the library.",
+    );
     navigate(location.pathname, { replace: true });
   }, [location.pathname, location.search, navigate]);
 
@@ -273,6 +280,7 @@ export function PtProgramBuilderPage() {
         .insert({
           workspace_id: workspaceId,
           name: form.name.trim(),
+          program_type_tag: form.programTypeTag.trim() || null,
           description: form.description.trim() || null,
           weeks_count: form.weeksCount,
           is_active: true,
@@ -291,6 +299,7 @@ export function PtProgramBuilderPage() {
         .from("program_templates")
         .update({
           name: form.name.trim(),
+          program_type_tag: form.programTypeTag.trim() || null,
           description: form.description.trim() || null,
           weeks_count: form.weeksCount,
           updated_at: new Date().toISOString(),
@@ -369,7 +378,9 @@ export function PtProgramBuilderPage() {
       navigate(`/pt/programs/${programId}/edit?saved=1`);
       return;
     }
-    setSaveNotice("Program saved. Your weekly structure is now in the library.");
+    setSaveNotice(
+      "Program saved. Your weekly structure is now in the library.",
+    );
     setSaveStatus("idle");
   };
 
@@ -484,12 +495,10 @@ export function PtProgramBuilderPage() {
               </label>
               <Input
                 value={form.name}
-                onChange={(event) =>
-                  {
-                    if (saveNotice) setSaveNotice(null);
-                    setForm((prev) => ({ ...prev, name: event.target.value }));
-                  }
-                }
+                onChange={(event) => {
+                  if (saveNotice) setSaveNotice(null);
+                  setForm((prev) => ({ ...prev, name: event.target.value }));
+                }}
                 placeholder="e.g., 8-Week Strength Block"
               />
             </div>
@@ -501,15 +510,29 @@ export function PtProgramBuilderPage() {
                 type="number"
                 min={1}
                 value={form.weeksCount}
-                onChange={(event) =>
-                  {
-                    if (saveNotice) setSaveNotice(null);
-                    setForm((prev) => ({
-                      ...prev,
-                      weeksCount: Math.max(1, Number(event.target.value) || 1),
-                    }));
-                  }
-                }
+                onChange={(event) => {
+                  if (saveNotice) setSaveNotice(null);
+                  setForm((prev) => ({
+                    ...prev,
+                    weeksCount: Math.max(1, Number(event.target.value) || 1),
+                  }));
+                }}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Program type
+              </label>
+              <Input
+                value={form.programTypeTag}
+                onChange={(event) => {
+                  if (saveNotice) setSaveNotice(null);
+                  setForm((prev) => ({
+                    ...prev,
+                    programTypeTag: event.target.value,
+                  }));
+                }}
+                placeholder="Strength, Hypertrophy, Conditioning..."
               />
             </div>
             <div className="space-y-2 md:col-span-3">
@@ -519,15 +542,13 @@ export function PtProgramBuilderPage() {
               <textarea
                 className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
-                onChange={(event) =>
-                  {
-                    if (saveNotice) setSaveNotice(null);
-                    setForm((prev) => ({
-                      ...prev,
-                      description: event.target.value,
-                    }));
-                  }
-                }
+                onChange={(event) => {
+                  if (saveNotice) setSaveNotice(null);
+                  setForm((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }));
+                }}
               />
             </div>
             {saveError ? (

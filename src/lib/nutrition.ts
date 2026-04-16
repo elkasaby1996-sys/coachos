@@ -60,6 +60,7 @@ export type NutritionTemplate = {
   owner_client_id: string | null;
   name: string;
   description: string | null;
+  nutrition_type_tag: string | null;
   duration_weeks: number;
   is_active: boolean;
   created_at: string;
@@ -228,7 +229,7 @@ export function useNutritionTemplates(workspaceId: string | null) {
       const { data: templates, error: templateError } = await supabase
         .from("nutrition_templates")
         .select(
-          "id, workspace_id, owner_client_id, name, description, duration_weeks, is_active, created_at, updated_at",
+          "id, workspace_id, owner_client_id, name, description, nutrition_type_tag, duration_weeks, is_active, created_at, updated_at",
         )
         .eq("workspace_id", workspaceId ?? "")
         .is("owner_client_id", null)
@@ -299,7 +300,7 @@ export function useNutritionTemplate(templateId: string | null) {
       const { data: template, error: templateError } = await supabase
         .from("nutrition_templates")
         .select(
-          "id, workspace_id, owner_client_id, name, description, duration_weeks, is_active, created_at, updated_at",
+          "id, workspace_id, owner_client_id, name, description, nutrition_type_tag, duration_weeks, is_active, created_at, updated_at",
         )
         .eq("id", templateId ?? "")
         .maybeSingle();
