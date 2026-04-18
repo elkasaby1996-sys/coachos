@@ -1,5 +1,9 @@
+import { useLocation } from "react-router-dom";
 import { AuthBackdrop } from "./auth-backdrop";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  getWireframeAuthWidthClass,
+  RouteAwareWireframeLoader,
+} from "./wireframe-loader";
 
 export function AuthPageLoader({
   title = "Loading",
@@ -8,16 +12,16 @@ export function AuthPageLoader({
   title?: string;
   message?: string;
 }) {
+  const location = useLocation();
+  const authWidthClassName = getWireframeAuthWidthClass(location.pathname);
+
   return (
-    <AuthBackdrop contentClassName="max-w-md">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          {message}
-        </CardContent>
-      </Card>
+    <AuthBackdrop contentClassName={authWidthClassName}>
+      <RouteAwareWireframeLoader
+        variant="auth"
+        title={title}
+        message={message}
+      />
     </AuthBackdrop>
   );
 }

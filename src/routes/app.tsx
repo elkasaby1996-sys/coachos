@@ -94,6 +94,7 @@ import {
 } from "../lib/auth";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
+import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
 
 type WindowWithIdleCallback = Window & {
   requestIdleCallback?: (
@@ -105,9 +106,10 @@ type WindowWithIdleCallback = Window & {
 
 function FullPageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-sm text-muted-foreground">Loading...</div>
-    </div>
+    <RouteAwareWireframeLoader
+      title="Loading your experience"
+      message="Shaping the next screen..."
+    />
   );
 }
 

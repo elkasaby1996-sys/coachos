@@ -1,5 +1,6 @@
 import React from "react";
 import { useSessionAuth } from "../../lib/auth";
+import { RouteAwareWireframeLoader } from "./wireframe-loader";
 
 export function LoadingScreen({
   message = "Loading...",
@@ -7,12 +8,11 @@ export function LoadingScreen({
   message?: string;
 }) {
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-background"
+    <RouteAwareWireframeLoader
       data-testid="bootstrap-loading"
-    >
-      <div className="text-sm text-muted-foreground">{message}</div>
-    </div>
+      title="Loading your workspace"
+      message={message}
+    />
   );
 }
 
