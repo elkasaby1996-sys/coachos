@@ -1,6 +1,6 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { ChevronRight, MessageSquarePlus, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Input } from "../../components/ui/input";
@@ -24,18 +24,22 @@ import {
   type SemanticTone,
 } from "../../lib/semantic-status";
 
-const statusOptions: Array<PTLeadStatus | "all"> = [
+type LeadStatusFilter = PTLeadStatus | "all" | "approved_group";
+
+const statusOptions: LeadStatusFilter[] = [
   "all",
   ...ptHubLeadStatuses,
+  "approved_group",
 ];
 
-const statusOptionLabels: Record<PTLeadStatus | "all", string> = {
+const statusOptionLabels: Record<LeadStatusFilter, string> = {
   all: "All",
   new: "New",
   contacted: "Contacted",
   approved_pending_workspace: "Approved pending workspace",
   converted: "Converted",
   declined: "Declined",
+  approved_group: "Approved or converted",
 };
 
 const leadStatusTone: Record<PTLeadStatus, SemanticTone> = {
@@ -48,12 +52,26 @@ const leadStatusTone: Record<PTLeadStatus, SemanticTone> = {
 
 export function PtHubLeadsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const leadsQuery = usePtHubLeads();
-  const [searchValue, setSearchValue] = useState("");
-  const [statusFilter, setStatusFilter] = useState<PTLeadStatus | "all">("all");
+  const [searchValue, setSearchValue] = useState(
+    () => searchParams.get("search") ?? "",
+  );
+  const [statusFilter, setStatusFilter] = useState<LeadStatusFilter>(() => {
+    const status = searchParams.get("status");
+    if (!status) return "all";
+    return statusOptions.includes(status as LeadStatusFilter)
+      ? (status as LeadStatusFilter)
+      : "all";
+  });
   const [packageFilterValue, setPackageFilterValue] =
-    useState<LeadPackageFilterValue>(LEAD_PACKAGE_FILTER_ALL);
+    useState<LeadPackageFilterValue>(
+      () =>
+        (searchParams.get("package") as LeadPackageFilterValue | null) ??
+        LEAD_PACKAGE_FILTER_ALL,
+    );
   const deferredSearchValue = useDeferredValue(searchValue);
+  const attentionFilter = searchParams.get("attention");
 
   const leads = useMemo(() => leadsQuery.data ?? [], [leadsQuery.data]);
   const packageFilterOptions = useMemo(
@@ -66,9 +84,14 @@ export function PtHubLeadsPage() {
       packageFilterValue,
     );
     const normalizedSearch = deferredSearchValue.trim().toLowerCase();
+    const now = Date.now();
     return packageFilteredLeads.filter((lead) => {
       const matchesStatus =
-        statusFilter === "all" ? true : lead.status === statusFilter;
+        statusFilter === "all"
+          ? true
+          : statusFilter === "approved_group"
+            ? ["approved_pending_workspace", "converted"].includes(lead.status)
+            : lead.status === statusFilter;
       const haystack = [
         lead.fullName,
         lead.email ?? "",
@@ -83,9 +106,45 @@ export function PtHubLeadsPage() {
       const matchesSearch = normalizedSearch
         ? haystack.includes(normalizedSearch)
         : true;
-      return matchesStatus && matchesSearch;
+      const submittedAt = new Date(lead.submittedAt).getTime();
+      const matchesAttention =
+        attentionFilter === "waiting24h"
+          ? lead.status === "new" &&
+            !Number.isNaN(submittedAt) &&
+            now - submittedAt >= 1000 * 60 * 60 * 24
+          : true;
+      return matchesStatus && matchesSearch && matchesAttention;
     });
-  }, [deferredSearchValue, leads, packageFilterValue, statusFilter]);
+  }, [
+    attentionFilter,
+    deferredSearchValue,
+    leads,
+    packageFilterValue,
+    statusFilter,
+  ]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    if (deferredSearchValue.trim()) {
+      nextParams.set("search", deferredSearchValue.trim());
+    }
+    if (statusFilter !== "all") {
+      nextParams.set("status", statusFilter);
+    }
+    if (packageFilterValue !== LEAD_PACKAGE_FILTER_ALL) {
+      nextParams.set("package", packageFilterValue);
+    }
+    if (attentionFilter === "waiting24h" && statusFilter === "new") {
+      nextParams.set("attention", "waiting24h");
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    attentionFilter,
+    deferredSearchValue,
+    packageFilterValue,
+    setSearchParams,
+    statusFilter,
+  ]);
 
   const stats = useMemo(
     () => ({
@@ -158,7 +217,7 @@ export function PtHubLeadsPage() {
                 className="w-full"
                 value={statusFilter}
                 onChange={(event) =>
-                  setStatusFilter(event.target.value as PTLeadStatus | "all")
+                  setStatusFilter(event.target.value as LeadStatusFilter)
                 }
                 aria-label="Filter by lead status"
               >

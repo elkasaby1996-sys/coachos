@@ -23,6 +23,8 @@ export function StatCard({
   className,
   disableHoverMotion = false,
   module,
+  onClick,
+  ariaLabel,
 }: {
   label: string;
   value: string | number;
@@ -37,6 +39,8 @@ export function StatCard({
   className?: string;
   disableHoverMotion?: boolean;
   module?: ModuleTone;
+  onClick?: (() => void) | null;
+  ariaLabel?: string;
 }) {
   const isPtHub = surface === "pt-hub";
   const reduceMotion = useReducedMotion();
@@ -44,6 +48,113 @@ export function StatCard({
   const ptHubHelperClassName = "text-muted-foreground";
   const moduleClasses = module ? getModuleToneClasses(module) : null;
   const toneStyle = getModuleToneStyle(module);
+
+  const card = (
+    <Card
+      className={cn(
+        isPtHub
+          ? "surface-panel relative h-full min-h-[188px] overflow-hidden rounded-[30px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl"
+          : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
+        module && moduleClasses?.card,
+        accent &&
+          (isPtHub
+            ? "border-primary/25"
+            : "border-primary/35 shadow-[0_26px_60px_-42px_oklch(var(--accent)/0.24)]"),
+        onClick && "cursor-pointer",
+        className,
+      )}
+      style={toneStyle}
+    >
+      {isPtHub ? (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.08),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.12),transparent_48%)]",
+            accent &&
+              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_32%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.14),transparent_48%)]",
+          )}
+        />
+      ) : (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_30%),linear-gradient(180deg,oklch(1_0_0/0.05),transparent_44%)]",
+            accent &&
+              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_28%),linear-gradient(180deg,oklch(1_0_0/0.06),transparent_44%)]",
+          )}
+        />
+      )}
+      <CardHeader
+        className={cn(
+          "space-y-3",
+          isPtHub && "relative flex h-full px-5 py-5 sm:px-6",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center justify-between text-xs text-muted-foreground",
+            isPtHub && ptHubLabelClassName,
+          )}
+        >
+          <span className="font-semibold uppercase tracking-[0.22em]">
+            {label}
+          </span>
+          {Icon ? (
+            <span
+              className={cn(
+                "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/42",
+                module && moduleClasses?.iconBadge,
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-4.5 w-4.5 shrink-0",
+                  module ? moduleClasses?.title : "text-foreground",
+                )}
+              />
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <CardTitle
+              className={cn(
+                "text-2xl font-semibold tracking-tight",
+                isPtHub && "text-[2.5rem] uppercase tracking-[0.04em]",
+              )}
+            >
+              <AnimatedValue value={value} />
+            </CardTitle>
+            {helper ? (
+              <p
+                className={cn(
+                  "text-xs text-muted-foreground",
+                  isPtHub &&
+                    cn(
+                      "mt-1 text-[0.78rem] leading-[1.15rem]",
+                      ptHubHelperClassName,
+                    ),
+                )}
+              >
+                {helper}
+              </p>
+            ) : null}
+          </div>
+          {delta ? (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-[0.08em]",
+                getSemanticToneClasses(delta.tone).surface,
+                !isPtHub &&
+                  (!delta.tone || delta.tone === "neutral") &&
+                  "bg-muted/28 text-muted-foreground",
+              )}
+            >
+              {delta.value}
+            </span>
+          ) : null}
+        </div>
+      </CardHeader>
+    </Card>
+  );
 
   return (
     <motion.div
@@ -54,109 +165,18 @@ export function StatCard({
           : { y: -4, transition: { duration: 0.2, ease: "easeOut" } }
       }
     >
-      <Card
-        className={cn(
-          isPtHub
-            ? "surface-panel relative h-full min-h-[188px] overflow-hidden rounded-[30px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl"
-            : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
-          module && moduleClasses?.card,
-          accent &&
-            (isPtHub
-              ? "border-primary/25"
-              : "border-primary/35 shadow-[0_26px_60px_-42px_oklch(var(--accent)/0.24)]"),
-          className,
-        )}
-        style={toneStyle}
-      >
-        {isPtHub ? (
-          <div
-            className={cn(
-              "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.08),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.12),transparent_48%)]",
-              accent &&
-                "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_32%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.14),transparent_48%)]",
-            )}
-          />
-        ) : (
-          <div
-            className={cn(
-              "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_30%),linear-gradient(180deg,oklch(1_0_0/0.05),transparent_44%)]",
-              accent &&
-                "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_28%),linear-gradient(180deg,oklch(1_0_0/0.06),transparent_44%)]",
-            )}
-          />
-        )}
-        <CardHeader
-          className={cn(
-            "space-y-3",
-            isPtHub && "relative flex h-full px-5 py-5 sm:px-6",
-          )}
+      {onClick ? (
+        <button
+          type="button"
+          className="block h-full w-full text-left"
+          onClick={onClick}
+          aria-label={ariaLabel ?? label}
         >
-          <div
-            className={cn(
-              "flex items-center justify-between text-xs text-muted-foreground",
-              isPtHub && ptHubLabelClassName,
-            )}
-          >
-            <span className="font-semibold uppercase tracking-[0.22em]">
-              {label}
-            </span>
-            {Icon ? (
-              <span
-                className={cn(
-                  "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/42",
-                  module && moduleClasses?.iconBadge,
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "h-4.5 w-4.5 shrink-0",
-                    module ? moduleClasses?.title : "text-foreground",
-                  )}
-                />
-              </span>
-            ) : null}
-          </div>
-          <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <CardTitle
-                className={cn(
-                  "text-2xl font-semibold tracking-tight",
-                  isPtHub && "text-[2.5rem] uppercase tracking-[0.04em]",
-                )}
-              >
-                <AnimatedValue value={value} />
-              </CardTitle>
-              {helper ? (
-                <p
-                  className={cn(
-                    "text-xs text-muted-foreground",
-                    isPtHub &&
-                      cn(
-                        "mt-1 text-[0.78rem] leading-[1.15rem]",
-                        ptHubHelperClassName,
-                      ),
-                  )}
-                >
-                  {helper}
-                </p>
-              ) : null}
-            </div>
-            {delta ? (
-              <span
-                className={cn(
-                  "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-[0.08em]",
-                  getSemanticToneClasses(delta.tone).surface,
-                  !isPtHub &&
-                    (!delta.tone || delta.tone === "neutral") &&
-                    "bg-muted/28 text-muted-foreground",
-                )}
-              >
-                {delta.value}
-              </span>
-            ) : null}
-          </div>
-        </CardHeader>
-      </Card>
+          {card}
+        </button>
+      ) : (
+        card
+      )}
     </motion.div>
   );
 }

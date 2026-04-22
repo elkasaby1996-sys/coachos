@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Search, UsersRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
@@ -22,13 +22,28 @@ import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtHubClientsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { switchWorkspace } = useWorkspace();
   const statsQuery = usePtHubClientStats();
   const workspacesQuery = usePtHubWorkspaces();
-  const [searchValue, setSearchValue] = useState("");
-  const [workspaceFilter, setWorkspaceFilter] = useState<string>("all");
-  const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
-  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
+  const [searchValue, setSearchValue] = useState(
+    () => searchParams.get("search") ?? "",
+  );
+  const [workspaceFilter, setWorkspaceFilter] = useState<string>(
+    () => searchParams.get("workspace") ?? "all",
+  );
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>(
+    () => searchParams.get("lifecycle") ?? "all",
+  );
+  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>(() => {
+    const value = searchParams.get("segment");
+    return value === "onboarding_incomplete" ||
+      value === "checkin_overdue" ||
+      value === "at_risk" ||
+      value === "paused"
+      ? value
+      : "all";
+  });
   const [page, setPage] = useState(0);
   const deferredSearchValue = useDeferredValue(searchValue);
   const clientsQuery = usePtHubClientsPage({
@@ -59,6 +74,29 @@ export function PtHubClientsPage() {
   useEffect(() => {
     setPage(0);
   }, [deferredSearchValue, lifecycleFilter, segmentFilter, workspaceFilter]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    if (deferredSearchValue.trim()) {
+      nextParams.set("search", deferredSearchValue.trim());
+    }
+    if (workspaceFilter !== "all") {
+      nextParams.set("workspace", workspaceFilter);
+    }
+    if (lifecycleFilter !== "all") {
+      nextParams.set("lifecycle", lifecycleFilter);
+    }
+    if (segmentFilter !== "all") {
+      nextParams.set("segment", segmentFilter);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    deferredSearchValue,
+    lifecycleFilter,
+    segmentFilter,
+    setSearchParams,
+    workspaceFilter,
+  ]);
 
   const openClientWorkspace = (client: PTClientSummary) => {
     switchWorkspace(client.workspaceId);
