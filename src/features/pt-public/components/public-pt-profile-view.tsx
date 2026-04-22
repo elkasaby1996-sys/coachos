@@ -599,7 +599,12 @@ function PublicPackageSection({
                     <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
                       {packageOption.priceLabel ? (
                         <span className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1">
-                          {packageOption.priceLabel}
+                          {packageOption.currencyCode &&
+                          !packageOption.priceLabel
+                            .toUpperCase()
+                            .includes(packageOption.currencyCode.toUpperCase())
+                            ? `${packageOption.priceLabel} ${packageOption.currencyCode}`
+                            : packageOption.priceLabel}
                         </span>
                       ) : null}
                       {packageOption.billingCadenceLabel ? (

@@ -32,6 +32,15 @@ export function NotificationItem({
   const hasAction = Boolean(notification.action_url);
   const module = getNotificationModuleTone(notification);
   const moduleClasses = getModuleToneClasses(module);
+  const title = notification.title.trim();
+  const body = notification.body.trim();
+  const compactHeadline =
+    compact &&
+    audience === "pt" &&
+    body &&
+    title.localeCompare(typeLabel, undefined, { sensitivity: "accent" }) === 0
+      ? body
+      : title;
 
   return (
     <button
@@ -78,11 +87,11 @@ export function NotificationItem({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0 space-y-1">
             <p className="line-clamp-1 text-sm font-semibold text-foreground">
-              {notification.title}
+              {compact ? compactHeadline : title}
             </p>
             {!compact ? (
               <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-                {notification.body}
+                {body}
               </p>
             ) : null}
           </div>

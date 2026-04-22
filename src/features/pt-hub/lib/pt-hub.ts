@@ -1821,6 +1821,10 @@ export function mapPublicPtPackageOptions(
         typeof row.price_label === "string"
           ? row.price_label.trim() || null
           : null,
+      currencyCode:
+        typeof row.currency_code === "string"
+          ? row.currency_code.trim() || null
+          : null,
       billingCadenceLabel:
         typeof row.billing_cadence_label === "string"
           ? row.billing_cadence_label.trim() || null
@@ -1850,6 +1854,7 @@ export function mapPublicPtPackageOptionsFromPackages(
       subtitle: pkg.subtitle,
       description: pkg.description,
       priceLabel: pkg.priceLabel,
+      currencyCode: pkg.currencyCode,
       billingCadenceLabel: pkg.billingCadenceLabel,
       ctaLabel: pkg.ctaLabel,
       features: pkg.features,
@@ -1870,6 +1875,7 @@ function finalizePublicPtPackageOptions(
     subtitle: string | null;
     description: string | null;
     priceLabel: string | null;
+    currencyCode: string | null;
     billingCadenceLabel: string | null;
     ctaLabel: string | null;
     features: string[] | null;
@@ -1900,6 +1906,7 @@ function finalizePublicPtPackageOptions(
       subtitle: option.subtitle,
       description: option.description,
       priceLabel: option.priceLabel,
+      currencyCode: option.currencyCode,
       billingCadenceLabel: option.billingCadenceLabel,
       features: option.features,
       ctaLabel: option.ctaLabel,
@@ -2085,7 +2092,7 @@ export function usePublicPtPackageOptions(
       const { data, error } = await supabase
         .from("pt_packages")
         .select(
-          "id, title, subtitle, description, price_label, billing_cadence_label, cta_label, features, status, is_public, sort_order, created_at",
+          "id, title, subtitle, description, price_label, currency_code, billing_cadence_label, cta_label, features, status, is_public, sort_order, created_at",
         )
         .eq("pt_user_id", coachUserId);
 

@@ -49,10 +49,14 @@ function WireframeLoaderCopy({
   message,
   align = "left",
 }: {
-  title: string;
-  message: string;
+  title?: string;
+  message?: string;
   align?: "left" | "center";
 }) {
+  if (!title?.trim() && !message?.trim()) {
+    return null;
+  }
+
   return (
     <div
       className={cn(
@@ -186,8 +190,8 @@ function ScreenWireframe({
   tone,
   themeMode,
 }: {
-  title: string;
-  message: string;
+  title?: string;
+  message?: string;
   shell: WireframeShell;
   tone: ModuleTone;
   themeMode: WireframeThemeMode;
@@ -309,8 +313,8 @@ function AuthWireframe({
   themeMode,
   authWidthClassName,
 }: {
-  title: string;
-  message: string;
+  title?: string;
+  message?: string;
   tone: ModuleTone;
   themeMode: WireframeThemeMode;
   authWidthClassName: string;
@@ -373,7 +377,9 @@ export function WireframeLoader({
       className={cn("w-full", className)}
       {...props}
     >
-      <span className="sr-only">{message}</span>
+      <span className="sr-only">
+        {message?.trim() || title?.trim() || "Loading"}
+      </span>
       {variant === "auth" ? (
         <AuthWireframe
           title={title}

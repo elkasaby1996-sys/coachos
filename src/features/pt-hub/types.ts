@@ -341,6 +341,7 @@ export interface PTPublicPackageOption {
   subtitle: string | null;
   description: string | null;
   priceLabel: string | null;
+  currencyCode: string | null;
   billingCadenceLabel: string | null;
   features: string[] | null;
   ctaLabel: string | null;

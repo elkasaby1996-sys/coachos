@@ -3,12 +3,8 @@ import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Badge } from "../../components/ui/badge";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
-import { PtHubReadinessPanel } from "../../features/pt-hub/components/pt-hub-readiness-panel";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
-import {
-  usePtHubAnalytics,
-  usePtHubProfileReadiness,
-} from "../../features/pt-hub/lib/pt-hub";
+import { usePtHubAnalytics } from "../../features/pt-hub/lib/pt-hub";
 
 const buildMetricDelta = (delta: number | null | undefined, suffix = "") => {
   if (typeof delta !== "number" || Number.isNaN(delta)) return null;
@@ -22,7 +18,6 @@ const buildMetricDelta = (delta: number | null | undefined, suffix = "") => {
 
 export function PtHubAnalyticsPage() {
   const analyticsQuery = usePtHubAnalytics();
-  const readinessQuery = usePtHubProfileReadiness();
   const analytics = analyticsQuery.data;
 
   return (
@@ -73,7 +68,7 @@ export function PtHubAnalyticsPage() {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_380px]">
+      <div className="space-y-6">
         <PtHubSectionCard
           title="Performance Summary"
           description="The most useful business signals in one place."
@@ -100,58 +95,52 @@ export function PtHubAnalyticsPage() {
           </div>
         </PtHubSectionCard>
 
-        <div className="space-y-6">
-          {readinessQuery.data ? (
-            <PtHubReadinessPanel readiness={readinessQuery.data} compact />
-          ) : null}
-
-          <PtHubSectionCard
-            title="Clients by Coaching Space"
-            description="How your clients are spread across spaces."
-          >
-            {analytics?.clientsByWorkspace.length ? (
-              <div className="space-y-3">
-                {analytics.clientsByWorkspace.map((item) => {
-                  const maxCount =
-                    analytics.clientsByWorkspace[0]?.clientCount ?? 1;
-                  const width = Math.max(
-                    12,
-                    Math.round((item.clientCount / maxCount) * 100),
-                  );
-                  return (
-                    <div
-                      key={item.workspaceId}
-                      className="rounded-2xl border border-border/60 bg-background/34 p-4"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {item.workspaceName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {item.clientCount} client(s)
-                          </p>
-                        </div>
-                        <Badge variant="info">{item.clientCount}</Badge>
+        <PtHubSectionCard
+          title="Clients by Coaching Space"
+          description="How your clients are spread across spaces."
+        >
+          {analytics?.clientsByWorkspace.length ? (
+            <div className="space-y-3">
+              {analytics.clientsByWorkspace.map((item) => {
+                const maxCount =
+                  analytics.clientsByWorkspace[0]?.clientCount ?? 1;
+                const width = Math.max(
+                  12,
+                  Math.round((item.clientCount / maxCount) * 100),
+                );
+                return (
+                  <div
+                    key={item.workspaceId}
+                    className="rounded-2xl border border-border/60 bg-background/34 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {item.workspaceName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.clientCount} client(s)
+                        </p>
                       </div>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
+                      <Badge variant="info">{item.clientCount}</Badge>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState
-                title="No client breakdown yet"
-                description="Once clients are added, PT Hub will show how they are distributed across your coaching spaces."
-              />
-            )}
-          </PtHubSectionCard>
-        </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              title="No client breakdown yet"
+              description="Once clients are added, PT Hub will show how they are distributed across your coaching spaces."
+            />
+          )}
+        </PtHubSectionCard>
       </div>
     </section>
   );

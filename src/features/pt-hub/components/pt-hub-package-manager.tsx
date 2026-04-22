@@ -66,6 +66,7 @@ type PackageEditorState = {
   subtitle: string;
   description: string;
   priceLabel: string;
+  currencyCode: string;
   billingCadenceLabel: string;
   status: PTPackageStatus;
   isPublic: boolean;
@@ -77,6 +78,7 @@ const EMPTY_PACKAGE_STATE: PackageEditorState = {
   subtitle: "",
   description: "",
   priceLabel: "",
+  currencyCode: "",
   billingCadenceLabel: "",
   status: "draft",
   isPublic: false,
@@ -90,6 +92,57 @@ const PACKAGE_STATUS_OPTIONS: Array<{ value: PTPackageStatus; label: string }> =
     { value: "archived", label: "Archived" },
   ];
 
+const BILLING_FREQUENCY_OPTIONS = [
+  { value: "Weekly", label: "Weekly" },
+  { value: "Monthly", label: "Monthly" },
+  { value: "Yearly", label: "Yearly" },
+  { value: "One-time", label: "One-time" },
+] as const;
+
+const CURRENCY_OPTIONS = [
+  { value: "USD", label: "USD" },
+  { value: "EUR", label: "EUR" },
+  { value: "GBP", label: "GBP" },
+  { value: "SAR", label: "SAR" },
+  { value: "EGP", label: "EGP" },
+] as const;
+
+function normalizeBillingCadenceLabel(value: string | null | undefined) {
+  const normalized = value?.trim() ?? "";
+  if (!normalized) return "";
+
+  switch (normalized.toLowerCase().replace(/[\s_]+/g, "-")) {
+    case "weekly":
+      return "Weekly";
+    case "monthly":
+      return "Monthly";
+    case "yearly":
+    case "annual":
+      return "Yearly";
+    case "one-time":
+    case "one-time-fee":
+    case "one-time-payment":
+    case "onetime":
+      return "One-time";
+    default:
+      return normalized;
+  }
+}
+
+function formatPackagePriceLabel(values: {
+  priceLabel: string;
+  currencyCode: string;
+}) {
+  const priceLabel = values.priceLabel.trim();
+  const currencyCode = values.currencyCode.trim().toUpperCase();
+  if (!priceLabel) return null;
+  if (!currencyCode) return priceLabel;
+  if (priceLabel.toUpperCase().includes(currencyCode)) {
+    return priceLabel;
+  }
+  return `${priceLabel} ${currencyCode}`;
+}
+
 function toPackageEditorState(pkg: PTPackage): PackageEditorState {
   const normalized = normalizePackageStateForPersistence({
     status: pkg.status,
@@ -101,6 +154,7 @@ function toPackageEditorState(pkg: PTPackage): PackageEditorState {
     subtitle: pkg.subtitle ?? "",
     description: pkg.description ?? "",
     priceLabel: pkg.priceLabel ?? "",
+    currencyCode: pkg.currencyCode ?? "",
     billingCadenceLabel: pkg.billingCadenceLabel ?? "",
     status: normalized.status,
     isPublic: normalized.isPublic,
@@ -446,9 +500,9 @@ export function PtHubPackageManager() {
               </Badge>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              {editState.priceLabel ? (
+              {formatPackagePriceLabel(editState) ? (
                 <span className="inline-flex items-center rounded-full border border-border/65 bg-background/75 px-2.5 py-1 font-medium text-foreground">
-                  {editState.priceLabel}
+                  {formatPackagePriceLabel(editState)}
                 </span>
               ) : null}
               {editState.billingCadenceLabel ? (
@@ -466,7 +520,6 @@ export function PtHubPackageManager() {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span>Display order {pkg.sortOrder}</span>
               <span>Updated {getPackageLastUpdatedLabel(pkg)}</span>
               {!packageLeadReferenceCountsQuery.isLoading ? (
                 <span>{usageLabel}</span>
@@ -527,26 +580,72 @@ export function PtHubPackageManager() {
             }
             placeholder="Subtitle (optional)"
           />
-          <Input
-            value={createState.priceLabel}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                priceLabel: event.target.value,
-              }))
-            }
-            placeholder="Price label (optional)"
-          />
-          <Input
-            value={createState.billingCadenceLabel}
+          <div className="grid gap-3 md:col-span-2 md:grid-cols-[minmax(0,1fr)_180px]">
+            <Input
+              value={createState.priceLabel}
+              onChange={(event) =>
+                setCreateState((prev) => ({
+                  ...prev,
+                  priceLabel: event.target.value,
+                }))
+              }
+              placeholder="Price"
+            />
+            <Select
+              value={createState.currencyCode}
+              onChange={(event) =>
+                setCreateState((prev) => ({
+                  ...prev,
+                  currencyCode: event.target.value,
+                }))
+              }
+            >
+              <option value="">Currency</option>
+              {CURRENCY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+              {createState.currencyCode &&
+              !CURRENCY_OPTIONS.some(
+                (option) => option.value === createState.currencyCode,
+              ) ? (
+                <option value={createState.currencyCode}>
+                  {createState.currencyCode}
+                </option>
+              ) : null}
+            </Select>
+          </div>
+          <Select
+            value={normalizeBillingCadenceLabel(createState.billingCadenceLabel)}
             onChange={(event) =>
               setCreateState((prev) => ({
                 ...prev,
                 billingCadenceLabel: event.target.value,
               }))
             }
-            placeholder="Billing cadence label (optional)"
-          />
+          >
+            <option value="">Billing frequency</option>
+            {BILLING_FREQUENCY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+            {createState.billingCadenceLabel &&
+            !BILLING_FREQUENCY_OPTIONS.some(
+              (option) =>
+                option.value ===
+                normalizeBillingCadenceLabel(createState.billingCadenceLabel),
+            ) ? (
+              <option
+                value={normalizeBillingCadenceLabel(
+                  createState.billingCadenceLabel,
+                )}
+              >
+                {normalizeBillingCadenceLabel(createState.billingCadenceLabel)}
+              </option>
+            ) : null}
+          </Select>
           <Select
             value={createState.status}
             onChange={(event) =>
@@ -564,18 +663,24 @@ export function PtHubPackageManager() {
               </option>
             ))}
           </Select>
-          <Input
-            type="number"
-            min={0}
-            value={createState.sortOrder}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                sortOrder: Number.parseInt(event.target.value, 10) || 0,
-              }))
-            }
-            placeholder="Sort order"
-          />
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Display Order
+            </span>
+            <Input
+              className="h-14 pt-6"
+              type="number"
+              min={0}
+              value={createState.sortOrder}
+              onChange={(event) =>
+                setCreateState((prev) => ({
+                  ...prev,
+                  sortOrder: Number.parseInt(event.target.value, 10) || 0,
+                }))
+              }
+              placeholder="0"
+            />
+          </div>
         </div>
         <Textarea
           className="min-h-[112px]"
@@ -621,7 +726,6 @@ export function PtHubPackageManager() {
 
       <PtHubSectionCard
         title="Packages"
-        description="Manage package details, visibility, ordering, and retirement in one canonical PT Hub surface."
       >
         <div className="flex flex-wrap items-center gap-2">
           {PT_PACKAGE_FILTER_OPTIONS.map((filter) => (
@@ -730,9 +834,9 @@ export function PtHubPackageManager() {
                       <Badge variant={packageStateVariant(editState)}>
                         {displayState}
                       </Badge>
-                      {editState.priceLabel ? (
+                      {formatPackagePriceLabel(editState) ? (
                         <span className="inline-flex items-center rounded-full border border-border/65 bg-background/70 px-2.5 py-1 text-xs font-medium text-foreground">
-                          {editState.priceLabel}
+                          {formatPackagePriceLabel(editState)}
                         </span>
                       ) : null}
                       {editState.billingCadenceLabel ? (
@@ -779,21 +883,52 @@ export function PtHubPackageManager() {
                         }
                         placeholder="Subtitle (optional)"
                       />
-                      <Input
-                        value={editState.priceLabel}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              priceLabel: event.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Price label (optional)"
-                      />
-                      <Input
-                        value={editState.billingCadenceLabel}
+                      <div className="grid gap-3 md:col-span-2 md:grid-cols-[minmax(0,1fr)_180px]">
+                        <Input
+                          value={editState.priceLabel}
+                          onChange={(event) =>
+                            setEditStateById((prev) => ({
+                              ...prev,
+                              [viewingPackage.id]: {
+                                ...editState,
+                                priceLabel: event.target.value,
+                              },
+                            }))
+                          }
+                          placeholder="Price"
+                        />
+                        <Select
+                          value={editState.currencyCode}
+                          onChange={(event) =>
+                            setEditStateById((prev) => ({
+                              ...prev,
+                              [viewingPackage.id]: {
+                                ...editState,
+                                currencyCode: event.target.value,
+                              },
+                            }))
+                          }
+                        >
+                          <option value="">Currency</option>
+                          {CURRENCY_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                          {editState.currencyCode &&
+                          !CURRENCY_OPTIONS.some(
+                            (option) => option.value === editState.currencyCode,
+                          ) ? (
+                            <option value={editState.currencyCode}>
+                              {editState.currencyCode}
+                            </option>
+                          ) : null}
+                        </Select>
+                      </div>
+                      <Select
+                        value={normalizeBillingCadenceLabel(
+                          editState.billingCadenceLabel,
+                        )}
                         onChange={(event) =>
                           setEditStateById((prev) => ({
                             ...prev,
@@ -803,8 +938,32 @@ export function PtHubPackageManager() {
                             },
                           }))
                         }
-                        placeholder="Billing cadence label (optional)"
-                      />
+                      >
+                        <option value="">Billing frequency</option>
+                        {BILLING_FREQUENCY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                        {editState.billingCadenceLabel &&
+                        !BILLING_FREQUENCY_OPTIONS.some(
+                          (option) =>
+                            option.value ===
+                            normalizeBillingCadenceLabel(
+                              editState.billingCadenceLabel,
+                            ),
+                        ) ? (
+                          <option
+                            value={normalizeBillingCadenceLabel(
+                              editState.billingCadenceLabel,
+                            )}
+                          >
+                            {normalizeBillingCadenceLabel(
+                              editState.billingCadenceLabel,
+                            )}
+                          </option>
+                        ) : null}
+                      </Select>
                       <Select
                         value={editState.status}
                         onChange={(event) =>
@@ -823,22 +982,28 @@ export function PtHubPackageManager() {
                           </option>
                         ))}
                       </Select>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={editState.sortOrder}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              sortOrder:
-                                Number.parseInt(event.target.value, 10) || 0,
-                            },
-                          }))
-                        }
-                        placeholder="Sort order"
-                      />
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Display Order
+                        </span>
+                        <Input
+                          className="h-14 pt-6"
+                          type="number"
+                          min={0}
+                          value={editState.sortOrder}
+                          onChange={(event) =>
+                            setEditStateById((prev) => ({
+                              ...prev,
+                              [viewingPackage.id]: {
+                                ...editState,
+                                sortOrder:
+                                  Number.parseInt(event.target.value, 10) || 0,
+                              },
+                            }))
+                          }
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
 
                     <Textarea

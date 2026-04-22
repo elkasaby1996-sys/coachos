@@ -38,6 +38,15 @@ import { getCharacterLimitState } from "../../../lib/character-limits";
 const ASSIGN_WORKSPACE_LATER_VALUE = "__assign_later__";
 const CREATE_NEW_WORKSPACE_VALUE = "__create_new__";
 
+function formatTrainingExperience(value: string | null) {
+  const normalized = value?.trim() ?? "";
+  if (!normalized) return "Not provided";
+  if (/^\d+(\.\d+)?$/.test(normalized)) {
+    return `${normalized} year${normalized === "1" ? "" : "s"}`;
+  }
+  return normalized;
+}
+
 export function PtHubLeadDetailView({
   lead,
   currentPackage,
@@ -239,7 +248,7 @@ export function PtHubLeadDetailView({
             <DetailRow label="Goal" value={lead.goalSummary} />
             <DetailRow
               label="Experience"
-              value={lead.trainingExperience || "Not provided"}
+              value={formatTrainingExperience(lead.trainingExperience)}
             />
             {lead.budgetInterest ? (
               <DetailRow label="Budget (legacy)" value={lead.budgetInterest} />

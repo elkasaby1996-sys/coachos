@@ -71,6 +71,11 @@ export function PtHubClientsPage() {
         eyebrow="Clients"
         title="Manage your clients"
         description="View every client across your coaching spaces."
+        actions={
+          <InviteClientDialog
+            trigger={<Button variant="secondary">Invite client</Button>}
+          />
+        }
       />
 
       <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
@@ -102,15 +107,7 @@ export function PtHubClientsPage() {
         />
       </div>
 
-      <PtHubSectionCard
-        title="Client List"
-        actions={
-          <InviteClientDialog
-            trigger={<Button variant="secondary">Invite client</Button>}
-          />
-        }
-        contentClassName="space-y-6"
-      >
+      <PtHubSectionCard title="Client List" contentClassName="space-y-6">
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
             <div className="relative">

@@ -1,16 +1,52 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePtHubWorkspaces } from "../../../../features/pt-hub/lib/pt-hub";
 import {
-  DisabledSettingField,
   SettingsFieldRow,
   SettingsSectionCard,
   StickySaveBar,
 } from "../../../../features/settings/components/settings-primitives";
 import { useDirtyNavigationGuard } from "../../../../features/settings/hooks/use-dirty-navigation-guard";
+import { Select } from "../../../../components/ui/select";
 import { useWorkspace } from "../../../../lib/use-workspace";
+
+const PT_HUB_DATE_FORMAT_STORAGE_KEY = "coachos-pt-hub-date-format";
+const PT_HUB_WEEK_START_STORAGE_KEY = "coachos-pt-hub-week-start-day";
+const PT_HUB_UNITS_STORAGE_KEY = "coachos-pt-hub-units";
+
+const DATE_FORMAT_OPTIONS = [
+  { value: "dd-mm-yyyy", label: "DD/MM/YYYY" },
+  { value: "mm-dd-yyyy", label: "MM/DD/YYYY" },
+  { value: "yyyy-mm-dd", label: "YYYY-MM-DD" },
+] as const;
+
+const WEEK_START_OPTIONS = [
+  { value: "sunday", label: "Sunday" },
+  { value: "monday", label: "Monday" },
+  { value: "saturday", label: "Saturday" },
+] as const;
+
+const UNIT_PREFERENCE_OPTIONS = [
+  { value: "metric", label: "Metric" },
+  { value: "imperial", label: "Imperial" },
+] as const;
+
+function readStoredPreference<TValue extends string>(
+  key: string,
+  options: ReadonlyArray<{ value: TValue }>,
+  fallback: TValue,
+) {
+  if (typeof window === "undefined") return fallback;
+  const stored = window.localStorage.getItem(key);
+  return options.some((option) => option.value === stored)
+    ? (stored as TValue)
+    : fallback;
+}
 
 type PreferencesFormState = {
   defaultWorkspaceId: string;
+  dateFormat: (typeof DATE_FORMAT_OPTIONS)[number]["value"];
+  weekStartDay: (typeof WEEK_START_OPTIONS)[number]["value"];
+  unitPreference: (typeof UNIT_PREFERENCE_OPTIONS)[number]["value"];
 };
 
 export function PtHubSettingsPreferencesTab() {
@@ -18,6 +54,9 @@ export function PtHubSettingsPreferencesTab() {
   const workspacesQuery = usePtHubWorkspaces();
   const [form, setForm] = useState<PreferencesFormState>({
     defaultWorkspaceId: workspaceId ?? "",
+    dateFormat: DATE_FORMAT_OPTIONS[0].value,
+    weekStartDay: WEEK_START_OPTIONS[1].value,
+    unitPreference: UNIT_PREFERENCE_OPTIONS[0].value,
   });
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -31,6 +70,21 @@ export function PtHubSettingsPreferencesTab() {
     () =>
       ({
         defaultWorkspaceId: availableWorkspaceId,
+        dateFormat: readStoredPreference(
+          PT_HUB_DATE_FORMAT_STORAGE_KEY,
+          DATE_FORMAT_OPTIONS,
+          DATE_FORMAT_OPTIONS[0].value,
+        ),
+        weekStartDay: readStoredPreference(
+          PT_HUB_WEEK_START_STORAGE_KEY,
+          WEEK_START_OPTIONS,
+          WEEK_START_OPTIONS[1].value,
+        ),
+        unitPreference: readStoredPreference(
+          PT_HUB_UNITS_STORAGE_KEY,
+          UNIT_PREFERENCE_OPTIONS,
+          UNIT_PREFERENCE_OPTIONS[0].value,
+        ),
       }) satisfies PreferencesFormState,
     [availableWorkspaceId],
   );
@@ -53,6 +107,21 @@ export function PtHubSettingsPreferencesTab() {
         )
       ) {
         switchWorkspace(form.defaultWorkspaceId);
+      }
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          PT_HUB_DATE_FORMAT_STORAGE_KEY,
+          form.dateFormat,
+        );
+        window.localStorage.setItem(
+          PT_HUB_WEEK_START_STORAGE_KEY,
+          form.weekStartDay,
+        );
+        window.localStorage.setItem(
+          PT_HUB_UNITS_STORAGE_KEY,
+          form.unitPreference,
+        );
       }
 
       return true;
@@ -110,13 +179,57 @@ export function PtHubSettingsPreferencesTab() {
 
       <SettingsSectionCard title="Regional Preferences">
         <SettingsFieldRow label="Date format">
-          <DisabledSettingField value="Not configurable yet" />
+          <Select
+            value={form.dateFormat}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                dateFormat: event.target.value as PreferencesFormState["dateFormat"],
+              }))
+            }
+          >
+            {DATE_FORMAT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </SettingsFieldRow>
         <SettingsFieldRow label="Week start day">
-          <DisabledSettingField value="Not configurable yet" />
+          <Select
+            value={form.weekStartDay}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                weekStartDay:
+                  event.target.value as PreferencesFormState["weekStartDay"],
+              }))
+            }
+          >
+            {WEEK_START_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </SettingsFieldRow>
         <SettingsFieldRow label="Units and preferences">
-          <DisabledSettingField value="Not configurable yet" />
+          <Select
+            value={form.unitPreference}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                unitPreference:
+                  event.target.value as PreferencesFormState["unitPreference"],
+              }))
+            }
+          >
+            {UNIT_PREFERENCE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </SettingsFieldRow>
       </SettingsSectionCard>
 

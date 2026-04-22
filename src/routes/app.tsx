@@ -105,12 +105,7 @@ type WindowWithIdleCallback = Window & {
 };
 
 function FullPageLoader() {
-  return (
-    <RouteAwareWireframeLoader
-      title="Loading your experience"
-      message="Shaping the next screen..."
-    />
-  );
+  return <RouteAwareWireframeLoader title="" message="" />;
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
