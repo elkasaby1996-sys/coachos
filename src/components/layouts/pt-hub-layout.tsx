@@ -55,15 +55,18 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
+import { useI18n } from "../../lib/i18n";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
 import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
   {
     label: "Home",
+    labelKey: "ptHub.nav.home",
     items: [
       {
         label: "Overview",
+        labelKey: "ptHub.nav.overview",
         to: "/pt-hub",
         icon: PanelsTopLeft,
         end: true,
@@ -71,18 +74,21 @@ const hubNavGroups = [
       },
       {
         label: "Coach Profile",
+        labelKey: "ptHub.nav.coachProfile",
         to: "/pt-hub/profile",
         icon: UserRound,
         module: "profile" as const,
       },
       {
         label: "Packages",
+        labelKey: "ptHub.nav.packages",
         to: "/pt-hub/packages",
         icon: Package,
         module: "profile" as const,
       },
       {
         label: "Profile Preview",
+        labelKey: "ptHub.nav.profilePreview",
         to: "/pt-hub/profile/preview",
         icon: Globe,
         module: "profile" as const,
@@ -91,33 +97,39 @@ const hubNavGroups = [
   },
   {
     label: "Clients",
+    labelKey: "ptHub.nav.clients",
     items: [
       {
         label: "Leads",
+        labelKey: "ptHub.nav.leads",
         to: "/pt-hub/leads",
         icon: MessageSquarePlus,
         module: "leads" as const,
       },
       {
         label: "Clients",
+        labelKey: "ptHub.nav.clients",
         to: "/pt-hub/clients",
         icon: UsersRound,
         module: "clients" as const,
       },
       {
         label: "Coaching Spaces",
+        labelKey: "ptHub.nav.coachingSpaces",
         to: "/pt-hub/workspaces",
         icon: Building,
         module: "coaching" as const,
       },
       {
         label: "Payments",
+        labelKey: "ptHub.nav.payments",
         to: "/pt-hub/payments",
         icon: Wallet,
         module: "billing" as const,
       },
       {
         label: "Analytics",
+        labelKey: "ptHub.nav.analytics",
         to: "/pt-hub/analytics",
         icon: PanelsTopLeft,
         module: "analytics" as const,
@@ -126,9 +138,11 @@ const hubNavGroups = [
   },
   {
     label: "Account",
+    labelKey: "ptHub.nav.account",
     items: [
       {
         label: "Settings",
+        labelKey: "ptHub.nav.settings",
         to: "/pt-hub/settings",
         icon: SlidersHorizontal,
         module: "settings" as const,
@@ -139,58 +153,84 @@ const hubNavGroups = [
 
 const routeMeta: Record<
   string,
-  { title: string; description: string; module: ModuleTone }
+  {
+    title: string;
+    titleKey: string;
+    description: string;
+    descriptionKey: string;
+    module: ModuleTone;
+  }
 > = {
   "/pt-hub": {
     title: "Overview",
+    titleKey: "ptHub.routes.overview.title",
     description: "Run your coaching business from one dashboard.",
+    descriptionKey: "ptHub.routes.overview.description",
     module: "overview",
   },
   "/pt-hub/profile": {
     title: "Coach Profile",
+    titleKey: "ptHub.routes.profile.title",
     description: "Update the public trainer page clients will see.",
+    descriptionKey: "ptHub.routes.profile.description",
     module: "profile",
   },
   "/pt-hub/packages": {
     title: "Packages",
+    titleKey: "ptHub.routes.packages.title",
     description:
       "Manage package visibility and ordering for public lead intake.",
+    descriptionKey: "ptHub.routes.packages.description",
     module: "profile",
   },
   "/pt-hub/profile/preview": {
     title: "Profile Preview",
+    titleKey: "ptHub.routes.profilePreview.title",
     description: "Preview your public trainer page before sharing it.",
+    descriptionKey: "ptHub.routes.profilePreview.description",
     module: "profile",
   },
   "/pt-hub/leads": {
     title: "Leads",
+    titleKey: "ptHub.routes.leads.title",
     description: "Review new inquiries and follow up faster.",
+    descriptionKey: "ptHub.routes.leads.description",
     module: "leads",
   },
   "/pt-hub/clients": {
     title: "Clients",
+    titleKey: "ptHub.routes.clients.title",
     description: "See every client across your coaching spaces.",
+    descriptionKey: "ptHub.routes.clients.description",
     module: "clients",
   },
   "/pt-hub/workspaces": {
     title: "Coaching Spaces",
+    titleKey: "ptHub.routes.workspaces.title",
     description: "Open, create, and manage your coaching spaces.",
+    descriptionKey: "ptHub.routes.workspaces.description",
     module: "coaching",
   },
   "/pt-hub/payments": {
     title: "Payments",
+    titleKey: "ptHub.routes.payments.title",
     description: "Check billing, invoices, and revenue at a glance.",
+    descriptionKey: "ptHub.routes.payments.description",
     module: "billing",
   },
   "/pt-hub/analytics": {
     title: "Analytics",
+    titleKey: "ptHub.routes.analytics.title",
     description: "Track inquiries, conversions, and client growth.",
+    descriptionKey: "ptHub.routes.analytics.description",
     module: "analytics",
   },
   "/pt-hub/settings": {
     title: "PT Hub Settings",
+    titleKey: "ptHub.routes.settings.title",
     description:
       "Manage account identity, security, billing, and notifications.",
+    descriptionKey: "ptHub.routes.settings.description",
     module: "settings",
   },
 };
@@ -293,6 +333,7 @@ function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
 }
 
 export function PtHubLayout() {
+  const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const { ptProfile } = useBootstrapAuth();
@@ -309,6 +350,8 @@ export function PtHubLayout() {
   const routeTransitionKey = getPtHubRouteTransitionKey(location.pathname);
 
   const meta = getPtHubRouteMeta(location.pathname);
+  const metaTitle = t(meta.titleKey, meta.title);
+  const metaDescription = t(meta.descriptionKey, meta.description);
   const currentModuleClasses = getModuleToneClasses(meta.module);
   const workspaces = useMemo(
     () => workspacesQuery.data ?? [],
@@ -324,13 +367,13 @@ export function PtHubLayout() {
     workspaces.find((workspace) => workspace.id === workspaceId) ??
     fallbackWorkspace;
   const workspacePillLabel = inPtHubWorkspace
-    ? "Repsync PT Hub"
+    ? t("common.repsyncPtHub", "Repsync PT Hub")
     : (currentWorkspace?.name ??
       (workspacesQuery.isLoading
-        ? "Loading workspace..."
+        ? t("common.loadingWorkspace", "Loading workspace...")
         : workspaceId
-          ? "Current workspace"
-          : "No workspace selected"));
+          ? t("common.currentWorkspace", "Current workspace")
+          : t("common.noWorkspaceSelected", "No workspace selected")));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const coachDisplayName =
     getPreferredPersonDisplayName(
@@ -339,7 +382,7 @@ export function PtHubLayout() {
       ptProfile?.display_name,
       getUserDisplayName(user),
       user?.email?.split("@")[0],
-    ) || "Account";
+    ) || t("common.account", "Account");
   const userInitial = (
     coachDisplayName.charAt(0) ||
     user?.email?.charAt(0) ||
@@ -427,15 +470,17 @@ export function PtHubLayout() {
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <div>
               <p className="text-xl font-semibold uppercase tracking-[0.06em] text-foreground">
-                Repsync PT Hub
+                {t("common.repsyncPtHub", "Repsync PT Hub")}
               </p>
-              <p className="text-sm text-muted-foreground">Trainer workspace</p>
+              <p className="text-sm text-muted-foreground">
+                {t("common.trainerWorkspace", "Trainer workspace")}
+              </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileOpen(false)}
-              aria-label="Close navigation"
+              aria-label={t("common.closeNavigation", "Close navigation")}
             >
               <X className="h-5 w-5" />
             </Button>
@@ -508,7 +553,9 @@ export function PtHubLayout() {
                     onClick={() => setMobileOpen(true)}
                   >
                     <Menu className="h-5 w-5 [stroke-width:1.7]" />
-                    <span className="sr-only">Open PT Hub navigation</span>
+                    <span className="sr-only">
+                      {t("ptHub.openNavigation", "Open PT Hub navigation")}
+                    </span>
                   </Button>
                   <div
                     className={cn(
@@ -531,7 +578,7 @@ export function PtHubLayout() {
                           currentModuleClasses.title,
                         )}
                       >
-                        {meta.title}
+                        {metaTitle}
                       </p>
                       <p
                         className={cn(
@@ -541,7 +588,7 @@ export function PtHubLayout() {
                             : "text-[0.95rem] leading-6",
                         )}
                       >
-                        {meta.description}
+                        {metaDescription}
                       </p>
                     </div>
                   </div>
@@ -558,7 +605,9 @@ export function PtHubLayout() {
                       <Globe className="h-4 w-4 [stroke-width:1.7]" />
                     </div>
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <p className="pt-hub-kicker">Profile status</p>
+                      <p className="pt-hub-kicker">
+                        {t("common.profileStatus", "Profile status")}
+                      </p>
                       <div className="flex items-center gap-2">
                         <span
                           aria-hidden
@@ -577,7 +626,9 @@ export function PtHubLayout() {
                             published: publishedProfile,
                           })}
                         >
-                          {publishedProfile ? "Published" : "Unpublished"}
+                          {publishedProfile
+                            ? t("common.published", "Published")
+                            : t("common.unpublished", "Unpublished")}
                         </p>
                       </div>
                     </div>
@@ -622,7 +673,7 @@ export function PtHubLayout() {
                     >
                       <DropdownMenuLabel>
                         <span className="pt-hub-kicker block">
-                          Coaching Spaces
+                          {t("ptHub.nav.coachingSpaces", "Coaching Spaces")}
                         </span>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -635,7 +686,7 @@ export function PtHubLayout() {
                             <PanelsTopLeft className="h-4 w-4 [stroke-width:1.7]" />
                           </span>
                           <p className="truncate font-medium text-foreground">
-                            Repsync PT Hub
+                            {t("common.repsyncPtHub", "Repsync PT Hub")}
                           </p>
                         </div>
                         {inPtHubWorkspace ? (
@@ -706,7 +757,9 @@ export function PtHubLayout() {
                       className="w-64"
                     >
                       <DropdownMenuLabel>
-                        <span className="pt-hub-kicker block">Account</span>
+                        <span className="pt-hub-kicker block">
+                          {t("common.account", "Account")}
+                        </span>
                         <span className="mt-1 block truncate text-sm font-medium text-foreground">
                           {coachDisplayName}
                         </span>
@@ -718,7 +771,7 @@ export function PtHubLayout() {
                             <Moon className="h-4 w-4 [stroke-width:1.7]" />
                           </span>
                           <span className="truncate font-medium text-foreground">
-                            Theme
+                            {t("common.theme", "Theme")}
                           </span>
                         </div>
                         <ThemeModeSwitch
@@ -739,7 +792,7 @@ export function PtHubLayout() {
                           <SlidersHorizontal className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
-                          Settings
+                          {t("common.settings", "Settings")}
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -752,7 +805,9 @@ export function PtHubLayout() {
                           <LogOut className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
-                          {isSigningOut ? "Signing out..." : "Sign out"}
+                          {isSigningOut
+                            ? t("common.signingOut", "Signing out...")
+                            : t("common.signOut", "Sign out")}
                         </span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -776,7 +831,7 @@ export function PtHubLayout() {
           </div>
         </div>
       </PageContainer>
-      <AppFooter />
+      <AppFooter enableRegionLanguageSwitcher />
     </div>
   );
 }
@@ -794,39 +849,31 @@ function SidebarContent({
   themeMode: PtHubThemeMode;
   onNavigate?: () => void;
 }) {
+  const { t } = useI18n();
   const isLightMode = themeMode === "light";
   const reduceMotion = useReducedMotion();
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col px-5 py-5", className)}>
       <div className="space-y-4 border-b border-border/60 pb-5">
-        <div className="flex items-start gap-3">
-          <Building className="mt-0.5 h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
-          <div className="min-w-0 space-y-1">
-            <p
-              className={cn(
-                "text-[1.15rem] font-semibold uppercase tracking-[0.05em]",
-                isLightMode ? "text-slate-950" : "text-foreground",
-              )}
-            >
-              Repsync PT Hub
-            </p>
-            <p
-              className={cn(
-                "text-sm leading-5",
-                isLightMode ? "text-slate-600" : "text-muted-foreground",
-              )}
-            >
-              Manage clients, inquiries, and your public profile.
-            </p>
-          </div>
+        <div className="min-w-0">
+          <p
+            className={cn(
+              "text-[1.15rem] font-semibold uppercase tracking-[0.05em]",
+              isLightMode ? "text-slate-950" : "text-foreground",
+            )}
+          >
+            {t("common.repsyncHub", "Repsync Hub")}
+          </p>
         </div>
       </div>
 
       <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-8 pr-1">
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
-            <p className="pt-hub-kicker px-2">{group.label}</p>
+            <p className="pt-hub-kicker px-2">
+              {t(group.labelKey, group.label)}
+            </p>
             <div className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
@@ -890,7 +937,7 @@ function SidebarContent({
                               isLightMode ? "text-slate-900" : "text-inherit",
                             )}
                           >
-                            {item.label}
+                            {t(item.labelKey, item.label)}
                           </p>
                         </motion.div>
                       </>

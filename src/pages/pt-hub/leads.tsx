@@ -201,8 +201,8 @@ export function PtHubLeadsPage() {
         contentClassName="space-y-6"
       >
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="relative min-w-0 flex-1">
+          <div className="app-filter-grid">
+            <div className="app-filter-search relative min-w-0">
               <Search className="app-search-icon h-4 w-4" />
               <Input
                 className="app-search-input"
@@ -211,7 +211,7 @@ export function PtHubLeadsPage() {
                 placeholder="Search lead name or package"
               />
             </div>
-            <div className="w-full lg:w-[220px] lg:flex-none">
+            <div className="app-filter-control">
               <Select
                 size="sm"
                 className="w-full"
@@ -228,7 +228,7 @@ export function PtHubLeadsPage() {
                 ))}
               </Select>
             </div>
-            <div className="w-full lg:w-[240px] lg:flex-none">
+            <div className="app-filter-control">
               <Select
                 size="sm"
                 className="w-full"

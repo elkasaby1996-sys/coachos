@@ -40,7 +40,7 @@ const coachingModeOptions: Array<{
   { value: "one_on_one", label: "1:1 coaching" },
   { value: "programming", label: "Programming" },
   { value: "nutrition", label: "Nutrition" },
-  { value: "accountability", label: "Accountability" },
+  { value: "accountability", label: "Consultation" },
 ];
 
 const availabilityModeOptions: Array<{
@@ -123,8 +123,7 @@ function UploadButton({
 function createDraft(profile: PTProfile): StoredProfileDraft {
   const normalizedDisplayName =
     profile.displayName.trim() || profile.fullName.trim();
-  const normalizedFullName =
-    profile.fullName.trim() || normalizedDisplayName;
+  const normalizedFullName = profile.fullName.trim() || normalizedDisplayName;
 
   return {
     fullName: normalizedFullName,
@@ -247,11 +246,6 @@ export function PtHubProfileEditor({
     kind: "short_name",
     fieldLabel: "Public slug",
   });
-  const searchableHeadlineLimitState = getCharacterLimitState({
-    value: form.searchableHeadline,
-    kind: "default_text",
-    fieldLabel: "Searchable headline",
-  });
   const locationLimitState = getCharacterLimitState({
     value: form.locationLabel,
     kind: "default_text",
@@ -286,7 +280,6 @@ export function PtHubProfileEditor({
     certificationsLimitState,
     coachingStyleLimitState,
     slugLimitState,
-    searchableHeadlineLimitState,
     locationLimitState,
     ...transformationTitleStates,
     ...transformationSummaryStates,
@@ -371,13 +364,15 @@ export function PtHubProfileEditor({
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.34fr)_340px]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
         <TabsList className="pt-hub-tab-rail h-auto min-h-[3.75rem] justify-center">
-          {([
-            ["identity", "Identity"],
-            ["expertise", "Expertise"],
-            ["marketplace", "Marketplace"],
-            ["social", "Social Links"],
-            ["preview", "Preview"],
-          ] as const).map(([value, label]) => {
+          {(
+            [
+              ["identity", "Identity"],
+              ["expertise", "Expertise"],
+              ["marketplace", "Marketplace"],
+              ["social", "Social Links"],
+              ["preview", "Preview"],
+            ] as const
+          ).map(([value, label]) => {
             const isActive = activeTab === value;
 
             return (
@@ -404,9 +399,7 @@ export function PtHubProfileEditor({
                     }
                   />
                 ) : null}
-                <span className="relative z-10">
-                  {label}
-                </span>
+                <span className="relative z-10">{label}</span>
               </TabsTrigger>
             );
           })}
@@ -469,10 +462,7 @@ export function PtHubProfileEditor({
         ) : null}
 
         <TabsContent value="identity" className="space-y-5">
-          <PtHubSectionCard
-            title="Profile media"
-            contentClassName="space-y-4"
-          >
+          <PtHubSectionCard title="Profile media" contentClassName="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[24px] border border-dashed border-border/70 bg-background/35 p-4">
                 <div className="flex min-h-[18rem] items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-background/70">
@@ -789,7 +779,8 @@ export function PtHubProfileEditor({
                     Transformation proof
                   </label>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Add before-and-after stories with real media so the public profile has visual proof.
+                    Add before-and-after stories with real media so the public
+                    profile has visual proof.
                   </p>
                 </div>
                 <Button
@@ -846,7 +837,9 @@ export function PtHubProfileEditor({
                             Title
                           </label>
                           <Input
-                            isInvalid={transformationTitleStates[index]?.overLimit}
+                            isInvalid={
+                              transformationTitleStates[index]?.overLimit
+                            }
                             value={item.title}
                             onChange={(event) =>
                               updateTransformation(item.id, {
@@ -857,8 +850,12 @@ export function PtHubProfileEditor({
                           />
                           <FieldCharacterMeta
                             count={transformationTitleStates[index]?.count ?? 0}
-                            limit={transformationTitleStates[index]?.limit ?? 100}
-                            errorText={transformationTitleStates[index]?.errorText}
+                            limit={
+                              transformationTitleStates[index]?.limit ?? 100
+                            }
+                            errorText={
+                              transformationTitleStates[index]?.errorText
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -866,7 +863,9 @@ export function PtHubProfileEditor({
                             Summary
                           </label>
                           <Input
-                            isInvalid={transformationSummaryStates[index]?.overLimit}
+                            isInvalid={
+                              transformationSummaryStates[index]?.overLimit
+                            }
                             value={item.summary}
                             onChange={(event) =>
                               updateTransformation(item.id, {
@@ -876,9 +875,15 @@ export function PtHubProfileEditor({
                             placeholder="Lost 8kg while building visible strength and consistency."
                           />
                           <FieldCharacterMeta
-                            count={transformationSummaryStates[index]?.count ?? 0}
-                            limit={transformationSummaryStates[index]?.limit ?? 255}
-                            errorText={transformationSummaryStates[index]?.errorText}
+                            count={
+                              transformationSummaryStates[index]?.count ?? 0
+                            }
+                            limit={
+                              transformationSummaryStates[index]?.limit ?? 255
+                            }
+                            errorText={
+                              transformationSummaryStates[index]?.errorText
+                            }
                           />
                         </div>
                       </div>
@@ -905,7 +910,9 @@ export function PtHubProfileEditor({
                           <div className="flex flex-wrap gap-3">
                             <UploadButton
                               label="Upload before"
-                              uploading={uploadingTarget === `${item.id}-before`}
+                              uploading={
+                                uploadingTarget === `${item.id}-before`
+                              }
                               disabled={
                                 mediaBusy &&
                                 uploadingTarget !== `${item.id}-before`
@@ -995,7 +1002,8 @@ export function PtHubProfileEditor({
                 </div>
               ) : (
                 <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
-                  Add transformation stories here to showcase before-and-after proof on your public coach page.
+                  Add transformation stories here to showcase before-and-after
+                  proof on your public coach page.
                 </div>
               )}
             </div>
@@ -1007,49 +1015,26 @@ export function PtHubProfileEditor({
             title="Public route"
             description="This slug powers the public profile URL and future shareable coach landing page."
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Public slug
-                </label>
-                <Input
-                  isInvalid={slugLimitState.overLimit}
-                  value={form.slug}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      slug: slugifyValue(event.target.value),
-                    }))
-                  }
-                  placeholder="your-name-coach"
-                />
-                <FieldCharacterMeta
-                  count={slugLimitState.count}
-                  limit={slugLimitState.limit}
-                  errorText={slugLimitState.errorText}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Searchable headline
-                </label>
-                <Input
-                  isInvalid={searchableHeadlineLimitState.overLimit}
-                  value={form.searchableHeadline}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      searchableHeadline: event.target.value,
-                    }))
-                  }
-                  placeholder="Used for future marketplace search and discovery"
-                />
-                <FieldCharacterMeta
-                  count={searchableHeadlineLimitState.count}
-                  limit={searchableHeadlineLimitState.limit}
-                  errorText={searchableHeadlineLimitState.errorText}
-                />
-              </div>
+            <div className="max-w-xl space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Public slug
+              </label>
+              <Input
+                isInvalid={slugLimitState.overLimit}
+                value={form.slug}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    slug: slugifyValue(event.target.value),
+                  }))
+                }
+                placeholder="your-name-coach"
+              />
+              <FieldCharacterMeta
+                count={slugLimitState.count}
+                limit={slugLimitState.limit}
+                errorText={slugLimitState.errorText}
+              />
             </div>
             <div className="rounded-[20px] bg-background/45 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
@@ -1126,8 +1111,8 @@ export function PtHubProfileEditor({
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_200px]">
-                <div className="space-y-2">
+              <div className="app-form-grid">
+                <div className="app-form-col-12 space-y-2">
                   <label className="text-sm font-medium text-foreground">
                     Location
                   </label>
@@ -1180,9 +1165,9 @@ export function PtHubProfileEditor({
               {form.socialLinks.map((link, index) => (
                 <div
                   key={link.platform}
-                  className="grid gap-3 rounded-[18px] bg-background/35 px-4 py-3 md:grid-cols-[160px_1fr]"
+                  className="app-form-grid rounded-[18px] bg-background/35 px-4 py-3"
                 >
-                  <div>
+                  <div className="app-form-col-3">
                     <p className="text-sm font-medium text-foreground">
                       {link.label}
                     </p>
@@ -1191,6 +1176,7 @@ export function PtHubProfileEditor({
                     </p>
                   </div>
                   <Input
+                    className="app-form-col-9"
                     isInvalid={socialLinkStates[index]?.overLimit}
                     value={link.url}
                     onChange={(event) =>
@@ -1206,6 +1192,7 @@ export function PtHubProfileEditor({
                     placeholder={`https://${link.platform}.com/your-handle`}
                   />
                   <FieldCharacterMeta
+                    className="app-form-col-9 md:col-start-4"
                     count={socialLinkStates[index]?.count ?? 0}
                     limit={socialLinkStates[index]?.limit ?? 255}
                     errorText={socialLinkStates[index]?.errorText}
@@ -1277,7 +1264,9 @@ export function PtHubProfileEditor({
             </Button>
             <Button
               className="w-full"
-              disabled={saving || mediaBusy || !hasChanges || hasOverLimitErrors}
+              disabled={
+                saving || mediaBusy || !hasChanges || hasOverLimitErrors
+              }
               onClick={() =>
                 onSave({
                   ...form,
@@ -1293,7 +1282,7 @@ export function PtHubProfileEditor({
                   ? "Saving..."
                   : hasOverLimitErrors
                     ? "Fix field limits to save"
-                  : "Save profile"}
+                    : "Save profile"}
             </Button>
           </div>
         </PtHubSectionCard>

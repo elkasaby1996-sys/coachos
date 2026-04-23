@@ -13,6 +13,7 @@ import {
 } from "../../../components/ui/coachos/status-pill";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { getSemanticToneClasses } from "../../../lib/semantic-status";
+import { useI18n } from "../../../lib/i18n";
 import type { PTClientSummary } from "../types";
 
 export function PtHubClientTable({
@@ -22,6 +23,7 @@ export function PtHubClientTable({
   clients: PTClientSummary[];
   onOpen: (client: PTClientSummary) => void;
 }) {
+  const { t } = useI18n();
   const { visibleRows, hasHiddenRows, hiddenCount, showMore } = useWindowedRows(
     {
       rows: clients,
@@ -34,10 +36,12 @@ export function PtHubClientTable({
   return (
     <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
       <div className="hidden grid-cols-[minmax(0,1.2fr)_180px_220px_160px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
-        <span>Client</span>
-        <span>Coaching space</span>
-        <span>Lifecycle</span>
-        <span className="text-right">Action</span>
+        <span>{t("ptHub.clients.table.client", "Client")}</span>
+        <span>{t("ptHub.clients.table.coachingSpace", "Coaching space")}</span>
+        <span>{t("ptHub.clients.table.lifecycle", "Lifecycle")}</span>
+        <span className="text-right">
+          {t("ptHub.clients.table.action", "Action")}
+        </span>
       </div>
       <div className="space-y-2">
         {visibleRows.map((client) => {
@@ -71,7 +75,10 @@ export function PtHubClientTable({
                   {client.displayName}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>Recent activity {client.recentActivityLabel}</span>
+                  <span>
+                    {t("ptHub.clients.table.recentActivity", "Recent activity")}{" "}
+                    {client.recentActivityLabel}
+                  </span>
                   {reason ? <span>- {reason}</span> : null}
                 </div>
               </div>
@@ -87,16 +94,28 @@ export function PtHubClientTable({
                   <TagInfoBadge
                     label={client.onboardingStatus.replace(/_/g, " ")}
                     variant="warning"
-                    title="Onboarding status"
-                    description="This client still has onboarding work pending before coaching is fully settled."
+                    title={t(
+                      "ptHub.clients.table.onboardingStatus",
+                      "Onboarding status",
+                    )}
+                    description={t(
+                      "ptHub.clients.table.onboardingStatusDescription",
+                      "This client still has onboarding work pending before coaching is fully settled.",
+                    )}
                   />
                 ) : null}
                 {client.hasOverdueCheckin ? (
                   <TagInfoBadge
-                    label={`${client.overdueCheckinsCount} overdue`}
+                    label={`${client.overdueCheckinsCount} ${t("ptHub.clients.table.overdue", "overdue")}`}
                     variant="warning"
-                    title="Overdue check-ins"
-                    description="One or more scheduled check-ins still need a submission or review."
+                    title={t(
+                      "ptHub.clients.table.overdueCheckins",
+                      "Overdue check-ins",
+                    )}
+                    description={t(
+                      "ptHub.clients.table.overdueCheckinsDescription",
+                      "One or more scheduled check-ins still need a submission or review.",
+                    )}
                   />
                 ) : null}
                 {riskFlags.map((flag) => {
@@ -119,7 +138,7 @@ export function PtHubClientTable({
                   size="sm"
                   onClick={() => onOpen(client)}
                 >
-                  Open client
+                  {t("ptHub.clients.table.openClient", "Open client")}
                   <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
                 </Button>
               </div>
@@ -129,7 +148,9 @@ export function PtHubClientTable({
         {hasHiddenRows ? (
           <div className="flex justify-center px-3 py-2">
             <Button variant="secondary" size="sm" onClick={showMore}>
-              Show {Math.min(hiddenCount, 16)} more clients
+              {t("ptHub.clients.table.showMore", "Show")}{" "}
+              {Math.min(hiddenCount, 16)}{" "}
+              {t("ptHub.clients.table.moreClients", "more clients")}
             </Button>
           </div>
         ) : null}

@@ -5,7 +5,12 @@ import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import {
   getCharacterLimitState,
@@ -17,7 +22,10 @@ import {
   persistSignupIntent,
   updatePtProfile,
 } from "../../lib/account-profiles";
-import { signInWithOAuth, signUpWithEmailPassword } from "../../lib/auth-helpers";
+import {
+  signInWithOAuth,
+  signUpWithEmailPassword,
+} from "../../lib/auth-helpers";
 import { supabase } from "../../lib/supabase";
 import {
   getAuthenticatedRedirectPath,
@@ -52,7 +60,9 @@ const COUNTRY_OPTIONS = [
 ];
 
 function getCountryDialCode(country: string) {
-  return COUNTRY_OPTIONS.find((option) => option.name === country)?.dialCode ?? "";
+  return (
+    COUNTRY_OPTIONS.find((option) => option.name === country)?.dialCode ?? ""
+  );
 }
 
 function normalizePhoneWithCountry(phone: string, country: string) {
@@ -238,7 +248,9 @@ export function PtSignupPage() {
       );
     } catch (nextError) {
       setError(
-        nextError instanceof Error ? nextError.message : "Unable to create PT account.",
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to create PT account.",
       );
     } finally {
       setBusyAction("idle");
@@ -255,7 +267,9 @@ export function PtSignupPage() {
       return;
     }
     if (!country.trim() || !city.trim() || !phone.trim()) {
-      setError("Full name, country, city, and phone are required before continuing with Google.");
+      setError(
+        "Full name, country, city, and phone are required before continuing with Google.",
+      );
       return;
     }
     setBusyAction("google");
@@ -270,7 +284,9 @@ export function PtSignupPage() {
       if (oauthError) throw oauthError;
     } catch (nextError) {
       setError(
-        nextError instanceof Error ? nextError.message : "Unable to continue with Google.",
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to continue with Google.",
       );
       setBusyAction("idle");
     }
@@ -291,8 +307,8 @@ export function PtSignupPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form className="space-y-4" onSubmit={handleEmailSignup}>
-            <div className="space-y-2">
+          <form className="app-form-grid" onSubmit={handleEmailSignup}>
+            <div className="app-form-col-12 space-y-2">
               <label htmlFor="pt-full-name" className="text-sm font-medium">
                 Full name
               </label>
@@ -309,7 +325,7 @@ export function PtSignupPage() {
                 errorText={fullNameLimitState.errorText}
               />
             </div>
-            <div className="space-y-2">
+            <div className="app-form-col-12 space-y-2">
               <label htmlFor="pt-email" className="text-sm font-medium">
                 Email
               </label>
@@ -327,62 +343,60 @@ export function PtSignupPage() {
                 errorText={emailLimitState.errorText}
               />
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label htmlFor="pt-country" className="text-sm font-medium">
-                  Country
-                </label>
-                <select
-                  id="pt-country"
-                  value={country}
-                  onChange={(event) => {
-                    const nextCountry = event.target.value;
-                    const nextDialCode = getCountryDialCode(nextCountry);
-                    const currentDialCode = getCountryDialCode(country);
-                    const trimmedPhone = phone.trim();
-                    let nextPhone = phone;
+            <div className="app-form-col-6 space-y-2">
+              <label htmlFor="pt-country" className="text-sm font-medium">
+                Country
+              </label>
+              <select
+                id="pt-country"
+                value={country}
+                onChange={(event) => {
+                  const nextCountry = event.target.value;
+                  const nextDialCode = getCountryDialCode(nextCountry);
+                  const currentDialCode = getCountryDialCode(country);
+                  const trimmedPhone = phone.trim();
+                  let nextPhone = phone;
 
-                    if (!trimmedPhone) {
-                      nextPhone = nextDialCode ? `${nextDialCode} ` : "";
-                    } else if (
-                      currentDialCode &&
-                      trimmedPhone.startsWith(currentDialCode)
-                    ) {
-                      nextPhone = `${nextDialCode}${trimmedPhone.slice(currentDialCode.length)}`;
-                    }
+                  if (!trimmedPhone) {
+                    nextPhone = nextDialCode ? `${nextDialCode} ` : "";
+                  } else if (
+                    currentDialCode &&
+                    trimmedPhone.startsWith(currentDialCode)
+                  ) {
+                    nextPhone = `${nextDialCode}${trimmedPhone.slice(currentDialCode.length)}`;
+                  }
 
-                    setCountry(nextCountry);
-                    setPhone(nextPhone);
-                  }}
-                  className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
-                >
-                  <option value="">Select country</option>
-                  {COUNTRY_OPTIONS.map((option) => (
-                    <option key={option.name} value={option.name}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="pt-city" className="text-sm font-medium">
-                  City
-                </label>
-                <Input
-                  id="pt-city"
-                  isInvalid={cityLimitState.overLimit}
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
-                  placeholder="Riyadh"
-                />
-                <FieldCharacterMeta
-                  count={cityLimitState.count}
-                  limit={cityLimitState.limit}
-                  errorText={cityLimitState.errorText}
-                />
-              </div>
+                  setCountry(nextCountry);
+                  setPhone(nextPhone);
+                }}
+                className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
+              >
+                <option value="">Select country</option>
+                {COUNTRY_OPTIONS.map((option) => (
+                  <option key={option.name} value={option.name}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="space-y-2">
+            <div className="app-form-col-6 space-y-2">
+              <label htmlFor="pt-city" className="text-sm font-medium">
+                City
+              </label>
+              <Input
+                id="pt-city"
+                isInvalid={cityLimitState.overLimit}
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+                placeholder="Riyadh"
+              />
+              <FieldCharacterMeta
+                count={cityLimitState.count}
+                limit={cityLimitState.limit}
+                errorText={cityLimitState.errorText}
+              />
+            </div>
+            <div className="app-form-col-12 space-y-2">
               <label htmlFor="pt-phone" className="text-sm font-medium">
                 Phone number
               </label>
@@ -392,7 +406,11 @@ export function PtSignupPage() {
                 isInvalid={phoneLimitState.overLimit}
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
-                placeholder={country ? `${getCountryDialCode(country)} 5X XXX XXXX` : "+966 5X XXX XXXX"}
+                placeholder={
+                  country
+                    ? `${getCountryDialCode(country)} 5X XXX XXXX`
+                    : "+966 5X XXX XXXX"
+                }
               />
               <FieldCharacterMeta
                 count={phoneLimitState.count}
@@ -400,7 +418,7 @@ export function PtSignupPage() {
                 errorText={phoneLimitState.errorText}
               />
             </div>
-            <div className="space-y-2">
+            <div className="app-form-col-6 space-y-2">
               <label htmlFor="pt-password" className="text-sm font-medium">
                 Password
               </label>
@@ -412,8 +430,11 @@ export function PtSignupPage() {
                 placeholder="At least 6 characters"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="pt-confirm-password" className="text-sm font-medium">
+            <div className="app-form-col-6 space-y-2">
+              <label
+                htmlFor="pt-confirm-password"
+                className="text-sm font-medium"
+              >
                 Confirm password
               </label>
               <Input
@@ -426,18 +447,18 @@ export function PtSignupPage() {
             </div>
 
             {error ? (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div className="app-form-col-12 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             ) : null}
             {notice ? (
-              <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+              <div className="app-form-col-12 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
                 {notice}
               </div>
             ) : null}
 
             <Button
-              className="h-11 w-full"
+              className="app-form-col-12 h-11 w-full"
               type="submit"
               disabled={busyAction !== "idle" || hasOverLimitErrors}
             >
@@ -458,11 +479,16 @@ export function PtSignupPage() {
             disabled={busyAction !== "idle" || hasOverLimitErrors}
           >
             <Globe className="h-4 w-4" />
-            {busyAction === "google" ? "Redirecting..." : "Continue with Google"}
+            {busyAction === "google"
+              ? "Redirecting..."
+              : "Continue with Google"}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account? <Link className="text-foreground underline" to="/login">Sign in</Link>
+            Already have an account?{" "}
+            <Link className="text-foreground underline" to="/login">
+              Sign in
+            </Link>
           </p>
         </CardContent>
       </Card>

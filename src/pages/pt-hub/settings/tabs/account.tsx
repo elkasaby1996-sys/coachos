@@ -124,10 +124,7 @@ function applyCountryDialCode(params: {
   if (!nextDialCode) return params.currentPhone;
   if (!trimmedCurrentPhone) return `${nextDialCode} `;
 
-  if (
-    previousDialCode &&
-    trimmedCurrentPhone.startsWith(previousDialCode)
-  ) {
+  if (previousDialCode && trimmedCurrentPhone.startsWith(previousDialCode)) {
     const remaining = trimmedCurrentPhone.slice(previousDialCode.length).trim();
     return remaining ? `${nextDialCode} ${remaining}` : `${nextDialCode} `;
   }
@@ -205,7 +202,9 @@ export function PtHubSettingsAccountTab() {
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialState);
   const requiredErrors = {
     fullName: form.fullName.trim() ? null : "Full name is required.",
-    contactEmail: form.contactEmail.trim() ? null : "Contact email is required.",
+    contactEmail: form.contactEmail.trim()
+      ? null
+      : "Contact email is required.",
     country: form.country.trim() ? null : "Country is required.",
     phone: form.phone.trim() ? null : "Phone is required.",
     city: form.city.trim() ? null : "City is required.",
@@ -416,10 +415,12 @@ export function PtHubSettingsAccountTab() {
           label="Country & Phone"
           hint="Country updates timezone and auto-suggests a dial code. You can still edit the phone code manually."
         >
-          <div className="grid gap-3 md:grid-cols-[minmax(14rem,18rem)_1fr]">
-            <div className="space-y-2">
+          <div className="app-form-grid">
+            <div className="app-form-col-4 space-y-2">
               <Select
-                isInvalid={showRequiredErrors && Boolean(requiredErrors.country)}
+                isInvalid={
+                  showRequiredErrors && Boolean(requiredErrors.country)
+                }
                 className="w-full"
                 contentClassName="max-h-64 overflow-y-auto"
                 value={form.country}
@@ -453,7 +454,7 @@ export function PtHubSettingsAccountTab() {
               ) : null}
             </div>
 
-            <div className="space-y-2">
+            <div className="app-form-col-8 space-y-2">
               <Input
                 isInvalid={
                   phoneLimitState.overLimit ||

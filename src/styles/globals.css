@@ -1017,18 +1017,23 @@
   }
 
   button {
-    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-property:
+      background-color, border-color, color, box-shadow, transform;
     transition-duration: 200ms;
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   @media (hover: hover) {
-    button:hover:not(:disabled):not([role="switch"]):not([data-no-button-motion="true"]) {
+    button:hover:not(:disabled):not([role="switch"]):not(
+        [data-no-button-motion="true"]
+      ) {
       transform: translateY(-1px);
     }
   }
 
-  button:active:not(:disabled):not([role="switch"]):not([data-no-button-motion="true"]) {
+  button:active:not(:disabled):not([role="switch"]):not(
+      [data-no-button-motion="true"]
+    ) {
     transform: scale(0.99);
   }
 
@@ -1232,6 +1237,108 @@
 }
 
 @layer components {
+  .app-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .app-form-col-2,
+  .app-form-col-3,
+  .app-form-col-4,
+  .app-form-col-5,
+  .app-form-col-6,
+  .app-form-col-7,
+  .app-form-col-8,
+  .app-form-col-9,
+  .app-form-col-10,
+  .app-form-col-12 {
+    grid-column: 1 / -1;
+  }
+
+  .app-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .app-filter-search,
+  .app-filter-control,
+  .app-filter-control-sm,
+  .app-filter-control-lg {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 768px) {
+    .app-form-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .app-form-col-2 {
+      grid-column: span 2 / span 2;
+    }
+
+    .app-form-col-3 {
+      grid-column: span 3 / span 3;
+    }
+
+    .app-form-col-4 {
+      grid-column: span 4 / span 4;
+    }
+
+    .app-form-col-5 {
+      grid-column: span 5 / span 5;
+    }
+
+    .app-form-col-6 {
+      grid-column: span 6 / span 6;
+    }
+
+    .app-form-col-7 {
+      grid-column: span 7 / span 7;
+    }
+
+    .app-form-col-8 {
+      grid-column: span 8 / span 8;
+    }
+
+    .app-form-col-9 {
+      grid-column: span 9 / span 9;
+    }
+
+    .app-form-col-10 {
+      grid-column: span 10 / span 10;
+    }
+
+    .app-form-col-12 {
+      grid-column: span 12 / span 12;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-filter-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .app-filter-search {
+      grid-column: span 6 / span 6;
+    }
+
+    .app-filter-control {
+      grid-column: span 3 / span 3;
+    }
+
+    .app-filter-control-sm {
+      grid-column: span 2 / span 2;
+    }
+
+    .app-filter-control-lg {
+      grid-column: span 4 / span 4;
+    }
+  }
+
   .theme-shell-canvas {
     position: relative;
     isolation: isolate;

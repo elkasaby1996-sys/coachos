@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
@@ -55,7 +60,10 @@ export function ClientAccountOnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingInviteToken = useMemo(
-    () => searchParams.get("invite") ?? getPendingInviteToken(searchParams.toString()) ?? null,
+    () =>
+      searchParams.get("invite") ??
+      getPendingInviteToken(searchParams.toString()) ??
+      null,
     [searchParams],
   );
 
@@ -165,7 +173,10 @@ export function ClientAccountOnboardingPage() {
       setError("Height is required.");
       return;
     }
-    if (!form.weightValueCurrent.trim() || Number(form.weightValueCurrent) <= 0) {
+    if (
+      !form.weightValueCurrent.trim() ||
+      Number(form.weightValueCurrent) <= 0
+    ) {
       setError("Current weight is required.");
       return;
     }
@@ -249,13 +260,17 @@ export function ClientAccountOnboardingPage() {
         <CardHeader className="space-y-2">
           <CardTitle>Finish your client account</CardTitle>
           <p className="text-sm text-muted-foreground">
-            This is your canonical client profile. We'll prefill these details wherever they show up later.
+            This is your canonical client profile. We'll prefill these details
+            wherever they show up later.
           </p>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSave}>
-            <div className="space-y-2 md:col-span-2">
-              <label htmlFor="client-account-full-name" className="text-sm font-medium">
+          <form className="app-form-grid" onSubmit={handleSave}>
+            <div className="app-form-col-12 space-y-2">
+              <label
+                htmlFor="client-account-full-name"
+                className="text-sm font-medium"
+              >
                 Full name
               </label>
               <Input
@@ -268,8 +283,11 @@ export function ClientAccountOnboardingPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="client-account-dob" className="text-sm font-medium">
+            <div className="app-form-col-6 space-y-2">
+              <label
+                htmlFor="client-account-dob"
+                className="text-sm font-medium"
+              >
                 Date of birth
               </label>
               <Input
@@ -277,19 +295,25 @@ export function ClientAccountOnboardingPage() {
                 type="date"
                 value={form.dateOfBirth}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, dateOfBirth: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    dateOfBirth: event.target.value,
+                  }))
                 }
                 disabled={bootstrapping}
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="client-account-sex" className="text-sm font-medium">
+            <div className="app-form-col-6 space-y-2">
+              <label
+                htmlFor="client-account-sex"
+                className="text-sm font-medium"
+              >
                 Sex / gender
               </label>
               <select
                 id="client-account-sex"
-                className="h-11 w-full rounded-xl border border-border/70 bg-background px-3 text-sm text-foreground"
+                className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
                 value={form.sex}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, sex: event.target.value }))
@@ -303,8 +327,11 @@ export function ClientAccountOnboardingPage() {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="client-account-height" className="text-sm font-medium">
+            <div className="app-form-col-6 space-y-2">
+              <label
+                htmlFor="client-account-height"
+                className="text-sm font-medium"
+              >
                 Height
               </label>
               <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-3">
@@ -314,15 +341,21 @@ export function ClientAccountOnboardingPage() {
                   inputMode="decimal"
                   value={form.heightValue}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, heightValue: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      heightValue: event.target.value,
+                    }))
                   }
                   disabled={bootstrapping}
                 />
                 <select
-                  className="h-11 rounded-xl border border-border/70 bg-background px-3 text-sm text-foreground"
+                  className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
                   value={form.heightUnit}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, heightUnit: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      heightUnit: event.target.value,
+                    }))
                   }
                   disabled={bootstrapping}
                 >
@@ -332,8 +365,11 @@ export function ClientAccountOnboardingPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="client-account-weight" className="text-sm font-medium">
+            <div className="app-form-col-6 space-y-2">
+              <label
+                htmlFor="client-account-weight"
+                className="text-sm font-medium"
+              >
                 Current weight
               </label>
               <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-3">
@@ -351,10 +387,13 @@ export function ClientAccountOnboardingPage() {
                   disabled={bootstrapping}
                 />
                 <select
-                  className="h-11 rounded-xl border border-border/70 bg-background px-3 text-sm text-foreground"
+                  className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
                   value={form.weightUnit}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, weightUnit: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      weightUnit: event.target.value,
+                    }))
                   }
                   disabled={bootstrapping}
                 >
@@ -364,8 +403,11 @@ export function ClientAccountOnboardingPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="client-account-phone" className="text-sm font-medium">
+            <div className="app-form-col-6 space-y-2">
+              <label
+                htmlFor="client-account-phone"
+                className="text-sm font-medium"
+              >
                 Phone
               </label>
               <Input
@@ -379,15 +421,21 @@ export function ClientAccountOnboardingPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="client-account-avatar" className="text-sm font-medium">
+            <div className="app-form-col-6 space-y-2">
+              <label
+                htmlFor="client-account-avatar"
+                className="text-sm font-medium"
+              >
                 Avatar URL
               </label>
               <Input
                 id="client-account-avatar"
                 value={form.avatarUrl}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, avatarUrl: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    avatarUrl: event.target.value,
+                  }))
                 }
                 disabled={bootstrapping}
                 placeholder="https://..."
@@ -395,14 +443,22 @@ export function ClientAccountOnboardingPage() {
             </div>
 
             {error ? (
-              <div className="md:col-span-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div className="app-form-col-12 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             ) : null}
 
-            <div className="md:col-span-2 flex flex-wrap gap-3 pt-2">
-              <Button type="submit" className="h-11" disabled={saving || bootstrapping}>
-                {saving ? "Saving..." : pendingInviteToken ? "Save and continue invite" : "Finish account setup"}
+            <div className="app-form-col-12 flex flex-wrap gap-3 pt-2">
+              <Button
+                type="submit"
+                className="h-11"
+                disabled={saving || bootstrapping}
+              >
+                {saving
+                  ? "Saving..."
+                  : pendingInviteToken
+                    ? "Save and continue invite"
+                    : "Finish account setup"}
               </Button>
               <Button
                 type="button"

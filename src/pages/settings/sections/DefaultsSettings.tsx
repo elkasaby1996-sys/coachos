@@ -125,7 +125,9 @@ export function DefaultsSettings() {
           >
             <SettingsActions>
               <Button asChild variant="secondary" size="sm">
-                <Link to="/pt/settings/baseline">Manage performance markers</Link>
+                <Link to="/pt/settings/baseline">
+                  Manage performance markers
+                </Link>
               </Button>
             </SettingsActions>
           </SettingsRow>
@@ -143,7 +145,7 @@ export function DefaultsSettings() {
                 <select
                   value={defaultTemplateId}
                   onChange={(event) => setDefaultTemplateId(event.target.value)}
-                  className="h-10 w-full app-field px-3 text-sm"
+                  className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
                 >
                   <option value="">No default template</option>
                   {templatesQuery.data?.map((template) => (

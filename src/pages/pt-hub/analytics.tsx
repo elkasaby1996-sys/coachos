@@ -124,24 +124,31 @@ function getMaxWorkspaceConversions(rows: PtHubAnalyticsWorkspaceRow[]) {
 
 function AnalyticsLoadingState() {
   return (
-    <section className="space-y-5">
+    <section className="space-y-4">
       <div className="space-y-3">
         <Skeleton className="h-28 w-full rounded-[30px]" />
-        <Skeleton className="h-20 w-full rounded-[28px]" />
+        <Skeleton className="ml-auto h-12 w-[15rem] rounded-full" />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-[172px] w-full rounded-[28px]" />
-        ))}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <Skeleton key={`loading-kpi-left-${index}`} className="h-[172px] w-full rounded-[28px]" />
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <Skeleton key={`loading-kpi-right-${index}`} className="h-[172px] w-full rounded-[28px]" />
+          ))}
+        </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(22rem,0.86fr)_minmax(0,1.14fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <Skeleton className="h-[22rem] w-full rounded-[30px]" />
         <Skeleton className="h-[22rem] w-full rounded-[30px]" />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <Skeleton className="h-[20rem] w-full rounded-[30px]" />
         <Skeleton className="h-[20rem] w-full rounded-[30px]" />
       </div>
@@ -760,7 +767,7 @@ export function PtHubAnalyticsPage() {
 
   if (error) {
     return (
-      <section className="space-y-5">
+      <section className="space-y-4">
         <PtHubPageHeader
           eyebrow="Analytics"
           title="Business health"
@@ -799,7 +806,7 @@ export function PtHubAnalyticsPage() {
   }
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-4">
       <PtHubPageHeader
         eyebrow="Analytics"
         title="Business health"
@@ -807,7 +814,7 @@ export function PtHubAnalyticsPage() {
       />
 
       <div className="flex justify-end">
-        <div className="inline-flex flex-wrap items-center gap-1 rounded-full border border-border/65 bg-background/34 p-1 shadow-[var(--surface-shadow)]">
+        <div className="pt-hub-action-shelf inline-flex flex-wrap items-center gap-1 rounded-[18px] border border-border/60 bg-background/28 p-1 shadow-[var(--surface-shadow)]">
           {PT_HUB_ANALYTICS_RANGE_OPTIONS.map((option) => {
             const selected = filters.rangeKey === option.value;
             return (
@@ -821,7 +828,7 @@ export function PtHubAnalyticsPage() {
                   }))
                 }
                 className={cn(
-                  "rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition-colors",
+                  "rounded-[14px] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors",
                   selected
                     ? "bg-[oklch(var(--module-analytics-text)/0.16)] text-[oklch(var(--module-analytics-text))]"
                     : "text-muted-foreground hover:bg-background/48 hover:text-foreground",
@@ -835,48 +842,43 @@ export function PtHubAnalyticsPage() {
         </div>
       </div>
 
-      <div className="page-kpi-block grid gap-3 xl:grid-cols-4">
-        <AnalyticsKpiCard
-          label="New leads"
-          icon={MessageSquarePlus}
-          kpi={snapshot.topKpis.newLeads}
-          onClick={() => navigate("/pt-hub/leads")}
-          module="leads"
-        />
-        <AnalyticsKpiCard
-          label="Lead-to-client conversion"
-          icon={TrendingUp}
-          kpi={snapshot.topKpis.conversion}
-          suffix="%"
-          onClick={() => navigate("/pt-hub/leads?status=converted")}
-          module="leads"
-        />
-        <AnalyticsKpiCard
-          label="Median first response"
-          icon={Clock3}
-          kpi={snapshot.topKpis.medianFirstResponse}
-          onClick={() => navigate("/pt-hub/leads?status=new&attention=waiting24h")}
-          module="leads"
-        />
-        <AnalyticsKpiCard
-          label="Active clients"
-          icon={UsersRound}
-          kpi={snapshot.topKpis.activeClients}
-          onClick={() => navigate("/pt-hub/clients?lifecycle=active")}
-          module="clients"
-        />
+      <div className="page-kpi-block grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+        <div className="grid gap-4 md:grid-cols-2">
+          <AnalyticsKpiCard
+            label="New leads"
+            icon={MessageSquarePlus}
+            kpi={snapshot.topKpis.newLeads}
+            onClick={() => navigate("/pt-hub/leads")}
+            module="leads"
+          />
+          <AnalyticsKpiCard
+            label="Lead-to-client conversion"
+            icon={TrendingUp}
+            kpi={snapshot.topKpis.conversion}
+            suffix="%"
+            onClick={() => navigate("/pt-hub/leads?status=converted")}
+            module="leads"
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <AnalyticsKpiCard
+            label="Median first response"
+            icon={Clock3}
+            kpi={snapshot.topKpis.medianFirstResponse}
+            onClick={() => navigate("/pt-hub/leads?status=new&attention=waiting24h")}
+            module="leads"
+          />
+          <AnalyticsKpiCard
+            label="Active clients"
+            icon={UsersRound}
+            kpi={snapshot.topKpis.activeClients}
+            onClick={() => navigate("/pt-hub/clients?lifecycle=active")}
+            module="clients"
+          />
+        </div>
       </div>
 
-      {snapshot.topKpis.medianFirstResponse.unavailable ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="warning">Timing metrics partial</Badge>
-          <p className="text-sm text-muted-foreground">
-            First-response and approval duration metrics remain unavailable until dedicated response events are stored.
-          </p>
-        </div>
-      ) : null}
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(22rem,0.86fr)_minmax(0,1.14fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <PtHubSectionCard
           title="Lead funnel"
           description="Stage conversion and drop-off. The strongest leak is visually promoted so the PT can spot it first."
@@ -1036,7 +1038,7 @@ export function PtHubAnalyticsPage() {
         </PtHubSectionCard>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.22fr)_minmax(0,0.78fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <PtHubSectionCard
           title="Lead quality"
           description="A ranked decision table. Stronger performers float up, while low-sample rows stay visible but visually de-emphasized."
@@ -1150,7 +1152,7 @@ export function PtHubAnalyticsPage() {
         </PtHubSectionCard>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <PtHubSectionCard
           title="Client risk and delivery health"
           description="Exceptions come first here so the PT can see urgent client issues before slower-moving lifecycle summaries."

@@ -33,7 +33,7 @@ const coachingModeLabels: Record<string, string> = {
   one_on_one: "1:1 coaching",
   programming: "Programming",
   nutrition: "Nutrition",
-  accountability: "Accountability",
+  accountability: "Consultation",
 };
 
 const availabilityLabels: Record<string, string> = {

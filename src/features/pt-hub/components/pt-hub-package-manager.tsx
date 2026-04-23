@@ -562,8 +562,9 @@ export function PtHubPackageManager() {
         title="Package creator"
         description="Build new PT-scoped offers for your public profile and lead intake without leaving this workspace."
       >
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="app-form-grid">
           <Input
+            className="app-form-col-6"
             value={createState.title}
             onChange={(event) =>
               setCreateState((prev) => ({ ...prev, title: event.target.value }))
@@ -571,6 +572,7 @@ export function PtHubPackageManager() {
             placeholder="Package title"
           />
           <Input
+            className="app-form-col-6"
             value={createState.subtitle}
             onChange={(event) =>
               setCreateState((prev) => ({
@@ -580,44 +582,47 @@ export function PtHubPackageManager() {
             }
             placeholder="Subtitle (optional)"
           />
-          <div className="grid gap-3 md:col-span-2 md:grid-cols-[minmax(0,1fr)_180px]">
-            <Input
-              value={createState.priceLabel}
-              onChange={(event) =>
-                setCreateState((prev) => ({
-                  ...prev,
-                  priceLabel: event.target.value,
-                }))
-              }
-              placeholder="Price"
-            />
-            <Select
-              value={createState.currencyCode}
-              onChange={(event) =>
-                setCreateState((prev) => ({
-                  ...prev,
-                  currencyCode: event.target.value,
-                }))
-              }
-            >
-              <option value="">Currency</option>
-              {CURRENCY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-              {createState.currencyCode &&
-              !CURRENCY_OPTIONS.some(
-                (option) => option.value === createState.currencyCode,
-              ) ? (
-                <option value={createState.currencyCode}>
-                  {createState.currencyCode}
-                </option>
-              ) : null}
-            </Select>
-          </div>
+          <Input
+            className="app-form-col-3"
+            value={createState.priceLabel}
+            onChange={(event) =>
+              setCreateState((prev) => ({
+                ...prev,
+                priceLabel: event.target.value,
+              }))
+            }
+            placeholder="Price"
+          />
           <Select
-            value={normalizeBillingCadenceLabel(createState.billingCadenceLabel)}
+            className="app-form-col-2"
+            value={createState.currencyCode}
+            onChange={(event) =>
+              setCreateState((prev) => ({
+                ...prev,
+                currencyCode: event.target.value,
+              }))
+            }
+          >
+            <option value="">Currency</option>
+            {CURRENCY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+            {createState.currencyCode &&
+            !CURRENCY_OPTIONS.some(
+              (option) => option.value === createState.currencyCode,
+            ) ? (
+              <option value={createState.currencyCode}>
+                {createState.currencyCode}
+              </option>
+            ) : null}
+          </Select>
+          <Select
+            className="app-form-col-3"
+            value={normalizeBillingCadenceLabel(
+              createState.billingCadenceLabel,
+            )}
             onChange={(event) =>
               setCreateState((prev) => ({
                 ...prev,
@@ -647,6 +652,7 @@ export function PtHubPackageManager() {
             ) : null}
           </Select>
           <Select
+            className="app-form-col-2"
             value={createState.status}
             onChange={(event) =>
               setCreateState((prev) =>
@@ -663,36 +669,31 @@ export function PtHubPackageManager() {
               </option>
             ))}
           </Select>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Display Order
-            </span>
-            <Input
-              className="h-14 pt-6"
-              type="number"
-              min={0}
-              value={createState.sortOrder}
-              onChange={(event) =>
-                setCreateState((prev) => ({
-                  ...prev,
-                  sortOrder: Number.parseInt(event.target.value, 10) || 0,
-                }))
-              }
-              placeholder="0"
-            />
-          </div>
+          <Input
+            className="app-form-col-2"
+            type="number"
+            min={0}
+            value={createState.sortOrder}
+            onChange={(event) =>
+              setCreateState((prev) => ({
+                ...prev,
+                sortOrder: Number.parseInt(event.target.value, 10) || 0,
+              }))
+            }
+            placeholder="Order"
+          />
+          <Textarea
+            className="app-form-col-12 min-h-[104px]"
+            value={createState.description}
+            onChange={(event) =>
+              setCreateState((prev) => ({
+                ...prev,
+                description: event.target.value,
+              }))
+            }
+            placeholder="Description (optional)"
+          />
         </div>
-        <Textarea
-          className="min-h-[112px]"
-          value={createState.description}
-          onChange={(event) =>
-            setCreateState((prev) => ({
-              ...prev,
-              description: event.target.value,
-            }))
-          }
-          placeholder="Description (optional)"
-        />
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-border/60 bg-background/35 px-4 py-3">
           <div className="space-y-1">
             <label className="inline-flex items-center gap-2 text-sm text-foreground">
@@ -724,9 +725,7 @@ export function PtHubPackageManager() {
         </div>
       </PtHubSectionCard>
 
-      <PtHubSectionCard
-        title="Packages"
-      >
+      <PtHubSectionCard title="Packages">
         <div className="flex flex-wrap items-center gap-2">
           {PT_PACKAGE_FILTER_OPTIONS.map((filter) => (
             <Button
@@ -856,8 +855,9 @@ export function PtHubPackageManager() {
                   </div>
 
                   <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5 pb-6">
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="app-form-grid">
                       <Input
+                        className="app-form-col-6"
                         value={editState.title}
                         onChange={(event) =>
                           setEditStateById((prev) => ({
@@ -871,6 +871,7 @@ export function PtHubPackageManager() {
                         placeholder="Package title"
                       />
                       <Input
+                        className="app-form-col-6"
                         value={editState.subtitle}
                         onChange={(event) =>
                           setEditStateById((prev) => ({
@@ -883,49 +884,50 @@ export function PtHubPackageManager() {
                         }
                         placeholder="Subtitle (optional)"
                       />
-                      <div className="grid gap-3 md:col-span-2 md:grid-cols-[minmax(0,1fr)_180px]">
-                        <Input
-                          value={editState.priceLabel}
-                          onChange={(event) =>
-                            setEditStateById((prev) => ({
-                              ...prev,
-                              [viewingPackage.id]: {
-                                ...editState,
-                                priceLabel: event.target.value,
-                              },
-                            }))
-                          }
-                          placeholder="Price"
-                        />
-                        <Select
-                          value={editState.currencyCode}
-                          onChange={(event) =>
-                            setEditStateById((prev) => ({
-                              ...prev,
-                              [viewingPackage.id]: {
-                                ...editState,
-                                currencyCode: event.target.value,
-                              },
-                            }))
-                          }
-                        >
-                          <option value="">Currency</option>
-                          {CURRENCY_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                          {editState.currencyCode &&
-                          !CURRENCY_OPTIONS.some(
-                            (option) => option.value === editState.currencyCode,
-                          ) ? (
-                            <option value={editState.currencyCode}>
-                              {editState.currencyCode}
-                            </option>
-                          ) : null}
-                        </Select>
-                      </div>
+                      <Input
+                        className="app-form-col-3"
+                        value={editState.priceLabel}
+                        onChange={(event) =>
+                          setEditStateById((prev) => ({
+                            ...prev,
+                            [viewingPackage.id]: {
+                              ...editState,
+                              priceLabel: event.target.value,
+                            },
+                          }))
+                        }
+                        placeholder="Price"
+                      />
                       <Select
+                        className="app-form-col-2"
+                        value={editState.currencyCode}
+                        onChange={(event) =>
+                          setEditStateById((prev) => ({
+                            ...prev,
+                            [viewingPackage.id]: {
+                              ...editState,
+                              currencyCode: event.target.value,
+                            },
+                          }))
+                        }
+                      >
+                        <option value="">Currency</option>
+                        {CURRENCY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                        {editState.currencyCode &&
+                        !CURRENCY_OPTIONS.some(
+                          (option) => option.value === editState.currencyCode,
+                        ) ? (
+                          <option value={editState.currencyCode}>
+                            {editState.currencyCode}
+                          </option>
+                        ) : null}
+                      </Select>
+                      <Select
+                        className="app-form-col-3"
                         value={normalizeBillingCadenceLabel(
                           editState.billingCadenceLabel,
                         )}
@@ -965,6 +967,7 @@ export function PtHubPackageManager() {
                         ) : null}
                       </Select>
                       <Select
+                        className="app-form-col-2"
                         value={editState.status}
                         onChange={(event) =>
                           setEditStateById((prev) => ({
@@ -982,44 +985,39 @@ export function PtHubPackageManager() {
                           </option>
                         ))}
                       </Select>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Display Order
-                        </span>
-                        <Input
-                          className="h-14 pt-6"
-                          type="number"
-                          min={0}
-                          value={editState.sortOrder}
-                          onChange={(event) =>
-                            setEditStateById((prev) => ({
-                              ...prev,
-                              [viewingPackage.id]: {
-                                ...editState,
-                                sortOrder:
-                                  Number.parseInt(event.target.value, 10) || 0,
-                              },
-                            }))
-                          }
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
+                      <Input
+                        className="app-form-col-2"
+                        type="number"
+                        min={0}
+                        value={editState.sortOrder}
+                        onChange={(event) =>
+                          setEditStateById((prev) => ({
+                            ...prev,
+                            [viewingPackage.id]: {
+                              ...editState,
+                              sortOrder:
+                                Number.parseInt(event.target.value, 10) || 0,
+                            },
+                          }))
+                        }
+                        placeholder="Order"
+                      />
 
-                    <Textarea
-                      className="min-h-[128px]"
-                      value={editState.description}
-                      onChange={(event) =>
-                        setEditStateById((prev) => ({
-                          ...prev,
-                          [viewingPackage.id]: {
-                            ...editState,
-                            description: event.target.value,
-                          },
-                        }))
-                      }
-                      placeholder="Description (optional)"
-                    />
+                      <Textarea
+                        className="app-form-col-12 min-h-[104px]"
+                        value={editState.description}
+                        onChange={(event) =>
+                          setEditStateById((prev) => ({
+                            ...prev,
+                            [viewingPackage.id]: {
+                              ...editState,
+                              description: event.target.value,
+                            },
+                          }))
+                        }
+                        placeholder="Description (optional)"
+                      />
+                    </div>
 
                     <div className="rounded-[24px] border border-border/60 bg-background/35 px-4 py-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">

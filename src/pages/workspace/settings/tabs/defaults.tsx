@@ -144,10 +144,12 @@ export function WorkspaceSettingsDefaultsTab() {
           hint="Source: workspaces.default_checkin_template_id"
         >
           {templatesQuery.isLoading || workspaceQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading templates...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading templates...
+            </p>
           ) : (
             <select
-              className="h-10 w-full app-field px-3 text-sm"
+              className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
               value={form.defaultCheckinTemplateId}
               onChange={(event) =>
                 setForm((prev) => ({
