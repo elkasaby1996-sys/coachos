@@ -52,9 +52,9 @@ const metricIconMap = {
 } as const satisfies Record<string, LucideIcon>;
 
 function getMetricGridClassName(metricCount: number) {
-  if (metricCount >= 5) return "xl:grid-cols-5";
-  if (metricCount === 4) return "xl:grid-cols-4";
-  if (metricCount === 3) return "lg:grid-cols-3";
+  if (metricCount >= 5) return "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5";
+  if (metricCount === 4) return "sm:grid-cols-2 xl:grid-cols-4";
+  if (metricCount === 3) return "sm:grid-cols-2 xl:grid-cols-3";
   if (metricCount === 2) return "sm:grid-cols-2";
   return "grid-cols-1";
 }
