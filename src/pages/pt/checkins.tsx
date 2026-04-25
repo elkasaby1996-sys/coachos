@@ -375,6 +375,8 @@ export function PtCheckinsQueuePage() {
           helper="Ready for review"
           icon={ClipboardCheck}
           accent
+          module="checkins"
+          iconClassName="text-[var(--state-success-text)]"
           className="h-full"
         />
         <StatCard
@@ -382,6 +384,8 @@ export function PtCheckinsQueuePage() {
           value={overdueCount}
           helper="Needs follow-up"
           icon={AlertTriangle}
+          module="checkins"
+          iconClassName="text-[var(--state-danger-text)]"
           className="h-full"
         />
         <StatCard
@@ -389,6 +393,8 @@ export function PtCheckinsQueuePage() {
           value={dueCount}
           helper="Waiting today"
           icon={CalendarClock}
+          module="checkins"
+          iconClassName="text-[var(--state-warning-text)]"
           className="h-full"
         />
         <StatCard
@@ -396,6 +402,8 @@ export function PtCheckinsQueuePage() {
           value={upcomingCount}
           helper="Coming up next"
           icon={TimerReset}
+          module="checkins"
+          iconClassName="text-[var(--state-info-text)]"
           className="h-full"
         />
       </div>

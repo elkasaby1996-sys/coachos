@@ -53,6 +53,7 @@ import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { RouteTransition } from "../common/route-transition";
+import { WorkspaceSwitcherMenu } from "../common/workspace-switcher-menu";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { PtMessageComposeProvider } from "../pt/pt-message-compose";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
@@ -621,6 +622,14 @@ export function PtLayout() {
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === headerWorkspaceId) ?? null;
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
+  const workspaceSwitcherItems = workspaces.map((workspace) => ({
+    id: workspace.id,
+    name: workspace.name,
+    meta:
+      workspace.id === headerWorkspaceId
+        ? "Current coaching workspace"
+        : "Coaching workspace",
+  }));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const profileDisplayName =
     getPreferredPersonDisplayName(
@@ -1355,78 +1364,28 @@ export function PtLayout() {
                               </span>
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            variant="menu"
-                            align="end"
-                            sideOffset={10}
-                            className="w-72"
-                          >
-                            <DropdownMenuLabel>
-                              Active workspace
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => navigate("/pt-hub")}
-                            >
-                              <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <span className="app-dropdown-icon-badge">
-                                  <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="truncate font-medium text-foreground">
-                                    Repsync PT Hub
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Business and admin workspace
-                                  </p>
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {workspaceSwitcherQuery.isLoading ? (
-                              <DropdownMenuItem disabled>
-                                Loading workspaces...
-                              </DropdownMenuItem>
-                            ) : workspaces.length === 0 ? (
-                              <DropdownMenuItem disabled>
-                                No workspaces found
-                              </DropdownMenuItem>
-                            ) : (
-                              workspaces.map((workspace) => (
-                                <DropdownMenuItem
-                                  key={workspace.id}
-                                  onClick={() => {
-                                    switchWorkspace(workspace.id);
-                                    navigate("/pt/dashboard");
-                                  }}
-                                >
-                                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                                    <span className="app-dropdown-icon-badge">
-                                      <Building2 className="h-4 w-4 [stroke-width:1.7]" />
-                                    </span>
-                                    <p className="truncate font-medium text-foreground">
-                                      {workspace.name?.trim() || "PT Workspace"}
-                                    </p>
-                                  </div>
-                                  {workspace.id === headerWorkspaceId ? (
-                                    <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
-                                  ) : null}
-                                </DropdownMenuItem>
-                              ))
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setCreateWorkspaceError(null);
-                                setCreateWorkspaceOpen(true);
-                              }}
-                            >
-                              <span className="app-dropdown-icon-badge">
-                                <Plus className="h-4 w-4 [stroke-width:1.7]" />
-                              </span>
-                              Create workspace
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                          <WorkspaceSwitcherMenu
+                            label="Active workspace"
+                            hubLabel="Repsync PT Hub"
+                            hubMeta="Business and admin workspace"
+                            hubActive={false}
+                            onSelectHub={() => navigate("/pt-hub")}
+                            workspaces={workspaceSwitcherItems}
+                            currentWorkspaceId={headerWorkspaceId}
+                            onSelectWorkspace={(selectedWorkspaceId) => {
+                              switchWorkspace(selectedWorkspaceId);
+                              navigate("/pt/dashboard");
+                            }}
+                            loading={workspaceSwitcherQuery.isLoading}
+                            loadingLabel="Loading workspaces..."
+                            emptyLabel="No workspaces found"
+                            createLabel="Create workspace"
+                            createMeta="Start a new coaching workspace"
+                            onCreateWorkspace={() => {
+                              setCreateWorkspaceError(null);
+                              setCreateWorkspaceOpen(true);
+                            }}
+                          />
                         </DropdownMenu>
 
                         <DropdownMenu>
@@ -1469,14 +1428,14 @@ export function PtLayout() {
                               onClick={() => navigate(workspaceSettingsPath)}
                             >
                               <span className="app-dropdown-icon-badge">
-                                <Settings className="h-4 w-4 [stroke-width:1.7]" />
+                                <Settings className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                               </span>
                               Settings
                             </DropdownMenuItem>
                             <div className="app-dropdown-utility-row">
                               <div className="flex min-w-0 items-center gap-3">
                                 <span className="app-dropdown-icon-badge">
-                                  <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                                  <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                                 </span>
                                 <span className="text-sm font-medium text-foreground">
                                   Theme
@@ -1495,7 +1454,7 @@ export function PtLayout() {
                               onClick={signOut}
                             >
                               <span className="app-dropdown-icon-badge">
-                                <LogOut className="h-4 w-4 [stroke-width:1.7]" />
+                                <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
                               </span>
                               {isSigningOut ? "Signing out..." : "Sign out"}
                             </DropdownMenuItem>

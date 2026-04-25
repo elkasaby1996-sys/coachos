@@ -354,7 +354,14 @@ export function PtClientProgressTab({
         ) : trendCards.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {trendCards.map((item) => (
-              <StatCard key={item.label} label={item.label} value={item.value} helper={item.helper} icon={item.icon} />
+              <StatCard
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                helper={item.helper}
+                icon={item.icon}
+                module="analytics"
+              />
             ))}
           </div>
         ) : (

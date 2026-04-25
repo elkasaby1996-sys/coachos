@@ -9,6 +9,7 @@ import {
   Rocket,
   Sparkles,
   Trash2,
+  UsersRound,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -780,7 +781,8 @@ export function PtDashboardPage() {
                 label="Clients"
                 value={activeClientsCount}
                 helper="Active"
-                icon={Sparkles}
+                icon={UsersRound}
+                module="clients"
                 delta={buildMetricDelta({
                   delta: activeClientsDelta,
                 })}
@@ -792,6 +794,7 @@ export function PtDashboardPage() {
                 value={`${adherencePercent}%`}
                 helper="7d"
                 icon={Rocket}
+                module="analytics"
                 delta={buildMetricDelta({
                   delta: adherenceDelta,
                   suffix: "%",
@@ -804,6 +807,7 @@ export function PtDashboardPage() {
                 value={unreadCount}
                 helper="Unread"
                 icon={MessageCircle}
+                module="coaching"
               />
             </StaggerItem>
             <StaggerItem>
@@ -812,6 +816,7 @@ export function PtDashboardPage() {
                 value={checkinsTodayCount}
                 helper="Due"
                 icon={CalendarDays}
+                module="checkins"
               />
             </StaggerItem>
           </>

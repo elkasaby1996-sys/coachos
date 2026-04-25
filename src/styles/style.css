@@ -557,15 +557,12 @@ h6 {
 .app-dropdown-item-icon,
 .app-dropdown-icon-badge {
   display: inline-flex;
-  height: 2rem;
-  width: 2rem;
+  height: 1.125rem;
+  width: 1.125rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 0.85rem;
-  background: var(--menu-icon-surface);
-  color: var(--menu-icon-color);
-  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.06);
+  color: inherit;
 }
 
 .app-dropdown-utility-row {

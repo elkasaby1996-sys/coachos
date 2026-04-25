@@ -289,6 +289,7 @@ export function PtNutritionPage() {
           helper="Reusable plans ready to assign"
           icon={Layers3}
           accent
+          module="coaching"
           className="h-full"
         />
         <StatCard
@@ -296,6 +297,8 @@ export function PtNutritionPage() {
           value={activeTemplatesCount}
           helper="Available for current assignments"
           icon={Sparkles}
+          module="coaching"
+          iconClassName="text-[var(--state-success-text)]"
           className="h-full"
         />
         <StatCard
@@ -303,6 +306,8 @@ export function PtNutritionPage() {
           value={archivedTemplatesCount}
           helper="Stored for reference without clutter"
           icon={Archive}
+          module="coaching"
+          iconClassName="text-muted-foreground"
           className="h-full"
         />
       </div>

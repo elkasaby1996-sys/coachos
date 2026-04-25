@@ -139,7 +139,7 @@ export function PtHubClientTable({
                   onClick={() => onOpen(client)}
                 >
                   {t("ptHub.clients.table.openClient", "Open client")}
-                  <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
+                  <ArrowUpRight className="h-4 w-4 text-[var(--module-clients-text)] [stroke-width:1.7]" />
                 </Button>
               </div>
             </div>

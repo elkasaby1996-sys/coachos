@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Search, UsersRound } from "lucide-react";
+import { Activity, PauseCircle, Search, ShieldAlert, UsersRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
@@ -128,6 +128,7 @@ export function PtHubClientsPage() {
       <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
+          module="clients"
           label={t("ptHub.clients.kpi.total", "Total Clients")}
           value={stats?.totalClients ?? 0}
           helper={t(
@@ -139,21 +140,30 @@ export function PtHubClientsPage() {
         />
         <StatCard
           surface="pt-hub"
+          module="clients"
           label={t("ptHub.clients.kpi.active", "Active")}
           value={stats?.activeClients ?? 0}
           helper={t("ptHub.clients.kpi.activeHelper", "Currently in training")}
+          icon={Activity}
+          iconClassName="text-[var(--state-success-text)]"
         />
         <StatCard
           surface="pt-hub"
+          module="clients"
           label={t("ptHub.clients.kpi.atRisk", "At Risk")}
           value={stats?.atRiskClients ?? 0}
           helper={t("ptHub.clients.kpi.atRiskHelper", "Needs your attention")}
+          icon={ShieldAlert}
+          iconClassName="text-[var(--state-danger-text)]"
         />
         <StatCard
           surface="pt-hub"
+          module="clients"
           label={t("ptHub.clients.kpi.paused", "Paused")}
           value={stats?.pausedClients ?? 0}
           helper={t("ptHub.clients.kpi.pausedHelper", "Currently paused")}
+          icon={PauseCircle}
+          iconClassName="text-[var(--state-warning-text)]"
         />
       </div>
 

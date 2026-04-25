@@ -315,6 +315,7 @@ export function PtProgramsPage() {
           helper="Multi-week systems ready to reuse"
           icon={Layers3}
           accent
+          module="coaching"
           className="h-full"
         />
         <StatCard
@@ -322,6 +323,8 @@ export function PtProgramsPage() {
           value={activeProgramsCount}
           helper="Available for assignment and edits"
           icon={Sparkles}
+          module="coaching"
+          iconClassName="text-[var(--state-success-text)]"
           className="h-full"
         />
         <StatCard
@@ -329,6 +332,8 @@ export function PtProgramsPage() {
           value={archivedProgramsCount}
           helper="Stored for reference without clutter"
           icon={Archive}
+          module="coaching"
+          iconClassName="text-muted-foreground"
           className="h-full"
         />
       </div>

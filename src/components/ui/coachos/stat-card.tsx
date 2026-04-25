@@ -17,6 +17,7 @@ export function StatCard({
   value,
   helper,
   icon: Icon,
+  iconClassName,
   accent,
   delta,
   surface = "default",
@@ -30,6 +31,7 @@ export function StatCard({
   value: string | number;
   helper?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  iconClassName?: string;
   accent?: boolean;
   delta?: {
     value: string;
@@ -98,19 +100,13 @@ export function StatCard({
             {label}
           </span>
           {Icon ? (
-            <span
+            <Icon
               className={cn(
-                "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/42",
-                module && moduleClasses?.iconBadge,
+                "h-5 w-5 shrink-0 [stroke-width:1.9]",
+                module ? moduleClasses?.title : "text-foreground",
+                iconClassName,
               )}
-            >
-              <Icon
-                className={cn(
-                  "h-4.5 w-4.5 shrink-0",
-                  module ? moduleClasses?.title : "text-foreground",
-                )}
-              />
-            </span>
+            />
           ) : null}
         </div>
         <div className="flex items-end justify-between gap-3">

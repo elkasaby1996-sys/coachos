@@ -45,7 +45,7 @@ export function PtHubWorkspaceCard({
         onClick={() => onOpen(workspace.id)}
       >
         <span>Open space</span>
-        <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
+        <ArrowUpRight className="h-4 w-4 text-[var(--module-coaching-text)] [stroke-width:1.7]" />
       </Button>
     </PtHubSectionCard>
   );

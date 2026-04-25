@@ -451,7 +451,7 @@ export function ClientLayout() {
                             onClick={() => navigate("/app/settings?tab=profile")}
                           >
                             <span className="app-dropdown-icon-badge">
-                              <UserCircle className="h-4 w-4 [stroke-width:1.7]" />
+                              <UserCircle className="h-4 w-4 text-[var(--module-profile-text)] [stroke-width:1.7]" />
                             </span>
                             Profile
                           </DropdownMenuItem>
@@ -459,14 +459,14 @@ export function ClientLayout() {
                             onClick={() => navigate("/app/settings?tab=preferences")}
                           >
                             <span className="app-dropdown-icon-badge">
-                              <Settings className="h-4 w-4 [stroke-width:1.7]" />
+                              <Settings className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                             </span>
                             Preferences
                           </DropdownMenuItem>
                           <div className="app-dropdown-utility-row">
                             <div className="flex min-w-0 items-center gap-3">
                               <span className="app-dropdown-icon-badge">
-                                <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                                <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                               </span>
                               <span className="text-sm font-medium text-foreground">
                                 Theme
@@ -487,7 +487,7 @@ export function ClientLayout() {
                             }}
                           >
                             <span className="app-dropdown-icon-badge">
-                              <LogOut className="h-4 w-4 [stroke-width:1.7]" />
+                              <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
                             </span>
                             {isSigningOut ? "Signing out..." : "Sign out"}
                           </DropdownMenuItem>

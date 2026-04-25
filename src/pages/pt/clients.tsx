@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Search, UsersRound } from "lucide-react";
+import { Activity, PauseCircle, Search, ShieldAlert, UsersRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
@@ -100,6 +100,7 @@ export function PtClientsPage() {
       <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
+          module="clients"
           label="Total Clients"
           value={stats.totalClients}
           helper="In this coaching space"
@@ -108,21 +109,30 @@ export function PtClientsPage() {
         />
         <StatCard
           surface="pt-hub"
+          module="clients"
           label="Active"
           value={stats.activeClients}
           helper="Currently in training"
+          icon={Activity}
+          iconClassName="text-[var(--state-success-text)]"
         />
         <StatCard
           surface="pt-hub"
+          module="clients"
           label="At Risk"
           value={stats.atRiskClients}
           helper="Needs your attention"
+          icon={ShieldAlert}
+          iconClassName="text-[var(--state-danger-text)]"
         />
         <StatCard
           surface="pt-hub"
+          module="clients"
           label="Paused"
           value={stats.pausedClients}
           helper="Currently paused"
+          icon={PauseCircle}
+          iconClassName="text-[var(--state-warning-text)]"
         />
       </div>
 

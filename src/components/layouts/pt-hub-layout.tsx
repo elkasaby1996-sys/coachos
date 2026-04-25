@@ -41,6 +41,7 @@ import {
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { AppFooter } from "../common/app-footer";
 import { RouteTransition } from "../common/route-transition";
+import { WorkspaceSwitcherMenu } from "../common/workspace-switcher-menu";
 import { supabase } from "../../lib/supabase";
 import {
   getPreferredPersonDisplayName,
@@ -357,6 +358,11 @@ export function PtHubLayout() {
     () => workspacesQuery.data ?? [],
     [workspacesQuery.data],
   );
+  const workspaceSwitcherItems = workspaces.map((workspace) => ({
+    id: workspace.id,
+    name: workspace.name,
+    meta: `${workspace.clientCount ?? 0} active clients`,
+  }));
   const inPtHubWorkspace = location.pathname.startsWith("/pt-hub");
   const publishedProfile = Boolean(profileQuery.data?.isPublished);
   const fallbackWorkspace =
@@ -665,63 +671,31 @@ export function PtHubLayout() {
                         </span>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      variant="menu"
-                      align="end"
-                      sideOffset={10}
-                      className="w-72"
-                    >
-                      <DropdownMenuLabel>
-                        <span className="pt-hub-kicker block">
-                          {t("ptHub.nav.coachingSpaces", "Coaching Spaces")}
-                        </span>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="mt-1"
-                        onClick={() => navigate("/pt-hub")}
-                      >
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <span className="app-dropdown-icon-badge">
-                            <PanelsTopLeft className="h-4 w-4 [stroke-width:1.7]" />
-                          </span>
-                          <p className="truncate font-medium text-foreground">
-                            {t("common.repsyncPtHub", "Repsync PT Hub")}
-                          </p>
-                        </div>
-                        {inPtHubWorkspace ? (
-                          <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
-                        ) : null}
-                      </DropdownMenuItem>
-                      {workspaces.map((workspace) => (
-                        <DropdownMenuItem
-                          key={workspace.id}
-                          className="mt-1"
-                          onClick={() => {
-                            switchWorkspace(workspace.id);
-                            navigate("/pt/dashboard");
-                          }}
-                        >
-                          <div className="flex min-w-0 flex-1 items-center gap-3">
-                            <span className="app-dropdown-icon-badge">
-                              <Building className="h-4 w-4 [stroke-width:1.7]" />
-                            </span>
-                            <p className="truncate font-medium text-foreground">
-                              {workspace.name}
-                            </p>
-                          </div>
-                          <div className="ml-3 flex shrink-0 items-center gap-2">
-                            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                              {workspace.clientCount ?? 0}
-                            </span>
-                            {!inPtHubWorkspace &&
-                            workspace.id === workspaceId ? (
-                              <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
-                            ) : null}
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
+                    <WorkspaceSwitcherMenu
+                      label={t("common.activeWorkspace", "Active workspace")}
+                      hubLabel={t("common.repsyncPtHub", "Repsync PT Hub")}
+                      hubMeta={t(
+                        "ptHub.workspaceSwitcher.hubMeta",
+                        "Business and admin workspace",
+                      )}
+                      hubActive={inPtHubWorkspace}
+                      onSelectHub={() => navigate("/pt-hub")}
+                      workspaces={workspaceSwitcherItems}
+                      currentWorkspaceId={!inPtHubWorkspace ? workspaceId : null}
+                      onSelectWorkspace={(selectedWorkspaceId) => {
+                        switchWorkspace(selectedWorkspaceId);
+                        navigate("/pt/dashboard");
+                      }}
+                      loading={workspacesQuery.isLoading}
+                      loadingLabel={t(
+                        "common.loadingWorkspaces",
+                        "Loading workspaces...",
+                      )}
+                      emptyLabel={t(
+                        "common.noWorkspacesFound",
+                        "No workspaces found",
+                      )}
+                    />
                   </DropdownMenu>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -768,7 +742,7 @@ export function PtHubLayout() {
                       <div className="app-dropdown-utility-row">
                         <div className="flex min-w-0 items-center gap-2.5">
                           <span className="app-dropdown-icon-badge">
-                            <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                            <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                           </span>
                           <span className="truncate font-medium text-foreground">
                             {t("common.theme", "Theme")}
@@ -789,7 +763,7 @@ export function PtHubLayout() {
                         onClick={() => navigate("/pt-hub/settings")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <SlidersHorizontal className="h-4 w-4 [stroke-width:1.7]" />
+                          <SlidersHorizontal className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
                           {t("common.settings", "Settings")}
@@ -802,7 +776,7 @@ export function PtHubLayout() {
                         }}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <LogOut className="h-4 w-4 [stroke-width:1.7]" />
+                          <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
                           {isSigningOut

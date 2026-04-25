@@ -10,6 +10,7 @@ const PACKAGE_KPI_META = {
     label: "Draft",
     helper: "Internal concepts not visible anywhere public.",
     icon: FileText,
+    iconClassName: "text-amber-400",
     accent: false,
     className:
       "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-amber-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-amber-500/16 after:blur-3xl",
@@ -18,6 +19,7 @@ const PACKAGE_KPI_META = {
     label: "Active-Hidden",
     helper: "Live in PT Hub, hidden from your public profile.",
     icon: EyeOff,
+    iconClassName: "text-slate-300",
     accent: false,
     className:
       "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-slate-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-slate-500/14 after:blur-3xl",
@@ -26,6 +28,7 @@ const PACKAGE_KPI_META = {
     label: "Active-Public",
     helper: "Visible on the public profile and lead intake flow.",
     icon: Globe2,
+    iconClassName: "text-emerald-400",
     className:
       "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-emerald-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-emerald-500/18 after:blur-3xl",
     accent: true,
@@ -34,6 +37,7 @@ const PACKAGE_KPI_META = {
     label: "Archived",
     helper: "Retired offers kept for historical package context.",
     icon: Archive,
+    iconClassName: "text-rose-400",
     accent: false,
     className:
       "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-rose-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-rose-500/16 after:blur-3xl",
@@ -77,6 +81,7 @@ export function PtHubPackagesPage() {
               value={item.count}
               helper={meta.helper}
               icon={Icon}
+              iconClassName={meta.iconClassName}
               accent={meta.accent}
               className={meta.className}
             />

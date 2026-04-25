@@ -75,16 +75,6 @@ export function getNotificationIcon(notification: NotificationRecord) {
   }
 }
 
-export function getNotificationIconClasses(notification: NotificationRecord) {
-  if (!notification.is_read) {
-    return "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] text-[var(--state-info-text)]";
-  }
-  if (notification.priority === "high") {
-    return "border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] text-[var(--state-warning-text)]";
-  }
-  return "border-border/70 bg-secondary/40 text-muted-foreground";
-}
-
 export function getNotificationModuleTone(
   notification: NotificationRecord,
 ): ModuleTone {

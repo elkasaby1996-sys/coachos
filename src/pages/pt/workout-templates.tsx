@@ -309,6 +309,7 @@ export function PtWorkoutTemplatesPage() {
           helper="Reusable sessions ready to build from"
           icon={Layers3}
           accent
+          module="coaching"
           className="h-full"
         />
         <StatCard
@@ -316,6 +317,7 @@ export function PtWorkoutTemplatesPage() {
           value={workoutTypeOptions.length}
           helper="Distinct training tags in this workspace"
           icon={Dumbbell}
+          module="coaching"
           className="h-full"
         />
         <StatCard
@@ -323,6 +325,8 @@ export function PtWorkoutTemplatesPage() {
           value={recentTemplatesCount}
           helper="Created in the last 30 days"
           icon={CalendarClock}
+          module="coaching"
+          iconClassName="text-[var(--state-info-text)]"
           className="h-full"
         />
       </div>

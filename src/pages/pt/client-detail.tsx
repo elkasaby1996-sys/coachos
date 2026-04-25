@@ -4098,7 +4098,7 @@ export function PtClientDetailPage() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={openProfileEdit}>
                         <span className="app-dropdown-icon-badge">
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4 text-[var(--module-profile-text)]" />
                         </span>
                         Edit profile
                       </DropdownMenuItem>
@@ -4107,9 +4107,9 @@ export function PtClientDetailPage() {
                       >
                         <span className="app-dropdown-icon-badge">
                           {isOverviewCollapsed ? (
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4 text-[var(--module-profile-text)]" />
                           ) : (
-                            <EyeOff className="h-4 w-4" />
+                            <EyeOff className="h-4 w-4 text-[var(--module-profile-text)]" />
                           )}
                         </span>
                         {isOverviewCollapsed
@@ -4121,7 +4121,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("active")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <Play className="h-4 w-4" />
+                          <Play className="h-4 w-4 text-[var(--state-success-text)]" />
                         </span>
                         Mark active
                       </DropdownMenuItem>
@@ -4129,7 +4129,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("paused")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <Moon className="h-4 w-4" />
+                          <Moon className="h-4 w-4 text-[var(--state-warning-text)]" />
                         </span>
                         Mark paused
                       </DropdownMenuItem>
@@ -4141,7 +4141,7 @@ export function PtClientDetailPage() {
                         }
                       >
                         <span className="app-dropdown-icon-badge">
-                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTriangle className="h-4 w-4 text-[var(--state-danger-text)]" />
                         </span>
                         {clientSnapshot?.manual_risk_flag
                           ? "Clear at risk"
@@ -4151,7 +4151,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("completed")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="h-4 w-4 text-[var(--state-success-text)]" />
                         </span>
                         Mark completed
                       </DropdownMenuItem>
@@ -4159,7 +4159,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("churned")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <Ban className="h-4 w-4" />
+                          <Ban className="h-4 w-4 text-[var(--state-danger-text)]" />
                         </span>
                         Mark churned
                       </DropdownMenuItem>
@@ -4411,6 +4411,7 @@ export function PtClientDetailPage() {
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
                   helper="Last 7 days"
                   icon={Sparkles}
+                  module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                   delta={buildMetricDelta({
@@ -4423,6 +4424,7 @@ export function PtClientDetailPage() {
                   value={`${habitStreak}d`}
                   helper="Habit streak"
                   icon={Rocket}
+                  module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                   delta={buildMetricDelta({
@@ -4441,6 +4443,7 @@ export function PtClientDetailPage() {
                         : "No check-ins"
                   }
                   icon={CalendarDays}
+                  module="checkins"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                 />
@@ -4449,6 +4452,7 @@ export function PtClientDetailPage() {
                   value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
                   helper={lastWorkoutStatus ?? "No workouts"}
                   icon={Sparkles}
+                  module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                 />
@@ -7896,6 +7900,7 @@ function PtClientHabitsTab({
                 value={`${Number.isFinite(adherencePct) ? adherencePct : 0}%`}
                 helper="Logged days / 7"
                 icon={Sparkles}
+                module="analytics"
                 className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta:
@@ -7911,6 +7916,7 @@ function PtClientHabitsTab({
                 value={`${habitStreak} days`}
                 helper="Days logged in a row"
                 icon={Rocket}
+                module="analytics"
                 className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta: habitStreak - previousHabitStreak,
@@ -7930,6 +7936,7 @@ function PtClientHabitsTab({
                 }
                 helper="7-day averages"
                 icon={Flame}
+                module="analytics"
                 className="h-full min-h-[170px]"
                 delta={
                   typeof avgSteps === "number" &&

@@ -24,6 +24,7 @@ export function PtHubPaymentsPage() {
       <div className="page-kpi-block grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
+          module="billing"
           label="Platform Plan"
           value={subscription?.planName ?? "Repsync Pro"}
           helper={
@@ -36,6 +37,7 @@ export function PtHubPaymentsPage() {
         />
         <StatCard
           surface="pt-hub"
+          module="billing"
           label="Billing State"
           value={subscription?.billingStatus ?? "Billing placeholder"}
           helper="Status of your Repsync plan"
@@ -51,6 +53,7 @@ export function PtHubPaymentsPage() {
         />
         <StatCard
           surface="pt-hub"
+          module="billing"
           label="Monthly Revenue"
           value={revenue?.monthlyRevenueLabel ?? "Not connected"}
           helper="Revenue tracking for your coaching business"
@@ -64,6 +67,7 @@ export function PtHubPaymentsPage() {
         />
         <StatCard
           surface="pt-hub"
+          module="billing"
           label="Invoices"
           value={invoices.length}
           helper={

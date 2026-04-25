@@ -4,7 +4,6 @@ import { formatRelativeTime } from "../../../lib/relative-time";
 import { cn } from "../../../lib/utils";
 import {
   getNotificationIcon,
-  getNotificationIconClasses,
   getNotificationModuleTone,
   getNotificationTypeLabel,
 } from "../lib/notification-utils";
@@ -58,10 +57,8 @@ export function NotificationItem({
     >
       <div
         className={cn(
-          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
-          getNotificationIconClasses(notification),
-          moduleClasses.iconBadge,
-          compact ? "h-9 w-9 rounded-lg" : "",
+          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center",
+          compact ? "h-9 w-9" : "",
         )}
       >
         <Icon className={cn("h-4 w-4", moduleClasses.title)} />

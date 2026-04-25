@@ -1,5 +1,12 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { ChevronRight, MessageSquarePlus, Search } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  MessageSquarePlus,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
@@ -169,6 +176,7 @@ export function PtHubLeadsPage() {
       <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
         <StatCard
           surface="pt-hub"
+          module="leads"
           label="Total Leads"
           value={stats.total}
           helper="All inquiries in PT Hub"
@@ -177,21 +185,30 @@ export function PtHubLeadsPage() {
         />
         <StatCard
           surface="pt-hub"
+          module="leads"
           label="New"
           value={stats.fresh}
           helper="Waiting for review"
+          icon={Clock3}
+          iconClassName="text-[var(--state-warning-text)]"
         />
         <StatCard
           surface="pt-hub"
+          module="leads"
           label="In Progress"
           value={stats.activePipeline}
           helper="Contacted or awaiting workspace"
+          icon={RefreshCw}
+          iconClassName="text-[var(--state-info-text)]"
         />
         <StatCard
           surface="pt-hub"
+          module="leads"
           label="Converted"
           value={stats.converted}
           helper="Approved and assigned"
+          icon={CheckCircle2}
+          iconClassName="text-[var(--state-success-text)]"
         />
       </div>
 
@@ -319,7 +336,7 @@ export function PtHubLeadsPage() {
                         </span>
                       ) : null}
                       <PtHubLeadStatusBadge status={lead.status} />
-                      <ChevronRight className="h-4 w-4 text-muted-foreground [stroke-width:1.7]" />
+                      <ChevronRight className="h-4 w-4 text-[var(--module-leads-text)] [stroke-width:1.7]" />
                     </div>
                   </button>
                 );
