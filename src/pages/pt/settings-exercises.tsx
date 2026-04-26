@@ -691,8 +691,9 @@ export function PtExerciseLibraryPage() {
       <WorkspacePageHeader
         title="Exercise Library"
         description="Manage a shared owner-level library used across owned workspaces."
+        className="w-full"
         actions={
-          <div className="flex w-full min-w-max items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:overflow-visible sm:pb-0">
+          <div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0">
             <div className="relative min-w-[280px] flex-1 sm:w-[320px]">
               <Search className="app-search-icon h-4 w-4" />
               <Input

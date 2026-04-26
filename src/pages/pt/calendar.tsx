@@ -18,6 +18,10 @@ import {
   Skeleton,
   StatusPill,
 } from "../../components/ui/coachos";
+import {
+  SurfaceCard,
+  SurfaceCardContent,
+} from "../../components/client/portal";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -309,6 +313,7 @@ export function PtCalendarPage() {
       <WorkspacePageHeader
         title="Coach Calendar"
         description="Click a date to view scheduled items."
+        className="w-full justify-end"
         actions={
           <Button
             onClick={() => {
@@ -325,7 +330,8 @@ export function PtCalendarPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <DashboardCard title="Calendar">
+        <SurfaceCard>
+          <SurfaceCardContent className="px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex items-center justify-between gap-2">
             <div className="text-lg font-semibold text-foreground">
               {monthLabel}
@@ -553,7 +559,8 @@ export function PtCalendarPage() {
               })}
             </div>
           )}
-        </DashboardCard>
+          </SurfaceCardContent>
+        </SurfaceCard>
 
         <div className="space-y-6">
           <DashboardCard

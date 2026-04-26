@@ -848,7 +848,7 @@ export function PtLayout() {
   });
 
   const searchResults = useMemo(() => {
-    if (normalizedSearch.length === 0) return searchRoutes.slice(0, 6);
+    if (normalizedSearch.length === 0) return [];
     return searchQuery.data ?? [];
   }, [normalizedSearch.length, searchQuery.data, searchRoutes]);
 
@@ -982,44 +982,46 @@ export function PtLayout() {
                   }}
                 />
               </div>
-              <div className="mt-3 overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
-                {searchQuery.isLoading ? (
-                  <div className="px-3 py-3 text-sm text-muted-foreground">
-                    Searching workspace...
-                  </div>
-                ) : searchResults.length === 0 ? (
-                  <div className="px-3 py-3 text-sm text-muted-foreground">
-                    No matching results. Try a client name, program, or
-                    template.
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {searchResults.map((result, index) => (
-                      <button
-                        key={result.id}
-                        type="button"
-                        className={cn(
-                          "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
-                          index === searchHighlightIndex
-                            ? "bg-card/80 text-foreground"
-                            : "text-foreground/90 hover:bg-card/72",
-                        )}
-                        onMouseEnter={() => setSearchHighlightIndex(index)}
-                        onClick={() => handleSearchSelect(result)}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {result.label}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {result.meta}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {normalizedSearch.length > 0 ? (
+                <div className="mt-3 overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
+                  {searchQuery.isLoading ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">
+                      Searching workspace...
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">
+                      No matching results. Try a client name, program, or
+                      template.
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {searchResults.map((result, index) => (
+                        <button
+                          key={result.id}
+                          type="button"
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
+                            index === searchHighlightIndex
+                              ? "bg-card/80 text-foreground"
+                              : "text-foreground/90 hover:bg-card/72",
+                          )}
+                          onMouseEnter={() => setSearchHighlightIndex(index)}
+                          onClick={() => handleSearchSelect(result)}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {result.label}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {result.meta}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>,
           document.body,
@@ -1153,7 +1155,7 @@ export function PtLayout() {
         >
           <aside
             className={cn(
-              "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:p-3",
+              "hidden lg:fixed lg:bottom-[72px] lg:left-0 lg:top-0 lg:z-30 lg:block lg:p-3",
               desktopNavCollapsed ? "lg:w-[128px]" : "lg:w-[320px]",
             )}
           >

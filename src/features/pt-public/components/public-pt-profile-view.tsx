@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ExternalLink,
@@ -7,8 +7,6 @@ import {
   Linkedin,
   MapPin,
   Monitor,
-  Sparkles,
-  Star,
   Users,
   Youtube,
 } from "lucide-react";
@@ -229,16 +227,6 @@ export function PublicPtProfileView({
                 </div>
 
                 <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">
-                      {preview ? "Internal preview" : "Coach profile"}
-                    </Badge>
-                    {profile.marketplaceVisible ? (
-                      <Badge variant="muted">Marketplace visible</Badge>
-                    ) : (
-                      <Badge variant="muted">Private discovery</Badge>
-                    )}
-                  </div>
                   <div className="space-y-2">
                     <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
                       {title}
@@ -281,10 +269,7 @@ export function PublicPtProfileView({
           <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.15fr)_360px]">
             <div className="space-y-8">
               <section ref={registerSection(0)} className="space-y-4 opacity-0">
-                <SectionHeader
-                  icon={<Sparkles className="h-4 w-4" />}
-                  title="Overview"
-                />
+                <SectionHeader title="Overview" />
                 <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
                     <div className="space-y-3">
@@ -362,10 +347,7 @@ export function PublicPtProfileView({
               ) : null}
 
               <section ref={registerSection(3)} className="space-y-4 opacity-0">
-                <SectionHeader
-                  icon={<Star className="h-4 w-4" />}
-                  title="Proof"
-                />
+                <SectionHeader title="Proof" />
                 <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-4">
@@ -649,10 +631,9 @@ function PublicPackageSection({
   );
 }
 
-function SectionHeader({ title, icon }: { title: string; icon?: ReactNode }) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="flex items-center gap-2">
-      {icon}
+    <div className="flex items-center">
       <h2 className="text-lg font-semibold tracking-tight text-foreground">
         {title}
       </h2>

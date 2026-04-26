@@ -54,17 +54,33 @@ function normalizeDisplayName(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function isEmailLikeDisplayName(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+export function normalizeCoachDisplayName(value: string | null | undefined) {
+  const normalized = normalizeDisplayName(value);
+  if (!normalized || isEmailLikeDisplayName(normalized)) return null;
+  return normalized;
+}
+
 export function resolveWorkspaceThreadTitle(params: {
   workspaceName?: string | null;
+  coachDisplayName?: string | null;
   latestCoachSenderName?: string | null;
   lastMessageSenderName?: string | null;
   lastMessageSenderRole?: string | null;
 }) {
-  const coachSenderName = normalizeDisplayName(params.latestCoachSenderName);
+  const coachDisplayName = normalizeCoachDisplayName(params.coachDisplayName);
+  if (coachDisplayName) return coachDisplayName;
+
+  const coachSenderName = normalizeCoachDisplayName(params.latestCoachSenderName);
   if (coachSenderName) return coachSenderName;
 
   if (params.lastMessageSenderRole === "pt") {
-    const lastPtSenderName = normalizeDisplayName(params.lastMessageSenderName);
+    const lastPtSenderName = normalizeCoachDisplayName(
+      params.lastMessageSenderName,
+    );
     if (lastPtSenderName) return lastPtSenderName;
   }
 
@@ -73,7 +89,7 @@ export function resolveWorkspaceThreadTitle(params: {
     return workspaceName.replace(/^coach\s+/i, "").trim();
   }
 
-  return "Conversation";
+  return "Coach";
 }
 
 function getThreadActivityTimestamp(

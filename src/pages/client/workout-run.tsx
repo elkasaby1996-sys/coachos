@@ -241,7 +241,7 @@ export function ClientWorkoutRunPage() {
       const { data: assignedWorkout, error: assignedError } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, workout_template:workout_templates(id, name, workout_type_tag, description)",
+          "id, status, coach_note, workout_template:workout_templates(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId)
         .eq("id", workoutId)
@@ -1103,6 +1103,19 @@ export function ClientWorkoutRunPage() {
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{saveError}</AlertDescription>
         </Alert>
+      ) : null}
+
+      {assignedWorkoutQuery.data?.coach_note ? (
+        <Card className="rounded-xl border-border/70 bg-card/80">
+          <CardContent className="space-y-2 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Coach note
+            </p>
+            <p className="text-sm leading-6 text-foreground">
+              {assignedWorkoutQuery.data.coach_note}
+            </p>
+          </CardContent>
+        </Card>
       ) : null}
 
       {assignedWorkoutQuery.isLoading ||

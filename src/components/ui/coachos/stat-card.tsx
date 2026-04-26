@@ -164,7 +164,7 @@ export function StatCard({
       {onClick ? (
         <button
           type="button"
-          className="block h-full w-full text-left"
+          className="block h-full w-full rounded-[26px] text-left outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={onClick}
           aria-label={ariaLabel ?? label}
         >

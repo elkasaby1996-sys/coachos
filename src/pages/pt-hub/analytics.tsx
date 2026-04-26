@@ -813,8 +813,11 @@ export function PtHubAnalyticsPage() {
         description="See where demand is growing, where business is leaking, and what needs coach attention today."
       />
 
-      <div className="flex justify-end">
-        <div className="pt-hub-action-shelf inline-flex flex-wrap items-center gap-1 rounded-[18px] border border-border/60 bg-background/28 p-1 shadow-[var(--surface-shadow)]">
+      <div className="flex justify-center py-2">
+        <nav
+          className="pt-hub-tab-rail mx-auto h-auto min-h-[3.75rem] w-full max-w-xl justify-center"
+          aria-label="Analytics date range"
+        >
           {PT_HUB_ANALYTICS_RANGE_OPTIONS.map((option) => {
             const selected = filters.rangeKey === option.value;
             return (
@@ -827,19 +830,21 @@ export function PtHubAnalyticsPage() {
                     rangeKey: option.value,
                   }))
                 }
+                data-state={selected ? "active" : "inactive"}
                 className={cn(
-                  "rounded-[14px] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors",
-                  selected
-                    ? "bg-[oklch(var(--module-analytics-text)/0.16)] text-[oklch(var(--module-analytics-text))]"
-                    : "text-muted-foreground hover:bg-background/48 hover:text-foreground",
+                  "pt-hub-tab-trigger group flex-1 uppercase tracking-[0.18em]",
+                  selected ? "text-foreground" : "text-muted-foreground",
                 )}
                 aria-pressed={selected}
               >
-                {option.label}
+                {selected ? (
+                  <span className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border" />
+                ) : null}
+                <span className="relative z-10">{option.label}</span>
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
 
       <div className="page-kpi-block grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">

@@ -228,42 +228,40 @@ export function PtHubLeadsPage() {
                 placeholder="Search lead name or package"
               />
             </div>
-            <div className="app-filter-control">
-              <Select
-                size="sm"
-                className="w-full"
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as LeadStatusFilter)
-                }
-                aria-label="Filter by lead status"
-              >
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {statusOptionLabels[status]}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="app-filter-control">
-              <Select
-                size="sm"
-                className="w-full"
-                value={packageFilterValue}
-                onChange={(event) =>
-                  setPackageFilterValue(
-                    event.target.value as LeadPackageFilterValue,
-                  )
-                }
-                aria-label="Filter by package interest"
-              >
-                {packageFilterOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} ({option.count})
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <Select
+              size="sm"
+              variant="filter"
+              className="app-filter-control"
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as LeadStatusFilter)
+              }
+              aria-label="Filter by lead status"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {statusOptionLabels[status]}
+                </option>
+              ))}
+            </Select>
+            <Select
+              size="sm"
+              variant="filter"
+              className="app-filter-control"
+              value={packageFilterValue}
+              onChange={(event) =>
+                setPackageFilterValue(
+                  event.target.value as LeadPackageFilterValue,
+                )
+              }
+              aria-label="Filter by package interest"
+            >
+              {packageFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label} ({option.count})
+                </option>
+              ))}
+            </Select>
           </div>
         </div>
 

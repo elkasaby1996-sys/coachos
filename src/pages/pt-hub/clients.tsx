@@ -172,8 +172,8 @@ export function PtHubClientsPage() {
         contentClassName="space-y-6"
       >
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
-          <div className="app-filter-grid">
-            <div className="app-filter-search relative">
+          <div className="grid gap-3 lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)] lg:items-center">
+            <div className="relative min-w-0">
               <Search className="app-search-icon h-4 w-4" />
               <Input
                 className="app-search-input"
@@ -186,7 +186,7 @@ export function PtHubClientsPage() {
               />
             </div>
             <Select
-              className="app-filter-control"
+              className="w-full"
               variant="filter"
               value={workspaceFilter}
               onChange={(event) => setWorkspaceFilter(event.target.value)}
@@ -201,7 +201,7 @@ export function PtHubClientsPage() {
               ))}
             </Select>
             <Select
-              className="app-filter-control-sm"
+              className="w-full"
               variant="filter"
               value={lifecycleFilter}
               onChange={(event) => setLifecycleFilter(event.target.value)}
@@ -229,7 +229,7 @@ export function PtHubClientsPage() {
               </option>
             </Select>
             <Select
-              className="app-filter-control"
+              className="w-full"
               variant="filter"
               value={segmentFilter}
               onChange={(event) =>

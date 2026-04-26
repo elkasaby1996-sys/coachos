@@ -650,7 +650,7 @@ export function PtProgramBuilderPage() {
             ) : null}
           </div>
           <Tabs value={activeWeek} onValueChange={setActiveWeek}>
-            <TabsList className="flex w-full flex-wrap justify-start gap-2 bg-transparent p-0">
+            <TabsList className="flex h-auto min-h-0 w-full flex-wrap justify-start gap-2 border-0 bg-transparent p-0 shadow-none">
               {weekOptions.map((week) => (
                 <TabsTrigger
                   key={week}

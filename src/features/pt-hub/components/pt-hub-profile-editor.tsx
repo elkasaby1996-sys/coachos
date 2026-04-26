@@ -1254,10 +1254,7 @@ export function PtHubProfileEditor({
           onTogglePublish={onTogglePublish}
         />
 
-        <PtHubSectionCard
-          title="Preview and save"
-          description="Use the internal preview while editing, then save the latest brand updates."
-        >
+        <PtHubSectionCard title="Preview and save">
           <div className="space-y-3">
             <Button asChild variant="secondary" className="w-full">
               <Link to="/pt-hub/profile/preview">Open full preview</Link>

@@ -697,27 +697,12 @@ export function PtMessagesPage() {
           }
         >
           {!selectedClient ? (
-            <div className="flex h-[560px] flex-col justify-between gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
+            <div className="flex h-[560px] flex-col gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
               <div className="space-y-4">
                 <EmptyState
                   title="Choose a conversation"
                   description="Select a client to open the thread."
                 />
-              </div>
-              <div className="rounded-[20px] border border-border/70 bg-background/45 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Quick reply ideas
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {suggestedReplies.map((prompt) => (
-                    <span
-                      key={prompt}
-                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground"
-                    >
-                      {prompt}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           ) : messagesQuery.isLoading ? (

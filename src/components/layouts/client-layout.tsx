@@ -129,6 +129,8 @@ const shouldShowOnboardingBanner = (pathname: string) => {
   );
 };
 
+const CLIENT_SIDEBAR_FOOTER_GAP = 12;
+
 function getHeaderProfilePillClassName(isLightMode: boolean) {
   return cn(
     "group hidden h-[54px] min-w-[204px] items-center gap-2.5 rounded-[18px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[214px] md:flex",
@@ -228,6 +230,27 @@ export function ClientLayout() {
     return "grid-cols-6";
   }, [visibleNavItems.length]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const footerHost = footerHostRef.current;
+    if (!footerHost) return;
+
+    const updateFooterHeight = () => {
+      setFooterHeight(footerHost.getBoundingClientRect().height);
+    };
+
+    updateFooterHeight();
+
+    const observer = new ResizeObserver(updateFooterHeight);
+    observer.observe(footerHost);
+    window.addEventListener("resize", updateFooterHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateFooterHeight);
+    };
+  }, []);
+
   if (loading) {
     return <LoadingScreen message="Loading..." />;
   }
@@ -288,7 +311,9 @@ export function ClientLayout() {
       <div className="relative z-10 flex min-h-screen w-full">
         <aside
           className="hidden w-28 p-1 md:fixed md:left-0 md:top-0 md:z-30 md:flex md:w-[248px] md:p-2"
-          style={{ bottom: footerHeight > 0 ? `${footerHeight}px` : undefined }}
+          style={{
+            bottom: `${(footerHeight || 60) + CLIENT_SIDEBAR_FOOTER_GAP}px`,
+          }}
         >
           <div className="surface-panel-strong flex h-full min-h-0 flex-col overflow-hidden rounded-[34px] border-border/70 px-3 py-5 backdrop-blur-xl md:px-4">
             <div className="mb-6 flex items-center justify-between">

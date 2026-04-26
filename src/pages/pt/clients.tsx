@@ -1,8 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Activity, PauseCircle, Search, ShieldAlert, UsersRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
@@ -22,14 +21,35 @@ import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtClientsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     workspaceId,
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
   const [searchValue, setSearchValue] = useState("");
-  const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
-  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
+  const lifecycleParam = searchParams.get("lifecycle");
+  const segmentParam = searchParams.get("segment") as ClientSegmentKey | null;
+  const initialLifecycleFilter =
+    lifecycleParam &&
+    ["invited", "onboarding", "paused", "active", "completed", "churned"].includes(
+      lifecycleParam,
+    )
+      ? lifecycleParam
+      : "all";
+  const initialSegmentFilter =
+    segmentParam &&
+    ["onboarding_incomplete", "checkin_overdue", "at_risk", "paused"].includes(
+      segmentParam,
+    )
+      ? segmentParam
+      : "all";
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>(
+    initialLifecycleFilter,
+  );
+  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>(
+    initialSegmentFilter,
+  );
   const [page, setPage] = useState(0);
   const deferredSearchValue = useDeferredValue(searchValue);
   const hasWorkspaceContext = Boolean(workspaceId);
@@ -73,6 +93,11 @@ export function PtClientsPage() {
   useEffect(() => {
     setPage(0);
   }, [deferredSearchValue, lifecycleFilter, segmentFilter, workspaceId]);
+
+  useEffect(() => {
+    setLifecycleFilter(initialLifecycleFilter);
+    setSegmentFilter(initialSegmentFilter);
+  }, [initialLifecycleFilter, initialSegmentFilter]);
 
   const openClient = (client: PTClientSummary) => {
     navigate(
@@ -136,15 +161,7 @@ export function PtClientsPage() {
         />
       </div>
 
-      <PtHubSectionCard
-        title="Client List"
-        actions={
-          <InviteClientDialog
-            trigger={<Button variant="secondary">Invite client</Button>}
-          />
-        }
-        contentClassName="space-y-6"
-      >
+      <PtHubSectionCard title="Client List" contentClassName="space-y-6">
         <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
             <div className="relative">

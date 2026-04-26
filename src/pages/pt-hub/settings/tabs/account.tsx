@@ -415,8 +415,8 @@ export function PtHubSettingsAccountTab() {
           label="Country & Phone"
           hint="Country updates timezone and auto-suggests a dial code. You can still edit the phone code manually."
         >
-          <div className="app-form-grid">
-            <div className="app-form-col-4 space-y-2">
+          <div className="grid gap-3 md:grid-cols-[minmax(12rem,0.45fr)_minmax(0,1fr)] md:items-start">
+            <div className="space-y-2">
               <Select
                 isInvalid={
                   showRequiredErrors && Boolean(requiredErrors.country)
@@ -454,7 +454,7 @@ export function PtHubSettingsAccountTab() {
               ) : null}
             </div>
 
-            <div className="app-form-col-8 space-y-2">
+            <div className="space-y-2">
               <Input
                 isInvalid={
                   phoneLimitState.overLimit ||

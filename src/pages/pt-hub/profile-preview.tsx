@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-import { Button } from "../../components/ui/button";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubProfilePreview } from "../../features/pt-hub/components/pt-hub-profile-preview";
 import {
@@ -26,24 +24,6 @@ export function PtHubProfilePreviewPage() {
         eyebrow="Profile Preview"
         title="Preview your public profile"
         description="See how your public trainer page will look before you share it."
-        actions={
-          <>
-            {publicationQuery.data?.publicUrl ? (
-              <Button asChild variant="ghost">
-                <a
-                  href={publicationQuery.data.publicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open public page
-                </a>
-              </Button>
-            ) : null}
-            <Button asChild variant="secondary">
-              <Link to="/pt-hub/profile">Back to editor</Link>
-            </Button>
-          </>
-        }
       />
 
       {previewData ? (

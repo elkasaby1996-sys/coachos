@@ -783,6 +783,8 @@ export function PtDashboardPage() {
                 helper="Active"
                 icon={UsersRound}
                 module="clients"
+                onClick={() => navigate("/pt/clients?lifecycle=active")}
+                ariaLabel="Open active clients"
                 delta={buildMetricDelta({
                   delta: activeClientsDelta,
                 })}
@@ -795,6 +797,8 @@ export function PtDashboardPage() {
                 helper="7d"
                 icon={Rocket}
                 module="analytics"
+                onClick={() => navigate("/pt/clients?segment=at_risk")}
+                ariaLabel="Open clients at risk from adherence"
                 delta={buildMetricDelta({
                   delta: adherenceDelta,
                   suffix: "%",
@@ -808,6 +812,8 @@ export function PtDashboardPage() {
                 helper="Unread"
                 icon={MessageCircle}
                 module="coaching"
+                onClick={() => navigate("/pt/messages")}
+                ariaLabel="Open unread messages"
               />
             </StaggerItem>
             <StaggerItem>
@@ -817,6 +823,8 @@ export function PtDashboardPage() {
                 helper="Due"
                 icon={CalendarDays}
                 module="checkins"
+                onClick={() => navigate("/pt/checkins")}
+                ariaLabel="Open today's check-ins"
               />
             </StaggerItem>
           </>

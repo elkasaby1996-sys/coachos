@@ -95,18 +95,6 @@ export function WorkspaceSettingsLayoutPage() {
                 {resolvedWorkspaceId}
               </span>
             </p>
-            <p>
-              Your role:{" "}
-              <span className="text-foreground">
-                {access.role ?? "Unknown"}
-              </span>
-            </p>
-            <p>
-              Access level:{" "}
-              <span className="text-foreground">
-                {access.canManage ? "Can manage settings" : "Read-only"}
-              </span>
-            </p>
           </div>
         </SettingsSectionCard>
       }

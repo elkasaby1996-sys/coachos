@@ -1,5 +1,4 @@
-import { AlertTriangle, ExternalLink, EyeOff, Globe } from "lucide-react";
-import { Link } from "react-router-dom";
+import { AlertTriangle, EyeOff, Globe } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
@@ -93,34 +92,6 @@ export function PtHubPublicationPanel({
           <p className="text-sm text-muted-foreground">
             Profile visibility must be set to Ready to list.
           </p>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-            Public URL
-          </p>
-          {publicationState.publicUrl ? (
-            <div className="space-y-3">
-              <a
-                href={publicationState.publicUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 break-all text-sm text-primary transition-colors hover:text-foreground"
-              >
-                {publicationState.publicUrl}
-                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-              </a>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="secondary">
-                  <Link to="/pt-hub/profile/preview">Internal view</Link>
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Add a slug to create the public URL.
-            </p>
-          )}
         </div>
 
         {!publicationState.canPublish && !publicationState.isPublished ? (
