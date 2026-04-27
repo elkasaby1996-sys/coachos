@@ -14,14 +14,19 @@ export function AuthBackdrop({
   contentClassName,
 }: AuthBackdropProps) {
   return (
-    <div className="pt-hub-theme pt-hub-theme-dark theme-shell-canvas relative isolate flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
-      <AppShellBackgroundLayer />
+    <div className="pt-hub-theme pt-hub-theme-dark theme-shell-canvas relative isolate flex h-dvh flex-col overflow-hidden">
+      <AppShellBackgroundLayer animated />
 
-      <div className={cn("relative z-10 w-full", contentClassName)}>
+      <div
+        className={cn(
+          "relative z-10 mx-auto flex min-h-0 w-full flex-1 items-start justify-center overflow-y-auto px-4 py-8 sm:items-center sm:px-6 lg:px-8",
+          contentClassName,
+        )}
+      >
         {children}
       </div>
 
-      <AppFooter className="pointer-events-auto absolute inset-x-0 bottom-0 z-20" />
+      <AppFooter className="pointer-events-auto relative z-20 w-full shrink-0" />
     </div>
   );
 }

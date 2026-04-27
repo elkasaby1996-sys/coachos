@@ -1780,6 +1780,23 @@
   .auth-shell-subtitle {
     @apply text-sm leading-6 text-muted-foreground sm:text-[15px];
   }
+
+  .auth-secondary-link {
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .auth-secondary-link:hover {
+    color: #22d3ee;
+    border-color: rgb(34 211 238 / 0.24);
+    background-color: rgb(34 211 238 / 0.08);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.1),
+      0 14px 30px -28px rgb(34 211 238 / 0.5);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

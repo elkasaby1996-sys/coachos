@@ -1,33 +1,54 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { AlertTriangle, ClipboardCheck, ShieldAlert } from "lucide-react";
+import { PublicInfoCard, PublicInfoLayout } from "./public-info-layout";
 
 export function TermsPage() {
   return (
-    <AuthBackdrop contentClassName="max-w-3xl">
-      <div className="auth-shell-card max-w-3xl text-sm text-muted-foreground sm:p-8">
-        <Link
-          to="/login"
-          className="mb-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Link>
-        <h1 className="auth-shell-title">Terms of Service</h1>
-        <p className="mt-3">
-          By using Repsync, you agree to use the product lawfully and not misuse
-          accounts, data, or platform resources.
+    <PublicInfoLayout
+      eyebrow="Usage agreement"
+      title="Terms of Use"
+      description="These terms describe the expectations for using RepSync responsibly, protecting account access, and reviewing coaching outputs before relying on them."
+      updated="February 17, 2026"
+      aside={
+        <div className="space-y-3 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 text-foreground">
+            <ClipboardCheck className="h-4 w-4 text-primary" />
+            <span className="font-semibold">Applies to</span>
+          </div>
+          <p className="text-xs leading-5">
+            Coaches, clients, workspace owners, and anyone accessing RepSync
+            through an invited account.
+          </p>
+        </div>
+      }
+    >
+      <PublicInfoCard
+        icon={<ClipboardCheck className="h-4 w-4" />}
+        title="Responsible use"
+      >
+        <p>
+          Use RepSync lawfully and do not misuse accounts, coaching data, client
+          information, or platform resources.
         </p>
-        <p className="mt-3">
-          Repsync is provided as-is. You are responsible for reviewing outputs
-          before relying on them in training or health contexts.
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<AlertTriangle className="h-4 w-4" />}
+        title="Training decisions"
+      >
+        <p>
+          RepSync is provided as-is. Review outputs before relying on them for
+          training, wellness, or health-related decisions.
         </p>
-        <p className="mt-3">
-          We may suspend accounts that violate these terms or compromise
-          platform security.
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<ShieldAlert className="h-4 w-4" />}
+        title="Security"
+        className="sm:col-span-2"
+      >
+        <p>
+          We may suspend accounts that violate these terms, compromise platform
+          security, or create risk for other users or workspaces.
         </p>
-        <p className="mt-6 text-xs">Last updated: February 17, 2026</p>
-      </div>
-    </AuthBackdrop>
+      </PublicInfoCard>
+    </PublicInfoLayout>
   );
 }
