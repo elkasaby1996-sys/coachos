@@ -87,12 +87,8 @@ const getPtComposeUnreadKey = (workspaceId: string | null | undefined) =>
 
 const resizeComposerTextarea = (textarea: HTMLTextAreaElement | null) => {
   if (!textarea) return;
-  const maxHeight = 120;
-  textarea.style.height = "0px";
-  const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
-  textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowY =
-    textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  textarea.style.height = "40px";
+  textarea.style.overflowY = "hidden";
 };
 
 function MessageWidgetLauncher({
@@ -293,7 +289,7 @@ function MessageWidgetComposer({
           {error}
         </p>
       ) : null}
-      <div className="flex items-end gap-2 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.6))] p-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] backdrop-blur-xl">
+      <div className="flex items-center gap-2 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.6))] p-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] backdrop-blur-xl">
         <textarea
           ref={textareaRef}
           rows={1}
@@ -303,7 +299,7 @@ function MessageWidgetComposer({
           placeholder={placeholder}
           data-invalid={limitError ? "true" : undefined}
           aria-invalid={limitError ? true : undefined}
-          className="min-h-[44px] max-h-[120px] w-full resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground/80 [scrollbar-width:thin] [&::-webkit-resizer]:hidden"
+          className="!h-10 !min-h-10 !max-h-10 w-full resize-none overflow-hidden bg-transparent px-3 py-2 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground/80 [scrollbar-width:none] [&::-webkit-resizer]:hidden [&::-webkit-scrollbar]:hidden"
         />
         <Button
           type="button"
@@ -827,17 +823,17 @@ export function PtMessageComposeProvider({
                 }
                 tabIndex={-1}
                 data-pt-message-compose-drawer="true"
-                className="pointer-events-auto fixed inset-x-3 top-[max(env(safe-area-inset-top),0.75rem)] bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] flex flex-col overflow-hidden rounded-[30px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[0_34px_86px_-40px_oklch(0_0_0/0.92)] outline-none backdrop-blur-xl sm:inset-x-auto sm:right-4 sm:bottom-[calc(env(safe-area-inset-bottom)+5rem)] sm:top-auto sm:h-[620px] sm:w-[400px]"
+                className="pointer-events-auto fixed inset-x-3 top-[max(env(safe-area-inset-top),0.75rem)] bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] flex flex-col overflow-hidden rounded-[30px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[0_34px_86px_-40px_oklch(0_0_0/0.92)] outline-none backdrop-blur-xl sm:inset-x-auto sm:right-4 sm:top-[8.75rem] sm:bottom-[calc(env(safe-area-inset-bottom)+5rem)] sm:h-auto sm:w-[400px]"
               >
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_34%),linear-gradient(180deg,oklch(1_0_0/0.04),transparent_36%)]" />
-                <div className="relative flex items-center justify-between border-b border-border/65 px-4 py-3">
+                <div className="relative flex min-h-12 items-center justify-between border-b border-border/65 px-4 py-1.5">
                   {view === "thread" ? (
                     <div className="flex min-w-0 items-center gap-2">
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className="h-9 w-9 rounded-full"
+                        className="h-8 w-8 rounded-full"
                         onClick={() => setView("list")}
                         aria-label="Back to conversations"
                       >
@@ -860,7 +856,7 @@ export function PtMessageComposeProvider({
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="rounded-full px-3"
+                      className="h-8 rounded-full px-2.5 text-xs"
                       onClick={handleOpenMessagesPage}
                     >
                       Open inbox

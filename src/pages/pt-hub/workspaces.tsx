@@ -82,6 +82,7 @@ export function PtHubWorkspacesPage() {
         eyebrow="Coaching Spaces"
         title="Manage your coaching spaces"
         description="Open, create, and organize the spaces where you coach clients."
+        className="justify-end"
         actions={
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -115,7 +116,8 @@ export function PtHubWorkspacesPage() {
           <DialogHeader>
             <DialogTitle>Create coaching space</DialogTitle>
             <DialogDescription>
-              This will create a new coaching space using the current workspace setup.
+              This will create a new coaching space using the current workspace
+              setup.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

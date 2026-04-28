@@ -509,9 +509,7 @@ export function PtMessagesPage() {
       })
       .filter((row) => {
         if (!query) return true;
-        return `${row.name} ${row.preview} ${row.client.lifecycle_state ?? ""}`
-          .toLowerCase()
-          .includes(query);
+        return row.name.toLowerCase().includes(query);
       })
       .sort((left, right) => {
         if (left.unreadCount !== right.unreadCount) {
@@ -556,17 +554,10 @@ export function PtMessagesPage() {
 
   return (
     <div className="space-y-6">
-      <WorkspacePageHeader
-        title="Messages"
-        actions={
-          <Button variant="secondary" onClick={() => navigate("/pt/clients")}>
-            View clients
-          </Button>
-        }
-      />
+      <WorkspacePageHeader title="Messages" />
 
       <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <DashboardCard title="Conversations">
+        <DashboardCard title="Conversations" disableHoverMotion>
           {clientsQuery.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -588,7 +579,7 @@ export function PtMessagesPage() {
                   className="app-search-input"
                   value={clientSearch}
                   onChange={(event) => setClientSearch(event.target.value)}
-                  placeholder="Search client, lifecycle, or recent message"
+                  placeholder="Search clients"
                 />
               </div>
 
@@ -673,23 +664,26 @@ export function PtMessagesPage() {
         </DashboardCard>
 
         <DashboardCard
+          disableHoverMotion
+          action={
+            selectedClient ? (
+              <LifecycleBadge lifecycleState={selectedClient.lifecycle_state} />
+            ) : null
+          }
           title={
             selectedClient ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-lg font-semibold text-foreground">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-base font-semibold text-foreground">
                   {selectedConversationRow?.name ?? "Client"}
                 </span>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-auto px-2 py-1 text-xs"
+                  className="h-7 shrink-0 rounded-full px-2 text-xs"
                   onClick={() => navigate(`/pt/clients/${selectedClient.id}`)}
                 >
                   Open profile
                 </Button>
-                <LifecycleBadge
-                  lifecycleState={selectedClient.lifecycle_state}
-                />
               </div>
             ) : (
               "Conversation"
@@ -793,9 +787,14 @@ export function PtMessagesPage() {
                                 : "border-border/60 bg-secondary/45 text-foreground",
                             )}
                           >
-                            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                            <div
+                              className={cn(
+                                "text-[10px] tracking-[0.16em] text-muted-foreground",
+                                isCoach ? "normal-case" : "uppercase",
+                              )}
+                            >
                               {isCoach
-                                ? "Coach"
+                                ? "You"
                                 : (message.sender_name ?? "Client")}
                             </div>
                             <div>{message.body ?? ""}</div>
@@ -824,13 +823,13 @@ export function PtMessagesPage() {
                 <div className="flex items-stretch gap-2">
                   <Textarea
                     isInvalid={messageLimitState.overLimit}
-                    className="h-12 min-h-12 resize-none rounded-[16px] border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm"
+                    className="!h-12 !min-h-12 !resize-none overflow-hidden rounded-[16px] border-border/70 bg-background px-3 py-3 text-sm leading-6 text-foreground shadow-sm"
                     value={messageDraft}
                     onChange={(event) => {
                       if (sendError) setSendError(null);
                       setMessageDraft(event.target.value);
                     }}
-                    placeholder="Write a coaching reply"
+                    placeholder="Type a message..."
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();

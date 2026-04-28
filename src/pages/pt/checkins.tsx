@@ -358,6 +358,7 @@ export function PtCheckinsQueuePage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Check-in Queue"
+        className="w-full justify-end"
         actions={
           <Button
             variant="secondary"

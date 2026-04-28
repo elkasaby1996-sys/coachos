@@ -14,12 +14,14 @@ export function DashboardCard({
   subtitle,
   action,
   className,
+  disableHoverMotion = false,
   children,
 }: {
   title: ReactNode;
   subtitle?: string;
   action?: ReactNode;
   className?: string;
+  disableHoverMotion?: boolean;
   children: ReactNode;
 }) {
   const reduceMotion = useReducedMotion();
@@ -27,7 +29,7 @@ export function DashboardCard({
   return (
     <motion.div
       whileHover={
-        reduceMotion
+        reduceMotion || disableHoverMotion
           ? undefined
           : { y: -3, transition: { duration: 0.2, ease: "easeOut" } }
       }

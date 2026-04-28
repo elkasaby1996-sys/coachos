@@ -936,7 +936,7 @@ export function PtLayout() {
               width: searchPanelLayout.width,
             }}
           >
-            <div className="surface-panel-subtle rounded-[28px] border border-border/70 p-3 shadow-[var(--popover-shadow)] backdrop-blur-2xl sm:p-4">
+            <div className="space-y-2">
               <div className="relative w-full">
                 <Search className="app-search-icon h-3.5 w-3.5" />
                 <Input
@@ -983,7 +983,7 @@ export function PtLayout() {
                 />
               </div>
               {normalizedSearch.length > 0 ? (
-                <div className="mt-3 overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
+                <div className="overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
                   {searchQuery.isLoading ? (
                     <div className="px-3 py-3 text-sm text-muted-foreground">
                       Searching workspace...

@@ -217,52 +217,50 @@ export function PtHubLeadsPage() {
         description="Search, filter, and open any inquiry."
         contentClassName="space-y-6"
       >
-        <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
-          <div className="app-filter-grid">
-            <div className="app-filter-search relative min-w-0">
-              <Search className="app-search-icon h-4 w-4" />
-              <Input
-                className="app-search-input"
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search lead name or package"
-              />
-            </div>
-            <Select
-              size="sm"
-              variant="filter"
-              className="app-filter-control"
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as LeadStatusFilter)
-              }
-              aria-label="Filter by lead status"
-            >
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {statusOptionLabels[status]}
-                </option>
-              ))}
-            </Select>
-            <Select
-              size="sm"
-              variant="filter"
-              className="app-filter-control"
-              value={packageFilterValue}
-              onChange={(event) =>
-                setPackageFilterValue(
-                  event.target.value as LeadPackageFilterValue,
-                )
-              }
-              aria-label="Filter by package interest"
-            >
-              {packageFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label} ({option.count})
-                </option>
-              ))}
-            </Select>
+        <div className="app-filter-grid">
+          <div className="app-filter-search relative min-w-0">
+            <Search className="app-search-icon h-4 w-4" />
+            <Input
+              className="app-search-input"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="Search lead name or package"
+            />
           </div>
+          <Select
+            size="sm"
+            variant="filter"
+            className="app-filter-control"
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as LeadStatusFilter)
+            }
+            aria-label="Filter by lead status"
+          >
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>
+                {statusOptionLabels[status]}
+              </option>
+            ))}
+          </Select>
+          <Select
+            size="sm"
+            variant="filter"
+            className="app-filter-control"
+            value={packageFilterValue}
+            onChange={(event) =>
+              setPackageFilterValue(
+                event.target.value as LeadPackageFilterValue,
+              )
+            }
+            aria-label="Filter by package interest"
+          >
+            {packageFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} ({option.count})
+              </option>
+            ))}
+          </Select>
         </div>
 
         {filteredLeads.length === 0 ? (

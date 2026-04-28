@@ -1,10 +1,15 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Activity, PauseCircle, Search, ShieldAlert, UsersRound } from "lucide-react";
+import {
+  Activity,
+  PauseCircle,
+  Search,
+  ShieldAlert,
+  UsersRound,
+} from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
+import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
-import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -114,15 +119,6 @@ export function PtHubClientsPage() {
           "ptHub.clients.description",
           "View every client across your coaching spaces.",
         )}
-        actions={
-          <InviteClientDialog
-            trigger={
-              <Button variant="secondary">
-                {t("ptHub.clients.invite", "Invite client")}
-              </Button>
-            }
-          />
-        }
       />
 
       <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
@@ -171,91 +167,89 @@ export function PtHubClientsPage() {
         title={t("ptHub.clients.listTitle", "Client List")}
         contentClassName="space-y-6"
       >
-        <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
-          <div className="grid gap-3 lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)] lg:items-center">
-            <div className="relative min-w-0">
-              <Search className="app-search-icon h-4 w-4" />
-              <Input
-                className="app-search-input"
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                placeholder={t(
-                  "ptHub.clients.searchPlaceholder",
-                  "Search clients, goals, or coaching space",
-                )}
-              />
-            </div>
-            <Select
-              className="w-full"
-              variant="filter"
-              value={workspaceFilter}
-              onChange={(event) => setWorkspaceFilter(event.target.value)}
-            >
-              <option value="all">
-                {t("ptHub.clients.allCoachingSpaces", "All coaching spaces")}
-              </option>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              className="w-full"
-              variant="filter"
-              value={lifecycleFilter}
-              onChange={(event) => setLifecycleFilter(event.target.value)}
-            >
-              <option value="all">
-                {t("ptHub.clients.allLifecycles", "All lifecycles")}
-              </option>
-              <option value="invited">
-                {t("ptHub.clients.lifecycle.invited", "Invited")}
-              </option>
-              <option value="onboarding">
-                {t("ptHub.clients.lifecycle.onboarding", "Onboarding")}
-              </option>
-              <option value="paused">
-                {t("ptHub.clients.lifecycle.paused", "Paused")}
-              </option>
-              <option value="active">
-                {t("ptHub.clients.lifecycle.active", "Active")}
-              </option>
-              <option value="completed">
-                {t("ptHub.clients.lifecycle.completed", "Completed")}
-              </option>
-              <option value="churned">
-                {t("ptHub.clients.lifecycle.churned", "Churned")}
-              </option>
-            </Select>
-            <Select
-              className="w-full"
-              variant="filter"
-              value={segmentFilter}
-              onChange={(event) =>
-                setSegmentFilter(event.target.value as ClientSegmentKey)
-              }
-            >
-              <option value="all">
-                {t("ptHub.clients.allSegments", "All segments")}
-              </option>
-              <option value="onboarding_incomplete">
-                {t(
-                  "ptHub.clients.segment.onboardingIncomplete",
-                  "Onboarding incomplete",
-                )}
-              </option>
-              <option value="checkin_overdue">
-                {t("ptHub.clients.segment.checkinOverdue", "Check-in overdue")}
-              </option>
-              <option value="at_risk">
-                {t("ptHub.clients.segment.atRisk", "At-risk clients")}
-              </option>
-              <option value="paused">
-                {t("ptHub.clients.segment.paused", "Paused clients")}
-              </option>
-            </Select>
+        <div className="grid gap-3 lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)] lg:items-center">
+          <div className="relative min-w-0">
+            <Search className="app-search-icon h-4 w-4" />
+            <Input
+              className="app-search-input"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={t(
+                "ptHub.clients.searchPlaceholder",
+                "Search clients, goals, or coaching space",
+              )}
+            />
           </div>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={workspaceFilter}
+            onChange={(event) => setWorkspaceFilter(event.target.value)}
+          >
+            <option value="all">
+              {t("ptHub.clients.allCoachingSpaces", "All coaching spaces")}
+            </option>
+            {workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={lifecycleFilter}
+            onChange={(event) => setLifecycleFilter(event.target.value)}
+          >
+            <option value="all">
+              {t("ptHub.clients.allLifecycles", "All lifecycles")}
+            </option>
+            <option value="invited">
+              {t("ptHub.clients.lifecycle.invited", "Invited")}
+            </option>
+            <option value="onboarding">
+              {t("ptHub.clients.lifecycle.onboarding", "Onboarding")}
+            </option>
+            <option value="paused">
+              {t("ptHub.clients.lifecycle.paused", "Paused")}
+            </option>
+            <option value="active">
+              {t("ptHub.clients.lifecycle.active", "Active")}
+            </option>
+            <option value="completed">
+              {t("ptHub.clients.lifecycle.completed", "Completed")}
+            </option>
+            <option value="churned">
+              {t("ptHub.clients.lifecycle.churned", "Churned")}
+            </option>
+          </Select>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={segmentFilter}
+            onChange={(event) =>
+              setSegmentFilter(event.target.value as ClientSegmentKey)
+            }
+          >
+            <option value="all">
+              {t("ptHub.clients.allSegments", "All segments")}
+            </option>
+            <option value="onboarding_incomplete">
+              {t(
+                "ptHub.clients.segment.onboardingIncomplete",
+                "Onboarding incomplete",
+              )}
+            </option>
+            <option value="checkin_overdue">
+              {t("ptHub.clients.segment.checkinOverdue", "Check-in overdue")}
+            </option>
+            <option value="at_risk">
+              {t("ptHub.clients.segment.atRisk", "At-risk clients")}
+            </option>
+            <option value="paused">
+              {t("ptHub.clients.segment.paused", "Paused clients")}
+            </option>
+          </Select>
         </div>
 
         {isTableLoading ? (

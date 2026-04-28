@@ -832,7 +832,7 @@ export function PtDashboardPage() {
       </StaggerGroup>
 
       <StaggerGroup
-        className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.7fr)_320px]"
+        className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.8fr)]"
         stagger={0.07}
         delayChildren={0.05}
       >
@@ -951,7 +951,7 @@ export function PtDashboardPage() {
             )}
           </DashboardCard>
 
-          <div className="grid gap-4 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid items-start gap-4">
             <DashboardCard
               title="Recent Check-ins"
               action={
@@ -1126,9 +1126,6 @@ export function PtDashboardPage() {
                             <p className="text-sm font-semibold text-foreground">
                               {segment.label}
                             </p>
-                            <span className="text-[11px] text-muted-foreground">
-                              <AnimatedValue value={segment.value} />
-                            </span>
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {segment.helper}
@@ -1137,9 +1134,6 @@ export function PtDashboardPage() {
                         <div className="text-right">
                           <p className="text-lg font-semibold tracking-tight text-foreground">
                             <AnimatedValue value={segment.value} />
-                          </p>
-                          <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                            items
                           </p>
                         </div>
                       </button>
