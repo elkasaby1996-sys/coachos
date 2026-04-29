@@ -197,7 +197,7 @@ export function PtHubActionCenter({
 
   return (
     <div className="surface-panel-strong relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_32%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.18),transparent_46%,oklch(var(--bg-surface)/0.12))]" />
+      <div className="pt-hub-action-center-overlay pointer-events-none absolute inset-0" />
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
 
       <div className="relative space-y-5">

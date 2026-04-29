@@ -40,7 +40,7 @@ export function PtHubSectionCard({
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_30%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.06),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.1),transparent_40%,oklch(var(--bg-surface)/0.06))]" />
+      <div className="pt-hub-section-card-overlay pointer-events-none absolute inset-0" />
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]" />
       <CardHeader
         module={resolvedModule}

@@ -418,6 +418,15 @@ export function PtHubLayout() {
   }, [themeMode]);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    document.body.classList.toggle("pt-hub-portal-light", isLightMode);
+    return () => {
+      document.body.classList.remove("pt-hub-portal-light");
+    };
+  }, [isLightMode]);
+
+  useEffect(() => {
     const firstWorkspace = workspaces[0];
     if (!firstWorkspace) return;
     if (
