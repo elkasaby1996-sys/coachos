@@ -77,6 +77,11 @@ export function PtHubClientsPage() {
     clientsQuery.isLoading || (clientsQuery.isFetching && !clientsQuery.data);
   const isEmpty = totalCount === 0;
   const hasAnyClients = (stats?.totalClients ?? 0) > 0;
+  const hasActiveFilters =
+    searchValue.trim().length > 0 ||
+    workspaceFilter !== "all" ||
+    lifecycleFilter !== "all" ||
+    segmentFilter !== "all";
 
   useEffect(() => {
     setPage(0);
@@ -108,6 +113,13 @@ export function PtHubClientsPage() {
   const openClientWorkspace = (client: PTClientSummary) => {
     switchWorkspace(client.workspaceId);
     navigate(`/pt/clients/${client.id}`);
+  };
+
+  const resetFilters = () => {
+    setSearchValue("");
+    setWorkspaceFilter("all");
+    setLifecycleFilter("all");
+    setSegmentFilter("all");
   };
 
   return (
@@ -167,7 +179,7 @@ export function PtHubClientsPage() {
         title={t("ptHub.clients.listTitle", "Client List")}
         contentClassName="space-y-4"
       >
-        <div className="pt-hub-filter-row lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)]">
+        <div className="pt-hub-filter-row lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)_auto]">
           <div className="relative min-w-0">
             <Search className="app-search-icon h-4 w-4" />
             <Input
@@ -250,6 +262,16 @@ export function PtHubClientsPage() {
               {t("ptHub.clients.segment.paused", "Paused clients")}
             </option>
           </Select>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-11 whitespace-nowrap"
+            disabled={!hasActiveFilters}
+            onClick={resetFilters}
+          >
+            Reset
+          </Button>
         </div>
 
         {isTableLoading ? (

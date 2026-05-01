@@ -95,7 +95,10 @@ export function StatusPill({
     fallbackPill;
 
   return (
-    <Badge variant={pill.variant} className={cn("tracking-[0.2em]", className)}>
+    <Badge
+      variant={pill.variant}
+      className={cn("normal-case tracking-normal", className)}
+    >
       {pill.label}
     </Badge>
   );
@@ -120,7 +123,10 @@ export function TagInfoBadge({
 
   if (disabled) {
     return (
-      <Badge variant={variant} className={cn("tracking-[0.2em]", className)}>
+      <Badge
+        variant={variant}
+        className={cn("normal-case tracking-normal", className)}
+      >
         {label}
       </Badge>
     );
@@ -137,7 +143,7 @@ export function TagInfoBadge({
         <Badge
           variant={variant}
           className={cn(
-            "tracking-[0.2em] transition-transform duration-200 hover:-translate-y-px",
+            "normal-case tracking-normal transition-transform duration-200 hover:-translate-y-px",
             className,
           )}
         >

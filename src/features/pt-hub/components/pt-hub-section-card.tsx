@@ -36,7 +36,7 @@ export function PtHubSectionCard({
     <Card
       module={resolvedModule}
       className={cn(
-        "surface-panel relative overflow-hidden rounded-[28px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl",
+        "surface-panel pt-hub-surface-work relative overflow-hidden rounded-[28px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl",
         className,
       )}
     >

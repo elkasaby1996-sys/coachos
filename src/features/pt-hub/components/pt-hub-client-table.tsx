@@ -49,7 +49,7 @@ export function PtHubClientTable({
   return (
     <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
       <div
-        className={`hidden gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid ${
+        className={`hidden gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-xs font-semibold normal-case tracking-normal text-muted-foreground lg:grid ${
           showWorkspaceColumn
             ? "lg:grid-cols-[minmax(220px,1.35fr)_180px_minmax(270px,0.85fr)_150px]"
             : "lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px]"

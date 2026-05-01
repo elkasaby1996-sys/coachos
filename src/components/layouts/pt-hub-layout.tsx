@@ -34,10 +34,15 @@ import { cn } from "../../lib/utils";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import {
+  usePtHubClientStats,
+  usePtHubLeads,
+  usePtHubProfileReadiness,
   usePtHubSettings,
   usePtHubProfile,
   usePtHubWorkspaces,
+  usePtPackages,
 } from "../../features/pt-hub/lib/pt-hub";
+import { summarizePackageDisplayStates } from "../../features/pt-hub/lib/pt-hub-package-state";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { AppFooter } from "../common/app-footer";
 import { RouteTransition } from "../common/route-transition";
@@ -261,7 +266,7 @@ function getPtHubRouteTransitionKey(pathname: string) {
 
 function getPtHubHeaderPillClassName(isLightMode: boolean) {
   return cn(
-    "group hidden h-[58px] w-[236px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex",
+    "group hidden h-[58px] min-w-[190px] flex-1 items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex sm:max-w-[236px] xl:w-[220px] xl:flex-none 2xl:w-[236px]",
     isLightMode
       ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.94),oklch(var(--bg-surface)/0.82))] hover:shadow-[0_24px_54px_-36px_oklch(var(--accent)/0.16)]"
       : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.78))] hover:shadow-[0_24px_52px_-36px_oklch(var(--accent)/0.18)]",
@@ -288,7 +293,7 @@ function getPtHubHeaderPillChevronClassName(isLightMode: boolean) {
 
 function getPtHubStatusPillClassName(isLightMode: boolean) {
   return cn(
-    "hidden h-[58px] min-w-[176px] items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl sm:flex",
+    "hidden h-[58px] min-w-[176px] flex-none items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl sm:flex",
     isLightMode
       ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)]"
       : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)]",
@@ -343,6 +348,10 @@ export function PtHubLayout() {
   const workspacesQuery = usePtHubWorkspaces();
   const settingsQuery = usePtHubSettings();
   const profileQuery = usePtHubProfile();
+  const readinessQuery = usePtHubProfileReadiness();
+  const leadsQuery = usePtHubLeads();
+  const clientStatsQuery = usePtHubClientStats();
+  const packagesQuery = usePtPackages();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [headerCondensed, setHeaderCondensed] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -396,6 +405,37 @@ export function PtHubLayout() {
     "P"
   ).toUpperCase();
   const isLightMode = themeMode === "light";
+  const navIndicators = useMemo(() => {
+    const leads = leadsQuery.data ?? [];
+    const packageSummary = summarizePackageDisplayStates(
+      packagesQuery.data ?? [],
+    );
+    const hiddenOrDraftPackages = packageSummary
+      .filter(
+        (item) => item.label.includes("Draft") || item.label.includes("Hidden"),
+      )
+      .reduce((total, item) => total + item.count, 0);
+    const clientStats = clientStatsQuery.data;
+    const clientAttentionCount =
+      (clientStats?.atRiskClients ?? 0) +
+      (clientStats?.overdueCheckinClients ?? 0) +
+      (clientStats?.onboardingIncompleteClients ?? 0);
+    const profileBlockers =
+      readinessQuery.data?.checklist.filter((item) => !item.complete).length ??
+      0;
+
+    return {
+      "/pt-hub/profile": profileBlockers,
+      "/pt-hub/packages": hiddenOrDraftPackages,
+      "/pt-hub/leads": leads.filter((lead) => lead.status === "new").length,
+      "/pt-hub/clients": clientAttentionCount,
+    } satisfies Record<string, number>;
+  }, [
+    clientStatsQuery.data,
+    leadsQuery.data,
+    packagesQuery.data,
+    readinessQuery.data,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -489,7 +529,7 @@ export function PtHubLayout() {
         <div className="surface-panel-strong flex h-full flex-col overflow-hidden rounded-[32px] border-border/70">
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <div>
-              <p className="text-xl font-semibold uppercase tracking-[0.06em] text-foreground">
+              <p className="text-xl font-semibold tracking-normal text-foreground">
                 {t("common.repsyncPtHub", "Repsync PT Hub")}
               </p>
               <p className="text-sm text-muted-foreground">
@@ -510,6 +550,7 @@ export function PtHubLayout() {
             onLogout={signOut}
             isSigningOut={isSigningOut}
             themeMode={themeMode}
+            navIndicators={navIndicators}
             onNavigate={() => setMobileOpen(false)}
           />
         </div>
@@ -535,6 +576,7 @@ export function PtHubLayout() {
                   onLogout={signOut}
                   isSigningOut={isSigningOut}
                   themeMode={themeMode}
+                  navIndicators={navIndicators}
                 />
               </div>
             </div>
@@ -543,14 +585,14 @@ export function PtHubLayout() {
           <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
             <header
               className={cn(
-                "surface-panel-strong relative overflow-hidden rounded-[30px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-5",
+                "pt-hub-shell-header surface-panel-strong relative overflow-hidden rounded-[30px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-5",
                 headerCondensed ? "py-3" : "py-4",
                 isLightMode
                   ? "shadow-[var(--surface-strong-shadow)]"
                   : "shadow-[var(--surface-strong-shadow)]",
               )}
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--accent)/0.04))]" />
+              <div className="pt-hub-shell-header-wash pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--accent)/0.04))]" />
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-6 top-0 h-px",
@@ -561,11 +603,11 @@ export function PtHubLayout() {
               />
               <div
                 className={cn(
-                  "relative flex flex-wrap items-start justify-between transition-[gap] duration-200",
+                  "relative flex flex-wrap items-start justify-between transition-[gap] duration-200 lg:items-center xl:flex-nowrap",
                   headerCondensed ? "gap-3" : "gap-4",
                 )}
               >
-                <div className="flex min-w-0 items-start gap-3">
+                <div className="flex min-w-[min(100%,20rem)] flex-1 items-start gap-3">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -614,7 +656,7 @@ export function PtHubLayout() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 xl:flex-none xl:flex-nowrap">
                   <div className={getPtHubStatusPillClassName(isLightMode)}>
                     <div
                       className={getPtHubStatusPillIconClassName({
@@ -625,7 +667,7 @@ export function PtHubLayout() {
                       <Globe className="h-4 w-4 [stroke-width:1.7]" />
                     </div>
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <p className="pt-hub-kicker">
+                      <p className="pt-hub-minor-label">
                         {t("common.profileStatus", "Profile status")}
                       </p>
                       <div className="flex items-center gap-2">
@@ -831,12 +873,14 @@ function SidebarContent({
   onLogout,
   isSigningOut,
   themeMode,
+  navIndicators,
   onNavigate,
 }: {
   className?: string;
   onLogout: () => Promise<void>;
   isSigningOut: boolean;
   themeMode: PtHubThemeMode;
+  navIndicators?: Record<string, number | string | null | undefined>;
   onNavigate?: () => void;
 }) {
   const { t } = useI18n();
@@ -849,7 +893,7 @@ function SidebarContent({
         <div className="min-w-0">
           <p
             className={cn(
-              "text-[1.15rem] font-semibold uppercase tracking-[0.05em]",
+              "text-[1.15rem] font-semibold tracking-normal",
               isLightMode ? "text-slate-950" : "text-foreground",
             )}
           >
@@ -861,12 +905,18 @@ function SidebarContent({
       <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-8 pr-1">
         {hubNavGroups.map((group) => (
           <div key={group.label} className="space-y-2.5">
-            <p className="pt-hub-kicker px-2">
+            <p className="pt-hub-minor-label px-2">
               {t(group.labelKey, group.label)}
             </p>
             <div className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
+                const indicator = navIndicators?.[item.to];
+                const showIndicator =
+                  indicator !== undefined &&
+                  indicator !== null &&
+                  indicator !== "" &&
+                  indicator !== 0;
                 return (
                   <NavLink
                     key={item.to}
@@ -913,7 +963,7 @@ function SidebarContent({
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
                         <motion.div
-                          className="min-w-0 self-center"
+                          className="min-w-0 flex-1 self-center"
                           animate={
                             reduceMotion
                               ? { opacity: 1, x: 0 }
@@ -921,14 +971,21 @@ function SidebarContent({
                           }
                           transition={{ duration: 0.18, ease: "easeOut" }}
                         >
-                          <p
-                            className={cn(
-                              "relative z-10",
-                              isLightMode ? "text-slate-900" : "text-inherit",
-                            )}
-                          >
-                            {t(item.labelKey, item.label)}
-                          </p>
+                          <div className="relative z-10 flex min-w-0 items-center justify-between gap-2">
+                            <p
+                              className={cn(
+                                "min-w-0 truncate",
+                                isLightMode ? "text-slate-900" : "text-inherit",
+                              )}
+                            >
+                              {t(item.labelKey, item.label)}
+                            </p>
+                            {showIndicator ? (
+                              <span className="pt-hub-nav-indicator">
+                                {indicator}
+                              </span>
+                            ) : null}
+                          </div>
                         </motion.div>
                       </>
                     )}

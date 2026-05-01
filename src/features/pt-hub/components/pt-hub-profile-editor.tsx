@@ -29,7 +29,10 @@ import {
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import type { StoredProfileDraft } from "../lib/pt-hub";
 import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
-import { uploadPtProfileMedia } from "../lib/pt-profile-media";
+import {
+  uploadPtProfileMedia,
+  type PtProfileMediaKind,
+} from "../lib/pt-profile-media";
 import type {
   PTAccountSettingsDraft,
   PTAvailabilityMode,
@@ -302,8 +305,8 @@ function PtHubLiveProfilePreview({
   displayNameValue: string;
 }) {
   return (
-    <div className="pt-hub-live-preview overflow-hidden rounded-[28px] border border-border/70 bg-background/55">
-      <div className="relative h-32 overflow-hidden bg-muted">
+    <div className="pt-hub-live-preview overflow-hidden rounded-[24px] border border-border/70 bg-background/55">
+      <div className="relative h-20 overflow-hidden bg-muted">
         {form.bannerImageUrl ? (
           <img
             src={form.bannerImageUrl}
@@ -315,9 +318,9 @@ function PtHubLiveProfilePreview({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/20 to-transparent" />
       </div>
-      <div className="relative space-y-4 px-5 pb-5 pt-0">
+      <div className="relative space-y-3 px-4 pb-4 pt-0">
         <div className="-mt-10 flex items-end justify-between gap-3">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] border border-border/70 bg-background shadow-[0_16px_34px_-26px_oklch(0_0_0/0.65)]">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-border/70 bg-background shadow-[0_16px_34px_-26px_oklch(0_0_0/0.65)]">
             {form.profilePhotoUrl ? (
               <img
                 src={form.profilePhotoUrl}
@@ -333,20 +336,20 @@ function PtHubLiveProfilePreview({
           </Badge>
         </div>
         <div>
-          <p className="text-xl font-semibold leading-tight text-foreground">
+          <p className="text-lg font-semibold leading-tight text-foreground">
             {displayNameValue || "Display name"}
           </p>
           <p className="mt-1 text-sm font-medium leading-5 text-primary">
             {form.headline || "Headline appears here"}
           </p>
         </div>
-        <p className="line-clamp-4 text-sm leading-6 text-muted-foreground">
+        <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
           {form.shortBio ||
             "Add a short bio so prospects understand your coaching style, proof, and ideal client fit."}
         </p>
         <div className="flex flex-wrap gap-2">
           {form.specialties.length > 0 ? (
-            form.specialties.slice(0, 4).map((item) => (
+            form.specialties.slice(0, 2).map((item) => (
               <Badge key={item} variant="muted">
                 {item}
               </Badge>
@@ -391,6 +394,42 @@ function createDraft(profile: PTProfile): StoredProfileDraft {
   };
 }
 
+function applyUploadedProfileMedia(
+  draft: StoredProfileDraft,
+  params: {
+    kind: PtProfileMediaKind;
+    publicUrl: string;
+    transformationId?: string;
+  },
+) {
+  if (params.kind === "profile-photo") {
+    return { ...draft, profilePhotoUrl: params.publicUrl };
+  }
+
+  if (params.kind === "banner") {
+    return { ...draft, bannerImageUrl: params.publicUrl };
+  }
+
+  return {
+    ...draft,
+    transformations: draft.transformations.map((item) =>
+      item.id === params.transformationId
+        ? {
+            ...item,
+            beforeImageUrl:
+              params.kind === "transformation-before"
+                ? params.publicUrl
+                : item.beforeImageUrl,
+            afterImageUrl:
+              params.kind === "transformation-after"
+                ? params.publicUrl
+                : item.afterImageUrl,
+          }
+        : item,
+    ),
+  };
+}
+
 function PtHubProfileLaunchPanel({
   form,
   displayNameValue,
@@ -425,6 +464,11 @@ function PtHubProfileLaunchPanel({
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
   const missingItems = readiness.checklist.filter((item) => !item.complete);
+  const topMissingItems = missingItems.slice(0, 2);
+  const remainingMissingCount = missingItems.length - topMissingItems.length;
+  const selectedVisibilityOption =
+    visibilityOptions.find((option) => option.value === profileVisibility) ??
+    visibilityOptions[0]!;
   const canPublishNow =
     publicationState.canPublish && !hasChanges && !hasOverLimitErrors;
   const primaryActionLabel = hasChanges
@@ -434,11 +478,11 @@ function PtHubProfileLaunchPanel({
       : "Publish profile";
 
   return (
-    <aside className="space-y-5">
+    <aside className="pt-hub-profile-launch-rail space-y-5">
       <PtHubSectionCard
         title="Launch panel"
         description="Readiness, visibility, preview, and final actions in one place."
-        contentClassName="space-y-5"
+        contentClassName="space-y-4"
         actions={
           <Badge
             variant={getSemanticBadgeVariant(
@@ -449,19 +493,19 @@ function PtHubProfileLaunchPanel({
           </Badge>
         }
       >
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
+        <div className="space-y-2.5">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">
                 Profile readiness
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="truncate text-xs text-muted-foreground">
                 {readiness.readyForPublish
-                  ? "All required launch items are complete."
-                  : `${missingItems.length} item${missingItems.length === 1 ? "" : "s"} still need attention.`}
+                  ? "Ready to publish."
+                  : `${missingItems.length} blocker${missingItems.length === 1 ? "" : "s"} before launch.`}
               </p>
             </div>
-            <span className="font-mono text-2xl font-semibold tabular-nums text-foreground">
+            <span className="font-mono text-[1.65rem] font-semibold leading-none tabular-nums text-foreground">
               {readiness.completionPercent}%
             </span>
           </div>
@@ -477,31 +521,37 @@ function PtHubProfileLaunchPanel({
         </div>
 
         {missingItems.length > 0 ? (
-          <div className="space-y-2 rounded-[22px] border border-warning/22 bg-warning/12 p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Finish these first
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Complete the visible blockers before publishing.
-                </p>
-              </div>
+          <div className="rounded-[20px] border border-warning/22 bg-warning/12 p-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+              <p className="text-sm font-medium text-foreground">
+                Finish first
+              </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {missingItems.slice(0, 5).map((item) => (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {topMissingItems.map((item) => (
                 <Badge key={item.key} variant="warning">
                   {item.label}
                 </Badge>
               ))}
+              {remainingMissingCount > 0 ? (
+                <Badge variant="secondary">+{remainingMissingCount} more</Badge>
+              ) : null}
             </div>
           </div>
         ) : null}
 
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-foreground">Visibility</p>
-          <div className="grid gap-2">
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Visibility</p>
+            <span className="text-xs font-medium text-muted-foreground">
+              {selectedVisibilityOption.label}
+            </span>
+          </div>
+          <div
+            className="grid grid-cols-3 gap-1.5"
+            aria-label="Profile launch visibility"
+          >
             {visibilityOptions.map((option) => {
               const Icon = option.icon;
               const selected = profileVisibility === option.value;
@@ -511,7 +561,7 @@ function PtHubProfileLaunchPanel({
                   key={option.value}
                   type="button"
                   className={cn(
-                    "pt-hub-visibility-choice flex w-full items-start gap-3 rounded-[18px] border px-3 py-3 text-left transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "pt-hub-visibility-choice flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[16px] border px-2 py-2 text-center transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "border-primary/45 bg-primary/10 text-foreground"
                       : "border-border/60 bg-background/28 text-muted-foreground hover:border-border/80 hover:bg-background/45 hover:text-foreground",
@@ -519,21 +569,17 @@ function PtHubProfileLaunchPanel({
                   disabled={publishing || updatingVisibility}
                   onClick={() => void onProfileVisibilityChange(option.value)}
                 >
-                  <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-semibold">
-                      {option.label}
-                    </span>
-                    {selected ? (
-                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                        {option.description}
-                      </span>
-                    ) : null}
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate text-xs font-semibold">
+                    {option.label}
                   </span>
                 </button>
               );
             })}
           </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {selectedVisibilityOption.description}
+          </p>
         </div>
 
         <PtHubLiveProfilePreview
@@ -771,32 +817,14 @@ export function PtHubProfileEditor({
         transformationId: params.transformationId,
       });
 
-      setForm((prev) => {
-        if (params.kind === "profile-photo") {
-          return { ...prev, profilePhotoUrl: publicUrl };
-        }
-        if (params.kind === "banner") {
-          return { ...prev, bannerImageUrl: publicUrl };
-        }
-        return {
-          ...prev,
-          transformations: prev.transformations.map((item) =>
-            item.id === params.transformationId
-              ? {
-                  ...item,
-                  beforeImageUrl:
-                    params.kind === "transformation-before"
-                      ? publicUrl
-                      : item.beforeImageUrl,
-                  afterImageUrl:
-                    params.kind === "transformation-after"
-                      ? publicUrl
-                      : item.afterImageUrl,
-                }
-              : item,
-          ),
-        };
+      const nextDraft = applyUploadedProfileMedia(form, {
+        kind: params.kind,
+        publicUrl,
+        transformationId: params.transformationId,
       });
+
+      setForm(nextDraft);
+      await onSave(nextDraft);
     } catch (error) {
       setMediaError(
         error instanceof Error
@@ -811,7 +839,7 @@ export function PtHubProfileEditor({
   return (
     <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.36fr)_360px]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[5rem] justify-start gap-2 overflow-x-auto rounded-[28px] p-2">
+        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4.25rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[24px] p-1.5 xl:overflow-visible">
           {profileBuilderSteps.map((step) => {
             const isActive = activeTab === step.value;
             const completion = getStepCompletion(step.keys, readiness);
@@ -821,8 +849,11 @@ export function PtHubProfileEditor({
               <TabsTrigger
                 key={step.value}
                 className={cn(
-                  "pt-hub-profile-step-trigger group min-w-[10.5rem]",
+                  "pt-hub-profile-step-trigger group",
                   isActive ? "text-foreground" : "text-muted-foreground",
+                  isActive
+                    ? "min-w-[12.5rem] xl:flex-[1.7]"
+                    : "min-w-[6.25rem] sm:min-w-[7.25rem] xl:flex-1",
                 )}
                 value={step.value}
               >
@@ -841,10 +872,16 @@ export function PtHubProfileEditor({
                     }
                   />
                 ) : null}
-                <span className="relative z-10 flex w-full items-center gap-3 text-left">
+                <span
+                  className={cn(
+                    "relative z-10 flex w-full items-center text-left",
+                    isActive ? "gap-3" : "justify-center gap-2",
+                  )}
+                >
                   <span
                     className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
+                      "flex shrink-0 items-center justify-center rounded-full border",
+                      isActive ? "h-8 w-8" : "h-7 w-7",
                       isComplete
                         ? "border-success/40 bg-success/12 text-success"
                         : "border-border/70 bg-background/40 text-muted-foreground",
@@ -860,13 +897,25 @@ export function PtHubProfileEditor({
                       </span>
                     )}
                   </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold">
+                  <span
+                    className={cn(
+                      "min-w-0",
+                      !isActive && "flex min-w-0 flex-col items-start",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "block font-semibold",
+                        isActive ? "text-sm" : "text-xs sm:text-sm",
+                      )}
+                    >
                       {step.label}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                      {step.description}
-                    </span>
+                    {isActive ? (
+                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                        {step.description}
+                      </span>
+                    ) : null}
                   </span>
                 </span>
               </TabsTrigger>
@@ -1745,7 +1794,7 @@ export function PtHubProfileEditor({
         </TabsContent>
       </Tabs>
 
-      <div className="xl:sticky xl:top-6 xl:self-start">
+      <div className="xl:sticky xl:top-28 xl:self-start">
         <PtHubProfileLaunchPanel
           form={form}
           displayNameValue={displayNameValue}

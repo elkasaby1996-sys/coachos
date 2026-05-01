@@ -96,7 +96,14 @@ export function StatCard({
             isPtHub && ptHubLabelClassName,
           )}
         >
-          <span className="font-semibold uppercase tracking-[0.22em]">
+          <span
+            className={cn(
+              "font-semibold",
+              isPtHub
+                ? "normal-case tracking-normal"
+                : "uppercase tracking-[0.22em]",
+            )}
+          >
             {label}
           </span>
           {Icon ? (
@@ -139,6 +146,7 @@ export function StatCard({
               className={cn(
                 "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-[0.08em]",
                 getSemanticToneClasses(delta.tone).surface,
+                isPtHub && "tracking-normal",
                 !isPtHub &&
                   (!delta.tone || delta.tone === "neutral") &&
                   "bg-muted/28 text-muted-foreground",

@@ -766,7 +766,7 @@ export function PtHubPackageManager() {
         {splitFiltered.archived.length > 0 ? (
           <div className="space-y-3">
             {activeFilter === "all" ? (
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                 Archived packages
               </p>
             ) : null}

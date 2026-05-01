@@ -8,6 +8,7 @@ import {
   Search,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Input } from "../../components/ui/input";
@@ -164,6 +165,17 @@ export function PtHubLeadsPage() {
     }),
     [leads],
   );
+  const hasActiveFilters =
+    searchValue.trim().length > 0 ||
+    statusFilter !== "all" ||
+    packageFilterValue !== LEAD_PACKAGE_FILTER_ALL ||
+    attentionFilter === "waiting24h";
+
+  const resetFilters = () => {
+    setSearchValue("");
+    setStatusFilter("all");
+    setPackageFilterValue(LEAD_PACKAGE_FILTER_ALL);
+  };
 
   return (
     <section className="pt-hub-page-stack">
@@ -217,7 +229,7 @@ export function PtHubLeadsPage() {
         description="Search, filter, and open any inquiry."
         contentClassName="space-y-4"
       >
-        <div className="app-filter-grid">
+        <div className="app-filter-grid pt-hub-management-toolbar">
           <div className="app-filter-search relative min-w-0">
             <Search className="app-search-icon h-4 w-4" />
             <Input
@@ -261,6 +273,16 @@ export function PtHubLeadsPage() {
               </option>
             ))}
           </Select>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="app-filter-control"
+            disabled={!hasActiveFilters}
+            onClick={resetFilters}
+          >
+            Reset
+          </Button>
         </div>
 
         {filteredLeads.length === 0 ? (
@@ -275,7 +297,7 @@ export function PtHubLeadsPage() {
           />
         ) : (
           <div className="pt-hub-data-shell space-y-2 p-2">
-            <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_160px_170px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+            <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_160px_170px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-xs font-semibold normal-case tracking-normal text-muted-foreground lg:grid">
               <span>Lead</span>
               <span>Package</span>
               <span>Submitted</span>

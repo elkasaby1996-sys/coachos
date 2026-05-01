@@ -12,12 +12,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import {
   PtHubActionCenter,
-  PtHubModeStatusStrip,
   PtHubLaunchChecklistCard,
   PtHubOverviewErrorState,
   PtHubOverviewLoadingState,
   PtHubRecentActivityCard,
   PtHubQuickActionsCard,
+  PtHubSetupNoticeStrip,
   PtHubSummaryCard,
 } from "../../features/pt-hub/components/pt-hub-overview-sections";
 import {
@@ -185,22 +185,18 @@ export function PtHubOverviewPage() {
 
   return (
     <section
-      className="pt-hub-page-stack"
+      className="pt-hub-page-stack pt-hub-overview-page"
       data-density="roomy"
       data-testid="pt-hub-page"
     >
-      <PtHubModeStatusStrip
-        mode={dashboardModel.mode}
-        label={dashboardModel.modeLabel}
-        description={dashboardModel.modeDescription}
-        setupCompletionPercent={dashboardModel.setupCompletionPercent}
-        clientsNeedingAttentionCount={
-          dashboardModel.clientsNeedingAttentionCount
-        }
-      />
+      {showBusinessSetup ? (
+        <PtHubSetupNoticeStrip
+          completionPercent={dashboardModel.setupCompletionPercent}
+        />
+      ) : null}
 
       <div
-        className={cn("page-kpi-block pt-hub-kpi-grid", metricGridClassName)}
+        className={cn("pt-hub-kpi-ledger pt-hub-kpi-grid", metricGridClassName)}
         data-columns={dashboardModel.metrics.length === 4 ? "4" : undefined}
       >
         {dashboardModel.metrics.map((metric) => {
@@ -218,14 +214,20 @@ export function PtHubOverviewPage() {
               module={
                 metric.href ? getModuleToneForPath(metric.href) : "overview"
               }
-              className="h-full"
+              className="pt-hub-kpi-ledger-card h-full"
+              disableHoverMotion
             />
           );
 
           if (!metric.href) return card;
 
           return (
-            <Link key={metric.id} to={metric.href} className="block h-full">
+            <Link
+              key={metric.id}
+              to={metric.href}
+              className="pt-hub-kpi-link block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={`${metric.label}: ${metric.value}. ${metric.helper}`}
+            >
               {card}
             </Link>
           );
@@ -260,8 +262,8 @@ export function PtHubOverviewPage() {
           <div id={businessSetupToggleId}>
             <PtHubLaunchChecklistCard
               module="profile"
-              title="Business setup"
-              description="Finish the foundation across workspace, coach page, and first-demand readiness."
+              title="Launch checklist"
+              description="Top setup blockers only."
               items={dashboardModel.launchChecklist}
               completionPercent={dashboardModel.setupCompletionPercent}
               collapsed={businessSetupCollapsed}
@@ -277,8 +279,8 @@ export function PtHubOverviewPage() {
                 >
                   <span className="sr-only">
                     {businessSetupCollapsed
-                      ? "Expand business setup"
-                      : "Collapse business setup"}
+                      ? "Expand launch checklist"
+                      : "Collapse launch checklist"}
                   </span>
                   <span aria-hidden>
                     {businessSetupCollapsed ? "Show" : "Hide"}
@@ -295,13 +297,13 @@ export function PtHubOverviewPage() {
         </div>
       ) : null}
 
-      <div className="surface-panel relative overflow-hidden rounded-[28px] border border-border/70 px-4 py-4 shadow-[var(--surface-shadow)] sm:px-5">
+      <div className="pt-hub-support-disclosure surface-panel relative overflow-hidden rounded-[28px] border border-border/70 px-4 py-4 shadow-[var(--surface-shadow)] sm:px-5">
         <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="pt-hub-kicker">Supporting details</p>
             <p className="pt-hub-meta-text mt-1 max-w-3xl text-[0.94rem] leading-6">
-              Business snapshots, pipeline summaries, shortcuts, and billing
-              stay tucked away until you need a wider read.
+              Setup status, leads, clients, shortcuts, and payments are here
+              when you need more detail.
             </p>
           </div>
           <button
@@ -325,25 +327,25 @@ export function PtHubOverviewPage() {
           <div className="pt-hub-secondary-grid grid xl:grid-cols-3">
             <PtHubSummaryCard
               module="overview"
-              title="Business snapshot"
+              title="Setup status"
               items={dashboardModel.businessSummary}
             />
             <PtHubSummaryCard
               module="leads"
-              title="Lead pipeline"
+              title="Leads"
               items={dashboardModel.pipelineSummary}
               isEmpty={leads.length === 0}
               emptyState={{
-                title: "No leads in the pipeline yet",
+                title: "No leads yet",
                 description:
-                  "A clear coach page and a shareable public presence are the fastest way to create the first real lead flow.",
+                  "Publish and share your coach page so potential clients can contact you.",
                 href: "/pt-hub/profile/preview",
                 ctaLabel: "Open public preview",
               }}
             />
             <PtHubSummaryCard
               module="checkins"
-              title="Client delivery"
+              title="Clients"
               items={dashboardModel.clientHealthSummary}
               isEmpty={clients.length === 0}
               emptyState={{
@@ -368,7 +370,7 @@ export function PtHubOverviewPage() {
                 <PtHubSummaryCard
                   module="billing"
                   title="Revenue and billing"
-                  description="Commercial health for the coaching business."
+                  description="Payments, invoices, and revenue basics."
                   items={dashboardModel.billingSummary}
                   collapsed={billingCollapsed}
                   actions={

@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   ArrowRight,
-  Bell,
   CheckCircle2,
   CircleAlert,
   Sparkles,
@@ -15,6 +14,7 @@ import { Button } from "../../../components/ui/button";
 import { NotificationItem } from "../../notifications/components/notification-item";
 import type { NotificationRecord } from "../../notifications/lib/types";
 import type { ModuleTone } from "../../../lib/module-tone";
+import { formatRelativeTime } from "../../../lib/relative-time";
 import {
   getSemanticBadgeVariant,
   getSemanticToneClasses,
@@ -46,59 +46,36 @@ function getToneIcon(tone: SemanticTone | null | undefined) {
   return Sparkles;
 }
 
-export function PtHubModeStatusStrip({
-  mode,
-  label,
-  description,
-  setupCompletionPercent,
-  clientsNeedingAttentionCount,
-}: {
-  mode: PtHubOverviewMode;
-  label: string;
-  description: string;
-  setupCompletionPercent: number;
-  clientsNeedingAttentionCount: number;
-}) {
-  const isActivation = mode === "activation";
+function getActionPriorityLabel(tone: SemanticTone) {
+  if (tone === "danger") return "High priority";
+  if (tone === "warning") return "Needs review";
+  if (tone === "success") return "Clear";
+  return "Next step";
+}
 
+function getActionOwnerLabel(item: PtHubOverviewActionItem) {
+  return item.workspaceId ? "Workspace" : "Coach";
+}
+
+export function PtHubSetupNoticeStrip({
+  completionPercent,
+}: {
+  completionPercent: number;
+}) {
   return (
-    <div className="surface-panel pt-hub-status-strip relative overflow-hidden rounded-[28px] border border-border/70 px-5 py-4 shadow-[var(--surface-shadow)] sm:px-6">
-      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Badge
-              variant={isActivation ? "warning" : "success"}
-              className="h-7 px-2.5 text-[11px] normal-case tracking-[0.01em]"
-            >
-              {label}
-            </Badge>
-            <span className="pt-hub-meta-text text-sm font-medium">
-              {isActivation
-                ? `${setupCompletionPercent}% setup complete`
-                : `${clientsNeedingAttentionCount} client${clientsNeedingAttentionCount === 1 ? "" : "s"} need attention`}
-            </span>
-          </div>
-          <p className="max-w-4xl text-[0.96rem] leading-6 text-foreground">
-            {description}
+    <div className="surface-panel pt-hub-setup-notice pt-hub-surface-quiet relative overflow-hidden rounded-[22px] border border-border/60 px-4 py-3 shadow-[0_12px_34px_-30px_oklch(var(--accent)/0.3)] sm:px-5">
+      <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <Badge
+            variant="warning"
+            className="h-7 px-2.5 text-[11px] normal-case tracking-normal"
+          >
+            Setup not finished
+          </Badge>
+          <p className="pt-hub-meta-text text-sm leading-6">
+            {completionPercent}% ready. Finish the launch checklist below before
+            publishing your coach page.
           </p>
-        </div>
-        <div className="grid min-w-[min(100%,24rem)] grid-cols-2 gap-2 sm:min-w-[25rem]">
-          <div className="pt-hub-status-metric rounded-[18px] border border-border/60 bg-background/38 px-3.5 py-3">
-            <p className="text-[0.76rem] font-semibold text-muted-foreground">
-              Setup progress
-            </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-              {setupCompletionPercent}%
-            </p>
-          </div>
-          <div className="pt-hub-status-metric rounded-[18px] border border-border/60 bg-background/38 px-3.5 py-3">
-            <p className="text-[0.76rem] font-semibold text-muted-foreground">
-              Client attention
-            </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-              {clientsNeedingAttentionCount}
-            </p>
-          </div>
         </div>
       </div>
     </div>
@@ -108,34 +85,105 @@ export function PtHubModeStatusStrip({
 function PtHubActionCenterRow({
   item,
   onClick,
+  variant = "default",
 }: {
   item: PtHubOverviewActionItem;
   onClick: () => void;
+  variant?: "default" | "primary" | "compact";
 }) {
   const toneStyles = getSemanticToneClasses(item.tone);
   const StatusIcon = getToneIcon(item.tone);
+  const priorityLabel = getActionPriorityLabel(item.tone);
+  const ownerLabel = getActionOwnerLabel(item);
+
+  if (variant === "compact") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="pt-hub-interactive pt-hub-priority-row pt-hub-priority-row-compact group flex min-w-0 items-center justify-between gap-4 rounded-[20px] border border-border/55 bg-background/22 px-4 py-3 text-left transition-[background-color,border-color,box-shadow] duration-200 hover:border-border/80 hover:bg-background/38 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <div className="min-w-0 flex items-center gap-3">
+          <span
+            className={cn(
+              "pt-hub-priority-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
+              toneStyles.surface,
+            )}
+            aria-hidden
+          >
+            <StatusIcon className="h-3.5 w-3.5 [stroke-width:1.8]" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[0.95rem] font-semibold leading-5 text-foreground">
+              {item.label}
+            </p>
+            <p className="pt-hub-meta-text mt-0.5 truncate text-[0.78rem] font-medium">
+              {ownerLabel} - {item.badge}
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary transition-colors group-hover:text-foreground group-focus-visible:text-foreground">
+          {item.ctaLabel}
+          <ArrowRight className="h-3.5 w-3.5 [stroke-width:1.7]" />
+        </span>
+      </button>
+    );
+  }
+
+  const isPrimary = variant === "primary";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="pt-hub-interactive pt-hub-priority-row group relative grid gap-4 rounded-[24px] border border-border/60 bg-background/34 px-4 py-4 text-left shadow-[inset_0_1px_0_oklch(1_0_0/0.035)] transition-[background-color,border-color,box-shadow] duration-200 hover:border-border/80 hover:bg-background/52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-6"
+      className={cn(
+        "pt-hub-interactive pt-hub-priority-row group relative grid gap-4 border border-border/60 text-left shadow-[inset_0_1px_0_oklch(1_0_0/0.035)] transition-[background-color,border-color,box-shadow] duration-200 hover:border-border/80 hover:bg-background/52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-6",
+        isPrimary
+          ? "pt-hub-priority-row-primary rounded-[28px] bg-background/42 px-4 py-4 sm:px-5 sm:py-5"
+          : "rounded-[24px] bg-background/34 px-4 py-4 sm:px-5",
+      )}
     >
       <div className="min-w-0 flex gap-3">
         <span
           className={cn(
-            "pt-hub-priority-icon mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border",
+            "pt-hub-priority-icon mt-0.5 inline-flex shrink-0 items-center justify-center rounded-full border",
+            isPrimary ? "h-10 w-10" : "h-9 w-9",
             toneStyles.surface,
           )}
           aria-hidden
         >
-          <StatusIcon className="h-4 w-4 [stroke-width:1.8]" />
+          <StatusIcon
+            className={cn("h-4 w-4 [stroke-width:1.8]", isPrimary && "h-5 w-5")}
+          />
         </span>
         <div className="min-w-0 space-y-2">
-          <p className="text-[0.98rem] font-semibold leading-5 text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant={getSemanticBadgeVariant(item.tone)}
+              className="h-6 px-2 text-[0.72rem] normal-case tracking-normal"
+            >
+              {priorityLabel}
+            </Badge>
+            <span className="pt-hub-owner-chip">{ownerLabel}</span>
+          </div>
+          <p
+            className={cn(
+              "font-semibold text-foreground",
+              isPrimary
+                ? "text-[1.12rem] leading-6 sm:text-[1.22rem]"
+                : "text-[1.02rem] leading-5",
+            )}
+          >
             {item.label}
           </p>
-          <p className="pt-hub-meta-text max-w-4xl text-[0.93rem] leading-6">
+          <p
+            className={cn(
+              "pt-hub-meta-text max-w-4xl",
+              isPrimary
+                ? "text-[0.95rem] leading-6"
+                : "text-[0.9rem] leading-5",
+            )}
+          >
             {item.description}
           </p>
         </div>
@@ -143,11 +191,14 @@ function PtHubActionCenterRow({
       <div className="flex flex-wrap items-center gap-3 pl-12 lg:min-w-[11.5rem] lg:flex-col lg:items-end lg:justify-center lg:pl-0">
         <Badge
           variant={getSemanticBadgeVariant(item.tone)}
-          className="h-7 px-2.5 py-0 text-[11px] normal-case tracking-[0.01em]"
+          className="h-7 px-2.5 py-0 text-[11px] normal-case tracking-normal"
         >
           {item.badge}
         </Badge>
         <span className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors group-hover:text-foreground group-focus-visible:text-foreground">
+          <span className="pt-hub-action-prefix hidden lg:inline">
+            Next action
+          </span>
           {item.ctaLabel}
           <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
         </span>
@@ -264,8 +315,12 @@ export function PtHubActionCenter({
   const { switchWorkspace } = useWorkspace();
   const helperText =
     mode === "activation"
-      ? "Setup blockers, lead flow, and workspace readiness in one list."
-      : "Lead, client, and delivery decisions that need the next coach action.";
+      ? "Start with the blocker most likely to delay launch."
+      : "Start with the decision most likely to protect client delivery.";
+  const [primaryItem, ...secondaryItems] = items;
+  const visibleSecondaryItems = secondaryItems.slice(0, 3);
+  const hiddenSecondaryCount =
+    secondaryItems.length - visibleSecondaryItems.length;
 
   const handleActionClick = (item: PtHubOverviewActionItem) => {
     if (item.workspaceId) {
@@ -275,7 +330,7 @@ export function PtHubActionCenter({
   };
 
   return (
-    <div className="surface-panel-strong pt-hub-priority-panel relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
+    <div className="surface-panel-strong pt-hub-priority-panel pt-hub-surface-hero relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
       <div className="pt-hub-action-center-overlay pointer-events-none absolute inset-0" />
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
 
@@ -284,7 +339,7 @@ export function PtHubActionCenter({
           <div className="space-y-2.5">
             <p className="pt-hub-kicker">Action center</p>
             <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold tracking-[0.005em] text-foreground sm:text-[1.85rem]">
-              Priorities
+              Command center
             </h2>
             <p className="pt-hub-meta-text max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
               {helperText}
@@ -292,7 +347,7 @@ export function PtHubActionCenter({
           </div>
           <Badge
             variant={items.length > 0 ? "warning" : "success"}
-            className="h-8 w-fit px-3 text-[11px] normal-case tracking-[0.01em]"
+            className="h-8 w-fit px-3 text-[11px] normal-case tracking-normal"
           >
             {items.length > 0
               ? `${items.length} open ${items.length === 1 ? "item" : "items"}`
@@ -300,33 +355,70 @@ export function PtHubActionCenter({
           </Badge>
         </div>
 
-        {items.length > 0 ? (
+        {primaryItem ? (
           <div
-            className="space-y-3"
+            className="space-y-4"
             role="list"
             aria-label="Action center items"
           >
-            {items.map((item) => (
+            <div className="space-y-2">
+              <p className="pt-hub-minor-label pt-hub-minor-label-strong">
+                Focus first
+              </p>
               <PtHubActionCenterRow
-                key={item.id}
-                item={item}
-                onClick={() => handleActionClick(item)}
+                item={primaryItem}
+                onClick={() => handleActionClick(primaryItem)}
+                variant="primary"
               />
-            ))}
+            </div>
+
+            {visibleSecondaryItems.length > 0 ? (
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="pt-hub-minor-label">Next in queue</p>
+                  {hiddenSecondaryCount > 0 ? (
+                    <span className="pt-hub-meta-text text-xs font-medium">
+                      +{hiddenSecondaryCount} more held back
+                    </span>
+                  ) : null}
+                </div>
+                <div className="grid gap-2 lg:grid-cols-3">
+                  {visibleSecondaryItems.map((item) => (
+                    <PtHubActionCenterRow
+                      key={item.id}
+                      item={item}
+                      onClick={() => handleActionClick(item)}
+                      variant="compact"
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
-          <div className="rounded-[28px] border border-primary/18 bg-primary/8 px-5 py-6">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
-              <div>
-                <p className="text-[1rem] font-semibold text-foreground">
-                  Nothing urgent right now
-                </p>
-                <p className="pt-hub-meta-text mt-2 max-w-3xl text-[0.95rem] leading-6">
-                  You are caught up on the biggest blockers. Use the sections
-                  below to keep momentum moving and look for the next growth
-                  opportunity.
-                </p>
+          <div className="pt-hub-command-clear-state rounded-[28px] border border-primary/18 bg-primary/8 px-5 py-6">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/24 bg-primary/10 text-primary">
+                  <CheckCircle2 className="h-5 w-5 [stroke-width:1.7]" />
+                </span>
+                <div>
+                  <p className="text-[1.05rem] font-semibold text-foreground">
+                    Pipeline is clear
+                  </p>
+                  <p className="pt-hub-meta-text mt-2 max-w-3xl text-[0.95rem] leading-6">
+                    No urgent coach decisions are waiting. Use the calm moment
+                    to review lead flow or tighten the public storefront.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/pt-hub/leads">Review leads</Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/pt-hub/profile">Polish profile</Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -351,26 +443,47 @@ export function PtHubRecentActivityCard({
   onOpenNotification: (notification: NotificationRecord) => void;
   module?: ModuleTone;
 }) {
+  const latestNotification = notifications[0] ?? null;
+  const latestLabel = latestNotification
+    ? formatRelativeTime(latestNotification.created_at)
+    : null;
+  const unreadNotifications = notifications.filter(
+    (notification) => !notification.is_read,
+  );
+  const readNotifications = notifications.filter(
+    (notification) => notification.is_read,
+  );
+  const headerSummary = isLoading
+    ? "Checking for new activity."
+    : errorMessage
+      ? "Activity status unavailable."
+      : unreadCount > 0
+        ? `${unreadCount} unread${latestLabel ? `, latest ${latestLabel}` : ""}`
+        : latestLabel
+          ? `All clear, latest ${latestLabel}`
+          : "All clear, no recent updates.";
+
+  const renderNotification = (notification: NotificationRecord) => (
+    <NotificationItem
+      key={notification.id}
+      notification={notification}
+      audience="pt"
+      compact
+      className="rounded-[22px] border-transparent bg-transparent px-4 py-4 shadow-none hover:border-transparent hover:bg-background/18"
+      onClick={() => onOpenNotification(notification)}
+    />
+  );
+
   return (
     <PtHubSectionCard
       title="Recent activity"
+      description={headerSummary}
       module={module}
-      className="pt-hub-activity-rail h-full"
+      className="pt-hub-activity-rail pt-hub-surface-quiet h-full"
       actions={
-        <>
-          {unreadCount > 0 ? (
-            <Badge
-              variant="info"
-              className="h-8 px-3 text-[11px] normal-case tracking-[0.01em]"
-            >
-              <Bell className="h-3.5 w-3.5 [stroke-width:1.8]" />
-              {unreadCount} unread
-            </Badge>
-          ) : null}
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/pt/notifications">View all</Link>
-          </Button>
-        </>
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/pt/notifications">View all</Link>
+        </Button>
       }
     >
       {isLoading ? (
@@ -383,17 +496,39 @@ export function PtHubRecentActivityCard({
           ))}
         </div>
       ) : notifications.length > 0 ? (
-        <div className="-mx-1 divide-y divide-border/60">
-          {notifications.map((notification) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              audience="pt"
-              compact
-              className="rounded-[22px] border-transparent bg-transparent px-4 py-4 shadow-none hover:border-transparent hover:bg-background/18"
-              onClick={() => onOpenNotification(notification)}
-            />
-          ))}
+        <div className="-mx-1 space-y-4">
+          {unreadNotifications.length > 0 ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3 px-4">
+                <p className="pt-hub-minor-label pt-hub-minor-label-strong">
+                  Unread
+                </p>
+                <span className="pt-hub-meta-text text-xs">
+                  {unreadNotifications.length} new
+                </span>
+              </div>
+              <div className="divide-y divide-border/60">
+                {unreadNotifications.map(renderNotification)}
+              </div>
+            </div>
+          ) : null}
+          {readNotifications.length > 0 ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3 px-4">
+                <p className="pt-hub-minor-label">
+                  {unreadNotifications.length > 0 ? "Earlier" : "Latest"}
+                </p>
+                {latestLabel ? (
+                  <span className="pt-hub-meta-text text-xs">
+                    Latest {latestLabel}
+                  </span>
+                ) : null}
+              </div>
+              <div className="divide-y divide-border/60">
+                {readNotifications.map(renderNotification)}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : errorMessage ? (
         <EmptyState
@@ -403,12 +538,22 @@ export function PtHubRecentActivityCard({
           className="rounded-[26px] border-border/70 bg-background/34"
         />
       ) : (
-        <EmptyState
-          title="No notifications yet"
-          description="Client, check-in, message, and workspace updates from every coaching space will appear here."
-          icon={<Sparkles className="h-5 w-5 [stroke-width:1.7]" />}
-          className="rounded-[26px] border-border/70 bg-background/34"
-        />
+        <div className="pt-hub-activity-clear rounded-[24px] border border-border/55 bg-background/20 px-4 py-5">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/8 text-primary">
+              <CheckCircle2 className="h-[1.125rem] w-[1.125rem] [stroke-width:1.7]" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Activity rail is quiet
+              </p>
+              <p className="pt-hub-meta-text mt-1.5 text-[0.9rem] leading-6">
+                Client, check-in, message, and workspace updates will appear
+                here when something needs a look.
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </PtHubSectionCard>
   );
@@ -431,60 +576,78 @@ export function PtHubLaunchChecklistCard({
   collapsed?: boolean;
   module?: ModuleTone;
 }) {
+  const blockers = items.filter((item) => !item.complete);
+  const completedItems = items.filter((item) => item.complete);
+  const visibleItems =
+    blockers.length > 0 ? blockers.slice(0, 3) : completedItems.slice(0, 3);
+  const hiddenBlockerCount = Math.max(blockers.length - visibleItems.length, 0);
+  const checklistSummary =
+    blockers.length > 0
+      ? `${Math.min(blockers.length, 3)} blocker${Math.min(blockers.length, 3) === 1 ? "" : "s"} shown`
+      : "Launch basics complete";
+
   return (
     <PtHubSectionCard
       title={title}
       description={description}
       actions={actions}
       module={module}
-      className="h-full"
+      className="pt-hub-launch-checklist h-full"
       contentClassName={collapsed ? "hidden" : undefined}
     >
       {!collapsed ? (
-        <div className="space-y-4">
-          <div className="rounded-[20px] border border-border/55 bg-background/24 px-4 py-4 backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-3 text-[12px] font-semibold text-muted-foreground">
-              <span>Completion</span>
-              <span>{completionPercent}%</span>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3 text-[0.78rem] font-semibold text-muted-foreground">
+              <span>{checklistSummary}</span>
+              <span className="tabular-nums">{completionPercent}% ready</span>
             </div>
-            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted/70">
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted/55">
               <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,oklch(var(--accent)),oklch(var(--chart-3)),oklch(var(--primary)/0.78))] transition-[width]"
+                className="h-full rounded-full bg-primary/70 transition-[width]"
                 style={{ width: `${completionPercent}%` }}
               />
             </div>
           </div>
 
-          <div className="-mx-1 divide-y divide-border/60">
-            {items.map((item) => (
+          <div className="divide-y divide-border/55">
+            {visibleItems.map((item) => (
               <div
                 key={item.id}
-                className="pt-hub-interactive flex flex-col gap-4 rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18 sm:flex-row sm:items-center sm:justify-between"
+                className="pt-hub-inline-row pt-hub-interactive flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="min-w-0 flex items-start gap-3">
+                <div className="min-w-0 flex items-center gap-3">
                   <CheckCircle2
                     className={cn(
-                      "mt-0.5 h-5 w-5 shrink-0 [stroke-width:1.7]",
+                      "h-4 w-4 shrink-0 [stroke-width:1.8]",
                       item.complete
-                        ? "text-success"
-                        : "text-primary opacity-55",
+                        ? "text-success opacity-75"
+                        : "text-muted-foreground",
                     )}
                   />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
+                    <p className="truncate text-sm font-semibold text-foreground">
                       {item.label}
-                    </p>
-                    <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
-                      {item.description}
                     </p>
                   </div>
                 </div>
-                <Button asChild variant={item.complete ? "ghost" : "secondary"}>
+                <Button
+                  asChild
+                  variant={item.complete ? "ghost" : "secondary"}
+                  size="sm"
+                  className="shrink-0"
+                >
                   <Link to={item.href}>{item.ctaLabel}</Link>
                 </Button>
               </div>
             ))}
           </div>
+          {hiddenBlockerCount > 0 ? (
+            <p className="pt-hub-meta-text text-xs">
+              {hiddenBlockerCount} more blocker
+              {hiddenBlockerCount === 1 ? "" : "s"} in the profile editor.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </PtHubSectionCard>
@@ -603,7 +766,7 @@ export function PtHubSummaryCard({
                     <div className="min-w-0 flex-1 space-y-2">
                       <Badge
                         variant={getSemanticBadgeVariant(item.tone)}
-                        className="px-2.5 py-1 text-[11px] normal-case tracking-[0.01em]"
+                        className="px-2.5 py-1 text-[11px] normal-case tracking-normal"
                       >
                         {item.label}
                       </Badge>
