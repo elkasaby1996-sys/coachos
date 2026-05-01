@@ -12,7 +12,10 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
   const isLightMode = mode === "light";
 
   return (
-    <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden" aria-hidden="true">
+    <div
+      className="pointer-events-none absolute inset-0 -z-20 overflow-hidden"
+      aria-hidden="true"
+    >
       <div
         className="absolute inset-0"
         style={{
@@ -27,7 +30,8 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
           background: isLightMode
             ? "radial-gradient(circle, rgba(122, 163, 192, 0.18), transparent 68%)"
             : "radial-gradient(circle, rgba(73, 103, 136, 0.18), transparent 68%)",
-          animation: "pt-hub-orb-float 28s cubic-bezier(0.42, 0, 0.2, 1) infinite",
+          animation:
+            "pt-hub-orb-float 28s cubic-bezier(0.42, 0, 0.2, 1) infinite",
           willChange: "transform, opacity",
         }}
       />
@@ -37,7 +41,8 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
           background: isLightMode
             ? "radial-gradient(circle, rgba(150, 180, 201, 0.14), transparent 70%)"
             : "radial-gradient(circle, rgba(63, 89, 120, 0.16), transparent 70%)",
-          animation: "pt-hub-orb-float 32s cubic-bezier(0.42, 0, 0.2, 1) infinite",
+          animation:
+            "pt-hub-orb-float 32s cubic-bezier(0.42, 0, 0.2, 1) infinite",
           animationDelay: "-9s",
           willChange: "transform, opacity",
         }}
@@ -48,7 +53,8 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
           background: isLightMode
             ? "radial-gradient(circle, rgba(167, 196, 208, 0.1), transparent 72%)"
             : "radial-gradient(circle, rgba(84, 116, 144, 0.12), transparent 72%)",
-          animation: "pt-hub-orb-float 30s cubic-bezier(0.42, 0, 0.2, 1) infinite",
+          animation:
+            "pt-hub-orb-float 30s cubic-bezier(0.42, 0, 0.2, 1) infinite",
           animationDelay: "-14s",
           willChange: "transform, opacity",
         }}
@@ -59,7 +65,8 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
           background: isLightMode
             ? "radial-gradient(circle at 20% 50%, rgba(122, 163, 192, 0.05), transparent 18%), radial-gradient(circle at 50% 45%, rgba(150, 180, 201, 0.04), transparent 22%), radial-gradient(circle at 78% 55%, rgba(167, 196, 208, 0.035), transparent 18%)"
             : "radial-gradient(circle at 20% 50%, rgba(73, 103, 136, 0.05), transparent 18%), radial-gradient(circle at 50% 45%, rgba(63, 89, 120, 0.045), transparent 22%), radial-gradient(circle at 78% 55%, rgba(84, 116, 144, 0.04), transparent 18%)",
-          animation: "pt-hub-wave-drift 34s cubic-bezier(0.42, 0, 0.2, 1) infinite",
+          animation:
+            "pt-hub-wave-drift 34s cubic-bezier(0.42, 0, 0.2, 1) infinite",
           willChange: "transform, opacity",
         }}
       />
@@ -69,7 +76,8 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
           background: isLightMode
             ? "radial-gradient(circle at 20% 50%, rgba(122, 163, 192, 0.035), transparent 18%), radial-gradient(circle at 50% 45%, rgba(150, 180, 201, 0.032), transparent 22%), radial-gradient(circle at 78% 55%, rgba(167, 196, 208, 0.028), transparent 18%)"
             : "radial-gradient(circle at 20% 50%, rgba(73, 103, 136, 0.04), transparent 18%), radial-gradient(circle at 50% 45%, rgba(63, 89, 120, 0.035), transparent 22%), radial-gradient(circle at 78% 55%, rgba(84, 116, 144, 0.03), transparent 18%)",
-          animation: "pt-hub-wave-drift 30s cubic-bezier(0.42, 0, 0.2, 1) infinite",
+          animation:
+            "pt-hub-wave-drift 30s cubic-bezier(0.42, 0, 0.2, 1) infinite",
           animationDelay: "-12s",
           willChange: "transform, opacity",
         }}
@@ -89,15 +97,17 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
 export function AppShellBackgroundLayer({
   animated = false,
   mode = "dark",
+  scrollActive = false,
 }: {
   animated?: boolean;
   mode?: AppShellBackgroundMode;
+  scrollActive?: boolean;
 }) {
   return (
     <>
       {animated ? (
         <Suspense fallback={<AmbientShellBackground mode={mode} />}>
-          <PtHubAnimatedBackground mode={mode} />
+          <PtHubAnimatedBackground mode={mode} scrollActive={scrollActive} />
         </Suspense>
       ) : (
         <AmbientShellBackground mode={mode} />

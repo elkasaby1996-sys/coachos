@@ -55,7 +55,7 @@ export function StatCard({
     <Card
       className={cn(
         isPtHub
-          ? "surface-panel relative h-full min-h-[188px] overflow-hidden rounded-[30px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl"
+          ? "surface-panel relative h-full min-h-[152px] overflow-hidden rounded-[26px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl"
           : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
         module && moduleClasses?.card,
         accent &&
@@ -87,7 +87,7 @@ export function StatCard({
       <CardHeader
         className={cn(
           "space-y-3",
-          isPtHub && "relative flex h-full px-5 py-5 sm:px-6",
+          isPtHub && "relative flex h-full px-4 py-4 sm:px-5",
         )}
       >
         <div
@@ -114,7 +114,7 @@ export function StatCard({
             <CardTitle
               className={cn(
                 "text-2xl font-semibold tracking-tight",
-                isPtHub && "text-[2.5rem] uppercase tracking-[0.04em]",
+                isPtHub && "text-[1.82rem] tracking-[-0.01em] tabular-nums",
               )}
             >
               <AnimatedValue value={value} />

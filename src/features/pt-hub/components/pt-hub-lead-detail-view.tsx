@@ -141,7 +141,8 @@ export function PtHubLeadDetailView({
     setNewWorkspaceName("");
   }, [lead, workspaces]);
 
-  const isCreatingWorkspace = workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE;
+  const isCreatingWorkspace =
+    workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE;
   const selectedWorkspaceId =
     workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE ||
     workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE
@@ -151,13 +152,13 @@ export function PtHubLeadDetailView({
     ? newWorkspaceName.trim()
     : null;
   const currentWorkspaceName =
-    workspaces.find((workspace) => workspace.id === lead.convertedWorkspaceId)?.name ??
-    "current workspace";
+    workspaces.find((workspace) => workspace.id === lead.convertedWorkspaceId)
+      ?.name ?? "current workspace";
   const transferTargetWorkspaceName = isCreatingWorkspace
     ? selectedWorkspaceName || "new workspace"
     : selectedWorkspaceId
-      ? workspaces.find((workspace) => workspace.id === selectedWorkspaceId)?.name ??
-        "selected workspace"
+      ? (workspaces.find((workspace) => workspace.id === selectedWorkspaceId)
+          ?.name ?? "selected workspace")
       : null;
   const isConvertedLead = lead.status === "converted";
   const requiresTransferConfirmation =
@@ -191,8 +192,7 @@ export function PtHubLeadDetailView({
       if (errorCode === PT_HUB_LEAD_APPROVE_ERROR_TRANSFER_REQUIRED) {
         setApprovalFeedback({
           tone: "error",
-          text:
-            "Transfer confirmation is required before moving this lead to a different workspace.",
+          text: "Transfer confirmation is required before moving this lead to a different workspace.",
         });
         return;
       }
@@ -207,7 +207,7 @@ export function PtHubLeadDetailView({
   };
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         module="leads"
         eyebrow="Lead profile"
@@ -235,8 +235,8 @@ export function PtHubLeadDetailView({
         <PtHubLeadStatusBadge status={lead.status} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_340px]">
-        <div className="space-y-6">
+      <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.2fr)_330px]">
+        <div className="pt-hub-page-stack">
           <PtHubSectionCard
             module="leads"
             title="Application snapshot"
@@ -265,11 +265,15 @@ export function PtHubLeadDetailView({
               value={selectedAtApplicationLabel}
             />
             <p className="text-xs text-muted-foreground">
-              Captured from the applicant&apos;s selection at the time they applied.
+              Captured from the applicant&apos;s selection at the time they
+              applied.
             </p>
             {currentPackage ? (
               <>
-                <DetailRow label="Current package" value={currentPackage.title} />
+                <DetailRow
+                  label="Current package"
+                  value={currentPackage.title}
+                />
                 <DetailRow
                   label="Current state"
                   value={getPackageDisplayState(currentPackage)}
@@ -283,8 +287,8 @@ export function PtHubLeadDetailView({
             ) : null}
             {showCurrentPackageUnavailableMessage ? (
               <p className="text-xs text-muted-foreground">
-                Current package record is unavailable, but the selected-at-application
-                label remains preserved.
+                Current package record is unavailable, but the
+                selected-at-application label remains preserved.
               </p>
             ) : null}
           </PtHubSectionCard>
@@ -339,7 +343,8 @@ export function PtHubLeadDetailView({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No messages yet. Send a first message to begin the lead conversation.
+                    No messages yet. Send a first message to begin the lead
+                    conversation.
                   </p>
                 )}
 
@@ -352,7 +357,9 @@ export function PtHubLeadDetailView({
                       isInvalid={leadMessageLimitState.overLimit}
                       className="min-h-[110px]"
                       value={leadMessageBody}
-                      onChange={(event) => setLeadMessageBody(event.target.value)}
+                      onChange={(event) =>
+                        setLeadMessageBody(event.target.value)
+                      }
                       placeholder="Send a message to this lead..."
                     />
                     <FieldCharacterMeta
@@ -425,7 +432,9 @@ export function PtHubLeadDetailView({
               />
               <Button
                 variant="secondary"
-                disabled={saving || !noteBody.trim() || noteLimitState.overLimit}
+                disabled={
+                  saving || !noteBody.trim() || noteLimitState.overLimit
+                }
                 onClick={async () => {
                   if (noteLimitState.overLimit) return;
                   await onAddNote(lead.id, noteBody);
@@ -439,7 +448,7 @@ export function PtHubLeadDetailView({
           </PtHubSectionCard>
         </div>
 
-        <div className="space-y-6">
+        <div className="pt-hub-page-stack">
           <PtHubSectionCard
             module="leads"
             title="Status management"
@@ -499,7 +508,9 @@ export function PtHubLeadDetailView({
                   <Input
                     isInvalid={workspaceNameLimitState.overLimit}
                     value={newWorkspaceName}
-                    onChange={(event) => setNewWorkspaceName(event.target.value)}
+                    onChange={(event) =>
+                      setNewWorkspaceName(event.target.value)
+                    }
                     placeholder="New workspace name"
                   />
                   <FieldCharacterMeta
@@ -512,17 +523,24 @@ export function PtHubLeadDetailView({
 
               {isConvertedLead ? (
                 <p className="text-xs text-muted-foreground">
-                  This lead has been converted and assigned to "{currentWorkspaceName}" workspace.
+                  This lead has been converted and assigned to "
+                  {currentWorkspaceName}" workspace.
                 </p>
               ) : null}
               {isConvertedLead && requiresTransferConfirmation ? (
                 <p className="text-xs text-muted-foreground">
-                  Transferring to {transferTargetWorkspaceName ? `"${transferTargetWorkspaceName}"` : "another workspace"}{" "}
-                  will reset workspace-related client data, and the client will start over.
+                  Transferring to{" "}
+                  {transferTargetWorkspaceName
+                    ? `"${transferTargetWorkspaceName}"`
+                    : "another workspace"}{" "}
+                  will reset workspace-related client data, and the client will
+                  start over.
                 </p>
               ) : null}
               {approvalFeedback ? (
-                <p className="text-xs text-destructive">{approvalFeedback.text}</p>
+                <p className="text-xs text-destructive">
+                  {approvalFeedback.text}
+                </p>
               ) : null}
 
               <div className="flex flex-wrap gap-2">
@@ -541,10 +559,10 @@ export function PtHubLeadDetailView({
                   {isConvertedLead
                     ? "Lead already converted"
                     : workspaceAssignment === ASSIGN_WORKSPACE_LATER_VALUE
-                    ? "Approve (workspace later)"
-                    : requiresTransferConfirmation
-                      ? "Transfer lead"
-                      : "Approve and convert"}
+                      ? "Approve (workspace later)"
+                      : requiresTransferConfirmation
+                        ? "Transfer lead"
+                        : "Approve and convert"}
                 </Button>
                 <Button
                   variant="secondary"
@@ -559,7 +577,9 @@ export function PtHubLeadDetailView({
                   <Button
                     variant="secondary"
                     className="flex-1"
-                    disabled={saving || !requiresTransferConfirmation || approveDisabled}
+                    disabled={
+                      saving || !requiresTransferConfirmation || approveDisabled
+                    }
                     onClick={() => {
                       setTransferConfirmOpen(true);
                     }}
@@ -581,11 +601,14 @@ export function PtHubLeadDetailView({
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Transfer lead to another workspace?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Transfer lead to another workspace?
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This lead is already assigned to {currentWorkspaceName}. If you transfer them,
-                  they will lose workspace-related client data in the current workspace and start
-                  over in the new workspace.
+                  This lead is already assigned to {currentWorkspaceName}. If
+                  you transfer them, they will lose workspace-related client
+                  data in the current workspace and start over in the new
+                  workspace.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -616,7 +639,9 @@ export function PtHubLeadDetailView({
             <DetailRow
               label="Converted at"
               value={
-                lead.convertedAt ? formatRelativeTime(lead.convertedAt) : "Not yet"
+                lead.convertedAt
+                  ? formatRelativeTime(lead.convertedAt)
+                  : "Not yet"
               }
             />
             <DetailRow

@@ -1,7 +1,21 @@
-import { useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ImageIcon, Plus, Save, Sparkles, Upload, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Circle,
+  EyeOff,
+  Globe,
+  ImageIcon,
+  Lock,
+  Plus,
+  Save,
+  Sparkles,
+  Upload,
+  X,
+} from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -22,9 +36,9 @@ import type {
   PTCoachingMode,
   PTProfile,
   PTProfileReadiness,
+  PTProfileReadinessItem,
   PTPublicationState,
 } from "../types";
-import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { useSessionAuth } from "../../../lib/auth";
 import { cn } from "../../../lib/utils";
@@ -32,6 +46,7 @@ import {
   getCharacterLimitState,
   hasCharacterLimitError,
 } from "../../../lib/character-limits";
+import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
 
 const coachingModeOptions: Array<{
   value: PTCoachingMode;
@@ -49,6 +64,65 @@ const availabilityModeOptions: Array<{
 }> = [
   { value: "online", label: "Online" },
   { value: "in_person", label: "In-person" },
+];
+
+const profileBuilderSteps = [
+  {
+    value: "identity",
+    label: "Identity",
+    description: "Name, hero media, and story",
+    keys: ["profile_photo", "banner", "display_name", "headline", "bio"],
+  },
+  {
+    value: "proof",
+    label: "Proof",
+    description: "Specialties, credentials, and results",
+    keys: ["specialties", "certifications", "coaching_style"],
+  },
+  {
+    value: "offer",
+    label: "Offer",
+    description: "Packages and selling surface",
+    keys: [],
+  },
+  {
+    value: "visibility",
+    label: "Visibility",
+    description: "URL, discovery, and social proof",
+    keys: ["social_links", "cta_ready"],
+  },
+  {
+    value: "preview",
+    label: "Preview",
+    description: "Check the public storefront",
+    keys: [],
+  },
+] as const;
+
+const visibilityOptions: Array<{
+  value: PTAccountSettingsDraft["profileVisibility"];
+  label: string;
+  description: string;
+  icon: typeof Circle;
+}> = [
+  {
+    value: "draft",
+    label: "Draft",
+    description: "Keep the profile in setup while you edit content.",
+    icon: Circle,
+  },
+  {
+    value: "private",
+    label: "Private",
+    description: "Publishable content stays hidden from discovery.",
+    icon: Lock,
+  },
+  {
+    value: "listed",
+    label: "Listed when published",
+    description: "Make the profile eligible for public listing after publish.",
+    icon: Globe,
+  },
 ];
 
 function listToInput(values: string[]) {
@@ -120,6 +194,174 @@ function UploadButton({
   );
 }
 
+function getStepCompletion(
+  keys: readonly PTProfileReadinessItem["key"][],
+  readiness: PTProfileReadiness,
+) {
+  if (keys.length === 0) return { complete: 0, total: 0, percent: 100 };
+
+  const complete = keys.filter((key) =>
+    readiness.checklist.find((item) => item.key === key && item.complete),
+  ).length;
+
+  return {
+    complete,
+    total: keys.length,
+    percent: Math.round((complete / keys.length) * 100),
+  };
+}
+
+function ChipInput({
+  id,
+  label,
+  helperText,
+  placeholder,
+  values,
+  value,
+  isInvalid,
+  onValueChange,
+  onValuesChange,
+}: {
+  id: string;
+  label: string;
+  helperText: string;
+  placeholder: string;
+  values: string[];
+  value: string;
+  isInvalid: boolean;
+  onValueChange: (value: string) => void;
+  onValuesChange: (values: string[]) => void;
+}) {
+  const commitValue = (rawValue: string) => {
+    const nextItems = inputToList(rawValue);
+    if (nextItems.length === 0) return;
+
+    const merged = Array.from(new Set([...values, ...nextItems]));
+    onValuesChange(merged);
+    onValueChange("");
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter" && event.key !== ",") return;
+
+    event.preventDefault();
+    commitValue(value);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium text-foreground">
+        {label}
+      </label>
+      <p className="max-w-[62ch] text-sm leading-6 text-muted-foreground">
+        {helperText}
+      </p>
+      <Input
+        id={id}
+        isInvalid={isInvalid}
+        value={value}
+        onChange={(event) => onValueChange(event.target.value)}
+        onBlur={() => commitValue(value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+      />
+      <div className="flex min-h-9 flex-wrap gap-2">
+        {values.length > 0 ? (
+          values.map((item) => (
+            <Badge key={item} variant="muted" className="gap-1.5 pr-1">
+              {item}
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() =>
+                  onValuesChange(
+                    values.filter((valueItem) => valueItem !== item),
+                  )
+                }
+                aria-label={`Remove ${item}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Press Enter after each item to build this list.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PtHubLiveProfilePreview({
+  form,
+  displayNameValue,
+}: {
+  form: StoredProfileDraft;
+  displayNameValue: string;
+}) {
+  return (
+    <div className="pt-hub-live-preview overflow-hidden rounded-[28px] border border-border/70 bg-background/55">
+      <div className="relative h-32 overflow-hidden bg-muted">
+        {form.bannerImageUrl ? (
+          <img
+            src={form.bannerImageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-[radial-gradient(circle_at_20%_20%,oklch(var(--primary)/0.26),transparent_34%),linear-gradient(135deg,oklch(var(--bg-surface-elevated)/0.9),oklch(var(--bg-surface)/0.74))]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/20 to-transparent" />
+      </div>
+      <div className="relative space-y-4 px-5 pb-5 pt-0">
+        <div className="-mt-10 flex items-end justify-between gap-3">
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] border border-border/70 bg-background shadow-[0_16px_34px_-26px_oklch(0_0_0/0.65)]">
+            {form.profilePhotoUrl ? (
+              <img
+                src={form.profilePhotoUrl}
+                alt={displayNameValue || "Profile photo preview"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+            )}
+          </div>
+          <Badge variant={form.isPublished ? "success" : "secondary"}>
+            {form.isPublished ? "Published" : "Draft"}
+          </Badge>
+        </div>
+        <div>
+          <p className="text-xl font-semibold leading-tight text-foreground">
+            {displayNameValue || "Display name"}
+          </p>
+          <p className="mt-1 text-sm font-medium leading-5 text-primary">
+            {form.headline || "Headline appears here"}
+          </p>
+        </div>
+        <p className="line-clamp-4 text-sm leading-6 text-muted-foreground">
+          {form.shortBio ||
+            "Add a short bio so prospects understand your coaching style, proof, and ideal client fit."}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {form.specialties.length > 0 ? (
+            form.specialties.slice(0, 4).map((item) => (
+              <Badge key={item} variant="muted">
+                {item}
+              </Badge>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Specialties will appear here.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function createDraft(profile: PTProfile): StoredProfileDraft {
   const normalizedDisplayName =
     profile.displayName.trim() || profile.fullName.trim();
@@ -149,6 +391,215 @@ function createDraft(profile: PTProfile): StoredProfileDraft {
   };
 }
 
+function PtHubProfileLaunchPanel({
+  form,
+  displayNameValue,
+  readiness,
+  publicationState,
+  profileVisibility,
+  saving,
+  publishing,
+  updatingVisibility,
+  mediaBusy,
+  hasChanges,
+  hasOverLimitErrors,
+  onProfileVisibilityChange,
+  onSave,
+  onTogglePublish,
+}: {
+  form: StoredProfileDraft;
+  displayNameValue: string;
+  readiness: PTProfileReadiness;
+  publicationState: PTPublicationState;
+  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
+  saving: boolean;
+  publishing: boolean;
+  updatingVisibility: boolean;
+  mediaBusy: boolean;
+  hasChanges: boolean;
+  hasOverLimitErrors: boolean;
+  onProfileVisibilityChange: (
+    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
+  ) => Promise<void>;
+  onSave: (draft: StoredProfileDraft) => Promise<void>;
+  onTogglePublish: (nextPublished: boolean) => Promise<void>;
+}) {
+  const missingItems = readiness.checklist.filter((item) => !item.complete);
+  const canPublishNow =
+    publicationState.canPublish && !hasChanges && !hasOverLimitErrors;
+  const primaryActionLabel = hasChanges
+    ? "Save profile"
+    : publicationState.isPublished
+      ? "Unpublish profile"
+      : "Publish profile";
+
+  return (
+    <aside className="space-y-5">
+      <PtHubSectionCard
+        title="Launch panel"
+        description="Readiness, visibility, preview, and final actions in one place."
+        contentClassName="space-y-5"
+        actions={
+          <Badge
+            variant={getSemanticBadgeVariant(
+              publicationState.isPublished ? "Published" : "Unpublished",
+            )}
+          >
+            {publicationState.isPublished ? "Published" : "Unpublished"}
+          </Badge>
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Profile readiness
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {readiness.readyForPublish
+                  ? "All required launch items are complete."
+                  : `${missingItems.length} item${missingItems.length === 1 ? "" : "s"} still need attention.`}
+              </p>
+            </div>
+            <span className="font-mono text-2xl font-semibold tabular-nums text-foreground">
+              {readiness.completionPercent}%
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full rounded-full transition-[width] duration-500",
+                readiness.readyForPublish ? "bg-success" : "bg-warning",
+              )}
+              style={{ width: `${readiness.completionPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {missingItems.length > 0 ? (
+          <div className="space-y-2 rounded-[22px] border border-warning/22 bg-warning/12 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Finish these first
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Complete the visible blockers before publishing.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {missingItems.slice(0, 5).map((item) => (
+                <Badge key={item.key} variant="warning">
+                  {item.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-foreground">Visibility</p>
+          <div className="grid gap-2">
+            {visibilityOptions.map((option) => {
+              const Icon = option.icon;
+              const selected = profileVisibility === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={cn(
+                    "pt-hub-visibility-choice flex w-full items-start gap-3 rounded-[18px] border px-3 py-3 text-left transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected
+                      ? "border-primary/45 bg-primary/10 text-foreground"
+                      : "border-border/60 bg-background/28 text-muted-foreground hover:border-border/80 hover:bg-background/45 hover:text-foreground",
+                  )}
+                  disabled={publishing || updatingVisibility}
+                  onClick={() => void onProfileVisibilityChange(option.value)}
+                >
+                  <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-semibold">
+                      {option.label}
+                    </span>
+                    {selected ? (
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                        {option.description}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <PtHubLiveProfilePreview
+          form={form}
+          displayNameValue={displayNameValue}
+        />
+
+        <div className="grid gap-3">
+          <Button
+            asChild
+            variant="secondary"
+            className="w-full justify-between"
+          >
+            <Link to="/pt-hub/profile/preview">
+              Open full preview
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            className="w-full justify-between"
+            disabled={
+              saving ||
+              publishing ||
+              updatingVisibility ||
+              mediaBusy ||
+              hasOverLimitErrors ||
+              (!hasChanges && !publicationState.isPublished && !canPublishNow)
+            }
+            onClick={() => {
+              if (hasChanges) {
+                void onSave({
+                  ...form,
+                  fullName: displayNameValue,
+                  displayName: displayNameValue,
+                });
+                return;
+              }
+
+              void onTogglePublish(!publicationState.isPublished);
+            }}
+          >
+            <span>
+              {mediaBusy
+                ? "Finish uploads first"
+                : saving
+                  ? "Saving..."
+                  : publishing
+                    ? "Updating..."
+                    : hasOverLimitErrors
+                      ? "Fix field limits"
+                      : primaryActionLabel}
+            </span>
+            {hasChanges ? (
+              <Save className="h-4 w-4" />
+            ) : publicationState.isPublished ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Globe className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </PtHubSectionCard>
+    </aside>
+  );
+}
+
 export function PtHubProfileEditor({
   profile,
   readiness,
@@ -175,22 +626,19 @@ export function PtHubProfileEditor({
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
   const reduceMotion = useReducedMotion();
+  const fieldIdPrefix = useId();
   const [activeTab, setActiveTab] = useState("identity");
   const { user } = useSessionAuth();
   const [form, setForm] = useState<StoredProfileDraft>(createDraft(profile));
-  const [specialtiesInput, setSpecialtiesInput] = useState(
-    listToInput(profile.specialties),
-  );
-  const [certificationsInput, setCertificationsInput] = useState(
-    listToInput(profile.certifications),
-  );
+  const [specialtiesInput, setSpecialtiesInput] = useState("");
+  const [certificationsInput, setCertificationsInput] = useState("");
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
   useEffect(() => {
     setForm(createDraft(profile));
-    setSpecialtiesInput(listToInput(profile.specialties));
-    setCertificationsInput(listToInput(profile.certifications));
+    setSpecialtiesInput("");
+    setCertificationsInput("");
     setMediaError(null);
     setUploadingTarget(null);
   }, [profile]);
@@ -227,12 +675,12 @@ export function PtHubProfileEditor({
     fieldLabel: "Short bio",
   });
   const specialtiesLimitState = getCharacterLimitState({
-    value: specialtiesInput,
+    value: listToInput([...form.specialties, specialtiesInput]),
     kind: "default_text",
     fieldLabel: "Specialties",
   });
   const certificationsLimitState = getCharacterLimitState({
-    value: certificationsInput,
+    value: listToInput([...form.certifications, certificationsInput]),
     kind: "default_text",
     fieldLabel: "Certifications",
   });
@@ -361,33 +809,27 @@ export function PtHubProfileEditor({
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.34fr)_340px]">
+    <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.36fr)_360px]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <TabsList className="pt-hub-tab-rail h-auto min-h-[3.75rem] justify-center">
-          {(
-            [
-              ["identity", "Identity"],
-              ["expertise", "Expertise"],
-              ["marketplace", "Marketplace"],
-              ["social", "Social Links"],
-              ["preview", "Preview"],
-            ] as const
-          ).map(([value, label]) => {
-            const isActive = activeTab === value;
+        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[5rem] justify-start gap-2 overflow-x-auto rounded-[28px] p-2">
+          {profileBuilderSteps.map((step) => {
+            const isActive = activeTab === step.value;
+            const completion = getStepCompletion(step.keys, readiness);
+            const isComplete = completion.percent === 100;
 
             return (
               <TabsTrigger
-                key={value}
+                key={step.value}
                 className={cn(
-                  "pt-hub-tab-trigger group",
+                  "pt-hub-profile-step-trigger group min-w-[10.5rem]",
                   isActive ? "text-foreground" : "text-muted-foreground",
                 )}
-                value={value}
+                value={step.value}
               >
                 {isActive ? (
                   <motion.span
                     layoutId="pt-hub-profile-tab-active-pill"
-                    className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border"
+                    className="pt-hub-tab-active-pill absolute inset-0 rounded-[22px] border"
                     transition={
                       reduceMotion
                         ? { duration: 0 }
@@ -399,39 +841,64 @@ export function PtHubProfileEditor({
                     }
                   />
                 ) : null}
-                <span className="relative z-10">{label}</span>
+                <span className="relative z-10 flex w-full items-center gap-3 text-left">
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
+                      isComplete
+                        ? "border-success/40 bg-success/12 text-success"
+                        : "border-border/70 bg-background/40 text-muted-foreground",
+                    )}
+                  >
+                    {isComplete ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <span className="font-mono text-[11px] tabular-nums">
+                        {completion.total > 0
+                          ? `${completion.complete}/${completion.total}`
+                          : "OK"}
+                      </span>
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">
+                      {step.label}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {step.description}
+                    </span>
+                  </span>
+                </span>
               </TabsTrigger>
             );
           })}
         </TabsList>
 
-        {!readiness.readyForPublish ? (
-          <div className="pt-hub-support-rail mt-5 rounded-[24px] px-5 py-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-medium text-foreground">
-                    Launch priorities
-                  </p>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Complete the next few high-signal items inside the editor to
-                  strengthen your public launch setup.
+        <div className="pt-hub-support-rail mt-5 rounded-[24px] px-5 py-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)] lg:items-center">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">
+                  Launch priorities
                 </p>
+                <Badge variant="secondary">
+                  {readiness.completionPercent}% complete
+                </Badge>
               </div>
-              <Badge variant="secondary">
-                {readiness.completionPercent}% complete
-              </Badge>
+              <p className="max-w-[66ch] text-sm leading-6 text-muted-foreground">
+                Complete the highest-signal items while you edit. The launch
+                panel keeps save, preview, visibility, and publishing in one
+                place.
+              </p>
             </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {quickWins.map((item) => (
-                <div
-                  key={item.key}
-                  className="pt-hub-support-tile rounded-[18px] px-4 py-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
+            <div className="grid gap-2">
+              {quickWins.length > 0 ? (
+                quickWins.slice(0, 3).map((item) => (
+                  <div
+                    key={item.key}
+                    className="pt-hub-support-tile flex items-start justify-between gap-3 rounded-[18px] px-4 py-3"
+                  >
                     <div>
                       <p className="text-sm font-medium text-foreground">
                         {item.label}
@@ -449,11 +916,20 @@ export function PtHubProfileEditor({
                       <Link to={item.href}>Fix</Link>
                     </Button>
                   </div>
+                ))
+              ) : (
+                <div className="pt-hub-support-tile rounded-[18px] px-4 py-3">
+                  <p className="text-sm font-medium text-foreground">
+                    Ready to publish
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Review the live preview, then publish from the launch panel.
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
-        ) : null}
+        </div>
 
         {mediaError ? (
           <div className="mt-5 rounded-[22px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -463,97 +939,116 @@ export function PtHubProfileEditor({
 
         <TabsContent value="identity" className="space-y-5">
           <PtHubSectionCard title="Profile media" contentClassName="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[24px] border border-dashed border-border/70 bg-background/35 p-4">
-                <div className="flex min-h-[18rem] items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-background/70">
-                  {form.profilePhotoUrl ? (
-                    <img
-                      src={form.profilePhotoUrl}
-                      alt={displayNameValue || "Profile preview"}
-                      className="h-full w-full rounded-[20px] object-cover"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <ImageIcon className="h-4 w-4" />
-                      Photo preview
-                    </div>
-                  )}
-                </div>
-                <p className="mt-4 text-sm font-medium text-foreground">
-                  Profile photo
-                </p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <UploadButton
-                    label="Upload photo"
-                    uploading={uploadingTarget === "profile-photo"}
-                    disabled={mediaBusy && uploadingTarget !== "profile-photo"}
-                    onFileSelected={async (file) =>
-                      handleMediaUpload({
-                        file,
-                        kind: "profile-photo",
-                        targetKey: "profile-photo",
-                      })
-                    }
+            <div className="pt-hub-media-builder overflow-hidden rounded-[28px] border border-border/65 bg-background/35">
+              <div className="relative h-64 overflow-hidden bg-muted">
+                {form.bannerImageUrl ? (
+                  <img
+                    src={form.bannerImageUrl}
+                    alt="Banner preview"
+                    className="h-full w-full object-cover"
                   />
-                  {form.profilePhotoUrl ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="gap-2"
-                      onClick={() =>
-                        setForm((prev) => ({ ...prev, profilePhotoUrl: null }))
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                      Remove
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-              <div className="rounded-[24px] border border-dashed border-border/70 bg-background/35 p-4">
-                <div className="flex min-h-[18rem] items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-background/70">
-                  {form.bannerImageUrl ? (
-                    <img
-                      src={form.bannerImageUrl}
-                      alt="Banner preview"
-                      className="h-full w-full rounded-[20px] object-cover"
-                    />
-                  ) : (
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_20%_10%,oklch(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,oklch(var(--bg-surface-elevated)/0.84),oklch(var(--bg-surface)/0.62))]">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <ImageIcon className="h-4 w-4" />
                       Banner preview
                     </div>
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/95 to-transparent" />
+                <div className="absolute bottom-5 left-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-[0_18px_42px_-30px_oklch(0_0_0/0.72)]">
+                  {form.profilePhotoUrl ? (
+                    <img
+                      src={form.profilePhotoUrl}
+                      alt={displayNameValue || "Profile preview"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
                   )}
                 </div>
-                <p className="mt-4 text-sm font-medium text-foreground">
-                  Banner image
-                </p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <UploadButton
-                    label="Upload banner"
-                    uploading={uploadingTarget === "banner"}
-                    disabled={mediaBusy && uploadingTarget !== "banner"}
-                    onFileSelected={async (file) =>
-                      handleMediaUpload({
-                        file,
-                        kind: "banner",
-                        targetKey: "banner",
-                      })
-                    }
-                  />
-                  {form.bannerImageUrl ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="gap-2"
-                      onClick={() =>
-                        setForm((prev) => ({ ...prev, bannerImageUrl: null }))
+              </div>
+              <div className="grid gap-5 p-5 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Profile photo
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Square portrait, JPG, PNG, or WebP. Aim for at least
+                      800x800.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <UploadButton
+                      label="Upload photo"
+                      uploading={uploadingTarget === "profile-photo"}
+                      disabled={
+                        mediaBusy && uploadingTarget !== "profile-photo"
                       }
-                    >
-                      <X className="h-4 w-4" />
-                      Remove
-                    </Button>
-                  ) : null}
+                      onFileSelected={async (file) =>
+                        handleMediaUpload({
+                          file,
+                          kind: "profile-photo",
+                          targetKey: "profile-photo",
+                        })
+                      }
+                    />
+                    {form.profilePhotoUrl ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="gap-2"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            profilePhotoUrl: null,
+                          }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Banner image
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Wide storefront image. Use 1600x600 or larger for the
+                      cleanest crop.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <UploadButton
+                      label="Upload banner"
+                      uploading={uploadingTarget === "banner"}
+                      disabled={mediaBusy && uploadingTarget !== "banner"}
+                      onFileSelected={async (file) =>
+                        handleMediaUpload({
+                          file,
+                          kind: "banner",
+                          targetKey: "banner",
+                        })
+                      }
+                    />
+                    {form.bannerImageUrl ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="gap-2"
+                        onClick={() =>
+                          setForm((prev) => ({ ...prev, bannerImageUrl: null }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>
@@ -564,10 +1059,14 @@ export function PtHubProfileEditor({
             description="Set the public name and core profile story."
           >
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-display-name`}
+                className="text-sm font-medium text-foreground"
+              >
                 Display name
               </label>
               <Input
+                id={`${fieldIdPrefix}-display-name`}
                 isInvalid={displayNameLimitState.overLimit}
                 value={form.displayName}
                 onChange={(event) =>
@@ -586,6 +1085,9 @@ export function PtHubProfileEditor({
                 }
                 placeholder="How clients will see your brand"
               />
+              <p className="text-sm leading-6 text-muted-foreground">
+                Use the name clients should recognize on your public profile.
+              </p>
               <FieldCharacterMeta
                 count={displayNameLimitState.count}
                 limit={displayNameLimitState.limit}
@@ -594,10 +1096,14 @@ export function PtHubProfileEditor({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-headline`}
+                className="text-sm font-medium text-foreground"
+              >
                 Headline
               </label>
               <Input
+                id={`${fieldIdPrefix}-headline`}
                 isInvalid={headlineLimitState.overLimit}
                 value={form.headline}
                 onChange={(event) =>
@@ -612,6 +1118,10 @@ export function PtHubProfileEditor({
                 }
                 placeholder="High-performance coach for founders, athletes, and operators"
               />
+              <p className="text-sm leading-6 text-muted-foreground">
+                Name the audience, the outcome, and the training edge in one
+                line.
+              </p>
               <FieldCharacterMeta
                 count={headlineLimitState.count}
                 limit={headlineLimitState.limit}
@@ -620,12 +1130,19 @@ export function PtHubProfileEditor({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-short-bio`}
+                className="text-sm font-medium text-foreground"
+              >
                 Short bio
               </label>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Keep this focused on your method, client fit, and proof.
+              </p>
               <div className="space-y-1">
                 <div className="relative">
                   <Textarea
+                    id={`${fieldIdPrefix}-short-bio`}
                     isInvalid={shortBioLimitState.overLimit}
                     className="h-[160px] resize-none pb-10"
                     value={form.shortBio}
@@ -662,91 +1179,60 @@ export function PtHubProfileEditor({
           </PtHubSectionCard>
         </TabsContent>
 
-        <TabsContent value="expertise" className="space-y-5">
+        <TabsContent value="proof" className="space-y-5">
           <PtHubSectionCard
             title="Positioning and proof"
             description="Clarify who you coach, what outcomes you drive, and why clients should trust the process."
           >
             <div className="grid gap-5 lg:grid-cols-2">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    Specialties
-                  </label>
-                  <Input
-                    isInvalid={specialtiesLimitState.overLimit}
-                    value={specialtiesInput}
-                    onChange={(event) => {
-                      setSpecialtiesInput(event.target.value);
-                      setForm((prev) => ({
-                        ...prev,
-                        specialties: inputToList(event.target.value),
-                      }));
-                    }}
-                    placeholder="Strength, Hypertrophy, Fat loss, Executive performance"
-                  />
-                  <FieldCharacterMeta
-                    count={specialtiesLimitState.count}
-                    limit={specialtiesLimitState.limit}
-                    errorText={specialtiesLimitState.errorText}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {form.specialties.length > 0 ? (
-                    form.specialties.map((item) => (
-                      <Badge key={item} variant="muted">
-                        {item}
-                      </Badge>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Add specialties to shape your positioning.
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <ChipInput
+                  id={`${fieldIdPrefix}-specialties`}
+                  label="Specialties"
+                  helperText="Add focused lanes prospects can scan quickly."
+                  placeholder="Strength, fat loss, executive performance"
+                  values={form.specialties}
+                  value={specialtiesInput}
+                  isInvalid={specialtiesLimitState.overLimit}
+                  onValueChange={setSpecialtiesInput}
+                  onValuesChange={(nextValues) =>
+                    setForm((prev) => ({ ...prev, specialties: nextValues }))
+                  }
+                />
+                <FieldCharacterMeta
+                  count={specialtiesLimitState.count}
+                  limit={specialtiesLimitState.limit}
+                  errorText={specialtiesLimitState.errorText}
+                />
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    Certifications
-                  </label>
-                  <Input
-                    isInvalid={certificationsLimitState.overLimit}
-                    value={certificationsInput}
-                    onChange={(event) => {
-                      setCertificationsInput(event.target.value);
-                      setForm((prev) => ({
-                        ...prev,
-                        certifications: inputToList(event.target.value),
-                      }));
-                    }}
-                    placeholder="NASM CPT, Precision Nutrition, EXOS"
-                  />
-                  <FieldCharacterMeta
-                    count={certificationsLimitState.count}
-                    limit={certificationsLimitState.limit}
-                    errorText={certificationsLimitState.errorText}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {form.certifications.length > 0 ? (
-                    form.certifications.map((item) => (
-                      <Badge key={item} variant="secondary">
-                        {item}
-                      </Badge>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Add at least one credential to strengthen trust.
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <ChipInput
+                  id={`${fieldIdPrefix}-certifications`}
+                  label="Certifications"
+                  helperText="Add credentials that support your authority."
+                  placeholder="NASM CPT, Precision Nutrition, EXOS"
+                  values={form.certifications}
+                  value={certificationsInput}
+                  isInvalid={certificationsLimitState.overLimit}
+                  onValueChange={setCertificationsInput}
+                  onValuesChange={(nextValues) =>
+                    setForm((prev) => ({ ...prev, certifications: nextValues }))
+                  }
+                />
+                <FieldCharacterMeta
+                  count={certificationsLimitState.count}
+                  limit={certificationsLimitState.limit}
+                  errorText={certificationsLimitState.errorText}
+                />
               </div>
             </div>
 
             <div className="space-y-2 pt-1">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-coaching-style`}
+                className="text-sm font-medium text-foreground"
+              >
                 Coaching style
               </label>
               <p className="text-sm text-muted-foreground">
@@ -755,6 +1241,7 @@ export function PtHubProfileEditor({
               </p>
             </div>
             <Textarea
+              id={`${fieldIdPrefix}-coaching-style`}
               isInvalid={coachingStyleLimitState.overLimit}
               className="min-h-[180px]"
               value={form.coachingStyle}
@@ -1010,16 +1497,40 @@ export function PtHubProfileEditor({
           </PtHubSectionCard>
         </TabsContent>
 
-        <TabsContent value="marketplace" className="space-y-5">
+        <TabsContent value="offer" className="space-y-5">
+          <PtHubSectionCard
+            title="Package management"
+            description="Package editing lives in the dedicated PT Hub Packages surface, so this profile stays focused on storefront positioning."
+          >
+            <div className="rounded-[20px] border border-border/60 bg-background/35 p-4">
+              <p className="text-sm text-muted-foreground">
+                Use PT Hub Packages to create, publish or hide, archive, and
+                reorder packages. This keeps one canonical package-management
+                surface.
+              </p>
+              <div className="mt-3">
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/pt-hub/packages">Open Packages</Link>
+                </Button>
+              </div>
+            </div>
+          </PtHubSectionCard>
+        </TabsContent>
+
+        <TabsContent value="visibility" className="space-y-5">
           <PtHubSectionCard
             title="Public route"
             description="This slug powers the public profile URL and future shareable coach landing page."
           >
             <div className="max-w-xl space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-slug`}
+                className="text-sm font-medium text-foreground"
+              >
                 Public slug
               </label>
               <Input
+                id={`${fieldIdPrefix}-slug`}
                 isInvalid={slugLimitState.overLimit}
                 value={form.slug}
                 onChange={(event) =>
@@ -1030,6 +1541,9 @@ export function PtHubProfileEditor({
                 }
                 placeholder="your-name-coach"
               />
+              <p className="text-sm leading-6 text-muted-foreground">
+                Keep it short, readable, and close to your public coach name.
+              </p>
               <FieldCharacterMeta
                 count={slugLimitState.count}
                 limit={slugLimitState.limit}
@@ -1037,7 +1551,7 @@ export function PtHubProfileEditor({
               />
             </div>
             <div className="rounded-[20px] bg-background/45 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Public URL preview
               </p>
               <p className="mt-2 break-all text-sm text-foreground">
@@ -1048,9 +1562,9 @@ export function PtHubProfileEditor({
 
           <PtHubSectionCard
             title="Discoverability"
-            description="These fields prepare the profile for filtering, search, and coach discovery without changing the existing feature set."
+            description="Prepare the profile for filtering, search, and coach discovery."
           >
-            <div className="grid gap-6">
+            <div className="pt-hub-work-grid">
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">
                   Coaching modes
@@ -1113,10 +1627,14 @@ export function PtHubProfileEditor({
 
               <div className="app-form-grid">
                 <div className="app-form-col-12 space-y-2">
-                  <label className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor={`${fieldIdPrefix}-location`}
+                    className="text-sm font-medium text-foreground"
+                  >
                     Location
                   </label>
                   <Input
+                    id={`${fieldIdPrefix}-location`}
                     isInvalid={locationLimitState.overLimit}
                     value={form.locationLabel}
                     onChange={(event) =>
@@ -1138,26 +1656,6 @@ export function PtHubProfileEditor({
           </PtHubSectionCard>
 
           <PtHubSectionCard
-            title="Package management"
-            description="Package editing now lives in the dedicated PT Hub Packages surface."
-          >
-            <div className="rounded-[20px] border border-border/60 bg-background/35 p-4">
-              <p className="text-sm text-muted-foreground">
-                Use PT Hub Packages to create, publish or hide, archive, and
-                reorder packages. This keeps one canonical package-management
-                surface.
-              </p>
-              <div className="mt-3">
-                <Button asChild variant="secondary" size="sm">
-                  <Link to="/pt-hub/packages">Open Packages</Link>
-                </Button>
-              </div>
-            </div>
-          </PtHubSectionCard>
-        </TabsContent>
-
-        <TabsContent value="social" className="space-y-5">
-          <PtHubSectionCard
             title="Social links"
             description="Keep destination links clean and intentional. The future public page will reuse them directly."
           >
@@ -1168,14 +1666,18 @@ export function PtHubProfileEditor({
                   className="app-form-grid rounded-[18px] bg-background/35 px-4 py-3"
                 >
                   <div className="app-form-col-3">
-                    <p className="text-sm font-medium text-foreground">
+                    <label
+                      htmlFor={`${fieldIdPrefix}-social-${link.platform}`}
+                      className="text-sm font-medium text-foreground"
+                    >
                       {link.label}
-                    </p>
+                    </label>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       Leave blank to keep it hidden later.
                     </p>
                   </div>
                   <Input
+                    id={`${fieldIdPrefix}-social-${link.platform}`}
                     className="app-form-col-9"
                     isInvalid={socialLinkStates[index]?.overLimit}
                     value={link.url}
@@ -1243,46 +1745,23 @@ export function PtHubProfileEditor({
         </TabsContent>
       </Tabs>
 
-      <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-        <PtHubPublicationPanel
-          publicationState={publicationState}
+      <div className="xl:sticky xl:top-6 xl:self-start">
+        <PtHubProfileLaunchPanel
+          form={form}
+          displayNameValue={displayNameValue}
           readiness={readiness}
+          publicationState={publicationState}
           profileVisibility={profileVisibility}
+          saving={saving}
           publishing={publishing}
           updatingVisibility={updatingVisibility}
+          mediaBusy={mediaBusy}
+          hasChanges={hasChanges}
+          hasOverLimitErrors={hasOverLimitErrors}
           onProfileVisibilityChange={onProfileVisibilityChange}
+          onSave={onSave}
           onTogglePublish={onTogglePublish}
         />
-
-        <PtHubSectionCard title="Preview and save">
-          <div className="space-y-3">
-            <Button asChild variant="secondary" className="w-full">
-              <Link to="/pt-hub/profile/preview">Open full preview</Link>
-            </Button>
-            <Button
-              className="w-full"
-              disabled={
-                saving || mediaBusy || !hasChanges || hasOverLimitErrors
-              }
-              onClick={() =>
-                onSave({
-                  ...form,
-                  fullName: displayNameValue,
-                  displayName: displayNameValue,
-                })
-              }
-            >
-              <Save className="h-4 w-4" />
-              {mediaBusy
-                ? "Finish uploads first"
-                : saving
-                  ? "Saving..."
-                  : hasOverLimitErrors
-                    ? "Fix field limits to save"
-                    : "Save profile"}
-            </Button>
-          </div>
-        </PtHubSectionCard>
       </div>
     </div>
   );

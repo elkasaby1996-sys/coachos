@@ -77,7 +77,7 @@ export function PtHubLeadDetailPage() {
 
   if (leadsQuery.isLoading) {
     return (
-      <section className="space-y-6">
+      <section className="pt-hub-page-stack">
         <EmptyState
           title="Loading lead"
           description="We’re pulling the latest inquiry details now."
@@ -88,7 +88,7 @@ export function PtHubLeadDetailPage() {
 
   if (!lead) {
     return (
-      <section className="space-y-6">
+      <section className="pt-hub-page-stack">
         <EmptyState
           title="Lead not found"
           description="This inquiry may have been removed or the link is no longer valid."

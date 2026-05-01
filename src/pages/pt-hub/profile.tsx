@@ -38,7 +38,7 @@ export function PtHubProfilePage() {
     !user?.id
   ) {
     return (
-      <section className="space-y-6">
+      <section className="pt-hub-page-stack">
         <PtHubPageHeader
           eyebrow="Coach Profile"
           title="Coach profile"
@@ -52,7 +52,7 @@ export function PtHubProfilePage() {
   const settings = settingsQuery.data;
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Coach Profile"
         title="Edit your coach profile"

@@ -369,6 +369,21 @@ function AmbientMotionLayer({ mode }: { mode: PtHubThemeMode }) {
             : "bottom-[10%] right-[-6%] h-[16rem] w-[72%]"
         }`}
       />
+      <div
+        className={`pt-hub-bg-filament pt-hub-bg-filament-a absolute transform-gpu ${
+          mode === "light"
+            ? "left-[-12%] top-[28%] h-[9rem] w-[78%]"
+            : "left-[-16%] top-[26%] h-[10rem] w-[82%]"
+        }`}
+      />
+      <div
+        className={`pt-hub-bg-filament pt-hub-bg-filament-b absolute transform-gpu ${
+          mode === "light"
+            ? "right-[-24%] top-[48%] h-[8rem] w-[76%]"
+            : "right-[-28%] top-[46%] h-[9rem] w-[84%]"
+        }`}
+      />
+      <div className="pt-hub-bg-scan absolute inset-0" />
     </div>
   );
 }
@@ -558,9 +573,18 @@ export function PtHubAnimatedBackground({
           powerPreference: "high-performance",
         };
         gl =
-          (canvas.getContext("webgl2", contextAttributes) as WebGlContext | null) ??
-          (canvas.getContext("webgl", contextAttributes) as WebGlContext | null) ??
-          (canvas.getContext("experimental-webgl", contextAttributes) as WebGlContext | null);
+          (canvas.getContext(
+            "webgl2",
+            contextAttributes,
+          ) as WebGlContext | null) ??
+          (canvas.getContext(
+            "webgl",
+            contextAttributes,
+          ) as WebGlContext | null) ??
+          (canvas.getContext(
+            "experimental-webgl",
+            contextAttributes,
+          ) as WebGlContext | null);
 
         if (!gl) {
           throw new Error("WebGL is not available.");
@@ -578,21 +602,17 @@ export function PtHubAnimatedBackground({
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(
           gl.ARRAY_BUFFER,
-          new Float32Array([
-            -1, -1,
-            1, -1,
-            -1, 1,
-            -1, 1,
-            1, -1,
-            1, 1,
-          ]),
+          new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
           gl.STATIC_DRAW,
         );
 
         gl.useProgram(program);
 
         const positionLocation = gl.getAttribLocation(program, "a_position");
-        const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+        const resolutionLocation = gl.getUniformLocation(
+          program,
+          "u_resolution",
+        );
         const timeLocation = gl.getUniformLocation(program, "u_time");
         const pointerLocation = gl.getUniformLocation(program, "u_pointer");
         const baseLocation = gl.getUniformLocation(program, "u_base");

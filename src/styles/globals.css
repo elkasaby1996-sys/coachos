@@ -173,12 +173,11 @@
     --menu-separator-color: oklch(var(--border-default) / 0.74);
     --menu-label-color: oklch(var(--text-muted) / 1);
     --menu-icon-color: oklch(var(--accent) / 0.9);
-    --menu-icon-surface:
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-surface-elevated) / 0.94),
-        oklch(var(--bg-muted) / 0.7)
-      );
+    --menu-icon-surface: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.94),
+      oklch(var(--bg-muted) / 0.7)
+    );
     --select-surface-bg-field: var(--field-glass-bg);
     --select-surface-bg-field-focus: var(--field-glass-bg-focus);
     --select-surface-bg-filter:
@@ -408,24 +407,73 @@
     --chart-4: 0.68 0.068 72;
     --chart-5: 0.6 0.038 112;
     --shell-canvas:
-      radial-gradient(circle at 14% 16%, oklch(var(--bg-muted) / 0.08), transparent 26%),
-      radial-gradient(circle at 84% 18%, oklch(var(--chart-2) / 0.045), transparent 24%),
-      radial-gradient(circle at 70% 82%, oklch(var(--chart-4) / 0.055), transparent 24%),
-      linear-gradient(165deg, oklch(0.982 0.008 94), oklch(var(--bg-canvas)) 46%, oklch(0.898 0.02 86));
-    --sidebar-bg: linear-gradient(180deg, oklch(var(--bg-sidebar) / 0.94), oklch(0.895 0.018 88 / 0.84));
+      radial-gradient(
+        circle at 14% 16%,
+        oklch(var(--bg-muted) / 0.08),
+        transparent 26%
+      ),
+      radial-gradient(
+        circle at 84% 18%,
+        oklch(var(--chart-2) / 0.045),
+        transparent 24%
+      ),
+      radial-gradient(
+        circle at 70% 82%,
+        oklch(var(--chart-4) / 0.055),
+        transparent 24%
+      ),
+      linear-gradient(
+        165deg,
+        oklch(0.982 0.008 94),
+        oklch(var(--bg-canvas)) 46%,
+        oklch(0.898 0.02 86)
+      );
+    --sidebar-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-sidebar) / 0.94),
+      oklch(0.895 0.018 88 / 0.84)
+    );
     --surface-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.99), oklch(var(--bg-surface) / 0.95)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.95)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.2), transparent 46%);
     --surface-strong-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 1), oklch(var(--bg-surface) / 0.97)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 1),
+        oklch(var(--bg-surface) / 0.97)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.22), transparent 46%);
     --surface-portal-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 1), oklch(var(--bg-surface) / 0.97)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 1),
+        oklch(var(--bg-surface) / 0.97)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.2), transparent 44%);
-    --section-bg: linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.92), oklch(var(--bg-muted) / 0.74));
-    --dashed-bg: linear-gradient(180deg, oklch(var(--bg-surface) / 0.93), oklch(var(--bg-muted) / 0.72));
-    --popover-bg: linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.98), oklch(var(--bg-surface) / 0.92));
-    --dialog-bg: linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.99), oklch(var(--bg-surface) / 0.94));
+    --section-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.92),
+      oklch(var(--bg-muted) / 0.74)
+    );
+    --dashed-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface) / 0.93),
+      oklch(var(--bg-muted) / 0.72)
+    );
+    --popover-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.98),
+      oklch(var(--bg-surface) / 0.92)
+    );
+    --dialog-bg: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.99),
+      oklch(var(--bg-surface) / 0.94)
+    );
     --topbar-bg: oklch(var(--bg-surface-elevated) / 0.86);
     --sticky-bar-bg: oklch(var(--bg-surface-elevated) / 0.92);
     --overlay-bg: oklch(0.65 0.018 88 / 0.42);
@@ -437,13 +485,26 @@
     --popover-shadow: 0 22px 62px -42px oklch(0.32 0.03 92 / 0.26);
     --dialog-shadow: 0 28px 80px -50px oklch(0.3 0.03 92 / 0.28);
     --sticky-shadow: 0 24px 60px -40px oklch(0.32 0.03 92 / 0.22);
-    --skeleton-shimmer: linear-gradient(110deg, transparent, oklch(var(--text-primary) / 0.05), transparent);
+    --skeleton-shimmer: linear-gradient(
+      110deg,
+      transparent,
+      oklch(var(--text-primary) / 0.05),
+      transparent
+    );
     --portal-page-bg: var(--shell-canvas);
     --menu-surface-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.99), oklch(var(--bg-surface) / 0.94)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.94)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.2), transparent 44%);
     --menu-panel-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.99), oklch(var(--bg-surface) / 0.96)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.96)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.22), transparent 46%);
     --menu-surface-shadow:
       0 0 0 1px oklch(var(--border-subtle) / 0.68),
@@ -457,14 +518,26 @@
     --menu-separator-color: oklch(var(--border-default) / 0.74);
     --menu-label-color: oklch(var(--text-muted) / 1);
     --menu-icon-color: oklch(var(--accent) / 0.9);
-    --menu-icon-surface: linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.94), oklch(var(--bg-muted) / 0.7));
+    --menu-icon-surface: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.94),
+      oklch(var(--bg-muted) / 0.7)
+    );
     --select-surface-bg-field: var(--field-glass-bg);
     --select-surface-bg-field-focus: var(--field-glass-bg-focus);
     --select-surface-bg-filter:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.96), oklch(var(--bg-surface) / 0.9)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.96),
+        oklch(var(--bg-surface) / 0.9)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 46%);
     --select-surface-bg-filter-focus:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.99), oklch(var(--bg-surface) / 0.93)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.93)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.22), transparent 44%);
     --select-filter-border: oklch(var(--border-default) / 0.9);
     --select-filter-shadow:
@@ -472,10 +545,18 @@
       0 14px 30px -26px oklch(0.34 0.03 92 / 0.2);
     --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4.25 6.5L8 10.25L11.75 6.5' stroke='%235C665A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --field-glass-bg:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.96), oklch(var(--bg-surface) / 0.88)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.96),
+        oklch(var(--bg-surface) / 0.88)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 48%);
     --field-glass-bg-focus:
-      linear-gradient(180deg, oklch(var(--bg-surface-elevated) / 0.99), oklch(var(--bg-surface) / 0.92)),
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.92)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.24), transparent 46%);
     --field-glass-border: oklch(var(--border-default) / 0.82);
     --field-glass-border-focus: oklch(var(--accent) / 0.46);
@@ -915,12 +996,11 @@
     --menu-separator-color: oklch(var(--border-default) / 0.74);
     --menu-label-color: oklch(var(--text-muted) / 1);
     --menu-icon-color: oklch(var(--accent) / 0.9);
-    --menu-icon-surface:
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-surface-elevated) / 0.94),
-        oklch(var(--bg-muted) / 0.7)
-      );
+    --menu-icon-surface: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.94),
+      oklch(var(--bg-muted) / 0.7)
+    );
     --select-surface-bg-field: var(--field-glass-bg);
     --select-surface-bg-field-focus: var(--field-glass-bg-focus);
     --select-surface-bg-filter:
@@ -1116,12 +1196,11 @@
     --menu-separator-color: oklch(var(--border-default) / 0.74);
     --menu-label-color: oklch(var(--text-muted) / 1);
     --menu-icon-color: oklch(var(--accent) / 0.9);
-    --menu-icon-surface:
-      linear-gradient(
-        180deg,
-        oklch(var(--bg-surface-elevated) / 0.94),
-        oklch(var(--bg-muted) / 0.7)
-      );
+    --menu-icon-surface: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.94),
+      oklch(var(--bg-muted) / 0.7)
+    );
     --select-surface-bg-field: var(--field-glass-bg);
     --select-surface-bg-field-focus: var(--field-glass-bg-focus);
     --select-surface-bg-filter:
@@ -1350,6 +1429,66 @@
   textarea:not(.field-reset),
   .app-field-textarea {
     @apply min-h-[120px] w-full resize-y px-3 py-2 leading-6;
+  }
+
+  body.public-info-portal-light {
+    --bg-canvas: 0.99 0.002 255;
+    --bg-sidebar: 0.985 0.003 255;
+    --bg-surface: 1 0 0;
+    --bg-surface-elevated: 1 0 0;
+    --bg-muted: 0.965 0.004 255;
+    --bg-input: 1 0 0;
+    --text-primary: 0.16 0.018 255;
+    --text-secondary: 0.32 0.018 255;
+    --text-muted: 0.43 0.016 255;
+    --text-on-accent: 0.99 0.004 150;
+    --border-subtle: 0.91 0.006 255;
+    --border-default: 0.86 0.008 255;
+    --border-strong: 0.74 0.012 255;
+    --accent: 0.54 0.118 155;
+    --accent-hover: 0.48 0.12 155;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
+    --menu-surface-bg: linear-gradient(
+      180deg,
+      oklch(1 0 0 / 1),
+      oklch(0.985 0.003 255 / 0.98)
+    );
+    --menu-panel-bg: linear-gradient(
+      180deg,
+      oklch(1 0 0 / 1),
+      oklch(0.985 0.003 255 / 0.98)
+    );
+    --menu-surface-shadow:
+      0 0 0 1px oklch(var(--border-default) / 0.86),
+      0 24px 60px -42px oklch(0.25 0.02 255 / 0.28);
+    --menu-panel-shadow:
+      0 0 0 1px oklch(var(--border-default) / 0.9),
+      0 26px 68px -44px oklch(0.25 0.02 255 / 0.3);
+    --menu-border-color: oklch(var(--border-default) / 0.9);
+    --menu-item-hover: oklch(var(--bg-muted) / 0.94);
+    --menu-item-pressed: oklch(var(--bg-muted) / 1);
+    --menu-separator-color: oklch(var(--border-default) / 0.82);
+    --menu-label-color: oklch(var(--text-muted) / 1);
+    --menu-icon-color: oklch(var(--accent) / 1);
+    --menu-icon-surface: linear-gradient(
+      180deg,
+      oklch(1 0 0),
+      oklch(var(--bg-muted))
+    );
   }
 }
 
@@ -1815,6 +1954,47 @@
       0 0 0 6px oklch(var(--bg-canvas) / 0.92);
   }
 
+  .pt-hub-profile-step-rail {
+    border: 1px solid oklch(var(--border-strong) / 0.74);
+    background:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.7),
+        oklch(var(--bg-surface) / 0.52)
+      ),
+      radial-gradient(
+        circle at 8% 0%,
+        oklch(var(--primary) / 0.065),
+        transparent 32%
+      );
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.06),
+      0 20px 46px -42px oklch(0 0 0 / 0.82);
+    backdrop-filter: blur(22px);
+  }
+
+  .pt-hub-profile-step-trigger {
+    @apply relative inline-flex shrink-0 items-center justify-start self-stretch overflow-hidden rounded-[22px] border px-3 py-3 text-sm font-medium leading-none text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200;
+    border-color: transparent;
+    background-color: transparent;
+  }
+
+  .pt-hub-profile-step-trigger:hover {
+    color: oklch(var(--text-primary));
+    border-color: oklch(var(--border-default) / 0.5);
+    background-color: oklch(var(--bg-surface-elevated) / 0.34);
+  }
+
+  .pt-hub-profile-step-trigger[data-state="active"] {
+    color: oklch(var(--text-primary));
+  }
+
+  .pt-hub-profile-step-trigger:focus-visible {
+    box-shadow:
+      0 0 0 2px oklch(var(--ring) / 0.58),
+      0 0 0 6px oklch(var(--bg-canvas) / 0.92);
+  }
+
   .pt-hub-tab-active-pill {
     border-color: oklch(var(--border-strong) / 0.84);
     background:
@@ -1868,6 +2048,17 @@
     box-shadow:
       inset 0 1px 0 oklch(1 0 0 / 0.06),
       0 18px 34px -30px oklch(0 0 0 / 0.56);
+  }
+
+  .pt-hub-media-builder,
+  .pt-hub-live-preview {
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.055),
+      0 20px 48px -42px oklch(0 0 0 / 0.72);
+  }
+
+  .pt-hub-visibility-choice:active {
+    transform: translateY(1px);
   }
 
   .ops-surface {

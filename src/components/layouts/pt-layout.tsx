@@ -1065,7 +1065,7 @@ export function PtLayout() {
         className="pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden"
         style={getModuleToneStyle(currentModule)}
       >
-        <AppShellBackgroundLayer />
+        <AppShellBackgroundLayer mode={isLightMode ? "light" : "dark"} />
         <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
           <Card className="w-full max-w-md">
             <CardHeader>
@@ -1096,7 +1096,7 @@ export function PtLayout() {
       )}
       style={getModuleToneStyle(currentModule)}
     >
-      <AppShellBackgroundLayer />
+      <AppShellBackgroundLayer mode={isLightMode ? "light" : "dark"} />
       <div
         className={cn(
           "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition lg:hidden",

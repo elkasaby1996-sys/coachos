@@ -158,28 +158,30 @@ export function PtHubClientTable({
           return (
             <div
               key={client.id}
-              className={`relative grid gap-3 rounded-[20px] border border-transparent bg-background/55 px-5 py-3 transition-colors hover:border-primary/18 hover:bg-background/75 lg:items-center lg:gap-4 ${
+              className={`grid gap-3 rounded-[20px] border border-transparent bg-background/55 px-4 py-3 transition-colors hover:border-primary/18 hover:bg-background/75 lg:items-center lg:gap-4 ${
                 showWorkspaceColumn
                   ? "lg:grid-cols-[minmax(220px,1.35fr)_180px_minmax(270px,0.85fr)_150px]"
                   : "lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px]"
               }`}
             >
-              <span
-                aria-hidden
-                className={`absolute bottom-3 left-1 top-3 w-[2px] rounded-full ${
-                  getSemanticToneClasses(
-                    client.hasOverdueCheckin || clientAtRisk
-                      ? "danger"
-                      : client.onboardingIncomplete
-                        ? "warning"
-                        : "neutral",
-                  ).marker
-                }`}
-              />
               <div className="space-y-1 lg:flex lg:min-w-0 lg:items-center lg:gap-3 lg:space-y-0">
-                <p className="text-sm font-medium text-foreground">
-                  {client.displayName}
-                </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden
+                    className={`pt-hub-row-status-dot ${
+                      getSemanticToneClasses(
+                        client.hasOverdueCheckin || clientAtRisk
+                          ? "danger"
+                          : client.onboardingIncomplete
+                            ? "warning"
+                            : "neutral",
+                      ).marker
+                    }`}
+                  />
+                  <p className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {client.displayName}
+                  </p>
+                </div>
                 <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground lg:flex-nowrap">
                   <span className="whitespace-nowrap">
                     {t("ptHub.clients.table.recentActivity", "Recent activity")}{" "}

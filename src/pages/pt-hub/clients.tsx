@@ -111,7 +111,7 @@ export function PtHubClientsPage() {
   };
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow={t("ptHub.clients.eyebrow", "Clients")}
         title={t("ptHub.clients.title", "Manage your clients")}
@@ -121,7 +121,7 @@ export function PtHubClientsPage() {
         )}
       />
 
-      <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
+      <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         <StatCard
           surface="pt-hub"
           module="clients"
@@ -165,9 +165,9 @@ export function PtHubClientsPage() {
 
       <PtHubSectionCard
         title={t("ptHub.clients.listTitle", "Client List")}
-        contentClassName="space-y-6"
+        contentClassName="space-y-4"
       >
-        <div className="grid gap-3 lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)] lg:items-center">
+        <div className="pt-hub-filter-row lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)]">
           <div className="relative min-w-0">
             <Search className="app-search-icon h-4 w-4" />
             <Input
@@ -253,7 +253,7 @@ export function PtHubClientsPage() {
         </div>
 
         {isTableLoading ? (
-          <div className="space-y-3 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-4">
+          <div className="pt-hub-data-shell space-y-3 p-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
             ))}

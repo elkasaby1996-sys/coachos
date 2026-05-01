@@ -19,7 +19,7 @@ export function PtHubProfilePreviewPage() {
   const packageOptions = mapPublicPtPackageOptionsFromPackages(packages);
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Profile Preview"
         title="Preview your public profile"

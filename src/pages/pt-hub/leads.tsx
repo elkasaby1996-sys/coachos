@@ -166,14 +166,14 @@ export function PtHubLeadsPage() {
   );
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Leads"
         title="Review new inquiries"
         description='See "Apply to Work With Me" submissions and decide who to follow up with next.'
       />
 
-      <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
+      <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         <StatCard
           surface="pt-hub"
           module="leads"
@@ -215,7 +215,7 @@ export function PtHubLeadsPage() {
       <PtHubSectionCard
         title="Lead Pipeline"
         description="Search, filter, and open any inquiry."
-        contentClassName="space-y-6"
+        contentClassName="space-y-4"
       >
         <div className="app-filter-grid">
           <div className="app-filter-search relative min-w-0">
@@ -274,7 +274,7 @@ export function PtHubLeadsPage() {
             icon={<MessageSquarePlus className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
-          <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
+          <div className="pt-hub-data-shell space-y-2 p-2">
             <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_160px_170px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
               <span>Lead</span>
               <span>Package</span>
@@ -291,15 +291,15 @@ export function PtHubLeadsPage() {
                   <button
                     key={lead.id}
                     type="button"
-                    className="relative grid w-full gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_160px_170px] lg:items-center"
+                    className="grid w-full gap-4 rounded-[22px] border border-transparent bg-background/55 px-4 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_160px_170px] lg:items-center"
                     onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}
                   >
-                    <span
-                      aria-hidden
-                      className={`absolute bottom-4 left-1 top-4 w-[2px] rounded-full ${statusMarkerTone}`}
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        aria-hidden
+                        className={`pt-hub-row-status-dot ${statusMarkerTone}`}
+                      />
+                      <p className="min-w-0 truncate text-sm font-medium text-foreground">
                         {lead.fullName}
                       </p>
                     </div>

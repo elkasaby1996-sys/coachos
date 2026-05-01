@@ -462,10 +462,15 @@ export function PtHubLayout() {
       className={cn(
         "pt-hub-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
+        headerCondensed && "pt-hub-scroll-active",
       )}
       style={getModuleToneStyle(meta.module)}
     >
-      <AppShellBackgroundLayer animated mode={themeMode} />
+      <AppShellBackgroundLayer
+        animated
+        mode={themeMode}
+        scrollActive={headerCondensed}
+      />
 
       <div
         className={cn(
@@ -515,8 +520,8 @@ export function PtHubLayout() {
         align="left"
         className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-4"
       >
-        <div className="lg:h-full lg:pl-[328px]">
-          <aside className="hidden lg:fixed lg:bottom-[72px] lg:left-0 lg:top-0 lg:z-30 lg:block lg:w-[320px] lg:p-3">
+        <div className="lg:h-full lg:pl-[312px]">
+          <aside className="hidden lg:fixed lg:bottom-[72px] lg:left-0 lg:top-0 lg:z-30 lg:block lg:w-[304px] lg:p-3">
             <div className="h-full min-h-0">
               <div
                 className={cn(
@@ -538,7 +543,7 @@ export function PtHubLayout() {
           <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
             <header
               className={cn(
-                "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-6",
+                "surface-panel-strong relative overflow-hidden rounded-[30px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-5",
                 headerCondensed ? "py-3" : "py-4",
                 isLightMode
                   ? "shadow-[var(--surface-strong-shadow)]"
@@ -586,10 +591,10 @@ export function PtHubLayout() {
                     >
                       <p
                         className={cn(
-                          "font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
+                          "font-semibold uppercase tracking-[0.055em] text-foreground transition-[font-size,line-height] duration-200",
                           headerCondensed
-                            ? "text-[1.7rem] leading-none sm:text-[2rem]"
-                            : "text-[2.15rem] sm:text-[2.45rem]",
+                            ? "text-[1.55rem] leading-none sm:text-[1.85rem]"
+                            : "text-[1.95rem] sm:text-[2.25rem]",
                           currentModuleClasses.title,
                         )}
                       >
@@ -690,7 +695,9 @@ export function PtHubLayout() {
                       hubActive={inPtHubWorkspace}
                       onSelectHub={() => navigate("/pt-hub")}
                       workspaces={workspaceSwitcherItems}
-                      currentWorkspaceId={!inPtHubWorkspace ? workspaceId : null}
+                      currentWorkspaceId={
+                        !inPtHubWorkspace ? workspaceId : null
+                      }
                       onSelectWorkspace={(selectedWorkspaceId) => {
                         switchWorkspace(selectedWorkspaceId);
                         navigate("/pt/dashboard");

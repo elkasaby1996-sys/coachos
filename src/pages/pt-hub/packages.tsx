@@ -61,14 +61,14 @@ export function PtHubPackagesPage() {
   const packageStateSummary = summarizePackageDisplayStates(packages);
 
   return (
-    <section className="space-y-6" data-testid="pt-hub-packages-page">
+    <section className="pt-hub-page-stack" data-testid="pt-hub-packages-page">
       <PtHubPageHeader
         eyebrow="Packages"
         title="Manage your packages"
         description="Create, publish, hide, archive, and reorder PT-scoped packages for your public profile and lead intake."
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         {packageStateSummary.map((item) => {
           const meta = resolvePackageKpiMeta(item.label);
           const Icon = meta.icon;

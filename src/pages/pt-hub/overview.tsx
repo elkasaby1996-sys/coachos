@@ -5,7 +5,6 @@ import {
   MessageSquarePlus,
   Sparkles,
   UsersRound,
-  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
@@ -13,10 +12,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import {
   PtHubActionCenter,
+  PtHubModeStatusStrip,
   PtHubLaunchChecklistCard,
   PtHubOverviewErrorState,
   PtHubOverviewLoadingState,
   PtHubRecentActivityCard,
+  PtHubQuickActionsCard,
   PtHubSummaryCard,
 } from "../../features/pt-hub/components/pt-hub-overview-sections";
 import {
@@ -47,16 +48,11 @@ const metricIconMap = {
   "new-leads-month": MessageSquarePlus,
   "checkins-due": Sparkles,
   "onboarding-in-progress": ClipboardList,
-  "monthly-revenue": Wallet,
-  "monthly-earnings": Wallet,
 } as const satisfies Record<string, LucideIcon>;
 
 function getMetricGridClassName(metricCount: number) {
-  if (metricCount >= 5) return "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5";
-  if (metricCount === 4) return "sm:grid-cols-2 xl:grid-cols-4";
-  if (metricCount === 3) return "sm:grid-cols-2 xl:grid-cols-3";
-  if (metricCount === 2) return "sm:grid-cols-2";
-  return "grid-cols-1";
+  if (metricCount <= 2) return "pt-hub-kpi-grid-wide";
+  return "";
 }
 
 function getNotificationWorkspaceId(notification: NotificationRecord) {
@@ -80,6 +76,7 @@ export function PtHubOverviewPage() {
   const { switchWorkspace } = useWorkspace();
   const [businessSetupCollapsed, setBusinessSetupCollapsed] = useState(false);
   const [billingCollapsed, setBillingCollapsed] = useState(false);
+  const [supportExpanded, setSupportExpanded] = useState(false);
   const overviewQuery = usePtHubOverview();
   const workspacesQuery = usePtHubWorkspaces();
   const profileQuery = usePtHubProfile();
@@ -187,8 +184,25 @@ export function PtHubOverviewPage() {
   };
 
   return (
-    <section className="space-y-7" data-testid="pt-hub-page">
-      <div className={cn("page-kpi-block grid gap-4", metricGridClassName)}>
+    <section
+      className="pt-hub-page-stack"
+      data-density="roomy"
+      data-testid="pt-hub-page"
+    >
+      <PtHubModeStatusStrip
+        mode={dashboardModel.mode}
+        label={dashboardModel.modeLabel}
+        description={dashboardModel.modeDescription}
+        setupCompletionPercent={dashboardModel.setupCompletionPercent}
+        clientsNeedingAttentionCount={
+          dashboardModel.clientsNeedingAttentionCount
+        }
+      />
+
+      <div
+        className={cn("page-kpi-block pt-hub-kpi-grid", metricGridClassName)}
+        data-columns={dashboardModel.metrics.length === 4 ? "4" : undefined}
+      >
         {dashboardModel.metrics.map((metric) => {
           const Icon = metricIconMap[metric.id as keyof typeof metricIconMap];
           const card = (
@@ -218,37 +232,10 @@ export function PtHubOverviewPage() {
         })}
       </div>
 
-      <PtHubActionCenter
-        items={dashboardModel.actionItems}
-        mode={dashboardModel.mode}
-      />
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <PtHubSummaryCard
-          module="leads"
-          title="Lead pipeline"
-          items={dashboardModel.pipelineSummary}
-          isEmpty={leads.length === 0}
-          emptyState={{
-            title: "No leads in the pipeline yet",
-            description:
-              "A clear coach page and a shareable public presence are the fastest way to create the first real lead flow.",
-            href: "/pt-hub/profile/preview",
-            ctaLabel: "Open public preview",
-          }}
-        />
-        <PtHubSummaryCard
-          module="checkins"
-          title="Client delivery"
-          items={dashboardModel.clientHealthSummary}
-          isEmpty={clients.length === 0}
-          emptyState={{
-            title: "No clients to review yet",
-            description:
-              "Once clients join, this section will surface onboarding gaps, overdue check-ins, and risk signals.",
-            href: "/pt-hub/workspaces",
-            ctaLabel: "Open coaching spaces",
-          }}
+      <div className="pt-hub-work-grid-main">
+        <PtHubActionCenter
+          items={dashboardModel.actionItems}
+          mode={dashboardModel.mode}
         />
         <PtHubRecentActivityCard
           notifications={notifications}
@@ -269,7 +256,7 @@ export function PtHubOverviewPage() {
       </div>
 
       {showBusinessSetup ? (
-        <div className="grid gap-6">
+        <div className="pt-hub-work-grid">
           <div id={businessSetupToggleId}>
             <PtHubLaunchChecklistCard
               module="profile"
@@ -283,7 +270,7 @@ export function PtHubOverviewPage() {
                   type="button"
                   aria-expanded={!businessSetupCollapsed}
                   aria-controls={businessSetupToggleId}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="pt-hub-collapse-action inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   onClick={() =>
                     setBusinessSetupCollapsed((current) => !current)
                   }
@@ -292,6 +279,9 @@ export function PtHubOverviewPage() {
                     {businessSetupCollapsed
                       ? "Expand business setup"
                       : "Collapse business setup"}
+                  </span>
+                  <span aria-hidden>
+                    {businessSetupCollapsed ? "Show" : "Hide"}
                   </span>
                   {businessSetupCollapsed ? (
                     <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
@@ -305,38 +295,110 @@ export function PtHubOverviewPage() {
         </div>
       ) : null}
 
-      {dashboardModel.mode !== "activation" ? (
-        <div className="grid gap-6">
-          <div id={billingToggleId}>
+      <div className="surface-panel relative overflow-hidden rounded-[28px] border border-border/70 px-4 py-4 shadow-[var(--surface-shadow)] sm:px-5">
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="pt-hub-kicker">Supporting details</p>
+            <p className="pt-hub-meta-text mt-1 max-w-3xl text-[0.94rem] leading-6">
+              Business snapshots, pipeline summaries, shortcuts, and billing
+              stay tucked away until you need a wider read.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-expanded={supportExpanded}
+            className="pt-hub-collapse-action inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => setSupportExpanded((current) => !current)}
+          >
+            <span>{supportExpanded ? "Hide details" : "Show details"}</span>
+            {supportExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {supportExpanded ? (
+        <>
+          <div className="pt-hub-secondary-grid grid xl:grid-cols-3">
             <PtHubSummaryCard
-              module="billing"
-              title="Revenue and billing"
-              description="Commercial health for the coaching business."
-              items={dashboardModel.billingSummary}
-              collapsed={billingCollapsed}
-              actions={
-                <button
-                  type="button"
-                  aria-expanded={!billingCollapsed}
-                  aria-controls={billingToggleId}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  onClick={() => setBillingCollapsed((current) => !current)}
-                >
-                  <span className="sr-only">
-                    {billingCollapsed
-                      ? "Expand revenue and billing"
-                      : "Collapse revenue and billing"}
-                  </span>
-                  {billingCollapsed ? (
-                    <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                  ) : (
-                    <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                  )}
-                </button>
-              }
+              module="overview"
+              title="Business snapshot"
+              items={dashboardModel.businessSummary}
+            />
+            <PtHubSummaryCard
+              module="leads"
+              title="Lead pipeline"
+              items={dashboardModel.pipelineSummary}
+              isEmpty={leads.length === 0}
+              emptyState={{
+                title: "No leads in the pipeline yet",
+                description:
+                  "A clear coach page and a shareable public presence are the fastest way to create the first real lead flow.",
+                href: "/pt-hub/profile/preview",
+                ctaLabel: "Open public preview",
+              }}
+            />
+            <PtHubSummaryCard
+              module="checkins"
+              title="Client delivery"
+              items={dashboardModel.clientHealthSummary}
+              isEmpty={clients.length === 0}
+              emptyState={{
+                title: "No clients to review yet",
+                description:
+                  "Once clients join, this section will surface onboarding gaps, overdue check-ins, and risk signals.",
+                href: "/pt-hub/workspaces",
+                ctaLabel: "Open coaching spaces",
+              }}
             />
           </div>
-        </div>
+
+          <PtHubQuickActionsCard
+            title="Route shortcuts"
+            description="Use these when you need a direct jump outside the priority queue."
+            actions={dashboardModel.quickActions}
+          />
+
+          {dashboardModel.mode !== "activation" ? (
+            <div className="pt-hub-work-grid">
+              <div id={billingToggleId}>
+                <PtHubSummaryCard
+                  module="billing"
+                  title="Revenue and billing"
+                  description="Commercial health for the coaching business."
+                  items={dashboardModel.billingSummary}
+                  collapsed={billingCollapsed}
+                  actions={
+                    <button
+                      type="button"
+                      aria-expanded={!billingCollapsed}
+                      aria-controls={billingToggleId}
+                      className="pt-hub-collapse-action inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => setBillingCollapsed((current) => !current)}
+                    >
+                      <span className="sr-only">
+                        {billingCollapsed
+                          ? "Expand revenue and billing"
+                          : "Collapse revenue and billing"}
+                      </span>
+                      <span aria-hidden>
+                        {billingCollapsed ? "Show" : "Hide"}
+                      </span>
+                      {billingCollapsed ? (
+                        <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                      ) : (
+                        <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                      )}
+                    </button>
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

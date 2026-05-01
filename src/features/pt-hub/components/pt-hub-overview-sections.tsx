@@ -1,7 +1,9 @@
 import {
   AlertTriangle,
   ArrowRight,
+  Bell,
   CheckCircle2,
+  CircleAlert,
   Sparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -21,6 +23,7 @@ import {
 import { cn } from "../../../lib/utils";
 import { useWorkspace } from "../../../lib/use-workspace";
 import type {
+  PtHubOverviewMode,
   PtHubOverviewActionItem,
   PtHubOverviewChecklistItem,
   PtHubOverviewQuickAction,
@@ -37,6 +40,71 @@ export interface PtHubOverviewActivityItem {
   tone: SemanticTone;
 }
 
+function getToneIcon(tone: SemanticTone | null | undefined) {
+  if (tone === "danger" || tone === "warning") return CircleAlert;
+  if (tone === "success") return CheckCircle2;
+  return Sparkles;
+}
+
+export function PtHubModeStatusStrip({
+  mode,
+  label,
+  description,
+  setupCompletionPercent,
+  clientsNeedingAttentionCount,
+}: {
+  mode: PtHubOverviewMode;
+  label: string;
+  description: string;
+  setupCompletionPercent: number;
+  clientsNeedingAttentionCount: number;
+}) {
+  const isActivation = mode === "activation";
+
+  return (
+    <div className="surface-panel pt-hub-status-strip relative overflow-hidden rounded-[28px] border border-border/70 px-5 py-4 shadow-[var(--surface-shadow)] sm:px-6">
+      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Badge
+              variant={isActivation ? "warning" : "success"}
+              className="h-7 px-2.5 text-[11px] normal-case tracking-[0.01em]"
+            >
+              {label}
+            </Badge>
+            <span className="pt-hub-meta-text text-sm font-medium">
+              {isActivation
+                ? `${setupCompletionPercent}% setup complete`
+                : `${clientsNeedingAttentionCount} client${clientsNeedingAttentionCount === 1 ? "" : "s"} need attention`}
+            </span>
+          </div>
+          <p className="max-w-4xl text-[0.96rem] leading-6 text-foreground">
+            {description}
+          </p>
+        </div>
+        <div className="grid min-w-[min(100%,24rem)] grid-cols-2 gap-2 sm:min-w-[25rem]">
+          <div className="pt-hub-status-metric rounded-[18px] border border-border/60 bg-background/38 px-3.5 py-3">
+            <p className="text-[0.76rem] font-semibold text-muted-foreground">
+              Setup progress
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+              {setupCompletionPercent}%
+            </p>
+          </div>
+          <div className="pt-hub-status-metric rounded-[18px] border border-border/60 bg-background/38 px-3.5 py-3">
+            <p className="text-[0.76rem] font-semibold text-muted-foreground">
+              Client attention
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+              {clientsNeedingAttentionCount}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PtHubActionCenterRow({
   item,
   onClick,
@@ -44,31 +112,38 @@ function PtHubActionCenterRow({
   item: PtHubOverviewActionItem;
   onClick: () => void;
 }) {
+  const toneStyles = getSemanticToneClasses(item.tone);
+  const StatusIcon = getToneIcon(item.tone);
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="pt-hub-interactive group relative grid gap-4 rounded-[24px] border border-border/55 bg-background/18 px-4 py-4 text-left shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-border/75 hover:bg-background/28 hover:shadow-[0_18px_40px_-32px_oklch(0_0_0/0.65)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6"
+      className="pt-hub-interactive pt-hub-priority-row group relative grid gap-4 rounded-[24px] border border-border/60 bg-background/34 px-4 py-4 text-left shadow-[inset_0_1px_0_oklch(1_0_0/0.035)] transition-[background-color,border-color,box-shadow] duration-200 hover:border-border/80 hover:bg-background/52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-6"
     >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute bottom-4 left-1.5 top-4 w-[2px] rounded-full",
-          getSemanticToneClasses(item.tone).marker,
-        )}
-      />
-      <div className="min-w-0 space-y-2 pl-2">
-        <p className="text-[0.96rem] font-medium uppercase tracking-[0.04em] text-foreground">
-          {item.label}
-        </p>
-        <p className="pt-hub-meta-text max-w-4xl text-[0.93rem] leading-6 text-muted-foreground">
-          {item.description}
-        </p>
+      <div className="min-w-0 flex gap-3">
+        <span
+          className={cn(
+            "pt-hub-priority-icon mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border",
+            toneStyles.surface,
+          )}
+          aria-hidden
+        >
+          <StatusIcon className="h-4 w-4 [stroke-width:1.8]" />
+        </span>
+        <div className="min-w-0 space-y-2">
+          <p className="text-[0.98rem] font-semibold leading-5 text-foreground">
+            {item.label}
+          </p>
+          <p className="pt-hub-meta-text max-w-4xl text-[0.93rem] leading-6">
+            {item.description}
+          </p>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-3 pl-2 md:min-w-[11.5rem] md:flex-col md:items-end md:justify-center md:pl-0">
+      <div className="flex flex-wrap items-center gap-3 pl-12 lg:min-w-[11.5rem] lg:flex-col lg:items-end lg:justify-center lg:pl-0">
         <Badge
           variant={getSemanticBadgeVariant(item.tone)}
-          className="h-7 px-2.5 py-0 text-[10px] tracking-[0.18em]"
+          className="h-7 px-2.5 py-0 text-[11px] normal-case tracking-[0.01em]"
         >
           {item.badge}
         </Badge>
@@ -83,8 +158,12 @@ function PtHubActionCenterRow({
 
 export function PtHubOverviewLoadingState() {
   return (
-    <section className="space-y-7" aria-label="Loading overview dashboard">
-      <div className="grid gap-4 xl:grid-cols-5">
+    <section
+      className="pt-hub-page-stack"
+      data-density="roomy"
+      aria-label="Loading overview dashboard"
+    >
+      <div className="pt-hub-kpi-grid" data-columns="5">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`metric-skeleton-${index}`}
@@ -112,7 +191,7 @@ export function PtHubOverviewLoadingState() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="pt-hub-secondary-grid grid xl:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={`panel-skeleton-${index}`}
@@ -131,7 +210,7 @@ export function PtHubOverviewLoadingState() {
         ))}
       </div>
 
-      <div className="grid gap-6">
+      <div className="pt-hub-work-grid">
         <div className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6">
           <div className="space-y-4">
             <Skeleton className="h-4 w-28" />
@@ -151,7 +230,7 @@ export function PtHubOverviewLoadingState() {
 
 export function PtHubOverviewErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubSectionCard
         title="Overview unavailable"
         description="The overview could not load right now. Try refreshing the dashboard data."
@@ -185,8 +264,8 @@ export function PtHubActionCenter({
   const { switchWorkspace } = useWorkspace();
   const helperText =
     mode === "activation"
-      ? "Live priorities across setup, lead flow, and every coaching workspace."
-      : "Live priorities across the PT Hub, client delivery, and every coaching workspace.";
+      ? "Setup blockers, lead flow, and workspace readiness in one list."
+      : "Lead, client, and delivery decisions that need the next coach action.";
 
   const handleActionClick = (item: PtHubOverviewActionItem) => {
     if (item.workspaceId) {
@@ -196,19 +275,29 @@ export function PtHubActionCenter({
   };
 
   return (
-    <div className="surface-panel-strong relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
+    <div className="surface-panel-strong pt-hub-priority-panel relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
       <div className="pt-hub-action-center-overlay pointer-events-none absolute inset-0" />
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
 
       <div className="relative space-y-5">
-        <div className="space-y-2.5">
-          <p className="pt-hub-kicker">Action center</p>
-          <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold uppercase tracking-[0.055em] text-foreground sm:text-[1.9rem]">
-            Everything that needs attention.
-          </h2>
-          <p className="pt-hub-meta-text max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
-            {helperText}
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2.5">
+            <p className="pt-hub-kicker">Action center</p>
+            <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold tracking-[0.005em] text-foreground sm:text-[1.85rem]">
+              Priorities
+            </h2>
+            <p className="pt-hub-meta-text max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
+              {helperText}
+            </p>
+          </div>
+          <Badge
+            variant={items.length > 0 ? "warning" : "success"}
+            className="h-8 w-fit px-3 text-[11px] normal-case tracking-[0.01em]"
+          >
+            {items.length > 0
+              ? `${items.length} open ${items.length === 1 ? "item" : "items"}`
+              : "Clear"}
+          </Badge>
         </div>
 
         {items.length > 0 ? (
@@ -230,7 +319,7 @@ export function PtHubActionCenter({
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
               <div>
-                <p className="text-[1rem] font-medium uppercase tracking-[0.04em] text-foreground">
+                <p className="text-[1rem] font-semibold text-foreground">
                   Nothing urgent right now
                 </p>
                 <p className="pt-hub-meta-text mt-2 max-w-3xl text-[0.95rem] leading-6">
@@ -266,7 +355,23 @@ export function PtHubRecentActivityCard({
     <PtHubSectionCard
       title="Recent activity"
       module={module}
-      className="h-full"
+      className="pt-hub-activity-rail h-full"
+      actions={
+        <>
+          {unreadCount > 0 ? (
+            <Badge
+              variant="info"
+              className="h-8 px-3 text-[11px] normal-case tracking-[0.01em]"
+            >
+              <Bell className="h-3.5 w-3.5 [stroke-width:1.8]" />
+              {unreadCount} unread
+            </Badge>
+          ) : null}
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/pt/notifications">View all</Link>
+          </Button>
+        </>
+      }
     >
       {isLoading ? (
         <div className="space-y-3">
@@ -338,7 +443,7 @@ export function PtHubLaunchChecklistCard({
       {!collapsed ? (
         <div className="space-y-4">
           <div className="rounded-[20px] border border-border/55 bg-background/24 px-4 py-4 backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="flex items-center justify-between gap-3 text-[12px] font-semibold text-muted-foreground">
               <span>Completion</span>
               <span>{completionPercent}%</span>
             </div>
@@ -366,7 +471,7 @@ export function PtHubLaunchChecklistCard({
                     )}
                   />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       {item.label}
                     </p>
                     <p className="pt-hub-meta-text mt-2 text-[0.95rem] leading-6">
@@ -396,23 +501,27 @@ export function PtHubQuickActionsCard({
   description?: string;
 }) {
   return (
-    <PtHubSectionCard title={title} description={description}>
-      <div className="-mx-1 divide-y divide-border/60">
+    <PtHubSectionCard
+      title={title}
+      description={description}
+      className="pt-hub-command-launcher"
+    >
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {actions.map((action) => (
           <Link
             key={action.id}
             to={action.href}
-            className="pt-hub-interactive group flex items-center gap-3 rounded-[22px] border border-transparent bg-transparent px-4 py-4 hover:bg-background/18"
+            className="pt-hub-command-link pt-hub-interactive group flex min-h-[5.9rem] items-start gap-3 rounded-[20px] border border-border/55 bg-background/24 px-4 py-4 hover:bg-background/42 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium uppercase tracking-[0.04em] text-foreground">
+              <p className="text-sm font-semibold text-foreground">
                 {action.label}
               </p>
               <p className="pt-hub-meta-text mt-1 text-[0.95rem] leading-6">
                 {action.description}
               </p>
             </div>
-            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary" />
+            <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary" />
           </Link>
         ))}
       </div>
@@ -482,51 +591,59 @@ export function PtHubSummaryCard({
               (() => {
                 const toneStyles = getSemanticToneClasses(item.tone);
                 const isInteractive = Boolean(item.href);
+                const content = (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "hidden h-2.5 w-2.5 shrink-0 rounded-full sm:mt-1.5 sm:block",
+                        toneStyles.marker,
+                      )}
+                    />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Badge
+                        variant={getSemanticBadgeVariant(item.tone)}
+                        className="px-2.5 py-1 text-[11px] normal-case tracking-[0.01em]"
+                      >
+                        {item.label}
+                      </Badge>
+                      <p className="text-[1.05rem] font-semibold leading-6 text-foreground">
+                        {item.value}
+                      </p>
+                      {item.detail ? (
+                        <p className="pt-hub-meta-text text-[0.92rem] leading-6">
+                          {item.detail}
+                        </p>
+                      ) : null}
+                    </div>
+                    {isInteractive ? (
+                      <span className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-primary transition-colors group-hover:text-foreground">
+                        {item.ctaLabel ?? "Open"}
+                        <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
+                      </span>
+                    ) : null}
+                  </div>
+                );
+
+                if (!isInteractive) {
+                  return (
+                    <div
+                      key={item.id}
+                      className="w-full rounded-[22px] border border-transparent bg-transparent px-4 py-4 text-left"
+                    >
+                      {content}
+                    </div>
+                  );
+                }
 
                 return (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => handleItemClick(item)}
-                    disabled={!isInteractive}
-                    className={cn(
-                      "pt-hub-interactive group w-full rounded-[22px] border border-transparent bg-transparent px-4 py-4 text-left",
-                      isInteractive
-                        ? "hover:bg-background/18"
-                        : "cursor-default hover:bg-transparent",
-                    )}
+                    className="pt-hub-interactive group w-full rounded-[22px] border border-transparent bg-transparent px-4 py-4 text-left hover:bg-background/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
-                          toneStyles.marker,
-                        )}
-                      />
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <Badge
-                          variant={getSemanticBadgeVariant(item.tone)}
-                          className="px-2.5 py-1 text-[10px] tracking-[0.2em]"
-                        >
-                          {item.label}
-                        </Badge>
-                        <p className="text-[1.1rem] font-medium uppercase tracking-[0.03em] text-foreground">
-                          {item.value}
-                        </p>
-                        {item.detail ? (
-                          <p className="pt-hub-meta-text text-[0.92rem] leading-6">
-                            {item.detail}
-                          </p>
-                        ) : null}
-                      </div>
-                      {isInteractive ? (
-                        <span className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-primary transition-colors group-hover:text-foreground">
-                          {item.ctaLabel ?? "Open"}
-                          <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
-                        </span>
-                      ) : null}
-                    </div>
+                    {content}
                   </button>
                 );
               })(),

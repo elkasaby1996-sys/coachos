@@ -847,7 +847,7 @@ export function PtHubAnalyticsPage() {
         </nav>
       </div>
 
-      <div className="page-kpi-block grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+      <div className="page-kpi-block pt-hub-work-grid xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <div className="grid gap-4 md:grid-cols-2">
           <AnalyticsKpiCard
             label="New leads"

@@ -1,4 +1,4 @@
-import { LifeBuoy, Mail, ShieldCheck, Timer } from "lucide-react";
+import { CheckCircle2, LifeBuoy, Mail, ShieldCheck, Timer } from "lucide-react";
 import { PublicInfoCard, PublicInfoLayout } from "./public-info-layout";
 
 const supportEmail = "support@repsync.com";
@@ -10,21 +10,25 @@ export function SupportPage() {
       title="Support"
       description="Tell us what happened and we will help you get back into your RepSync workspace. Include the account email, what you were trying to do, and any relevant screenshots."
       aside={
-        <div className="space-y-3 text-sm text-muted-foreground">
-          <div className="flex items-center gap-3 text-foreground">
-            <Mail className="h-4 w-4 text-primary" />
+        <div className="space-y-4 text-sm text-slate-600">
+          <div className="flex items-center gap-3 text-slate-950">
+            <Mail className="h-4 w-4 text-emerald-700" />
             <span className="font-semibold">Contact support</span>
           </div>
           <a
-            className="inline-flex text-foreground underline decoration-white/25 underline-offset-4 transition-colors hover:text-primary"
+            className="inline-flex font-semibold text-slate-950 underline decoration-emerald-600/30 underline-offset-4 transition-colors hover:text-emerald-700"
             href={`mailto:${supportEmail}`}
           >
             {supportEmail}
           </a>
-          <p className="text-xs leading-5">
+          <p className="text-sm leading-6">
             For account access, billing, or product issues, use the same email
             linked to your RepSync account.
           </p>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium leading-5 text-emerald-900">
+            Never send passwords, payment card numbers, or private client health
+            details by email.
+          </div>
         </div>
       }
     >
@@ -32,10 +36,11 @@ export function SupportPage() {
         icon={<LifeBuoy className="h-4 w-4" />}
         title="What to include"
       >
-        <p>
-          Share your workspace email, the page or workflow affected, and the
-          exact result you expected.
-        </p>
+        <ul className="space-y-2">
+          <li>Workspace or account email.</li>
+          <li>Page, action, or workflow affected.</li>
+          <li>What happened and what you expected instead.</li>
+        </ul>
       </PublicInfoCard>
       <PublicInfoCard
         icon={<Timer className="h-4 w-4" />}
@@ -49,11 +54,19 @@ export function SupportPage() {
       <PublicInfoCard
         icon={<ShieldCheck className="h-4 w-4" />}
         title="Account safety"
-        className="sm:col-span-2"
       >
         <p>
           We will never ask for your password. If you cannot sign in, use the
           password reset flow or email support from your account address.
+        </p>
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<CheckCircle2 className="h-4 w-4" />}
+        title="Before you write"
+      >
+        <p>
+          Refresh the page, check your internet connection, and note any error
+          message exactly as it appears.
         </p>
       </PublicInfoCard>
     </PublicInfoLayout>

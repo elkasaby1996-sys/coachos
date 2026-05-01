@@ -77,7 +77,7 @@ export function PtHubWorkspacesPage() {
   const workspaces = workspacesQuery.data ?? [];
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Coaching Spaces"
         title="Manage your coaching spaces"
@@ -100,7 +100,7 @@ export function PtHubWorkspacesPage() {
           className="rounded-[28px] border-border/70 bg-card/70 p-8"
         />
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="pt-hub-work-grid xl:grid-cols-2">
           {workspaces.map((workspace) => (
             <PtHubWorkspaceCard
               key={workspace.id}

@@ -14,14 +14,14 @@ export function PtHubPaymentsPage() {
   const revenue = paymentsQuery.data?.revenue;
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Payments"
         title="Billing and revenue"
         description="Review your Repsync plan, invoices, and revenue tracking."
       />
 
-      <div className="page-kpi-block grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         <StatCard
           surface="pt-hub"
           module="billing"
@@ -39,14 +39,12 @@ export function PtHubPaymentsPage() {
           surface="pt-hub"
           module="billing"
           label="Billing State"
-          value={subscription?.billingStatus ?? "Billing placeholder"}
+          value={subscription?.billingStatus ?? "Manual billing"}
           helper="Status of your Repsync plan"
           icon={Landmark}
           delta={{
             value:
-              subscription?.billingConnected === true
-                ? "Connected"
-                : "Manual",
+              subscription?.billingConnected === true ? "Connected" : "Manual",
             tone:
               subscription?.billingConnected === true ? "success" : "warning",
           }}
@@ -61,8 +59,7 @@ export function PtHubPaymentsPage() {
           delta={{
             value:
               revenue?.revenueConnected === true ? "Live" : "Not connected",
-            tone:
-              revenue?.revenueConnected === true ? "success" : "warning",
+            tone: revenue?.revenueConnected === true ? "success" : "warning",
           }}
         />
         <StatCard
@@ -79,8 +76,8 @@ export function PtHubPaymentsPage() {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_380px]">
-        <div className="space-y-6">
+      <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.25fr)_360px]">
+        <div className="pt-hub-page-stack">
           <PtHubSectionCard
             title="Billing Overview"
             description="The key billing details for this account."
@@ -92,7 +89,7 @@ export function PtHubPaymentsPage() {
               />
               <PaymentDetail
                 label="Billing status"
-                value={subscription?.billingStatus ?? "Billing placeholder"}
+                value={subscription?.billingStatus ?? "Manual billing"}
               />
               <PaymentDetail
                 label="Renewal date"
@@ -107,7 +104,8 @@ export function PtHubPaymentsPage() {
               />
             </div>
             <div className="mt-5 rounded-[22px] border border-border/60 bg-background/28 px-4 py-4 text-sm text-muted-foreground">
-              Your Repsync subscription is visible here, but billing sync and client billing are not fully live yet.
+              Your Repsync subscription is visible here, but billing sync and
+              client billing are not fully live yet.
             </div>
           </PtHubSectionCard>
 

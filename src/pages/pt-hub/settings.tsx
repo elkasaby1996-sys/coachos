@@ -17,7 +17,7 @@ export function PtHubSettingsPage() {
 
   if (!user?.id || !settingsQuery.data) {
     return (
-      <section className="space-y-6">
+      <section className="pt-hub-page-stack">
         <PtHubPageHeader
           eyebrow="PT Hub Settings"
           title="Account settings"
@@ -28,7 +28,7 @@ export function PtHubSettingsPage() {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="PT Hub Settings"
         title="Account and app settings"

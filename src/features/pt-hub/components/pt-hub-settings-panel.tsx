@@ -51,8 +51,8 @@ export function PtHubSettingsPanel({
   const hasChanges = JSON.stringify(form) !== JSON.stringify(initialSettings);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
-      <div className="space-y-6">
+    <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.2fr)_340px]">
+      <div className="pt-hub-page-stack">
         <PtHubSectionCard
           title="Coach account"
           description="Identity and base operating settings for the business-side PT Hub."
@@ -158,7 +158,7 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
       </div>
 
-      <div className="space-y-6">
+      <div className="pt-hub-page-stack">
         <PtHubSectionCard
           title="Profile visibility"
           description="Control how exposed your coach brand is while launch infrastructure evolves."

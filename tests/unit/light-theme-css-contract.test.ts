@@ -5,6 +5,10 @@ import { resolve } from "node:path";
 const styleCss = readFileSync(resolve("src/styles/style.css"), "utf8");
 const globalsCss = readFileSync(resolve("src/styles/globals.css"), "utf8");
 const ptHubShellCss = readFileSync(resolve("src/styles/pt-hub-shell.css"), "utf8");
+const ptWorkspaceShellCss = readFileSync(
+  resolve("src/styles/pt-workspace-shell.css"),
+  "utf8",
+);
 const ptHubOverviewSectionsTsx = readFileSync(
   resolve("src/features/pt-hub/components/pt-hub-overview-sections.tsx"),
   "utf8",
@@ -15,6 +19,14 @@ const ptHubSectionCardTsx = readFileSync(
 );
 const ptHubLayoutTsx = readFileSync(
   resolve("src/components/layouts/pt-hub-layout.tsx"),
+  "utf8",
+);
+const ptLayoutTsx = readFileSync(
+  resolve("src/components/layouts/pt-layout.tsx"),
+  "utf8",
+);
+const publicInfoLayoutTsx = readFileSync(
+  resolve("src/pages/public/public-info-layout.tsx"),
   "utf8",
 );
 
@@ -291,5 +303,46 @@ describe("light mode theme CSS contract", () => {
     expect(portalDisabledItem).toContain("color: oklch(var(--text-muted));");
     expect(portalDisabledItem).toContain("opacity: 0.68;");
     expect(portalUtilityRow).toContain("color: oklch(var(--text-primary));");
+  });
+
+  test("keeps public support and legal pages on a white light surface", () => {
+    expect(publicInfoLayoutTsx).toContain("public-info-shell");
+    expect(publicInfoLayoutTsx).toContain("bg-white text-slate-950");
+    expect(publicInfoLayoutTsx).not.toContain("AuthBackdrop");
+    expect(publicInfoLayoutTsx).not.toContain("pt-hub-theme-dark");
+
+    const publicPortalTokens = customProperties(
+      selectorBlock(globalsCss, "body.public-info-portal-light"),
+    );
+
+    expect(publicPortalTokens["bg-surface"]).toBe("1 0 0");
+    expect(publicPortalTokens.foreground).toBe("var(--text-primary)");
+    expect(publicPortalTokens["popover-foreground"]).toBe("var(--text-primary)");
+    expect(publicPortalTokens["menu-surface-bg"]).toContain("oklch(1 0 0 / 1)");
+    expect(publicPortalTokens["menu-item-hover"]).toBe(
+      "oklch(var(--bg-muted) / 0.94)",
+    );
+  });
+
+  test("uses the light background layer for PT workspace light mode", () => {
+    expect(ptLayoutTsx).toContain(
+      '<AppShellBackgroundLayer mode={isLightMode ? "light" : "dark"} />',
+    );
+
+    const workspaceLightShell = selectorBlock(
+      ptWorkspaceShellCss,
+      ".pt-workspace-theme.pt-workspace-theme-light .theme-shell-canvas::before",
+    );
+    const workspaceLightGrid = selectorBlock(
+      ptWorkspaceShellCss,
+      ".pt-workspace-theme.pt-workspace-theme-light .theme-shell-canvas::after",
+    );
+
+    expect(workspaceLightShell).not.toContain("var(--accent)");
+    expect(workspaceLightShell).not.toContain("var(--chart-2)");
+    expect(workspaceLightShell).toContain("var(--bg-muted)");
+    expect(workspaceLightShell).toContain("opacity: 0.22;");
+    expect(workspaceLightShell).toContain("saturate(68%)");
+    expect(workspaceLightGrid).toContain("opacity: 0.05;");
   });
 });

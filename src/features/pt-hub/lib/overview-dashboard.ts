@@ -116,28 +116,6 @@ function buildMetricDelta(
   };
 }
 
-function buildEarningsMetric(
-  revenue: PTRevenueSnapshot | null | undefined,
-): PtHubOverviewMetric {
-  const revenueConnected = revenue?.revenueConnected === true;
-  const monthlyEarningsValue =
-    revenueConnected && revenue?.monthlyRevenueLabel
-      ? revenue.monthlyRevenueLabel
-      : "TBW";
-
-  return {
-    id: "monthly-earnings",
-    label: "Monthly earnings",
-    value: monthlyEarningsValue,
-    helper: "This month",
-    href: "/pt-hub/payments",
-    delta: {
-      value: revenueConnected ? "Live" : "Pending",
-      tone: getSemanticToneForStatus(revenueConnected ? "Live" : "Pending"),
-    },
-  };
-}
-
 function formatCount(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -256,7 +234,6 @@ function getOverviewMode(params: {
 function buildMetrics(params: {
   stats: PTOverviewStats | null | undefined;
   clientStats: ReturnType<typeof getPtClientBaseStats>;
-  revenue: PTRevenueSnapshot | null | undefined;
 }) {
   const leadDelta = buildMetricDelta(
     (params.stats?.applicationsThisMonth ?? 0) -
@@ -267,7 +244,6 @@ function buildMetrics(params: {
     params.clientStats.onboardingIncompleteClients;
 
   return [
-    buildEarningsMetric(params.revenue),
     {
       id: "active-clients",
       label: "Active clients",
@@ -801,7 +777,7 @@ function buildBillingSummary(params: {
     {
       id: "billing-status",
       label: "Billing state",
-      value: params.subscription?.billingStatus ?? "Billing placeholder",
+      value: params.subscription?.billingStatus ?? "Manual billing",
       detail:
         params.subscription?.billingConnected === true
           ? "Billing is connected"
@@ -870,17 +846,15 @@ export function getPtHubOverviewDashboardModel(
 
   return {
     mode,
-    modeLabel:
-      mode === "activation" ? "Business foundations" : "Operating dashboard",
+    modeLabel: mode === "activation" ? "Setup mode" : "Operating mode",
     modeDescription:
       mode === "activation"
-        ? "Build the business foundation across workspace setup, coach-page trust, and lead readiness."
-        : "Focus on the next decisions that keep leads moving, clients healthy, and delivery on track.",
+        ? "Finish the foundation across your coach page, workspace setup, and first lead flow."
+        : "Watch the next decisions that keep leads moving, clients healthy, and delivery on track.",
     setupCompletionPercent,
     metrics: buildMetrics({
       stats: params.stats,
       clientStats,
-      revenue: params.revenue,
     }),
     actionItems: buildActionItems({
       readiness: params.readiness,
