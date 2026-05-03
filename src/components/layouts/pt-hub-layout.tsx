@@ -330,10 +330,10 @@ function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
     "group relative flex items-start gap-3 rounded-[22px] border px-3.5 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
     isActive
       ? isLightMode
-        ? "translate-x-1 border-transparent bg-transparent text-slate-900"
+        ? "translate-x-1 border-transparent bg-transparent text-foreground"
         : "translate-x-1 border-transparent bg-transparent text-foreground"
       : isLightMode
-        ? "border-transparent bg-transparent text-slate-800 hover:border-border/80 hover:bg-white/24 hover:text-slate-950"
+        ? "border-transparent bg-transparent text-muted-foreground hover:border-border/80 hover:bg-secondary/55 hover:text-foreground"
         : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
   );
 }
@@ -892,10 +892,7 @@ function SidebarContent({
       <div className="space-y-4 border-b border-border/60 pb-5">
         <div className="min-w-0">
           <p
-            className={cn(
-              "text-[1.15rem] font-semibold tracking-normal",
-              isLightMode ? "text-slate-950" : "text-foreground",
-            )}
+            className="text-[1.15rem] font-semibold tracking-normal text-foreground"
           >
             {t("common.repsyncHub", "Repsync Hub")}
           </p>
@@ -955,7 +952,7 @@ function SidebarContent({
                             isActive
                               ? "section-accent-nav-icon-active"
                               : isLightMode
-                                ? "text-slate-600 group-hover:text-foreground"
+                                ? "text-muted-foreground group-hover:text-foreground"
                                 : "text-muted-foreground group-hover:text-foreground",
                             getModuleToneClasses(item.module).navIcon,
                           )}
@@ -975,7 +972,7 @@ function SidebarContent({
                             <p
                               className={cn(
                                 "min-w-0 truncate",
-                                isLightMode ? "text-slate-900" : "text-inherit",
+                                isLightMode ? "text-foreground" : "text-inherit",
                               )}
                             >
                               {t(item.labelKey, item.label)}

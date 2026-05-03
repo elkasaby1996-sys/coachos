@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FieldCharacterMeta } from "../../../../components/common/field-character-meta";
 import { Input } from "../../../../components/ui/input";
+import { Select } from "../../../../components/ui/select";
 import {
-  DisabledSettingField,
   SettingsFieldRow,
   SettingsHelperCallout,
   SettingsSectionCard,
@@ -20,11 +20,39 @@ import { useWorkspaceSettingsOutletContext } from "../outlet-context";
 
 type GeneralFormState = {
   workspaceName: string;
+  timezone: string;
+  unitPreference: string;
+  weekStartDay: string;
 };
 
 const emptyState: GeneralFormState = {
   workspaceName: "",
+  timezone: "UTC",
+  unitPreference: "metric",
+  weekStartDay: "monday",
 };
+
+const timezoneOptions = [
+  { value: "UTC", label: "UTC" },
+  { value: "Asia/Riyadh", label: "Riyadh (GMT+3)" },
+  { value: "Asia/Dubai", label: "Dubai (GMT+4)" },
+  { value: "Europe/London", label: "London" },
+  { value: "Europe/Paris", label: "Paris" },
+  { value: "America/New_York", label: "New York" },
+  { value: "America/Chicago", label: "Chicago" },
+  { value: "America/Los_Angeles", label: "Los Angeles" },
+  { value: "Australia/Sydney", label: "Sydney" },
+];
+
+const unitOptions = [
+  { value: "metric", label: "Metric (kg, cm)" },
+  { value: "imperial", label: "Imperial (lb, in)" },
+];
+
+const weekStartOptions = [
+  { value: "monday", label: "Monday" },
+  { value: "sunday", label: "Sunday" },
+];
 
 export function WorkspaceSettingsGeneralTab() {
   const queryClient = useQueryClient();
@@ -37,8 +65,17 @@ export function WorkspaceSettingsGeneralTab() {
     () =>
       ({
         workspaceName: workspace?.name ?? "",
+        timezone: workspace?.timezone ?? emptyState.timezone,
+        unitPreference:
+          workspace?.unit_preference ?? emptyState.unitPreference,
+        weekStartDay: workspace?.week_start_day ?? emptyState.weekStartDay,
       }) satisfies GeneralFormState,
-    [workspace?.name],
+    [
+      workspace?.name,
+      workspace?.timezone,
+      workspace?.unit_preference,
+      workspace?.week_start_day,
+    ],
   );
 
   useEffect(() => {
@@ -68,7 +105,12 @@ export function WorkspaceSettingsGeneralTab() {
     try {
       const { error } = await supabase
         .from("workspaces")
-        .update({ name: nextName })
+        .update({
+          name: nextName,
+          timezone: form.timezone,
+          unit_preference: form.unitPreference,
+          week_start_day: form.weekStartDay,
+        })
         .eq("id", workspaceId);
       if (error) throw error;
 
@@ -117,11 +159,11 @@ export function WorkspaceSettingsGeneralTab() {
 
       <SettingsSectionCard
         title="General Workspace Details"
-        description="Core workspace identity and operating metadata."
+        description="Core workspace identity and operating defaults."
       >
         <SettingsFieldRow
-          label="Workspace name"
-          hint="Primary workspace name used across PT and client views."
+          label="Workspace display name"
+          hint="Primary workspace name shown across PT and client views."
         >
           <Input
             isInvalid={workspaceNameLimitState.overLimit}
@@ -148,50 +190,81 @@ export function WorkspaceSettingsGeneralTab() {
           label="Internal workspace code"
           hint="Read-only identifier for internal support and diagnostics."
         >
-          <DisabledSettingField value={workspace?.id ?? workspaceId} />
+          <Input
+            readOnly
+            disabled
+            value={workspace?.id ?? workspaceId}
+            className="cursor-not-allowed opacity-70"
+          />
         </SettingsFieldRow>
 
         <SettingsFieldRow
           label="Workspace timezone"
-          hint="No safe write path currently available."
+          hint="Used for scheduling, reminders, and workspace reporting."
         >
-          <DisabledSettingField value="Not configurable yet" />
-        </SettingsFieldRow>
-
-        <SettingsFieldRow
-          label="Currency"
-          hint="No safe write path currently available."
-        >
-          <DisabledSettingField value="Not configurable yet" />
+          <Select
+            aria-label="Workspace timezone"
+            value={form.timezone}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, timezone: event.target.value }))
+            }
+            disabled={!canManage}
+            className="min-h-[2.75rem] w-full"
+          >
+            {timezoneOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </SettingsFieldRow>
 
         <SettingsFieldRow
           label="Units"
-          hint="No safe write path currently available."
+          hint="Default measurement system for workout and body metrics."
         >
-          <DisabledSettingField value="Not configurable yet" />
+          <Select
+            aria-label="Units"
+            value={form.unitPreference}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                unitPreference: event.target.value,
+              }))
+            }
+            disabled={!canManage}
+            className="min-h-[2.75rem] w-full"
+          >
+            {unitOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </SettingsFieldRow>
 
         <SettingsFieldRow
           label="Week start day"
-          hint="No safe write path currently available."
+          hint="Controls calendar grids and weekly planning defaults."
         >
-          <DisabledSettingField value="Not configurable yet" />
-        </SettingsFieldRow>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title="Ownership Metadata"
-        description="Read-only ownership and audit metadata."
-      >
-        <SettingsFieldRow label="Workspace owner">
-          <DisabledSettingField value={workspace?.owner_user_id ?? "Unknown"} />
-        </SettingsFieldRow>
-        <SettingsFieldRow label="Created at">
-          <DisabledSettingField value={workspace?.created_at ?? "Unavailable"} />
-        </SettingsFieldRow>
-        <SettingsFieldRow label="Last updated">
-          <DisabledSettingField value={workspace?.updated_at ?? "Unavailable"} />
+          <Select
+            aria-label="Week start day"
+            value={form.weekStartDay}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                weekStartDay: event.target.value,
+              }))
+            }
+            disabled={!canManage}
+            className="min-h-[2.75rem] w-full"
+          >
+            {weekStartOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </SettingsFieldRow>
       </SettingsSectionCard>
 

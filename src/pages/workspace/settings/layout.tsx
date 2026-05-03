@@ -30,7 +30,7 @@ export function WorkspaceSettingsLayoutPage() {
       const { data, error } = await supabase
         .from("workspaces")
         .select(
-          "id, name, logo_url, owner_user_id, default_checkin_template_id, created_at, updated_at",
+          "id, name, logo_url, owner_user_id, default_checkin_template_id, timezone, unit_preference, week_start_day, client_welcome_message, created_at, updated_at",
         )
         .eq("id", routeWorkspaceId ?? "")
         .maybeSingle();

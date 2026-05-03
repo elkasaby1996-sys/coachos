@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CartesianGrid,
@@ -12,20 +12,14 @@ import {
 } from "recharts";
 import {
   AlertTriangle,
-  ArrowRight,
-  Clock3,
-  MessageSquarePlus,
   RefreshCw,
   ShieldAlert,
-  TrendingUp,
-  UsersRound,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { Skeleton } from "../../components/ui/coachos/skeleton";
-import { StatCard } from "../../components/ui/coachos/stat-card";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
 import {
@@ -63,18 +57,6 @@ type FunnelGap = {
   stageId: PtHubAnalyticsStage["id"];
 };
 
-const buildMetricDelta = (
-  delta: number | null | undefined,
-  suffix = "",
-): { value: string; tone: "positive" | "negative" | "neutral" } | null => {
-  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
-  const rounded = Math.round(delta);
-  return {
-    value: `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`,
-    tone: rounded === 0 ? "neutral" : rounded > 0 ? "positive" : "negative",
-  };
-};
-
 function getLargestFunnelGap(stages: PtHubAnalyticsStage[]): FunnelGap | null {
   let largest: FunnelGap | null = null;
 
@@ -97,6 +79,12 @@ function getLargestFunnelGap(stages: PtHubAnalyticsStage[]): FunnelGap | null {
 
   return largest;
 }
+
+const formatMetricDelta = (delta: number | null | undefined, suffix = "") => {
+  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
+  const rounded = Math.round(delta);
+  return `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`;
+};
 
 function rankQualityRows(rows: PtHubAnalyticsQualityRow[]) {
   return [...rows].sort((left, right) => {
@@ -156,42 +144,6 @@ function AnalyticsLoadingState() {
   );
 }
 
-function AnalyticsKpiCard({
-  label,
-  icon,
-  kpi,
-  suffix,
-  onClick,
-  module,
-}: {
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-  kpi: PtHubAnalyticsKpi;
-  suffix?: string;
-  onClick: () => void;
-  module: ModuleTone;
-}) {
-  const unavailable = Boolean(kpi.unavailable);
-
-  return (
-    <StatCard
-      surface="pt-hub"
-      module={module}
-      label={label}
-      value={kpi.value}
-      helper={kpi.helper}
-      icon={icon}
-      accent={!unavailable}
-      onClick={onClick}
-      className={cn(
-        "min-h-[172px]",
-        unavailable && "border-border/60 opacity-90 shadow-[var(--surface-shadow)]",
-      )}
-      delta={buildMetricDelta(kpi.delta, suffix)}
-    />
-  );
-}
-
 function getAnalyticsBarClassName({
   module = "analytics",
   faded = false,
@@ -202,136 +154,6 @@ function getAnalyticsBarClassName({
   return faded
     ? `bg-[oklch(var(--module-${module}-text)/0.34)]`
     : `bg-[oklch(var(--module-${module}-text))]`;
-}
-
-function FunnelStageRow({
-  stage,
-  previousCount,
-  maxCount,
-  isLargestDropOff,
-  onClick,
-}: {
-  stage: PtHubAnalyticsStage;
-  previousCount: number | null;
-  maxCount: number;
-  isLargestDropOff: boolean;
-  onClick: () => void;
-}) {
-  const width = maxCount > 0 ? Math.max(18, Math.round((stage.count / maxCount) * 100)) : 0;
-  const dropCount =
-    previousCount !== null ? Math.max(0, previousCount - stage.count) : 0;
-  const acceptedPercent =
-    previousCount && previousCount > 0
-      ? Math.max(0, Math.min(100, Math.round((stage.count / previousCount) * 100)))
-      : 100;
-  const lostPercent =
-    previousCount && previousCount > 0 ? Math.max(0, 100 - acceptedPercent) : 0;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "pt-hub-interactive group w-full rounded-[24px] border px-4 py-4 text-left transition-colors",
-        isLargestDropOff
-          ? "border-warning/35 bg-warning/6 hover:border-warning/45 hover:bg-warning/10"
-          : "border-border/60 bg-background/34 hover:border-primary/24 hover:bg-background/48",
-      )}
-    >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.2fr)_140px] lg:items-center">
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {stage.label}
-            </p>
-            {isLargestDropOff ? <Badge variant="warning">Biggest drop-off</Badge> : null}
-          </div>
-          <p className="text-[1.95rem] font-semibold uppercase tracking-[0.04em] text-foreground">
-            {stage.count}
-          </p>
-        </div>
-
-        <div className="space-y-2.5">
-          {stage.conversionFromPrevious === null ? (
-            <>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  <span>Submitted demand</span>
-                  <span>{stage.count}</span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-background/75">
-                  <div
-                    className={cn(
-                      "h-full rounded-full",
-                      getAnalyticsBarClassName({}),
-                    )}
-                    style={{ width: `${width}%` }}
-                  />
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Base submitted demand in the selected range.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  <span>Accepted vs lost</span>
-                  <span>{acceptedPercent}% / {lostPercent}%</span>
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-background/75">
-                  <div className="flex h-full w-full">
-                    <div
-                      className="h-full bg-[var(--state-success-text)]"
-                      style={{ width: `${acceptedPercent}%` }}
-                    />
-                    <div
-                      className="h-full bg-[var(--state-danger-text)]"
-                      style={{ width: `${lostPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                <span>{stage.count} accepted</span>
-                <span>{dropCount} lost</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {Math.round(stage.conversionFromPrevious)}% moved forward from the previous stage.
-              </p>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-end">
-          <Badge
-            variant={
-              stage.conversionFromPrevious === null
-                ? "muted"
-                : isLargestDropOff
-                  ? "warning"
-                  : "info"
-            }
-          >
-            {stage.conversionFromPrevious === null
-              ? "Start"
-              : `${Math.round(stage.conversionFromPrevious)}%`}
-          </Badge>
-          {previousCount !== null ? (
-            <p
-              className={cn(
-                "text-xs font-medium uppercase tracking-[0.16em]",
-                isLargestDropOff ? "text-warning" : "text-muted-foreground",
-              )}
-            >
-              {dropCount} lost
-            </p>
-          ) : null}
-        </div>
-      </div>
-    </button>
-  );
 }
 
 function TrendLegendItem({
@@ -465,54 +287,193 @@ function SpeedMetric({
         </div>
         {action}
       </div>
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">{detail}</p>
+      <span className="sr-only">{detail}</span>
     </div>
   );
 }
 
-function AttentionItem({
+function AnalysisMetricCard({
   label,
-  value,
-  detail,
-  tone,
-  ctaLabel,
+  kpi,
+  tone = "analytics",
+  suffix,
   onClick,
 }: {
   label: string;
-  value: string;
-  detail: string;
-  tone: SemanticTone;
-  ctaLabel: string;
+  kpi: PtHubAnalyticsKpi;
+  tone?: ModuleTone;
+  suffix?: string;
   onClick: () => void;
 }) {
-  const toneStyles = getSemanticToneClasses(tone);
+  const deltaLabel = formatMetricDelta(kpi.delta, suffix);
+  const isPositive = typeof kpi.delta === "number" && kpi.delta > 0;
+  const isNegative = typeof kpi.delta === "number" && kpi.delta < 0;
+  const signalWidth =
+    typeof kpi.delta === "number"
+      ? Math.max(18, Math.min(100, 52 + Math.abs(Math.round(kpi.delta)) * 6))
+      : kpi.unavailable
+        ? 24
+        : 52;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="pt-hub-interactive group w-full rounded-[22px] border border-transparent bg-background/30 px-4 py-4 text-left transition-colors hover:border-primary/18 hover:bg-background/46"
+      className="group rounded-[22px] border border-border/60 bg-background/28 p-4 text-left transition-colors hover:border-primary/24 hover:bg-background/42 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 gap-3">
-          <span
-            aria-hidden
-            className={cn("mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full", toneStyles.marker)}
-          />
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={tone}>{label}</Badge>
-              <span className="text-sm font-medium text-foreground">{value}</span>
-            </div>
-            <p className="text-sm leading-6 text-muted-foreground">{detail}</p>
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-2 truncate text-xl font-semibold tracking-tight text-foreground">
+            {kpi.value}
+          </p>
         </div>
-        <span className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          {ctaLabel}
-          <ArrowRight className="h-3.5 w-3.5 [stroke-width:1.7]" />
-        </span>
+        {deltaLabel ? (
+          <Badge
+            variant={isPositive ? "success" : isNegative ? "warning" : "muted"}
+            className="shrink-0"
+          >
+            {deltaLabel}
+          </Badge>
+        ) : null}
       </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-background/70">
+        <div
+          className={cn(
+            "h-full rounded-full transition-[width] duration-300",
+            kpi.unavailable && "bg-muted-foreground/45",
+          )}
+          style={{
+            width: `${signalWidth}%`,
+            backgroundColor: kpi.unavailable
+              ? undefined
+              : `oklch(var(--module-${tone}-text))`,
+          }}
+        />
+      </div>
+      <span className="sr-only">{kpi.helper}</span>
     </button>
+  );
+}
+
+function FunnelOverview({
+  stages,
+  largestGap,
+  onStageClick,
+}: {
+  stages: PtHubAnalyticsStage[];
+  largestGap: FunnelGap | null;
+  onStageClick: (stage: PtHubAnalyticsStage) => void;
+}) {
+  const maxCount = stages[0]?.count ?? 0;
+
+  return (
+    <div className="flex h-full min-h-[22rem] flex-col rounded-[24px] border border-border/60 bg-background/24 p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            Conversion map
+          </p>
+        </div>
+        {largestGap ? (
+          <Badge variant="warning">
+            {largestGap.dropCount} lost after {largestGap.fromLabel}
+          </Badge>
+        ) : (
+          <Badge variant="success">No major leak</Badge>
+        )}
+      </div>
+
+      <div className="grid flex-1 gap-3">
+        {stages.map((stage, index) => {
+          const width =
+            maxCount > 0
+              ? Math.max(18, Math.round((stage.count / maxCount) * 100))
+              : 0;
+          const previous = index > 0 ? stages[index - 1] : null;
+          const dropCount = previous
+            ? Math.max(0, previous.count - stage.count)
+            : 0;
+          const isLargestDropOff = largestGap?.stageId === stage.id;
+
+          return (
+            <button
+              key={stage.id}
+              type="button"
+              onClick={() => onStageClick(stage)}
+              className={cn(
+                "grid min-h-[6.25rem] rounded-[22px] border p-4 text-left transition-colors hover:bg-background/44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 sm:grid-cols-[minmax(0,0.8fr)_minmax(12rem,1fr)_minmax(7rem,auto)] sm:items-center sm:gap-5",
+                isLargestDropOff
+                  ? "border-warning/35 bg-warning/8"
+                  : "border-border/55 bg-background/30",
+              )}
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {stage.label}
+                  </p>
+                  {isLargestDropOff ? (
+                    <Badge variant="warning" className="shrink-0">
+                      Leak
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-3xl font-semibold text-foreground tabular-nums">
+                  {stage.count}
+                </p>
+              </div>
+
+              <div className="mt-4 min-w-0 sm:mt-0">
+                <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  <span>
+                    {stage.conversionFromPrevious === null
+                      ? "Starting volume"
+                      : `${Math.round(stage.conversionFromPrevious)}% forward`}
+                  </span>
+                  {previous ? (
+                    <span className={isLargestDropOff ? "text-warning" : ""}>
+                      {dropCount} lost
+                    </span>
+                  ) : null}
+                </div>
+                <div className="h-9 overflow-hidden rounded-2xl bg-background/70">
+                  <div
+                    className={cn(
+                      "flex h-full items-center rounded-2xl px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-foreground",
+                      isLargestDropOff
+                        ? "bg-warning"
+                        : getAnalyticsBarClassName({}),
+                    )}
+                    style={{ width: `${width}%` }}
+                  >
+                    {width >= 36 ? `${width}%` : ""}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between gap-3 sm:mt-0 sm:justify-end">
+                <Badge
+                  variant={
+                    stage.conversionFromPrevious === null
+                      ? "muted"
+                      : isLargestDropOff
+                        ? "warning"
+                        : "info"
+                  }
+                >
+                  {stage.conversionFromPrevious === null
+                    ? "Start"
+                    : `${Math.round(stage.conversionFromPrevious)}%`}
+                </Badge>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -533,7 +494,7 @@ function HealthMetric({
         {label}
       </p>
       <p className="text-xl font-semibold tracking-tight text-foreground">{value}</p>
-      <p className="text-sm leading-6 text-muted-foreground">{detail}</p>
+      <span className="sr-only">{detail}</span>
     </div>
   );
 
@@ -550,15 +511,134 @@ function HealthMetric({
   );
 }
 
-type AttentionListItem = {
-  id: string;
-  label: string;
-  value: string;
-  detail: string;
-  tone: SemanticTone;
-  ctaLabel: string;
-  onClick: () => void;
-};
+function AnalyticsRangeRail({
+  rangeKey,
+  previousRangeLabel,
+  onChange,
+}: {
+  rangeKey: PtHubAnalyticsFilters["rangeKey"];
+  previousRangeLabel: string;
+  onChange: (rangeKey: PtHubAnalyticsFilters["rangeKey"]) => void;
+}) {
+  return (
+    <div className="w-full min-w-[17rem] max-w-[18.75rem] space-y-1">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[0.68rem] font-semibold leading-none text-muted-foreground">
+          Date range
+        </p>
+        <p className="truncate text-right text-[0.68rem] font-medium leading-none text-muted-foreground">
+          vs {previousRangeLabel}
+        </p>
+      </div>
+      <nav
+        className="pt-hub-tab-rail pt-hub-analytics-range-rail h-10 w-full justify-center"
+        aria-label="Date range for all analytics"
+      >
+        {PT_HUB_ANALYTICS_RANGE_OPTIONS.map((option) => {
+          const selected = rangeKey === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              data-state={selected ? "active" : "inactive"}
+              className={cn(
+                "pt-hub-tab-trigger pt-hub-analytics-range-trigger group flex-1 uppercase tracking-[0.14em]",
+                selected ? "text-foreground" : "text-muted-foreground",
+              )}
+              aria-pressed={selected}
+            >
+              {selected ? (
+                <span className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border" />
+              ) : null}
+              <span className="relative z-10">{option.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+function TrendDataSummary({
+  rangeLabel,
+  bucketLabel,
+  totals,
+  points,
+}: {
+  rangeLabel: string;
+  bucketLabel: string;
+  totals: {
+    leadsCreated: number;
+    approvedLeads: number;
+    convertedClients: number;
+  };
+  points: Array<{
+    label: string;
+    leadsCreated: number;
+    approvedLeads: number;
+    convertedClients: number;
+  }>;
+}) {
+  return (
+    <div className="rounded-[22px] border border-border/60 bg-background/28 p-4">
+      <p className="text-sm font-medium text-foreground">
+        {rangeLabel}: {totals.leadsCreated} leads, {totals.approvedLeads}{" "}
+        approved, {totals.convertedClients} converted.
+      </p>
+      <span className="sr-only">
+        The chart uses {bucketLabel.toLowerCase()} buckets. The table contains
+        the same data for keyboard and screen-reader review.
+      </span>
+      <details className="mt-3">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          View trend data table
+        </summary>
+        <div className="mt-3 max-h-44 overflow-auto rounded-2xl border border-border/55">
+          <table className="w-full min-w-[32rem] text-left text-sm">
+            <caption className="sr-only">
+              {bucketLabel} lead trend data for {rangeLabel}
+            </caption>
+            <thead className="bg-background/44 text-xs text-muted-foreground">
+              <tr>
+                <th scope="col" className="px-3 py-2 font-semibold">
+                  Period
+                </th>
+                <th scope="col" className="px-3 py-2 font-semibold">
+                  Leads
+                </th>
+                <th scope="col" className="px-3 py-2 font-semibold">
+                  Approved
+                </th>
+                <th scope="col" className="px-3 py-2 font-semibold">
+                  Converted
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {points.map((point) => (
+                <tr key={point.label} className="border-t border-border/45">
+                  <th scope="row" className="px-3 py-2 font-medium text-foreground">
+                    {point.label}
+                  </th>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {point.leadsCreated}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {point.approvedLeads}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {point.convertedClients}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  );
+}
 
 function WorkspaceComparisonRow({
   row,
@@ -680,7 +760,6 @@ export function PtHubAnalyticsPage() {
     packagesQuery.error;
 
   const largestGap = useMemo(() => getLargestFunnelGap(snapshot.funnel), [snapshot.funnel]);
-  const maxFunnelCount = snapshot.funnel[0]?.count ?? 0;
   const qualityRows = useMemo(
     () =>
       rankQualityRows(
@@ -720,47 +799,6 @@ export function PtHubAnalyticsPage() {
       ).length,
     [snapshot.trend],
   );
-  const attentionItems = useMemo(
-    (): AttentionListItem[] => [
-      {
-        id: "waiting",
-        label: "Leads waiting >24h",
-        value: String(snapshot.speed.leadsWaitingMoreThan24h),
-        detail: "These new leads are the fastest current leak in the PT Hub pipeline.",
-        tone:
-          snapshot.speed.leadsWaitingMoreThan24h > 0 ? "danger" : "neutral",
-        ctaLabel: "Open leads",
-        onClick: () => navigate("/pt-hub/leads?status=new&attention=waiting24h"),
-      },
-      {
-        id: "risk",
-        label: "At-risk clients",
-        value: String(snapshot.clientHealth.atRiskClients),
-        detail: "Risk stays independent from lifecycle so the PT can spot instability early.",
-        tone:
-          snapshot.clientHealth.atRiskClients > 0 ? "danger" : "neutral",
-        ctaLabel: "Open clients",
-        onClick: () => navigate("/pt-hub/clients?segment=at_risk"),
-      },
-      {
-        id: "overdue",
-        label: "Overdue check-ins",
-        value: String(snapshot.clientHealth.overdueCheckinClients),
-        detail: "A compact delivery-health exception list keeps overdue follow-up visible.",
-        tone:
-          snapshot.clientHealth.overdueCheckinClients > 0 ? "warning" : "neutral",
-        ctaLabel: "Review",
-        onClick: () => navigate("/pt-hub/clients?segment=checkin_overdue"),
-      },
-    ],
-    [
-      navigate,
-      snapshot.clientHealth.atRiskClients,
-      snapshot.clientHealth.overdueCheckinClients,
-      snapshot.speed.leadsWaitingMoreThan24h,
-    ],
-  );
-
   if (isLoading) {
     return <AnalyticsLoadingState />;
   }
@@ -768,10 +806,10 @@ export function PtHubAnalyticsPage() {
   if (error) {
     return (
       <section className="space-y-4">
-        <PtHubPageHeader
-          eyebrow="Analytics"
-          title="Business health"
-          description="Track where demand is growing, where business is leaking, and what needs action today."
+      <PtHubPageHeader
+        eyebrow="Analytics"
+        title="Business health"
+        description="Demand, leaks, response, and risk."
         />
 
         <PtHubSectionCard
@@ -806,121 +844,87 @@ export function PtHubAnalyticsPage() {
   }
 
   return (
-    <section className="space-y-4">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Analytics"
         title="Business health"
-        description="See where demand is growing, where business is leaking, and what needs coach attention today."
+        description="Demand, leaks, response, and client risk."
       />
 
-      <div className="flex justify-center py-2">
-        <nav
-          className="pt-hub-tab-rail mx-auto h-auto min-h-[3.75rem] w-full max-w-xl justify-center"
-          aria-label="Analytics date range"
+      <div className="grid gap-5">
+        <PtHubSectionCard
+          title="Business Command Center"
+          description="Current performance at a glance."
+          module="analytics"
+          contentClassName="space-y-5"
+          actions={
+            <AnalyticsRangeRail
+              rangeKey={filters.rangeKey}
+              previousRangeLabel={snapshot.previousRangeLabel}
+              onChange={(rangeKey) =>
+                setFilters((current) => ({
+                  ...current,
+                  rangeKey,
+                }))
+              }
+            />
+          }
         >
-          {PT_HUB_ANALYTICS_RANGE_OPTIONS.map((option) => {
-            const selected = filters.rangeKey === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() =>
-                  setFilters((current) => ({
-                    ...current,
-                    rangeKey: option.value,
-                  }))
-                }
-                data-state={selected ? "active" : "inactive"}
-                className={cn(
-                  "pt-hub-tab-trigger group flex-1 uppercase tracking-[0.18em]",
-                  selected ? "text-foreground" : "text-muted-foreground",
-                )}
-                aria-pressed={selected}
-              >
-                {selected ? (
-                  <span className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border" />
-                ) : null}
-                <span className="relative z-10">{option.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+          <div className="max-w-3xl space-y-2">
+            <p className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {largestGap
+                ? `${largestGap.dropCount} leads are leaking between ${largestGap.fromLabel.toLowerCase()} and ${largestGap.toLabel.toLowerCase()}.`
+                : snapshot.emptyStates.hasAnyRangeLeads
+                  ? "The funnel is holding steady in this range."
+                  : "No submitted demand landed in this range yet."}
+            </p>
+          </div>
 
-      <div className="page-kpi-block pt-hub-work-grid xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-        <div className="grid gap-4 md:grid-cols-2">
-          <AnalyticsKpiCard
-            label="New leads"
-            icon={MessageSquarePlus}
-            kpi={snapshot.topKpis.newLeads}
-            onClick={() => navigate("/pt-hub/leads")}
-            module="leads"
-          />
-          <AnalyticsKpiCard
-            label="Lead-to-client conversion"
-            icon={TrendingUp}
-            kpi={snapshot.topKpis.conversion}
-            suffix="%"
-            onClick={() => navigate("/pt-hub/leads?status=converted")}
-            module="leads"
-          />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <AnalyticsKpiCard
-            label="Median first response"
-            icon={Clock3}
-            kpi={snapshot.topKpis.medianFirstResponse}
-            onClick={() => navigate("/pt-hub/leads?status=new&attention=waiting24h")}
-            module="leads"
-          />
-          <AnalyticsKpiCard
-            label="Active clients"
-            icon={UsersRound}
-            kpi={snapshot.topKpis.activeClients}
-            onClick={() => navigate("/pt-hub/clients?lifecycle=active")}
-            module="clients"
-          />
-        </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <AnalysisMetricCard
+              label="Submitted demand"
+              kpi={snapshot.topKpis.newLeads}
+              tone="leads"
+              onClick={() => navigate("/pt-hub/leads")}
+            />
+            <AnalysisMetricCard
+              label="Conversion"
+              kpi={snapshot.topKpis.conversion}
+              tone="leads"
+              suffix="%"
+              onClick={() => navigate("/pt-hub/leads?status=converted")}
+            />
+            <AnalysisMetricCard
+              label="Median response"
+              kpi={snapshot.topKpis.medianFirstResponse}
+              tone="leads"
+              onClick={() =>
+                navigate("/pt-hub/leads?status=new&attention=waiting24h")
+              }
+            />
+            <AnalysisMetricCard
+              label="Active clients"
+              kpi={snapshot.topKpis.activeClients}
+              tone="clients"
+              onClick={() => navigate("/pt-hub/clients?lifecycle=active")}
+            />
+          </div>
+        </PtHubSectionCard>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <PtHubSectionCard
           title="Lead funnel"
-          description="Stage conversion and drop-off. The strongest leak is visually promoted so the PT can spot it first."
+          description="Volume, conversion, and drop-off."
           contentClassName="space-y-4"
         >
           {snapshot.emptyStates.hasAnyRangeLeads ? (
             <>
-              {largestGap ? (
-                <div className="rounded-[22px] border border-warning/30 bg-warning/8 px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-warning">
-                        Biggest drop-off
-                      </p>
-                      <p className="text-sm font-medium text-foreground">
-                        {largestGap.fromLabel} to {largestGap.toLabel}
-                      </p>
-                    </div>
-                    <Badge variant="warning">
-                      {largestGap.dropCount} lost ({Math.round(largestGap.dropPercent)}%)
-                    </Badge>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="space-y-3">
-                {snapshot.funnel.map((stage, index) => (
-                  <FunnelStageRow
-                    key={stage.id}
-                    stage={stage}
-                    previousCount={index > 0 ? snapshot.funnel[index - 1]?.count ?? null : null}
-                    maxCount={maxFunnelCount}
-                    isLargestDropOff={largestGap?.stageId === stage.id}
-                    onClick={() => navigate(stage.href)}
-                  />
-                ))}
-              </div>
+              <FunnelOverview
+                stages={snapshot.funnel}
+                largestGap={largestGap}
+                onStageClick={(stage) => navigate(stage.href)}
+              />
             </>
           ) : (
             <EmptyState
@@ -928,7 +932,7 @@ export function PtHubAnalyticsPage() {
               description={
                 snapshot.emptyStates.hasAnyLeads
                   ? "There are PT Hub leads overall, but none fall inside the selected date range or filter mix."
-                  : "New inquiries will appear here once the coach page starts collecting applications."
+                  : "New inquiries will appear here."
               }
               className="rounded-[24px] border-border/70 bg-background/28"
             />
@@ -937,16 +941,16 @@ export function PtHubAnalyticsPage() {
 
         <PtHubSectionCard
           title="Lead trend"
-          description={`${snapshot.bucketLabel} trend for submitted demand and downstream outcomes. Clean lines keep time comparison readable.`}
+          description={`${snapshot.bucketLabel} demand and outcomes.`}
           contentClassName="space-y-4"
         >
           {snapshot.trend.length > 0 ? (
             <>
               {activeTrendBucketCount <= 1 ? (
                 <Alert tone="info" className="border-info/20 bg-info/6">
-                  <AlertTitle>Why this chart looks quiet</AlertTitle>
+                  <AlertTitle>Low activity range</AlertTitle>
                   <AlertDescription>
-                    Only {activeTrendBucketCount === 0 ? "zero active periods are" : "one active period is"} in the selected range, so the chart has no visible slope yet. As more days or weeks carry activity, this line will start showing direction instead of a single point.
+                    {activeTrendBucketCount === 0 ? "No active periods" : "One active period"} in this range.
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -971,6 +975,13 @@ export function PtHubAnalyticsPage() {
                 </div>
                 <Badge variant="muted">{snapshot.bucketLabel}</Badge>
               </div>
+
+              <TrendDataSummary
+                rangeLabel={snapshot.rangeLabel}
+                bucketLabel={snapshot.bucketLabel}
+                totals={trendTotals}
+                points={snapshot.trend}
+              />
 
               <div className="h-[16rem] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1036,7 +1047,7 @@ export function PtHubAnalyticsPage() {
           ) : (
             <EmptyState
               title="No trend to chart yet"
-              description="Once leads land inside the selected range, this chart will show submitted demand plus approval and conversion outcomes."
+              description="Leads in this range will chart here."
               className="rounded-[24px] border-border/70 bg-background/28"
             />
           )}
@@ -1046,7 +1057,7 @@ export function PtHubAnalyticsPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <PtHubSectionCard
           title="Lead quality"
-          description="A ranked decision table. Stronger performers float up, while low-sample rows stay visible but visually de-emphasized."
+          description="Ranked sources and packages."
           actions={
             <div className="flex flex-wrap gap-2">
               <Button
@@ -1102,7 +1113,7 @@ export function PtHubAnalyticsPage() {
           ) : (
             <EmptyState
               title="No quality breakdown yet"
-              description="This table will rank sources and package interests once submitted lead volume exists inside the selected range."
+              description="Lead volume will rank here."
               className="rounded-[24px] border-border/70 bg-background/28"
             />
           )}
@@ -1110,7 +1121,7 @@ export function PtHubAnalyticsPage() {
 
         <PtHubSectionCard
           title="Speed to action"
-          description="Compact timing metrics keep attention on response delays, while unavailable timing stays visibly secondary."
+          description="Response timing."
           contentClassName="space-y-3"
         >
           <SpeedMetric
@@ -1160,32 +1171,46 @@ export function PtHubAnalyticsPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <PtHubSectionCard
           title="Client risk and delivery health"
-          description="Exceptions come first here so the PT can see urgent client issues before slower-moving lifecycle summaries."
+          description="Risk and check-in coverage."
           contentClassName="space-y-4"
         >
-          <div className="rounded-[24px] border border-border/60 bg-background/24 p-3">
-            <div className="mb-3 flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-warning [stroke-width:1.7]" />
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Needs attention now
-              </p>
-            </div>
-            <div className="space-y-2">
-              {attentionItems.map((item) => (
-                <AttentionItem
-                  key={item.id}
-                  label={item.label}
-                  value={item.value}
-                  detail={item.detail}
-                  tone={item.tone}
-                  ctaLabel={item.ctaLabel}
-                  onClick={item.onClick}
-                />
-              ))}
+          <div className="rounded-[24px] border border-border/60 bg-background/24 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/44 text-warning">
+                  <ShieldAlert className="h-4 w-4 [stroke-width:1.7]" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {snapshot.clientHealth.atRiskClients > 0
+                      ? `${snapshot.clientHealth.atRiskClients} clients need stability review`
+                      : "No client risk exceptions are active"}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate("/pt-hub/clients?segment=at_risk")}
+              >
+                Open clients
+              </Button>
             </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
+            <HealthMetric
+              label="Active at risk"
+              value={String(snapshot.clientHealth.atRiskActiveClients)}
+              detail="Active clients currently flagged for coaching risk."
+              onClick={() => navigate("/pt-hub/clients?segment=at_risk")}
+            />
+            <HealthMetric
+              label="Overdue check-ins"
+              value={String(snapshot.clientHealth.overdueCheckinClients)}
+              detail="Clients with overdue delivery follow-up."
+              onClick={() => navigate("/pt-hub/clients?segment=checkin_overdue")}
+            />
             <HealthMetric
               label={`Paused in ${filters.rangeKey.toUpperCase()}`}
               value={String(snapshot.clientHealth.pausedInPeriod)}
@@ -1203,7 +1228,7 @@ export function PtHubAnalyticsPage() {
 
         <PtHubSectionCard
           title="Workspace performance"
-          description="A comparison surface, not a summary list. Ranking and inline bars make stronger spaces stand out faster."
+          description="Space-by-space comparison."
           contentClassName="space-y-4"
         >
           {snapshot.workspacePerformance.length > 1 ? (
@@ -1235,7 +1260,7 @@ export function PtHubAnalyticsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="muted">Single workspace</Badge>
                 <p className="text-sm text-muted-foreground">
-                  Comparison becomes meaningful once more than one coaching space is active.
+                  Add another space to compare.
                 </p>
               </div>
               <div className="grid gap-3 md:grid-cols-4">
@@ -1264,7 +1289,7 @@ export function PtHubAnalyticsPage() {
           ) : (
             <EmptyState
               title="No workspace comparison yet"
-              description="Once multiple coaching spaces are active, this table will compare converted demand, client volume, and risk side by side."
+              description="Multiple spaces will compare here."
               className="rounded-[24px] border-border/70 bg-background/28"
             />
           )}
@@ -1273,13 +1298,13 @@ export function PtHubAnalyticsPage() {
 
       <PtHubSectionCard
         title="Tracking coverage"
-        description="Unavailable upstream analytics are visually subordinate here so live business metrics stay dominant."
+        description="Current analytics limits."
         contentClassName="space-y-3"
       >
         <Alert tone="info" className="border-info/20 bg-info/6">
           <AlertTitle>Instrumentation is still partial</AlertTitle>
           <AlertDescription>
-            This page prefers honest unavailable states over decorative placeholders or invented metrics.
+            Unavailable metrics stay labeled instead of estimated.
           </AlertDescription>
         </Alert>
 
@@ -1293,7 +1318,7 @@ export function PtHubAnalyticsPage() {
                 <AlertTriangle className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className="text-sm leading-6 text-muted-foreground">{item.detail}</p>
+                  <span className="sr-only">{item.detail}</span>
                 </div>
               </div>
             </div>

@@ -3,7 +3,7 @@ import { useSessionAuth } from "../../lib/auth";
 import { RouteAwareWireframeLoader } from "./wireframe-loader";
 
 export function LoadingScreen({
-  message = "Loading...",
+  message = "Preparing your workspace...",
 }: {
   message?: string;
 }) {
@@ -23,7 +23,7 @@ export function BootstrapGate({ children }: { children: React.ReactNode }) {
   if (!session && !authLoading) return <>{children}</>;
 
   if (authLoading) {
-    return <LoadingScreen message="Loading..." />;
+    return <LoadingScreen message="Checking your session..." />;
   }
 
   return <>{children}</>;

@@ -414,7 +414,7 @@ function SidebarNav({
             <p
               className={cn(
                 "px-2 text-[10px] font-semibold uppercase tracking-[0.32em]",
-                isLightMode ? "text-slate-500" : "text-muted-foreground/80",
+                isLightMode ? "text-muted-foreground" : "text-muted-foreground/80",
               )}
             >
               {group.label}

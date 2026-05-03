@@ -14,6 +14,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import {
@@ -1146,32 +1147,41 @@ export function PtDashboardPage() {
 
           <DashboardCard title="To-Do list" className="border-border/80">
             <div className="space-y-3">
-              <div className="surface-subtle flex items-center gap-2 px-2 py-2">
-                <Input
-                  value={todoDraft}
-                  onChange={(event) => setTodoDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void addTodo();
-                    }
-                  }}
-                  placeholder="Add a new task"
-                  className="h-9 border-transparent bg-transparent shadow-none"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => void addTodo()}
-                  disabled={!todoDraft.trim()}
+              <div className="surface-subtle space-y-1.5 px-3 py-3">
+                <Label
+                  htmlFor="coach-dashboard-task"
+                  className="text-xs font-semibold text-muted-foreground"
                 >
-                  <ActionButtonLabel
-                    state={todoActionState}
-                    idleLabel="Add"
-                    savingLabel="Adding..."
-                    successLabel="Added"
-                    errorLabel="Try again"
+                  Quick task
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="coach-dashboard-task"
+                    value={todoDraft}
+                    onChange={(event) => setTodoDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void addTodo();
+                      }
+                    }}
+                    placeholder="Follow up with Omar"
+                    className="h-9 border-transparent bg-transparent shadow-none"
                   />
-                </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => void addTodo()}
+                    disabled={!todoDraft.trim()}
+                  >
+                    <ActionButtonLabel
+                      state={todoActionState}
+                      idleLabel="Add"
+                      savingLabel="Adding..."
+                      successLabel="Added"
+                      errorLabel="Try again"
+                    />
+                  </Button>
+                </div>
               </div>
               {todoActionState !== "idle" ? (
                 <ActionStatusMessage

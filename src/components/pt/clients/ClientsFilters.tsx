@@ -5,6 +5,7 @@ import type {
 } from "../../../lib/client-lifecycle";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
 import { Select } from "../../ui/select";
 
 export type ClientLifecycleFilterKey = "all" | ClientLifecycleState;
@@ -47,42 +48,66 @@ export function ClientsFilters({
 }) {
   return (
     <div className="flex flex-1 flex-col gap-3">
-      <div className="flex w-full flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-72">
-          <Input
-            placeholder="Search clients, goals, or risks..."
-            className="app-search-input app-search-input-sm pl-10"
-            value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
-          <Search className="app-search-icon h-4 w-4" />
-        </div>
-        <Select
-          variant="filter"
-          size="sm"
-          className="w-36 shrink-0"
-          value={activeLifecycle}
-          onChange={(event) =>
-            onLifecycleChange(event.target.value as ClientLifecycleFilterKey)
-          }
-          aria-label="Filter by lifecycle"
-        >
-          {lifecycleFilters.map((filter) => (
-            <option key={filter.key} value={filter.key}>
-              {filter.label}
-            </option>
-          ))}
-        </Select>
-        {segments.map((segment) => (
-          <Button
-            key={segment.key}
-            variant={activeSegment === segment.key ? "default" : "secondary"}
-            size="sm"
-            onClick={() => onSegmentChange(segment.key)}
+      <div className="grid w-full gap-3 md:grid-cols-[minmax(16rem,1fr)_10rem_minmax(0,1.7fr)] md:items-end">
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="pt-client-filter-search"
+            className="text-xs font-semibold text-muted-foreground"
           >
-            {segment.label}
-          </Button>
-        ))}
+            Search
+          </Label>
+          <div className="relative">
+            <Input
+              id="pt-client-filter-search"
+              placeholder="Name, goal, or risk"
+              className="app-search-input app-search-input-sm pl-10"
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+            />
+            <Search className="app-search-icon h-4 w-4" />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="pt-client-filter-lifecycle"
+            className="text-xs font-semibold text-muted-foreground"
+          >
+            Lifecycle
+          </Label>
+          <Select
+            id="pt-client-filter-lifecycle"
+            variant="filter"
+            size="sm"
+            className="w-full"
+            value={activeLifecycle}
+            onChange={(event) =>
+              onLifecycleChange(event.target.value as ClientLifecycleFilterKey)
+            }
+          >
+            {lifecycleFilters.map((filter) => (
+              <option key={filter.key} value={filter.key}>
+                {filter.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground">
+            Segment
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {segments.map((segment) => (
+              <Button
+                key={segment.key}
+                variant={activeSegment === segment.key ? "default" : "secondary"}
+                size="sm"
+                onClick={() => onSegmentChange(segment.key)}
+              >
+                {segment.label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

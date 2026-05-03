@@ -117,10 +117,10 @@ function MessageWidgetLauncher({
         {open ? (
           <X className="h-5 w-5" />
         ) : (
-          <MessageCircle className="h-5 w-5 text-cyan-300 transition group-hover:text-cyan-200" />
+          <MessageCircle className="h-5 w-5 text-primary transition group-hover:text-primary/80" />
         )}
         {!open && unreadConversationCount > 0 ? (
-          <span className="absolute -right-2 -top-2 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border border-background bg-cyan-300 px-1 text-[10px] font-semibold text-slate-950">
+          <span className="absolute -right-2 -top-2 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border border-background bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
             {unreadConversationCount > 9 ? "9+" : unreadConversationCount}
           </span>
         ) : null}

@@ -10,13 +10,13 @@ export function SupportPage() {
       title="Support"
       description="Tell us what happened and we will help you get back into your RepSync workspace. Include the account email, what you were trying to do, and any relevant screenshots."
       aside={
-        <div className="space-y-4 text-sm text-slate-600">
-          <div className="flex items-center gap-3 text-slate-950">
-            <Mail className="h-4 w-4 text-emerald-700" />
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 text-foreground">
+            <Mail className="h-4 w-4 text-primary" />
             <span className="font-semibold">Contact support</span>
           </div>
           <a
-            className="inline-flex font-semibold text-slate-950 underline decoration-emerald-600/30 underline-offset-4 transition-colors hover:text-emerald-700"
+            className="inline-flex font-semibold text-foreground underline decoration-primary/30 underline-offset-4 transition-colors hover:text-primary"
             href={`mailto:${supportEmail}`}
           >
             {supportEmail}
@@ -25,7 +25,7 @@ export function SupportPage() {
             For account access, billing, or product issues, use the same email
             linked to your RepSync account.
           </p>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium leading-5 text-emerald-900">
+          <div className="rounded-xl border border-primary/25 bg-primary/10 p-3 text-xs font-medium leading-5 text-foreground">
             Never send passwords, payment card numbers, or private client health
             details by email.
           </div>

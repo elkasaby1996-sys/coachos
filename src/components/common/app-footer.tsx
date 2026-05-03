@@ -43,12 +43,14 @@ export function AppFooter({
       <PageContainer
         size={size}
         className={cn(
-          "flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between",
+          "grid gap-2 text-xs text-muted-foreground sm:grid-cols-[1fr_auto_1fr] sm:items-center",
           contentClassName,
         )}
       >
-        <span>c 2026 RepSync</span>
-        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="justify-self-center sm:justify-self-start">
+          c 2026 RepSync
+        </span>
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-self-center">
           <Link
             className="transition-colors hover:text-foreground"
             to="/support"
@@ -68,7 +70,7 @@ export function AppFooter({
         {enableRegionLanguageSwitcher ? (
           <RegionLanguageSwitcher />
         ) : (
-          <span className="sm:text-right">
+          <span className="justify-self-center sm:justify-self-end sm:text-right">
             {t("footer.regionLanguage", "Region & language")}
           </span>
         )}

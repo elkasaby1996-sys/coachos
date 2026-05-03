@@ -76,7 +76,6 @@ import {
   SupportPage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
-  WorkspaceSettingsBrandTab,
   WorkspaceSettingsClientExperienceTab,
   WorkspaceSettingsDangerTab,
   WorkspaceSettingsDefaultsTab,
@@ -693,7 +692,7 @@ export function App() {
           <Route element={<WorkspaceSettingsLayoutPage />}>
             <Route index element={<Navigate to="general" replace />} />
             <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
-            <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
+            <Route path="brand" element={<Navigate to="../general" replace />} />
             <Route
               path="client-experience"
               element={<WorkspaceSettingsClientExperienceTab />}

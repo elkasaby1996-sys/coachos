@@ -5,6 +5,7 @@ import { cn } from "../../../lib/utils";
 import {
   getNotificationIcon,
   getNotificationModuleTone,
+  getNotificationTitle,
   getNotificationTypeLabel,
 } from "../lib/notification-utils";
 import type { NotificationRecord } from "../lib/types";
@@ -31,7 +32,7 @@ export function NotificationItem({
   const hasAction = Boolean(notification.action_url);
   const module = getNotificationModuleTone(notification);
   const moduleClasses = getModuleToneClasses(module);
-  const title = notification.title.trim();
+  const title = getNotificationTitle(notification, audience);
   const body = notification.body.trim();
   const compactHeadline =
     compact &&

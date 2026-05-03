@@ -1,11 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider";
+import { LoadingScreen } from "./common/bootstrap-gate";
 
 export function ProtectedRoute() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
+    return <LoadingScreen message="Checking your access..." />;
   }
 
   if (!user) {

@@ -9,13 +9,13 @@ export function PrivacyPage() {
       description="RepSync uses account, coaching, training, and check-in data to provide coach and client workflows. Access is limited by role and workspace permissions."
       updated="February 17, 2026"
       aside={
-        <div className="space-y-4 text-sm text-slate-600">
-          <div className="flex items-center gap-3 text-slate-950">
-            <Mail className="h-4 w-4 text-emerald-700" />
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 text-foreground">
+            <Mail className="h-4 w-4 text-primary" />
             <span className="font-semibold">Privacy requests</span>
           </div>
           <a
-            className="inline-flex font-semibold text-slate-950 underline decoration-emerald-600/30 underline-offset-4 transition-colors hover:text-emerald-700"
+            className="inline-flex font-semibold text-foreground underline decoration-primary/30 underline-offset-4 transition-colors hover:text-primary"
             href="mailto:support@repsync.com"
           >
             support@repsync.com
@@ -24,7 +24,7 @@ export function PrivacyPage() {
             Contact us for access, correction, deletion, or workspace data
             questions.
           </p>
-          <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium leading-5 text-slate-600">
+          <div className="rounded-xl border border-border/70 bg-card p-3 text-xs font-medium leading-5 text-muted-foreground">
             We use privacy requests to verify identity before changing or
             deleting account data.
           </div>

@@ -228,10 +228,10 @@ export function PtClientOnboardingTab({
 
   return (
     <>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
-        <div className="space-y-5">
-          <Card className="border-border/70 bg-card/80">
-            <CardHeader className="space-y-2">
+      <div className="space-y-5">
+        <Card className="border-border/70 bg-card/80">
+          <CardHeader className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={onboardingStatusMeta.variant}>
                   {getOnboardingReviewBadgeLabel(onboarding.status)}
@@ -240,56 +240,109 @@ export function PtClientOnboardingTab({
                   {formatOnboardingSource(onboarding.source)}
                 </Badge>
               </div>
-              <CardTitle>Onboarding review</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {isCompleted
-                  ? "Onboarding is complete. This tab now acts as a read-only preview of the submitted intake and coach review."
-                  : "Review the intake, confirm the initial assessment, and clear the remaining onboarding actions."}
-              </p>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryBox
-                label="Client"
-                value={clientSnapshot?.display_name ?? "Client"}
-                detail={toDisplayText(
-                  onboarding.basics?.email ?? clientSnapshot?.email,
-                  "No email saved",
-                )}
-              />
-              <SummaryBox
-                label="Started"
-                value={
-                  onboarding.started_at
-                    ? formatRelativeTime(onboarding.started_at)
-                    : "Recently"
-                }
-                detail={
-                  onboarding.last_saved_at
-                    ? `Last saved ${formatRelativeTime(onboarding.last_saved_at)}`
-                    : "No draft saves yet"
-                }
-              />
-              <SummaryBox
-                label="Submitted"
-                value={
-                  onboarding.submitted_at
-                    ? formatRelativeTime(onboarding.submitted_at)
-                    : "Not submitted"
-                }
-                detail={
-                  onboarding.reviewed_at
-                    ? `Reviewed ${formatRelativeTime(onboarding.reviewed_at)}`
-                    : "Review not logged yet"
-                }
-              />
-              <SummaryBox
-                label="Status"
-                value={onboardingStatusMeta.label}
-                detail={onboardingStatusMeta.description}
-              />
-            </CardContent>
-          </Card>
+              {isCompleted ? (
+                <Badge variant="success">
+                  Completed
+                  {onboarding.completed_at
+                    ? ` ${formatRelativeTime(onboarding.completed_at)}`
+                    : ""}
+                </Badge>
+              ) : null}
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.58fr)]">
+              <div className="space-y-2">
+                <CardTitle>Onboarding review</CardTitle>
+                <p className="max-w-3xl text-sm text-muted-foreground">
+                  {isCompleted
+                    ? "Onboarding is complete. Use this tab as the archived intake, assessment, and coach review record."
+                    : "Review the intake, confirm the initial assessment, and clear the remaining onboarding actions."}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-background/25 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {isCompleted ? "Completion record" : "Required items"}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {onboardingChecklist.map((item) => (
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        {item.complete ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                        )}
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {item.label}
+                        </span>
+                      </div>
+                      <Badge variant={item.complete ? "success" : "warning"}>
+                        {item.complete ? "Done" : "Missing"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryBox
+              label="Client"
+              value={clientSnapshot?.display_name ?? "Client"}
+              detail={toDisplayText(
+                onboarding.basics?.email ?? clientSnapshot?.email,
+                "No email saved",
+              )}
+            />
+            <SummaryBox
+              label="Started"
+              value={
+                onboarding.started_at
+                  ? formatRelativeTime(onboarding.started_at)
+                  : "Recently"
+              }
+              detail={
+                onboarding.last_saved_at
+                  ? `Last saved ${formatRelativeTime(onboarding.last_saved_at)}`
+                  : "No draft saves yet"
+              }
+            />
+            <SummaryBox
+              label="Submitted"
+              value={
+                onboarding.submitted_at
+                  ? formatRelativeTime(onboarding.submitted_at)
+                  : "Not submitted"
+              }
+              detail={
+                onboarding.reviewed_at
+                  ? `Reviewed ${formatRelativeTime(onboarding.reviewed_at)}`
+                  : "Review not logged yet"
+              }
+            />
+            <SummaryBox
+              label="Status"
+              value={onboardingStatusMeta.label}
+              detail={onboardingStatusMeta.description}
+            />
+          </CardContent>
+        </Card>
 
+        {!isCompleted && !onboardingReadyForCompletion ? (
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-foreground">
+            Completion is blocked by: {onboardingMissingItems.join(", ")}.
+          </div>
+        ) : !isCompleted ? (
+          <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground">
+            Required completion items are in place.
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
+        <div className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="border-border/70 bg-card/80">
               <CardHeader className="space-y-1 pb-2">
@@ -476,68 +529,6 @@ export function PtClientOnboardingTab({
         </div>
 
         <div className="space-y-5">
-          <Card className="border-border/70 bg-card/80">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-base">
-                {isCompleted ? "Completion summary" : "Onboarding checklist"}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {isCompleted
-                  ? "A historical view of the completion criteria for this onboarding."
-                  : "Completion requires the core onboarding items below. Program assignment and check-in setup now live in their own PT workflow surfaces outside onboarding."}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3.5">
-              {onboardingChecklist.map((item) => (
-                <div
-                  key={item.key}
-                  className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/30 px-4 py-3.5"
-                >
-                  <div className="mt-0.5">
-                    {item.complete ? (
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4 text-warning" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">
-                        {item.label}
-                      </p>
-                      {item.optional ? (
-                        <Badge variant="muted">Optional</Badge>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {item.detail}
-                    </p>
-                  </div>
-                  <Badge variant={item.complete ? "success" : "warning"}>
-                    {item.complete ? "Done" : "Missing"}
-                  </Badge>
-                </div>
-              ))}
-              {isCompleted ? (
-                <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground">
-                  Onboarding completed
-                  {onboarding.completed_at
-                    ? ` ${formatRelativeTime(onboarding.completed_at)}`
-                    : ""}
-                  .
-                </div>
-              ) : !onboardingReadyForCompletion ? (
-                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-foreground">
-                  Completion is blocked by: {onboardingMissingItems.join(", ")}.
-                </div>
-              ) : (
-                <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground">
-                  Required completion items are in place.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="border-border/70 bg-card/80">
             <CardHeader className="space-y-1">
               <CardTitle className="text-base">

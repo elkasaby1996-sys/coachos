@@ -110,17 +110,19 @@
 }
 
 body.pt-hub-portal-light {
-  --bg-canvas: 0.946 0.009 202;
-  --bg-sidebar: 0.928 0.01 198;
-  --bg-surface: 0.972 0.006 190;
-  --bg-surface-elevated: 0.985 0.004 180;
-  --bg-muted: 0.89 0.012 188;
-  --text-primary: 0.176 0.024 226;
-  --text-secondary: 0.292 0.02 222;
-  --text-muted: 0.37 0.018 218;
-  --border-subtle: 0.79 0.012 194;
-  --border-default: 0.705 0.015 190;
-  --accent: 0.575 0.098 164;
+  --bg-canvas: 0.97 0.005 255;
+  --bg-sidebar: 0.952 0.007 255;
+  --bg-surface: 0.988 0.004 255;
+  --bg-surface-elevated: 0.995 0.003 255;
+  --bg-muted: 0.95 0.008 255;
+  --bg-input: 0.966 0.007 255;
+  --text-primary: 0.22 0.02 255;
+  --text-secondary: 0.34 0.018 255;
+  --text-muted: 0.5 0.016 255;
+  --border-subtle: 0.92 0.008 255;
+  --border-default: 0.88 0.01 255;
+  --border-strong: 0.8 0.014 255;
+  --accent: 0.62 0.14 202;
   --background: var(--bg-canvas);
   --foreground: var(--text-primary);
   --card: var(--bg-surface);
@@ -128,14 +130,14 @@ body.pt-hub-portal-light {
   --popover: var(--bg-surface-elevated);
   --popover-foreground: var(--text-primary);
   --primary: var(--accent);
-  --primary-foreground: 0.99 0.004 120;
+  --primary-foreground: 0.985 0.004 255;
   --secondary: var(--bg-muted);
   --secondary-foreground: var(--text-primary);
   --muted: var(--bg-muted);
   --muted-foreground: var(--text-muted);
-  --accent-foreground: 0.99 0.004 120;
+  --accent-foreground: 0.985 0.004 255;
   --border: var(--border-default);
-  --input: var(--border-default);
+  --input: var(--bg-input);
   --ring: var(--accent);
   --module-settings: 0.56 0.02 255;
   --module-settings-hover: 0.5 0.02 255;
@@ -1244,6 +1246,12 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
     grid-template-columns:
       minmax(18rem, 1fr) minmax(12rem, 0.42fr) minmax(12rem, 0.42fr)
       auto;
+  }
+
+  .pt-hub-theme .pt-hub-leads-filter-toolbar {
+    grid-template-columns:
+      minmax(18rem, 1fr) minmax(10rem, 0.36fr) minmax(10rem, 0.36fr)
+      minmax(11rem, 0.4fr) auto;
   }
 
   .pt-hub-theme .pt-hub-management-toolbar .app-filter-search,

@@ -116,12 +116,6 @@ const joinParagraphs = (values: string[]) =>
     .filter(Boolean)
     .join("\n\n");
 
-const splitParagraphs = (value: string | null | undefined) =>
-  (value ?? "")
-    .split(/\n+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-
 const includesFilter = (
   values: Array<string | null | undefined>,
   filterValue: string,
@@ -148,6 +142,37 @@ const getExerciseContextChips = (exercise: {
       ].filter((value): value is string => Boolean(value?.trim())),
     ),
   ).slice(0, 4);
+
+const exerciseTagClassName =
+  "inline-flex min-h-7 max-w-[11rem] items-center truncate rounded-full border border-border/70 bg-secondary/35 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground";
+const exerciseCatalogGridClassName =
+  "lg:grid-cols-[minmax(13rem,1.15fr)_minmax(12rem,0.82fr)_minmax(9rem,0.58fr)_minmax(7rem,0.42fr)_minmax(8rem,auto)]";
+const exerciseRowClassName =
+  `rounded-[22px] border border-border/70 bg-background/45 px-4 py-3 transition-colors hover:border-border hover:bg-secondary/20 lg:grid ${exerciseCatalogGridClassName} lg:items-center lg:gap-4`;
+const exerciseColumnLabelClassName =
+  "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:hidden";
+
+const getLibraryMuscleTags = (exercise: ExerciseRow) =>
+  Array.from(
+    new Set(
+      [
+        exercise.primary_muscle,
+        exercise.muscle_group,
+        ...(exercise.secondary_muscles ?? []),
+      ].filter((value): value is string => Boolean(value?.trim())),
+    ),
+  ).slice(0, 2);
+
+const getDatasetMuscleTags = (exercise: ExerciseDatasetExercise) =>
+  Array.from(
+    new Set(
+      [
+        exercise.target,
+        exercise.bodyPart,
+        ...exercise.secondaryMuscles,
+      ].filter((value): value is string => Boolean(value?.trim())),
+    ),
+  ).slice(0, 2);
 
 const datasetPageSize = 24;
 
@@ -756,10 +781,25 @@ export function PtExerciseLibraryPage() {
       ) : null}
 
       <Card>
-        <CardHeader>
-          <CardTitle>Exercise Library</CardTitle>
+        <CardHeader className="flex flex-col gap-3 border-b border-border/60 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <CardTitle>Exercise catalog</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Scan saved movements and import-ready exercises by muscle and setup.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className={exerciseTagClassName}>
+              Library {filteredExercises.length}
+            </span>
+            {exerciseDatasetConfigured ? (
+              <span className={exerciseTagClassName}>
+                Import results {filteredDatasetResults.length}
+              </span>
+            ) : null}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-4 pt-5">
           {workspaceLoading ||
           ownerScopeQuery.isLoading ||
           libraryQuery.isLoading ? (
@@ -778,7 +818,7 @@ export function PtExerciseLibraryPage() {
                   .message
               }
             </div>
-          ) : exercises.length === 0 ? (
+          ) : exercises.length === 0 && visibleDatasetResults.length === 0 ? (
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-4 rounded-[24px] border border-dashed border-border bg-muted/20 p-5">
                 <div className="space-y-3">
@@ -838,308 +878,268 @@ export function PtExerciseLibraryPage() {
                 </div>
               </div>
             </div>
-          ) : filteredExercises.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-              No exercises match those filters.
-            </div>
           ) : (
-            filteredExercises.map((exercise) => (
-              <div key={exercise.id} className="ops-surface-strong p-4">
-                <div className="space-y-3">
-                  <div>
-                    <div className="ops-kicker">Library movement</div>
-                    <p className="mt-1 text-base font-semibold text-foreground">
-                      {exercise.name}
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {exercise.primary_muscle ??
-                      exercise.muscle_group ??
-                      "Other"}
-                    {exercise.equipment ? ` · ${exercise.equipment}` : ""}
-                  </p>
-                  {exercise.tags && exercise.tags.length > 0 ? (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {exercise.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
+            <div className="space-y-3">
+              {!exerciseDatasetConfigured ? (
+                <div className="rounded-[18px] border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  Set `VITE_EXERCISE_DATASET_BASE_URL` to enable imports.
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => openEdit(exercise)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setSelected(exercise);
-                      setDeleteOpen(true);
-                      setActionError(null);
-                    }}
-                  >
-                    Delete
-                  </Button>
+              ) : null}
+              {filteredExercises.length > 0 || visibleDatasetResults.length > 0 ? (
+                <div
+                  className={`hidden rounded-[18px] border border-border/60 bg-secondary/18 px-4 py-2.5 lg:grid ${exerciseCatalogGridClassName} lg:items-center lg:gap-4`}
+                >
+                  <div className="ops-kicker">Exercise</div>
+                  <div className="ops-kicker">Muscles</div>
+                  <div className="ops-kicker">Equipment</div>
+                  <div className="ops-kicker">Source</div>
+                  <div className="ops-kicker text-right">Action</div>
                 </div>
-                <div className="mt-4 grid gap-2 md:grid-cols-3">
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Movement</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {exercise.category ?? exercise.muscle_group ?? "General"}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Muscles</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {[
-                        exercise.primary_muscle ?? exercise.muscle_group,
-                        ...(exercise.secondary_muscles ?? []).slice(0, 2),
-                      ]
-                        .filter(Boolean)
-                        .join(", ") || "General"}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Equipment</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {exercise.equipment ?? "Open setup"}
-                    </div>
-                  </div>
+              ) : null}
+              {filteredExercises.length === 0 &&
+              visibleDatasetResults.length === 0 ? (
+                <div className="rounded-[18px] border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  No exercises match those filters.
                 </div>
-                <div className="mt-3 grid gap-2 lg:grid-cols-[1.1fr_0.9fr]">
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Coach Cues</div>
-                    <div className="mt-2 space-y-1 text-sm text-foreground">
-                      {splitParagraphs(exercise.cues).slice(0, 2).length > 0 ? (
-                        splitParagraphs(exercise.cues)
-                          .slice(0, 2)
-                          .map((cue) => <div key={cue}>· {cue}</div>)
-                      ) : (
-                        <div>
-                          {splitParagraphs(exercise.instructions)[0] ??
-                            exercise.notes ??
-                            "No cues added yet."}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Use Context</div>
-                    <div className="mt-2 text-sm text-foreground">
-                      {exercise.notes ??
-                        exercise.tags?.slice(0, 3).join(", ") ??
-                        "Shared library movement."}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+              ) : null}
+              {filteredExercises.map((exercise) => {
+                const muscleTags = getLibraryMuscleTags(exercise);
+                const contextTags = getExerciseContextChips(exercise).filter(
+                  (tag) =>
+                    !muscleTags.some(
+                      (muscle) => muscle.toLowerCase() === tag.toLowerCase(),
+                    ) &&
+                    tag.toLowerCase() !==
+                      (exercise.equipment ?? "").toLowerCase(),
+                );
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Imported Exercises</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {!exerciseDatasetConfigured ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-              Set `VITE_EXERCISE_DATASET_BASE_URL` to enable imports. Optional:
-              `VITE_EXERCISE_DATASET_API_KEY`,
-              `VITE_EXERCISE_DATASET_API_KEY_HEADER`,
-              `VITE_EXERCISE_DATASET_API_HOST`.
-            </div>
-          ) : null}
-          {exerciseDatasetConfigured ? (
-            <div className="flex justify-end">
-              <div className="text-xs text-muted-foreground">
-                Page {datasetPage} of {datasetTotalPages}
-                {datasetHasMore ? "+" : ""}
-              </div>
-            </div>
-          ) : null}
-          {datasetError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {datasetError}
-            </div>
-          ) : null}
-          {visibleDatasetResults.length > 0 ? (
-            <div className="space-y-4">
-              <div className="grid gap-3 xl:grid-cols-2">
-                {visibleDatasetResults.map((exercise) => {
-                  const sourceImported = existingSourceIds.has(exercise.id);
-                  const nameExists = existingNames.has(
-                    normalizeName(exercise.name),
-                  );
-                  const importDisabled = sourceImported || nameExists;
-                  const statusLabel = sourceImported
-                    ? "Already imported"
-                    : nameExists
-                      ? "Name already used"
-                      : "Import";
-                  const contextChips = Array.from(
-                    new Set(
-                      [
-                        exercise.target,
-                        exercise.bodyPart,
-                        exercise.equipment,
-                        ...exercise.secondaryMuscles,
-                      ].filter((value): value is string =>
-                        Boolean(value?.trim()),
-                      ),
-                    ),
-                  ).slice(0, 4);
-                  const cues = exercise.exerciseTips.slice(0, 2);
-                  const instruction =
-                    exercise.instructions[0] ?? exercise.overview;
-
-                  return (
-                    <div key={exercise.id} className="ops-surface-strong p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-3">
-                          <div>
-                            <div className="ops-kicker">Dataset movement</div>
-                            <div className="mt-1 text-base font-semibold text-foreground">
-                              {exercise.name}
-                            </div>
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {exercise.target ?? exercise.bodyPart ?? "Other"}
-                            {exercise.equipment
-                              ? ` â€¢ ${exercise.equipment}`
-                              : ""}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={importDisabled ? "secondary" : "default"}
-                          disabled={
-                            importDisabled || importingId === exercise.id
-                          }
-                          onClick={() => handleImportExercise(exercise)}
-                        >
-                          {importingId === exercise.id
-                            ? "Importing..."
-                            : statusLabel}
-                        </Button>
+                return (
+                  <article
+                    key={exercise.id}
+                    className={exerciseRowClassName}
+                  >
+                    <div className="min-w-0 space-y-1.5">
+                      <div className={exerciseColumnLabelClassName}>
+                        Exercise
                       </div>
-                      <div className="mt-4 grid gap-2 md:grid-cols-3">
-                        <div className="ops-stat">
-                          <div className="ops-kicker">Movement</div>
-                          <div className="mt-1 text-sm font-semibold text-foreground">
-                            {exercise.bodyPart ?? "General pattern"}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {contextChips.map((chip) => (
+                      <h3 className="truncate text-base font-semibold text-foreground">
+                        {exercise.name}
+                      </h3>
+                      {contextTags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {contextTags.slice(0, 2).map((tag) => (
+                            <span key={tag} className={exerciseTagClassName}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 min-w-0 lg:mt-0">
+                      <div className={exerciseColumnLabelClassName}>
+                        Muscles
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
+                          {(muscleTags.length ? muscleTags : ["General"]).map(
+                            (tag) => (
                               <span
-                                key={chip}
-                                className="ops-chip text-muted-foreground"
+                                key={tag}
+                                className={exerciseTagClassName}
+                                title={tag}
                               >
-                                {chip}
+                                {tag}
                               </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="ops-stat">
-                          <div className="ops-kicker">Muscles</div>
-                          <div className="mt-1 text-sm font-semibold text-foreground">
-                            {[
-                              exercise.target,
-                              ...exercise.secondaryMuscles.slice(0, 2),
-                            ]
-                              .filter(Boolean)
-                              .join(", ") || "General"}
-                          </div>
-                        </div>
-                        <div className="ops-stat">
-                          <div className="ops-kicker">Usage</div>
-                          <div className="mt-1 text-sm font-semibold text-foreground">
-                            {exercise.equipment
-                              ? `${exercise.equipment} setup`
-                              : "Flexible setup"}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid gap-2 lg:grid-cols-[1.1fr_0.9fr]">
-                        <div className="ops-stat">
-                          <div className="ops-kicker">Coach Cues</div>
-                          <div className="mt-2 space-y-1 text-sm text-foreground">
-                            {cues.length > 0 ? (
-                              cues.map((cue) => <div key={cue}>â€¢ {cue}</div>)
-                            ) : (
-                              <div>
-                                {instruction ?? "No cue text from source."}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="ops-stat">
-                          <div className="ops-kicker">Use Context</div>
-                          <div className="mt-2 text-sm text-foreground">
-                            {instruction ?? "Imported movement reference."}
-                          </div>
-                        </div>
+                            ),
+                          )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-              {(datasetPageButtons.length > 1 || datasetHasMore) &&
-              exerciseDatasetConfigured ? (
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={datasetPage === 1 || datasetLoading}
-                    onClick={() => void goToDatasetPage(datasetPage - 1)}
+                    <div className="mt-3 min-w-0 lg:mt-0">
+                      <div className={exerciseColumnLabelClassName}>
+                        Equipment
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
+                        <span className={exerciseTagClassName}>
+                          <span className="truncate">
+                            {exercise.equipment ?? "No equipment"}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-3 lg:mt-0">
+                      <div className={exerciseColumnLabelClassName}>Source</div>
+                      <span className="mt-1 inline-flex min-h-7 items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary lg:mt-0">
+                        {exercise.source === "exercise_dataset"
+                          ? "Imported"
+                          : "Saved"}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex shrink-0 items-center gap-2 lg:mt-0 lg:justify-end">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openEdit(exercise)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelected(exercise);
+                          setDeleteOpen(true);
+                          setActionError(null);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
+              {datasetError ? (
+                <div className="rounded-[18px] border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  {datasetError}
+                </div>
+              ) : null}
+              {visibleDatasetResults.map((exercise) => {
+                const sourceImported = existingSourceIds.has(exercise.id);
+                const nameExists = existingNames.has(
+                  normalizeName(exercise.name),
+                );
+                const importDisabled = sourceImported || nameExists;
+                const statusLabel = sourceImported
+                  ? "Imported"
+                  : nameExists
+                    ? "Name used"
+                    : "Import";
+                const muscleTags = getDatasetMuscleTags(exercise);
+                const equipmentLabel = exercise.equipment || "No equipment";
+
+                return (
+                  <article
+                    key={exercise.id}
+                    className={exerciseRowClassName.replace(
+                      "bg-background/45",
+                      "bg-secondary/15",
+                    )}
                   >
-                    Previous
-                  </Button>
-                  {datasetPageButtons.map((pageNumber) => (
-                    <Button
-                      key={pageNumber}
-                      size="sm"
-                      variant={pageNumber === datasetPage ? "default" : "secondary"}
-                      disabled={datasetLoading && pageNumber !== datasetPage}
-                      onClick={() => void goToDatasetPage(pageNumber)}
-                    >
-                      {pageNumber}
-                    </Button>
-                  ))}
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={
-                      datasetLoading ||
-                      (!datasetHasMore && datasetPage >= datasetTotalPages)
-                    }
-                    onClick={() => void goToDatasetPage(datasetPage + 1)}
-                  >
-                    Next
-                  </Button>
+                    <div className="min-w-0 space-y-1.5">
+                      <div className={exerciseColumnLabelClassName}>
+                        Exercise
+                      </div>
+                      <h3 className="truncate text-base font-semibold text-foreground">
+                        {exercise.name}
+                      </h3>
+                    </div>
+                    <div className="mt-3 min-w-0 lg:mt-0">
+                      <div className={exerciseColumnLabelClassName}>
+                        Muscles
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
+                        {(muscleTags.length ? muscleTags : ["General"]).map(
+                          (tag) => (
+                            <span
+                              key={tag}
+                              className={exerciseTagClassName}
+                              title={tag}
+                            >
+                              {tag}
+                            </span>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 min-w-0 lg:mt-0">
+                      <div className={exerciseColumnLabelClassName}>
+                        Equipment
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
+                        <span className={exerciseTagClassName}>
+                          <span className="truncate">{equipmentLabel}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-3 lg:mt-0">
+                      <div className={exerciseColumnLabelClassName}>Source</div>
+                      <span className="mt-1 inline-flex min-h-7 items-center rounded-full border border-border/70 bg-background/60 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:mt-0">
+                        Dataset
+                      </span>
+                    </div>
+                    <div className="mt-3 flex justify-start lg:mt-0 lg:justify-end">
+                      <Button
+                        size="sm"
+                        variant={importDisabled ? "secondary" : "default"}
+                        disabled={importDisabled || importingId === exercise.id}
+                        onClick={() => handleImportExercise(exercise)}
+                        className="shrink-0"
+                      >
+                        {importingId === exercise.id
+                          ? "Importing..."
+                          : statusLabel}
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
+              {datasetLoading && exerciseDatasetConfigured ? (
+                <div className="rounded-[18px] border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+                  Loading imported exercises...
+                </div>
+              ) : null}
+              {!datasetLoading &&
+              exerciseDatasetConfigured &&
+              filteredExercises.length > 0 &&
+              visibleDatasetResults.length === 0 ? (
+                <div className="rounded-[18px] border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+                  No import results match those filters.
+                </div>
+              ) : null}
+              {exerciseDatasetConfigured ? (
+                <div className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    Import results page {datasetPage} of {datasetTotalPages}
+                    {datasetHasMore ? "+" : ""}
+                  </div>
+                  {(datasetPageButtons.length > 1 || datasetHasMore) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={datasetPage === 1 || datasetLoading}
+                        onClick={() => void goToDatasetPage(datasetPage - 1)}
+                      >
+                        Previous
+                      </Button>
+                      {datasetPageButtons.map((pageNumber) => (
+                        <Button
+                          key={pageNumber}
+                          size="sm"
+                          variant={
+                            pageNumber === datasetPage ? "default" : "secondary"
+                          }
+                          disabled={datasetLoading && pageNumber !== datasetPage}
+                          onClick={() => void goToDatasetPage(pageNumber)}
+                        >
+                          {pageNumber}
+                        </Button>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={
+                          datasetLoading ||
+                          (!datasetHasMore && datasetPage >= datasetTotalPages)
+                        }
+                        onClick={() => void goToDatasetPage(datasetPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
-          ) : datasetLoading && exerciseDatasetConfigured ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-              Loading imported exercises...
-            </div>
-          ) : !datasetLoading && exerciseDatasetConfigured ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-              No loaded exercises match those filters.
-            </div>
-          ) : null}
+          )}
         </CardContent>
       </Card>
 

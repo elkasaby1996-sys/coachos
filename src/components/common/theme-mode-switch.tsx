@@ -28,7 +28,7 @@ export function ThemeModeSwitch({
       className={cn(
         "group relative inline-flex h-[30px] w-[92px] items-center rounded-full border px-1 backdrop-blur-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
         isLightMode
-          ? "border-black/10 bg-[linear-gradient(180deg,rgba(232,239,235,0.72),rgba(216,225,219,0.62))] text-foreground shadow-[0_16px_32px_-24px_rgba(15,23,42,0.18)]"
+          ? "border-border/80 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.68))] text-foreground shadow-[var(--surface-shadow)]"
           : "border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-foreground shadow-[0_16px_30px_-24px_rgba(0,0,0,0.78)]",
         className,
       )}
@@ -37,7 +37,7 @@ export function ThemeModeSwitch({
         className={cn(
           "pointer-events-none absolute top-1/2 h-[22px] w-[42px] -translate-y-1/2 rounded-full transition-all duration-200",
           isLightMode
-            ? "left-[45px] border border-slate-900/85 bg-slate-900 shadow-[0_10px_18px_-12px_rgba(15,23,42,0.5)]"
+            ? "left-[45px] border border-primary/25 bg-primary shadow-[0_10px_18px_-12px_oklch(var(--accent)/0.55)]"
             : "left-1 border border-white/12 bg-[linear-gradient(180deg,oklch(var(--accent)),oklch(var(--chart-2)))] shadow-[0_10px_18px_-12px_oklch(var(--accent)/0.6)]",
         )}
       />
@@ -53,7 +53,7 @@ export function ThemeModeSwitch({
         <span
           className={cn(
             "flex h-[22px] items-center justify-center transition-colors duration-200",
-            isLightMode ? "text-foreground/45" : "text-slate-950",
+            isLightMode ? "text-foreground/45" : "text-primary-foreground",
           )}
         >
           <Moon className="h-3.5 w-3.5" />
@@ -61,7 +61,7 @@ export function ThemeModeSwitch({
         <span
           className={cn(
             "flex h-[22px] items-center justify-center transition-colors duration-200",
-            isLightMode ? "text-white" : "text-foreground/45",
+            isLightMode ? "text-primary-foreground" : "text-foreground/45",
           )}
         >
           <Sun className="h-3.5 w-3.5" />

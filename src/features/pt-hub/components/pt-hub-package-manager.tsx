@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   ArrowDown,
   ArrowUp,
-  Eye,
+  Pencil,
   Plus,
   Save,
   Trash2,
@@ -12,6 +19,7 @@ import {
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
 import { Select } from "../../../components/ui/select";
 import { Switch } from "../../../components/ui/switch";
 import { Textarea } from "../../../components/ui/textarea";
@@ -226,6 +234,50 @@ function coerceEditorStateByStatus(
   };
 }
 
+function PackageFormField({
+  label,
+  hint,
+  required,
+  className,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  required?: boolean;
+  className?: string;
+  children: (props: {
+    id: string;
+    "aria-describedby"?: string;
+  }) => ReactNode;
+}) {
+  const fieldId = useId();
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Label htmlFor={fieldId} className="text-xs text-muted-foreground">
+          {label}
+        </Label>
+        {required ? (
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Required
+          </span>
+        ) : null}
+      </div>
+      {children({
+        id: fieldId,
+        "aria-describedby": hintId,
+      })}
+      {hint ? (
+        <p id={hintId} className="text-xs leading-5 text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function PtHubPackageManager() {
   const { user } = useSessionAuth();
   const queryClient = useQueryClient();
@@ -248,20 +300,47 @@ export function PtHubPackageManager() {
   } | null>(null);
   const [activeFilter, setActiveFilter] =
     useState<PTPackageManagementFilter>("all");
+  const [isCreating, setIsCreating] = useState(false);
   const [archiveCandidate, setArchiveCandidate] = useState<PTPackage | null>(
     null,
   );
   const [deleteCandidate, setDeleteCandidate] = useState<PTPackage | null>(
     null,
   );
-  const [viewingPackageId, setViewingPackageId] = useState<string | null>(null);
+  const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
+  const [dirtyEditPackageIds, setDirtyEditPackageIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const dirtyEditPackageIdsRef = useRef(dirtyEditPackageIds);
 
   useEffect(() => {
-    const nextState: Record<string, PackageEditorState> = {};
-    for (const pkg of packages) {
-      nextState[pkg.id] = toPackageEditorState(pkg);
-    }
-    setEditStateById(nextState);
+    const packageIds = new Set(packages.map((pkg) => pkg.id));
+
+    updateDirtyEditPackageIds((prev) => {
+      const next = new Set(prev);
+      for (const packageId of prev) {
+        if (!packageIds.has(packageId)) {
+          next.delete(packageId);
+        }
+      }
+      return next.size === prev.size ? prev : next;
+    });
+
+    setEditStateById((prev) => {
+      const nextState: Record<string, PackageEditorState> = {};
+      const dirtyIds = dirtyEditPackageIdsRef.current;
+
+      for (const pkg of packages) {
+        const currentState = prev[pkg.id];
+        if (currentState && dirtyIds.has(pkg.id)) {
+          nextState[pkg.id] = currentState;
+        } else {
+          nextState[pkg.id] = toPackageEditorState(pkg);
+        }
+      }
+
+      return nextState;
+    });
   }, [packages]);
 
   useEffect(() => {
@@ -292,6 +371,38 @@ export function PtHubPackageManager() {
     ]);
   }
 
+  function updateDirtyEditPackageIds(
+    update: (current: Set<string>) => Set<string>,
+  ) {
+    setDirtyEditPackageIds((prev) => {
+      const next = update(prev);
+      dirtyEditPackageIdsRef.current = next;
+      return next;
+    });
+  }
+
+  function updatePackageEditState(
+    packageId: string,
+    update: (current: PackageEditorState) => PackageEditorState,
+  ) {
+    const pkg = packages.find((item) => item.id === packageId);
+
+    updateDirtyEditPackageIds((prev) => {
+      const next = new Set(prev);
+      next.add(packageId);
+      return next;
+    });
+    setEditStateById((prev) => {
+      const current = prev[packageId] ?? (pkg ? toPackageEditorState(pkg) : null);
+      if (!current) return prev;
+
+      return {
+        ...prev,
+        [packageId]: update(current),
+      };
+    });
+  }
+
   async function handleCreate() {
     if (!user?.id) return;
 
@@ -315,6 +426,7 @@ export function PtHubPackageManager() {
       }));
       await invalidatePackageQueries();
       setFeedback({ tone: "success", text: "Package created." });
+      setIsCreating(false);
     } catch (error) {
       setFeedback({
         tone: "error",
@@ -344,6 +456,11 @@ export function PtHubPackageManager() {
         ptUserId: user.id,
         packageId,
         input: editState,
+      });
+      updateDirtyEditPackageIds((prev) => {
+        const next = new Set(prev);
+        next.delete(packageId);
+        return next;
       });
       await invalidatePackageQueries();
       setFeedback({ tone: "success", text: "Package updated." });
@@ -417,6 +534,48 @@ export function PtHubPackageManager() {
     }
   }
 
+  async function handleToggleVisibility(packageId: string, isPublic: boolean) {
+    if (!user?.id) return;
+
+    const pkg = packages.find((item) => item.id === packageId);
+    if (!pkg || pkg.status !== "active") return;
+
+    const editState = editStateById[packageId] ?? toPackageEditorState(pkg);
+    const nextState = {
+      ...editState,
+      isPublic,
+    };
+
+    setBusyKey(`visibility:${packageId}`);
+    setFeedback(null);
+    try {
+      await updatePtPackage({
+        ptUserId: user.id,
+        packageId,
+        input: nextState,
+      });
+      setEditStateById((prev) => ({
+        ...prev,
+        [packageId]: nextState,
+      }));
+      await invalidatePackageQueries();
+      setFeedback({
+        tone: "success",
+        text: isPublic ? "Package is public." : "Package is hidden.",
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Unable to update package visibility right now.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   async function handleDeleteConfirmed() {
     if (!deleteCandidate) return;
 
@@ -469,9 +628,9 @@ export function PtHubPackageManager() {
     () => splitPackagesByLifecycle(filteredPackages),
     [filteredPackages],
   );
-  const viewingPackage = useMemo(
-    () => packages.find((pkg) => pkg.id === viewingPackageId) ?? null,
-    [packages, viewingPackageId],
+  const editingPackage = useMemo(
+    () => packages.find((pkg) => pkg.id === editingPackageId) ?? null,
+    [packages, editingPackageId],
   );
 
   const renderPackageRow = (pkg: PTPackage) => {
@@ -480,6 +639,14 @@ export function PtHubPackageManager() {
     const resolvedLeadReferenceCount = leadReferenceCount ?? 0;
     const usageLabel = getPackageUsageLabel(resolvedLeadReferenceCount);
     const isArchived = editState.status === "archived";
+    const fullReorderableIndex = fullReorderableIds.indexOf(pkg.id);
+    const canMoveUp = fullReorderableIndex > 0;
+    const canMoveDown =
+      fullReorderableIndex > -1 &&
+      fullReorderableIndex < fullReorderableIds.length - 1;
+    const visibilityBusy = busyKey === `visibility:${pkg.id}`;
+    const isVisibilityDisabled =
+      editState.status !== "active" || visibilityBusy || busyKey === "reorder";
 
     return (
       <div
@@ -489,7 +656,7 @@ export function PtHubPackageManager() {
           isArchived && "bg-background/25 opacity-90",
         )}
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
           <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-semibold text-foreground sm:text-base">
@@ -528,15 +695,49 @@ export function PtHubPackageManager() {
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 self-start lg:self-center">
+          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+            <label className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-3 py-2 text-xs font-medium text-foreground">
+              <Switch
+                checked={editState.isPublic}
+                disabled={isVisibilityDisabled}
+                onCheckedChange={(checked) =>
+                  void handleToggleVisibility(pkg.id, checked)
+                }
+              />
+              Public
+            </label>
+            <div className="inline-flex items-center rounded-full border border-border/60 bg-background/55 p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busyKey === "reorder" || !canMoveUp}
+                onClick={() => void handleMove(pkg.id, "up")}
+                aria-label={`Move ${pkg.title} up`}
+              >
+                <ArrowUp className="h-4 w-4" />
+                <span className="sr-only">Move up</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busyKey === "reorder" || !canMoveDown}
+                onClick={() => void handleMove(pkg.id, "down")}
+                aria-label={`Move ${pkg.title} down`}
+              >
+                <ArrowDown className="h-4 w-4" />
+                <span className="sr-only">Move down</span>
+              </Button>
+            </div>
             <Button
               type="button"
               size="sm"
               variant="secondary"
-              onClick={() => setViewingPackageId(pkg.id)}
+              onClick={() => setEditingPackageId(pkg.id)}
             >
-              <Eye className="h-4 w-4" />
-              View
+              <Pencil className="h-4 w-4" />
+              Edit
             </Button>
           </div>
         </div>
@@ -559,173 +760,19 @@ export function PtHubPackageManager() {
       ) : null}
 
       <PtHubSectionCard
-        title="Package creator"
-        description="Build new PT-scoped offers for your public profile and lead intake without leaving this workspace."
-      >
-        <div className="app-form-grid">
-          <Input
-            className="app-form-col-6"
-            value={createState.title}
-            onChange={(event) =>
-              setCreateState((prev) => ({ ...prev, title: event.target.value }))
-            }
-            placeholder="Package title"
-          />
-          <Input
-            className="app-form-col-6"
-            value={createState.subtitle}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                subtitle: event.target.value,
-              }))
-            }
-            placeholder="Subtitle (optional)"
-          />
-          <Input
-            className="app-form-col-3"
-            value={createState.priceLabel}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                priceLabel: event.target.value,
-              }))
-            }
-            placeholder="Price"
-          />
-          <Select
-            className="app-form-col-2"
-            value={createState.currencyCode}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                currencyCode: event.target.value,
-              }))
-            }
-          >
-            <option value="">Currency</option>
-            {CURRENCY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-            {createState.currencyCode &&
-            !CURRENCY_OPTIONS.some(
-              (option) => option.value === createState.currencyCode,
-            ) ? (
-              <option value={createState.currencyCode}>
-                {createState.currencyCode}
-              </option>
-            ) : null}
-          </Select>
-          <Select
-            className="app-form-col-3"
-            value={normalizeBillingCadenceLabel(
-              createState.billingCadenceLabel,
-            )}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                billingCadenceLabel: event.target.value,
-              }))
-            }
-          >
-            <option value="">Billing frequency</option>
-            {BILLING_FREQUENCY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-            {createState.billingCadenceLabel &&
-            !BILLING_FREQUENCY_OPTIONS.some(
-              (option) =>
-                option.value ===
-                normalizeBillingCadenceLabel(createState.billingCadenceLabel),
-            ) ? (
-              <option
-                value={normalizeBillingCadenceLabel(
-                  createState.billingCadenceLabel,
-                )}
-              >
-                {normalizeBillingCadenceLabel(createState.billingCadenceLabel)}
-              </option>
-            ) : null}
-          </Select>
-          <Select
-            className="app-form-col-2"
-            value={createState.status}
-            onChange={(event) =>
-              setCreateState((prev) =>
-                coerceEditorStateByStatus(
-                  prev,
-                  event.target.value as PTPackageStatus,
-                ),
-              )
-            }
-          >
-            {PACKAGE_STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-          <Input
-            className="app-form-col-2"
-            type="number"
-            min={0}
-            value={createState.sortOrder}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                sortOrder: Number.parseInt(event.target.value, 10) || 0,
-              }))
-            }
-            placeholder="Order"
-          />
-          <Textarea
-            className="app-form-col-12 min-h-[104px]"
-            value={createState.description}
-            onChange={(event) =>
-              setCreateState((prev) => ({
-                ...prev,
-                description: event.target.value,
-              }))
-            }
-            placeholder="Description (optional)"
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-border/60 bg-background/35 px-4 py-3">
-          <div className="space-y-1">
-            <label className="inline-flex items-center gap-2 text-sm text-foreground">
-              <Switch
-                checked={createState.isPublic}
-                disabled={createState.status !== "active"}
-                onCheckedChange={(checked) =>
-                  setCreateState((prev) => ({
-                    ...prev,
-                    isPublic: prev.status === "active" ? checked : false,
-                  }))
-                }
-              />
-              Public visibility
-            </label>
-            <p className="text-xs text-muted-foreground">
-              {getPackageStateHelperCopy(createState)}
-            </p>
-          </div>
+        title="Packages"
+        description="Manage offer status, visibility, order, and package copy from one working list."
+        actions={
           <Button
             type="button"
             size="sm"
-            disabled={busyKey === "create"}
-            onClick={() => void handleCreate()}
+            onClick={() => setIsCreating((current) => !current)}
           >
             <Plus className="h-4 w-4" />
-            {busyKey === "create" ? "Creating..." : "Create package"}
+            {isCreating ? "Close creator" : "New package"}
           </Button>
-        </div>
-      </PtHubSectionCard>
-
-      <PtHubSectionCard title="Packages">
+        }
+      >
         <div className="flex flex-wrap items-center gap-2">
           {PT_PACKAGE_FILTER_OPTIONS.map((filter) => (
             <Button
@@ -751,9 +798,20 @@ export function PtHubPackageManager() {
         ) : null}
 
         {packages.length === 0 && packagesQuery.isSuccess ? (
-          <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
-            No packages yet. Create your first package to show offers on your
-            public profile and capture package interest in the Apply flow.
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
+            <span>
+              No packages yet. Create your first offer to show on your public
+              profile and capture package interest in the Apply flow.
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setIsCreating(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Create package
+            </Button>
           </div>
         ) : null}
 
@@ -783,20 +841,254 @@ export function PtHubPackageManager() {
         ) : null}
       </PtHubSectionCard>
 
+      {isCreating ? (
+        <PtHubSectionCard
+          title="New package"
+          description="Add the offer details, then decide whether it should appear publicly."
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setIsCreating(false)}
+            >
+              Close
+            </Button>
+          }
+        >
+          <div className="app-form-grid">
+            <PackageFormField
+              className="app-form-col-6"
+              label="Package title"
+              required
+            >
+              {(fieldProps) => (
+                <Input
+                  {...fieldProps}
+                  value={createState.title}
+                  onChange={(event) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      title: event.target.value,
+                    }))
+                  }
+                  placeholder="Online coaching intensive"
+                />
+              )}
+            </PackageFormField>
+            <PackageFormField className="app-form-col-6" label="Subtitle">
+              {(fieldProps) => (
+                <Input
+                  {...fieldProps}
+                  value={createState.subtitle}
+                  onChange={(event) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      subtitle: event.target.value,
+                    }))
+                  }
+                  placeholder="12-week transformation plan"
+                />
+              )}
+            </PackageFormField>
+            <PackageFormField className="app-form-col-3" label="Price">
+              {(fieldProps) => (
+                <Input
+                  {...fieldProps}
+                  value={createState.priceLabel}
+                  onChange={(event) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      priceLabel: event.target.value,
+                    }))
+                  }
+                  placeholder="250"
+                />
+              )}
+            </PackageFormField>
+            <PackageFormField className="app-form-col-2" label="Currency">
+              {(fieldProps) => (
+                <Select
+                  {...fieldProps}
+                  value={createState.currencyCode}
+                  onChange={(event) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      currencyCode: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select currency</option>
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                  {createState.currencyCode &&
+                  !CURRENCY_OPTIONS.some(
+                    (option) => option.value === createState.currencyCode,
+                  ) ? (
+                    <option value={createState.currencyCode}>
+                      {createState.currencyCode}
+                    </option>
+                  ) : null}
+                </Select>
+              )}
+            </PackageFormField>
+            <PackageFormField
+              className="app-form-col-3"
+              label="Billing frequency"
+            >
+              {(fieldProps) => (
+                <Select
+                  {...fieldProps}
+                  value={normalizeBillingCadenceLabel(
+                    createState.billingCadenceLabel,
+                  )}
+                  onChange={(event) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      billingCadenceLabel: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select frequency</option>
+                  {BILLING_FREQUENCY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                  {createState.billingCadenceLabel &&
+                  !BILLING_FREQUENCY_OPTIONS.some(
+                    (option) =>
+                      option.value ===
+                      normalizeBillingCadenceLabel(
+                        createState.billingCadenceLabel,
+                      ),
+                  ) ? (
+                    <option
+                      value={normalizeBillingCadenceLabel(
+                        createState.billingCadenceLabel,
+                      )}
+                    >
+                      {normalizeBillingCadenceLabel(
+                        createState.billingCadenceLabel,
+                      )}
+                    </option>
+                  ) : null}
+                </Select>
+              )}
+            </PackageFormField>
+            <PackageFormField className="app-form-col-2" label="Status">
+              {(fieldProps) => (
+                <Select
+                  {...fieldProps}
+                  value={createState.status}
+                  onChange={(event) =>
+                    setCreateState((prev) =>
+                      coerceEditorStateByStatus(
+                        prev,
+                        event.target.value as PTPackageStatus,
+                      ),
+                    )
+                  }
+                >
+                  {PACKAGE_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </PackageFormField>
+            <PackageFormField
+              className="app-form-col-2"
+              label="Display order"
+              hint="Lower numbers appear first."
+            >
+              {(fieldProps) => (
+                <Input
+                  {...fieldProps}
+                  type="number"
+                  min={0}
+                  value={createState.sortOrder}
+                  onChange={(event) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      sortOrder: Number.parseInt(event.target.value, 10) || 0,
+                    }))
+                  }
+                  placeholder="10"
+                />
+              )}
+            </PackageFormField>
+            <PackageFormField
+              className="app-form-col-12"
+              label="Description"
+              hint="Use client-facing copy for the public profile and Apply flow."
+            >
+              {(fieldProps) => (
+                <Textarea
+                  {...fieldProps}
+                  className="min-h-[104px]"
+                  value={createState.description}
+                  onChange={(event) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
+                  placeholder="Describe who this package is for and what it includes."
+                />
+              )}
+            </PackageFormField>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-border/60 bg-background/35 px-4 py-3">
+            <div className="space-y-1">
+              <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                <Switch
+                  checked={createState.isPublic}
+                  disabled={createState.status !== "active"}
+                  onCheckedChange={(checked) =>
+                    setCreateState((prev) => ({
+                      ...prev,
+                      isPublic: prev.status === "active" ? checked : false,
+                    }))
+                  }
+                />
+                Public visibility
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {getPackageStateHelperCopy(createState)}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              disabled={busyKey === "create"}
+              onClick={() => void handleCreate()}
+            >
+              <Plus className="h-4 w-4" />
+              {busyKey === "create" ? "Creating..." : "Create package"}
+            </Button>
+          </div>
+        </PtHubSectionCard>
+      ) : null}
+
       <Dialog
-        open={Boolean(viewingPackage)}
+        open={Boolean(editingPackage)}
         onOpenChange={(open) => {
-          if (!open) setViewingPackageId(null);
+          if (!open) setEditingPackageId(null);
         }}
       >
-        {viewingPackage
+        {editingPackage
           ? (() => {
               const editState =
-                editStateById[viewingPackage.id] ??
-                toPackageEditorState(viewingPackage);
+                editStateById[editingPackage.id] ??
+                toPackageEditorState(editingPackage);
               const displayState = getPackageDisplayState(editState);
               const leadReferenceCount =
-                packageLeadReferenceCounts[viewingPackage.id];
+                packageLeadReferenceCounts[editingPackage.id];
               const resolvedLeadReferenceCount = leadReferenceCount ?? 0;
               const usageLabel = getPackageUsageLabel(
                 resolvedLeadReferenceCount,
@@ -806,11 +1098,11 @@ export function PtHubPackageManager() {
                 !packageLeadReferenceCountsQuery.isLoading &&
                 !hasLeadReferences;
               const isBusy =
-                busyKey === `save:${viewingPackage.id}` ||
-                busyKey === `archive:${viewingPackage.id}` ||
-                busyKey === `delete:${viewingPackage.id}`;
+                busyKey === `save:${editingPackage.id}` ||
+                busyKey === `archive:${editingPackage.id}` ||
+                busyKey === `delete:${editingPackage.id}`;
               const fullReorderableIndex = fullReorderableIds.indexOf(
-                viewingPackage.id,
+                editingPackage.id,
               );
               const canMoveUp = fullReorderableIndex > 0;
               const canMoveDown =
@@ -822,10 +1114,10 @@ export function PtHubPackageManager() {
                   <div className="border-b border-border/60 px-6 py-5">
                     <DialogHeader className="pr-10">
                       <DialogTitle className="text-[1.15rem] tracking-tight">
-                        {viewingPackage.title}
+                        {editingPackage.title}
                       </DialogTitle>
                       <DialogDescription>
-                        View package details, update its offer copy, and save
+                        Edit package details, update its offer copy, and save
                         changes without leaving the packages list.
                       </DialogDescription>
                     </DialogHeader>
@@ -856,167 +1148,223 @@ export function PtHubPackageManager() {
 
                   <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5 pb-6">
                     <div className="app-form-grid">
-                      <Input
+                      <PackageFormField
                         className="app-form-col-6"
-                        value={editState.title}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              title: event.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Package title"
-                      />
-                      <Input
-                        className="app-form-col-6"
-                        value={editState.subtitle}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              subtitle: event.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Subtitle (optional)"
-                      />
-                      <Input
-                        className="app-form-col-3"
-                        value={editState.priceLabel}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              priceLabel: event.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Price"
-                      />
-                      <Select
-                        className="app-form-col-2"
-                        value={editState.currencyCode}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              currencyCode: event.target.value,
-                            },
-                          }))
-                        }
+                        label="Package title"
+                        required
                       >
-                        <option value="">Currency</option>
-                        {CURRENCY_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                        {editState.currencyCode &&
-                        !CURRENCY_OPTIONS.some(
-                          (option) => option.value === editState.currencyCode,
-                        ) ? (
-                          <option value={editState.currencyCode}>
-                            {editState.currencyCode}
-                          </option>
-                        ) : null}
-                      </Select>
-                      <Select
-                        className="app-form-col-3"
-                        value={normalizeBillingCadenceLabel(
-                          editState.billingCadenceLabel,
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            value={editState.title}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) => ({
+                                  ...current,
+                                  title: event.target.value,
+                                }),
+                              )
+                            }
+                            placeholder="Online coaching intensive"
+                          />
                         )}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              billingCadenceLabel: event.target.value,
-                            },
-                          }))
-                        }
+                      </PackageFormField>
+                      <PackageFormField
+                        className="app-form-col-6"
+                        label="Subtitle"
                       >
-                        <option value="">Billing frequency</option>
-                        {BILLING_FREQUENCY_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                        {editState.billingCadenceLabel &&
-                        !BILLING_FREQUENCY_OPTIONS.some(
-                          (option) =>
-                            option.value ===
-                            normalizeBillingCadenceLabel(
-                              editState.billingCadenceLabel,
-                            ),
-                        ) ? (
-                          <option
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            value={editState.subtitle}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) => ({
+                                  ...current,
+                                  subtitle: event.target.value,
+                                }),
+                              )
+                            }
+                            placeholder="12-week transformation plan"
+                          />
+                        )}
+                      </PackageFormField>
+                      <PackageFormField className="app-form-col-3" label="Price">
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            value={editState.priceLabel}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) => ({
+                                  ...current,
+                                  priceLabel: event.target.value,
+                                }),
+                              )
+                            }
+                            placeholder="250"
+                          />
+                        )}
+                      </PackageFormField>
+                      <PackageFormField
+                        className="app-form-col-2"
+                        label="Currency"
+                      >
+                        {(fieldProps) => (
+                          <Select
+                            {...fieldProps}
+                            value={editState.currencyCode}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) => ({
+                                  ...current,
+                                  currencyCode: event.target.value,
+                                }),
+                              )
+                            }
+                          >
+                            <option value="">Select currency</option>
+                            {CURRENCY_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                            {editState.currencyCode &&
+                            !CURRENCY_OPTIONS.some(
+                              (option) =>
+                                option.value === editState.currencyCode,
+                            ) ? (
+                              <option value={editState.currencyCode}>
+                                {editState.currencyCode}
+                              </option>
+                            ) : null}
+                          </Select>
+                        )}
+                      </PackageFormField>
+                      <PackageFormField
+                        className="app-form-col-3"
+                        label="Billing frequency"
+                      >
+                        {(fieldProps) => (
+                          <Select
+                            {...fieldProps}
                             value={normalizeBillingCadenceLabel(
                               editState.billingCadenceLabel,
                             )}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) => ({
+                                  ...current,
+                                  billingCadenceLabel: event.target.value,
+                                }),
+                              )
+                            }
                           >
-                            {normalizeBillingCadenceLabel(
-                              editState.billingCadenceLabel,
-                            )}
-                          </option>
-                        ) : null}
-                      </Select>
-                      <Select
+                            <option value="">Select frequency</option>
+                            {BILLING_FREQUENCY_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                            {editState.billingCadenceLabel &&
+                            !BILLING_FREQUENCY_OPTIONS.some(
+                              (option) =>
+                                option.value ===
+                                normalizeBillingCadenceLabel(
+                                  editState.billingCadenceLabel,
+                                ),
+                            ) ? (
+                              <option
+                                value={normalizeBillingCadenceLabel(
+                                  editState.billingCadenceLabel,
+                                )}
+                              >
+                                {normalizeBillingCadenceLabel(
+                                  editState.billingCadenceLabel,
+                                )}
+                              </option>
+                            ) : null}
+                          </Select>
+                        )}
+                      </PackageFormField>
+                      <PackageFormField className="app-form-col-2" label="Status">
+                        {(fieldProps) => (
+                          <Select
+                            {...fieldProps}
+                            value={editState.status}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) =>
+                                  coerceEditorStateByStatus(
+                                    current,
+                                    event.target.value as PTPackageStatus,
+                                  ),
+                              )
+                            }
+                          >
+                            {PACKAGE_STATUS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </Select>
+                        )}
+                      </PackageFormField>
+                      <PackageFormField
                         className="app-form-col-2"
-                        value={editState.status}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: coerceEditorStateByStatus(
-                              editState,
-                              event.target.value as PTPackageStatus,
-                            ),
-                          }))
-                        }
+                        label="Display order"
+                        hint="Lower numbers appear first."
                       >
-                        {PACKAGE_STATUS_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Select>
-                      <Input
-                        className="app-form-col-2"
-                        type="number"
-                        min={0}
-                        value={editState.sortOrder}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              sortOrder:
-                                Number.parseInt(event.target.value, 10) || 0,
-                            },
-                          }))
-                        }
-                        placeholder="Order"
-                      />
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            type="number"
+                            min={0}
+                            value={editState.sortOrder}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) => ({
+                                  ...current,
+                                  sortOrder:
+                                    Number.parseInt(event.target.value, 10) || 0,
+                                }),
+                              )
+                            }
+                            placeholder="10"
+                          />
+                        )}
+                      </PackageFormField>
 
-                      <Textarea
-                        className="app-form-col-12 min-h-[104px]"
-                        value={editState.description}
-                        onChange={(event) =>
-                          setEditStateById((prev) => ({
-                            ...prev,
-                            [viewingPackage.id]: {
-                              ...editState,
-                              description: event.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Description (optional)"
-                      />
+                      <PackageFormField
+                        className="app-form-col-12"
+                        label="Description"
+                        hint="Use client-facing copy for the public profile and Apply flow."
+                      >
+                        {(fieldProps) => (
+                          <Textarea
+                            {...fieldProps}
+                            className="min-h-[104px]"
+                            value={editState.description}
+                            onChange={(event) =>
+                              updatePackageEditState(
+                                editingPackage.id,
+                                (current) => ({
+                                  ...current,
+                                  description: event.target.value,
+                                }),
+                              )
+                            }
+                            placeholder="Describe who this package is for and what it includes."
+                          />
+                        )}
+                      </PackageFormField>
                     </div>
 
                     <div className="rounded-[24px] border border-border/60 bg-background/35 px-4 py-4">
@@ -1027,16 +1375,16 @@ export function PtHubPackageManager() {
                               checked={editState.isPublic}
                               disabled={editState.status !== "active"}
                               onCheckedChange={(checked) =>
-                                setEditStateById((prev) => ({
-                                  ...prev,
-                                  [viewingPackage.id]: {
-                                    ...editState,
+                                updatePackageEditState(
+                                  editingPackage.id,
+                                  (current) => ({
+                                    ...current,
                                     isPublic:
-                                      editState.status === "active"
+                                      current.status === "active"
                                         ? checked
                                         : false,
-                                  },
-                                }))
+                                  }),
+                                )
                               }
                             />
                             Public visibility
@@ -1089,7 +1437,7 @@ export function PtHubPackageManager() {
                         variant="secondary"
                         size="sm"
                         disabled={busyKey === "reorder" || !canMoveUp}
-                        onClick={() => void handleMove(viewingPackage.id, "up")}
+                        onClick={() => void handleMove(editingPackage.id, "up")}
                       >
                         <ArrowUp className="h-4 w-4" />
                         Up
@@ -1100,7 +1448,7 @@ export function PtHubPackageManager() {
                         size="sm"
                         disabled={busyKey === "reorder" || !canMoveDown}
                         onClick={() =>
-                          void handleMove(viewingPackage.id, "down")
+                          void handleMove(editingPackage.id, "down")
                         }
                       >
                         <ArrowDown className="h-4 w-4" />
@@ -1111,7 +1459,7 @@ export function PtHubPackageManager() {
                         variant="ghost"
                         size="sm"
                         disabled={isBusy || editState.status === "archived"}
-                        onClick={() => setArchiveCandidate(viewingPackage)}
+                        onClick={() => setArchiveCandidate(editingPackage)}
                       >
                         <Archive className="h-4 w-4" />
                         Archive
@@ -1126,7 +1474,7 @@ export function PtHubPackageManager() {
                             ? "Delete this package permanently"
                             : "This package is referenced by existing leads and cannot be permanently deleted. Archive it instead."
                         }
-                        onClick={() => setDeleteCandidate(viewingPackage)}
+                        onClick={() => setDeleteCandidate(editingPackage)}
                       >
                         <Trash2 className="h-4 w-4" />
                         Delete
@@ -1135,10 +1483,10 @@ export function PtHubPackageManager() {
                     <Button
                       type="button"
                       disabled={isBusy}
-                      onClick={() => void handleSave(viewingPackage.id)}
+                      onClick={() => void handleSave(editingPackage.id)}
                     >
                       <Save className="h-4 w-4" />
-                      {busyKey === `save:${viewingPackage.id}`
+                      {busyKey === `save:${editingPackage.id}`
                         ? "Saving..."
                         : "Save"}
                     </Button>

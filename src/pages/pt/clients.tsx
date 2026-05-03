@@ -14,6 +14,7 @@ import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PtHubClientTable } from "../../features/pt-hub/components/pt-hub-client-table";
@@ -174,42 +175,71 @@ export function PtClientsPage() {
       </div>
 
       <PtHubSectionCard title="Client List" contentClassName="space-y-6">
-        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px] lg:gap-4 lg:px-2">
-          <div className="relative">
-            <Search className="app-search-icon h-4 w-4" />
-            <Input
-              className="app-search-input"
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Search clients, goals, or status"
-            />
+        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px] lg:items-end lg:gap-4 lg:px-2">
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="pt-clients-search"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Search
+            </Label>
+            <div className="relative">
+              <Search className="app-search-icon h-4 w-4" />
+              <Input
+                id="pt-clients-search"
+                className="app-search-input"
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder="Name, goal, or status"
+              />
+            </div>
           </div>
-          <Select
-            variant="filter"
-            value={lifecycleFilter}
-            onChange={(event) => setLifecycleFilter(event.target.value)}
-          >
-            <option value="all">All lifecycles</option>
-            <option value="invited">Invited</option>
-            <option value="onboarding">Onboarding</option>
-            <option value="paused">Paused</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="churned">Churned</option>
-          </Select>
-          <Select
-            variant="filter"
-            value={segmentFilter}
-            onChange={(event) =>
-              setSegmentFilter(event.target.value as ClientSegmentKey)
-            }
-          >
-            <option value="all">All segments</option>
-            <option value="onboarding_incomplete">Onboarding incomplete</option>
-            <option value="checkin_overdue">Check-in overdue</option>
-            <option value="at_risk">At-risk clients</option>
-            <option value="paused">Paused clients</option>
-          </Select>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="pt-clients-lifecycle"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Lifecycle
+            </Label>
+            <Select
+              id="pt-clients-lifecycle"
+              variant="filter"
+              value={lifecycleFilter}
+              onChange={(event) => setLifecycleFilter(event.target.value)}
+            >
+              <option value="all">All lifecycles</option>
+              <option value="invited">Invited</option>
+              <option value="onboarding">Onboarding</option>
+              <option value="paused">Paused</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="churned">Churned</option>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="pt-clients-segment"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Segment
+            </Label>
+            <Select
+              id="pt-clients-segment"
+              variant="filter"
+              value={segmentFilter}
+              onChange={(event) =>
+                setSegmentFilter(event.target.value as ClientSegmentKey)
+              }
+            >
+              <option value="all">All segments</option>
+              <option value="onboarding_incomplete">
+                Onboarding incomplete
+              </option>
+              <option value="checkin_overdue">Check-in overdue</option>
+              <option value="at_risk">At-risk clients</option>
+              <option value="paused">Paused clients</option>
+            </Select>
+          </div>
         </div>
 
         {isTableLoading ? (

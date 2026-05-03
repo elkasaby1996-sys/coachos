@@ -14,16 +14,16 @@ export function TermsPage() {
       description="These terms describe the expectations for using RepSync responsibly, protecting account access, and reviewing coaching outputs before relying on them."
       updated="February 17, 2026"
       aside={
-        <div className="space-y-4 text-sm text-slate-600">
-          <div className="flex items-center gap-3 text-slate-950">
-            <ClipboardCheck className="h-4 w-4 text-emerald-700" />
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 text-foreground">
+            <ClipboardCheck className="h-4 w-4 text-primary" />
             <span className="font-semibold">Applies to</span>
           </div>
           <p className="text-sm leading-6">
             Coaches, clients, workspace owners, and anyone accessing RepSync
             through an invited account.
           </p>
-          <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium leading-5 text-slate-600">
+          <div className="rounded-xl border border-border/70 bg-card p-3 text-xs font-medium leading-5 text-muted-foreground">
             These terms are a product summary and do not replace written
             agreements signed separately.
           </div>

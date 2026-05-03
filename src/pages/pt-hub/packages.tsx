@@ -10,37 +10,33 @@ const PACKAGE_KPI_META = {
     label: "Draft",
     helper: "Internal concepts not visible anywhere public.",
     icon: FileText,
-    iconClassName: "text-amber-400",
+    iconClassName: "text-amber-500/80 dark:text-amber-300/80",
     accent: false,
-    className:
-      "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-amber-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-amber-500/16 after:blur-3xl",
+    className: "h-full border-border/55 bg-background/35 shadow-none",
   },
   hidden: {
     label: "Active-Hidden",
     helper: "Live in PT Hub, hidden from your public profile.",
     icon: EyeOff,
-    iconClassName: "text-slate-300",
+    iconClassName: "text-muted-foreground",
     accent: false,
-    className:
-      "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-slate-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-slate-500/14 after:blur-3xl",
+    className: "h-full border-border/55 bg-background/35 shadow-none",
   },
   public: {
     label: "Active-Public",
     helper: "Visible on the public profile and lead intake flow.",
     icon: Globe2,
-    iconClassName: "text-emerald-400",
-    className:
-      "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-emerald-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-emerald-500/18 after:blur-3xl",
-    accent: true,
+    iconClassName: "text-emerald-500/80 dark:text-emerald-300/80",
+    className: "h-full border-border/55 bg-background/35 shadow-none",
+    accent: false,
   },
   archived: {
     label: "Archived",
     helper: "Retired offers kept for historical package context.",
     icon: Archive,
-    iconClassName: "text-rose-400",
+    iconClassName: "text-rose-500/75 dark:text-rose-300/75",
     accent: false,
-    className:
-      "h-full before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-b-full before:bg-rose-500 after:pointer-events-none after:absolute after:-right-10 after:-top-10 after:h-28 after:w-28 after:rounded-full after:bg-rose-500/16 after:blur-3xl",
+    className: "h-full border-border/55 bg-background/35 shadow-none",
   },
 } as const;
 
@@ -68,6 +64,8 @@ export function PtHubPackagesPage() {
         description="Create, publish, hide, archive, and reorder PT-scoped packages for your public profile and lead intake."
       />
 
+      <PtHubPackageManager />
+
       <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         {packageStateSummary.map((item) => {
           const meta = resolvePackageKpiMeta(item.label);
@@ -88,8 +86,6 @@ export function PtHubPackagesPage() {
           );
         })}
       </div>
-
-      <PtHubPackageManager />
     </section>
   );
 }
