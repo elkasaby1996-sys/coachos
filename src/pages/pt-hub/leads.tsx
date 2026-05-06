@@ -508,12 +508,12 @@ export function PtHubLeadsPage() {
               ))}
             </Select>
           </div>
-          <div className="flex items-end lg:self-end">
+          <div className="flex h-full items-end lg:self-end">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-10 min-h-10 rounded-full border border-border/55 bg-background/45 px-4 text-xs font-semibold text-muted-foreground shadow-[inset_0_1px_0_oklch(var(--background)/0.55)] transition-colors hover:border-primary/20 hover:bg-background/70 hover:text-foreground disabled:border-border/35 disabled:bg-background/25 disabled:text-muted-foreground/45"
+              className="h-11 min-h-11 rounded-full border border-border/55 bg-background/45 px-4 text-xs font-semibold text-muted-foreground shadow-[inset_0_1px_0_oklch(var(--background)/0.55)] transition-colors hover:border-primary/20 hover:bg-background/70 hover:text-foreground disabled:border-border/35 disabled:bg-background/25 disabled:text-muted-foreground/45"
               aria-label="Reset lead filters"
               disabled={!hasActiveFilters}
               onClick={resetFilters}
@@ -674,7 +674,7 @@ export function PtHubLeadsPage() {
                           navigate(`/pt-hub/leads/${lead.id}`);
                         }}
                       >
-                        Review
+                        {lead.status === "converted" ? "View" : "Review"}
                       </button>
                       <ChevronRight className="h-4 w-4 text-[var(--module-leads-text)] [stroke-width:1.7]" />
                     </div>

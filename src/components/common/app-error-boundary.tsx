@@ -3,6 +3,7 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
+import * as Sentry from "@sentry/react";
 import { useLocation } from "react-router-dom";
 import { Button } from "../ui/button";
 
@@ -29,6 +30,13 @@ class AppErrorBoundaryInner extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("App render failed", error, errorInfo);
+    Sentry.captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+    });
   }
 
   componentDidUpdate(prevProps: AppErrorBoundaryProps) {

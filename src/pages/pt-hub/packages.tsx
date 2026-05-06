@@ -64,8 +64,6 @@ export function PtHubPackagesPage() {
         description="Create, publish, hide, archive, and reorder PT-scoped packages for your public profile and lead intake."
       />
 
-      <PtHubPackageManager />
-
       <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         {packageStateSummary.map((item) => {
           const meta = resolvePackageKpiMeta(item.label);
@@ -86,6 +84,8 @@ export function PtHubPackagesPage() {
           );
         })}
       </div>
+
+      <PtHubPackageManager />
     </section>
   );
 }

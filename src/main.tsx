@@ -8,11 +8,13 @@ import { AuthProvider } from "./lib/auth";
 import { App } from "./routes/app";
 import { initializeThemePreference } from "./lib/theme";
 import { I18nProvider } from "./lib/i18n";
+import { initSentry } from "./lib/sentry";
 import "./styles/globals.css";
 import "./styles/style.css";
 import "./styles/color-language.css";
 
 initializeThemePreference("dark");
+initSentry();
 
 const isHardFail = (error: any) => {
   const status = error?.status;

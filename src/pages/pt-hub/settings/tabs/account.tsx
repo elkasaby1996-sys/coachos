@@ -415,13 +415,13 @@ export function PtHubSettingsAccountTab() {
           label="Country & Phone"
           hint="Country updates timezone and auto-suggests a dial code. You can still edit the phone code manually."
         >
-          <div className="grid gap-3 md:grid-cols-[minmax(12rem,0.45fr)_minmax(0,1fr)] md:items-start">
+          <div className="grid gap-3 md:grid-cols-[minmax(13rem,0.36fr)_minmax(0,1fr)] md:items-start">
             <div className="space-y-2">
               <Select
                 isInvalid={
                   showRequiredErrors && Boolean(requiredErrors.country)
                 }
-                className="w-full"
+                className="h-11 w-full"
                 contentClassName="max-h-64 overflow-y-auto"
                 value={form.country}
                 onChange={(event) =>
@@ -461,6 +461,7 @@ export function PtHubSettingsAccountTab() {
                   (showRequiredErrors && Boolean(requiredErrors.phone))
                 }
                 value={form.phone}
+                className="h-11"
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, phone: event.target.value }))
                 }

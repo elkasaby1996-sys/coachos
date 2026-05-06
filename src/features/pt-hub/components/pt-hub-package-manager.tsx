@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   Save,
+  Search,
   Trash2,
 } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
@@ -300,6 +301,7 @@ export function PtHubPackageManager() {
   } | null>(null);
   const [activeFilter, setActiveFilter] =
     useState<PTPackageManagementFilter>("all");
+  const [packageSearchValue, setPackageSearchValue] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [archiveCandidate, setArchiveCandidate] = useState<PTPackage | null>(
     null,
@@ -613,10 +615,26 @@ export function PtHubPackageManager() {
     }
   }
 
-  const filteredPackages = useMemo(
-    () => filterPackagesForManagement(packages, activeFilter),
-    [activeFilter, packages],
-  );
+  const filteredPackages = useMemo(() => {
+    const filteredByState = filterPackagesForManagement(packages, activeFilter);
+    const normalizedSearch = packageSearchValue.trim().toLowerCase();
+
+    if (!normalizedSearch) return filteredByState;
+
+    return filteredByState.filter((pkg) =>
+      [
+        pkg.title,
+        pkg.subtitle ?? "",
+        pkg.description ?? "",
+        pkg.priceLabel ?? "",
+        pkg.billingCadenceLabel ?? "",
+        getPackageDisplayState(pkg),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [activeFilter, packageSearchValue, packages]);
 
   const fullReorderableIds = useMemo(
     () =>
@@ -695,8 +713,8 @@ export function PtHubPackageManager() {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
-            <label className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-3 py-2 text-xs font-medium text-foreground">
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+            <label className="inline-flex h-9 items-center gap-2 rounded-full border border-border/60 bg-background/55 px-2.5 text-xs font-medium text-foreground">
               <Switch
                 checked={editState.isPublic}
                 disabled={isVisibilityDisabled}
@@ -706,11 +724,12 @@ export function PtHubPackageManager() {
               />
               Public
             </label>
-            <div className="inline-flex items-center rounded-full border border-border/60 bg-background/55 p-1">
+            <div className="inline-flex h-9 items-center rounded-full border border-border/60 bg-background/55 p-0.5">
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
+                className="h-8 w-8 rounded-full p-0"
                 disabled={busyKey === "reorder" || !canMoveUp}
                 onClick={() => void handleMove(pkg.id, "up")}
                 aria-label={`Move ${pkg.title} up`}
@@ -722,6 +741,7 @@ export function PtHubPackageManager() {
                 type="button"
                 size="sm"
                 variant="ghost"
+                className="h-8 w-8 rounded-full p-0"
                 disabled={busyKey === "reorder" || !canMoveDown}
                 onClick={() => void handleMove(pkg.id, "down")}
                 aria-label={`Move ${pkg.title} down`}
@@ -734,6 +754,7 @@ export function PtHubPackageManager() {
               type="button"
               size="sm"
               variant="secondary"
+              className="h-9 rounded-full px-3"
               onClick={() => setEditingPackageId(pkg.id)}
             >
               <Pencil className="h-4 w-4" />
@@ -773,18 +794,49 @@ export function PtHubPackageManager() {
           </Button>
         }
       >
-        <div className="flex flex-wrap items-center gap-2">
-          {PT_PACKAGE_FILTER_OPTIONS.map((filter) => (
-            <Button
-              key={filter.value}
-              type="button"
-              size="sm"
-              variant={activeFilter === filter.value ? "default" : "secondary"}
-              onClick={() => setActiveFilter(filter.value)}
+        <div className="app-filter-grid pt-hub-management-toolbar">
+          <div className="app-filter-search space-y-1.5">
+            <Label
+              htmlFor="package-search"
+              className="text-xs font-medium text-muted-foreground"
             >
-              {filter.label}
-            </Button>
-          ))}
+              Search
+            </Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground [stroke-width:1.7]" />
+              <Input
+                id="package-search"
+                className="app-filter-control pl-9"
+                value={packageSearchValue}
+                onChange={(event) => setPackageSearchValue(event.target.value)}
+                placeholder="Search offers, pricing, or package copy"
+              />
+            </div>
+          </div>
+          <div className="app-filter-control-sm space-y-1.5">
+            <Label
+              htmlFor="package-state-filter"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Status
+            </Label>
+            <Select
+              id="package-state-filter"
+              size="sm"
+              variant="filter"
+              className="app-filter-control"
+              value={activeFilter}
+              onChange={(event) =>
+                setActiveFilter(event.target.value as PTPackageManagementFilter)
+              }
+            >
+              {PT_PACKAGE_FILTER_OPTIONS.map((filter) => (
+                <option key={filter.value} value={filter.value}>
+                  {filter.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
 
         {packagesQuery.isLoading ? (
@@ -836,7 +888,7 @@ export function PtHubPackageManager() {
         packagesQuery.isSuccess &&
         packages.length > 0 ? (
           <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
-            No packages match this filter.
+            No packages match the current search or filter.
           </div>
         ) : null}
       </PtHubSectionCard>

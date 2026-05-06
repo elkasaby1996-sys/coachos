@@ -1,9 +1,28 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
+
+const sentrySourceMapsEnabled = Boolean(process.env.SENTRY_AUTH_TOKEN);
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    ...(sentrySourceMapsEnabled
+      ? sentryVitePlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          release: {
+            name: process.env.VITE_SENTRY_RELEASE,
+          },
+          sourcemaps: {
+            filesToDeleteAfterUpload: ["dist/**/*.map"],
+          },
+        })
+      : []),
+  ],
   build: {
+    sourcemap: sentrySourceMapsEnabled,
     rollupOptions: {
       output: {
         manualChunks(id) {

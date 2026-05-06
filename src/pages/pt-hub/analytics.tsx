@@ -439,10 +439,10 @@ function FunnelOverview({
                     </span>
                   ) : null}
                 </div>
-                <div className="h-9 overflow-hidden rounded-2xl bg-background/70">
+                <div className="h-6 overflow-hidden rounded-full bg-background/70">
                   <div
                     className={cn(
-                      "flex h-full items-center rounded-2xl px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-foreground",
+                      "flex h-full items-center rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground",
                       isLargestDropOff
                         ? "bg-warning"
                         : getAnalyticsBarClassName({}),
@@ -521,7 +521,7 @@ function AnalyticsRangeRail({
   onChange: (rangeKey: PtHubAnalyticsFilters["rangeKey"]) => void;
 }) {
   return (
-    <div className="w-full min-w-[17rem] max-w-[18.75rem] space-y-1">
+    <div className="w-full min-w-[16rem] max-w-[18rem] space-y-1 overflow-hidden">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[0.68rem] font-semibold leading-none text-muted-foreground">
           Date range
@@ -531,7 +531,7 @@ function AnalyticsRangeRail({
         </p>
       </div>
       <nav
-        className="pt-hub-tab-rail pt-hub-analytics-range-rail h-10 w-full justify-center"
+        className="pt-hub-tab-rail pt-hub-analytics-range-rail h-9 w-full justify-center overflow-hidden"
         aria-label="Date range for all analytics"
       >
         {PT_HUB_ANALYTICS_RANGE_OPTIONS.map((option) => {

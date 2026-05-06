@@ -849,11 +849,11 @@ export function PtHubProfileEditor({
               <TabsTrigger
                 key={step.value}
                 className={cn(
-                  "pt-hub-profile-step-trigger group",
+                  "pt-hub-profile-step-trigger group flex items-center",
                   isActive ? "text-foreground" : "text-muted-foreground",
                   isActive
-                    ? "min-w-[12.5rem] xl:flex-[1.7]"
-                    : "min-w-[6.25rem] sm:min-w-[7.25rem] xl:flex-1",
+                    ? "min-w-[12.5rem] gap-3 xl:flex-[1.7]"
+                    : "min-w-[6.25rem] justify-center gap-2 sm:min-w-[7.25rem] xl:flex-1",
                 )}
                 value={step.value}
               >
@@ -874,49 +874,43 @@ export function PtHubProfileEditor({
                 ) : null}
                 <span
                   className={cn(
-                    "relative z-10 flex w-full items-center text-left",
-                    isActive ? "gap-3" : "justify-center gap-2",
+                    "relative z-10 flex shrink-0 items-center justify-center rounded-full border",
+                    isActive ? "h-8 w-8" : "h-7 w-7",
+                    isComplete
+                      ? "border-success/40 bg-success/12 text-success"
+                      : "border-border/70 bg-background/40 text-muted-foreground",
+                  )}
+                  aria-hidden="true"
+                >
+                  {isComplete ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <span className="font-mono text-[11px] tabular-nums">
+                      {completion.total > 0
+                        ? `${completion.complete}/${completion.total}`
+                        : "OK"}
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    "relative z-10 min-w-0 text-left",
+                    !isActive && "flex min-w-0 flex-col items-start",
                   )}
                 >
                   <span
                     className={cn(
-                      "flex shrink-0 items-center justify-center rounded-full border",
-                      isActive ? "h-8 w-8" : "h-7 w-7",
-                      isComplete
-                        ? "border-success/40 bg-success/12 text-success"
-                        : "border-border/70 bg-background/40 text-muted-foreground",
+                      "block font-semibold",
+                      isActive ? "text-sm" : "text-xs sm:text-sm",
                     )}
                   >
-                    {isComplete ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <span className="font-mono text-[11px] tabular-nums">
-                        {completion.total > 0
-                          ? `${completion.complete}/${completion.total}`
-                          : "OK"}
-                      </span>
-                    )}
+                    {step.label}
                   </span>
-                  <span
-                    className={cn(
-                      "min-w-0",
-                      !isActive && "flex min-w-0 flex-col items-start",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "block font-semibold",
-                        isActive ? "text-sm" : "text-xs sm:text-sm",
-                      )}
-                    >
-                      {step.label}
+                  {isActive ? (
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {step.description}
                     </span>
-                    {isActive ? (
-                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                        {step.description}
-                      </span>
-                    ) : null}
-                  </span>
+                  ) : null}
                 </span>
               </TabsTrigger>
             );

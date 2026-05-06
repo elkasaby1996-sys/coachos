@@ -266,7 +266,7 @@ function getPtHubRouteTransitionKey(pathname: string) {
 
 function getPtHubHeaderPillClassName(isLightMode: boolean) {
   return cn(
-    "group hidden h-[58px] min-w-[190px] flex-1 items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex sm:max-w-[236px] xl:w-[220px] xl:flex-none 2xl:w-[236px]",
+    "group hidden h-12 min-w-[180px] flex-1 items-center gap-2.5 rounded-[18px] border px-3 py-1.5 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex sm:max-w-[224px] xl:w-[208px] xl:flex-none 2xl:w-[224px]",
     isLightMode
       ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.94),oklch(var(--bg-surface)/0.82))] hover:shadow-[0_24px_54px_-36px_oklch(var(--accent)/0.16)]"
       : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.78))] hover:shadow-[0_24px_52px_-36px_oklch(var(--accent)/0.18)]",
@@ -275,7 +275,7 @@ function getPtHubHeaderPillClassName(isLightMode: boolean) {
 
 function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
-    "flex h-9 w-9 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
+    "flex h-8 w-8 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
     isLightMode
       ? "text-primary group-hover:text-foreground"
       : "text-primary group-hover:text-foreground",
@@ -284,16 +284,16 @@ function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
 
 function getPtHubHeaderPillChevronClassName(isLightMode: boolean) {
   return cn(
-    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
+    "flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground transition-all duration-200",
     isLightMode
-      ? "border-border/70 bg-[oklch(var(--bg-surface-elevated)/0.72)] text-primary group-hover:border-primary/18 group-hover:text-foreground"
-      : "border-border/60 bg-[oklch(var(--bg-surface-elevated)/0.3)] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
+      ? "text-primary group-hover:text-foreground"
+      : "text-muted-foreground group-hover:text-primary",
   );
 }
 
 function getPtHubStatusPillClassName(isLightMode: boolean) {
   return cn(
-    "hidden h-[58px] min-w-[176px] flex-none items-center gap-3 rounded-[20px] border px-3 py-2 text-left backdrop-blur-3xl sm:flex",
+    "hidden h-12 min-w-[168px] flex-none items-center gap-2.5 rounded-[18px] border px-3 py-1.5 text-left backdrop-blur-3xl sm:flex",
     isLightMode
       ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)]"
       : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)]",
@@ -309,7 +309,7 @@ function getPtHubStatusPillIconClassName(params: {
   );
 
   return cn(
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition-colors duration-200",
+    "flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] border transition-colors duration-200",
     toneStyles.surface,
   );
 }
