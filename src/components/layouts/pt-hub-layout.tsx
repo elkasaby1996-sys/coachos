@@ -508,6 +508,7 @@ export function PtHubLayout() {
     >
       <AppShellBackgroundLayer
         animated
+        animatedDelayMs={2200}
         mode={themeMode}
         scrollActive={headerCondensed}
       />
@@ -891,9 +892,7 @@ function SidebarContent({
     <div className={cn("flex h-full min-h-0 flex-col px-5 py-5", className)}>
       <div className="space-y-4 border-b border-border/60 pb-5">
         <div className="min-w-0">
-          <p
-            className="text-[1.15rem] font-semibold tracking-normal text-foreground"
-          >
+          <p className="text-[1.15rem] font-semibold tracking-normal text-foreground">
             {t("common.repsyncHub", "Repsync Hub")}
           </p>
         </div>
@@ -972,7 +971,9 @@ function SidebarContent({
                             <p
                               className={cn(
                                 "min-w-0 truncate",
-                                isLightMode ? "text-foreground" : "text-inherit",
+                                isLightMode
+                                  ? "text-foreground"
+                                  : "text-inherit",
                               )}
                             >
                               {t(item.labelKey, item.label)}

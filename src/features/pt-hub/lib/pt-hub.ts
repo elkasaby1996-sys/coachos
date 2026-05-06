@@ -228,6 +228,13 @@ type PtHubClientsPageRow = PtClientsSummaryRow & {
   total_count: number | null;
 };
 
+type PtHubClientsRpcClient = {
+  rpc: (
+    functionName: string,
+    args: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: unknown }>;
+};
+
 type PtHubLeadRow = {
   id: string;
   user_id: string;
@@ -1270,13 +1277,12 @@ export function usePtHubLeads() {
         return map;
       }, new Map<string, PTLeadNote[]>());
 
-      const chatSummaryByLead = ((chatSummaries ?? []) as PtHubLeadChatSummaryRow[]).reduce(
-        (map, row) => {
-          map.set(row.lead_id, row);
-          return map;
-        },
-        new Map<string, PtHubLeadChatSummaryRow>(),
-      );
+      const chatSummaryByLead = (
+        (chatSummaries ?? []) as PtHubLeadChatSummaryRow[]
+      ).reduce((map, row) => {
+        map.set(row.lead_id, row);
+        return map;
+      }, new Map<string, PtHubLeadChatSummaryRow>());
 
       return (leads ?? []).map((lead) =>
         mapLead(
@@ -1287,6 +1293,43 @@ export function usePtHubLeads() {
       );
     },
   });
+}
+
+export async function fetchPtHubClientSummaries(
+  client: PtHubClientsRpcClient,
+  workspaces: Array<Pick<PTWorkspaceSummary, "id" | "name">>,
+) {
+  if (workspaces.length === 0) return [] as PTClientSummary[];
+
+  const { data, error } = await client.rpc("pt_hub_clients_page", {
+    p_limit: 1000,
+    p_offset: 0,
+    p_workspace_id: null,
+    p_lifecycle: null,
+    p_search: null,
+    p_segment: null,
+  });
+
+  if (error) throw error;
+
+  const workspaceNameById = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace.name]),
+  );
+
+  return ((data ?? []) as PtHubClientsPageRow[])
+    .map((row) =>
+      mapPtClientSummary(
+        row,
+        row.workspace_name?.trim() ||
+          workspaceNameById.get(row.workspace_id ?? "") ||
+          "Workspace",
+      ),
+    )
+    .sort((a, b) => {
+      const aTime = new Date(a.createdAt ?? 0).getTime();
+      const bTime = new Date(b.createdAt ?? 0).getTime();
+      return bTime - aTime;
+    });
 }
 
 export function usePtHubClients() {
@@ -1303,29 +1346,7 @@ export function usePtHubClients() {
     enabled: Boolean(user?.id) && workspacesQuery.isSuccess,
     queryFn: async () => {
       const workspaces = workspacesQuery.data ?? [];
-      if (workspaces.length === 0) return [] as PTClientSummary[];
-
-      const results = await Promise.all(
-        workspaces.map(async (workspace) => {
-          const { data, error } = await supabase.rpc("pt_clients_summary", {
-            p_workspace_id: workspace.id,
-            p_limit: 500,
-            p_offset: 0,
-          });
-
-          if (error) throw error;
-
-          return ((data ?? []) as PtClientsSummaryRow[]).map((row) =>
-            mapPtClientSummary(row, workspace.name),
-          );
-        }),
-      );
-
-      return results.flat().sort((a, b) => {
-        const aTime = new Date(a.createdAt ?? 0).getTime();
-        const bTime = new Date(b.createdAt ?? 0).getTime();
-        return bTime - aTime;
-      });
+      return fetchPtHubClientSummaries(supabase, workspaces);
     },
   });
 }
@@ -1541,9 +1562,9 @@ export async function approvePtHubLead(params: {
 
   if (error) throw error;
 
-  const row = (Array.isArray(data)
-    ? (data[0] ?? null)
-    : data) as PtHubLeadApprovalResult | null;
+  const row = (
+    Array.isArray(data) ? (data[0] ?? null) : data
+  ) as PtHubLeadApprovalResult | null;
 
   return row
     ? {
@@ -1783,9 +1804,8 @@ type PtPackageMutationInput = {
 function toPtPackageMutationPayload(input: PtPackageMutationInput) {
   const normalizedState = normalizePackageStateForPersistence(input);
   const normalizedFeatures =
-    normalizedState.features
-      ?.map((item) => item.trim())
-      .filter(Boolean) ?? null;
+    normalizedState.features?.map((item) => item.trim()).filter(Boolean) ??
+    null;
 
   return {
     title: normalizedState.title.trim(),
@@ -1794,7 +1814,10 @@ function toPtPackageMutationPayload(input: PtPackageMutationInput) {
     price_label: normalizedState.priceLabel?.trim() || null,
     billing_cadence_label: normalizedState.billingCadenceLabel?.trim() || null,
     cta_label: normalizedState.ctaLabel?.trim() || null,
-    features: normalizedFeatures && normalizedFeatures.length > 0 ? normalizedFeatures : null,
+    features:
+      normalizedFeatures && normalizedFeatures.length > 0
+        ? normalizedFeatures
+        : null,
     status: normalizedState.status,
     is_public: normalizedState.isPublic,
     sort_order: Number.isFinite(normalizedState.sortOrder)
@@ -2018,9 +2041,7 @@ export async function updatePtPackage(params: {
     .update({
       ...payload,
       archived_at:
-        normalizedState.status === "archived"
-          ? new Date().toISOString()
-          : null,
+        normalizedState.status === "archived" ? new Date().toISOString() : null,
     })
     .eq("id", params.packageId)
     .eq("pt_user_id", params.ptUserId);
@@ -2141,7 +2162,10 @@ export async function submitPublicPtApplication(input: PTPublicLeadInput) {
 
   if (!authenticatedFullName && nextInput.p_full_name) {
     try {
-      const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const userMetadata = (user.user_metadata ?? {}) as Record<
+        string,
+        unknown
+      >;
       await supabase.auth.updateUser({
         data: {
           ...userMetadata,

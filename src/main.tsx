@@ -9,12 +9,18 @@ import { App } from "./routes/app";
 import { initializeThemePreference } from "./lib/theme";
 import { I18nProvider } from "./lib/i18n";
 import { initSentry } from "./lib/sentry";
+import {
+  installSentryMetricSmokeTest,
+  reportInitialPageLoadMetric,
+} from "./lib/sentry-metrics";
 import "./styles/globals.css";
 import "./styles/style.css";
 import "./styles/color-language.css";
 
 initializeThemePreference("dark");
 initSentry();
+reportInitialPageLoadMetric();
+installSentryMetricSmokeTest();
 
 const isHardFail = (error: any) => {
   const status = error?.status;

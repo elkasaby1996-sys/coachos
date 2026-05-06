@@ -42,7 +42,10 @@ export default defineConfig({
             return "vendor-supabase";
           }
 
-          if (id.includes("@sentry/")) {
+          if (
+            id.includes("@sentry/") ||
+            id.includes("@sentry-internal/")
+          ) {
             return "vendor-observability";
           }
 

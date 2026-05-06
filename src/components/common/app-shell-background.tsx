@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { getPtHubAnimatedBackgroundModule } from "./app-shell-background-preload";
 
 const PtHubAnimatedBackground = lazy(async () => {
@@ -96,16 +96,43 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
 
 export function AppShellBackgroundLayer({
   animated = false,
+  animatedDelayMs = 0,
   mode = "dark",
   scrollActive = false,
 }: {
   animated?: boolean;
+  animatedDelayMs?: number;
   mode?: AppShellBackgroundMode;
   scrollActive?: boolean;
 }) {
+  const [canRenderAnimatedLayer, setCanRenderAnimatedLayer] = useState(
+    animated && animatedDelayMs <= 0,
+  );
+
+  useEffect(() => {
+    if (!animated) {
+      setCanRenderAnimatedLayer(false);
+      return;
+    }
+
+    if (animatedDelayMs <= 0) {
+      setCanRenderAnimatedLayer(true);
+      return;
+    }
+
+    setCanRenderAnimatedLayer(false);
+    const timeoutHandle = window.setTimeout(() => {
+      setCanRenderAnimatedLayer(true);
+    }, animatedDelayMs);
+
+    return () => {
+      window.clearTimeout(timeoutHandle);
+    };
+  }, [animated, animatedDelayMs]);
+
   return (
     <>
-      {animated ? (
+      {animated && canRenderAnimatedLayer ? (
         <Suspense fallback={<AmbientShellBackground mode={mode} />}>
           <PtHubAnimatedBackground mode={mode} scrollActive={scrollActive} />
         </Suspense>
