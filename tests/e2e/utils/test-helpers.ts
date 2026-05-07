@@ -24,10 +24,28 @@ function isOnTarget(url: string, targetPath: string) {
 }
 
 async function isLoginUiVisible(page: Page) {
-  return page
+  const headingVisible = await page
     .getByRole("heading", { name: /welcome back/i })
     .isVisible()
     .catch(() => false);
+  if (headingVisible) {
+    return true;
+  }
+
+  const signInVisible = await page
+    .getByRole("button", { name: /^sign in$/i })
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const emailVisible = await page
+    .locator(
+      'input[type="email"], input[name="email"], input[autocomplete="email"]',
+    )
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  return signInVisible && emailVisible;
 }
 
 async function isRouteStable(page: Page, targetPath: string) {

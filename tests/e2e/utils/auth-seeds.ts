@@ -125,7 +125,15 @@ async function ensureUser(user: SeedUser) {
   return data.user.id;
 }
 
-export async function seedAuthSmokeStates() {
+function isSupabaseSeedApiUnavailable(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const cause =
+    error instanceof Error && "cause" in error ? String(error.cause) : "";
+
+  return `${message} ${cause}`.includes("ECONNREFUSED 127.0.0.1:54321");
+}
+
+async function seedAuthSmokeStatesOrThrow() {
   const ptCompleteUserId = await ensureUser(authSmokeFixtures.ptComplete);
   const ptIncompleteUserId = await ensureUser(
     authSmokeFixtures.ptIncompleteProfile,
@@ -330,4 +338,15 @@ export async function seedAuthSmokeStates() {
       inviteToken: authSmokeFixtures.clientInvite.inviteToken,
     },
   };
+}
+
+export async function seedAuthSmokeStates() {
+  try {
+    return await seedAuthSmokeStatesOrThrow();
+  } catch (error) {
+    if (isSupabaseSeedApiUnavailable(error)) {
+      return null;
+    }
+    throw error;
+  }
 }

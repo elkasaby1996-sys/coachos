@@ -12,6 +12,13 @@ test.describe("Auth resilience", () => {
     page,
   }) => {
     const seeded = await seedAuthSmokeStates();
+    test.skip(
+      !seeded,
+      "Local Supabase seed API unavailable for fixed auth smoke fixtures.",
+    );
+    if (!seeded) {
+      return;
+    }
 
     await signInWithEmail(
       page,

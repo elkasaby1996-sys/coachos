@@ -7,7 +7,7 @@ test.describe("Smoke: auth guards and recovery", () => {
     await page.goto("/pt/dashboard");
     await expect(page).toHaveURL(/\/login/);
     await expect(
-      page.getByRole("heading", { name: /welcome back/i }),
+      page.getByRole("button", { name: /^sign in$/i }).first(),
     ).toBeVisible();
   });
 });

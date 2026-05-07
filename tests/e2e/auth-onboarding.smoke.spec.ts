@@ -9,7 +9,11 @@ import {
 
 test.describe("Smoke: auth and onboarding", () => {
   test.beforeEach(async () => {
-    await seedAuthSmokeStates();
+    const seeded = await seedAuthSmokeStates();
+    test.skip(
+      !seeded,
+      "Local Supabase seed API unavailable for fixed auth smoke fixtures.",
+    );
   });
 
   test("Invalid credentials keep user on login", async ({ page }) => {
@@ -23,7 +27,7 @@ test.describe("Smoke: auth and onboarding", () => {
 
     await expect(page).toHaveURL(/\/login/);
     await expect(
-      page.getByRole("heading", { name: /welcome back/i }),
+      page.getByRole("button", { name: /^sign in$/i }).first(),
     ).toBeVisible();
   });
 
