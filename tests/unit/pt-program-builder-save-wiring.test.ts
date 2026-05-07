@@ -21,7 +21,9 @@ describe("PT program builder save wiring", () => {
   });
 
   it("refreshes the current program and template-day queries after save", () => {
-    expect(programBuilderPage).toContain('queryKey: ["program-template", programId]');
+    expect(programBuilderPage).toContain(
+      'queryKey: ["program-template", programId]',
+    );
     expect(programBuilderPage).toContain(
       'queryKey: ["program-template-days", programId]',
     );

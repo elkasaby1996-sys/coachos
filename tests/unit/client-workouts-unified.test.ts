@@ -109,7 +109,9 @@ describe("groupUnifiedWorkoutsByState", () => {
       "in-progress-personal",
     ]);
     expect(grouped.today.map((row) => row.id)).toEqual(["today-assigned"]);
-    expect(grouped.upcoming.map((row) => row.id)).toEqual(["upcoming-assigned"]);
+    expect(grouped.upcoming.map((row) => row.id)).toEqual([
+      "upcoming-assigned",
+    ]);
     expect(grouped.recentlyCompleted.map((row) => row.id)).toEqual([
       "completed-personal",
       "skipped-assigned",
@@ -158,7 +160,9 @@ describe("applyUnifiedWorkoutFilter", () => {
       ),
     ).toBe(true);
     expect(
-      applyUnifiedWorkoutFilter(baseRows, "today", todayKey).map((row) => row.id),
+      applyUnifiedWorkoutFilter(baseRows, "today", todayKey).map(
+        (row) => row.id,
+      ),
     ).toEqual(["in-progress-personal", "today-assigned"]);
     expect(
       applyUnifiedWorkoutFilter(baseRows, "upcoming", todayKey).map(
@@ -168,10 +172,12 @@ describe("applyUnifiedWorkoutFilter", () => {
   });
 
   it("returns an empty list cleanly when the selected source is unavailable", () => {
-    const assignedOnly = baseRows.filter((row) => row.sourceKind === "assigned");
-    expect(applyUnifiedWorkoutFilter(assignedOnly, "personal", todayKey)).toEqual(
-      [],
+    const assignedOnly = baseRows.filter(
+      (row) => row.sourceKind === "assigned",
     );
+    expect(
+      applyUnifiedWorkoutFilter(assignedOnly, "personal", todayKey),
+    ).toEqual([]);
   });
 });
 
@@ -316,7 +322,9 @@ describe("preparePersonalWorkoutDraft", () => {
       preparePersonalWorkoutDraft({
         workoutName: "Personal Session",
         scheduledDate: "2026-04-12",
-        exerciseDrafts: [{ name: " ", sets: "3", reps: "10", supersetGroup: "" }],
+        exerciseDrafts: [
+          { name: " ", sets: "3", reps: "10", supersetGroup: "" },
+        ],
       }),
     ).toThrow("Add at least one exercise to create a workout.");
   });

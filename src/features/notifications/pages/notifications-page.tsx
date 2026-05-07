@@ -283,7 +283,9 @@ export function NotificationsPage() {
             {(["all", "unread"] as NotificationFilter[]).map((filter) => {
               const isUnreadFilter = filter === "unread";
               const query = isUnreadFilter ? unreadQuery : allQuery;
-              const rows = isUnreadFilter ? unreadNotifications : allNotifications;
+              const rows = isUnreadFilter
+                ? unreadNotifications
+                : allNotifications;
               const windowed = isUnreadFilter ? unreadWindow : allWindow;
               const visibleRows = windowed.visibleRows;
               const emptyTitle =

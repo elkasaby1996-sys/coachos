@@ -45,7 +45,8 @@ export async function verifyPhoneOtp(phone: string, token: string) {
     action: "auth-phone-verify",
     scope: normalizedPhone,
     cooldownMs: 3_000,
-    message: "Please wait a few seconds before trying another verification code.",
+    message:
+      "Please wait a few seconds before trying another verification code.",
     run: () =>
       supabase.auth.verifyOtp({
         phone: normalizedPhone,

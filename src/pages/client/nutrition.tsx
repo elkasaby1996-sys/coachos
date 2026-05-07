@@ -58,7 +58,10 @@ type AssignedNutritionPlanRow = {
   status: string;
   created_at: string | null;
   updated_at: string | null;
-  nutrition_template: NutritionTemplateRelation | NutritionTemplateRelation[] | null;
+  nutrition_template:
+    | NutritionTemplateRelation
+    | NutritionTemplateRelation[]
+    | null;
 };
 
 type AssignedNutritionDayRow = {
@@ -155,7 +158,9 @@ function NutritionDayCard({ row, onOpen }: NutritionDayCardProps) {
       <SurfaceCardHeader className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <SurfaceCardTitle className="text-base">{row.planName}</SurfaceCardTitle>
+            <SurfaceCardTitle className="text-base">
+              {row.planName}
+            </SurfaceCardTitle>
             <SurfaceCardDescription className="text-sm">
               {formatDate(row.date)}
             </SurfaceCardDescription>
@@ -225,7 +230,10 @@ export function ClientNutritionPage() {
     },
   });
 
-  const clientProfiles = useMemo(() => clientQuery.data ?? [], [clientQuery.data]);
+  const clientProfiles = useMemo(
+    () => clientQuery.data ?? [],
+    [clientQuery.data],
+  );
   const clientProfile = useMemo(
     () =>
       clientProfiles.find((row) => row.id === activeClientId) ??
@@ -347,7 +355,9 @@ export function ClientNutritionPage() {
 
   const workspaceNameById = useMemo(
     () =>
-      new Map((workspacesQuery.data ?? []).map((row) => [row.id, row.name ?? ""])),
+      new Map(
+        (workspacesQuery.data ?? []).map((row) => [row.id, row.name ?? ""]),
+      ),
     [workspacesQuery.data],
   );
 
@@ -545,9 +555,7 @@ export function ClientNutritionPage() {
             <Button variant="secondary" onClick={() => navigate("/app/home")}>
               Home
             </Button>
-            <Button
-              onClick={() => navigate("/app/nutrition/new")}
-            >
+            <Button onClick={() => navigate("/app/nutrition/new")}>
               <Plus className="mr-1 h-4 w-4" />
               Create plan
             </Button>
@@ -619,13 +627,15 @@ export function ClientNutritionPage() {
                   centered
                 />
               ) : (
-                groupedRows.upcoming.slice(0, 6).map((row) => (
-                  <NutritionDayCard
-                    key={row.id}
-                    row={row}
-                    onOpen={(dayId) => navigate(`/app/nutrition/${dayId}`)}
-                  />
-                ))
+                groupedRows.upcoming
+                  .slice(0, 6)
+                  .map((row) => (
+                    <NutritionDayCard
+                      key={row.id}
+                      row={row}
+                      onOpen={(dayId) => navigate(`/app/nutrition/${dayId}`)}
+                    />
+                  ))
               )}
             </SurfaceCardContent>
           </SurfaceCard>
@@ -635,7 +645,9 @@ export function ClientNutritionPage() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SectionCard className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Active Plans</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Active Plans
+            </h2>
             <p className="text-sm text-muted-foreground">
               Personal and coach-assigned plans are merged here.
             </p>
@@ -668,7 +680,10 @@ export function ClientNutritionPage() {
                   ) ?? unifiedDayRows.find((day) => day.planId === plan.id);
 
                 return (
-                  <SurfaceCard key={plan.id} className="border-border/70 bg-card/55">
+                  <SurfaceCard
+                    key={plan.id}
+                    className="border-border/70 bg-card/55"
+                  >
                     <SurfaceCardHeader className="gap-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <SurfaceCardTitle className="text-base">
@@ -687,7 +702,9 @@ export function ClientNutritionPage() {
                       {openDay ? (
                         <Button
                           size="sm"
-                          onClick={() => navigate(`/app/nutrition/${openDay.id}`)}
+                          onClick={() =>
+                            navigate(`/app/nutrition/${openDay.id}`)
+                          }
                         >
                           Open day
                         </Button>
@@ -711,7 +728,9 @@ export function ClientNutritionPage() {
                               variant="secondary"
                               className="text-destructive hover:text-destructive"
                               disabled={deleteTemplateMutation.isPending}
-                              onClick={() => deleteTemplateMutation.mutate(template.id)}
+                              onClick={() =>
+                                deleteTemplateMutation.mutate(template.id)
+                              }
                             >
                               <Trash2 className="mr-1 h-3.5 w-3.5" />
                               Delete
@@ -729,7 +748,9 @@ export function ClientNutritionPage() {
 
         <SectionCard className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Recent Activity</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Recent Activity
+            </h2>
             <p className="text-sm text-muted-foreground">
               Latest completed nutrition days and logging progress.
             </p>
@@ -760,7 +781,8 @@ export function ClientNutritionPage() {
             Personal Templates
           </h2>
           <p className="text-sm text-muted-foreground">
-            Used templates are history-safe and archive-only. Unused templates can be deleted.
+            Used templates are history-safe and archive-only. Unused templates
+            can be deleted.
           </p>
         </div>
         {(personalTemplatesQuery.data ?? []).length === 0 ? (
@@ -774,7 +796,10 @@ export function ClientNutritionPage() {
             {(personalTemplatesQuery.data ?? []).map((template) => {
               const isUsed = usedPersonalTemplateIds.has(template.id);
               return (
-                <SurfaceCard key={template.id} className="border-border/70 bg-card/55">
+                <SurfaceCard
+                  key={template.id}
+                  className="border-border/70 bg-card/55"
+                >
                   <SurfaceCardHeader className="gap-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <SurfaceCardTitle className="text-base">
@@ -782,7 +807,9 @@ export function ClientNutritionPage() {
                       </SurfaceCardTitle>
                       <div className="flex items-center gap-2">
                         <Badge variant="muted">Personal</Badge>
-                        {!template.is_active ? <Badge variant="neutral">Archived</Badge> : null}
+                        {!template.is_active ? (
+                          <Badge variant="neutral">Archived</Badge>
+                        ) : null}
                       </div>
                     </div>
                     <SurfaceCardDescription>
@@ -794,8 +821,13 @@ export function ClientNutritionPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={archiveTemplateMutation.isPending || !template.is_active}
-                        onClick={() => archiveTemplateMutation.mutate(template.id)}
+                        disabled={
+                          archiveTemplateMutation.isPending ||
+                          !template.is_active
+                        }
+                        onClick={() =>
+                          archiveTemplateMutation.mutate(template.id)
+                        }
                       >
                         Archive
                       </Button>
@@ -805,7 +837,9 @@ export function ClientNutritionPage() {
                         variant="secondary"
                         className="text-destructive hover:text-destructive"
                         disabled={deleteTemplateMutation.isPending}
-                        onClick={() => deleteTemplateMutation.mutate(template.id)}
+                        onClick={() =>
+                          deleteTemplateMutation.mutate(template.id)
+                        }
                       >
                         <Trash2 className="mr-1 h-3.5 w-3.5" />
                         Delete
@@ -819,7 +853,9 @@ export function ClientNutritionPage() {
         )}
       </SectionCard>
 
-      {manageError ? <ActionStatusMessage tone="error">{manageError}</ActionStatusMessage> : null}
+      {manageError ? (
+        <ActionStatusMessage tone="error">{manageError}</ActionStatusMessage>
+      ) : null}
     </div>
   );
 }

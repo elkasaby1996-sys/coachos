@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 
 const styleCss = readFileSync(resolve("src/styles/style.css"), "utf8");
 const globalsCss = readFileSync(resolve("src/styles/globals.css"), "utf8");
-const ptHubShellCss = readFileSync(resolve("src/styles/pt-hub-shell.css"), "utf8");
+const ptHubShellCss = readFileSync(
+  resolve("src/styles/pt-hub-shell.css"),
+  "utf8",
+);
 const ptWorkspaceShellCss = readFileSync(
   resolve("src/styles/pt-workspace-shell.css"),
   "utf8",
@@ -65,7 +68,9 @@ function oklchParts(value: string) {
 
 describe("light mode theme CSS contract", () => {
   const lightTokens = customProperties(selectorBlock(styleCss, ".light"));
-  const globalsLightTokens = customProperties(selectorBlock(globalsCss, ".light"));
+  const globalsLightTokens = customProperties(
+    selectorBlock(globalsCss, ".light"),
+  );
 
   function expectWarmLightThemeTokens(tokens: Record<string, string>) {
     const canvas = oklchParts(tokens["bg-canvas"]);
@@ -245,8 +250,12 @@ describe("light mode theme CSS contract", () => {
       ".light .app-search-input,\n.pt-hub-theme.pt-hub-theme-light .app-search-input,\n.pt-workspace-theme.pt-workspace-theme-light .app-search-input",
     );
 
-    expect(lightSearchInput).toContain("border-color: var(--field-glass-border)");
-    expect(lightSearchInput).toContain("background-image: var(--field-glass-bg)");
+    expect(lightSearchInput).toContain(
+      "border-color: var(--field-glass-border)",
+    );
+    expect(lightSearchInput).toContain(
+      "background-image: var(--field-glass-bg)",
+    );
     expect(lightSearchInput).toContain("box-shadow: var(--field-glass-shadow)");
   });
 
@@ -317,7 +326,9 @@ describe("light mode theme CSS contract", () => {
 
     expect(publicPortalTokens["bg-surface"]).toBe("1 0 0");
     expect(publicPortalTokens.foreground).toBe("var(--text-primary)");
-    expect(publicPortalTokens["popover-foreground"]).toBe("var(--text-primary)");
+    expect(publicPortalTokens["popover-foreground"]).toBe(
+      "var(--text-primary)",
+    );
     expect(publicPortalTokens["menu-surface-bg"]).toContain("oklch(1 0 0 / 1)");
     expect(publicPortalTokens["menu-item-hover"]).toBe(
       "oklch(var(--bg-muted) / 0.94)",

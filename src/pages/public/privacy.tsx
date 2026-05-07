@@ -60,10 +60,7 @@ export function PrivacyPage() {
           support the app.
         </p>
       </PublicInfoCard>
-      <PublicInfoCard
-        icon={<FileKey2 className="h-4 w-4" />}
-        title="Retention"
-      >
+      <PublicInfoCard icon={<FileKey2 className="h-4 w-4" />} title="Retention">
         <p>
           We keep information while an account or workspace needs it, then
           remove or de-identify data when it is no longer required.

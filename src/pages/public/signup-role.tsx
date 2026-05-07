@@ -72,7 +72,8 @@ export function SignupRolePage() {
               I'm a Coach
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create a PT account, set up your workspace, and finish your coach profile.
+              Create a PT account, set up your workspace, and finish your coach
+              profile.
             </p>
             <Button asChild className="mt-4 h-11 w-full">
               <Link to="/signup/pt">Continue as coach</Link>
@@ -84,7 +85,8 @@ export function SignupRolePage() {
               I'm a Client
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create your account now and connect to a coach later when you have an invite.
+              Create your account now and connect to a coach later when you have
+              an invite.
             </p>
             <Button asChild className="mt-4 h-11 w-full">
               <Link to="/signup/client">Continue as client</Link>
@@ -93,7 +95,8 @@ export function SignupRolePage() {
         </div>
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          Already have an invite link? Open it directly, or sign in and paste it on the no-workspace screen later.
+          Already have an invite link? Open it directly, or sign in and paste it
+          on the no-workspace screen later.
         </p>
       </div>
     </AuthBackdrop>

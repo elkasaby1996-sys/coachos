@@ -62,7 +62,9 @@ describe("lead chat SQL contracts", () => {
   });
 
   it("does not migrate lead chat into workspace chat tables", () => {
-    expect(leadChatMigration).not.toMatch(/insert\s+into\s+public\.messages\b/i);
+    expect(leadChatMigration).not.toMatch(
+      /insert\s+into\s+public\.messages\b/i,
+    );
     expect(leadChatMigration).not.toMatch(
       /insert\s+into\s+public\.conversations\b/i,
     );
@@ -76,8 +78,6 @@ describe("lead chat SQL contracts", () => {
     expect(hardeningMigration).toContain(
       "v_actor_user_id <> v_lead.applicant_user_id",
     );
-    expect(hardeningMigration).toContain(
-      "v_actor_user_id <> v_lead.user_id",
-    );
+    expect(hardeningMigration).toContain("v_actor_user_id <> v_lead.user_id");
   });
 });

@@ -58,7 +58,9 @@ export function PtHubPublicationPanel({
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
               className={
-                readiness.readyForPublish ? "h-full rounded-full bg-success" : "h-full rounded-full bg-warning"
+                readiness.readyForPublish
+                  ? "h-full rounded-full bg-success"
+                  : "h-full rounded-full bg-warning"
               }
               style={{ width: `${readiness.completionPercent}%` }}
             />
@@ -70,11 +72,13 @@ export function PtHubPublicationPanel({
             Profile visibility
           </p>
           <div className="flex flex-wrap gap-2">
-            {([
-              { value: "draft", label: "Draft" },
-              { value: "private", label: "Private" },
-              { value: "listed", label: "Ready to list" },
-            ] as const).map((option) => (
+            {(
+              [
+                { value: "draft", label: "Draft" },
+                { value: "private", label: "Private" },
+                { value: "listed", label: "Ready to list" },
+              ] as const
+            ).map((option) => (
               <Button
                 key={option.value}
                 type="button"

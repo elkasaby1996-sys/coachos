@@ -30,7 +30,10 @@ export function SettingsPageShell({
             toneClasses.text,
           )}
         >
-          <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)} />
+          <span
+            aria-hidden
+            className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)}
+          />
           Settings
         </p>
         <h2

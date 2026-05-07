@@ -1008,6 +1008,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   opacity: 0.18;
 }
 
+/* prettier-ignore */
 .pt-hub-theme.pt-hub-theme-light.pt-hub-scroll-active .theme-shell-canvas::before {
   opacity: 0.22;
   filter: blur(136px) saturate(68%);

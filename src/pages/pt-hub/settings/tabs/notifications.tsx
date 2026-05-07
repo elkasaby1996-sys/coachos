@@ -129,7 +129,9 @@ export function PtHubSettingsNotificationsTab() {
         title="Notifications"
         description="Loading notification settings..."
       >
-        <p className="text-sm text-muted-foreground">Please wait while we load your notification preferences.</p>
+        <p className="text-sm text-muted-foreground">
+          Please wait while we load your notification preferences.
+        </p>
       </SettingsSectionCard>
     );
   }
@@ -162,7 +164,10 @@ export function PtHubSettingsNotificationsTab() {
           />
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="Weekly digest" hint="Weekly business health summary.">
+        <SettingsFieldRow
+          label="Weekly digest"
+          hint="Weekly business health summary."
+        >
           <PreferenceToggle
             title="Weekly digest"
             description="A weekly summary of workspace movement and profile readiness."
@@ -173,7 +178,10 @@ export function PtHubSettingsNotificationsTab() {
           />
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="Product updates" hint="Repsync update notifications.">
+        <SettingsFieldRow
+          label="Product updates"
+          hint="Repsync update notifications."
+        >
           <PreferenceToggle
             title="Product updates"
             description="Optional product and release update messages."
@@ -192,7 +200,10 @@ export function PtHubSettingsNotificationsTab() {
         <SettingsFieldRow label="Email channel" hint="Backend support pending.">
           <DisabledSettingField value="Not configurable yet" />
         </SettingsFieldRow>
-        <SettingsFieldRow label="In-app channel" hint="Backend support pending.">
+        <SettingsFieldRow
+          label="In-app channel"
+          hint="Backend support pending."
+        >
           <DisabledSettingField value="Not configurable yet" />
         </SettingsFieldRow>
         <SettingsFieldRow label="Push channel" hint="Backend support pending.">

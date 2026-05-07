@@ -74,7 +74,8 @@ function renderLeadDetail(params: {
       createElement(PtHubLeadDetailView, {
         lead: params.lead,
         currentPackage: params.currentPackage ?? null,
-        currentPackageLookupLoading: params.currentPackageLookupLoading ?? false,
+        currentPackageLookupLoading:
+          params.currentPackageLookupLoading ?? false,
         workspaces: [],
         currentUserId: "coach-1",
         leadChatMessages: [],
@@ -162,9 +163,7 @@ describe("pt hub lead package context surfaces", () => {
     });
 
     expect(html).toMatch(/Selected at application[\s\S]*Strength Build/);
-    expect(html).toMatch(
-      /Current package[\s\S]*Strength Build \(Archived\)/,
-    );
+    expect(html).toMatch(/Current package[\s\S]*Strength Build \(Archived\)/);
     expect(html).toMatch(/Current state[\s\S]*Archived/);
   });
 

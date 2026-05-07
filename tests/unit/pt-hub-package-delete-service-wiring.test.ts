@@ -23,7 +23,11 @@ describe("pt hub package delete service wiring", () => {
     expect(source).toContain('from("pt_hub_leads")');
     expect(source).toContain('.eq("user_id", userId)');
     expect(source).toContain('.select("package_interest_id")');
-    expect(source).toContain("counts[packageId] = (counts[packageId] ?? 0) + 1;");
-    expect(source).toContain('queryKey: ["pt-package-lead-reference-counts", user?.id]');
+    expect(source).toContain(
+      "counts[packageId] = (counts[packageId] ?? 0) + 1;",
+    );
+    expect(source).toContain(
+      'queryKey: ["pt-package-lead-reference-counts", user?.id]',
+    );
   });
 });

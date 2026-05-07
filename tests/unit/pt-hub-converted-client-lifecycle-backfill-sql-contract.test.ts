@@ -21,4 +21,3 @@ describe("converted client lifecycle backfill SQL contract", () => {
     expect(migration).toContain("lifecycle_state = 'active'");
   });
 });
-

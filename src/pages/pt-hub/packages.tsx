@@ -86,7 +86,6 @@ export function PtHubPackagesPage() {
           );
         })}
       </div>
-
     </section>
   );
 }

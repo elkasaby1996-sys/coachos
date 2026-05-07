@@ -24,8 +24,7 @@ export function WorkspaceSettingsClientExperienceTab() {
   const queryClient = useQueryClient();
   const { workspace, workspaceId, canManage } =
     useWorkspaceSettingsOutletContext();
-  const [form, setForm] =
-    useState<ClientExperienceFormState>(emptyState);
+  const [form, setForm] = useState<ClientExperienceFormState>(emptyState);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 

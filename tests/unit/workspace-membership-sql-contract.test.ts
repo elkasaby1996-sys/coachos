@@ -14,7 +14,9 @@ const migration = readFileSync(
 
 describe("workspace owner membership consistency SQL contract", () => {
   it("allows workspace owners through is_pt_workspace_member checks", () => {
-    expect(migration).toContain("create or replace function public.is_pt_workspace_member");
+    expect(migration).toContain(
+      "create or replace function public.is_pt_workspace_member",
+    );
     expect(migration).toContain("from public.workspaces w");
     expect(migration).toContain("w.owner_user_id = v_user_id");
   });

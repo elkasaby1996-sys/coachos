@@ -92,19 +92,27 @@ export function useDirtyNavigationGuard(params: DirtyGuardParams) {
 
   const guardDialog = useMemo(
     () => (
-      <AlertDialog open={dialogOpen} onOpenChange={(open) => !open && closeAndReset()}>
+      <AlertDialog
+        open={dialogOpen}
+        onOpenChange={(open) => !open && closeAndReset()}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
             <AlertDialogDescription>
-              You have unsaved changes in this tab. Save before leaving, or discard your edits.
+              You have unsaved changes in this tab. Save before leaving, or
+              discard your edits.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button type="button" variant="secondary" onClick={closeAndReset}>
               Cancel
             </Button>
-            <Button type="button" variant="secondary" onClick={discardAndContinue}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={discardAndContinue}
+            >
               Discard and continue
             </Button>
             <Button

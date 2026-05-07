@@ -27,9 +27,7 @@ test.describe("Smoke: auth and onboarding", () => {
     ).toBeVisible();
   });
 
-  test("PT with workspace can sign in and reach PT Hub", async ({
-    page,
-  }) => {
+  test("PT with workspace can sign in and reach PT Hub", async ({ page }) => {
     await signInWithEmail(
       page,
       authSmokeFixtures.ptComplete.email,
@@ -59,7 +57,9 @@ test.describe("Smoke: auth and onboarding", () => {
     });
   });
 
-  test("Client without workspace lands on dashboard lead mode", async ({ page }) => {
+  test("Client without workspace lands on dashboard lead mode", async ({
+    page,
+  }) => {
     await signInWithEmail(
       page,
       authSmokeFixtures.clientNoWorkspace.email,

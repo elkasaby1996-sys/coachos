@@ -29,7 +29,8 @@ function createPackage(
     isPublic: params.isPublic ?? false,
     sortOrder: params.sortOrder ?? 0,
     currencyCode: null,
-    archivedAt: params.status === "archived" ? "2026-04-11T00:00:00.000Z" : null,
+    archivedAt:
+      params.status === "archived" ? "2026-04-11T00:00:00.000Z" : null,
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-10T00:00:00.000Z",
   };
@@ -46,9 +47,9 @@ describe("pt hub package state helpers", () => {
     expect(getPackageDisplayState({ status: "active", isPublic: true })).toBe(
       "Active • Public",
     );
-    expect(getPackageDisplayState({ status: "archived", isPublic: false })).toBe(
-      "Archived",
-    );
+    expect(
+      getPackageDisplayState({ status: "archived", isPublic: false }),
+    ).toBe("Archived");
   });
 
   it("filters packages by all/public/hidden/draft/archived", () => {
@@ -76,9 +77,21 @@ describe("pt hub package state helpers", () => {
 
   it("keeps archived packages out of reorder ids", () => {
     const packages = [
-      createPackage("pkg-active-1", { status: "active", isPublic: true, sortOrder: 0 }),
-      createPackage("pkg-archived", { status: "archived", isPublic: false, sortOrder: 10 }),
-      createPackage("pkg-draft", { status: "draft", isPublic: false, sortOrder: 20 }),
+      createPackage("pkg-active-1", {
+        status: "active",
+        isPublic: true,
+        sortOrder: 0,
+      }),
+      createPackage("pkg-archived", {
+        status: "archived",
+        isPublic: false,
+        sortOrder: 10,
+      }),
+      createPackage("pkg-draft", {
+        status: "draft",
+        isPublic: false,
+        sortOrder: 20,
+      }),
     ];
 
     const reorderedIds = getReorderedNonArchivedPackageIds({

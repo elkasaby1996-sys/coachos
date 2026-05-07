@@ -55,7 +55,9 @@ export function ClientLeadDashboard({
     [selectedLeadId, threads],
   );
 
-  const leadThreadQuery = useLeadConversationThread(selectedThread?.leadId ?? null);
+  const leadThreadQuery = useLeadConversationThread(
+    selectedThread?.leadId ?? null,
+  );
 
   const lastMessageId = useMemo(
     () =>
@@ -113,7 +115,11 @@ export function ClientLeadDashboard({
 
   const listState = (() => {
     if (threadsQuery.isLoading) {
-      return <p className="text-sm text-muted-foreground">Loading lead conversations...</p>;
+      return (
+        <p className="text-sm text-muted-foreground">
+          Loading lead conversations...
+        </p>
+      );
     }
 
     if (threadsQuery.isError) {
@@ -185,7 +191,9 @@ export function ClientLeadDashboard({
               These chats stay separate from workspace chat until conversion.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
-          <SurfaceCardContent className="space-y-3">{listState}</SurfaceCardContent>
+          <SurfaceCardContent className="space-y-3">
+            {listState}
+          </SurfaceCardContent>
         </SurfaceCard>
 
         <SurfaceCard>
@@ -196,7 +204,8 @@ export function ClientLeadDashboard({
                 : "Select a conversation"}
             </SurfaceCardTitle>
             <SurfaceCardDescription>
-              Lead chat is your active communication channel before workspace access.
+              Lead chat is your active communication channel before workspace
+              access.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
@@ -205,7 +214,9 @@ export function ClientLeadDashboard({
                 Select a lead conversation from the left to view messages.
               </p>
             ) : leadThreadQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading messages...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading messages...
+              </p>
             ) : leadThreadQuery.isError ? (
               <p className="text-sm text-muted-foreground">
                 We could not load this conversation right now.
@@ -215,7 +226,8 @@ export function ClientLeadDashboard({
                 <SectionCard className="max-h-[24rem] space-y-2 overflow-y-auto">
                   {leadThreadQuery.data?.messages.length ? (
                     leadThreadQuery.data.messages.map((message) => {
-                      const isMine = message.senderUserId !== selectedThread.ptUserId;
+                      const isMine =
+                        message.senderUserId !== selectedThread.ptUserId;
                       return (
                         <div
                           key={message.id}

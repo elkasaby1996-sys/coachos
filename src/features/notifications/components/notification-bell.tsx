@@ -85,15 +85,22 @@ export function NotificationBell({
         {toastNotification ? (
           <motion.div
             initial={
-              reduceMotion ? { opacity: 1 } : { opacity: 0, y: -18, scale: 0.98 }
+              reduceMotion
+                ? { opacity: 1 }
+                : { opacity: 0, y: -18, scale: 0.98 }
             }
             animate={
               reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }
             }
             exit={
-              reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.98 }
+              reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: -12, scale: 0.98 }
             }
-            transition={{ duration: reduceMotion ? 0.16 : 0.24, ease: "easeOut" }}
+            transition={{
+              duration: reduceMotion ? 0.16 : 0.24,
+              ease: "easeOut",
+            }}
             className="fixed right-4 top-4 z-[70]"
           >
             <Alert className="w-[360px] max-w-[calc(100vw-2rem)] border-warning/30 bg-[oklch(0.2_0.02_255)] shadow-[0_20px_44px_-28px_rgb(0_0_0/0.85)]">

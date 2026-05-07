@@ -74,7 +74,7 @@ export function extractInviteToken(input: string) {
       const inviteIndex = parts.findIndex(
         (part) => part === "invite" || part === "join",
       );
-      return inviteIndex >= 0 ? parts[inviteIndex + 1] ?? "" : "";
+      return inviteIndex >= 0 ? (parts[inviteIndex + 1] ?? "") : "";
     } catch {
       return "";
     }
@@ -113,7 +113,9 @@ export function getSignupIntentFallback(): AccountType {
   return "unknown";
 }
 
-export function persistSignupIntent(intent: Extract<AccountType, "pt" | "client">) {
+export function persistSignupIntent(
+  intent: Extract<AccountType, "pt" | "client">,
+) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(SIGNUP_INTENT_STORAGE_KEY, intent);
 }
@@ -226,7 +228,9 @@ export function getCanonicalPtProfile(rows: PtProfileRow[] | null | undefined) {
   if (!rows?.length) return null;
 
   return (
-    rows.find((row) => row.workspace_id === null || row.workspace_id === undefined) ??
+    rows.find(
+      (row) => row.workspace_id === null || row.workspace_id === undefined,
+    ) ??
     [...rows].sort((a, b) =>
       (b.updated_at ?? b.created_at ?? "").localeCompare(
         a.updated_at ?? a.created_at ?? "",
@@ -324,7 +328,9 @@ export async function updatePtProfile(
     bio: normalizeText(values.bio),
     location_country: normalizeText(values.location_country),
     location_city: normalizeText(values.location_city),
-    languages: values.languages ? normalizeTextArray(values.languages) : undefined,
+    languages: values.languages
+      ? normalizeTextArray(values.languages)
+      : undefined,
     specialties: values.specialties
       ? normalizeTextArray(values.specialties)
       : undefined,

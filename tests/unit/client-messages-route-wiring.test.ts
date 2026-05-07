@@ -9,7 +9,9 @@ const appRoutes = readFileSync(
 
 describe("client messages route wiring", () => {
   it("registers /app/messages as a first-class route", () => {
-    expect(appRoutes).toContain('path="messages" element={<ClientMessagesPage />}');
+    expect(appRoutes).toContain(
+      'path="messages" element={<ClientMessagesPage />}',
+    );
   });
 
   it("allows pre-workspace clients to access /app/messages", () => {

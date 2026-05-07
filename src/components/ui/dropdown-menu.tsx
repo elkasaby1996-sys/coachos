@@ -16,9 +16,9 @@ const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
-interface DropdownMenuSubTriggerProps extends React.ComponentPropsWithoutRef<
-  typeof DropdownMenuPrimitive.SubTrigger
->,
+interface DropdownMenuSubTriggerProps
+  extends
+    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger>,
     VariantProps<typeof dropdownMenuItemVariants> {
   inset?: boolean;
 }
@@ -80,13 +80,12 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(
-        dropdownMenuContentVariants({ variant, size }),
-        className,
-      )}
+      className={cn(dropdownMenuContentVariants({ variant, size }), className)}
       style={{
         background:
-          variant === "panel" ? "var(--menu-panel-bg)" : "var(--menu-surface-bg)",
+          variant === "panel"
+            ? "var(--menu-panel-bg)"
+            : "var(--menu-surface-bg)",
         borderColor: "var(--menu-border-color)",
         boxShadow:
           variant === "panel"
@@ -100,9 +99,9 @@ const DropdownMenuContent = React.forwardRef<
 ));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-interface DropdownMenuItemProps extends React.ComponentPropsWithoutRef<
-  typeof DropdownMenuPrimitive.Item
->,
+interface DropdownMenuItemProps
+  extends
+    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>,
     VariantProps<typeof dropdownMenuItemVariants> {
   inset?: boolean;
 }
@@ -130,11 +129,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 >(({ className, children, checked, size, ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
-    className={cn(
-      dropdownMenuItemVariants({ size }),
-      "pl-8",
-      className,
-    )}
+    className={cn(dropdownMenuItemVariants({ size }), "pl-8", className)}
     checked={checked}
     {...props}
   >
@@ -151,11 +146,7 @@ const DropdownMenuRadioItem = React.forwardRef<
 >(({ className, children, size, ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
-    className={cn(
-      dropdownMenuItemVariants({ size }),
-      "pl-8",
-      className,
-    )}
+    className={cn(dropdownMenuItemVariants({ size }), "pl-8", className)}
     {...props}
   >
     {children}
@@ -163,9 +154,9 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-interface DropdownMenuLabelProps extends React.ComponentPropsWithoutRef<
-  typeof DropdownMenuPrimitive.Label
->,
+interface DropdownMenuLabelProps
+  extends
+    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label>,
     VariantProps<typeof dropdownMenuLabelVariants> {
   inset?: boolean;
 }

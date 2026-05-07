@@ -2,10 +2,7 @@ import { Badge } from "../../../components/ui/badge";
 import type { BadgeVariant } from "../../../components/ui/badge";
 import type { PTLeadStatus } from "../types";
 
-const statusVariant: Record<
-  PTLeadStatus,
-  BadgeVariant
-> = {
+const statusVariant: Record<PTLeadStatus, BadgeVariant> = {
   new: "warning",
   contacted: "info",
   approved_pending_workspace: "warning",

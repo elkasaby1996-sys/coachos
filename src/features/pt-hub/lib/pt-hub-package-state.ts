@@ -47,14 +47,16 @@ export function isPackagePubliclySelectable(values: PackageStateValues) {
   return values.status === "active" && values.isPublic;
 }
 
-export function normalizePackageVisibilityForStatus(values: PackageStateValues) {
+export function normalizePackageVisibilityForStatus(
+  values: PackageStateValues,
+) {
   if (values.status !== "active") return false;
   return values.isPublic;
 }
 
-export function normalizePackageStateForPersistence<TValue extends PackageStateValues>(
-  values: TValue,
-): TValue {
+export function normalizePackageStateForPersistence<
+  TValue extends PackageStateValues,
+>(values: TValue): TValue {
   const normalizedIsPublic = normalizePackageVisibilityForStatus(values);
   if (normalizedIsPublic === values.isPublic) return values;
   return {
@@ -96,9 +98,7 @@ export function filterPackagesForManagement(
   packages: PTPackage[],
   filter: PTPackageManagementFilter,
 ) {
-  return packages.filter((pkg) =>
-    packageMatchesManagementFilter(pkg, filter),
-  );
+  return packages.filter((pkg) => packageMatchesManagementFilter(pkg, filter));
 }
 
 export function splitPackagesByLifecycle(packages: PTPackage[]) {
@@ -121,8 +121,12 @@ export function getReorderedNonArchivedPackageIds(params: {
   packageId: string;
   direction: "up" | "down";
 }) {
-  const reorderable = params.packages.filter((pkg) => pkg.status !== "archived");
-  const currentIndex = reorderable.findIndex((pkg) => pkg.id === params.packageId);
+  const reorderable = params.packages.filter(
+    (pkg) => pkg.status !== "archived",
+  );
+  const currentIndex = reorderable.findIndex(
+    (pkg) => pkg.id === params.packageId,
+  );
   if (currentIndex < 0) return null;
 
   const targetIndex =
@@ -149,12 +153,9 @@ export function summarizePackageDisplayStates(packages: PTPackage[]) {
     summary[getPackageDisplayState(pkg)] += 1;
   }
 
-  return ([
-    "Draft",
-    "Active • Hidden",
-    "Active • Public",
-    "Archived",
-  ] as const).map((label) => ({
+  return (
+    ["Draft", "Active • Hidden", "Active • Public", "Archived"] as const
+  ).map((label) => ({
     label,
     count: summary[label],
   }));

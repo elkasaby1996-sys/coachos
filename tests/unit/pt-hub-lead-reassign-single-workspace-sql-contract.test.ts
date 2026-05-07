@@ -15,7 +15,9 @@ const migration = readFileSync(
 describe("pt_hub_approve_lead reassignment single-workspace guard", () => {
   it("detaches the previous converted client row from PT workspaces when reassigning", () => {
     expect(migration).toContain("if v_was_converted");
-    expect(migration).toContain("v_lead.converted_client_id <> v_target_client_id");
+    expect(migration).toContain(
+      "v_lead.converted_client_id <> v_target_client_id",
+    );
     expect(migration).toContain("set workspace_id = null");
     expect(migration).toContain("where c.id = v_lead.converted_client_id");
   });

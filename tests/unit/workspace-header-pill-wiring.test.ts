@@ -12,7 +12,9 @@ describe("workspace header pill wiring", () => {
 
     expect(ptLayout).toContain("workspaceSettingsRouteMatch");
     expect(ptLayout).toContain("const routeWorkspaceId =");
-    expect(ptLayout).toContain("const headerWorkspaceId = routeWorkspaceId ?? workspaceId");
+    expect(ptLayout).toContain(
+      "const headerWorkspaceId = routeWorkspaceId ?? workspaceId",
+    );
     expect(ptLayout).toContain("workspace.id === headerWorkspaceId");
     expect(ptLayout).toContain("switchWorkspace(routeWorkspaceId);");
   });
@@ -20,10 +22,10 @@ describe("workspace header pill wiring", () => {
   it("uses fallback-and-heal wiring in PT Hub header pill when cached workspace is stale", () => {
     const ptHubLayout = readSource("src/components/layouts/pt-hub-layout.tsx");
 
-    expect(ptHubLayout).toContain("const inPtHubWorkspace = location.pathname.startsWith(\"/pt-hub\")");
     expect(ptHubLayout).toContain(
-      "const fallbackWorkspace =",
+      'const inPtHubWorkspace = location.pathname.startsWith("/pt-hub")',
     );
+    expect(ptHubLayout).toContain("const fallbackWorkspace =");
     expect(ptHubLayout).toContain(
       "workspaces.find((workspace) => workspace.id === workspaceId) ??",
     );
@@ -31,7 +33,9 @@ describe("workspace header pill wiring", () => {
     expect(ptHubLayout).toContain("const firstWorkspace = workspaces[0];");
     expect(ptHubLayout).toContain("switchWorkspace(firstWorkspace.id);");
     expect(ptHubLayout).toContain("const workspacePillLabel =");
-    expect(ptHubLayout).toContain("? \"Repsync PT Hub\"");
-    expect(ptHubLayout).toContain("{!inPtHubWorkspace && workspace.id === workspaceId ? (");
+    expect(ptHubLayout).toContain('? "Repsync PT Hub"');
+    expect(ptHubLayout).toContain(
+      "{!inPtHubWorkspace && workspace.id === workspaceId ? (",
+    );
   });
 });

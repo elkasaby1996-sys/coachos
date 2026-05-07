@@ -283,7 +283,10 @@ export function ClientMessagesPage() {
   }, [workspaceConversationsQuery.data]);
 
   const workspaceCoachIdentitiesQuery = useQuery({
-    queryKey: ["client-messages-workspace-coach-identities", workspaceIds.join(",")],
+    queryKey: [
+      "client-messages-workspace-coach-identities",
+      workspaceIds.join(","),
+    ],
     enabled: workspaceIds.length > 0,
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
@@ -455,7 +458,8 @@ export function ClientMessagesPage() {
           null;
         const workspaceOwnerUserId =
           workspaceIdentity?.owner_user_id ??
-          workspaceOwnerIdById[conversation.workspace_id] ?? null;
+          workspaceOwnerIdById[conversation.workspace_id] ??
+          null;
         const displayTitle = resolveWorkspaceThreadTitle({
           workspaceName,
           coachDisplayName:
@@ -478,7 +482,8 @@ export function ClientMessagesPage() {
           title: displayTitle,
           preview: conversation.last_message_preview ?? "No messages yet",
           timestamp: conversation.last_message_at,
-          unreadCount: workspaceUnreadByConversationId.get(conversation.id) ?? 0,
+          unreadCount:
+            workspaceUnreadByConversationId.get(conversation.id) ?? 0,
           sourceLabel: buildClientInboxSourceLabel({
             threadType: "workspace",
             workspaceId: conversation.workspace_id,
@@ -495,32 +500,30 @@ export function ClientMessagesPage() {
       leadThreadsQuery.data ?? [],
     );
 
-    const leadThreads = dedupedLeadThreads.map(
-      (thread): UnifiedInboxThread => {
-        const isArchived = thread.conversationStatus === "archived";
-        return {
-          id: buildClientInboxThreadParam({
-            type: "lead",
-            leadId: thread.leadId,
-          }),
+    const leadThreads = dedupedLeadThreads.map((thread): UnifiedInboxThread => {
+      const isArchived = thread.conversationStatus === "archived";
+      return {
+        id: buildClientInboxThreadParam({
           type: "lead",
-          title: thread.ptDisplayName || "Lead conversation",
-          preview: thread.lastMessagePreview ?? "No messages yet",
-          timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,
-          unreadCount: thread.unreadCount,
-          sourceLabel: buildClientInboxSourceLabel({
-            threadType: "lead",
-            archived: isArchived,
-          }),
-          isWritable: isLeadChatWritable({
-            leadStatus: thread.leadStatus,
-            conversationStatus: thread.conversationStatus,
-          }),
-          isArchived,
-          leadThread: thread,
-        };
-      },
-    );
+          leadId: thread.leadId,
+        }),
+        type: "lead",
+        title: thread.ptDisplayName || "Lead conversation",
+        preview: thread.lastMessagePreview ?? "No messages yet",
+        timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,
+        unreadCount: thread.unreadCount,
+        sourceLabel: buildClientInboxSourceLabel({
+          threadType: "lead",
+          archived: isArchived,
+        }),
+        isWritable: isLeadChatWritable({
+          leadStatus: thread.leadStatus,
+          conversationStatus: thread.conversationStatus,
+        }),
+        isArchived,
+        leadThread: thread,
+      };
+    });
 
     return [...workspaceThreads, ...leadThreads].sort((a, b) => {
       if (a.unreadCount !== b.unreadCount) {
@@ -617,7 +620,8 @@ export function ClientMessagesPage() {
   }, [searchParams, selectedThreadId, setSearchParams, threadParam]);
 
   const selectedThread = useMemo(
-    () => visibleThreads.find((thread) => thread.id === selectedThreadId) ?? null,
+    () =>
+      visibleThreads.find((thread) => thread.id === selectedThreadId) ?? null,
     [selectedThreadId, visibleThreads],
   );
   const selectedThreadType = selectedThread?.type ?? null;
@@ -632,7 +636,10 @@ export function ClientMessagesPage() {
     selectedThread?.type === "lead" ? selectedThread.leadThread.leadId : null;
 
   const workspaceMessagesQuery = useInfiniteQuery({
-    queryKey: ["client-workspace-thread-messages", activeWorkspaceConversationId],
+    queryKey: [
+      "client-workspace-thread-messages",
+      activeWorkspaceConversationId,
+    ],
     enabled: !!activeWorkspaceConversationId,
     staleTime: 1000 * 5,
     initialPageParam: 0,
@@ -771,11 +778,10 @@ export function ClientMessagesPage() {
   ]);
 
   useEffect(() => {
-    const latestLeadMessageId =
-      leadThreadQuery.data?.messages.length
-        ? leadThreadQuery.data.messages[leadThreadQuery.data.messages.length - 1]
-            ?.id
-        : null;
+    const latestLeadMessageId = leadThreadQuery.data?.messages.length
+      ? leadThreadQuery.data.messages[leadThreadQuery.data.messages.length - 1]
+          ?.id
+      : null;
 
     if (!activeLeadId || !latestLeadMessageId) return;
     if (lastMarkedLeadMessageIdRef.current === latestLeadMessageId) return;
@@ -786,7 +792,9 @@ export function ClientMessagesPage() {
         leadId: activeLeadId,
         upToMessageId: latestLeadMessageId,
       });
-      await queryClient.invalidateQueries({ queryKey: ["my-lead-chat-threads"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["my-lead-chat-threads"],
+      });
     })();
   }, [activeLeadId, leadThreadQuery.data?.messages, queryClient]);
 
@@ -821,7 +829,10 @@ export function ClientMessagesPage() {
         leadId: selectedThread.leadThread.leadId,
         body: trimmed,
       });
-      return { type: "lead" as const, leadId: selectedThread.leadThread.leadId };
+      return {
+        type: "lead" as const,
+        leadId: selectedThread.leadThread.leadId,
+      };
     },
     onSuccess: async (result) => {
       setSendError(null);
@@ -1155,7 +1166,8 @@ export function ClientMessagesPage() {
                         </Button>
                       </div>
                     ) : null}
-                    {workspaceMessages.length > renderedWorkspaceMessages.length ? (
+                    {workspaceMessages.length >
+                    renderedWorkspaceMessages.length ? (
                       <div className="flex justify-center">
                         <Button
                           size="sm"
@@ -1223,7 +1235,8 @@ export function ClientMessagesPage() {
                 ) : leadMessages.length > 0 ? (
                   leadMessages.map((message) => {
                     const isMine =
-                      message.senderUserId !== selectedThread.leadThread.ptUserId;
+                      message.senderUserId !==
+                      selectedThread.leadThread.ptUserId;
                     return (
                       <div
                         key={message.id}
@@ -1240,11 +1253,14 @@ export function ClientMessagesPage() {
                             <span className="font-medium text-foreground/90">
                               {isMine
                                 ? "You"
-                                : (selectedThread.leadThread.ptDisplayName || "Coach")}
+                                : selectedThread.leadThread.ptDisplayName ||
+                                  "Coach"}
                             </span>
                             <span>{formatRelativeTime(message.sentAt)}</span>
                           </div>
-                          <p className="whitespace-pre-wrap leading-6">{message.body}</p>
+                          <p className="whitespace-pre-wrap leading-6">
+                            {message.body}
+                          </p>
                         </div>
                       </div>
                     );
@@ -1256,7 +1272,8 @@ export function ClientMessagesPage() {
                   />
                 )}
 
-                {typingUsers.length > 0 && selectedThread.type === "workspace" ? (
+                {typingUsers.length > 0 &&
+                selectedThread.type === "workspace" ? (
                   <SectionCard className="inline-flex w-auto items-center gap-2 px-3 py-2">
                     <span className="text-sm text-muted-foreground">
                       Coach is typing...
@@ -1356,13 +1373,16 @@ export function ClientMessagesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the conversation from your inbox view. Message history
-              is not erased.
+              This removes the conversation from your inbox view. Message
+              history is not erased.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel asChild>
-              <Button variant="secondary" onClick={() => setDeleteDialogOpen(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
                 Cancel
               </Button>
             </AlertDialogCancel>

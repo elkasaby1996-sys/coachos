@@ -156,7 +156,10 @@ export function PtHubSettingsSecurityTab() {
         title="Advanced Security"
         description="MFA, active sessions, and recovery methods are not fully connected yet."
       >
-        <SettingsFieldRow label="MFA status" hint="Not connected in this build.">
+        <SettingsFieldRow
+          label="MFA status"
+          hint="Not connected in this build."
+        >
           <DisabledSettingField value="Not connected" />
         </SettingsFieldRow>
         <SettingsFieldRow

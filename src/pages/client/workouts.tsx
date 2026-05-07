@@ -148,7 +148,8 @@ const normalizeStatus = (status: string | null | undefined) =>
 const isMissingWorkoutNameColumnError = (error: unknown) => {
   const candidate = (error ?? {}) as SupabaseErrorLike;
   if (candidate.code === "42703") return true;
-  const combined = `${candidate.message ?? ""} ${candidate.details ?? ""} ${candidate.hint ?? ""}`.toLowerCase();
+  const combined =
+    `${candidate.message ?? ""} ${candidate.details ?? ""} ${candidate.hint ?? ""}`.toLowerCase();
   return combined.includes("workout_name") && combined.includes("column");
 };
 
@@ -189,8 +190,12 @@ export function ClientWorkoutsPage() {
   const [editingExerciseDrafts, setEditingExerciseDrafts] = useState<
     PersonalWorkoutExerciseDraft[]
   >([createExerciseDraft()]);
-  const [editDragFromIndex, setEditDragFromIndex] = useState<number | null>(null);
-  const [editDragOverIndex, setEditDragOverIndex] = useState<number | null>(null);
+  const [editDragFromIndex, setEditDragFromIndex] = useState<number | null>(
+    null,
+  );
+  const [editDragOverIndex, setEditDragOverIndex] = useState<number | null>(
+    null,
+  );
   const [hydratedEditWorkoutId, setHydratedEditWorkoutId] = useState<
     string | null
   >(null);
@@ -211,7 +216,10 @@ export function ClientWorkoutsPage() {
     },
   });
 
-  const clientProfiles = useMemo(() => clientQuery.data ?? [], [clientQuery.data]);
+  const clientProfiles = useMemo(
+    () => clientQuery.data ?? [],
+    [clientQuery.data],
+  );
   const clientProfile = useMemo(
     () =>
       clientProfiles.find((row) => row.id === activeClientId) ??
@@ -313,14 +321,18 @@ export function ClientWorkoutsPage() {
     (workoutsQuery.data ?? []).forEach((row) => {
       const template = getSingleRelation(row.workout_template);
       const program = getSingleRelation(row.program_template);
-      const workspaceId = template?.workspace_id ?? program?.workspace_id ?? null;
+      const workspaceId =
+        template?.workspace_id ?? program?.workspace_id ?? null;
       if (workspaceId) ids.add(workspaceId);
     });
     return Array.from(ids);
   }, [workoutsQuery.data]);
 
   const sourceWorkspacesQuery = useQuery({
-    queryKey: ["client-workouts-source-workspaces", sourceWorkspaceIds.join(",")],
+    queryKey: [
+      "client-workouts-source-workspaces",
+      sourceWorkspaceIds.join(","),
+    ],
     enabled: sourceWorkspaceIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -350,7 +362,7 @@ export function ClientWorkoutsPage() {
       const sourceLabel = buildSourceLabel({
         workspaceId: sourceWorkspaceId,
         workspaceName: sourceWorkspaceId
-          ? workspaceNameById[sourceWorkspaceId] ?? null
+          ? (workspaceNameById[sourceWorkspaceId] ?? null)
           : null,
       });
 
@@ -435,7 +447,8 @@ export function ClientWorkoutsPage() {
         return {
           name,
           sets: String(row.sets ?? 3),
-          reps: row.reps !== null && row.reps !== undefined ? String(row.reps) : "",
+          reps:
+            row.reps !== null && row.reps !== undefined ? String(row.reps) : "",
           supersetGroup: row.superset_group?.trim().toUpperCase() ?? "",
         } satisfies PersonalWorkoutExerciseDraft;
       })
@@ -584,21 +597,27 @@ export function ClientWorkoutsPage() {
         }
         assignedWorkoutId = assignedWorkout.id;
 
-        const assignedExerciseInserts = preparedDraft.exercises.map((exercise) => {
-          const exerciseId = exerciseIdsByName.get(exercise.name.toLowerCase());
-          if (!exerciseId) {
-            throw new Error(`Missing exercise reference for ${exercise.name}.`);
-          }
-          return {
-            assigned_workout_id: assignedWorkout.id,
-            exercise_id: exerciseId,
-            sort_order: exercise.sortOrder,
-            sets: exercise.sets,
-            reps: exercise.reps,
-            superset_group: exercise.supersetGroup,
-            rest_seconds: exercise.supersetGroup ? 0 : null,
-          };
-        });
+        const assignedExerciseInserts = preparedDraft.exercises.map(
+          (exercise) => {
+            const exerciseId = exerciseIdsByName.get(
+              exercise.name.toLowerCase(),
+            );
+            if (!exerciseId) {
+              throw new Error(
+                `Missing exercise reference for ${exercise.name}.`,
+              );
+            }
+            return {
+              assigned_workout_id: assignedWorkout.id,
+              exercise_id: exerciseId,
+              sort_order: exercise.sortOrder,
+              sets: exercise.sets,
+              reps: exercise.reps,
+              superset_group: exercise.supersetGroup,
+              rest_seconds: exercise.supersetGroup ? 0 : null,
+            };
+          },
+        );
 
         const { error: assignedExerciseError } = await supabase
           .from("assigned_workout_exercises")
@@ -880,7 +899,9 @@ export function ClientWorkoutsPage() {
   };
 
   const loading =
-    clientQuery.isLoading || workoutsQuery.isLoading || activeSessionsQuery.isLoading;
+    clientQuery.isLoading ||
+    workoutsQuery.isLoading ||
+    activeSessionsQuery.isLoading;
   const hardError = clientQuery.error ?? workoutsQuery.error ?? null;
   const partialError = activeSessionsQuery.error ?? sourceWorkspacesQuery.error;
   const hasAnyWorkouts = workouts.length > 0;
@@ -919,7 +940,8 @@ export function ClientWorkoutsPage() {
     }
 
     const disableActions =
-      editPersonalWorkoutMutation.isPending || deletePersonalWorkoutMutation.isPending;
+      editPersonalWorkoutMutation.isPending ||
+      deletePersonalWorkoutMutation.isPending;
 
     return (
       <div className="flex flex-wrap gap-2">
@@ -1005,7 +1027,9 @@ export function ClientWorkoutsPage() {
                   id="personal-workout-name"
                   placeholder="Example: Personal Upper Strength"
                   value={personalWorkoutName}
-                  onChange={(event) => setPersonalWorkoutName(event.target.value)}
+                  onChange={(event) =>
+                    setPersonalWorkoutName(event.target.value)
+                  }
                   maxLength={80}
                 />
               </div>
@@ -1015,7 +1039,9 @@ export function ClientWorkoutsPage() {
                   id="personal-workout-date"
                   type="date"
                   value={activeWorkoutDate}
-                  onChange={(event) => setPersonalWorkoutDate(event.target.value)}
+                  onChange={(event) =>
+                    setPersonalWorkoutDate(event.target.value)
+                  }
                 />
               </div>
             </SectionCard>
@@ -1025,8 +1051,8 @@ export function ClientWorkoutsPage() {
                 <SurfaceCardTitle>Exercises</SurfaceCardTitle>
                 <SurfaceCardDescription>
                   Add one or more exercises so the workout opens with a runnable
-                  structure. Drag one exercise onto another to create or extend a
-                  superset.
+                  structure. Drag one exercise onto another to create or extend
+                  a superset.
                 </SurfaceCardDescription>
               </SurfaceCardHeader>
               <SurfaceCardContent className="space-y-1">
@@ -1039,9 +1065,11 @@ export function ClientWorkoutsPage() {
                   const next = exerciseDrafts[index + 1];
                   const hasSuperset = Boolean(exercise.supersetGroup);
                   const sameAsPrev =
-                    hasSuperset && prev?.supersetGroup === exercise.supersetGroup;
+                    hasSuperset &&
+                    prev?.supersetGroup === exercise.supersetGroup;
                   const sameAsNext =
-                    hasSuperset && next?.supersetGroup === exercise.supersetGroup;
+                    hasSuperset &&
+                    next?.supersetGroup === exercise.supersetGroup;
                   const groupShapeClass = sameAsPrev
                     ? sameAsNext
                       ? "rounded-none border-b-0"
@@ -1049,7 +1077,11 @@ export function ClientWorkoutsPage() {
                     : sameAsNext
                       ? "rounded-b-none border-b-0"
                       : "";
-                  const spacingClass = sameAsPrev ? "mt-0" : index === 0 ? "mt-0" : "mt-3";
+                  const spacingClass = sameAsPrev
+                    ? "mt-0"
+                    : index === 0
+                      ? "mt-0"
+                      : "mt-3";
                   const isSupersetDropTarget =
                     createDragFromIndex !== null &&
                     createDragFromIndex !== index &&
@@ -1105,7 +1137,10 @@ export function ClientWorkoutsPage() {
                           <GripVertical className="h-4 w-4" />
                         </button>
                         <div className="space-y-1">
-                          <Label className="sr-only" htmlFor={`exercise-name-${index}`}>
+                          <Label
+                            className="sr-only"
+                            htmlFor={`exercise-name-${index}`}
+                          >
                             Exercise name
                           </Label>
                           <Input
@@ -1113,13 +1148,20 @@ export function ClientWorkoutsPage() {
                             placeholder="Exercise name"
                             value={exercise.name}
                             onChange={(event) =>
-                              updateExerciseDraft(index, "name", event.target.value)
+                              updateExerciseDraft(
+                                index,
+                                "name",
+                                event.target.value,
+                              )
                             }
                             maxLength={80}
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="sr-only" htmlFor={`exercise-sets-${index}`}>
+                          <Label
+                            className="sr-only"
+                            htmlFor={`exercise-sets-${index}`}
+                          >
                             Sets
                           </Label>
                           <Input
@@ -1131,12 +1173,19 @@ export function ClientWorkoutsPage() {
                             placeholder="Sets"
                             value={exercise.sets}
                             onChange={(event) =>
-                              updateExerciseDraft(index, "sets", event.target.value)
+                              updateExerciseDraft(
+                                index,
+                                "sets",
+                                event.target.value,
+                              )
                             }
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="sr-only" htmlFor={`exercise-reps-${index}`}>
+                          <Label
+                            className="sr-only"
+                            htmlFor={`exercise-reps-${index}`}
+                          >
                             Reps
                           </Label>
                           <Input
@@ -1144,7 +1193,11 @@ export function ClientWorkoutsPage() {
                             placeholder="Reps"
                             value={exercise.reps}
                             onChange={(event) =>
-                              updateExerciseDraft(index, "reps", event.target.value)
+                              updateExerciseDraft(
+                                index,
+                                "reps",
+                                event.target.value,
+                              )
                             }
                             maxLength={20}
                           />
@@ -1160,8 +1213,12 @@ export function ClientWorkoutsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 px-0"
-                                disabled={createPersonalWorkoutMutation.isPending}
-                                onClick={() => clearCreateExerciseSuperset(index)}
+                                disabled={
+                                  createPersonalWorkoutMutation.isPending
+                                }
+                                onClick={() =>
+                                  clearCreateExerciseSuperset(index)
+                                }
                                 aria-label="Remove from superset"
                               >
                                 x
@@ -1286,7 +1343,9 @@ export function ClientWorkoutsPage() {
                     <Input
                       id="edit-workout-name"
                       value={editingWorkoutName}
-                      onChange={(event) => setEditingWorkoutName(event.target.value)}
+                      onChange={(event) =>
+                        setEditingWorkoutName(event.target.value)
+                      }
                       maxLength={80}
                     />
                   </div>
@@ -1296,7 +1355,9 @@ export function ClientWorkoutsPage() {
                       id="edit-workout-date"
                       type="date"
                       value={activeEditWorkoutDate}
-                      onChange={(event) => setEditingWorkoutDate(event.target.value)}
+                      onChange={(event) =>
+                        setEditingWorkoutDate(event.target.value)
+                      }
                     />
                   </div>
                 </SectionCard>
@@ -1305,9 +1366,9 @@ export function ClientWorkoutsPage() {
                   <SurfaceCardHeader>
                     <SurfaceCardTitle>Exercises</SurfaceCardTitle>
                     <SurfaceCardDescription>
-                      Keep at least one exercise so the workout remains runnable.
-                      Drag one exercise onto another to create or extend a
-                      superset.
+                      Keep at least one exercise so the workout remains
+                      runnable. Drag one exercise onto another to create or
+                      extend a superset.
                     </SurfaceCardDescription>
                   </SurfaceCardHeader>
                   <SurfaceCardContent className="space-y-1">
@@ -1319,9 +1380,11 @@ export function ClientWorkoutsPage() {
                       const next = editingExerciseDrafts[index + 1];
                       const hasSuperset = Boolean(exercise.supersetGroup);
                       const sameAsPrev =
-                        hasSuperset && prev?.supersetGroup === exercise.supersetGroup;
+                        hasSuperset &&
+                        prev?.supersetGroup === exercise.supersetGroup;
                       const sameAsNext =
-                        hasSuperset && next?.supersetGroup === exercise.supersetGroup;
+                        hasSuperset &&
+                        next?.supersetGroup === exercise.supersetGroup;
                       const groupShapeClass = sameAsPrev
                         ? sameAsNext
                           ? "rounded-none border-b-0"
@@ -1389,7 +1452,10 @@ export function ClientWorkoutsPage() {
                               <GripVertical className="h-4 w-4" />
                             </button>
                             <div className="space-y-1">
-                              <Label className="sr-only" htmlFor={`editing-exercise-name-${index}`}>
+                              <Label
+                                className="sr-only"
+                                htmlFor={`editing-exercise-name-${index}`}
+                              >
                                 Exercise name
                               </Label>
                               <Input
@@ -1407,7 +1473,10 @@ export function ClientWorkoutsPage() {
                               />
                             </div>
                             <div className="space-y-1">
-                              <Label className="sr-only" htmlFor={`editing-exercise-sets-${index}`}>
+                              <Label
+                                className="sr-only"
+                                htmlFor={`editing-exercise-sets-${index}`}
+                              >
                                 Sets
                               </Label>
                               <Input
@@ -1428,7 +1497,10 @@ export function ClientWorkoutsPage() {
                               />
                             </div>
                             <div className="space-y-1">
-                              <Label className="sr-only" htmlFor={`editing-exercise-reps-${index}`}>
+                              <Label
+                                className="sr-only"
+                                htmlFor={`editing-exercise-reps-${index}`}
+                              >
                                 Reps
                               </Label>
                               <Input
@@ -1456,8 +1528,12 @@ export function ClientWorkoutsPage() {
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 w-8 px-0"
-                                    disabled={editPersonalWorkoutMutation.isPending}
-                                    onClick={() => clearEditExerciseSuperset(index)}
+                                    disabled={
+                                      editPersonalWorkoutMutation.isPending
+                                    }
+                                    onClick={() =>
+                                      clearEditExerciseSuperset(index)
+                                    }
                                     aria-label="Remove from superset"
                                   >
                                     x
@@ -1513,10 +1589,14 @@ export function ClientWorkoutsPage() {
             </Button>
             <Button
               className="min-w-[7rem]"
-              disabled={!editDialogReady || editPersonalWorkoutMutation.isPending}
+              disabled={
+                !editDialogReady || editPersonalWorkoutMutation.isPending
+              }
               onClick={() => editPersonalWorkoutMutation.mutate()}
             >
-              {editPersonalWorkoutMutation.isPending ? "Saving..." : "Save changes"}
+              {editPersonalWorkoutMutation.isPending
+                ? "Saving..."
+                : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1544,7 +1624,10 @@ export function ClientWorkoutsPage() {
             </p>
             <p className="text-sm text-muted-foreground">
               {deleteWorkoutTarget
-                ? formatScheduledDate(deleteWorkoutTarget.scheduledDate, todayKey)
+                ? formatScheduledDate(
+                    deleteWorkoutTarget.scheduledDate,
+                    todayKey,
+                  )
                 : "No date"}
             </p>
           </SectionCard>
@@ -1566,7 +1649,9 @@ export function ClientWorkoutsPage() {
                 deletePersonalWorkoutMutation.mutate(deleteWorkoutTarget.id);
               }}
             >
-              {deletePersonalWorkoutMutation.isPending ? "Deleting..." : "Delete"}
+              {deletePersonalWorkoutMutation.isPending
+                ? "Deleting..."
+                : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1621,7 +1706,9 @@ export function ClientWorkoutsPage() {
               actions={
                 <Button
                   size="sm"
-                  onClick={() => navigate(`/app/workout-run/${createdWorkoutId}`)}
+                  onClick={() =>
+                    navigate(`/app/workout-run/${createdWorkoutId}`)
+                  }
                 >
                   Start now
                 </Button>
@@ -1681,22 +1768,24 @@ export function ClientWorkoutsPage() {
             <EmptyStateBlock
               title="No workouts yet"
               description="This is your unified workouts hub for personal and coach-assigned sessions."
-                actions={
-                  <>
-                    <Button
-                      onClick={() => {
-                        setIsCreateWorkoutOpen(true);
-                        if (!personalWorkoutDate) {
-                          setPersonalWorkoutDate(todayKey);
-                        }
-                      }}
-                      disabled={!clientId}
-                    >
-                      Create workout
-                    </Button>
-                    <Button
-                      variant="secondary"
-                    onClick={() => navigate(hasAnyWorkouts ? "/app/home" : "/app/find-coach")}
+              actions={
+                <>
+                  <Button
+                    onClick={() => {
+                      setIsCreateWorkoutOpen(true);
+                      if (!personalWorkoutDate) {
+                        setPersonalWorkoutDate(todayKey);
+                      }
+                    }}
+                    disabled={!clientId}
+                  >
+                    Create workout
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      navigate(hasAnyWorkouts ? "/app/home" : "/app/find-coach")
+                    }
                   >
                     {hasAnyWorkouts ? "Back to home" : "Find a Coach"}
                   </Button>
@@ -1739,11 +1828,17 @@ export function ClientWorkoutsPage() {
                               </Badge>
                             ) : null}
                             <span>
-                              {formatScheduledDate(workout.scheduledDate, todayKey)}
+                              {formatScheduledDate(
+                                workout.scheduledDate,
+                                todayKey,
+                              )}
                             </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <Button size="sm" onClick={() => navigate(action.href)}>
+                            <Button
+                              size="sm"
+                              onClick={() => navigate(action.href)}
+                            >
                               {action.label}
                             </Button>
                             {renderPersonalManagementActions(workout)}
@@ -1781,7 +1876,9 @@ export function ClientWorkoutsPage() {
                               <StatusPill status={workout.status} />
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <Badge variant="muted">{workout.sourceLabel}</Badge>
+                              <Badge variant="muted">
+                                {workout.sourceLabel}
+                              </Badge>
                               {workout.programName ? (
                                 <Badge variant="muted">
                                   {workout.programDayIndex
@@ -1790,7 +1887,10 @@ export function ClientWorkoutsPage() {
                                 </Badge>
                               ) : null}
                               <span>
-                                {formatScheduledDate(workout.scheduledDate, todayKey)}
+                                {formatScheduledDate(
+                                  workout.scheduledDate,
+                                  todayKey,
+                                )}
                               </span>
                             </div>
                             {workout.coachNote ? (
@@ -1799,7 +1899,10 @@ export function ClientWorkoutsPage() {
                               </p>
                             ) : null}
                             <div className="flex flex-wrap items-center gap-2">
-                              <Button size="sm" onClick={() => navigate(action.href)}>
+                              <Button
+                                size="sm"
+                                onClick={() => navigate(action.href)}
+                              >
                                 {action.label}
                               </Button>
                               {renderPersonalManagementActions(workout)}
@@ -1842,7 +1945,9 @@ export function ClientWorkoutsPage() {
                               <StatusPill status={workout.status} />
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <Badge variant="muted">{workout.sourceLabel}</Badge>
+                              <Badge variant="muted">
+                                {workout.sourceLabel}
+                              </Badge>
                               {workout.programName ? (
                                 <Badge variant="muted">
                                   {workout.programDayIndex
@@ -1851,7 +1956,10 @@ export function ClientWorkoutsPage() {
                                 </Badge>
                               ) : null}
                               <span>
-                                {formatScheduledDate(workout.scheduledDate, todayKey)}
+                                {formatScheduledDate(
+                                  workout.scheduledDate,
+                                  todayKey,
+                                )}
                               </span>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -1914,7 +2022,10 @@ export function ClientWorkoutsPage() {
                               </Badge>
                             ) : null}
                             <span>
-                              {formatScheduledDate(workout.scheduledDate, todayKey)}
+                              {formatScheduledDate(
+                                workout.scheduledDate,
+                                todayKey,
+                              )}
                             </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">

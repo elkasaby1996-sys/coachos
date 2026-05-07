@@ -57,4 +57,3 @@ describe("submit guard helper", () => {
     expect(hasCharacterLimitError([null, undefined, valid])).toBe(false);
   });
 });
-

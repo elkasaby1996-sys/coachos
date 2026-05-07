@@ -60,7 +60,9 @@ describe("pt hub lead list package wiring", () => {
     expect(leadsPage).toMatch(/>\s*Status\s*</);
     expect(leadsPage).toMatch(/>\s*Package\s*</);
     expect(leadsPage).toContain('placeholder="e.g. Sara or 8-week strength"');
-    expect(leadsPage).not.toContain('placeholder="Search lead name or package"');
+    expect(leadsPage).not.toContain(
+      'placeholder="Search lead name or package"',
+    );
   });
 
   it("makes the row review action explicit while preserving full-row navigation", () => {
@@ -70,7 +72,9 @@ describe("pt hub lead list package wiring", () => {
     expect(leadsPage).toContain("Review");
     expect(leadsPage).toContain("Status / Action");
     expect(leadsPage).toContain("inline-flex rounded-[10px]");
-    expect(leadsPage).toContain("onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}");
+    expect(leadsPage).toContain(
+      "onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}",
+    );
   });
 
   it("adds power triage filters and a row-level mark contacted action", () => {
@@ -97,8 +101,12 @@ describe("pt hub lead list package wiring", () => {
     expect(leadsPage).toContain("pt-hub-leads-filter-toolbar");
     expect(leadsPage).toContain('data-columns="4"');
     expect(leadsPage).toContain('aria-label="Reset lead filters"');
-    expect(leadsPage).not.toContain('className="block text-xs font-medium text-transparent"');
-    expect(leadsPage).not.toContain("rounded-[20px] border border-border/60 bg-background/45 p-3");
+    expect(leadsPage).not.toContain(
+      'className="block text-xs font-medium text-transparent"',
+    );
+    expect(leadsPage).not.toContain(
+      "rounded-[20px] border border-border/60 bg-background/45 p-3",
+    );
   });
 
   it("uses meaningful KPI metrics instead of a command strip", () => {
@@ -116,7 +124,9 @@ describe("pt hub lead list package wiring", () => {
     expect(leadsPage).not.toContain("border-l border-border/65 pl-3");
     expect(leadsPage).not.toContain("Response command");
     expect(leadsPage).not.toContain("leadSummaryCounters");
-    expect(leadsPage).not.toContain("shadow-[0_24px_80px_oklch(var(--foreground)/0.08)]");
+    expect(leadsPage).not.toContain(
+      "shadow-[0_24px_80px_oklch(var(--foreground)/0.08)]",
+    );
   });
 
   it("uses a flatter operational table instead of nested row cards", () => {
@@ -125,7 +135,11 @@ describe("pt hub lead list package wiring", () => {
     expect(leadsPage).toContain("divide-y divide-border/45");
     expect(leadsPage).toContain("rounded-[14px]");
     expect(leadsPage).toContain("group-hover:bg-[var(--module-leads-bg-soft)]");
-    expect(leadsPage).not.toContain("bg-[linear-gradient(135deg,oklch(var(--background)/0.78)");
-    expect(leadsPage).not.toContain("hover:shadow-[0_14px_38px_oklch(var(--foreground)/0.055)]");
+    expect(leadsPage).not.toContain(
+      "bg-[linear-gradient(135deg,oklch(var(--background)/0.78)",
+    );
+    expect(leadsPage).not.toContain(
+      "hover:shadow-[0_14px_38px_oklch(var(--foreground)/0.055)]",
+    );
   });
 });

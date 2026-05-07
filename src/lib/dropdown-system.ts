@@ -25,8 +25,10 @@ export const dropdownMenuItemVariants = cva(
   {
     variants: {
       size: {
-        default: "min-h-[2.75rem] rounded-[18px] px-3 py-2.5 text-sm font-medium",
-        compact: "min-h-[2.5rem] rounded-[16px] px-3 py-2 text-[13px] font-medium",
+        default:
+          "min-h-[2.75rem] rounded-[18px] px-3 py-2.5 text-sm font-medium",
+        compact:
+          "min-h-[2.5rem] rounded-[16px] px-3 py-2 text-[13px] font-medium",
       },
     },
     defaultVariants: {

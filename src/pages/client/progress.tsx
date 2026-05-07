@@ -123,11 +123,7 @@ function ChartSurface({
   );
 }
 
-function DeferredChartFrame({
-  title,
-}: {
-  title: string;
-}) {
+function DeferredChartFrame({ title }: { title: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -994,7 +990,8 @@ export function ClientProgressPage() {
                           variant="secondary"
                           onClick={exerciseChangesWindow.showMore}
                         >
-                          Show {Math.min(exerciseChangesWindow.hiddenCount, 4)} more
+                          Show {Math.min(exerciseChangesWindow.hiddenCount, 4)}{" "}
+                          more
                         </Button>
                       </div>
                     ) : null}

@@ -37,4 +37,3 @@ describe("button markup", () => {
     expect(offenders).toEqual([]);
   });
 });
-

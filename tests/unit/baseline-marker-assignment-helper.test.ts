@@ -5,11 +5,7 @@ import {
   shouldShowPtPerformanceMarkerAssignment,
 } from "../../src/lib/performance-marker-assignments";
 
-const templates = [
-  { id: "marker-a" },
-  { id: "marker-b" },
-  { id: "marker-c" },
-];
+const templates = [{ id: "marker-a" }, { id: "marker-b" }, { id: "marker-c" }];
 
 describe("resolveAssignedPerformanceMarkerTemplates", () => {
   it("falls back to all templates when no assignment rows exist", () => {

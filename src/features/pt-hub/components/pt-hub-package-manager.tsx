@@ -246,10 +246,7 @@ function PackageFormField({
   hint?: string;
   required?: boolean;
   className?: string;
-  children: (props: {
-    id: string;
-    "aria-describedby"?: string;
-  }) => ReactNode;
+  children: (props: { id: string; "aria-describedby"?: string }) => ReactNode;
 }) {
   const fieldId = useId();
   const hintId = hint ? `${fieldId}-hint` : undefined;
@@ -395,7 +392,8 @@ export function PtHubPackageManager() {
       return next;
     });
     setEditStateById((prev) => {
-      const current = prev[packageId] ?? (pkg ? toPackageEditorState(pkg) : null);
+      const current =
+        prev[packageId] ?? (pkg ? toPackageEditorState(pkg) : null);
       if (!current) return prev;
 
       return {
@@ -1243,7 +1241,10 @@ export function PtHubPackageManager() {
                           />
                         )}
                       </PackageFormField>
-                      <PackageFormField className="app-form-col-3" label="Price">
+                      <PackageFormField
+                        className="app-form-col-3"
+                        label="Price"
+                      >
                         {(fieldProps) => (
                           <Input
                             {...fieldProps}
@@ -1344,7 +1345,10 @@ export function PtHubPackageManager() {
                           </Select>
                         )}
                       </PackageFormField>
-                      <PackageFormField className="app-form-col-2" label="Status">
+                      <PackageFormField
+                        className="app-form-col-2"
+                        label="Status"
+                      >
                         {(fieldProps) => (
                           <Select
                             {...fieldProps}
@@ -1385,7 +1389,8 @@ export function PtHubPackageManager() {
                                 (current) => ({
                                   ...current,
                                   sortOrder:
-                                    Number.parseInt(event.target.value, 10) || 0,
+                                    Number.parseInt(event.target.value, 10) ||
+                                    0,
                                 }),
                               )
                             }

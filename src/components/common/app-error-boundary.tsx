@@ -1,8 +1,4 @@
-import {
-  Component,
-  type ErrorInfo,
-  type ReactNode,
-} from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import * as Sentry from "@sentry/react";
 import { useLocation } from "react-router-dom";
 import { Button } from "../ui/button";
@@ -40,10 +36,7 @@ class AppErrorBoundaryInner extends Component<
   }
 
   componentDidUpdate(prevProps: AppErrorBoundaryProps) {
-    if (
-      this.state.hasError &&
-      prevProps.resetKey !== this.props.resetKey
-    ) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
       this.setState({ hasError: false });
     }
   }

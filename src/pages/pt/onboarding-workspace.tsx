@@ -73,7 +73,8 @@ export function PtWorkspaceOnboardingPage() {
             location_country: storedCountry || ensuredProfile.location_country,
             location_city: storedCity || ensuredProfile.location_city,
             onboarding_completed_at:
-              ensuredProfile.onboarding_completed_at ?? new Date().toISOString(),
+              ensuredProfile.onboarding_completed_at ??
+              new Date().toISOString(),
           });
         }
 

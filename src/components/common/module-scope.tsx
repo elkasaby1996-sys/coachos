@@ -1,4 +1,9 @@
-import type { CSSProperties, ElementType, HTMLAttributes, ReactNode } from "react";
+import type {
+  CSSProperties,
+  ElementType,
+  HTMLAttributes,
+  ReactNode,
+} from "react";
 import { cn } from "../../lib/utils";
 import { getModuleToneStyle, type ModuleTone } from "../../lib/module-tone";
 

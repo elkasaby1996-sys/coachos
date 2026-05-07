@@ -82,16 +82,10 @@ const normalizeWorkoutStatus = (status: string | null | undefined) => {
 };
 
 const normalizeExerciseName = (value: string) =>
-  value
-    .trim()
-    .replace(/\s+/g, " ");
+  value.trim().replace(/\s+/g, " ");
 
 const normalizeSupersetGroup = (value: string) =>
-  value
-    .trim()
-    .replace(/\s+/g, " ")
-    .toUpperCase()
-    .slice(0, 16);
+  value.trim().replace(/\s+/g, " ").toUpperCase().slice(0, 16);
 
 const cleanupSupersetGroups = (drafts: PersonalWorkoutExerciseDraft[]) => {
   const normalized = drafts.map((draft) => ({
@@ -110,7 +104,9 @@ const cleanupSupersetGroups = (drafts: PersonalWorkoutExerciseDraft[]) => {
   );
 };
 
-export const getNextSupersetGroup = (drafts: PersonalWorkoutExerciseDraft[]) => {
+export const getNextSupersetGroup = (
+  drafts: PersonalWorkoutExerciseDraft[],
+) => {
   const used = new Set(
     cleanupSupersetGroups(drafts)
       .map((draft) => draft.supersetGroup)

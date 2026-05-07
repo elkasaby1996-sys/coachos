@@ -21,14 +21,18 @@ describe("personal workout manage policies SQL contract", () => {
     expect(migration).toContain("on public.assigned_workouts");
     expect(migration).toContain("for delete");
     expect(migration).toContain("c.user_id = auth.uid()");
-    expect(migration).toContain("assigned_workouts.workout_template_id is null");
+    expect(migration).toContain(
+      "assigned_workouts.workout_template_id is null",
+    );
     expect(migration).toContain("assigned_workouts.program_id is null");
   });
 
   it("allows client delete on personal assigned_workout_exercises only", () => {
     expect(migration).toContain("create policy awe_delete_client");
     expect(migration).toContain("on public.assigned_workout_exercises");
-    expect(migration).toContain("aw.id = assigned_workout_exercises.assigned_workout_id");
+    expect(migration).toContain(
+      "aw.id = assigned_workout_exercises.assigned_workout_id",
+    );
     expect(migration).toContain("c.user_id = auth.uid()");
     expect(migration).toContain("aw.workout_template_id is null");
     expect(migration).toContain("aw.program_id is null");

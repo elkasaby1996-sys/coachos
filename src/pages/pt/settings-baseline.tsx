@@ -93,7 +93,11 @@ const normalizeSortOrder = (value: string) => {
 
 export function PtPerformanceMarkersPage() {
   const { user } = useSessionAuth();
-  const { workspaceId, ownerUserId, loading: workspaceLoading } = useWorkspace();
+  const {
+    workspaceId,
+    ownerUserId,
+    loading: workspaceLoading,
+  } = useWorkspace();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -327,9 +331,9 @@ export function PtPerformanceMarkersPage() {
 
   const handleDelete = async (template: MarkerTemplate) => {
     if (!markerLibraryOwnerId) return;
-      const confirmed = window.confirm(
-        `Delete "${template.name ?? "performance marker"}"? This cannot be undone.`,
-      );
+    const confirmed = window.confirm(
+      `Delete "${template.name ?? "performance marker"}"? This cannot be undone.`,
+    );
     if (!confirmed) return;
     const { error } = await supabase
       .from("baseline_marker_templates")
@@ -341,7 +345,7 @@ export function PtPerformanceMarkersPage() {
       return;
     }
     setStatusVariant("success");
-      setStatusMessage("Performance marker deleted.");
+    setStatusMessage("Performance marker deleted.");
     await invalidateTemplates();
   };
 
@@ -464,8 +468,8 @@ export function PtPerformanceMarkersPage() {
                   No performance markers yet
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  Add your first performance marker so clients know exactly
-                  what they will record during the initial assessment.
+                  Add your first performance marker so clients know exactly what
+                  they will record during the initial assessment.
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   {[
@@ -596,7 +600,7 @@ export function PtPerformanceMarkersPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
-              <DialogTitle>
+            <DialogTitle>
               {editId ? "Edit performance marker" : "New performance marker"}
             </DialogTitle>
             <DialogDescription>

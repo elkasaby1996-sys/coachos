@@ -452,7 +452,8 @@ export function PtSettingsPage() {
           <div>
             <CardTitle>Performance markers</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Manage the shared performance marker library used in baseline assessments.
+              Manage the shared performance marker library used in baseline
+              assessments.
             </p>
           </div>
           <Button asChild size="sm">

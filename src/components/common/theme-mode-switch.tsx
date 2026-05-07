@@ -22,9 +22,7 @@ export function ThemeModeSwitch({
       onClick={() => void onToggle()}
       role="switch"
       aria-checked={isLightMode}
-      aria-label={
-        isLightMode ? "Switch to dark mode" : "Switch to light mode"
-      }
+      aria-label={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
       className={cn(
         "group relative inline-flex h-[30px] w-[92px] items-center rounded-full border px-1 backdrop-blur-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
         isLightMode

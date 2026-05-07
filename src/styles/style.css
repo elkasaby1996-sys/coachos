@@ -145,12 +145,11 @@
   --menu-separator-color: oklch(var(--border-default) / 0.58);
   --menu-label-color: oklch(var(--text-muted) / 0.92);
   --menu-icon-color: oklch(var(--accent) / 0.92);
-  --menu-icon-surface:
-    linear-gradient(
-      180deg,
-      oklch(var(--bg-surface-elevated) / 0.58),
-      oklch(var(--bg-surface) / 0.42)
-    );
+  --menu-icon-surface: linear-gradient(
+    180deg,
+    oklch(var(--bg-surface-elevated) / 0.58),
+    oklch(var(--bg-surface) / 0.42)
+  );
   --select-surface-bg-field: var(--field-glass-bg);
   --select-surface-bg-field-focus: var(--field-glass-bg-focus);
   --select-surface-bg-filter:
@@ -169,8 +168,7 @@
     linear-gradient(135deg, oklch(1 0 0 / 0.14), transparent 46%);
   --select-filter-border: oklch(var(--border-default) / 0.75);
   --select-filter-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.05),
-    0 12px 30px -30px oklch(0 0 0 / 0.52);
+    inset 0 1px 0 oklch(1 0 0 / 0.05), 0 12px 30px -30px oklch(0 0 0 / 0.52);
   --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4.25 6.5L8 10.25L11.75 6.5' stroke='%23AAB6C8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --field-glass-bg:
     linear-gradient(
@@ -343,12 +341,11 @@
   --menu-separator-color: oklch(var(--border-default) / 0.72);
   --menu-label-color: oklch(var(--text-muted) / 0.98);
   --menu-icon-color: oklch(var(--accent) / 0.9);
-  --menu-icon-surface:
-    linear-gradient(
-      180deg,
-      oklch(var(--bg-surface-elevated) / 0.92),
-      oklch(var(--bg-muted) / 0.66)
-    );
+  --menu-icon-surface: linear-gradient(
+    180deg,
+    oklch(var(--bg-surface-elevated) / 0.92),
+    oklch(var(--bg-muted) / 0.66)
+  );
   --select-surface-bg-field: var(--field-glass-bg);
   --select-surface-bg-field-focus: var(--field-glass-bg-focus);
   --select-surface-bg-filter:
@@ -407,8 +404,7 @@ h4,
 h5,
 h6 {
   font-family:
-    "Barlow Condensed", "Plus Jakarta Sans", "DM Sans", "Geist Sans",
-    sans-serif;
+    "Barlow Condensed", "Plus Jakarta Sans", "DM Sans", "Geist Sans", sans-serif;
   letter-spacing: 0.03em;
 }
 

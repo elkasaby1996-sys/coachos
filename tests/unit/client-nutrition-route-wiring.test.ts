@@ -13,12 +13,12 @@ describe("client nutrition route wiring", () => {
   });
 
   it("registers a dedicated create-plan route", () => {
-    expect(appRoutes).toContain("path=\"nutrition/new\"");
+    expect(appRoutes).toContain('path="nutrition/new"');
     expect(appRoutes).toContain("element={<ClientNutritionCreatePlanPage />}");
   });
 
   it("keeps the shared day-detail route for logging", () => {
-    expect(appRoutes).toContain("path=\"nutrition/:assigned_nutrition_day_id\"");
+    expect(appRoutes).toContain('path="nutrition/:assigned_nutrition_day_id"');
     expect(appRoutes).toContain("element={<ClientNutritionDayPage />}");
   });
 });

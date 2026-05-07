@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  seedAuthSmokeStates,
-} from "./utils/auth-seeds";
+import { seedAuthSmokeStates } from "./utils/auth-seeds";
 import {
   signInWithEmail,
   waitForAuthSessionReady,

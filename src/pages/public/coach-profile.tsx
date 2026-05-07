@@ -17,7 +17,9 @@ export function PublicCoachProfilePage() {
   const { session } = useSessionAuth();
   const { clientProfile } = useBootstrapAuth();
   const profileQuery = usePublicPtProfile(slug);
-  const packageOptionsQuery = usePublicPtPackageOptions(profileQuery.data?.userId);
+  const packageOptionsQuery = usePublicPtPackageOptions(
+    profileQuery.data?.userId,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);

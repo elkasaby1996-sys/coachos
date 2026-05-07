@@ -4,7 +4,9 @@ import { useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
 
-export function useWorkspaceSettingsAccess(routeWorkspaceId: string | undefined) {
+export function useWorkspaceSettingsAccess(
+  routeWorkspaceId: string | undefined,
+) {
   const { user } = useSessionAuth();
   const {
     workspaceId: activeWorkspaceId,

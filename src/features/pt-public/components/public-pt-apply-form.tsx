@@ -118,7 +118,11 @@ export function PublicPtApplyForm({
     if (!resolution.packageInterestId) {
       setPackageFeedback((prev) => (prev?.tone === "warning" ? null : prev));
     }
-  }, [form.packageInterestId, form.packageInterestLabelSnapshot, packageOptions]);
+  }, [
+    form.packageInterestId,
+    form.packageInterestLabelSnapshot,
+    packageOptions,
+  ]);
 
   useEffect(() => {
     if (!packagePrefill?.id) return;

@@ -30,10 +30,7 @@ export function PtHubSettingsIntegrationsTab() {
         title="Future Integrations"
         description="These controls are shown as disabled until backend support is available."
       >
-        <SettingsFieldRow
-          label="CRM sync"
-          hint="Future integration slot."
-        >
+        <SettingsFieldRow label="CRM sync" hint="Future integration slot.">
           <DisabledSettingField value="Coming soon" />
         </SettingsFieldRow>
         <SettingsFieldRow

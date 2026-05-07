@@ -15,7 +15,9 @@ describe("client personal nutrition SQL contract", () => {
   );
 
   it("extends nutrition_templates with client ownership path", () => {
-    expect(migration).toContain("add column if not exists owner_client_id uuid");
+    expect(migration).toContain(
+      "add column if not exists owner_client_id uuid",
+    );
     expect(migration).toContain("alter column workspace_id drop not null");
     expect(migration).toContain("nutrition_templates_owner_path_check");
     expect(migration).toContain(
@@ -24,7 +26,9 @@ describe("client personal nutrition SQL contract", () => {
   });
 
   it("adds client manage policies for template family tables", () => {
-    expect(migration).toContain("create policy nutrition_templates_client_manage_own");
+    expect(migration).toContain(
+      "create policy nutrition_templates_client_manage_own",
+    );
     expect(migration).toContain(
       "create policy nutrition_template_days_client_manage_own",
     );
@@ -43,7 +47,9 @@ describe("client personal nutrition SQL contract", () => {
     );
     expect(migration).toContain("v_actor_is_client_owner");
     expect(migration).toContain("v_template_owner_client_id");
-    expect(migration).toContain("Auto-close only active personal plans owned by this client.");
+    expect(migration).toContain(
+      "Auto-close only active personal plans owned by this client.",
+    );
     expect(migration).toContain("nt.owner_client_id = p_client_id");
     expect(migration).toContain("nt.workspace_id is null");
   });

@@ -14,13 +14,21 @@ const migration = readFileSync(
 
 describe("PT summary authorization SQL contract", () => {
   it("aligns pt_dashboard_summary auth with is_pt_workspace_member helper", () => {
-    expect(migration).toContain("create or replace function public.pt_dashboard_summary");
-    expect(migration).toContain("if not public.is_pt_workspace_member(p_workspace_id) then");
+    expect(migration).toContain(
+      "create or replace function public.pt_dashboard_summary",
+    );
+    expect(migration).toContain(
+      "if not public.is_pt_workspace_member(p_workspace_id) then",
+    );
   });
 
   it("aligns pt_clients_summary auth with is_pt_workspace_member helper", () => {
-    expect(migration).toContain("create or replace function public.pt_clients_summary");
-    expect(migration).toContain("if not public.is_pt_workspace_member(p_workspace_id) then");
+    expect(migration).toContain(
+      "create or replace function public.pt_clients_summary",
+    );
+    expect(migration).toContain(
+      "if not public.is_pt_workspace_member(p_workspace_id) then",
+    );
   });
 
   it("keeps clear workspace-required guardrails for both RPCs", () => {

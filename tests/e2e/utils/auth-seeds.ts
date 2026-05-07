@@ -45,7 +45,9 @@ function getSupabaseApiUrl() {
 }
 
 function getServiceRoleKey() {
-  return process.env.E2E_SUPABASE_SERVICE_ROLE_KEY?.trim() || localServiceRoleKey;
+  return (
+    process.env.E2E_SUPABASE_SERVICE_ROLE_KEY?.trim() || localServiceRoleKey
+  );
 }
 
 function sqlString(value: string) {
@@ -121,8 +123,12 @@ async function ensureUser(user: SeedUser) {
 
 export async function seedAuthSmokeStates() {
   const ptCompleteUserId = await ensureUser(authSmokeFixtures.ptComplete);
-  const ptIncompleteUserId = await ensureUser(authSmokeFixtures.ptIncompleteProfile);
-  const clientNoWorkspaceUserId = await ensureUser(authSmokeFixtures.clientNoWorkspace);
+  const ptIncompleteUserId = await ensureUser(
+    authSmokeFixtures.ptIncompleteProfile,
+  );
+  const clientNoWorkspaceUserId = await ensureUser(
+    authSmokeFixtures.clientNoWorkspace,
+  );
   const clientInviteUserId = await ensureUser(authSmokeFixtures.clientInvite);
 
   await pgQuery(`

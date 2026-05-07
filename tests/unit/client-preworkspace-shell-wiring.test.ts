@@ -3,13 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const clientLayout = readFileSync(
-  resolve(
-    process.cwd(),
-    "src",
-    "components",
-    "layouts",
-    "client-layout.tsx",
-  ),
+  resolve(process.cwd(), "src", "components", "layouts", "client-layout.tsx"),
   "utf8",
 );
 

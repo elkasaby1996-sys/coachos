@@ -7,7 +7,10 @@ describe("lead chat writability", () => {
       isLeadChatWritable({ leadStatus: "new", conversationStatus: "open" }),
     ).toBe(true);
     expect(
-      isLeadChatWritable({ leadStatus: "contacted", conversationStatus: "open" }),
+      isLeadChatWritable({
+        leadStatus: "contacted",
+        conversationStatus: "open",
+      }),
     ).toBe(true);
     expect(
       isLeadChatWritable({
@@ -19,16 +22,25 @@ describe("lead chat writability", () => {
 
   it("blocks writes when conversation is archived", () => {
     expect(
-      isLeadChatWritable({ leadStatus: "contacted", conversationStatus: "archived" }),
+      isLeadChatWritable({
+        leadStatus: "contacted",
+        conversationStatus: "archived",
+      }),
     ).toBe(false);
   });
 
   it("blocks writes for converted and declined leads", () => {
     expect(
-      isLeadChatWritable({ leadStatus: "converted", conversationStatus: "open" }),
+      isLeadChatWritable({
+        leadStatus: "converted",
+        conversationStatus: "open",
+      }),
     ).toBe(false);
     expect(
-      isLeadChatWritable({ leadStatus: "declined", conversationStatus: "open" }),
+      isLeadChatWritable({
+        leadStatus: "declined",
+        conversationStatus: "open",
+      }),
     ).toBe(false);
   });
 

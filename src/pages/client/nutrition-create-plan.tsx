@@ -13,7 +13,12 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { getTodayInTimezone } from "../../lib/date-utils";
 import { supabase } from "../../lib/supabase";
@@ -134,7 +139,19 @@ const sumComponents = (components: CleanComponent[]) =>
     { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
   );
 
-const UNIT_OPTIONS = ["g", "kg", "ml", "l", "oz", "lb", "cup", "tbsp", "tsp", "piece", "serving"];
+const UNIT_OPTIONS = [
+  "g",
+  "kg",
+  "ml",
+  "l",
+  "oz",
+  "lb",
+  "cup",
+  "tbsp",
+  "tsp",
+  "piece",
+  "serving",
+];
 
 export function ClientNutritionCreatePlanPage() {
   const navigate = useNavigate();
@@ -147,8 +164,12 @@ export function ClientNutritionCreatePlanPage() {
   const [planName, setPlanName] = useState("");
   const [planDescription, setPlanDescription] = useState("");
   const [planStartDate, setPlanStartDate] = useState("");
-  const [weekMeals, setWeekMeals] = useState<PersonalMealDraft[][]>(createWeekMealsDraft());
-  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({});
+  const [weekMeals, setWeekMeals] = useState<PersonalMealDraft[][]>(
+    createWeekMealsDraft(),
+  );
+  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>(
+    {},
+  );
   const [duplicationMessage, setDuplicationMessage] = useState<{
     tone: "success" | "info";
     text: string;
@@ -204,43 +225,67 @@ export function ClientNutritionCreatePlanPage() {
       ),
     [selectedDayMeals],
   );
-  const updateSelectedDayMeals = (updater: (previous: PersonalMealDraft[]) => PersonalMealDraft[]) => {
+  const updateSelectedDayMeals = (
+    updater: (previous: PersonalMealDraft[]) => PersonalMealDraft[],
+  ) => {
     setWeekMeals((previous) =>
-      previous.map((dayMeals, dayIndex) => (dayIndex === selectedDay - 1 ? updater(dayMeals) : dayMeals)),
+      previous.map((dayMeals, dayIndex) =>
+        dayIndex === selectedDay - 1 ? updater(dayMeals) : dayMeals,
+      ),
     );
   };
-  const mealKey = (day: number, mealIndex: number) => `day-${day}-meal-${mealIndex}`;
+  const mealKey = (day: number, mealIndex: number) =>
+    `day-${day}-meal-${mealIndex}`;
   const isMealExpanded = (day: number, mealIndex: number) => {
     const key = mealKey(day, mealIndex);
     return expandedMeals[key] ?? mealIndex === 0;
   };
   const toggleMealExpanded = (mealIndex: number) => {
     const key = mealKey(selectedDay, mealIndex);
-    setExpandedMeals((previous) => ({ ...previous, [key]: !(previous[key] ?? mealIndex === 0) }));
+    setExpandedMeals((previous) => ({
+      ...previous,
+      [key]: !(previous[key] ?? mealIndex === 0),
+    }));
   };
 
   const addMeal = () => {
     const nextIndex = selectedDayMeals.length;
     updateSelectedDayMeals((previous) => [...previous, createMealDraft()]);
-    setExpandedMeals((previous) => ({ ...previous, [mealKey(selectedDay, nextIndex)]: true }));
+    setExpandedMeals((previous) => ({
+      ...previous,
+      [mealKey(selectedDay, nextIndex)]: true,
+    }));
     setDuplicationMessage(null);
   };
   const removeMeal = (mealIndex: number) => {
     updateSelectedDayMeals((previous) =>
-      previous.length <= 1 ? previous : previous.filter((_, index) => index !== mealIndex),
+      previous.length <= 1
+        ? previous
+        : previous.filter((_, index) => index !== mealIndex),
     );
     setDuplicationMessage(null);
   };
-  const updateMealField = (mealIndex: number, field: keyof Omit<PersonalMealDraft, "components">, value: string) => {
+  const updateMealField = (
+    mealIndex: number,
+    field: keyof Omit<PersonalMealDraft, "components">,
+    value: string,
+  ) => {
     updateSelectedDayMeals((previous) =>
-      previous.map((meal, index) => (index === mealIndex ? { ...meal, [field]: value } : meal)),
+      previous.map((meal, index) =>
+        index === mealIndex ? { ...meal, [field]: value } : meal,
+      ),
     );
     setDuplicationMessage(null);
   };
   const addMealComponent = (mealIndex: number) => {
     updateSelectedDayMeals((previous) =>
       previous.map((meal, index) =>
-        index === mealIndex ? { ...meal, components: [...meal.components, createComponentDraft()] } : meal,
+        index === mealIndex
+          ? {
+              ...meal,
+              components: [...meal.components, createComponentDraft()],
+            }
+          : meal,
       ),
     );
     setDuplicationMessage(null);
@@ -251,7 +296,9 @@ export function ClientNutritionCreatePlanPage() {
         if (index !== mealIndex || meal.components.length <= 1) return meal;
         return {
           ...meal,
-          components: meal.components.filter((_, rowIndex) => rowIndex !== componentIndex),
+          components: meal.components.filter(
+            (_, rowIndex) => rowIndex !== componentIndex,
+          ),
         };
       }),
     );
@@ -269,7 +316,9 @@ export function ClientNutritionCreatePlanPage() {
         return {
           ...meal,
           components: meal.components.map((component, rowIndex) =>
-            rowIndex === componentIndex ? { ...component, [field]: value } : component,
+            rowIndex === componentIndex
+              ? { ...component, [field]: value }
+              : component,
           ),
         };
       }),
@@ -287,7 +336,11 @@ export function ClientNutritionCreatePlanPage() {
     setWeekMeals((previous) =>
       previous.map((dayMeals, dayIndex) => {
         if (dayIndex === selectedDay - 1) return dayMeals;
-        if (dayMeals.some((meal) => normalizeMealDraftSignature(meal) === sourceSignature)) {
+        if (
+          dayMeals.some(
+            (meal) => normalizeMealDraftSignature(meal) === sourceSignature,
+          )
+        ) {
           skippedCount += 1;
           return dayMeals;
         }
@@ -340,7 +393,8 @@ export function ClientNutritionCreatePlanPage() {
               }))
               .filter((component) => component.component_name.length > 0);
 
-            if (!meal.mealName.trim() || cleanedComponents.length === 0) return null;
+            if (!meal.mealName.trim() || cleanedComponents.length === 0)
+              return null;
             const totals = sumComponents(cleanedComponents);
             return {
               meal_name: meal.mealName.trim(),
@@ -354,12 +408,20 @@ export function ClientNutritionCreatePlanPage() {
             } as CleanMeal;
           })
           .filter((meal): meal is CleanMeal => meal !== null);
-        return validMeals.map((meal, index) => ({ ...meal, meal_order: index + 1 }));
+        return validMeals.map((meal, index) => ({
+          ...meal,
+          meal_order: index + 1,
+        }));
       });
 
-      const totalMeals = cleanedPlanByDay.reduce((sum, dayMeals) => sum + dayMeals.length, 0);
+      const totalMeals = cleanedPlanByDay.reduce(
+        (sum, dayMeals) => sum + dayMeals.length,
+        0,
+      );
       if (totalMeals === 0) {
-        throw new Error("Add at least one meal with at least one component before creating the plan.");
+        throw new Error(
+          "Add at least one meal with at least one component before creating the plan.",
+        );
       }
 
       const { data: template, error: templateError } = await supabase
@@ -375,7 +437,9 @@ export function ClientNutritionCreatePlanPage() {
         .select("id")
         .maybeSingle();
       if (templateError || !template?.id) {
-        throw new Error(templateError?.message ?? "Failed to create personal template.");
+        throw new Error(
+          templateError?.message ?? "Failed to create personal template.",
+        );
       }
 
       const templateId = template.id as string;
@@ -391,11 +455,15 @@ export function ClientNutritionCreatePlanPage() {
           })),
         )
         .select("id, day_of_week");
-      if (daysError || !(insertedDays ?? []).length) throw new Error(daysError?.message ?? "Failed to create plan days.");
+      if (daysError || !(insertedDays ?? []).length)
+        throw new Error(daysError?.message ?? "Failed to create plan days.");
 
       const dayIdByDayOfWeek = new Map<number, string>();
       (insertedDays ?? []).forEach((day) =>
-        dayIdByDayOfWeek.set((day as { day_of_week: number }).day_of_week, (day as { id: string }).id),
+        dayIdByDayOfWeek.set(
+          (day as { day_of_week: number }).day_of_week,
+          (day as { id: string }).id,
+        ),
       );
 
       const mealPayload = cleanedPlanByDay.flatMap((dayMeals, dayIndex) => {
@@ -413,41 +481,54 @@ export function ClientNutritionCreatePlanPage() {
           recipe_text: null,
         }));
       });
-      if (mealPayload.length === 0) throw new Error("No valid meals found to create this plan.");
+      if (mealPayload.length === 0)
+        throw new Error("No valid meals found to create this plan.");
 
       const { data: insertedMeals, error: mealsError } = await supabase
         .from("nutrition_template_meals")
         .insert(mealPayload)
         .select("id, nutrition_template_day_id, meal_order");
-      if (mealsError || !(insertedMeals ?? []).length) throw new Error(mealsError?.message ?? "Failed to create plan meals.");
+      if (mealsError || !(insertedMeals ?? []).length)
+        throw new Error(mealsError?.message ?? "Failed to create plan meals.");
 
       const mealIdByDayAndOrder = new Map<string, string>();
       (insertedMeals ?? []).forEach((meal) => {
-        const row = meal as { id: string; nutrition_template_day_id: string; meal_order: number };
-        mealIdByDayAndOrder.set(`${row.nutrition_template_day_id}:${row.meal_order}`, row.id);
+        const row = meal as {
+          id: string;
+          nutrition_template_day_id: string;
+          meal_order: number;
+        };
+        mealIdByDayAndOrder.set(
+          `${row.nutrition_template_day_id}:${row.meal_order}`,
+          row.id,
+        );
       });
 
-      const componentPayload = cleanedPlanByDay.flatMap((dayMeals, dayIndex) => {
-        const dayId = dayIdByDayOfWeek.get(dayIndex + 1);
-        if (!dayId) return [];
-        return dayMeals.flatMap((meal) => {
-          const mealId = mealIdByDayAndOrder.get(`${dayId}:${meal.meal_order}`);
-          if (!mealId) return [];
-          return meal.components.map((component, componentIndex) => ({
-            nutrition_template_meal_id: mealId,
-            sort_order: componentIndex + 1,
-            component_name: component.component_name,
-            quantity: component.quantity,
-            unit: component.unit,
-            calories: component.calories,
-            protein_g: component.protein_g,
-            carbs_g: component.carbs_g,
-            fat_g: component.fat_g,
-            recipe_text: null,
-            notes: null,
-          }));
-        });
-      });
+      const componentPayload = cleanedPlanByDay.flatMap(
+        (dayMeals, dayIndex) => {
+          const dayId = dayIdByDayOfWeek.get(dayIndex + 1);
+          if (!dayId) return [];
+          return dayMeals.flatMap((meal) => {
+            const mealId = mealIdByDayAndOrder.get(
+              `${dayId}:${meal.meal_order}`,
+            );
+            if (!mealId) return [];
+            return meal.components.map((component, componentIndex) => ({
+              nutrition_template_meal_id: mealId,
+              sort_order: componentIndex + 1,
+              component_name: component.component_name,
+              quantity: component.quantity,
+              unit: component.unit,
+              calories: component.calories,
+              protein_g: component.protein_g,
+              carbs_g: component.carbs_g,
+              fat_g: component.fat_g,
+              recipe_text: null,
+              notes: null,
+            }));
+          });
+        },
+      );
       if (componentPayload.length > 0) {
         const { error: componentsError } = await supabase
           .from("nutrition_template_meal_components")
@@ -455,22 +536,33 @@ export function ClientNutritionCreatePlanPage() {
         if (componentsError) throw new Error(componentsError.message);
       }
 
-      const { error: assignError } = await supabase.rpc("assign_nutrition_template_to_client", {
-        p_client_id: clientId,
-        p_template_id: templateId,
-        p_start_date: safeStartDate,
-      });
+      const { error: assignError } = await supabase.rpc(
+        "assign_nutrition_template_to_client",
+        {
+          p_client_id: clientId,
+          p_template_id: templateId,
+          p_start_date: safeStartDate,
+        },
+      );
       if (assignError) throw new Error(assignError.message);
       return templateId;
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["client-nutrition-plans", clientId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["client-nutrition-plans", clientId],
+        }),
         queryClient.invalidateQueries({ queryKey: ["client-nutrition-days"] }),
         queryClient.invalidateQueries({ queryKey: ["client-nutrition-meals"] }),
-        queryClient.invalidateQueries({ queryKey: ["assigned-nutrition-today"] }),
-        queryClient.invalidateQueries({ queryKey: ["assigned-nutrition-week"] }),
-        queryClient.invalidateQueries({ queryKey: ["client-personal-nutrition-templates", clientId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["assigned-nutrition-today"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["assigned-nutrition-week"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["client-personal-nutrition-templates", clientId],
+        }),
       ]);
       navigate("/app/nutrition");
     },
@@ -479,7 +571,10 @@ export function ClientNutritionCreatePlanPage() {
   if (!clientId) {
     return (
       <div className="space-y-6">
-        <PortalPageHeader title="Create Personal Plan" subtitle="Set up a 1-week nutrition plan using the shared nutrition system." />
+        <PortalPageHeader
+          title="Create Personal Plan"
+          subtitle="Set up a 1-week nutrition plan using the shared nutrition system."
+        />
         <EmptyStateBlock
           title="Client profile not found"
           description="Finish onboarding to create your personal nutrition plan."
@@ -502,28 +597,52 @@ export function ClientNutritionCreatePlanPage() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
         <SectionCard className="space-y-3 border-border/70 bg-card p-3.5 xl:sticky xl:top-24 xl:h-fit">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plan</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Plan
+          </p>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Name</label>
-            <Input value={planName} onChange={(event) => setPlanName(event.target.value)} placeholder="Personal Nutrition Week" className="h-9" />
+            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Name
+            </label>
+            <Input
+              value={planName}
+              onChange={(event) => setPlanName(event.target.value)}
+              placeholder="Personal Nutrition Week"
+              className="h-9"
+            />
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Start date</label>
-            <Input type="date" value={planStartDate || todayKey} onChange={(event) => setPlanStartDate(event.target.value)} className="h-9" />
+            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Start date
+            </label>
+            <Input
+              type="date"
+              value={planStartDate || todayKey}
+              onChange={(event) => setPlanStartDate(event.target.value)}
+              className="h-9"
+            />
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Description</label>
-            <Input value={planDescription} onChange={(event) => setPlanDescription(event.target.value)} placeholder="Optional notes" className="h-9" />
+            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Description
+            </label>
+            <Input
+              value={planDescription}
+              onChange={(event) => setPlanDescription(event.target.value)}
+              placeholder="Optional notes"
+              className="h-9"
+            />
           </div>
-
         </SectionCard>
 
         <div className="space-y-3">
           <SectionCard className="space-y-3 border-border/70 bg-card p-3.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Day</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Day
+            </p>
             <Tabs
               value={dayTabValue(selectedDay)}
               onValueChange={(value) => {
@@ -544,14 +663,32 @@ export function ClientNutritionCreatePlanPage() {
                     {selectedDay === tab.day ? (
                       <>
                         <motion.span
-                          layoutId={reduceMotion ? undefined : "client-nutrition-day-active-halo"}
+                          layoutId={
+                            reduceMotion
+                              ? undefined
+                              : "client-nutrition-day-active-halo"
+                          }
                           className="pointer-events-none absolute -inset-1 z-0 rounded-[20px] bg-primary/28 blur-md"
-                          transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.85 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 28,
+                            mass: 0.85,
+                          }}
                         />
                         <motion.span
-                          layoutId={reduceMotion ? undefined : "client-nutrition-day-active-pill"}
+                          layoutId={
+                            reduceMotion
+                              ? undefined
+                              : "client-nutrition-day-active-pill"
+                          }
                           className="pt-hub-tab-active-pill absolute inset-0 rounded-[18px] border"
-                          transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.8 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 280,
+                            damping: 30,
+                            mass: 0.8,
+                          }}
                         />
                       </>
                     ) : null}
@@ -574,16 +711,27 @@ export function ClientNutritionCreatePlanPage() {
                 ))}
               </TabsList>
 
-              <TabsContent value={dayTabValue(selectedDay)} className="mt-3 space-y-3">
+              <TabsContent
+                value={dayTabValue(selectedDay)}
+                className="mt-3 space-y-3"
+              >
                 <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="space-y-0.5">
                       <p className="text-base font-semibold text-foreground">
-                        {DAY_TABS.find((tab) => tab.day === selectedDay)?.label} summary
+                        {DAY_TABS.find((tab) => tab.day === selectedDay)?.label}{" "}
+                        summary
                       </p>
-                      <p className="text-xs text-muted-foreground">{selectedDayMeals.length} meals planned</p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedDayMeals.length} meals planned
+                      </p>
                     </div>
-                    <Button size="sm" variant="secondary" onClick={addMeal} className="h-8 px-2.5">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={addMeal}
+                      className="h-8 px-2.5"
+                    >
                       <Plus className="mr-1 h-3.5 w-3.5" />
                       Add meal
                     </Button>
@@ -591,20 +739,36 @@ export function ClientNutritionCreatePlanPage() {
 
                   <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                     <div className="rounded-lg border border-border/70 bg-card p-2.5">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Calories</p>
-                      <p className="text-lg font-semibold tabular-nums text-foreground">{Math.round(selectedDayMacros.calories)}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Calories
+                      </p>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">
+                        {Math.round(selectedDayMacros.calories)}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border/70 bg-card p-2.5">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Protein</p>
-                      <p className="text-lg font-semibold tabular-nums text-foreground">{Math.round(selectedDayMacros.protein_g)}g</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Protein
+                      </p>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">
+                        {Math.round(selectedDayMacros.protein_g)}g
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border/70 bg-card p-2.5">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Fats</p>
-                      <p className="text-lg font-semibold tabular-nums text-foreground">{Math.round(selectedDayMacros.fat_g)}g</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Fats
+                      </p>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">
+                        {Math.round(selectedDayMacros.fat_g)}g
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border/70 bg-card p-2.5">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Carbs</p>
-                      <p className="text-lg font-semibold tabular-nums text-foreground">{Math.round(selectedDayMacros.carbs_g)}g</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Carbs
+                      </p>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">
+                        {Math.round(selectedDayMacros.carbs_g)}g
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -619,8 +783,10 @@ export function ClientNutritionCreatePlanPage() {
                   {selectedDayMeals.map((meal, mealIndex) => {
                     const mealTotals = meal.components.reduce(
                       (acc, component) => ({
-                        calories: acc.calories + (toNumOrNull(component.calories) ?? 0),
-                        protein: acc.protein + (toNumOrNull(component.protein) ?? 0),
+                        calories:
+                          acc.calories + (toNumOrNull(component.calories) ?? 0),
+                        protein:
+                          acc.protein + (toNumOrNull(component.protein) ?? 0),
                         carbs: acc.carbs + (toNumOrNull(component.carbs) ?? 0),
                         fat: acc.fat + (toNumOrNull(component.fat) ?? 0),
                       }),
@@ -640,22 +806,37 @@ export function ClientNutritionCreatePlanPage() {
                               onClick={() => toggleMealExpanded(mealIndex)}
                               className="flex min-w-0 flex-1 items-start gap-2 text-left"
                             >
-                              <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-0" : "-rotate-90"}`} />
+                              <ChevronDown
+                                className={`mt-0.5 h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-0" : "-rotate-90"}`}
+                              />
                               <div className="min-w-0">
                                 <p className="truncate text-[15px] font-semibold text-foreground">
-                                  {meal.mealName.trim() || `Meal ${mealIndex + 1}`}
+                                  {meal.mealName.trim() ||
+                                    `Meal ${mealIndex + 1}`}
                                 </p>
                                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                  <Badge
+                                    variant="muted"
+                                    className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums"
+                                  >
                                     {Math.round(mealTotals.calories)} CAL
                                   </Badge>
-                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                  <Badge
+                                    variant="muted"
+                                    className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums"
+                                  >
                                     P {Math.round(mealTotals.protein)}G
                                   </Badge>
-                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                  <Badge
+                                    variant="muted"
+                                    className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums"
+                                  >
                                     F {Math.round(mealTotals.fat)}G
                                   </Badge>
-                                  <Badge variant="muted" className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums">
+                                  <Badge
+                                    variant="muted"
+                                    className="px-2 py-0.5 text-[10px] tracking-[0.12em] tabular-nums"
+                                  >
                                     C {Math.round(mealTotals.carbs)}G
                                   </Badge>
                                 </div>
@@ -710,7 +891,13 @@ export function ClientNutritionCreatePlanPage() {
                                 </label>
                                 <Input
                                   value={meal.mealName}
-                                  onChange={(event) => updateMealField(mealIndex, "mealName", event.target.value)}
+                                  onChange={(event) =>
+                                    updateMealField(
+                                      mealIndex,
+                                      "mealName",
+                                      event.target.value,
+                                    )
+                                  }
                                   placeholder="Breakfast"
                                   className="h-8"
                                 />
@@ -721,7 +908,13 @@ export function ClientNutritionCreatePlanPage() {
                                 </label>
                                 <Input
                                   value={meal.notes}
-                                  onChange={(event) => updateMealField(mealIndex, "notes", event.target.value)}
+                                  onChange={(event) =>
+                                    updateMealField(
+                                      mealIndex,
+                                      "notes",
+                                      event.target.value,
+                                    )
+                                  }
                                   placeholder="Optional notes"
                                   className="h-8"
                                 />
@@ -729,8 +922,15 @@ export function ClientNutritionCreatePlanPage() {
                             </div>
 
                             <div className="flex items-center justify-between">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Components</p>
-                              <Button size="sm" variant="secondary" onClick={() => addMealComponent(mealIndex)} className="h-8 px-2.5">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Components
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => addMealComponent(mealIndex)}
+                                className="h-8 px-2.5"
+                              >
                                 <Plus className="mr-1 h-3.5 w-3.5" />
                                 Add component
                               </Button>
@@ -749,127 +949,188 @@ export function ClientNutritionCreatePlanPage() {
                                 </colgroup>
                                 <thead>
                                   <tr className="border-b border-border/60 bg-muted/20 text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    <th className="px-2.5 py-2 font-medium">Component</th>
-                                    <th className="px-2 py-2 font-medium">Qty / Unit</th>
-                                    <th className="px-2 py-2 font-medium">Cal</th>
-                                    <th className="px-2 py-2 font-medium">Protein</th>
-                                    <th className="px-2 py-2 font-medium">Fats</th>
-                                    <th className="px-2 py-2 font-medium">Carbs</th>
+                                    <th className="px-2.5 py-2 font-medium">
+                                      Component
+                                    </th>
+                                    <th className="px-2 py-2 font-medium">
+                                      Qty / Unit
+                                    </th>
+                                    <th className="px-2 py-2 font-medium">
+                                      Cal
+                                    </th>
+                                    <th className="px-2 py-2 font-medium">
+                                      Protein
+                                    </th>
+                                    <th className="px-2 py-2 font-medium">
+                                      Fats
+                                    </th>
+                                    <th className="px-2 py-2 font-medium">
+                                      Carbs
+                                    </th>
                                     <th className="px-2 py-2" />
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {meal.components.map((component, componentIndex) => (
-                                    <tr key={`day-${selectedDay}-meal-${mealIndex}-component-${componentIndex}`} className="border-b border-border/40 last:border-b-0">
-                                      <td className="px-2.5 py-1.5 align-middle">
-                                        <Input
-                                          aria-label="Component"
-                                          value={component.componentName}
-                                          onChange={(event) =>
-                                            updateMealComponentField(mealIndex, componentIndex, "componentName", event.target.value)
-                                          }
-                                          placeholder="Chicken breast"
-                                          className="h-8 w-full min-w-[460px]"
-                                        />
-                                      </td>
-                                      <td className="px-2 py-1.5 align-middle">
-                                        <div className="flex items-center gap-1.5">
+                                  {meal.components.map(
+                                    (component, componentIndex) => (
+                                      <tr
+                                        key={`day-${selectedDay}-meal-${mealIndex}-component-${componentIndex}`}
+                                        className="border-b border-border/40 last:border-b-0"
+                                      >
+                                        <td className="px-2.5 py-1.5 align-middle">
                                           <Input
-                                            aria-label="Quantity"
+                                            aria-label="Component"
+                                            value={component.componentName}
+                                            onChange={(event) =>
+                                              updateMealComponentField(
+                                                mealIndex,
+                                                componentIndex,
+                                                "componentName",
+                                                event.target.value,
+                                              )
+                                            }
+                                            placeholder="Chicken breast"
+                                            className="h-8 w-full min-w-[460px]"
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5 align-middle">
+                                          <div className="flex items-center gap-1.5">
+                                            <Input
+                                              aria-label="Quantity"
+                                              type="text"
+                                              inputMode="decimal"
+                                              value={component.quantity}
+                                              onChange={(event) =>
+                                                updateMealComponentField(
+                                                  mealIndex,
+                                                  componentIndex,
+                                                  "quantity",
+                                                  event.target.value,
+                                                )
+                                              }
+                                              placeholder="150"
+                                              className="h-8 w-[5ch] min-w-[5ch] px-1.5 text-center text-xs tabular-nums"
+                                            />
+                                            <Select
+                                              aria-label="Unit"
+                                              value={component.unit}
+                                              onChange={(event) =>
+                                                updateMealComponentField(
+                                                  mealIndex,
+                                                  componentIndex,
+                                                  "unit",
+                                                  event.target.value,
+                                                )
+                                              }
+                                              size="sm"
+                                              className="h-9 min-h-9 w-[68px] rounded-md px-2 pr-6 text-xs leading-5"
+                                              contentClassName="min-w-[9rem]"
+                                            >
+                                              {UNIT_OPTIONS.map((unit) => (
+                                                <option key={unit} value={unit}>
+                                                  {unit}
+                                                </option>
+                                              ))}
+                                            </Select>
+                                          </div>
+                                        </td>
+                                        <td className="px-2 py-1.5 align-middle">
+                                          <Input
+                                            aria-label="Calories"
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={component.calories}
+                                            onChange={(event) =>
+                                              updateMealComponentField(
+                                                mealIndex,
+                                                componentIndex,
+                                                "calories",
+                                                event.target.value,
+                                              )
+                                            }
+                                            placeholder="kcal"
+                                            className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5 align-middle">
+                                          <Input
+                                            aria-label="Protein"
                                             type="text"
                                             inputMode="decimal"
-                                            value={component.quantity}
+                                            value={component.protein}
                                             onChange={(event) =>
-                                              updateMealComponentField(mealIndex, componentIndex, "quantity", event.target.value)
+                                              updateMealComponentField(
+                                                mealIndex,
+                                                componentIndex,
+                                                "protein",
+                                                event.target.value,
+                                              )
                                             }
-                                            placeholder="150"
-                                            className="h-8 w-[5ch] min-w-[5ch] px-1.5 text-center text-xs tabular-nums"
+                                            placeholder="g"
+                                            className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
                                           />
-                                          <Select
-                                            aria-label="Unit"
-                                            value={component.unit}
+                                        </td>
+                                        <td className="px-2 py-1.5 align-middle">
+                                          <Input
+                                            aria-label="Fats"
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={component.fat}
                                             onChange={(event) =>
-                                              updateMealComponentField(mealIndex, componentIndex, "unit", event.target.value)
+                                              updateMealComponentField(
+                                                mealIndex,
+                                                componentIndex,
+                                                "fat",
+                                                event.target.value,
+                                              )
                                             }
+                                            placeholder="g"
+                                            className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5 align-middle">
+                                          <Input
+                                            aria-label="Carbs"
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={component.carbs}
+                                            onChange={(event) =>
+                                              updateMealComponentField(
+                                                mealIndex,
+                                                componentIndex,
+                                                "carbs",
+                                                event.target.value,
+                                              )
+                                            }
+                                            placeholder="g"
+                                            className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
+                                          />
+                                        </td>
+                                        <td className="px-2 py-1.5 align-middle">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
                                             size="sm"
-                                            className="h-9 min-h-9 w-[68px] rounded-md px-2 pr-6 text-xs leading-5"
-                                            contentClassName="min-w-[9rem]"
+                                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                            onClick={() =>
+                                              removeMealComponent(
+                                                mealIndex,
+                                                componentIndex,
+                                              )
+                                            }
+                                            disabled={
+                                              meal.components.length <= 1
+                                            }
                                           >
-                                            {UNIT_OPTIONS.map((unit) => (
-                                              <option key={unit} value={unit}>
-                                                {unit}
-                                              </option>
-                                            ))}
-                                          </Select>
-                                        </div>
-                                      </td>
-                                      <td className="px-2 py-1.5 align-middle">
-                                        <Input
-                                          aria-label="Calories"
-                                          type="text"
-                                          inputMode="numeric"
-                                          value={component.calories}
-                                          onChange={(event) =>
-                                            updateMealComponentField(mealIndex, componentIndex, "calories", event.target.value)
-                                          }
-                                          placeholder="kcal"
-                                          className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
-                                        />
-                                      </td>
-                                      <td className="px-2 py-1.5 align-middle">
-                                        <Input
-                                          aria-label="Protein"
-                                          type="text"
-                                          inputMode="decimal"
-                                          value={component.protein}
-                                          onChange={(event) =>
-                                            updateMealComponentField(mealIndex, componentIndex, "protein", event.target.value)
-                                          }
-                                          placeholder="g"
-                                          className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
-                                        />
-                                      </td>
-                                      <td className="px-2 py-1.5 align-middle">
-                                        <Input
-                                          aria-label="Fats"
-                                          type="text"
-                                          inputMode="decimal"
-                                          value={component.fat}
-                                          onChange={(event) =>
-                                            updateMealComponentField(mealIndex, componentIndex, "fat", event.target.value)
-                                          }
-                                          placeholder="g"
-                                          className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
-                                        />
-                                      </td>
-                                      <td className="px-2 py-1.5 align-middle">
-                                        <Input
-                                          aria-label="Carbs"
-                                          type="text"
-                                          inputMode="decimal"
-                                          value={component.carbs}
-                                          onChange={(event) =>
-                                            updateMealComponentField(mealIndex, componentIndex, "carbs", event.target.value)
-                                          }
-                                          placeholder="g"
-                                          className="h-8 w-[4.8ch] min-w-[4.8ch] px-1.5 text-center text-xs tabular-nums"
-                                        />
-                                      </td>
-                                      <td className="px-2 py-1.5 align-middle">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                                          onClick={() => removeMealComponent(mealIndex, componentIndex)}
-                                          disabled={meal.components.length <= 1}
-                                        >
-                                          <X className="h-3.5 w-3.5" />
-                                          <span className="sr-only">Remove component</span>
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  ))}
+                                            <X className="h-3.5 w-3.5" />
+                                            <span className="sr-only">
+                                              Remove component
+                                            </span>
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    ),
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -907,11 +1168,11 @@ export function ClientNutritionCreatePlanPage() {
           onClick={() => createPersonalPlanMutation.mutate()}
           disabled={createPersonalPlanMutation.isPending}
         >
-          {createPersonalPlanMutation.isPending ? "Creating..." : "Create personal plan"}
+          {createPersonalPlanMutation.isPending
+            ? "Creating..."
+            : "Create personal plan"}
         </Button>
       </div>
     </div>
   );
 }
-
-

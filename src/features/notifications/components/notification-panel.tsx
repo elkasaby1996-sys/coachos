@@ -26,17 +26,14 @@ export function NotificationPanel({
 }) {
   const audience = viewAllHref.startsWith("/app") ? "client" : "pt";
   const reduceMotion = useReducedMotion();
-  const {
-    visibleRows,
-    hasHiddenRows,
-    hiddenCount,
-    showMore,
-  } = useWindowedRows({
-    rows: notifications,
-    initialCount: 8,
-    step: 8,
-    resetKey: `${viewAllHref}:${notifications.length}:${unreadCount}`,
-  });
+  const { visibleRows, hasHiddenRows, hiddenCount, showMore } = useWindowedRows(
+    {
+      rows: notifications,
+      initialCount: 8,
+      step: 8,
+      resetKey: `${viewAllHref}:${notifications.length}:${unreadCount}`,
+    },
+  );
 
   return (
     <motion.div
@@ -100,25 +97,25 @@ export function NotificationPanel({
         ) : (
           <>
             {visibleRows.map((notification) => (
-            <motion.div
-              key={notification.id}
-              variants={
-                reduceMotion
-                  ? undefined
-                  : {
-                      hidden: { opacity: 0, y: 10 },
-                      visible: { opacity: 1, y: 0 },
-                    }
-              }
-              transition={{ duration: 0.2, ease: "easeOut" }}
-            >
-              <NotificationItem
-                notification={notification}
-                audience={audience}
-                compact
-                onClick={() => onNotificationClick(notification)}
-              />
-            </motion.div>
+              <motion.div
+                key={notification.id}
+                variants={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        hidden: { opacity: 0, y: 10 },
+                        visible: { opacity: 1, y: 0 },
+                      }
+                }
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <NotificationItem
+                  notification={notification}
+                  audience={audience}
+                  compact
+                  onClick={() => onNotificationClick(notification)}
+                />
+              </motion.div>
             ))}
             {hasHiddenRows ? (
               <div className="flex justify-center pt-1">

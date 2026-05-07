@@ -124,7 +124,9 @@ export function getModuleToneForPath(
   pathname: string,
   fallback: ModuleTone = "overview",
 ): ModuleTone {
-  const match = routeToneMatchers.find((entry) => pathname.startsWith(entry.prefix));
+  const match = routeToneMatchers.find((entry) =>
+    pathname.startsWith(entry.prefix),
+  );
   return match?.tone ?? fallback;
 }
 

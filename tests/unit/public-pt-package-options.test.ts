@@ -219,7 +219,9 @@ describe("mapPublicPtPackageOptionsFromPackages", () => {
       },
     ];
 
-    const publicIds = mapPublicPtPackageOptions(rows).map((option) => option.id);
+    const publicIds = mapPublicPtPackageOptions(rows).map(
+      (option) => option.id,
+    );
     const previewIds = mapPublicPtPackageOptionsFromPackages(
       rows.map((row) => ({
         id: row.id,

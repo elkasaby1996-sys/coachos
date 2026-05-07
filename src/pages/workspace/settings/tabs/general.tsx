@@ -56,7 +56,8 @@ const weekStartOptions = [
 
 export function WorkspaceSettingsGeneralTab() {
   const queryClient = useQueryClient();
-  const { workspace, workspaceId, canManage } = useWorkspaceSettingsOutletContext();
+  const { workspace, workspaceId, canManage } =
+    useWorkspaceSettingsOutletContext();
   const [form, setForm] = useState<GeneralFormState>(emptyState);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -66,8 +67,7 @@ export function WorkspaceSettingsGeneralTab() {
       ({
         workspaceName: workspace?.name ?? "",
         timezone: workspace?.timezone ?? emptyState.timezone,
-        unitPreference:
-          workspace?.unit_preference ?? emptyState.unitPreference,
+        unitPreference: workspace?.unit_preference ?? emptyState.unitPreference,
         weekStartDay: workspace?.week_start_day ?? emptyState.weekStartDay,
       }) satisfies GeneralFormState,
     [
@@ -169,7 +169,10 @@ export function WorkspaceSettingsGeneralTab() {
             isInvalid={workspaceNameLimitState.overLimit}
             value={form.workspaceName}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, workspaceName: event.target.value }))
+              setForm((prev) => ({
+                ...prev,
+                workspaceName: event.target.value,
+              }))
             }
             disabled={!canManage}
             placeholder="Workspace name"

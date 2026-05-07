@@ -1004,7 +1004,8 @@ export function ClientOnboardingShell() {
                 </StepField>
                 <StepField label="Phone" required>
                   <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                    <Select variant="field"
+                    <Select
+                      variant="field"
                       value={phoneParts.countryCode}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1099,7 +1100,8 @@ export function ClientOnboardingShell() {
                   />
                 </StepField>
                 <StepField label="Sex / gender" required>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.basics.gender}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1125,7 +1127,8 @@ export function ClientOnboardingShell() {
                   </Select>
                 </StepField>
                 <StepField label="Location" required>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.basics.location}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1182,7 +1185,8 @@ export function ClientOnboardingShell() {
                       }
                       disabled={!summary.canEdit}
                     />
-                    <Select variant="field"
+                    <Select
+                      variant="field"
                       value={draft.basics.height_unit}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1225,7 +1229,8 @@ export function ClientOnboardingShell() {
                       }
                       disabled={!summary.canEdit}
                     />
-                    <Select variant="field"
+                    <Select
+                      variant="field"
                       value={draft.basics.weight_unit}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1271,7 +1276,8 @@ export function ClientOnboardingShell() {
                 </div>
                 <div className="md:col-span-2">
                   <StepField label="Unit preference" optional>
-                    <Select variant="field"
+                    <Select
+                      variant="field"
                       value={draft.basics.unit_preference}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1377,7 +1383,8 @@ export function ClientOnboardingShell() {
             {currentStep === "training-history" ? (
               <div className="grid gap-5 md:grid-cols-2">
                 <StepField label="Training experience" required>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.trainingHistory.experience_level}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1403,7 +1410,8 @@ export function ClientOnboardingShell() {
                   </Select>
                 </StepField>
                 <StepField label="Current training frequency" required>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.trainingHistory.current_training_frequency}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1476,7 +1484,8 @@ export function ClientOnboardingShell() {
                   />
                 </StepField>
                 <StepField label="Confidence level" optional>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.trainingHistory.confidence_level}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1721,7 +1730,8 @@ export function ClientOnboardingShell() {
                   </StepField>
                 </div>
                 <StepField label="Cooking confidence" optional>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.nutritionLifestyle.cooking_confidence}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1747,7 +1757,8 @@ export function ClientOnboardingShell() {
                   </Select>
                 </StepField>
                 <StepField label="Eating out frequency" optional>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.nutritionLifestyle.eating_out_frequency}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1773,7 +1784,8 @@ export function ClientOnboardingShell() {
                   </Select>
                 </StepField>
                 <StepField label="Sleep quality" required>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.nutritionLifestyle.sleep_quality}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1799,7 +1811,8 @@ export function ClientOnboardingShell() {
                   </Select>
                 </StepField>
                 <StepField label="Stress level" required>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.nutritionLifestyle.stress_level}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1851,7 +1864,8 @@ export function ClientOnboardingShell() {
                   </StepField>
                 </div>
                 <StepField label="Preferred training time" optional>
-                  <Select variant="field"
+                  <Select
+                    variant="field"
                     value={draft.nutritionLifestyle.preferred_training_time}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -2171,5 +2185,3 @@ export function ClientOnboardingShell() {
     </section>
   );
 }
-
-

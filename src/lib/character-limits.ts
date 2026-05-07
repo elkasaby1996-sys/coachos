@@ -39,7 +39,8 @@ export function getCharacterLimitState(params: {
   fieldLabel?: string;
 }): CharacterLimitState {
   const value = params.value ?? "";
-  const limit = params.limit ?? getCharacterLimit(params.kind ?? "default_text");
+  const limit =
+    params.limit ?? getCharacterLimit(params.kind ?? "default_text");
   const count = getCharacterCount(value);
   const remaining = limit - count;
   const overLimit = count > limit;
@@ -51,11 +52,14 @@ export function getCharacterLimitState(params: {
     limit,
     remaining,
     overLimit,
-    errorText: overLimit ? `${fieldLabel} must be ${limit} characters or fewer.` : null,
+    errorText: overLimit
+      ? `${fieldLabel} must be ${limit} characters or fewer.`
+      : null,
   };
 }
 
-export function hasCharacterLimitError(states: Array<CharacterLimitState | null | undefined>) {
+export function hasCharacterLimitError(
+  states: Array<CharacterLimitState | null | undefined>,
+) {
   return states.some((state) => Boolean(state?.overLimit));
 }
-

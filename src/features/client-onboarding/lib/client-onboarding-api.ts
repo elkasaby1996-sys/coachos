@@ -103,9 +103,7 @@ export async function saveClientCanonicalBasics(params: {
     date_of_birth: params.dateOfBirth,
     sex: params.sex,
     avatar_url: params.avatarUrl,
-    height_value: params.heightValue.trim()
-      ? Number(params.heightValue)
-      : null,
+    height_value: params.heightValue.trim() ? Number(params.heightValue) : null,
     height_unit: params.heightUnit,
     weight_value_current: params.weightValueCurrent.trim()
       ? Number(params.weightValueCurrent)

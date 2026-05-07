@@ -21,7 +21,9 @@ describe("PT packages SQL contracts", () => {
   );
 
   it("creates canonical pt_packages schema with state and visibility", () => {
-    expect(migration).toContain("create table if not exists public.pt_packages");
+    expect(migration).toContain(
+      "create table if not exists public.pt_packages",
+    );
     expect(migration).toContain("status text not null default 'draft'");
     expect(migration).toContain("is_public boolean not null default false");
     expect(migration).toContain("'active'::text");
@@ -57,13 +59,17 @@ describe("PT packages SQL contracts", () => {
 
   it("stores package label snapshot from canonical package title", () => {
     expect(migration).toContain("v_selected_package.title");
-    expect(migration).toContain("package_interest_label_snapshot = v_package_interest_label");
+    expect(migration).toContain(
+      "package_interest_label_snapshot = v_package_interest_label",
+    );
     expect(migration).toContain("package_interest = v_package_interest_label");
   });
 
   it("enforces stale and tampered package rejection server-side", () => {
     expect(migration).toContain("if p_package_interest_id is not null then");
-    expect(migration).toContain("raise exception 'Selected package is no longer available.'");
+    expect(migration).toContain(
+      "raise exception 'Selected package is no longer available.'",
+    );
     expect(migration).toContain("and pkg.status = 'active'");
     expect(migration).toContain("and pkg.is_public = true");
     expect(migration).toContain("and pkg.pt_user_id = v_profile.user_id");
@@ -71,7 +77,9 @@ describe("PT packages SQL contracts", () => {
 
   it("supports no-package submissions while preserving nullable package fields", () => {
     expect(migration).toContain("p_package_interest_id uuid default null");
-    expect(migration).toContain("p_package_interest_label_snapshot text default null");
+    expect(migration).toContain(
+      "p_package_interest_label_snapshot text default null",
+    );
     expect(migration).toContain("package_interest_id = p_package_interest_id");
     expect(migration).toContain("v_package_interest_label := nullif(");
   });
@@ -81,7 +89,9 @@ describe("PT packages SQL contracts", () => {
     expect(migration).toContain("v_package_interest_label := nullif(");
     expect(migration).toContain("coalesce(v_selected_package.title, '')");
     expect(migration).toContain("else");
-    expect(migration).toContain("coalesce(p_package_interest_label_snapshot, '')");
+    expect(migration).toContain(
+      "coalesce(p_package_interest_label_snapshot, '')",
+    );
   });
 
   it("adds guarded package delete function with ownership checks", () => {
@@ -90,7 +100,9 @@ describe("PT packages SQL contracts", () => {
     );
     expect(deleteGuardMigration).toContain("v_actor_user_id := auth.uid()");
     expect(deleteGuardMigration).toContain("detail = 'FORBIDDEN'");
-    expect(deleteGuardMigration).toContain("v_package.pt_user_id <> v_actor_user_id");
+    expect(deleteGuardMigration).toContain(
+      "v_package.pt_user_id <> v_actor_user_id",
+    );
   });
 
   it("blocks delete when leads reference package and returns explicit error code", () => {
@@ -105,8 +117,12 @@ describe("PT packages SQL contracts", () => {
   });
 
   it("allows guarded hard delete only when unreferenced and grants execute to authenticated", () => {
-    expect(deleteGuardMigration).toContain("delete from public.pt_packages pkg");
-    expect(deleteGuardMigration).toContain("grant execute on function public.delete_pt_package_guarded(uuid)");
+    expect(deleteGuardMigration).toContain(
+      "delete from public.pt_packages pkg",
+    );
+    expect(deleteGuardMigration).toContain(
+      "grant execute on function public.delete_pt_package_guarded(uuid)",
+    );
     expect(deleteGuardMigration).toContain("to authenticated, service_role");
     expect(deleteGuardMigration).not.toContain("update public.pt_hub_leads");
   });

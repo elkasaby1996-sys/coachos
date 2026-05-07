@@ -359,7 +359,9 @@ export function ClientCheckinPage() {
   );
   const currentCheckin = useMemo(() => {
     if (!selectedCheckinId) return primaryCheckin;
-    return checkinRows.find((row) => row.id === selectedCheckinId) ?? primaryCheckin;
+    return (
+      checkinRows.find((row) => row.id === selectedCheckinId) ?? primaryCheckin
+    );
   }, [checkinRows, primaryCheckin, selectedCheckinId]);
 
   useEffect(() => {
@@ -966,7 +968,9 @@ export function ClientCheckinPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1">
                           <p className="text-sm font-semibold text-foreground">
-                            {formatCheckinDueDate(item.row.week_ending_saturday)}
+                            {formatCheckinDueDate(
+                              item.row.week_ending_saturday,
+                            )}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {item.state === "overdue"
@@ -1036,13 +1040,12 @@ export function ClientCheckinPage() {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {item.row.submitted_at
-                            ? `Submitted ${new Date(item.row.submitted_at).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                },
-                              )}`
+                            ? `Submitted ${new Date(
+                                item.row.submitted_at,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}`
                             : "No submission saved"}
                         </p>
                       </div>

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
@@ -95,7 +100,8 @@ export function PtProfileOnboardingPage() {
           languages: ensured.languages?.join(", ") ?? "",
           specialties: ensured.specialties?.join(", ") ?? "",
           startingPrice:
-            ensured.starting_price !== null && ensured.starting_price !== undefined
+            ensured.starting_price !== null &&
+            ensured.starting_price !== undefined
               ? String(ensured.starting_price)
               : "",
         });
@@ -131,7 +137,8 @@ export function PtProfileOnboardingPage() {
 
   if (!session) return <Navigate to="/login" replace />;
   if (accountType === "client") return <Navigate to="/app/home" replace />;
-  if (!hasWorkspaceMembership) return <Navigate to="/pt/onboarding/workspace" replace />;
+  if (!hasWorkspaceMembership)
+    return <Navigate to="/pt/onboarding/workspace" replace />;
 
   const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -188,7 +195,9 @@ export function PtProfileOnboardingPage() {
           location_city: form.locationCity,
           languages: splitCsv(form.languages),
           specialties: splitCsv(form.specialties),
-          starting_price: form.startingPrice ? Number(form.startingPrice) : null,
+          starting_price: form.startingPrice
+            ? Number(form.startingPrice)
+            : null,
           onboarding_completed_at: completedAt,
         },
       });
@@ -211,7 +220,8 @@ export function PtProfileOnboardingPage() {
         <CardHeader className="space-y-2">
           <CardTitle>Finish your coach profile</CardTitle>
           <p className="text-sm text-muted-foreground">
-            These are your canonical PT profile details. We'll reuse them in PT Hub, settings, and your public profile.
+            These are your canonical PT profile details. We'll reuse them in PT
+            Hub, settings, and your public profile.
           </p>
         </CardHeader>
         <CardContent>
@@ -227,7 +237,9 @@ export function PtProfileOnboardingPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Coach / business name</label>
+              <label className="text-sm font-medium">
+                Coach / business name
+              </label>
               <Input
                 value={form.coachBusinessName}
                 onChange={(event) =>
@@ -254,7 +266,10 @@ export function PtProfileOnboardingPage() {
               <Input
                 value={form.avatarUrl}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, avatarUrl: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    avatarUrl: event.target.value,
+                  }))
                 }
                 disabled={bootstrapping}
               />
@@ -299,7 +314,10 @@ export function PtProfileOnboardingPage() {
               <Input
                 value={form.locationCity}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, locationCity: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    locationCity: event.target.value,
+                  }))
                 }
                 disabled={bootstrapping}
               />
@@ -309,7 +327,10 @@ export function PtProfileOnboardingPage() {
               <Input
                 value={form.languages}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, languages: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    languages: event.target.value,
+                  }))
                 }
                 disabled={bootstrapping}
                 placeholder="Arabic, English"
@@ -320,7 +341,10 @@ export function PtProfileOnboardingPage() {
               <Input
                 value={form.specialties}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, specialties: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    specialties: event.target.value,
+                  }))
                 }
                 disabled={bootstrapping}
                 placeholder="Fat loss, strength, lifestyle coaching"
@@ -333,7 +357,10 @@ export function PtProfileOnboardingPage() {
                 inputMode="decimal"
                 value={form.startingPrice}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, startingPrice: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    startingPrice: event.target.value,
+                  }))
                 }
                 disabled={bootstrapping}
               />
@@ -346,7 +373,11 @@ export function PtProfileOnboardingPage() {
             ) : null}
 
             <div className="md:col-span-2 flex gap-3 pt-2">
-              <Button type="submit" className="h-11" disabled={saving || bootstrapping}>
+              <Button
+                type="submit"
+                className="h-11"
+                disabled={saving || bootstrapping}
+              >
                 {saving ? "Saving..." : "Finish PT profile"}
               </Button>
             </div>

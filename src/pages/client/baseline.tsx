@@ -192,12 +192,14 @@ export function ClientBaselinePage() {
         .eq("user_id", session?.user?.id ?? "")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const clientRows = ((data ?? []) as Array<{
-        id: string;
-        workspace_id: string | null;
-        unit_preference: string | null;
-        height_cm: number | null;
-      }>).filter(Boolean);
+      const clientRows = (
+        (data ?? []) as Array<{
+          id: string;
+          workspace_id: string | null;
+          unit_preference: string | null;
+          height_cm: number | null;
+        }>
+      ).filter(Boolean);
 
       return (
         clientRows.find((row) => Boolean(row.workspace_id)) ??
@@ -244,10 +246,9 @@ export function ClientBaselinePage() {
       setBaselineLoading(true);
       setBaselineError(null);
 
-      const linkedBaselineId =
-        onboardingMode
-          ? (onboardingBaselineQuery.data?.initial_baseline_entry_id ?? null)
-          : null;
+      const linkedBaselineId = onboardingMode
+        ? (onboardingBaselineQuery.data?.initial_baseline_entry_id ?? null)
+        : null;
 
       let baselineQuery = supabase
         .from("baseline_entries")
@@ -287,7 +288,11 @@ export function ClientBaselinePage() {
           setBaselineLoading(false);
           return;
         }
-        if (onboardingMode && onboardingBaselineQuery.data?.id && inserted?.id) {
+        if (
+          onboardingMode &&
+          onboardingBaselineQuery.data?.id &&
+          inserted?.id
+        ) {
           const onboardingUpdate: {
             initial_baseline_entry_id: string;
             started_at?: string;

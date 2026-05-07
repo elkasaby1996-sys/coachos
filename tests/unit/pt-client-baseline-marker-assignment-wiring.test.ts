@@ -14,7 +14,9 @@ const clientBaselinePage = readFileSync(
 
 describe("PT performance marker baseline wiring", () => {
   it("keeps PT baseline tab settings-driven instead of per-client assignment", () => {
-    expect(ptClientDetailPage).toContain("Active markers are managed in PT Settings");
+    expect(ptClientDetailPage).toContain(
+      "Active markers are managed in PT Settings",
+    );
     expect(ptClientDetailPage).toContain("Manage in settings");
     expect(ptClientDetailPage).not.toContain("Performance markers to assign");
     expect(ptClientDetailPage).not.toContain("pt_assign_performance_markers");
@@ -24,7 +26,7 @@ describe("PT performance marker baseline wiring", () => {
     expect(clientBaselinePage).toContain("client-baseline-onboarding");
     expect(clientBaselinePage).toContain("initial_baseline_entry_id");
     expect(clientBaselinePage).toContain(
-      'clientRows.find((row) => Boolean(row.workspace_id))',
+      "clientRows.find((row) => Boolean(row.workspace_id))",
     );
     expect(clientBaselinePage).toContain(
       '"client_visible_performance_markers"',

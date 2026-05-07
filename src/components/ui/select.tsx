@@ -126,7 +126,9 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 className,
               )}
               data-invalid={isInvalid ? "true" : undefined}
-              aria-invalid={isInvalid || props["aria-invalid"] ? true : undefined}
+              aria-invalid={
+                isInvalid || props["aria-invalid"] ? true : undefined
+              }
               aria-label={props["aria-label"]}
               aria-labelledby={props["aria-labelledby"]}
               aria-describedby={props["aria-describedby"]}

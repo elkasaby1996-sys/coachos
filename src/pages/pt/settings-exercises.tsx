@@ -147,8 +147,7 @@ const exerciseTagClassName =
   "inline-flex min-h-7 max-w-[11rem] items-center truncate rounded-full border border-border/70 bg-secondary/35 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground";
 const exerciseCatalogGridClassName =
   "lg:grid-cols-[minmax(13rem,1.15fr)_minmax(12rem,0.82fr)_minmax(9rem,0.58fr)_minmax(7rem,0.42fr)_minmax(8rem,auto)]";
-const exerciseRowClassName =
-  `rounded-[22px] border border-border/70 bg-background/45 px-4 py-3 transition-colors hover:border-border hover:bg-secondary/20 lg:grid ${exerciseCatalogGridClassName} lg:items-center lg:gap-4`;
+const exerciseRowClassName = `rounded-[22px] border border-border/70 bg-background/45 px-4 py-3 transition-colors hover:border-border hover:bg-secondary/20 lg:grid ${exerciseCatalogGridClassName} lg:items-center lg:gap-4`;
 const exerciseColumnLabelClassName =
   "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:hidden";
 
@@ -166,11 +165,9 @@ const getLibraryMuscleTags = (exercise: ExerciseRow) =>
 const getDatasetMuscleTags = (exercise: ExerciseDatasetExercise) =>
   Array.from(
     new Set(
-      [
-        exercise.target,
-        exercise.bodyPart,
-        ...exercise.secondaryMuscles,
-      ].filter((value): value is string => Boolean(value?.trim())),
+      [exercise.target, exercise.bodyPart, ...exercise.secondaryMuscles].filter(
+        (value): value is string => Boolean(value?.trim()),
+      ),
     ),
   ).slice(0, 2);
 
@@ -360,12 +357,16 @@ export function PtExerciseLibraryPage() {
     });
   }, [datasetResults, filters]);
   const datasetTotalPages = useMemo(
-    () => Math.max(1, Math.ceil(filteredDatasetResults.length / datasetPageSize)),
+    () =>
+      Math.max(1, Math.ceil(filteredDatasetResults.length / datasetPageSize)),
     [filteredDatasetResults.length],
   );
   const visibleDatasetResults = useMemo(() => {
     const startIndex = (datasetPage - 1) * datasetPageSize;
-    return filteredDatasetResults.slice(startIndex, startIndex + datasetPageSize);
+    return filteredDatasetResults.slice(
+      startIndex,
+      startIndex + datasetPageSize,
+    );
   }, [datasetPage, filteredDatasetResults]);
   const datasetPageButtons = useMemo(() => {
     const total = datasetTotalPages + (datasetHasMore ? 1 : 0);
@@ -540,7 +541,11 @@ export function PtExerciseLibraryPage() {
           return (
             includesFilter(searchValues, nameFilter) &&
             includesFilter(
-              [exercise.target, exercise.bodyPart, ...exercise.secondaryMuscles],
+              [
+                exercise.target,
+                exercise.bodyPart,
+                ...exercise.secondaryMuscles,
+              ],
               primaryFilter,
             ) &&
             includesFilter(
@@ -554,7 +559,8 @@ export function PtExerciseLibraryPage() {
               tagFilter,
             )
           );
-        }).length < page * datasetPageSize &&
+        }).length <
+          page * datasetPageSize &&
         nextCursor
       ) {
         const result = await searchExerciseDataset({
@@ -785,7 +791,8 @@ export function PtExerciseLibraryPage() {
           <div>
             <CardTitle>Exercise catalog</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Scan saved movements and import-ready exercises by muscle and setup.
+              Scan saved movements and import-ready exercises by muscle and
+              setup.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -885,7 +892,8 @@ export function PtExerciseLibraryPage() {
                   Set `VITE_EXERCISE_DATASET_BASE_URL` to enable imports.
                 </div>
               ) : null}
-              {filteredExercises.length > 0 || visibleDatasetResults.length > 0 ? (
+              {filteredExercises.length > 0 ||
+              visibleDatasetResults.length > 0 ? (
                 <div
                   className={`hidden rounded-[18px] border border-border/60 bg-secondary/18 px-4 py-2.5 lg:grid ${exerciseCatalogGridClassName} lg:items-center lg:gap-4`}
                 >
@@ -914,10 +922,7 @@ export function PtExerciseLibraryPage() {
                 );
 
                 return (
-                  <article
-                    key={exercise.id}
-                    className={exerciseRowClassName}
-                  >
+                  <article key={exercise.id} className={exerciseRowClassName}>
                     <div className="min-w-0 space-y-1.5">
                       <div className={exerciseColumnLabelClassName}>
                         Exercise
@@ -940,17 +945,17 @@ export function PtExerciseLibraryPage() {
                         Muscles
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
-                          {(muscleTags.length ? muscleTags : ["General"]).map(
-                            (tag) => (
-                              <span
-                                key={tag}
-                                className={exerciseTagClassName}
-                                title={tag}
-                              >
-                                {tag}
-                              </span>
-                            ),
-                          )}
+                        {(muscleTags.length ? muscleTags : ["General"]).map(
+                          (tag) => (
+                            <span
+                              key={tag}
+                              className={exerciseTagClassName}
+                              title={tag}
+                            >
+                              {tag}
+                            </span>
+                          ),
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 min-w-0 lg:mt-0">
@@ -1117,7 +1122,9 @@ export function PtExerciseLibraryPage() {
                           variant={
                             pageNumber === datasetPage ? "default" : "secondary"
                           }
-                          disabled={datasetLoading && pageNumber !== datasetPage}
+                          disabled={
+                            datasetLoading && pageNumber !== datasetPage
+                          }
                           onClick={() => void goToDatasetPage(pageNumber)}
                         >
                           {pageNumber}

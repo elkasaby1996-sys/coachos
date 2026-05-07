@@ -9,7 +9,9 @@ const appRoutes = readFileSync(
 
 describe("client settings route wiring", () => {
   it("registers /app/settings as a first-class route", () => {
-    expect(appRoutes).toContain('path="settings" element={<ClientSettingsPage />}');
+    expect(appRoutes).toContain(
+      'path="settings" element={<ClientSettingsPage />}',
+    );
   });
 
   it("keeps /app/profile as a compatibility redirect to settings profile tab", () => {

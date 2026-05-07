@@ -13,11 +13,15 @@ const clientLayout = readFileSync(
 
 describe("client check-ins route wiring", () => {
   it("registers /app/checkins as a first-class route", () => {
-    expect(appRoutes).toContain('path="checkins" element={<ClientCheckinPage />}');
+    expect(appRoutes).toContain(
+      'path="checkins" element={<ClientCheckinPage />}',
+    );
   });
 
   it("keeps /app/checkin as a compatibility alias", () => {
-    expect(appRoutes).toContain('path="checkin" element={<ClientCheckinPage />}');
+    expect(appRoutes).toContain(
+      'path="checkin" element={<ClientCheckinPage />}',
+    );
   });
 
   it("shows Check-ins in the client navigation", () => {

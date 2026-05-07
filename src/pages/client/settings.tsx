@@ -26,10 +26,7 @@ import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
-import {
-  EmptyStateBlock,
-  StatusBanner,
-} from "../../components/client/portal";
+import { EmptyStateBlock, StatusBanner } from "../../components/client/portal";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { safeSelect } from "../../lib/supabase-safe";
 import { supabase } from "../../lib/supabase";
@@ -211,7 +208,8 @@ const notificationGroups: Array<{
       {
         key: "message_received",
         label: "Coach messages and lead replies",
-        description: "Get notified when any conversation in your inbox receives a reply.",
+        description:
+          "Get notified when any conversation in your inbox receives a reply.",
       },
     ],
   },
@@ -221,17 +219,20 @@ const notificationGroups: Array<{
       {
         key: "workout_assigned",
         label: "Workout due today",
-        description: "Alerts when new workout tasks are assigned to your account.",
+        description:
+          "Alerts when new workout tasks are assigned to your account.",
       },
       {
         key: "workout_updated",
         label: "Plan updates",
-        description: "Updates when your training or nutrition plan details change.",
+        description:
+          "Updates when your training or nutrition plan details change.",
       },
       {
         key: "reminders_enabled",
         label: "Workout, meal, and day reminders",
-        description: "Reminders for scheduled workouts, nutrition logging, and missed actions.",
+        description:
+          "Reminders for scheduled workouts, nutrition logging, and missed actions.",
       },
     ],
   },
@@ -256,7 +257,8 @@ const notificationGroups: Array<{
       {
         key: "milestone_events",
         label: "Progress milestones",
-        description: "Celebrate streaks and milestone events in your coaching journey.",
+        description:
+          "Celebrate streaks and milestone events in your coaching journey.",
       },
     ],
   },
@@ -326,7 +328,8 @@ const buildInitialProfileForm = (
     heightUnit: toInput(row.height_unit) || "cm",
     weightValue: toInput(row.weight_value_current ?? row.current_weight),
     weightUnit:
-      toInput(row.weight_unit) || (row.unit_preference === "imperial" ? "lb" : "kg"),
+      toInput(row.weight_unit) ||
+      (row.unit_preference === "imperial" ? "lb" : "kg"),
     timezone: toInput(row.timezone) || defaultProfileFormState.timezone,
   };
 };
@@ -368,7 +371,9 @@ function NotificationToggleField({
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">{label}</p>
-          <p className="text-xs leading-5 text-muted-foreground">{description}</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {description}
+          </p>
         </div>
         <Switch checked={checked} onCheckedChange={onCheckedChange} />
       </div>
@@ -391,11 +396,13 @@ export function ClientSettingsPage() {
     description: string;
   } | null>(null);
 
-  const [profileForm, setProfileForm] = useState<ProfileFormState>(defaultProfileFormState);
+  const [profileForm, setProfileForm] = useState<ProfileFormState>(
+    defaultProfileFormState,
+  );
   const [profileSaving, setProfileSaving] = useState(false);
 
-  const [preferencesForm, setPreferencesForm] = useState<PreferencesFormState>(() =>
-    buildInitialPreferencesForm({ profile: null, themePreference }),
+  const [preferencesForm, setPreferencesForm] = useState<PreferencesFormState>(
+    () => buildInitialPreferencesForm({ profile: null, themePreference }),
   );
   const [preferencesSaving, setPreferencesSaving] = useState(false);
 
@@ -468,8 +475,12 @@ export function ClientSettingsPage() {
     },
   });
 
-  const notificationPreferencesQuery = useNotificationPreferences(user?.id ?? null);
-  const updateNotificationPreferences = useUpdateNotificationPreferences(user?.id ?? null);
+  const notificationPreferencesQuery = useNotificationPreferences(
+    user?.id ?? null,
+  );
+  const updateNotificationPreferences = useUpdateNotificationPreferences(
+    user?.id ?? null,
+  );
 
   const billingQuery = useQuery({
     queryKey: ["client-settings-billing", clientProfileQuery.data?.id],
@@ -486,36 +497,45 @@ export function ClientSettingsPage() {
         };
       }
 
-      const [{ data: workspaceRow, error: workspaceError }, { data: conversationRow }] =
-        await Promise.all([
-          supabase
-            .from("workspaces")
-            .select("id, name")
-            .eq("id", profile.workspace_id)
-            .maybeSingle(),
-          supabase
-            .from("conversations")
-            .select("last_message_sender_name, last_message_sender_role")
-            .eq("client_id", profile.id)
-            .eq("workspace_id", profile.workspace_id)
-            .order("last_message_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-        ]);
+      const [
+        { data: workspaceRow, error: workspaceError },
+        { data: conversationRow },
+      ] = await Promise.all([
+        supabase
+          .from("workspaces")
+          .select("id, name")
+          .eq("id", profile.workspace_id)
+          .maybeSingle(),
+        supabase
+          .from("conversations")
+          .select("last_message_sender_name, last_message_sender_role")
+          .eq("client_id", profile.id)
+          .eq("workspace_id", profile.workspace_id)
+          .order("last_message_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
       if (workspaceError) throw workspaceError;
 
-      const workspaceName = (workspaceRow as { name?: string | null } | null)?.name ?? null;
+      const workspaceName =
+        (workspaceRow as { name?: string | null } | null)?.name ?? null;
       const coachName =
-        (conversationRow as {
-          last_message_sender_name?: string | null;
-          last_message_sender_role?: string | null;
-        } | null)?.last_message_sender_role === "pt"
-          ? ((conversationRow as { last_message_sender_name?: string | null } | null)
-              ?.last_message_sender_name ?? null)
+        (
+          conversationRow as {
+            last_message_sender_name?: string | null;
+            last_message_sender_role?: string | null;
+          } | null
+        )?.last_message_sender_role === "pt"
+          ? ((
+              conversationRow as {
+                last_message_sender_name?: string | null;
+              } | null
+            )?.last_message_sender_name ?? null)
           : null;
 
-      const providerName = coachName?.trim() || workspaceName?.trim() || "Coaching team";
+      const providerName =
+        coachName?.trim() || workspaceName?.trim() || "Coaching team";
       const serviceName = workspaceName?.trim()
         ? `${workspaceName.trim()} Coaching`
         : "Active coaching relationship";
@@ -581,26 +601,32 @@ export function ClientSettingsPage() {
   );
 
   const preferencesDirty = useMemo(
-    () => JSON.stringify(preferencesForm) !== JSON.stringify(preferencesInitial),
+    () =>
+      JSON.stringify(preferencesForm) !== JSON.stringify(preferencesInitial),
     [preferencesForm, preferencesInitial],
   );
 
   const notificationsDirty = useMemo(
-    () => JSON.stringify(notificationForm) !== JSON.stringify(notificationsInitial),
+    () =>
+      JSON.stringify(notificationForm) !== JSON.stringify(notificationsInitial),
     [notificationForm, notificationsInitial],
   );
 
   const avatarPreview = normalizeText(profileForm.avatarUrl);
-  const profileTitleInitial = (profileForm.fullName.trim().charAt(0) || "C").toUpperCase();
+  const profileTitleInitial = (
+    profileForm.fullName.trim().charAt(0) || "C"
+  ).toUpperCase();
   const passwordTooShort = newPassword.length > 0 && newPassword.length < 8;
-  const passwordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+  const passwordMismatch =
+    confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   const invoices =
     billingQuery.data?.billingStatus === "active"
       ? [
           {
             id: "placeholder-invoice",
-            label: "Invoice history will appear here once billing sync is connected.",
+            label:
+              "Invoice history will appear here once billing sync is connected.",
             amount: "Pending",
           },
         ]
@@ -621,7 +647,10 @@ export function ClientSettingsPage() {
       sex: normalizeText(profileForm.gender),
       height_value: toNumberOrNull(profileForm.heightValue),
       height_unit: normalizeText(profileForm.heightUnit),
-      height_cm: profileForm.heightUnit === "cm" ? toNumberOrNull(profileForm.heightValue) : null,
+      height_cm:
+        profileForm.heightUnit === "cm"
+          ? toNumberOrNull(profileForm.heightValue)
+          : null,
       weight_value_current: toNumberOrNull(profileForm.weightValue),
       weight_unit: normalizeText(profileForm.weightUnit),
       current_weight: toNumberOrNull(profileForm.weightValue),
@@ -674,7 +703,11 @@ export function ClientSettingsPage() {
 
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ["client-settings-profile", session?.user?.id, activeClientId],
+        queryKey: [
+          "client-settings-profile",
+          session?.user?.id,
+          activeClientId,
+        ],
       }),
       queryClient.invalidateQueries({ queryKey: ["bootstrap-auth"] }),
     ]);
@@ -703,8 +736,14 @@ export function ClientSettingsPage() {
       }
 
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(CLIENT_DATE_FORMAT_STORAGE_KEY, preferencesForm.dateFormat);
-        window.localStorage.setItem(CLIENT_LANGUAGE_STORAGE_KEY, preferencesForm.language);
+        window.localStorage.setItem(
+          CLIENT_DATE_FORMAT_STORAGE_KEY,
+          preferencesForm.dateFormat,
+        );
+        window.localStorage.setItem(
+          CLIENT_LANGUAGE_STORAGE_KEY,
+          preferencesForm.language,
+        );
       }
 
       await updateAppearance({
@@ -713,7 +752,11 @@ export function ClientSettingsPage() {
       });
 
       await queryClient.invalidateQueries({
-        queryKey: ["client-settings-profile", session?.user?.id, activeClientId],
+        queryKey: [
+          "client-settings-profile",
+          session?.user?.id,
+          activeClientId,
+        ],
       });
 
       setBanner({
@@ -726,7 +769,9 @@ export function ClientSettingsPage() {
         tone: "error",
         title: "Unable to save preferences",
         description:
-          error instanceof Error ? error.message : "Please try again in a moment.",
+          error instanceof Error
+            ? error.message
+            : "Please try again in a moment.",
       });
     } finally {
       setPreferencesSaving(false);
@@ -750,7 +795,9 @@ export function ClientSettingsPage() {
         tone: "error",
         title: "Unable to save notifications",
         description:
-          error instanceof Error ? error.message : "Please try again in a moment.",
+          error instanceof Error
+            ? error.message
+            : "Please try again in a moment.",
       });
     } finally {
       setNotificationsSaving(false);
@@ -796,7 +843,9 @@ export function ClientSettingsPage() {
         throw new Error("Current password is incorrect.");
       }
 
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
       if (error) throw error;
 
       setCurrentPassword("");
@@ -812,7 +861,9 @@ export function ClientSettingsPage() {
         tone: "error",
         title: "Unable to change password",
         description:
-          error instanceof Error ? error.message : "Please try again in a moment.",
+          error instanceof Error
+            ? error.message
+            : "Please try again in a moment.",
       });
     } finally {
       setPasswordSaving(false);
@@ -831,7 +882,9 @@ export function ClientSettingsPage() {
         tone: "error",
         title: "Unable to sign out sessions",
         description:
-          error instanceof Error ? error.message : "Please try again in a moment.",
+          error instanceof Error
+            ? error.message
+            : "Please try again in a moment.",
       });
       setSignOutSessionsSaving(false);
     }
@@ -849,7 +902,9 @@ export function ClientSettingsPage() {
   };
 
   const profileEmail =
-    clientProfileQuery.data?.email?.trim() || session?.user?.email || "Not available";
+    clientProfileQuery.data?.email?.trim() ||
+    session?.user?.email ||
+    "Not available";
 
   return (
     <div className="space-y-5">
@@ -857,7 +912,11 @@ export function ClientSettingsPage() {
         {banner ? (
           <StatusBanner
             variant={
-              banner.tone === "error" ? "error" : banner.tone === "warning" ? "warning" : "success"
+              banner.tone === "error"
+                ? "error"
+                : banner.tone === "warning"
+                  ? "warning"
+                  : "success"
             }
             title={banner.title}
             description={banner.description}
@@ -866,577 +925,599 @@ export function ClientSettingsPage() {
 
         {activeTab === "profile" ? (
           <div className="space-y-4">
-              {clientProfileQuery.isLoading ? (
-                <StatusBanner
-                  variant="info"
-                  title="Loading profile"
-                  description="Fetching your current account details."
-                />
-              ) : clientProfileQuery.isError ? (
-                <StatusBanner
-                  variant="error"
-                  title="Unable to load profile"
-                  description={
-                    clientProfileQuery.error instanceof Error
-                      ? clientProfileQuery.error.message
-                      : "Could not load profile data."
-                  }
-                />
-              ) : clientProfileQuery.data ? (
-                <>
-                  <SettingsSectionCard title="Identity">
-                    <SettingsFieldRow label="Avatar">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-background/45 text-base font-semibold text-muted-foreground">
-                          {avatarPreview ? (
-                            <img
-                              src={avatarPreview}
-                              alt={profileForm.fullName || "Client avatar"}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            profileTitleInitial
-                          )}
-                        </div>
-                        <Input
-                          id="client-settings-avatar-url"
-                          value={profileForm.avatarUrl}
-                          onChange={(event) =>
-                            setProfileForm((prev) => ({
-                              ...prev,
-                              avatarUrl: event.target.value,
-                            }))
-                          }
-                          placeholder="Paste avatar URL"
-                        />
+            {clientProfileQuery.isLoading ? (
+              <StatusBanner
+                variant="info"
+                title="Loading profile"
+                description="Fetching your current account details."
+              />
+            ) : clientProfileQuery.isError ? (
+              <StatusBanner
+                variant="error"
+                title="Unable to load profile"
+                description={
+                  clientProfileQuery.error instanceof Error
+                    ? clientProfileQuery.error.message
+                    : "Could not load profile data."
+                }
+              />
+            ) : clientProfileQuery.data ? (
+              <>
+                <SettingsSectionCard title="Identity">
+                  <SettingsFieldRow label="Avatar">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-background/45 text-base font-semibold text-muted-foreground">
+                        {avatarPreview ? (
+                          <img
+                            src={avatarPreview}
+                            alt={profileForm.fullName || "Client avatar"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          profileTitleInitial
+                        )}
                       </div>
-                    </SettingsFieldRow>
-
-                    <SettingsFieldRow label="Full name">
                       <Input
-                        id="client-settings-full-name"
-                        value={profileForm.fullName}
+                        id="client-settings-avatar-url"
+                        value={profileForm.avatarUrl}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
                             ...prev,
-                            fullName: event.target.value,
+                            avatarUrl: event.target.value,
                           }))
                         }
-                        placeholder="Your full name"
+                        placeholder="Paste avatar URL"
                       />
-                    </SettingsFieldRow>
+                    </div>
+                  </SettingsFieldRow>
 
-                    <SettingsFieldRow label="Email">
-                      <DisabledSettingField value={profileEmail} />
-                    </SettingsFieldRow>
+                  <SettingsFieldRow label="Full name">
+                    <Input
+                      id="client-settings-full-name"
+                      value={profileForm.fullName}
+                      onChange={(event) =>
+                        setProfileForm((prev) => ({
+                          ...prev,
+                          fullName: event.target.value,
+                        }))
+                      }
+                      placeholder="Your full name"
+                    />
+                  </SettingsFieldRow>
 
-                    <SettingsFieldRow label="Phone number">
+                  <SettingsFieldRow label="Email">
+                    <DisabledSettingField value={profileEmail} />
+                  </SettingsFieldRow>
+
+                  <SettingsFieldRow label="Phone number">
+                    <Input
+                      id="client-settings-phone"
+                      value={profileForm.phone}
+                      onChange={(event) =>
+                        setProfileForm((prev) => ({
+                          ...prev,
+                          phone: event.target.value,
+                        }))
+                      }
+                      placeholder="+966 ..."
+                    />
+                  </SettingsFieldRow>
+                </SettingsSectionCard>
+
+                <SettingsSectionCard title="Personal Details">
+                  <SettingsFieldRow label="Date of birth">
+                    <Input
+                      id="client-settings-dob"
+                      type="date"
+                      value={profileForm.dateOfBirth}
+                      onChange={(event) =>
+                        setProfileForm((prev) => ({
+                          ...prev,
+                          dateOfBirth: event.target.value,
+                        }))
+                      }
+                    />
+                  </SettingsFieldRow>
+
+                  <SettingsFieldRow label="Gender">
+                    <Select
+                      id="client-settings-gender"
+                      value={profileForm.gender}
+                      onChange={(event) =>
+                        setProfileForm((prev) => ({
+                          ...prev,
+                          gender: event.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Select</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                      <option value="prefer_not_to_say">
+                        Prefer not to say
+                      </option>
+                    </Select>
+                  </SettingsFieldRow>
+
+                  <SettingsFieldRow label="Height">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                       <Input
-                        id="client-settings-phone"
-                        value={profileForm.phone}
+                        id="client-settings-height"
+                        type="number"
+                        min="0"
+                        value={profileForm.heightValue}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
                             ...prev,
-                            phone: event.target.value,
+                            heightValue: event.target.value,
                           }))
                         }
-                        placeholder="+966 ..."
+                        placeholder="170"
                       />
-                    </SettingsFieldRow>
-                  </SettingsSectionCard>
-
-                  <SettingsSectionCard title="Personal Details">
-                    <SettingsFieldRow label="Date of birth">
-                      <Input
-                        id="client-settings-dob"
-                        type="date"
-                        value={profileForm.dateOfBirth}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({
-                            ...prev,
-                            dateOfBirth: event.target.value,
-                          }))
-                        }
-                      />
-                    </SettingsFieldRow>
-
-                    <SettingsFieldRow label="Gender">
                       <Select
-                        id="client-settings-gender"
-                        value={profileForm.gender}
+                        id="client-settings-height-unit"
+                        value={profileForm.heightUnit}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
                             ...prev,
-                            gender: event.target.value,
+                            heightUnit: event.target.value,
                           }))
                         }
                       >
-                        <option value="">Select</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                        <option value="prefer_not_to_say">Prefer not to say</option>
+                        {HEIGHT_UNIT_OPTIONS.map((unit) => (
+                          <option key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </option>
+                        ))}
                       </Select>
-                    </SettingsFieldRow>
+                    </div>
+                  </SettingsFieldRow>
 
-                    <SettingsFieldRow label="Height">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
-                        <Input
-                          id="client-settings-height"
-                          type="number"
-                          min="0"
-                          value={profileForm.heightValue}
-                          onChange={(event) =>
-                            setProfileForm((prev) => ({
-                              ...prev,
-                              heightValue: event.target.value,
-                            }))
-                          }
-                          placeholder="170"
-                        />
-                        <Select
-                          id="client-settings-height-unit"
-                          value={profileForm.heightUnit}
-                          onChange={(event) =>
-                            setProfileForm((prev) => ({
-                              ...prev,
-                              heightUnit: event.target.value,
-                            }))
-                          }
-                        >
-                          {HEIGHT_UNIT_OPTIONS.map((unit) => (
-                            <option key={unit.value} value={unit.value}>
-                              {unit.label}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    </SettingsFieldRow>
-
-                    <SettingsFieldRow label="Weight">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
-                        <Input
-                          id="client-settings-weight"
-                          type="number"
-                          min="0"
-                          value={profileForm.weightValue}
-                          onChange={(event) =>
-                            setProfileForm((prev) => ({
-                              ...prev,
-                              weightValue: event.target.value,
-                            }))
-                          }
-                          placeholder="70"
-                        />
-                        <Select
-                          id="client-settings-weight-unit"
-                          value={profileForm.weightUnit}
-                          onChange={(event) =>
-                            setProfileForm((prev) => ({
-                              ...prev,
-                              weightUnit: event.target.value,
-                            }))
-                          }
-                        >
-                          {WEIGHT_UNIT_OPTIONS.map((unit) => (
-                            <option key={unit.value} value={unit.value}>
-                              {unit.label}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    </SettingsFieldRow>
-
-                    <SettingsFieldRow label="Timezone">
+                  <SettingsFieldRow label="Weight">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                       <Input
-                        id="client-settings-timezone"
-                        value={profileForm.timezone}
+                        id="client-settings-weight"
+                        type="number"
+                        min="0"
+                        value={profileForm.weightValue}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
                             ...prev,
-                            timezone: event.target.value,
+                            weightValue: event.target.value,
                           }))
                         }
-                        placeholder="Asia/Riyadh"
+                        placeholder="70"
                       />
-                    </SettingsFieldRow>
-                  </SettingsSectionCard>
+                      <Select
+                        id="client-settings-weight-unit"
+                        value={profileForm.weightUnit}
+                        onChange={(event) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            weightUnit: event.target.value,
+                          }))
+                        }
+                      >
+                        {WEIGHT_UNIT_OPTIONS.map((unit) => (
+                          <option key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </SettingsFieldRow>
 
-                  <StickySaveBar
-                    isDirty={profileDirty}
-                    isSaving={profileSaving}
-                    statusText="Unsaved profile changes"
-                    onDiscard={() => setProfileForm(profileInitial)}
-                    onSave={handleProfileSave}
-                  />
-                </>
-              ) : (
-                <EmptyStateBlock
-                  title="Profile not available"
-                  description="We could not find a client profile for this account yet."
-                  actions={
-                    <Button variant="secondary" onClick={() => navigate("/app/home")}>
-                      Back to home
-                    </Button>
-                  }
+                  <SettingsFieldRow label="Timezone">
+                    <Input
+                      id="client-settings-timezone"
+                      value={profileForm.timezone}
+                      onChange={(event) =>
+                        setProfileForm((prev) => ({
+                          ...prev,
+                          timezone: event.target.value,
+                        }))
+                      }
+                      placeholder="Asia/Riyadh"
+                    />
+                  </SettingsFieldRow>
+                </SettingsSectionCard>
+
+                <StickySaveBar
+                  isDirty={profileDirty}
+                  isSaving={profileSaving}
+                  statusText="Unsaved profile changes"
+                  onDiscard={() => setProfileForm(profileInitial)}
+                  onSave={handleProfileSave}
                 />
-              )}
+              </>
+            ) : (
+              <EmptyStateBlock
+                title="Profile not available"
+                description="We could not find a client profile for this account yet."
+                actions={
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate("/app/home")}
+                  >
+                    Back to home
+                  </Button>
+                }
+              />
+            )}
           </div>
         ) : null}
 
         {activeTab === "preferences" ? (
           <div className="space-y-4">
-              <SettingsSectionCard title="App Preferences">
-                <SettingsFieldRow label="Units">
-                  <Select
-                    id="client-settings-units"
-                    value={preferencesForm.units}
-                    onChange={(event) =>
-                      setPreferencesForm((prev) => ({
-                        ...prev,
-                        units: event.target.value,
-                      }))
-                    }
-                  >
-                    <option value="metric">Metric</option>
-                    <option value="imperial">Imperial</option>
-                  </Select>
-                </SettingsFieldRow>
+            <SettingsSectionCard title="App Preferences">
+              <SettingsFieldRow label="Units">
+                <Select
+                  id="client-settings-units"
+                  value={preferencesForm.units}
+                  onChange={(event) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      units: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="metric">Metric</option>
+                  <option value="imperial">Imperial</option>
+                </Select>
+              </SettingsFieldRow>
 
-                <SettingsFieldRow label="Date format">
-                  <Select
-                    id="client-settings-date-format"
-                    value={preferencesForm.dateFormat}
-                    onChange={(event) =>
-                      setPreferencesForm((prev) => ({
-                        ...prev,
-                        dateFormat: event.target.value,
-                      }))
-                    }
-                  >
-                    {DATE_FORMAT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </SettingsFieldRow>
+              <SettingsFieldRow label="Date format">
+                <Select
+                  id="client-settings-date-format"
+                  value={preferencesForm.dateFormat}
+                  onChange={(event) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      dateFormat: event.target.value,
+                    }))
+                  }
+                >
+                  {DATE_FORMAT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </SettingsFieldRow>
 
-                <SettingsFieldRow label="Language">
-                  <Select
-                    id="client-settings-language"
-                    value={preferencesForm.language}
-                    onChange={(event) =>
-                      setPreferencesForm((prev) => ({
-                        ...prev,
-                        language: event.target.value,
-                      }))
-                    }
-                  >
-                    {LANGUAGE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </SettingsFieldRow>
+              <SettingsFieldRow label="Language">
+                <Select
+                  id="client-settings-language"
+                  value={preferencesForm.language}
+                  onChange={(event) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      language: event.target.value,
+                    }))
+                  }
+                >
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </SettingsFieldRow>
 
-                <SettingsFieldRow label="Theme">
-                  <Select
-                    id="client-settings-theme"
-                    value={preferencesForm.themePreference}
-                    onChange={(event) =>
-                      setPreferencesForm((prev) => ({
-                        ...prev,
-                        themePreference: event.target.value as ThemePreference,
-                      }))
-                    }
-                  >
-                    {AVAILABLE_THEME_PREFERENCES.map((option) => (
-                      <option key={option} value={option}>
-                        {option === "system"
-                          ? "System default"
-                          : option.charAt(0).toUpperCase() + option.slice(1)}
-                      </option>
-                    ))}
-                  </Select>
-                  {!LIGHT_MODE_ENABLED ? (
-                    <p className="text-xs text-muted-foreground">
-                      Light mode is currently disabled in this environment.
-                    </p>
-                  ) : null}
-                </SettingsFieldRow>
-              </SettingsSectionCard>
+              <SettingsFieldRow label="Theme">
+                <Select
+                  id="client-settings-theme"
+                  value={preferencesForm.themePreference}
+                  onChange={(event) =>
+                    setPreferencesForm((prev) => ({
+                      ...prev,
+                      themePreference: event.target.value as ThemePreference,
+                    }))
+                  }
+                >
+                  {AVAILABLE_THEME_PREFERENCES.map((option) => (
+                    <option key={option} value={option}>
+                      {option === "system"
+                        ? "System default"
+                        : option.charAt(0).toUpperCase() + option.slice(1)}
+                    </option>
+                  ))}
+                </Select>
+                {!LIGHT_MODE_ENABLED ? (
+                  <p className="text-xs text-muted-foreground">
+                    Light mode is currently disabled in this environment.
+                  </p>
+                ) : null}
+              </SettingsFieldRow>
+            </SettingsSectionCard>
 
-              <StickySaveBar
-                isDirty={preferencesDirty}
-                isSaving={preferencesSaving}
-                statusText="Unsaved preference changes"
-                onDiscard={() => setPreferencesForm(preferencesInitial)}
-                onSave={handlePreferencesSave}
-              />
+            <StickySaveBar
+              isDirty={preferencesDirty}
+              isSaving={preferencesSaving}
+              statusText="Unsaved preference changes"
+              onDiscard={() => setPreferencesForm(preferencesInitial)}
+              onSave={handlePreferencesSave}
+            />
           </div>
         ) : null}
 
         {activeTab === "notifications" ? (
           <div className="space-y-4">
-              <SettingsSectionCard title="Delivery Channels">
-                <SettingsFieldRow label="Channel defaults">
-                  <div className="grid gap-3 sm:grid-cols-3">
+            <SettingsSectionCard title="Delivery Channels">
+              <SettingsFieldRow label="Channel defaults">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <NotificationToggleField
+                    label="In-app"
+                    description="Show notifications in your app inbox."
+                    checked={notificationForm.in_app_enabled}
+                    onCheckedChange={(checked) =>
+                      setNotificationForm((prev) => ({
+                        ...prev,
+                        in_app_enabled: checked,
+                      }))
+                    }
+                  />
+                  <NotificationToggleField
+                    label="Email"
+                    description="Send a copy of important updates by email."
+                    checked={notificationForm.email_enabled}
+                    onCheckedChange={(checked) =>
+                      setNotificationForm((prev) => ({
+                        ...prev,
+                        email_enabled: checked,
+                      }))
+                    }
+                  />
+                  <NotificationToggleField
+                    label="Push"
+                    description="Mobile push support when enabled on your device."
+                    checked={notificationForm.push_enabled}
+                    onCheckedChange={(checked) =>
+                      setNotificationForm((prev) => ({
+                        ...prev,
+                        push_enabled: checked,
+                      }))
+                    }
+                  />
+                </div>
+              </SettingsFieldRow>
+            </SettingsSectionCard>
+
+            {notificationGroups.map((group) => (
+              <SettingsSectionCard key={group.title} title={group.title}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {group.items.map((item) => (
                     <NotificationToggleField
-                      label="In-app"
-                      description="Show notifications in your app inbox."
-                      checked={notificationForm.in_app_enabled}
+                      key={item.key}
+                      label={item.label}
+                      description={item.description}
+                      checked={notificationForm[item.key]}
                       onCheckedChange={(checked) =>
                         setNotificationForm((prev) => ({
                           ...prev,
-                          in_app_enabled: checked,
+                          [item.key]: checked,
                         }))
                       }
                     />
-                    <NotificationToggleField
-                      label="Email"
-                      description="Send a copy of important updates by email."
-                      checked={notificationForm.email_enabled}
-                      onCheckedChange={(checked) =>
-                        setNotificationForm((prev) => ({
-                          ...prev,
-                          email_enabled: checked,
-                        }))
-                      }
-                    />
-                    <NotificationToggleField
-                      label="Push"
-                      description="Mobile push support when enabled on your device."
-                      checked={notificationForm.push_enabled}
-                      onCheckedChange={(checked) =>
-                        setNotificationForm((prev) => ({
-                          ...prev,
-                          push_enabled: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                </SettingsFieldRow>
+                  ))}
+                </div>
               </SettingsSectionCard>
+            ))}
 
-              {notificationGroups.map((group) => (
-                <SettingsSectionCard key={group.title} title={group.title}>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {group.items.map((item) => (
-                      <NotificationToggleField
-                        key={item.key}
-                        label={item.label}
-                        description={item.description}
-                        checked={notificationForm[item.key]}
-                        onCheckedChange={(checked) =>
-                          setNotificationForm((prev) => ({
-                            ...prev,
-                            [item.key]: checked,
-                          }))
-                        }
-                      />
-                    ))}
-                  </div>
-                </SettingsSectionCard>
-              ))}
-
-              <StickySaveBar
-                isDirty={notificationsDirty}
-                isSaving={notificationsSaving}
-                statusText="Unsaved notification changes"
-                onDiscard={() => setNotificationForm(notificationsInitial)}
-                onSave={handleNotificationsSave}
-              />
+            <StickySaveBar
+              isDirty={notificationsDirty}
+              isSaving={notificationsSaving}
+              statusText="Unsaved notification changes"
+              onDiscard={() => setNotificationForm(notificationsInitial)}
+              onSave={handleNotificationsSave}
+            />
           </div>
         ) : null}
 
         {activeTab === "privacy-security" ? (
           <div className="space-y-4">
-              <SettingsSectionCard title="Sign-in Security">
-                <SettingsFieldRow label="Authentication">
-                  <DisabledSettingField
-                    value={session?.user?.email ? "Email + password" : "Unknown"}
-                  />
-                </SettingsFieldRow>
+            <SettingsSectionCard title="Sign-in Security">
+              <SettingsFieldRow label="Authentication">
+                <DisabledSettingField
+                  value={session?.user?.email ? "Email + password" : "Unknown"}
+                />
+              </SettingsFieldRow>
 
-                <SettingsFieldRow label="Current password">
-                  <Input
-                    id="client-settings-current-password"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(event) => setCurrentPassword(event.target.value)}
-                    placeholder="Current password"
-                  />
-                </SettingsFieldRow>
+              <SettingsFieldRow label="Current password">
+                <Input
+                  id="client-settings-current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  placeholder="Current password"
+                />
+              </SettingsFieldRow>
 
-                <SettingsFieldRow label="New password">
-                  <Input
-                    id="client-settings-new-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    placeholder="New password"
-                  />
-                  {passwordTooShort ? (
-                    <p className="text-xs text-danger">Password must be at least 8 characters.</p>
-                  ) : null}
-                </SettingsFieldRow>
+              <SettingsFieldRow label="New password">
+                <Input
+                  id="client-settings-new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  placeholder="New password"
+                />
+                {passwordTooShort ? (
+                  <p className="text-xs text-danger">
+                    Password must be at least 8 characters.
+                  </p>
+                ) : null}
+              </SettingsFieldRow>
 
-                <SettingsFieldRow label="Confirm password">
-                  <Input
-                    id="client-settings-confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Confirm password"
-                  />
-                  {passwordMismatch ? (
-                    <p className="text-xs text-danger">Passwords do not match.</p>
-                  ) : null}
-                </SettingsFieldRow>
+              <SettingsFieldRow label="Confirm password">
+                <Input
+                  id="client-settings-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Confirm password"
+                />
+                {passwordMismatch ? (
+                  <p className="text-xs text-danger">Passwords do not match.</p>
+                ) : null}
+              </SettingsFieldRow>
 
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button onClick={handleChangePassword} disabled={passwordSaving}>
-                    {passwordSaving ? "Updating..." : "Change password"}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={passwordSaving}
+                >
+                  {passwordSaving ? "Updating..." : "Change password"}
+                </Button>
+              </div>
+            </SettingsSectionCard>
+
+            <SettingsSectionCard title="Sessions">
+              <SettingsFieldRow label="Active sessions">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Session management is account-wide. Use this action to sign
+                  out of other devices.
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    variant="secondary"
+                    onClick={handleSignOutAllSessions}
+                    disabled={signOutSessionsSaving}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {signOutSessionsSaving
+                      ? "Signing out..."
+                      : "Sign out all sessions"}
                   </Button>
                 </div>
-              </SettingsSectionCard>
+              </SettingsFieldRow>
+            </SettingsSectionCard>
 
-              <SettingsSectionCard title="Sessions">
-                <SettingsFieldRow label="Active sessions">
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    Session management is account-wide. Use this action to sign out of other devices.
-                  </p>
-                  <div className="flex justify-end">
-                    <Button
-                      variant="secondary"
-                      onClick={handleSignOutAllSessions}
-                      disabled={signOutSessionsSaving}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      {signOutSessionsSaving ? "Signing out..." : "Sign out all sessions"}
-                    </Button>
-                  </div>
-                </SettingsFieldRow>
-              </SettingsSectionCard>
-
-              <SettingsSectionCard title="Account deletion">
-                <SettingsFieldRow label="Request account deletion">
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    Deletion and deactivation requests are handled through support to protect
-                    historical coaching records.
-                  </p>
-                  <div className="flex justify-end">
-                    <Button
-                      variant="secondary"
-                      className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
-                      onClick={() => setDeleteDialogOpen(true)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Request account deletion
-                    </Button>
-                  </div>
-                </SettingsFieldRow>
-              </SettingsSectionCard>
+            <SettingsSectionCard title="Account deletion">
+              <SettingsFieldRow label="Request account deletion">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Deletion and deactivation requests are handled through support
+                  to protect historical coaching records.
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    variant="secondary"
+                    className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Request account deletion
+                  </Button>
+                </div>
+              </SettingsFieldRow>
+            </SettingsSectionCard>
           </div>
         ) : null}
 
         {activeTab === "billing" ? (
           <div className="space-y-4">
-              {billingQuery.isLoading ? (
-                <StatusBanner
-                  variant="info"
-                  title="Loading billing"
-                  description="Fetching your active service and billing summary."
-                />
-              ) : billingQuery.data?.billingStatus === "none" ? (
-                <EmptyStateBlock
-                  icon={<CreditCard className="h-5 w-5" />}
-                  title="No active billing relationship"
-                  description="You do not have an active paid coaching service attached to this account yet."
-                  actions={
-                    <Button onClick={() => navigate("/app/find-coach")}>Find a Coach</Button>
-                  }
-                />
-              ) : (
-                <>
-                  <SettingsSectionCard title="Current Service">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
-                        <p className="field-label">Provider</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {billingQuery.data?.providerName ?? "Coaching team"}
-                        </p>
-                      </Card>
-                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
-                        <p className="field-label">Service</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {billingQuery.data?.serviceName ?? "Active coaching service"}
-                        </p>
-                      </Card>
-                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
-                        <p className="field-label">Price</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {billingQuery.data?.priceLabel ?? "Not yet connected"}
-                        </p>
-                      </Card>
-                      <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
-                        <p className="field-label">Next billing date</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {formatDateLabel(billingQuery.data?.nextBillingDate ?? null)}
-                        </p>
-                      </Card>
+            {billingQuery.isLoading ? (
+              <StatusBanner
+                variant="info"
+                title="Loading billing"
+                description="Fetching your active service and billing summary."
+              />
+            ) : billingQuery.data?.billingStatus === "none" ? (
+              <EmptyStateBlock
+                icon={<CreditCard className="h-5 w-5" />}
+                title="No active billing relationship"
+                description="You do not have an active paid coaching service attached to this account yet."
+                actions={
+                  <Button onClick={() => navigate("/app/find-coach")}>
+                    Find a Coach
+                  </Button>
+                }
+              />
+            ) : (
+              <>
+                <SettingsSectionCard title="Current Service">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
+                      <p className="field-label">Provider</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {billingQuery.data?.providerName ?? "Coaching team"}
+                      </p>
+                    </Card>
+                    <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
+                      <p className="field-label">Service</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {billingQuery.data?.serviceName ??
+                          "Active coaching service"}
+                      </p>
+                    </Card>
+                    <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
+                      <p className="field-label">Price</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {billingQuery.data?.priceLabel ?? "Not yet connected"}
+                      </p>
+                    </Card>
+                    <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
+                      <p className="field-label">Next billing date</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {formatDateLabel(
+                          billingQuery.data?.nextBillingDate ?? null,
+                        )}
+                      </p>
+                    </Card>
+                  </div>
+                </SettingsSectionCard>
+
+                <SettingsSectionCard title="Billing Status">
+                  <SettingsFieldRow label="Status">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="success">Active</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        Billing details remain in placeholder mode until payment
+                        integration is connected.
+                      </span>
                     </div>
-                  </SettingsSectionCard>
+                  </SettingsFieldRow>
+                </SettingsSectionCard>
 
-                  <SettingsSectionCard title="Billing Status">
-                    <SettingsFieldRow label="Status">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="success">Active</Badge>
-                        <span className="text-sm text-muted-foreground">
-                          Billing details remain in placeholder mode until payment integration is
-                          connected.
-                        </span>
-                      </div>
-                    </SettingsFieldRow>
-                  </SettingsSectionCard>
+                <SettingsSectionCard title="Invoice History">
+                  {invoices.length > 0 ? (
+                    <div className="space-y-2">
+                      {invoices.map((invoice) => (
+                        <Card
+                          key={invoice.id}
+                          className="flex items-center justify-between gap-3 rounded-[16px] border border-border/70 bg-background/50 p-3"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {invoice.label}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Invoice sync placeholder
+                            </p>
+                          </div>
+                          <Badge variant="muted">{invoice.amount}</Badge>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyStateBlock
+                      centered
+                      icon={<CalendarClock className="h-4 w-4" />}
+                      title="No invoices yet"
+                      description="Your invoice history will appear here once billing sync is connected."
+                    />
+                  )}
+                </SettingsSectionCard>
 
-                  <SettingsSectionCard title="Invoice History">
-                    {invoices.length > 0 ? (
-                      <div className="space-y-2">
-                        {invoices.map((invoice) => (
-                          <Card
-                            key={invoice.id}
-                            className="flex items-center justify-between gap-3 rounded-[16px] border border-border/70 bg-background/50 p-3"
-                          >
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{invoice.label}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Invoice sync placeholder
-                              </p>
-                            </div>
-                            <Badge variant="muted">{invoice.amount}</Badge>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <EmptyStateBlock
-                        centered
-                        icon={<CalendarClock className="h-4 w-4" />}
-                        title="No invoices yet"
-                        description="Your invoice history will appear here once billing sync is connected."
-                      />
-                    )}
-                  </SettingsSectionCard>
-
-                  <SettingsSectionCard title="Payment Method">
-                    <SettingsFieldRow label="Saved card">
-                      <p className="text-sm text-muted-foreground">No payment method wired yet.</p>
-                    </SettingsFieldRow>
-                  </SettingsSectionCard>
-                </>
-              )}
+                <SettingsSectionCard title="Payment Method">
+                  <SettingsFieldRow label="Saved card">
+                    <p className="text-sm text-muted-foreground">
+                      No payment method wired yet.
+                    </p>
+                  </SettingsFieldRow>
+                </SettingsSectionCard>
+              </>
+            )}
           </div>
         ) : null}
       </SettingsPageShell>
@@ -1446,8 +1527,8 @@ export function ClientSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Request account deletion?</AlertDialogTitle>
             <AlertDialogDescription>
-              This opens a support request so we can safely process account deletion without
-              damaging historical logs.
+              This opens a support request so we can safely process account
+              deletion without damaging historical logs.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -123,7 +123,8 @@ export function PtHubReadinessPanel({
                       Fastest upgrades
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Work through these first to get your public profile ready faster.
+                      Work through these first to get your public profile ready
+                      faster.
                     </p>
                   </div>
                 </div>

@@ -6,7 +6,10 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
-import { semanticToneClassNames, type SemanticTone } from "../../lib/semantic-status";
+import {
+  semanticToneClassNames,
+  type SemanticTone,
+} from "../../lib/semantic-status";
 
 const badgeVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
@@ -45,20 +48,20 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     const toneClasses = tone ? semanticToneClassNames[tone].badge : null;
 
     return (
-    <div
-      ref={ref}
-      className={cn(
-        badgeVariants({ variant }),
-        module && moduleClasses?.badge,
-        toneClasses,
-        className,
-      )}
-      style={{
-        ...getModuleToneStyle(module),
-        ...style,
-      }}
-      {...props}
-    />
+      <div
+        ref={ref}
+        className={cn(
+          badgeVariants({ variant }),
+          module && moduleClasses?.badge,
+          toneClasses,
+          className,
+        )}
+        style={{
+          ...getModuleToneStyle(module),
+          ...style,
+        }}
+        {...props}
+      />
     );
   },
 );

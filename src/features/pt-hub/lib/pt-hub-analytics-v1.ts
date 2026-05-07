@@ -204,7 +204,13 @@ function getDateRangeWindow(
 ): DateRangeWindow {
   const end = new Date(now);
   const dayCount =
-    rangeKey === "7d" ? 7 : rangeKey === "30d" ? 30 : rangeKey === "90d" ? 90 : 365;
+    rangeKey === "7d"
+      ? 7
+      : rangeKey === "30d"
+        ? 30
+        : rangeKey === "90d"
+          ? 90
+          : 365;
   const start = new Date(end.getTime() - dayCount * DAY_MS);
   const previousEnd = new Date(start);
   const previousStart = new Date(previousEnd.getTime() - dayCount * DAY_MS);
@@ -214,8 +220,7 @@ function getDateRangeWindow(
     end,
     previousStart,
     previousEnd,
-    bucket:
-      rangeKey === "12m" ? "month" : rangeKey === "90d" ? "week" : "day",
+    bucket: rangeKey === "12m" ? "month" : rangeKey === "90d" ? "week" : "day",
     rangeLabel:
       rangeKey === "12m"
         ? "Last 12 months"
@@ -233,11 +238,7 @@ function getDateRangeWindow(
             ? "Previous 30 days"
             : "Previous 7 days",
     bucketLabel:
-      rangeKey === "12m"
-        ? "Monthly"
-        : rangeKey === "90d"
-          ? "Weekly"
-          : "Daily",
+      rangeKey === "12m" ? "Monthly" : rangeKey === "90d" ? "Weekly" : "Daily",
   };
 }
 
@@ -353,7 +354,10 @@ function createBucketKey(date: Date, bucket: DateRangeWindow["bucket"]) {
   return date.toISOString().slice(0, 10);
 }
 
-function createBucketLabel(bucketKey: string, bucket: DateRangeWindow["bucket"]) {
+function createBucketLabel(
+  bucketKey: string,
+  bucket: DateRangeWindow["bucket"],
+) {
   if (bucket === "month") {
     const parsed = new Date(`${bucketKey}-01T00:00:00.000Z`);
     return parsed.toLocaleDateString("en-US", {
@@ -449,7 +453,8 @@ function buildQualityRows(params: {
       key,
       label: value.label,
       leads: value.leads,
-      approvalRate: value.leads > 0 ? (value.approved / value.leads) * 100 : null,
+      approvalRate:
+        value.leads > 0 ? (value.approved / value.leads) * 100 : null,
       conversionRate:
         value.leads > 0 ? (value.converted / value.leads) * 100 : null,
       lowSample: value.leads < 3,
@@ -487,16 +492,25 @@ function buildWorkspacePerformance(params: {
         (client) => client.workspaceId === workspace.id,
       );
       const activeClients = workspaceClients.filter(
-        (client) => normalizeClientLifecycleState(client.lifecycleState) === "active",
+        (client) =>
+          normalizeClientLifecycleState(client.lifecycleState) === "active",
       );
       const attributedLeads = params.leads.filter(
         (lead) => lead.convertedWorkspaceId === workspace.id,
       );
       const leadsInWindow = attributedLeads.filter((lead) =>
-        isWithinWindow(parseDate(lead.submittedAt), params.window.start, params.window.end),
+        isWithinWindow(
+          parseDate(lead.submittedAt),
+          params.window.start,
+          params.window.end,
+        ),
       );
       const conversionsInWindow = attributedLeads.filter((lead) =>
-        isWithinWindow(parseDate(lead.convertedAt), params.window.start, params.window.end),
+        isWithinWindow(
+          parseDate(lead.convertedAt),
+          params.window.start,
+          params.window.end,
+        ),
       );
       const atRiskActiveClients = activeClients.filter((client) =>
         isClientAtRisk(client),
@@ -533,10 +547,7 @@ function filterClientsByWorkspace(
   return clients.filter((client) => client.workspaceId === workspaceId);
 }
 
-function filterLeadsByFilters(
-  leads: PTLead[],
-  filters: PtHubAnalyticsFilters,
-) {
+function filterLeadsByFilters(leads: PTLead[], filters: PtHubAnalyticsFilters) {
   return leads.filter((lead) => {
     const matchesPackage =
       filters.packageKey === "all"
@@ -579,17 +590,27 @@ export function buildPtHubAnalyticsSnapshot(params: {
     isWithinWindow(parseDate(lead.submittedAt), window.start, window.end),
   );
   const previousRangeLeads = filteredLeads.filter((lead) =>
-    isWithinWindow(parseDate(lead.submittedAt), window.previousStart, window.previousEnd),
+    isWithinWindow(
+      parseDate(lead.submittedAt),
+      window.previousStart,
+      window.previousEnd,
+    ),
   );
 
-  const convertedLeadsInRange = rangeLeads.filter((lead) => isLeadConverted(lead));
+  const convertedLeadsInRange = rangeLeads.filter((lead) =>
+    isLeadConverted(lead),
+  );
   const convertedLeadsInPreviousRange = previousRangeLeads.filter((lead) =>
     isLeadConverted(lead),
   );
-  const approvedLeadsInRange = rangeLeads.filter((lead) => isLeadApproved(lead));
+  const approvedLeadsInRange = rangeLeads.filter((lead) =>
+    isLeadApproved(lead),
+  );
 
   const conversionRate =
-    rangeLeads.length > 0 ? (convertedLeadsInRange.length / rangeLeads.length) * 100 : null;
+    rangeLeads.length > 0
+      ? (convertedLeadsInRange.length / rangeLeads.length) * 100
+      : null;
   const previousConversionRate =
     previousRangeLeads.length > 0
       ? (convertedLeadsInPreviousRange.length / previousRangeLeads.length) * 100
@@ -598,11 +619,15 @@ export function buildPtHubAnalyticsSnapshot(params: {
   const waitingLeadCount = filteredLeads.filter((lead) => {
     const submittedAt = parseDate(lead.submittedAt);
     if (!submittedAt) return false;
-    return lead.status === "new" && now.getTime() - submittedAt.getTime() >= 24 * HOUR_MS;
+    return (
+      lead.status === "new" &&
+      now.getTime() - submittedAt.getTime() >= 24 * HOUR_MS
+    );
   }).length;
 
   const activeClients = filteredClients.filter(
-    (client) => normalizeClientLifecycleState(client.lifecycleState) === "active",
+    (client) =>
+      normalizeClientLifecycleState(client.lifecycleState) === "active",
   );
   const activeClientsAtRisk = activeClients.filter((client) =>
     isClientAtRisk(client),
@@ -619,13 +644,21 @@ export function buildPtHubAnalyticsSnapshot(params: {
   const pausedInPeriod = filteredClients.filter((client) => {
     return (
       normalizeClientLifecycleState(client.lifecycleState) === "paused" &&
-      isWithinWindow(parseDate(client.lifecycleChangedAt), window.start, window.end)
+      isWithinWindow(
+        parseDate(client.lifecycleChangedAt),
+        window.start,
+        window.end,
+      )
     );
   }).length;
   const churnedInPeriod = filteredClients.filter((client) => {
     return (
       normalizeClientLifecycleState(client.lifecycleState) === "churned" &&
-      isWithinWindow(parseDate(client.lifecycleChangedAt), window.start, window.end)
+      isWithinWindow(
+        parseDate(client.lifecycleChangedAt),
+        window.start,
+        window.end,
+      )
     );
   }).length;
 

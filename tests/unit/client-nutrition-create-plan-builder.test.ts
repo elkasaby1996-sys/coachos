@@ -30,4 +30,3 @@ describe("client nutrition create-plan builder", () => {
     expect(createPlanPage).toContain("fat_g");
   });
 });
-

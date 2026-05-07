@@ -201,7 +201,10 @@ function ClientWorkspaceHomePage() {
     },
   });
 
-  const clientProfiles = useMemo(() => clientQuery.data ?? [], [clientQuery.data]);
+  const clientProfiles = useMemo(
+    () => clientQuery.data ?? [],
+    [clientQuery.data],
+  );
   const clientProfile = useMemo(
     () =>
       clientProfiles.find((row) => row.id === activeClientId) ??
@@ -492,14 +495,17 @@ function ClientWorkspaceHomePage() {
         ? (row as { assigned_nutrition_plan?: Array<Record<string, unknown>> })
             .assigned_nutrition_plan?.[0]
         : ((row as { assigned_nutrition_plan?: Record<string, unknown> })
-            .assigned_nutrition_plan ??
-          null);
+            .assigned_nutrition_plan ?? null);
       const nutritionTemplate = Array.isArray(
         assignedPlan?.nutrition_template as unknown,
       )
-        ? (assignedPlan?.nutrition_template as Array<Record<string, unknown>>)[0]
+        ? (
+            assignedPlan?.nutrition_template as Array<Record<string, unknown>>
+          )[0]
         : (assignedPlan?.nutrition_template as Record<string, unknown> | null);
-      add((nutritionTemplate?.workspace_id as string | null | undefined) ?? null);
+      add(
+        (nutritionTemplate?.workspace_id as string | null | undefined) ?? null,
+      );
     });
     (workspaceConversationPreviewQuery.data ?? []).forEach((conversation) => {
       add(conversation.workspace_id ?? null);
@@ -606,31 +612,31 @@ function ClientWorkspaceHomePage() {
     summaryTrainingStatus === "No plan yet"
       ? "Not connected"
       : summaryTrainingStatus === "completed"
-      ? "Completed"
-      : summaryTrainingStatus === "skipped"
-        ? "Skipped"
-        : summaryTrainingStatus === "planned"
-          ? "Scheduled"
-          : "Rest day";
+        ? "Completed"
+        : summaryTrainingStatus === "skipped"
+          ? "Skipped"
+          : summaryTrainingStatus === "planned"
+            ? "Scheduled"
+            : "Rest day";
   const summaryTrainingTitle = !hasClientProfile
     ? "Find your first coach"
     : isRestDay
-    ? "Rest day"
-    : (todayTemplate.name ??
-      (todayWorkout as { workout_template_name?: string } | null)
-        ?.workout_template_name ??
-      "Rest day");
+      ? "Rest day"
+      : (todayTemplate.name ??
+        (todayWorkout as { workout_template_name?: string } | null)
+          ?.workout_template_name ??
+        "Rest day");
   const summaryTrainingHint = !hasClientProfile
     ? "No assigned plan yet. Explore coaches to start your training flow."
     : isRestDay
-    ? "Rest day. Steps + nutrition still count."
-    : todayWorkoutStatus === "completed"
-      ? "Session logged"
-      : todayWorkoutStatus === "skipped"
-        ? "Coach notified"
-        : todayWorkout
-          ? "Ready when you are"
-          : "Rest day. Steps + nutrition still count.";
+      ? "Rest day. Steps + nutrition still count."
+      : todayWorkoutStatus === "completed"
+        ? "Session logged"
+        : todayWorkoutStatus === "skipped"
+          ? "Coach notified"
+          : todayWorkout
+            ? "Ready when you are"
+            : "Rest day. Steps + nutrition still count.";
   const handleChecklistToggle = useCallback(
     (key: ChecklistKey) => {
       setChecklist((prev) => {
@@ -686,42 +692,43 @@ function ClientWorkspaceHomePage() {
     [leadThreadsQuery.data],
   );
   const pendingApplicationsCount = leadThreads.filter(
-    (thread) => thread.leadStatus === "new" || thread.leadStatus === "contacted",
+    (thread) =>
+      thread.leadStatus === "new" || thread.leadStatus === "contacted",
   ).length;
   const approvedPendingWorkspaceCount = leadThreads.filter(
     (thread) => thread.leadStatus === "approved_pending_workspace",
   ).length;
-  const savedCoachCount = leadThreads.filter((thread) => Boolean(thread.ptSlug))
-    .length;
+  const savedCoachCount = leadThreads.filter((thread) =>
+    Boolean(thread.ptSlug),
+  ).length;
   const hasPersonalSource = Boolean(
     !clientProfile?.workspace_id ||
-      classifySourceKind({
-        workspaceId: getWorkoutTemplateInfo(todayWorkout).workspace_id,
-      }) === "personal" ||
-      todayNutritionDays.some((row) => {
-        const assignedPlan = Array.isArray(
-          (row as { assigned_nutrition_plan?: unknown })?.assigned_nutrition_plan,
-        )
-          ? (row as { assigned_nutrition_plan?: Array<Record<string, unknown>> })
-              .assigned_nutrition_plan?.[0]
-          : ((row as { assigned_nutrition_plan?: Record<string, unknown> })
-              .assigned_nutrition_plan ??
-            null);
-        const nutritionTemplate = Array.isArray(
-          assignedPlan?.nutrition_template as unknown,
-        )
-          ? (
-              assignedPlan?.nutrition_template as Array<Record<string, unknown>>
-            )[0]
-          : (assignedPlan?.nutrition_template as Record<string, unknown> | null);
-        return (
-          classifySourceKind({
-            workspaceId:
-              (nutritionTemplate?.workspace_id as string | null | undefined) ??
-              null,
-          }) === "personal"
-        );
-      }),
+    classifySourceKind({
+      workspaceId: getWorkoutTemplateInfo(todayWorkout).workspace_id,
+    }) === "personal" ||
+    todayNutritionDays.some((row) => {
+      const assignedPlan = Array.isArray(
+        (row as { assigned_nutrition_plan?: unknown })?.assigned_nutrition_plan,
+      )
+        ? (row as { assigned_nutrition_plan?: Array<Record<string, unknown>> })
+            .assigned_nutrition_plan?.[0]
+        : ((row as { assigned_nutrition_plan?: Record<string, unknown> })
+            .assigned_nutrition_plan ?? null);
+      const nutritionTemplate = Array.isArray(
+        assignedPlan?.nutrition_template as unknown,
+      )
+        ? (
+            assignedPlan?.nutrition_template as Array<Record<string, unknown>>
+          )[0]
+        : (assignedPlan?.nutrition_template as Record<string, unknown> | null);
+      return (
+        classifySourceKind({
+          workspaceId:
+            (nutritionTemplate?.workspace_id as string | null | undefined) ??
+            null,
+        }) === "personal"
+      );
+    }),
   );
   const coachSourceCount = sourceWorkspaceIds.length;
   const unifiedHomeState = resolveUnifiedClientHomeState({
@@ -786,11 +793,7 @@ function ClientWorkspaceHomePage() {
         return bTime - aTime;
       })
       .slice(0, 5);
-  }, [
-    getSourceMetaLabel,
-    leadThreads,
-    workspaceConversationPreviewQuery.data,
-  ]);
+  }, [getSourceMetaLabel, leadThreads, workspaceConversationPreviewQuery.data]);
 
   const subtitleDate = useMemo(
     () =>
@@ -918,14 +921,14 @@ function ClientWorkspaceHomePage() {
     summaryTrainingStatus === "No plan yet"
       ? "muted"
       : summaryTrainingStatus === "completed"
-      ? "success"
-      : summaryTrainingStatus === "skipped"
-        ? "danger"
-        : summaryTrainingStatus === "planned"
-          ? "secondary"
-          : summaryTrainingStatus.toLowerCase().includes("rest")
-            ? "warning"
-            : "muted";
+        ? "success"
+        : summaryTrainingStatus === "skipped"
+          ? "danger"
+          : summaryTrainingStatus === "planned"
+            ? "secondary"
+            : summaryTrainingStatus.toLowerCase().includes("rest")
+              ? "warning"
+              : "muted";
   const nutritionRequestDraft = encodeURIComponent(
     "Can you set my nutrition targets for this week?",
   );
@@ -1178,7 +1181,9 @@ function ClientWorkspaceHomePage() {
                 Track the daily basics. Tap any check to log it instantly.
               </SurfaceCardDescription>
             </div>
-            <Badge variant={checklistProgress === 100 ? "success" : "secondary"}>
+            <Badge
+              variant={checklistProgress === 100 ? "success" : "secondary"}
+            >
               <AnimatedValue
                 value={`${checklistCompletedCount}/${checklistKeys.length} complete`}
               />
@@ -1301,7 +1306,8 @@ function ClientWorkspaceHomePage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>Workouts and nutrition</SurfaceCardTitle>
             <SurfaceCardDescription>
-              One account-level view of today and next-up actions across personal and coached plans.
+              One account-level view of today and next-up actions across
+              personal and coached plans.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="grid gap-6 lg:grid-cols-2">
@@ -1331,7 +1337,9 @@ function ClientWorkspaceHomePage() {
                 <div className="space-y-2">
                   {workoutFeedItems.slice(0, 4).map((workout) => {
                     const template = getWorkoutTemplateInfo(workout);
-                    const sourceLabel = getSourceMetaLabel(template.workspace_id);
+                    const sourceLabel = getSourceMetaLabel(
+                      template.workspace_id,
+                    );
                     const workoutName =
                       template.name ??
                       (workout as { workout_template_name?: string })
@@ -1439,7 +1447,10 @@ function ClientWorkspaceHomePage() {
                             ).assigned_nutrition_plan?.[0]
                           : (
                               day as {
-                                assigned_nutrition_plan?: Record<string, unknown>;
+                                assigned_nutrition_plan?: Record<
+                                  string,
+                                  unknown
+                                >;
                               }
                             ).assigned_nutrition_plan;
                         const nutritionTemplate = Array.isArray(
@@ -1450,9 +1461,10 @@ function ClientWorkspaceHomePage() {
                                 Record<string, unknown>
                               >
                             )[0]
-                          : (assignedPlan?.nutrition_template as
-                              | Record<string, unknown>
-                              | null);
+                          : (assignedPlan?.nutrition_template as Record<
+                              string,
+                              unknown
+                            > | null);
                         return (
                           <div
                             key={String((day as { id?: string }).id ?? "")}
@@ -1460,8 +1472,9 @@ function ClientWorkspaceHomePage() {
                           >
                             <div className="space-y-1">
                               <p className="text-sm font-medium text-foreground">
-                                {(nutritionTemplate?.name as string | undefined) ??
-                                  "Nutrition plan"}
+                                {(nutritionTemplate?.name as
+                                  | string
+                                  | undefined) ?? "Nutrition plan"}
                               </p>
                               <Badge variant="muted">
                                 {getSourceMetaLabel(
@@ -1655,7 +1668,10 @@ function ClientWorkspaceHomePage() {
                 Open messages
               </Button>
               {leadThreads.length > 0 ? (
-                <Button variant="secondary" onClick={() => navigate(findCoachHref)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(findCoachHref)}
+                >
                   View coach profiles
                 </Button>
               ) : null}
@@ -1697,11 +1713,18 @@ function ClientWorkspaceHomePage() {
                 <div className="space-y-2">
                   {discoverCoachProfiles.slice(0, 3).map((coach) => (
                     <div
-                      key={coach.slug ?? coach.full_name ?? coach.display_name ?? "coach"}
+                      key={
+                        coach.slug ??
+                        coach.full_name ??
+                        coach.display_name ??
+                        "coach"
+                      }
                       className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
                     >
                       <p className="text-sm font-semibold text-foreground">
-                        {coach.display_name ?? coach.full_name ?? "Coach profile"}
+                        {coach.display_name ??
+                          coach.full_name ??
+                          "Coach profile"}
                       </p>
                       <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                         {coach.headline ?? "Public coach profile"}
@@ -1717,9 +1740,14 @@ function ClientWorkspaceHomePage() {
               )}
 
               <div className="flex flex-wrap gap-3">
-                <Button onClick={() => navigate(findCoachHref)}>Find a Coach</Button>
+                <Button onClick={() => navigate(findCoachHref)}>
+                  Find a Coach
+                </Button>
                 {approvedPendingWorkspaceCount > 0 ? (
-                  <Button variant="secondary" onClick={() => navigate("/app/home")}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate("/app/home")}
+                  >
                     Refresh join status
                   </Button>
                 ) : null}
@@ -1759,137 +1787,137 @@ function ClientWorkspaceHomePage() {
       ) : null}
 
       <SurfaceCard>
-          <SurfaceCardHeader>
-            <SurfaceCardTitle>Calendar</SurfaceCardTitle>
-            <SurfaceCardDescription>
-              Assigned training and recovery across the next 7 days.
-            </SurfaceCardDescription>
-          </SurfaceCardHeader>
-          <SurfaceCardContent className="space-y-4">
-            {weeklyPlanQuery.isLoading ? (
-              <LoadingPanel
-                title="Loading calendar"
-                description="Mapping the next 7 days of training and recovery."
-              />
-            ) : (
-              <>
-                <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
-                  <SectionCard className="p-3">
-                    <p className="field-label">Completed</p>
-                    <p className="mt-2 text-2xl font-semibold text-success">
-                      <AnimatedValue value={weeklyStats.completed} />
-                    </p>
-                  </SectionCard>
-                  <SectionCard className="p-3">
-                    <p className="field-label">Planned</p>
-                    <p className="mt-2 text-2xl font-semibold text-info">
-                      <AnimatedValue value={weeklyStats.planned} />
-                    </p>
-                  </SectionCard>
-                  <SectionCard className="p-3">
-                    <p className="field-label">Skipped</p>
-                    <p className="mt-2 text-2xl font-semibold text-danger">
-                      <AnimatedValue value={weeklyStats.skipped} />
-                    </p>
-                  </SectionCard>
-                  <SectionCard className="p-3">
-                    <p className="field-label">Rest</p>
-                    <p className="mt-2 text-2xl font-semibold text-warning">
-                      <AnimatedValue value={weeklyStats.rest} />
-                    </p>
-                  </SectionCard>
-                </div>
+        <SurfaceCardHeader>
+          <SurfaceCardTitle>Calendar</SurfaceCardTitle>
+          <SurfaceCardDescription>
+            Assigned training and recovery across the next 7 days.
+          </SurfaceCardDescription>
+        </SurfaceCardHeader>
+        <SurfaceCardContent className="space-y-4">
+          {weeklyPlanQuery.isLoading ? (
+            <LoadingPanel
+              title="Loading calendar"
+              description="Mapping the next 7 days of training and recovery."
+            />
+          ) : (
+            <>
+              <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+                <SectionCard className="p-3">
+                  <p className="field-label">Completed</p>
+                  <p className="mt-2 text-2xl font-semibold text-success">
+                    <AnimatedValue value={weeklyStats.completed} />
+                  </p>
+                </SectionCard>
+                <SectionCard className="p-3">
+                  <p className="field-label">Planned</p>
+                  <p className="mt-2 text-2xl font-semibold text-info">
+                    <AnimatedValue value={weeklyStats.planned} />
+                  </p>
+                </SectionCard>
+                <SectionCard className="p-3">
+                  <p className="field-label">Skipped</p>
+                  <p className="mt-2 text-2xl font-semibold text-danger">
+                    <AnimatedValue value={weeklyStats.skipped} />
+                  </p>
+                </SectionCard>
+                <SectionCard className="p-3">
+                  <p className="field-label">Rest</p>
+                  <p className="mt-2 text-2xl font-semibold text-warning">
+                    <AnimatedValue value={weeklyStats.rest} />
+                  </p>
+                </SectionCard>
+              </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
-                  {weekRows.map((row) => {
-                    const workout = row.workout;
-                    const rowIsRestDay = !workout || workout.day_type === "rest";
-                    const status = rowIsRestDay
-                      ? "rest day"
-                      : workout.status === "pending"
-                        ? "planned"
-                        : (workout.status ?? "planned");
-                    const statusLabel =
-                      status === "completed"
-                        ? "Completed"
-                        : status === "skipped"
-                          ? "Skipped"
-                          : status === "planned"
-                            ? "Scheduled"
-                            : "Rest day";
-                    const title = rowIsRestDay
-                      ? "Rest day"
-                      : (getWorkoutTemplateInfo(workout).name ??
-                        (workout as { workout_template_name?: string })
-                          ?.workout_template_name ??
-                        "Workout");
-                    const statusVariant =
-                      status === "completed"
-                        ? "success"
-                        : status === "skipped"
-                          ? "danger"
-                          : status === "rest day"
-                            ? "warning"
-                            : "muted";
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+                {weekRows.map((row) => {
+                  const workout = row.workout;
+                  const rowIsRestDay = !workout || workout.day_type === "rest";
+                  const status = rowIsRestDay
+                    ? "rest day"
+                    : workout.status === "pending"
+                      ? "planned"
+                      : (workout.status ?? "planned");
+                  const statusLabel =
+                    status === "completed"
+                      ? "Completed"
+                      : status === "skipped"
+                        ? "Skipped"
+                        : status === "planned"
+                          ? "Scheduled"
+                          : "Rest day";
+                  const title = rowIsRestDay
+                    ? "Rest day"
+                    : (getWorkoutTemplateInfo(workout).name ??
+                      (workout as { workout_template_name?: string })
+                        ?.workout_template_name ??
+                      "Workout");
+                  const statusVariant =
+                    status === "completed"
+                      ? "success"
+                      : status === "skipped"
+                        ? "danger"
+                        : status === "rest day"
+                          ? "warning"
+                          : "muted";
 
-                    return (
-                      <button
-                        key={row.key}
-                        type="button"
-                        onClick={() => {
-                          if (workout?.id && !rowIsRestDay) {
-                            navigate(`/app/workouts/${workout.id}`);
-                          }
-                        }}
-                        disabled={!workout?.id || rowIsRestDay}
-                        className={`rounded-[var(--radius-lg)] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                          row.key === todayKey
-                            ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(56,189,248,0.75)]"
-                            : "border-border/70 bg-background/45 hover:border-border"
-                        }`}
-                      >
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-medium text-muted-foreground">
-                              {row.date.toLocaleDateString("en-US", {
-                                weekday: "short",
-                                day: "numeric",
-                              })}
-                            </span>
-                            <Badge variant={statusVariant}>{statusLabel}</Badge>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="line-clamp-2 text-sm font-semibold text-foreground">
-                              {title}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {rowIsRestDay
-                                ? "Steps + nutrition still count."
-                                : (getWorkoutTemplateInfo(workout)
-                                    .workout_type_tag ?? "Workout")}
-                            </p>
-                          </div>
-                          {workout?.coach_note ? (
-                            <p className="line-clamp-3 text-xs leading-5 text-muted-foreground">
-                              {workout.coach_note}
-                            </p>
-                          ) : null}
+                  return (
+                    <button
+                      key={row.key}
+                      type="button"
+                      onClick={() => {
+                        if (workout?.id && !rowIsRestDay) {
+                          navigate(`/app/workouts/${workout.id}`);
+                        }
+                      }}
+                      disabled={!workout?.id || rowIsRestDay}
+                      className={`rounded-[var(--radius-lg)] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                        row.key === todayKey
+                          ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(56,189,248,0.75)]"
+                          : "border-border/70 bg-background/45 hover:border-border"
+                      }`}
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {row.date.toLocaleDateString("en-US", {
+                              weekday: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                          <Badge variant={statusVariant}>{statusLabel}</Badge>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                        <div className="space-y-1">
+                          <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                            {title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {rowIsRestDay
+                              ? "Steps + nutrition still count."
+                              : (getWorkoutTemplateInfo(workout)
+                                  .workout_type_tag ?? "Workout")}
+                          </p>
+                        </div>
+                        {workout?.coach_note ? (
+                          <p className="line-clamp-3 text-xs leading-5 text-muted-foreground">
+                            {workout.coach_note}
+                          </p>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-                {weeklyPlan.length === 0 ? (
-                  <EmptyStateBlock
-                    title="No sessions scheduled yet"
-                    description="Focus on recovery basics while your coach builds your next training block."
-                  />
-                ) : null}
-              </>
-            )}
-          </SurfaceCardContent>
-        </SurfaceCard>
+              {weeklyPlan.length === 0 ? (
+                <EmptyStateBlock
+                  title="No sessions scheduled yet"
+                  description="Focus on recovery basics while your coach builds your next training block."
+                />
+              ) : null}
+            </>
+          )}
+        </SurfaceCardContent>
+      </SurfaceCard>
     </div>
   );
 }

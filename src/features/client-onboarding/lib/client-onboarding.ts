@@ -216,7 +216,8 @@ export function getDraftFields(
         client.weight_value_current !== null &&
         client.weight_value_current !== undefined
           ? String(client.weight_value_current)
-          : client.current_weight !== null && client.current_weight !== undefined
+          : client.current_weight !== null &&
+              client.current_weight !== undefined
             ? String(client.current_weight)
             : basics.weight_value_current !== null &&
                 basics.weight_value_current !== undefined
@@ -386,8 +387,7 @@ export function validateStep(
       if (!hasText(draft.basics.phone)) return "Phone is required.";
       if (!hasText(draft.basics.date_of_birth))
         return "Date of birth is required.";
-      if (!hasText(draft.basics.gender))
-        return "Sex / gender is required.";
+      if (!hasText(draft.basics.gender)) return "Sex / gender is required.";
       if (!hasPositiveNumber(Number(draft.basics.height_value)))
         return "Height is required.";
       if (!hasPositiveNumber(Number(draft.basics.weight_value_current)))

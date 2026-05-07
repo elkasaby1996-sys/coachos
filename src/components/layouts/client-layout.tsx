@@ -162,17 +162,22 @@ export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { loading, error } = useWorkspace();
-  const { bootstrapError: authError, hasWorkspaceMembership, clientProfile } =
-    useBootstrapAuth();
+  const {
+    bootstrapError: authError,
+    hasWorkspaceMembership,
+    clientProfile,
+  } = useBootstrapAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const onboardingQuery = useClientOnboarding();
   const onboardingSummary = onboardingQuery.data ?? null;
   const preWorkspaceMode = !hasWorkspaceMembership;
-  const basicsGateRequired = !preWorkspaceMode && Boolean(
-    onboardingSummary &&
-    onboardingSummary.canEdit &&
-    !onboardingSummary.progress.basics.complete,
-  );
+  const basicsGateRequired =
+    !preWorkspaceMode &&
+    Boolean(
+      onboardingSummary &&
+      onboardingSummary.canEdit &&
+      !onboardingSummary.progress.basics.complete,
+    );
   const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
   const currentModule = getModuleToneForPath(location.pathname);
   const currentModuleClasses = getModuleToneClasses(currentModule);
@@ -204,10 +209,10 @@ export function ClientLayout() {
     ? preWorkspaceMode
       ? "Lead dashboard active"
       : onboardingSummary.onboarding.status === "completed"
-      ? "Workspace setup complete"
-      : onboardingSummary.awaitingReview
-        ? "Onboarding with coach"
-        : `${onboardingSummary.completionPercent}% onboarding complete`
+        ? "Workspace setup complete"
+        : onboardingSummary.awaitingReview
+          ? "Onboarding with coach"
+          : `${onboardingSummary.completionPercent}% onboarding complete`
     : preWorkspaceMode
       ? "Lead dashboard active"
       : "Private coaching workspace";
@@ -382,7 +387,10 @@ export function ClientLayout() {
                                 opacity: isActive ? 1 : 0.82,
                               }
                         }
-                        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                        transition={{
+                          duration: 0.22,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
                       >
                         {item.label}
                       </motion.span>
@@ -432,7 +440,10 @@ export function ClientLayout() {
                         <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
                           <span className="inline-flex items-center gap-2">
                             <CircleDot
-                              className={cn("h-3.5 w-3.5", currentModuleClasses.title)}
+                              className={cn(
+                                "h-3.5 w-3.5",
+                                currentModuleClasses.title,
+                              )}
                             />
                             {topStatusText}
                           </span>
@@ -445,10 +456,16 @@ export function ClientLayout() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className={getHeaderProfilePillClassName(isLightMode)}
+                            className={getHeaderProfilePillClassName(
+                              isLightMode,
+                            )}
                             aria-label="Profile menu"
                           >
-                            <div className={getHeaderProfilePillIconClassName(isLightMode)}>
+                            <div
+                              className={getHeaderProfilePillIconClassName(
+                                isLightMode,
+                              )}
+                            >
                               {profileInitial}
                             </div>
                             <div className="min-w-0 flex-1 space-y-0.5 text-left">
@@ -459,7 +476,11 @@ export function ClientLayout() {
                                 {profileDisplayName}
                               </p>
                             </div>
-                            <span className={getHeaderProfilePillChevronClassName(isLightMode)}>
+                            <span
+                              className={getHeaderProfilePillChevronClassName(
+                                isLightMode,
+                              )}
+                            >
                               <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
                             </span>
                           </button>
@@ -473,7 +494,9 @@ export function ClientLayout() {
                           <DropdownMenuLabel>Profile</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            onClick={() => navigate("/app/settings?tab=profile")}
+                            onClick={() =>
+                              navigate("/app/settings?tab=profile")
+                            }
                           >
                             <span className="app-dropdown-icon-badge">
                               <UserCircle className="h-4 w-4 text-[var(--module-profile-text)] [stroke-width:1.7]" />
@@ -481,7 +504,9 @@ export function ClientLayout() {
                             Profile
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => navigate("/app/settings?tab=preferences")}
+                            onClick={() =>
+                              navigate("/app/settings?tab=preferences")
+                            }
                           >
                             <span className="app-dropdown-icon-badge">
                               <Settings className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />

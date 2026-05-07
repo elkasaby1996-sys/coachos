@@ -94,7 +94,9 @@ export function PtHubSettingsBillingTab() {
                 <p className="text-sm font-medium text-foreground">
                   {invoice.label}
                 </p>
-                <p className="text-xs text-muted-foreground">{invoice.status}</p>
+                <p className="text-xs text-muted-foreground">
+                  {invoice.status}
+                </p>
               </div>
               <p className="text-sm text-muted-foreground">
                 {invoice.amountLabel}

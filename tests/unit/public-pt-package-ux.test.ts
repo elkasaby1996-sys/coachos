@@ -122,7 +122,9 @@ describe("public profile package section rendering", () => {
     expect(html).toContain('data-testid="packages-section-desktop"');
     expect(html).toContain('data-testid="packages-section-mobile"');
 
-    const mobileSectionIndex = html.indexOf('data-testid="packages-section-mobile"');
+    const mobileSectionIndex = html.indexOf(
+      'data-testid="packages-section-mobile"',
+    );
     const applyFormIndex = html.indexOf('id="public-pt-apply-form"');
     expect(mobileSectionIndex).toBeGreaterThan(-1);
     expect(applyFormIndex).toBeGreaterThan(-1);

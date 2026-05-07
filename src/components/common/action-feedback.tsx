@@ -86,7 +86,9 @@ export function ActionStatusMessage({
 
   if (reduceMotion) {
     return (
-      <div className={`rounded-2xl border px-3 py-2 text-sm ${toneClassName} ${className}`}>
+      <div
+        className={`rounded-2xl border px-3 py-2 text-sm ${toneClassName} ${className}`}
+      >
         {children}
       </div>
     );

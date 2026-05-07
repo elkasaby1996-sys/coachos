@@ -1,9 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  Navigate,
-  Outlet,
-  useParams,
-} from "react-router-dom";
+import { Navigate, Outlet, useParams } from "react-router-dom";
 import {
   SettingsPageShell,
   SettingsSectionCard,

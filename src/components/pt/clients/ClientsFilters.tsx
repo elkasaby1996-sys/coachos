@@ -92,14 +92,14 @@ export function ClientsFilters({
           </Select>
         </div>
         <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted-foreground">
-            Segment
-          </p>
+          <p className="text-xs font-semibold text-muted-foreground">Segment</p>
           <div className="flex flex-wrap items-center gap-2">
             {segments.map((segment) => (
               <Button
                 key={segment.key}
-                variant={activeSegment === segment.key ? "default" : "secondary"}
+                variant={
+                  activeSegment === segment.key ? "default" : "secondary"
+                }
                 size="sm"
                 onClick={() => onSegmentChange(segment.key)}
               >

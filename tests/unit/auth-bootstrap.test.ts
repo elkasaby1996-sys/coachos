@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Session } from "@supabase/supabase-js";
-import type { ClientProfileRow, PtProfileRow } from "../../src/lib/account-profiles";
+import type {
+  ClientProfileRow,
+  PtProfileRow,
+} from "../../src/lib/account-profiles";
 import {
   buildSessionAuthValue,
   buildStaleBootstrapFallbackState,
@@ -138,7 +141,10 @@ describe("auth/bootstrap regression coverage", () => {
       signupIntent: "unknown",
       pendingInviteToken: null,
       membershipResult: { status: "empty" },
-      ptProfileResult: { status: "error", error: new Error("PT profile failed") },
+      ptProfileResult: {
+        status: "error",
+        error: new Error("PT profile failed"),
+      },
       clientResult: {
         status: "empty",
       } as LookupResult<ClientProfileRow[]>,
@@ -183,7 +189,9 @@ describe("auth/bootstrap regression coverage", () => {
       throw new Error("Expected resolved empty bootstrap state.");
     }
     expect(resolvedEmpty.state.accountType).toBe("unknown");
-    expect(getAuthenticatedRedirectPath(resolvedEmpty.state)).toBe("/no-workspace");
+    expect(getAuthenticatedRedirectPath(resolvedEmpty.state)).toBe(
+      "/no-workspace",
+    );
   });
 
   it("keeps the direct invite flow owned by the invite route", () => {

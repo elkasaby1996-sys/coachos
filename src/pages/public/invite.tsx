@@ -242,13 +242,15 @@ export function InvitePage() {
           },
         );
         if (acceptError) throw acceptError;
-        const acceptRow = (Array.isArray(acceptData)
-          ? (acceptData[0] ?? null)
-          : acceptData) as AcceptInviteResult | null;
+        const acceptRow = (
+          Array.isArray(acceptData) ? (acceptData[0] ?? null) : acceptData
+        ) as AcceptInviteResult | null;
         const joinedWorkspaceId =
           toOptionalTrimmedText(acceptRow?.workspace_id) ??
           toOptionalTrimmedText(invite.workspace_id);
-        const joinedWorkspaceName = toOptionalTrimmedText(invite.workspace_name);
+        const joinedWorkspaceName = toOptionalTrimmedText(
+          invite.workspace_name,
+        );
         const joinedPtDisplayName = toOptionalTrimmedText(
           invite.pt_display_name,
         );

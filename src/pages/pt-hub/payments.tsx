@@ -44,7 +44,9 @@ export function PtHubPaymentsPage() {
     revenue?.activePayingClientsLabel ?? "Not connected";
   const potentialActiveClients = revenue?.potentialActiveClients ?? 0;
   const readinessScore =
-    Number(billingConnected) + Number(revenueConnected) + Number(hasLiveInvoices);
+    Number(billingConnected) +
+    Number(revenueConnected) +
+    Number(hasLiveInvoices);
   const readinessLabel = `${readinessScore}/3`;
   const readinessCopy =
     readinessScore === 3
@@ -66,7 +68,9 @@ export function PtHubPaymentsPage() {
     {
       label: "Monthly revenue",
       value: monthlyRevenue,
-      helper: revenueConnected ? "Synced from billing" : "Awaiting payment sync",
+      helper: revenueConnected
+        ? "Synced from billing"
+        : "Awaiting payment sync",
       icon: TrendingUp,
       accent: false,
       delta: {

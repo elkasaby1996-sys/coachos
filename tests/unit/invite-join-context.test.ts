@@ -7,7 +7,9 @@ import {
 describe("invite join context", () => {
   it("keeps modal closed when workspace membership is missing", () => {
     const context = deriveInviteJoinContext({
-      searchParams: new URLSearchParams("invite_joined=1&joined_workspace_name=Peak"),
+      searchParams: new URLSearchParams(
+        "invite_joined=1&joined_workspace_name=Peak",
+      ),
       hasWorkspaceMembership: false,
     });
 

@@ -494,7 +494,7 @@ export function PublicPtProfileView({
                 <SectionHeader title="Social links" />
                 <div className="mt-4 space-y-2">
                   {profile.socialLinks.length > 0 ? (
-                    profile.socialLinks.map((link) => (
+                    profile.socialLinks.map((link) =>
                       (() => {
                         const PlatformIcon =
                           socialPlatformIcons[
@@ -520,8 +520,8 @@ export function PublicPtProfileView({
                             <ExternalLink className="h-4 w-4 text-muted-foreground" />
                           </a>
                         );
-                      })()
-                    ))
+                      })(),
+                    )
                   ) : (
                     <PlaceholderText text="Public social links will show here once added in PT Hub." />
                   )}
@@ -550,7 +550,8 @@ function PublicPackageSection({
       <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
         <div className="grid gap-4 md:grid-cols-2">
           {packageOptions.map((packageOption) => {
-            const featureBullets = getPublicPackageFeatureBullets(packageOption);
+            const featureBullets =
+              getPublicPackageFeatureBullets(packageOption);
             const hasFeatureBullets = featureBullets.length > 0;
             return (
               <motion.article
@@ -577,7 +578,8 @@ function PublicPackageSection({
                       {packageOption.subtitle}
                     </p>
                   ) : null}
-                  {packageOption.priceLabel || packageOption.billingCadenceLabel ? (
+                  {packageOption.priceLabel ||
+                  packageOption.billingCadenceLabel ? (
                     <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
                       {packageOption.priceLabel ? (
                         <span className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1">
@@ -601,7 +603,10 @@ function PublicPackageSection({
                 {hasFeatureBullets ? (
                   <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                     {featureBullets.map((feature) => (
-                      <li key={`${packageOption.id}-${feature}`} className="flex gap-2">
+                      <li
+                        key={`${packageOption.id}-${feature}`}
+                        className="flex gap-2"
+                      >
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
                         <span>{feature}</span>
                       </li>

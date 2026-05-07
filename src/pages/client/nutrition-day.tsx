@@ -251,7 +251,10 @@ export function ClientNutritionDayPage() {
                 : "planned"
             }
           />
-          <Button variant="secondary" onClick={() => navigate("/app/nutrition")}>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/app/nutrition")}
+          >
             Back
           </Button>
         </div>
@@ -327,7 +330,11 @@ export function ClientNutritionDayPage() {
                       </div>
                     ) : null}
                     {selectedMeal.recipe_text ? (
-                      <div className={selectedMeal.notes ? "mt-3 space-y-1" : "space-y-1"}>
+                      <div
+                        className={
+                          selectedMeal.notes ? "mt-3 space-y-1" : "space-y-1"
+                        }
+                      >
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           Instructions
                         </p>
@@ -356,7 +363,10 @@ export function ClientNutritionDayPage() {
                                 {component.component_name}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {formatServing(component.quantity, component.unit)}
+                                {formatServing(
+                                  component.quantity,
+                                  component.unit,
+                                )}
                               </p>
                             </div>
                             <Badge variant="muted">

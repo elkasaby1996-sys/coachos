@@ -1,6 +1,9 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
-import { semanticToneClassNames, type SemanticTone } from "../../lib/semantic-status";
+import {
+  semanticToneClassNames,
+  type SemanticTone,
+} from "../../lib/semantic-status";
 
 export function Alert({
   className,

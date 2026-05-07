@@ -9,7 +9,11 @@ import {
   Rocket,
   Sparkles,
 } from "lucide-react";
-import { DashboardCard, EmptyState, StatCard } from "../../../components/ui/coachos";
+import {
+  DashboardCard,
+  EmptyState,
+  StatCard,
+} from "../../../components/ui/coachos";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { addDaysToDateString } from "../../../lib/date-utils";
 import { supabase } from "../../../lib/supabase";
@@ -152,23 +156,29 @@ export function PtClientProgressTab({
   const habitsAnalysis = useMemo(() => {
     const logs = progressHabitsQuery.data ?? [];
     if (logs.length === 0) return null;
-    const weightLogs = logs.filter((log) => typeof log.weight_value === "number");
+    const weightLogs = logs.filter(
+      (log) => typeof log.weight_value === "number",
+    );
     const stepsLogs = logs.filter((log) => typeof log.steps === "number");
     const midpoint = Math.floor(logs.length / 2);
     const firstHalf = logs.slice(0, midpoint);
     const secondHalf = logs.slice(midpoint);
     const avg = (values: Array<number | null | undefined>) => {
-      const nums = values.filter((value) => typeof value === "number") as number[];
+      const nums = values.filter(
+        (value) => typeof value === "number",
+      ) as number[];
       if (nums.length === 0) return null;
       return nums.reduce((sum, value) => sum + value, 0) / nums.length;
     };
     const firstWeight = weightLogs[0]?.weight_value ?? null;
-    const latestWeight = weightLogs[weightLogs.length - 1]?.weight_value ?? null;
+    const latestWeight =
+      weightLogs[weightLogs.length - 1]?.weight_value ?? null;
     const weightChange =
       firstWeight !== null && latestWeight !== null
         ? latestWeight - firstWeight
         : null;
-    const weightUnit = weightLogs.find((log) => log.weight_unit)?.weight_unit ?? "kg";
+    const weightUnit =
+      weightLogs.find((log) => log.weight_unit)?.weight_unit ?? "kg";
 
     return {
       weightChange,
@@ -189,7 +199,10 @@ export function PtClientProgressTab({
 
   const exerciseImprovements = useMemo(() => {
     const logs = progressSetLogsQuery.data ?? [];
-    const byExercise = new Map<string, Array<{ weight: number | null; name: string }>>();
+    const byExercise = new Map<
+      string,
+      Array<{ weight: number | null; name: string }>
+    >();
     logs.forEach((row) => {
       if (!row.exercise_id) return;
       const name = Array.isArray(row.exercise)
@@ -211,9 +224,9 @@ export function PtClientProgressTab({
     }> = [];
 
     byExercise.forEach((rows, exerciseId) => {
-      const weighted = rows.filter((row) => typeof row.weight === "number") as Array<
-        (typeof rows)[number] & { weight: number }
-      >;
+      const weighted = rows.filter(
+        (row) => typeof row.weight === "number",
+      ) as Array<(typeof rows)[number] & { weight: number }>;
       if (weighted.length < 2) return;
       const startWeight = weighted[0].weight;
       const latestWeight = weighted[weighted.length - 1].weight;
@@ -232,10 +245,21 @@ export function PtClientProgressTab({
 
   const checkinQuestionTrends = useMemo(() => {
     const rows = progressCheckinAnswersQuery.data ?? [];
-    const byQuestion = new Map<string, Array<{ value_number: number | null; value_text: string | null; date: string | null }>>();
+    const byQuestion = new Map<
+      string,
+      Array<{
+        value_number: number | null;
+        value_text: string | null;
+        date: string | null;
+      }>
+    >();
     rows.forEach((row) => {
-      const question = Array.isArray(row.question) ? (row.question[0] ?? null) : row.question;
-      const checkin = Array.isArray(row.checkin) ? (row.checkin[0] ?? null) : row.checkin;
+      const question = Array.isArray(row.question)
+        ? (row.question[0] ?? null)
+        : row.question;
+      const checkin = Array.isArray(row.checkin)
+        ? (row.checkin[0] ?? null)
+        : row.checkin;
       const key = question?.question_text ?? question?.prompt ?? "Question";
       if (!byQuestion.has(key)) byQuestion.set(key, []);
       byQuestion.get(key)?.push({
@@ -270,7 +294,9 @@ export function PtClientProgressTab({
     });
 
     return {
-      numeric: numeric.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 6),
+      numeric: numeric
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+        .slice(0, 6),
       text: text.slice(0, 4),
     };
   }, [progressCheckinAnswersQuery.data]);
@@ -281,7 +307,8 @@ export function PtClientProgressTab({
     progressSetLogsQuery.isLoading ||
     progressCheckinAnswersQuery.isLoading;
   const hasCheckinTrendData =
-    checkinQuestionTrends.numeric.length > 0 || checkinQuestionTrends.text.length > 0;
+    checkinQuestionTrends.numeric.length > 0 ||
+    checkinQuestionTrends.text.length > 0;
   const hasWorkoutHistory = (progressSessionsQuery.data?.length ?? 0) > 0;
 
   const trendCards = useMemo(() => {
@@ -291,7 +318,10 @@ export function PtClientProgressTab({
       helper: string;
       icon: ComponentType<{ className?: string }>;
     }> = [];
-    if (habitsAnalysis?.weightChange !== null && habitsAnalysis?.weightChange !== undefined) {
+    if (
+      habitsAnalysis?.weightChange !== null &&
+      habitsAnalysis?.weightChange !== undefined
+    ) {
       items.push({
         label: "Weight delta",
         value: `${habitsAnalysis.weightChange > 0 ? "+" : ""}${habitsAnalysis.weightChange.toFixed(1)} ${habitsAnalysis.weightUnit}`,
@@ -303,7 +333,8 @@ export function PtClientProgressTab({
       typeof habitsAnalysis?.avgStepsFirst === "number" &&
       typeof habitsAnalysis?.avgStepsSecond === "number"
     ) {
-      const delta = habitsAnalysis.avgStepsSecond - habitsAnalysis.avgStepsFirst;
+      const delta =
+        habitsAnalysis.avgStepsSecond - habitsAnalysis.avgStepsFirst;
       items.push({
         label: "Steps delta",
         value: `${delta > 0 ? "+" : ""}${Math.round(delta).toLocaleString()}`,
@@ -332,7 +363,8 @@ export function PtClientProgressTab({
       typeof habitsAnalysis?.avgProteinFirst === "number" &&
       typeof habitsAnalysis?.avgProteinSecond === "number"
     ) {
-      const delta = habitsAnalysis.avgProteinSecond - habitsAnalysis.avgProteinFirst;
+      const delta =
+        habitsAnalysis.avgProteinSecond - habitsAnalysis.avgProteinFirst;
       items.push({
         label: "Protein delta",
         value: `${delta > 0 ? "+" : ""}${Math.round(delta)} g`,
@@ -341,11 +373,19 @@ export function PtClientProgressTab({
       });
     }
     return items.slice(0, 4);
-  }, [checkinQuestionTrends, exerciseImprovements.length, habitsAnalysis, hasCheckinTrendData]);
+  }, [
+    checkinQuestionTrends,
+    exerciseImprovements.length,
+    habitsAnalysis,
+    hasCheckinTrendData,
+  ]);
 
   return (
     <div className="space-y-6">
-      <DashboardCard title="Trend snapshot" subtitle="Actionable deltas across habits, training, and check-ins.">
+      <DashboardCard
+        title="Trend snapshot"
+        subtitle="Actionable deltas across habits, training, and check-ins."
+      >
         {loading ? (
           <div className="space-y-3">
             <Skeleton className="h-6 w-1/2" />
@@ -372,13 +412,18 @@ export function PtClientProgressTab({
                 ? "Once the client logs habits, training, or check-ins, the most useful trend changes will appear here."
                 : "Start by reviewing the baseline so future changes have a stronger point of comparison."
             }
-            actionLabel={hasBaselineSubmission ? "Open habits" : "Open baseline"}
+            actionLabel={
+              hasBaselineSubmission ? "Open habits" : "Open baseline"
+            }
             onAction={hasBaselineSubmission ? onOpenHabits : onOpenBaseline}
           />
         )}
       </DashboardCard>
 
-      <DashboardCard title="Habit shifts" subtitle="Compare earlier and later habit patterns in the current window.">
+      <DashboardCard
+        title="Habit shifts"
+        subtitle="Compare earlier and later habit patterns in the current window."
+      >
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : habitsAnalysis ? (
@@ -386,29 +431,51 @@ export function PtClientProgressTab({
             <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
               <p className="text-xs text-muted-foreground">Steps average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgStepsFirst !== null ? Math.round(habitsAnalysis.avgStepsFirst).toLocaleString() : "Not logged"} to{" "}
-                {habitsAnalysis.avgStepsSecond !== null ? Math.round(habitsAnalysis.avgStepsSecond).toLocaleString() : "Not logged"}
+                {habitsAnalysis.avgStepsFirst !== null
+                  ? Math.round(habitsAnalysis.avgStepsFirst).toLocaleString()
+                  : "Not logged"}{" "}
+                to{" "}
+                {habitsAnalysis.avgStepsSecond !== null
+                  ? Math.round(habitsAnalysis.avgStepsSecond).toLocaleString()
+                  : "Not logged"}
               </p>
             </div>
             <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
               <p className="text-xs text-muted-foreground">Sleep average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgSleepFirst !== null ? habitsAnalysis.avgSleepFirst.toFixed(1) : "Not logged"} hrs to{" "}
-                {habitsAnalysis.avgSleepSecond !== null ? habitsAnalysis.avgSleepSecond.toFixed(1) : "Not logged"} hrs
+                {habitsAnalysis.avgSleepFirst !== null
+                  ? habitsAnalysis.avgSleepFirst.toFixed(1)
+                  : "Not logged"}{" "}
+                hrs to{" "}
+                {habitsAnalysis.avgSleepSecond !== null
+                  ? habitsAnalysis.avgSleepSecond.toFixed(1)
+                  : "Not logged"}{" "}
+                hrs
               </p>
             </div>
             <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
               <p className="text-xs text-muted-foreground">Protein average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgProteinFirst !== null ? Math.round(habitsAnalysis.avgProteinFirst) : "Not logged"} g to{" "}
-                {habitsAnalysis.avgProteinSecond !== null ? Math.round(habitsAnalysis.avgProteinSecond) : "Not logged"} g
+                {habitsAnalysis.avgProteinFirst !== null
+                  ? Math.round(habitsAnalysis.avgProteinFirst)
+                  : "Not logged"}{" "}
+                g to{" "}
+                {habitsAnalysis.avgProteinSecond !== null
+                  ? Math.round(habitsAnalysis.avgProteinSecond)
+                  : "Not logged"}{" "}
+                g
               </p>
             </div>
             <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
               <p className="text-xs text-muted-foreground">Calories average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
-                {habitsAnalysis.avgCaloriesFirst !== null ? Math.round(habitsAnalysis.avgCaloriesFirst) : "Not logged"} to{" "}
-                {habitsAnalysis.avgCaloriesSecond !== null ? Math.round(habitsAnalysis.avgCaloriesSecond) : "Not logged"}
+                {habitsAnalysis.avgCaloriesFirst !== null
+                  ? Math.round(habitsAnalysis.avgCaloriesFirst)
+                  : "Not logged"}{" "}
+                to{" "}
+                {habitsAnalysis.avgCaloriesSecond !== null
+                  ? Math.round(habitsAnalysis.avgCaloriesSecond)
+                  : "Not logged"}
               </p>
             </div>
           </div>
@@ -422,16 +489,24 @@ export function PtClientProgressTab({
         )}
       </DashboardCard>
 
-      <DashboardCard title="Training progression" subtitle="Recent lift changes and workload context from logged sessions.">
+      <DashboardCard
+        title="Training progression"
+        subtitle="Recent lift changes and workload context from logged sessions."
+      >
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : exerciseImprovements.length > 0 ? (
           <div className="space-y-2">
             {exerciseImprovements.map((item) => (
-              <div key={item.exerciseId} className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm">
+              <div
+                key={item.exerciseId}
+                className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
+              >
                 <span className="font-medium">{item.exerciseName}</span>
                 <span className="text-muted-foreground">
-                  {item.startWeight} to {item.latestWeight} ({item.change > 0 ? "+" : ""}{item.change})
+                  {item.startWeight} to {item.latestWeight} (
+                  {item.change > 0 ? "+" : ""}
+                  {item.change})
                 </span>
               </div>
             ))}
@@ -453,38 +528,60 @@ export function PtClientProgressTab({
         )}
       </DashboardCard>
 
-      <DashboardCard title="Check-in themes" subtitle="Numeric deltas and message changes worth reviewing.">
+      <DashboardCard
+        title="Check-in themes"
+        subtitle="Numeric deltas and message changes worth reviewing."
+      >
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : hasCheckinTrendData ? (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Numeric question trends</p>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Numeric question trends
+              </p>
               {checkinQuestionTrends.numeric.length > 0 ? (
                 checkinQuestionTrends.numeric.map((row) => (
-                  <div key={row.question} className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm">
+                  <div
+                    key={row.question}
+                    className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
+                  >
                     <span className="truncate pr-3">{row.question}</span>
                     <span className="text-muted-foreground">
-                      {row.from} to {row.to} ({row.delta > 0 ? "+" : ""}{row.delta})
+                      {row.from} to {row.to} ({row.delta > 0 ? "+" : ""}
+                      {row.delta})
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">No numeric answer changes detected.</p>
+                <p className="text-sm text-muted-foreground">
+                  No numeric answer changes detected.
+                </p>
               )}
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Text response shifts</p>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Text response shifts
+              </p>
               {checkinQuestionTrends.text.length > 0 ? (
                 checkinQuestionTrends.text.map((row) => (
-                  <div key={row.question} className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm">
+                  <div
+                    key={row.question}
+                    className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
+                  >
                     <p className="font-medium">{row.question}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">Previous: {row.previous}</p>
-                    <p className="text-xs text-muted-foreground">Latest: {row.latest}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Previous: {row.previous}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Latest: {row.latest}
+                    </p>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">No text response changes detected.</p>
+                <p className="text-sm text-muted-foreground">
+                  No text response changes detected.
+                </p>
               )}
             </div>
           </div>

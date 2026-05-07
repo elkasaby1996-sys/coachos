@@ -12,11 +12,13 @@ describe("workspace resolution hardening", () => {
 
     expect(source).toContain("const UUID_PATTERN =");
     expect(source).toContain("function isUuid(");
-    expect(source).toContain("const [memberResult, ownedResult] = await Promise.all([");
     expect(source).toContain(
-      "const combinedWorkspaceIds = Array.from(",
+      "const [memberResult, ownedResult] = await Promise.all([",
     );
-    expect(source).toContain("new Set([...memberWorkspaceIds, ...ownerWorkspaceIds])");
+    expect(source).toContain("const combinedWorkspaceIds = Array.from(");
+    expect(source).toContain(
+      "new Set([...memberWorkspaceIds, ...ownerWorkspaceIds])",
+    );
   });
 
   it("keeps user-selected workspace authoritative and syncs switches across mounted hooks", () => {
@@ -28,7 +30,9 @@ describe("workspace resolution hardening", () => {
     expect(source).toContain("WORKSPACE_CHANGE_EVENT");
     expect(source).toContain("const preferredWorkspaceId = [");
     expect(source).toContain("workspaceId,");
-    expect(source).toContain("preferredWorkspaceId ?? combinedWorkspaceIds[0] ?? null");
+    expect(source).toContain(
+      "preferredWorkspaceId ?? combinedWorkspaceIds[0] ?? null",
+    );
     expect(source).toContain("if (!storageHydrated) return;");
     expect(source).toContain("!workspaceId");
   });
@@ -46,9 +50,13 @@ describe("workspace resolution hardening", () => {
     const source = readSource("src/features/pt-hub/lib/pt-hub.ts");
 
     expect(source).toContain("const ownedWorkspaceRows = data ?? [];");
-    expect(source).toContain("const memberWorkspaceIds = Array.from(memberMap.keys())");
-    expect(source).toContain("new Set([...ownedWorkspaceIds, ...memberWorkspaceIds])");
+    expect(source).toContain(
+      "const memberWorkspaceIds = Array.from(memberMap.keys())",
+    );
+    expect(source).toContain(
+      "new Set([...ownedWorkspaceIds, ...memberWorkspaceIds])",
+    );
     expect(source).toContain('.from("workspaces")');
-    expect(source).toContain(".in(\"id\", workspaceIds)");
+    expect(source).toContain('.in("id", workspaceIds)');
   });
 });

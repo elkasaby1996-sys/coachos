@@ -34,7 +34,12 @@ export type MyLeadChatThreadSummary = {
   conversationId: string | null;
   conversationStatus: LeadConversationStatus | null;
   archivedReason: "converted" | "declined" | "manual" | null;
-  leadStatus: "new" | "contacted" | "approved_pending_workspace" | "converted" | "declined";
+  leadStatus:
+    | "new"
+    | "contacted"
+    | "approved_pending_workspace"
+    | "converted"
+    | "declined";
   submittedAt: string;
   ptUserId: string;
   ptDisplayName: string;
@@ -80,13 +85,17 @@ type MyLeadThreadRow = {
   unread_count: number | null;
 };
 
-function normalizeConversationStatus(value: string | null): LeadConversationStatus | null {
+function normalizeConversationStatus(
+  value: string | null,
+): LeadConversationStatus | null {
   if (value === "open") return "open";
   if (value === "archived") return "archived";
   return null;
 }
 
-function normalizeLeadStatus(value: string): MyLeadChatThreadSummary["leadStatus"] {
+function normalizeLeadStatus(
+  value: string,
+): MyLeadChatThreadSummary["leadStatus"] {
   switch (value) {
     case "new":
       return "new";
@@ -146,13 +155,14 @@ export function useLeadConversationThread(leadId: string | null | undefined) {
         } satisfies LeadConversationThread;
       }
 
-      const { data: conversationData, error: conversationError } = await supabase
-        .from("lead_conversations")
-        .select(
-          "id, lead_id, pt_user_id, lead_user_id, status, archived_reason, created_at, archived_at, last_message_at, last_message_preview",
-        )
-        .eq("lead_id", leadId)
-        .maybeSingle();
+      const { data: conversationData, error: conversationError } =
+        await supabase
+          .from("lead_conversations")
+          .select(
+            "id, lead_id, pt_user_id, lead_user_id, status, archived_reason, created_at, archived_at, last_message_at, last_message_preview",
+          )
+          .eq("lead_id", leadId)
+          .maybeSingle();
 
       if (conversationError) {
         const code = (conversationError as { code?: string }).code ?? "";
@@ -232,7 +242,9 @@ export function useMyLeadChatThreads() {
       return ((data ?? []) as MyLeadThreadRow[]).map((row) => ({
         leadId: row.lead_id,
         conversationId: row.conversation_id,
-        conversationStatus: normalizeConversationStatus(row.conversation_status),
+        conversationStatus: normalizeConversationStatus(
+          row.conversation_status,
+        ),
         archivedReason:
           row.archived_reason === "converted" ||
           row.archived_reason === "declined" ||

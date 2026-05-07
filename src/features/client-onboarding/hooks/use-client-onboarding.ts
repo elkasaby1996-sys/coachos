@@ -84,10 +84,13 @@ export function useClientOnboarding() {
         .order("created_at", { ascending: true });
 
       if (clientError) throw clientError;
-      const clientRows =
-        ((clientData ?? []) as ClientOnboardingClientProfile[]).filter(Boolean);
+      const clientRows = (
+        (clientData ?? []) as ClientOnboardingClientProfile[]
+      ).filter(Boolean);
       const client =
-        clientRows.find((row) => Boolean(row.workspace_id)) ?? clientRows[0] ?? null;
+        clientRows.find((row) => Boolean(row.workspace_id)) ??
+        clientRows[0] ??
+        null;
       if (!client?.id || !client.workspace_id) {
         return null as ClientOnboardingSummary | null;
       }

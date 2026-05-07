@@ -76,7 +76,9 @@ function toPackageLabelFilterValue(label: string): LeadPackageFilterValue {
 
 function parsePackageLabelFilterValue(filterValue: string) {
   if (!filterValue.startsWith(LEAD_PACKAGE_FILTER_LABEL_PREFIX)) return null;
-  const encodedLabel = filterValue.slice(LEAD_PACKAGE_FILTER_LABEL_PREFIX.length);
+  const encodedLabel = filterValue.slice(
+    LEAD_PACKAGE_FILTER_LABEL_PREFIX.length,
+  );
   if (!encodedLabel) return null;
   try {
     return normalizeLeadPackageLabel(decodeURIComponent(encodedLabel));
@@ -123,10 +125,9 @@ export function deriveLeadPackageFilterOptions(
   ];
 }
 
-export function filterLeadsByPackageContext<TLead extends LeadPackageContextInput>(
-  leads: TLead[],
-  filterValue: LeadPackageFilterValue,
-) {
+export function filterLeadsByPackageContext<
+  TLead extends LeadPackageContextInput,
+>(leads: TLead[], filterValue: LeadPackageFilterValue) {
   if (filterValue === LEAD_PACKAGE_FILTER_ALL) return leads;
   if (filterValue === LEAD_PACKAGE_FILTER_NO_SELECTION) {
     return leads.filter((lead) => leadHasNoPackageSelection(lead));

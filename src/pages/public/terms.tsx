@@ -58,10 +58,7 @@ export function TermsPage() {
           security, or create risk for other users or workspaces.
         </p>
       </PublicInfoCard>
-      <PublicInfoCard
-        icon={<Scale className="h-4 w-4" />}
-        title="Changes"
-      >
+      <PublicInfoCard icon={<Scale className="h-4 w-4" />} title="Changes">
         <p>
           We may update these terms as the product changes. Continued use means
           the current terms apply to your account.

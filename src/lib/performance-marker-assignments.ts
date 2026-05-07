@@ -47,7 +47,6 @@ export function shouldShowPtPerformanceMarkerAssignment({
   }
 
   return !(
-    submittedBaselineId === onboardingBaselineId &&
-    Boolean(submittedAt)
+    submittedBaselineId === onboardingBaselineId && Boolean(submittedAt)
   );
 }

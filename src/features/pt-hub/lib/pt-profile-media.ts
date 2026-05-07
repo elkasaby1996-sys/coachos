@@ -38,8 +38,7 @@ function buildStoragePath(params: {
     throw new Error("Transformation uploads require a transformation ID.");
   }
 
-  const filename =
-    params.kind === "transformation-before" ? "before" : "after";
+  const filename = params.kind === "transformation-before" ? "before" : "after";
   return `${params.userId}/transformations/${params.transformationId}/${filename}.${params.extension}`;
 }
 

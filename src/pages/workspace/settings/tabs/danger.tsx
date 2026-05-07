@@ -23,7 +23,8 @@ export function WorkspaceSettingsDangerTab() {
   const navigate = useNavigate();
   const { user } = useSessionAuth();
   const { refreshRole } = useBootstrapAuth();
-  const { workspace, workspaceId, isOwner } = useWorkspaceSettingsOutletContext();
+  const { workspace, workspaceId, isOwner } =
+    useWorkspaceSettingsOutletContext();
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [leaveSaving, setLeaveSaving] = useState(false);
@@ -112,14 +113,13 @@ export function WorkspaceSettingsDangerTab() {
           </Button>
         </SettingsFieldRow>
 
-        <SettingsFieldRow
-          label="Transfer ownership"
-          hint="Owner-only action."
-        >
+        <SettingsFieldRow label="Transfer ownership" hint="Owner-only action.">
           <Button type="button" variant="secondary" disabled>
             Transfer ownership (Unavailable)
           </Button>
-          <p className="text-xs text-muted-foreground">{transferOwnershipCopy}</p>
+          <p className="text-xs text-muted-foreground">
+            {transferOwnershipCopy}
+          </p>
         </SettingsFieldRow>
 
         <SettingsFieldRow

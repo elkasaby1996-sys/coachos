@@ -69,13 +69,17 @@ export function useWorkspace() {
     typeof window === "undefined",
   );
   const [reloadNonce, setReloadNonce] = useState(0);
-  const lastStableWorkspaceRef = useRef<WorkspaceSnapshot>(emptyWorkspaceSnapshot);
+  const lastStableWorkspaceRef = useRef<WorkspaceSnapshot>(
+    emptyWorkspaceSnapshot,
+  );
   const requestIdRef = useRef(0);
 
   const switchWorkspace = useCallback((nextWorkspaceId: string) => {
     if (!isUuid(nextWorkspaceId)) return;
     setWorkspaceId(nextWorkspaceId);
-    setWorkspaceIds((current) => prioritizeWorkspaceIds(nextWorkspaceId, current));
+    setWorkspaceIds((current) =>
+      prioritizeWorkspaceIds(nextWorkspaceId, current),
+    );
     setHasCached(true);
     lastStableWorkspaceRef.current = {
       workspaceId: nextWorkspaceId,
@@ -117,7 +121,10 @@ export function useWorkspace() {
         ownerUserId: snapshot.ownerUserId,
       };
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, snapshot.workspaceId);
+        window.localStorage.setItem(
+          ACTIVE_WORKSPACE_STORAGE_KEY,
+          snapshot.workspaceId,
+        );
       }
     }
   }, []);
@@ -225,7 +232,9 @@ export function useWorkspace() {
       if (!isUuid(nextWorkspaceId)) return;
 
       setWorkspaceId(nextWorkspaceId);
-      setWorkspaceIds((current) => prioritizeWorkspaceIds(nextWorkspaceId, current));
+      setWorkspaceIds((current) =>
+        prioritizeWorkspaceIds(nextWorkspaceId, current),
+      );
       setHasCached(true);
       lastStableWorkspaceRef.current = {
         workspaceId: nextWorkspaceId,
@@ -378,9 +387,8 @@ export function useWorkspace() {
             cachedWorkspaceId,
             preservedSnapshot.workspaceId,
             bootstrapWorkspaceId,
-          ].find(
-            (candidate): candidate is string =>
-              Boolean(candidate && combinedWorkspaceIds.includes(candidate)),
+          ].find((candidate): candidate is string =>
+            Boolean(candidate && combinedWorkspaceIds.includes(candidate)),
           );
           const selectedWorkspaceId =
             preferredWorkspaceId ?? combinedWorkspaceIds[0] ?? null;

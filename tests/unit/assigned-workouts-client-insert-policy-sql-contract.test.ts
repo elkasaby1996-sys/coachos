@@ -18,7 +18,9 @@ describe("assigned_workouts client insert policy SQL contract", () => {
     expect(migration).toContain(
       "drop policy if exists assigned_workouts_insert_client on public.assigned_workouts",
     );
-    expect(migration).toContain("create policy assigned_workouts_insert_client");
+    expect(migration).toContain(
+      "create policy assigned_workouts_insert_client",
+    );
     expect(migration).toContain("on public.assigned_workouts");
     expect(migration).toContain("for insert");
     expect(migration).toContain("to authenticated");

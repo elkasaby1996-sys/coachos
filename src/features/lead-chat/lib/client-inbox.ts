@@ -74,7 +74,9 @@ export function resolveWorkspaceThreadTitle(params: {
   const coachDisplayName = normalizeCoachDisplayName(params.coachDisplayName);
   if (coachDisplayName) return coachDisplayName;
 
-  const coachSenderName = normalizeCoachDisplayName(params.latestCoachSenderName);
+  const coachSenderName = normalizeCoachDisplayName(
+    params.latestCoachSenderName,
+  );
   if (coachSenderName) return coachSenderName;
 
   if (params.lastMessageSenderRole === "pt") {

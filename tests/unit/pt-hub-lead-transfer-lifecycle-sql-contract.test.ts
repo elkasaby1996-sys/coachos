@@ -22,4 +22,3 @@ describe("pt_hub_approve_lead transfer lifecycle contract", () => {
     expect(migration).toContain("lifecycle_changed_at = now()");
   });
 });
-

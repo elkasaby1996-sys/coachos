@@ -97,7 +97,10 @@ export function NoWorkspacePage() {
     session,
   ]);
 
-  if (authLoading || (!bootstrapResolved && !(bootstrapStale && hasStableBootstrap))) {
+  if (
+    authLoading ||
+    (!bootstrapResolved && !(bootstrapStale && hasStableBootstrap))
+  ) {
     return (
       <AuthBackdrop contentClassName="max-w-md">
         <Card className="w-full max-w-md">
@@ -153,7 +156,10 @@ export function NoWorkspacePage() {
             </Button>
           ) : null}
           {accountType === "client" ? (
-            <form className="space-y-3 rounded-2xl border border-border/70 bg-secondary/20 p-4" onSubmit={handleInviteSubmit}>
+            <form
+              className="space-y-3 rounded-2xl border border-border/70 bg-secondary/20 p-4"
+              onSubmit={handleInviteSubmit}
+            >
               <p className="text-sm font-medium text-foreground">
                 Join with an invite
               </p>

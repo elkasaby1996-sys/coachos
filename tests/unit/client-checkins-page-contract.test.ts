@@ -19,4 +19,3 @@ describe("client check-ins page contract", () => {
     expect(clientCheckinsPage).toContain("setStep(2)");
   });
 });
-

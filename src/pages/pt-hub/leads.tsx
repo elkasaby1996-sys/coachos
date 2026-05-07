@@ -87,7 +87,11 @@ const leadPipelineGridClass =
 
 function PtHubLeadListSkeleton() {
   return (
-    <div className="pt-hub-data-shell p-2" aria-label="Loading leads" aria-busy="true">
+    <div
+      className="pt-hub-data-shell p-2"
+      aria-label="Loading leads"
+      aria-busy="true"
+    >
       <p className="sr-only">Loading leads...</p>
       <div
         className={`hidden gap-4 rounded-[14px] border border-border/60 bg-background/60 px-5 py-3 lg:grid ${leadPipelineGridClass}`}
@@ -217,9 +221,11 @@ export function PtHubLeadsPage() {
           ? true
           : statusFilter === "active_pipeline"
             ? ["contacted", "approved_pending_workspace"].includes(lead.status)
-          : statusFilter === "approved_group"
-            ? ["approved_pending_workspace", "converted"].includes(lead.status)
-            : lead.status === statusFilter;
+            : statusFilter === "approved_group"
+              ? ["approved_pending_workspace", "converted"].includes(
+                  lead.status,
+                )
+              : lead.status === statusFilter;
       const haystack = [
         lead.fullName,
         lead.email ?? "",
@@ -244,9 +250,9 @@ export function PtHubLeadsPage() {
           ? true
           : triageFilter === "new"
             ? lead.status === "new"
-          : triageFilter === "waiting24h"
-            ? isWaiting24h
-            : lead.leadUnreadCount > 0;
+            : triageFilter === "waiting24h"
+              ? isWaiting24h
+              : lead.leadUnreadCount > 0;
       return matchesStatus && matchesSearch && matchesTriage;
     });
   }, [

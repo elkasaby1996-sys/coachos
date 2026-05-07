@@ -8,9 +8,13 @@ function readSource(pathFromRoot: string) {
 
 describe("pt hub lead transfer UI wiring", () => {
   it("shows an explicit transfer confirmation warning in lead detail", () => {
-    const source = readSource("src/features/pt-hub/components/pt-hub-lead-detail-view.tsx");
+    const source = readSource(
+      "src/features/pt-hub/components/pt-hub-lead-detail-view.tsx",
+    );
 
-    expect(source).toContain('This lead has been converted and assigned to "{currentWorkspaceName}" workspace.');
+    expect(source).toContain(
+      'This lead has been converted and assigned to "{currentWorkspaceName}" workspace.',
+    );
     expect(source).toContain("disabled={approveDisabled || isConvertedLead}");
     expect(source).toContain("disabled={saving || isConvertedLead}");
     expect(source).toContain("Lead already converted");
@@ -29,7 +33,9 @@ describe("pt hub lead transfer UI wiring", () => {
 
     expect(pageSource).toContain("allowTransfer: params.allowTransfer");
     expect(libSource).toContain("allowTransfer?: boolean;");
-    expect(libSource).toContain("p_allow_transfer: params.allowTransfer ?? false");
+    expect(libSource).toContain(
+      "p_allow_transfer: params.allowTransfer ?? false",
+    );
     expect(libSource).toContain("LEAD_TRANSFER_REQUIRES_CONFIRMATION");
   });
 });

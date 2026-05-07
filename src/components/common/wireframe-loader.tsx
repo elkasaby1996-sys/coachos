@@ -110,7 +110,10 @@ function readPtHubThemeMode(): WireframeThemeMode {
     : "light";
 }
 
-function getShellClassName(shell: WireframeShell, themeMode: WireframeThemeMode) {
+function getShellClassName(
+  shell: WireframeShell,
+  themeMode: WireframeThemeMode,
+) {
   if (shell === "pt-hub") {
     return cn(
       "pt-hub-theme theme-shell-canvas",
@@ -237,10 +240,7 @@ function ScreenWireframe({
           </div>
 
           <div className="space-y-5">
-            <div
-              className="rounded-[32px] p-5"
-              style={panelStyle}
-            >
+            <div className="rounded-[32px] p-5" style={panelStyle}>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0 flex-1 space-y-3">
                   <WireframeBlock className="h-4 w-28 rounded-full" />
@@ -256,10 +256,7 @@ function ScreenWireframe({
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
               <div className="space-y-5">
-                <div
-                  className="rounded-[32px] p-5"
-                  style={panelStyle}
-                >
+                <div className="rounded-[32px] p-5" style={panelStyle}>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <WireframeBlock className="h-28 rounded-[24px]" />
                     <WireframeBlock className="h-28 rounded-[24px]" />
@@ -267,10 +264,7 @@ function ScreenWireframe({
                   </div>
                 </div>
 
-                <div
-                  className="rounded-[32px] p-5"
-                  style={panelStyle}
-                >
+                <div className="rounded-[32px] p-5" style={panelStyle}>
                   <div className="space-y-4">
                     <WireframeBlock className="h-5 w-44 rounded-full" />
                     <WireframeBlock className="h-4 w-full rounded-full" />
@@ -284,10 +278,7 @@ function ScreenWireframe({
                 </div>
               </div>
 
-              <div
-                className="rounded-[32px] p-5"
-                style={panelStyle}
-              >
+              <div className="rounded-[32px] p-5" style={panelStyle}>
                 <div className="space-y-4">
                   <WireframeBlock className="h-5 w-32 rounded-full" />
                   <WireframeBlock className="h-24 w-full rounded-[24px]" />
@@ -411,8 +402,7 @@ export function RouteAwareWireframeLoader({
   const appearance = useMemo(() => {
     const shell = getWireframeShell(location.pathname);
     const tone = getWireframeTone(location.pathname, shell);
-    const themeMode =
-      shell === "pt-hub" ? readPtHubThemeMode() : resolvedTheme;
+    const themeMode = shell === "pt-hub" ? readPtHubThemeMode() : resolvedTheme;
     const authWidthClassName = getWireframeAuthWidthClass(location.pathname);
 
     return { shell, tone, themeMode, authWidthClassName };

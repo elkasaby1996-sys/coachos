@@ -1,12 +1,7 @@
 // @ts-nocheck
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  FileText,
-  FlaskConical,
-  HeartPulse,
-  Upload,
-} from "lucide-react";
+import { FileText, FlaskConical, HeartPulse, Upload } from "lucide-react";
 import { EmptyState } from "../../../components/ui/coachos";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Button } from "../../../components/ui/button";
@@ -74,9 +69,9 @@ export function PtClientMedicalTab({
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyDate, setHistoryDate] = useState("");
   const [historyNotes, setHistoryNotes] = useState("");
-  const [historyStatus, setHistoryStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
+  const [historyStatus, setHistoryStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [historyMessage, setHistoryMessage] = useState<string | null>(null);
   const [labName, setLabName] = useState("");
   const [labValue, setLabValue] = useState("");
@@ -366,7 +361,9 @@ export function PtClientMedicalTab({
 
     if (error || !data?.signedUrl) {
       setDocumentStatus("error");
-      setDocumentMessage(error ? getErrorMessage(error) : "Unable to open file.");
+      setDocumentMessage(
+        error ? getErrorMessage(error) : "Unable to open file.",
+      );
       return;
     }
 
@@ -564,7 +561,8 @@ export function PtClientMedicalTab({
                 {labStatus === "saving" ? "Saving..." : "Add test result"}
               </Button>
               <span className="text-xs text-muted-foreground">
-                {labMessage ?? "Name, value, and unit keep results scan-friendly."}
+                {labMessage ??
+                  "Name, value, and unit keep results scan-friendly."}
               </span>
             </div>
           </CardContent>
@@ -804,7 +802,9 @@ export function PtClientMedicalTab({
                     onClick={() => handleOpenDocument(documentRow)}
                     disabled={openingDocumentId === documentRow.id}
                   >
-                    {openingDocumentId === documentRow.id ? "Opening..." : "Open"}
+                    {openingDocumentId === documentRow.id
+                      ? "Opening..."
+                      : "Open"}
                   </Button>
                 </div>
               ))

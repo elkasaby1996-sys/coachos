@@ -88,7 +88,8 @@ export function sortWorkoutsByUrgency<T extends WorkoutLike>(workouts: T[]) {
     const urgencyDiff = getWorkoutUrgencyRank(a) - getWorkoutUrgencyRank(b);
     if (urgencyDiff !== 0) return urgencyDiff;
 
-    const scheduleDiff = getDateRank(a.scheduled_date) - getDateRank(b.scheduled_date);
+    const scheduleDiff =
+      getDateRank(a.scheduled_date) - getDateRank(b.scheduled_date);
     if (scheduleDiff !== 0) return scheduleDiff;
 
     return getDateRank(b.created_at) - getDateRank(a.created_at);

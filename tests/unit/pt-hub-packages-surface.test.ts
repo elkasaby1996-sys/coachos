@@ -29,7 +29,9 @@ describe("pt hub packages surface wiring", () => {
     const packagesPage = readSource("src/pages/pt-hub/packages.tsx");
 
     expect(packagesPage).toContain("<PtHubPackageManager />");
-    expect(packagesPage).toContain('className="page-kpi-block pt-hub-kpi-grid"');
+    expect(packagesPage).toContain(
+      'className="page-kpi-block pt-hub-kpi-grid"',
+    );
     expect(packagesPage.indexOf("<PtHubPackageManager />")).toBeLessThan(
       packagesPage.indexOf('className="page-kpi-block pt-hub-kpi-grid"'),
     );
@@ -52,8 +54,12 @@ describe("pt hub packages surface wiring", () => {
     );
 
     expect(packageManager).toContain('status: "draft"');
-    expect(packageManager).toContain('disabled={createState.status !== "active"}');
-    expect(packageManager).toContain('disabled={editState.status !== "active"}');
+    expect(packageManager).toContain(
+      'disabled={createState.status !== "active"}',
+    );
+    expect(packageManager).toContain(
+      'disabled={editState.status !== "active"}',
+    );
     expect(packageManager).toContain("getReorderedNonArchivedPackageIds");
     expect(packageManager).toContain("Archived packages");
   });
@@ -67,8 +73,8 @@ describe("pt hub packages surface wiring", () => {
     expect(packageManager).toContain("Edit");
     expect(packageManager).toContain("setEditingPackageId(pkg.id)");
     expect(packageManager).toContain("handleToggleVisibility(pkg.id, checked)");
-    expect(packageManager).toContain('aria-label={`Move ${pkg.title} up`}');
-    expect(packageManager).toContain('aria-label={`Move ${pkg.title} down`}');
+    expect(packageManager).toContain("aria-label={`Move ${pkg.title} up`}");
+    expect(packageManager).toContain("aria-label={`Move ${pkg.title} down`}");
     expect(packageManager).not.toContain("<Eye");
     expect(packageManager).not.toContain("View");
     expect(packageManager).not.toContain("viewingPackage");
@@ -84,7 +90,9 @@ describe("pt hub packages surface wiring", () => {
       "This package is referenced by existing leads and cannot be permanently deleted. Archive it instead.",
     );
     expect(packageManager).toContain("Delete package permanently?");
-    expect(packageManager).toContain("no leads currently reference this package");
+    expect(packageManager).toContain(
+      "no leads currently reference this package",
+    );
     expect(packageManager).toContain("<Trash2");
   });
 
@@ -95,9 +103,11 @@ describe("pt hub packages surface wiring", () => {
 
     expect(packageManager).toContain("function getPackageUsageLabel");
     expect(packageManager).toContain('return "Unused";');
-    expect(packageManager).toContain('return `Used by ${leadReferenceCount} ${');
     expect(packageManager).toContain(
-      'const hasLeadReferences = resolvedLeadReferenceCount > 0;',
+      "return `Used by ${leadReferenceCount} ${",
+    );
+    expect(packageManager).toContain(
+      "const hasLeadReferences = resolvedLeadReferenceCount > 0;",
     );
     expect(packageManager).toContain("const canDelete =");
     expect(packageManager).toContain(
@@ -116,7 +126,9 @@ describe("pt hub packages surface wiring", () => {
     expect(packageManager).toContain("dirtyEditPackageIdsRef");
     expect(packageManager).toContain("function updatePackageEditState");
     expect(packageManager).toContain("new Set(packages.map((pkg) => pkg.id))");
-    expect(packageManager).toContain("if (currentState && dirtyIds.has(pkg.id))");
+    expect(packageManager).toContain(
+      "if (currentState && dirtyIds.has(pkg.id))",
+    );
     expect(packageManager).toContain("nextState[pkg.id] = currentState");
     expect(packageManager).not.toContain("setEditStateById(nextState);");
     expect(packageManager).toContain("next.delete(packageId)");

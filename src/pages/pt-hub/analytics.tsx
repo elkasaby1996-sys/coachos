@@ -10,11 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  AlertTriangle,
-  RefreshCw,
-  ShieldAlert,
-} from "lucide-react";
+import { AlertTriangle, RefreshCw, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -65,7 +61,8 @@ function getLargestFunnelGap(stages: PtHubAnalyticsStage[]): FunnelGap | null {
     const current = stages[index];
     if (!previous || !current || previous.count <= 0) continue;
     const dropCount = Math.max(0, previous.count - current.count);
-    const dropPercent = previous.count > 0 ? (dropCount / previous.count) * 100 : 0;
+    const dropPercent =
+      previous.count > 0 ? (dropCount / previous.count) * 100 : 0;
     if (!largest || dropCount > largest.dropCount) {
       largest = {
         fromLabel: previous.label,
@@ -121,12 +118,18 @@ function AnalyticsLoadingState() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
         <div className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
-            <Skeleton key={`loading-kpi-left-${index}`} className="h-[172px] w-full rounded-[28px]" />
+            <Skeleton
+              key={`loading-kpi-left-${index}`}
+              className="h-[172px] w-full rounded-[28px]"
+            />
           ))}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
-            <Skeleton key={`loading-kpi-right-${index}`} className="h-[172px] w-full rounded-[28px]" />
+            <Skeleton
+              key={`loading-kpi-right-${index}`}
+              className="h-[172px] w-full rounded-[28px]"
+            />
           ))}
         </div>
       </div>
@@ -167,7 +170,10 @@ function TrendLegendItem({
 }) {
   return (
     <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/28 px-3 py-1.5 text-xs text-muted-foreground">
-      <span aria-hidden className={cn("h-2.5 w-2.5 rounded-full", colorClassName)} />
+      <span
+        aria-hidden
+        className={cn("h-2.5 w-2.5 rounded-full", colorClassName)}
+      />
       <span className="uppercase tracking-[0.16em]">{label}</span>
       <span className="font-semibold text-foreground">{value}</span>
     </div>
@@ -493,7 +499,9 @@ function HealthMetric({
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
-      <p className="text-xl font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="text-xl font-semibold tracking-tight text-foreground">
+        {value}
+      </p>
       <span className="sr-only">{detail}</span>
     </div>
   );
@@ -618,7 +626,10 @@ function TrendDataSummary({
             <tbody>
               {points.map((point) => (
                 <tr key={point.label} className="border-t border-border/45">
-                  <th scope="row" className="px-3 py-2 font-medium text-foreground">
+                  <th
+                    scope="row"
+                    className="px-3 py-2 font-medium text-foreground"
+                  >
                     {point.label}
                   </th>
                   <td className="px-3 py-2 text-muted-foreground">
@@ -669,11 +680,16 @@ function WorkspaceComparisonRow({
     >
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-foreground">{row.workspaceName}</p>
+          <p className="text-sm font-medium text-foreground">
+            {row.workspaceName}
+          </p>
           {selected ? <Badge variant="info">Selected</Badge> : null}
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-background/72">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${conversionWidth}%` }} />
+          <div
+            className="h-full rounded-full bg-primary"
+            style={{ width: `${conversionWidth}%` }}
+          />
         </div>
       </div>
 
@@ -688,14 +704,18 @@ function WorkspaceComparisonRow({
         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           Conversions
         </p>
-        <p className="mt-1 text-sm font-medium text-foreground">{row.conversions}</p>
+        <p className="mt-1 text-sm font-medium text-foreground">
+          {row.conversions}
+        </p>
       </div>
 
       <div>
         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           Active clients
         </p>
-        <p className="mt-1 text-sm font-medium text-foreground">{row.activeClients}</p>
+        <p className="mt-1 text-sm font-medium text-foreground">
+          {row.activeClients}
+        </p>
       </div>
 
       <div>
@@ -759,7 +779,10 @@ export function PtHubAnalyticsPage() {
     workspacesQuery.error ||
     packagesQuery.error;
 
-  const largestGap = useMemo(() => getLargestFunnelGap(snapshot.funnel), [snapshot.funnel]);
+  const largestGap = useMemo(
+    () => getLargestFunnelGap(snapshot.funnel),
+    [snapshot.funnel],
+  );
   const qualityRows = useMemo(
     () =>
       rankQualityRows(
@@ -783,7 +806,8 @@ export function PtHubAnalyticsPage() {
         (accumulator, point) => ({
           leadsCreated: accumulator.leadsCreated + point.leadsCreated,
           approvedLeads: accumulator.approvedLeads + point.approvedLeads,
-          convertedClients: accumulator.convertedClients + point.convertedClients,
+          convertedClients:
+            accumulator.convertedClients + point.convertedClients,
         }),
         { leadsCreated: 0, approvedLeads: 0, convertedClients: 0 },
       ),
@@ -806,10 +830,10 @@ export function PtHubAnalyticsPage() {
   if (error) {
     return (
       <section className="space-y-4">
-      <PtHubPageHeader
-        eyebrow="Analytics"
-        title="Business health"
-        description="Demand, leaks, response, and risk."
+        <PtHubPageHeader
+          eyebrow="Analytics"
+          title="Business health"
+          description="Demand, leaks, response, and risk."
         />
 
         <PtHubSectionCard
@@ -831,7 +855,9 @@ export function PtHubAnalyticsPage() {
           }
         >
           <Alert tone="danger">
-            <AlertTitle>We could not assemble the PT Hub analytics view</AlertTitle>
+            <AlertTitle>
+              We could not assemble the PT Hub analytics view
+            </AlertTitle>
             <AlertDescription>
               {error instanceof Error
                 ? error.message
@@ -950,7 +976,10 @@ export function PtHubAnalyticsPage() {
                 <Alert tone="info" className="border-info/20 bg-info/6">
                   <AlertTitle>Low activity range</AlertTitle>
                   <AlertDescription>
-                    {activeTrendBucketCount === 0 ? "No active periods" : "One active period"} in this range.
+                    {activeTrendBucketCount === 0
+                      ? "No active periods"
+                      : "One active period"}{" "}
+                    in this range.
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -1101,9 +1130,15 @@ export function PtHubAnalyticsPage() {
                     selected={selected}
                     onClick={() => {
                       if (qualityGroup === "source") {
-                        setFilters((current) => ({ ...current, sourceKey: row.key }));
+                        setFilters((current) => ({
+                          ...current,
+                          sourceKey: row.key,
+                        }));
                       } else {
-                        setFilters((current) => ({ ...current, packageKey: row.key }));
+                        setFilters((current) => ({
+                          ...current,
+                          packageKey: row.key,
+                        }));
                       }
                     }}
                   />
@@ -1132,18 +1167,26 @@ export function PtHubAnalyticsPage() {
                 ? "Unavailable until dedicated response events are stored."
                 : "Median time from submission to first PT response."
             }
-            tone={snapshot.topKpis.medianFirstResponse.unavailable ? "warning" : "neutral"}
+            tone={
+              snapshot.topKpis.medianFirstResponse.unavailable
+                ? "warning"
+                : "neutral"
+            }
           />
           <SpeedMetric
             label="Leads waiting >24h"
             value={String(snapshot.speed.leadsWaitingMoreThan24h)}
             detail="Open new leads older than 24 hours."
-            tone={snapshot.speed.leadsWaitingMoreThan24h > 0 ? "danger" : "neutral"}
+            tone={
+              snapshot.speed.leadsWaitingMoreThan24h > 0 ? "danger" : "neutral"
+            }
             action={
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => navigate("/pt-hub/leads?status=new&attention=waiting24h")}
+                onClick={() =>
+                  navigate("/pt-hub/leads?status=new&attention=waiting24h")
+                }
               >
                 Open
               </Button>
@@ -1152,7 +1195,9 @@ export function PtHubAnalyticsPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <SpeedMetric
               label="Avg days new -> approved"
-              value={formatAnalyticsDurationDays(snapshot.speed.averageDaysNewToApproved)}
+              value={formatAnalyticsDurationDays(
+                snapshot.speed.averageDaysNewToApproved,
+              )}
               detail="Unavailable until approval events are timestamped."
               tone="warning"
             />
@@ -1178,7 +1223,10 @@ export function PtHubAnalyticsPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/44 text-warning">
-                  <ShieldAlert className="h-4 w-4 [stroke-width:1.7]" aria-hidden="true" />
+                  <ShieldAlert
+                    className="h-4 w-4 [stroke-width:1.7]"
+                    aria-hidden="true"
+                  />
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-foreground">
@@ -1209,7 +1257,9 @@ export function PtHubAnalyticsPage() {
               label="Overdue check-ins"
               value={String(snapshot.clientHealth.overdueCheckinClients)}
               detail="Clients with overdue delivery follow-up."
-              onClick={() => navigate("/pt-hub/clients?segment=checkin_overdue")}
+              onClick={() =>
+                navigate("/pt-hub/clients?segment=checkin_overdue")
+              }
             />
             <HealthMetric
               label={`Paused in ${filters.rangeKey.toUpperCase()}`}
@@ -1281,7 +1331,9 @@ export function PtHubAnalyticsPage() {
                 />
                 <HealthMetric
                   label="At-risk rate"
-                  value={formatAnalyticsPercent(snapshot.workspacePerformance[0]!.atRiskRate)}
+                  value={formatAnalyticsPercent(
+                    snapshot.workspacePerformance[0]!.atRiskRate,
+                  )}
                   detail="Across active clients in this space"
                 />
               </div>
@@ -1317,7 +1369,9 @@ export function PtHubAnalyticsPage() {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {item.label}
+                  </p>
                   <span className="sr-only">{item.detail}</span>
                 </div>
               </div>

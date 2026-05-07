@@ -25,14 +25,14 @@ export async function sendConversationMessage(input: {
   }
 
   const senderScope =
-    input.senderUserId ??
-    `${input.senderRole}:${input.conversationId}`;
+    input.senderUserId ?? `${input.senderRole}:${input.conversationId}`;
 
   return runClientGuardedAction({
     action: "message-send",
     scope: `${senderScope}:${input.conversationId}`,
     cooldownMs: 1200,
-    message: "You're sending messages a little too quickly. Please wait a moment.",
+    message:
+      "You're sending messages a little too quickly. Please wait a moment.",
     run: async () => {
       const { data, error } = await supabase
         .from("messages")

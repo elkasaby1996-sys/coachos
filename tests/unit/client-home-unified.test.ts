@@ -161,4 +161,3 @@ describe("find-coach visibility", () => {
     ).toBe(false);
   });
 });
-

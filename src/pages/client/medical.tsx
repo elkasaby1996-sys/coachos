@@ -91,9 +91,9 @@ export function ClientMedicalPage() {
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyDate, setHistoryDate] = useState("");
   const [historyNotes, setHistoryNotes] = useState("");
-  const [historyStatus, setHistoryStatus] = useState<"idle" | "saving" | "error">(
-    "idle",
-  );
+  const [historyStatus, setHistoryStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const [historyMessage, setHistoryMessage] = useState<string | null>(null);
   const [labName, setLabName] = useState("");
   const [labValue, setLabValue] = useState("");
@@ -168,7 +168,9 @@ export function ClientMedicalPage() {
 
   const historyEntries = useMemo(
     () =>
-      (recordsQuery.data ?? []).filter((entry) => entry.entry_type === "history"),
+      (recordsQuery.data ?? []).filter(
+        (entry) => entry.entry_type === "history",
+      ),
     [recordsQuery.data],
   );
 
@@ -204,7 +206,12 @@ export function ClientMedicalPage() {
   const handleSaveHistory = async () => {
     const trimmedTitle = historyTitle.trim();
     const trimmedNotes = historyNotes.trim();
-    if (!clientId || !workspaceId || !session?.user?.id || trimmedTitle.length === 0) {
+    if (
+      !clientId ||
+      !workspaceId ||
+      !session?.user?.id ||
+      trimmedTitle.length === 0
+    ) {
       return;
     }
     setHistoryStatus("saving");
@@ -212,13 +219,13 @@ export function ClientMedicalPage() {
     const { data, error } = await supabase
       .from("client_medical_records")
       .insert({
-      client_id: clientId,
-      workspace_id: workspaceId,
-      entry_type: "history",
-      title: trimmedTitle,
-      observed_at: historyDate || null,
-      notes: trimmedNotes || null,
-      created_by: session.user.id,
+        client_id: clientId,
+        workspace_id: workspaceId,
+        entry_type: "history",
+        title: trimmedTitle,
+        observed_at: historyDate || null,
+        notes: trimmedNotes || null,
+        created_by: session.user.id,
       })
       .select(
         "id, entry_type, title, result_value, unit, observed_at, notes, created_at",
@@ -261,15 +268,15 @@ export function ClientMedicalPage() {
     const { data, error } = await supabase
       .from("client_medical_records")
       .insert({
-      client_id: clientId,
-      workspace_id: workspaceId,
-      entry_type: "lab_result",
-      title: trimmedName,
-      result_value: trimmedValue,
-      unit: trimmedUnit || null,
-      observed_at: labDate || null,
-      notes: trimmedNotes || null,
-      created_by: session.user.id,
+        client_id: clientId,
+        workspace_id: workspaceId,
+        entry_type: "lab_result",
+        title: trimmedName,
+        result_value: trimmedValue,
+        unit: trimmedUnit || null,
+        observed_at: labDate || null,
+        notes: trimmedNotes || null,
+        created_by: session.user.id,
       })
       .select(
         "id, entry_type, title, result_value, unit, observed_at, notes, created_at",
@@ -296,7 +303,8 @@ export function ClientMedicalPage() {
   };
 
   const handleUploadDocument = async () => {
-    if (!clientId || !workspaceId || !session?.user?.id || !documentFile) return;
+    if (!clientId || !workspaceId || !session?.user?.id || !documentFile)
+      return;
     setDocumentStatus("saving");
     setDocumentMessage(null);
     try {
@@ -371,7 +379,9 @@ export function ClientMedicalPage() {
 
     if (error || !data?.signedUrl) {
       setDocumentStatus("error");
-      setDocumentMessage(error ? getErrorMessage(error) : "Unable to open file.");
+      setDocumentMessage(
+        error ? getErrorMessage(error) : "Unable to open file.",
+      );
       return;
     }
 
@@ -455,10 +465,13 @@ export function ClientMedicalPage() {
                       historyTitle.trim().length === 0
                     }
                   >
-                    {historyStatus === "saving" ? "Saving..." : "Add history item"}
+                    {historyStatus === "saving"
+                      ? "Saving..."
+                      : "Add history item"}
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    {historyMessage ?? "This updates your coach's medical view too."}
+                    {historyMessage ??
+                      "This updates your coach's medical view too."}
                   </span>
                 </div>
               </SectionCard>
@@ -548,7 +561,8 @@ export function ClientMedicalPage() {
                     {labStatus === "saving" ? "Saving..." : "Add test result"}
                   </Button>
                   <span className="text-xs text-muted-foreground">
-                    {labMessage ?? "These results appear on the PT medical tab."}
+                    {labMessage ??
+                      "These results appear on the PT medical tab."}
                   </span>
                 </div>
               </SectionCard>
@@ -616,7 +630,9 @@ export function ClientMedicalPage() {
                     onClick={handleUploadDocument}
                     disabled={documentStatus === "saving" || !documentFile}
                   >
-                    {documentStatus === "saving" ? "Uploading..." : "Upload report"}
+                    {documentStatus === "saving"
+                      ? "Uploading..."
+                      : "Upload report"}
                   </Button>
                   <span className="text-xs text-muted-foreground">
                     {documentMessage ??
@@ -652,34 +668,34 @@ export function ClientMedicalPage() {
                 />
               ) : historyEntries.length > 0 ? (
                 <>
-                {historyWindow.visibleRows.map((entry) => (
-                  <SectionCard key={entry.id} className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground">
-                        {entry.title}
-                      </p>
-                      <span className="text-xs text-muted-foreground">
-                        {formatShortDate(entry.observed_at)}
-                      </span>
+                  {historyWindow.visibleRows.map((entry) => (
+                    <SectionCard key={entry.id} className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground">
+                          {entry.title}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {formatShortDate(entry.observed_at)}
+                        </span>
+                      </div>
+                      {entry.notes ? (
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                          {entry.notes}
+                        </p>
+                      ) : null}
+                    </SectionCard>
+                  ))}
+                  {historyWindow.hasHiddenRows ? (
+                    <div className="flex justify-center pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={historyWindow.showMore}
+                      >
+                        Show {Math.min(historyWindow.hiddenCount, 8)} more
+                      </Button>
                     </div>
-                    {entry.notes ? (
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                        {entry.notes}
-                      </p>
-                    ) : null}
-                  </SectionCard>
-                ))}
-                {historyWindow.hasHiddenRows ? (
-                  <div className="flex justify-center pt-1">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={historyWindow.showMore}
-                    >
-                      Show {Math.min(historyWindow.hiddenCount, 8)} more
-                    </Button>
-                  </div>
-                ) : null}
+                  ) : null}
                 </>
               ) : (
                 <EmptyStateBlock
@@ -712,40 +728,40 @@ export function ClientMedicalPage() {
                 />
               ) : labEntries.length > 0 ? (
                 <>
-                {labWindow.visibleRows.map((entry) => (
-                  <SectionCard key={entry.id} className="space-y-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {entry.title}
-                        </p>
-                        <p className="mt-1 text-lg font-semibold text-foreground">
-                          {entry.result_value}
-                          {entry.unit ? ` ${entry.unit}` : ""}
-                        </p>
+                  {labWindow.visibleRows.map((entry) => (
+                    <SectionCard key={entry.id} className="space-y-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {entry.title}
+                          </p>
+                          <p className="mt-1 text-lg font-semibold text-foreground">
+                            {entry.result_value}
+                            {entry.unit ? ` ${entry.unit}` : ""}
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatShortDate(entry.observed_at)}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatShortDate(entry.observed_at)}
-                      </span>
+                      {entry.notes ? (
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                          {entry.notes}
+                        </p>
+                      ) : null}
+                    </SectionCard>
+                  ))}
+                  {labWindow.hasHiddenRows ? (
+                    <div className="flex justify-center pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={labWindow.showMore}
+                      >
+                        Show {Math.min(labWindow.hiddenCount, 8)} more
+                      </Button>
                     </div>
-                    {entry.notes ? (
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                        {entry.notes}
-                      </p>
-                    ) : null}
-                  </SectionCard>
-                ))}
-                {labWindow.hasHiddenRows ? (
-                  <div className="flex justify-center pt-1">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={labWindow.showMore}
-                    >
-                      Show {Math.min(labWindow.hiddenCount, 8)} more
-                    </Button>
-                  </div>
-                ) : null}
+                  ) : null}
                 </>
               ) : (
                 <EmptyStateBlock
@@ -778,50 +794,52 @@ export function ClientMedicalPage() {
                 />
               ) : (documentsQuery.data ?? []).length > 0 ? (
                 <>
-                {documentWindow.visibleRows.map((documentRow) => (
-                  <SectionCard
-                    key={documentRow.id}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">
-                        {documentRow.label?.trim() || documentRow.file_name}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {documentRow.file_name}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatFileSize(documentRow.file_size)}</span>
-                        <span>•</span>
-                        <span>
-                          {formatShortDate(
-                            documentRow.observed_at,
-                            formatShortDate(documentRow.created_at),
-                          )}
-                        </span>
+                  {documentWindow.visibleRows.map((documentRow) => (
+                    <SectionCard
+                      key={documentRow.id}
+                      className="flex flex-wrap items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {documentRow.label?.trim() || documentRow.file_name}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {documentRow.file_name}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatFileSize(documentRow.file_size)}</span>
+                          <span>•</span>
+                          <span>
+                            {formatShortDate(
+                              documentRow.observed_at,
+                              formatShortDate(documentRow.created_at),
+                            )}
+                          </span>
+                        </div>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleOpenDocument(documentRow)}
+                        disabled={openingDocumentId === documentRow.id}
+                      >
+                        {openingDocumentId === documentRow.id
+                          ? "Opening..."
+                          : "Open"}
+                      </Button>
+                    </SectionCard>
+                  ))}
+                  {documentWindow.hasHiddenRows ? (
+                    <div className="flex justify-center pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={documentWindow.showMore}
+                      >
+                        Show {Math.min(documentWindow.hiddenCount, 8)} more
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleOpenDocument(documentRow)}
-                      disabled={openingDocumentId === documentRow.id}
-                    >
-                      {openingDocumentId === documentRow.id ? "Opening..." : "Open"}
-                    </Button>
-                  </SectionCard>
-                ))}
-                {documentWindow.hasHiddenRows ? (
-                  <div className="flex justify-center pt-1">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={documentWindow.showMore}
-                    >
-                      Show {Math.min(documentWindow.hiddenCount, 8)} more
-                    </Button>
-                  </div>
-                ) : null}
+                  ) : null}
                 </>
               ) : (
                 <EmptyStateBlock
