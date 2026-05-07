@@ -1,26 +1,69 @@
-import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import {
+  AlertTriangle,
+  ClipboardCheck,
+  Scale,
+  ShieldAlert,
+} from "lucide-react";
+import { PublicInfoCard, PublicInfoLayout } from "./public-info-layout";
 
 export function TermsPage() {
   return (
-    <AuthBackdrop contentClassName="max-w-3xl">
-      <div className="rounded-2xl border border-border/70 bg-card/85 p-6 text-sm text-muted-foreground shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl sm:p-8">
-        <h1 className="font-serif text-3xl text-foreground">
-          Terms of Service
-        </h1>
-        <p className="mt-3">
-          By using CoachOS, you agree to use the product lawfully and not misuse
-          accounts, data, or platform resources.
+    <PublicInfoLayout
+      eyebrow="Usage agreement"
+      title="Terms of Use"
+      description="These terms describe the expectations for using RepSync responsibly, protecting account access, and reviewing coaching outputs before relying on them."
+      updated="February 17, 2026"
+      aside={
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 text-foreground">
+            <ClipboardCheck className="h-4 w-4 text-primary" />
+            <span className="font-semibold">Applies to</span>
+          </div>
+          <p className="text-sm leading-6">
+            Coaches, clients, workspace owners, and anyone accessing RepSync
+            through an invited account.
+          </p>
+          <div className="rounded-xl border border-border/70 bg-card p-3 text-xs font-medium leading-5 text-muted-foreground">
+            These terms are a product summary and do not replace written
+            agreements signed separately.
+          </div>
+        </div>
+      }
+    >
+      <PublicInfoCard
+        icon={<ClipboardCheck className="h-4 w-4" />}
+        title="Responsible use"
+      >
+        <ul className="space-y-2">
+          <li>Use RepSync lawfully and respectfully.</li>
+          <li>Keep account access and client information protected.</li>
+          <li>Do not misuse platform resources or interfere with service.</li>
+        </ul>
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<AlertTriangle className="h-4 w-4" />}
+        title="Training decisions"
+      >
+        <p>
+          RepSync is provided as-is. Review outputs before relying on them for
+          training, wellness, or health-related decisions.
         </p>
-        <p className="mt-3">
-          CoachOS is provided as-is. You are responsible for reviewing outputs
-          before relying on them in training or health contexts.
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<ShieldAlert className="h-4 w-4" />}
+        title="Security"
+      >
+        <p>
+          We may suspend accounts that violate these terms, compromise platform
+          security, or create risk for other users or workspaces.
         </p>
-        <p className="mt-3">
-          We may suspend accounts that violate these terms or compromise
-          platform security.
+      </PublicInfoCard>
+      <PublicInfoCard icon={<Scale className="h-4 w-4" />} title="Changes">
+        <p>
+          We may update these terms as the product changes. Continued use means
+          the current terms apply to your account.
         </p>
-        <p className="mt-6 text-xs">Last updated: February 17, 2026</p>
-      </div>
-    </AuthBackdrop>
+      </PublicInfoCard>
+    </PublicInfoLayout>
   );
 }

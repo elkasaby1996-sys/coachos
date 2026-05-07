@@ -148,7 +148,7 @@ function ExerciseSetTable({
             </span>
             <div className="flex items-center gap-2">
               <input
-                className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                className="h-8 w-full app-field px-2 text-sm"
                 type="number"
                 inputMode="decimal"
                 placeholder="0"
@@ -166,7 +166,7 @@ function ExerciseSetTable({
               <span className="text-xs text-muted-foreground">{unitLabel}</span>
             </div>
             <input
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              className="h-8 app-field px-2 text-sm"
               type="number"
               inputMode="numeric"
               placeholder="0"
@@ -177,7 +177,7 @@ function ExerciseSetTable({
               disabled={!canEdit}
             />
             <input
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              className="h-8 app-field px-2 text-sm"
               type="number"
               inputMode="decimal"
               min={1}

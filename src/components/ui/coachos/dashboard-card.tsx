@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   SurfaceCard,
   SurfaceCardContent,
@@ -13,29 +14,41 @@ export function DashboardCard({
   subtitle,
   action,
   className,
+  disableHoverMotion = false,
   children,
 }: {
   title: ReactNode;
   subtitle?: string;
   action?: ReactNode;
   className?: string;
+  disableHoverMotion?: boolean;
   children: ReactNode;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <SurfaceCard className={cn(className)}>
-      <SurfaceCardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border/55 pb-4">
-        <div>
-          <SurfaceCardTitle className="text-base">{title}</SurfaceCardTitle>
-          {subtitle ? (
-            <SurfaceCardDescription className="mt-1">
-              {subtitle}
-            </SurfaceCardDescription>
-          ) : null}
-        </div>
-        {action}
-      </SurfaceCardHeader>
-      <SurfaceCardContent className="pt-4">{children}</SurfaceCardContent>
-    </SurfaceCard>
+    <motion.div
+      whileHover={
+        reduceMotion || disableHoverMotion
+          ? undefined
+          : { y: -3, transition: { duration: 0.2, ease: "easeOut" } }
+      }
+    >
+      <SurfaceCard className={cn(className)}>
+        <SurfaceCardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border/55 pb-4">
+          <div>
+            <SurfaceCardTitle className="text-base">{title}</SurfaceCardTitle>
+            {subtitle ? (
+              <SurfaceCardDescription className="mt-1">
+                {subtitle}
+              </SurfaceCardDescription>
+            ) : null}
+          </div>
+          {action}
+        </SurfaceCardHeader>
+        <SurfaceCardContent className="pt-4">{children}</SurfaceCardContent>
+      </SurfaceCard>
+    </motion.div>
   );
 }
 

@@ -36,8 +36,10 @@ export default {
           foreground: "oklch(var(--popover-foreground))",
         },
         success: "oklch(var(--success))",
+        info: "oklch(var(--info))",
         warning: "oklch(var(--warning))",
         danger: "oklch(var(--danger))",
+        neutral: "oklch(var(--neutral))",
         chart: {
           "1": "oklch(var(--chart-1))",
           "2": "oklch(var(--chart-2))",

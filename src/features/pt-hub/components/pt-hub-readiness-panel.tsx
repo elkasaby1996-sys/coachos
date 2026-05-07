@@ -7,6 +7,7 @@ import {
 import { Link } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
 import type { PTProfileReadiness } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 
@@ -22,23 +23,21 @@ export function PtHubReadinessPanel({
 
   return (
     <PtHubSectionCard
-      title={compact ? "Marketplace readiness" : "Profile readiness"}
+      title={compact ? "Profile readiness" : "Public profile readiness"}
       description={
         compact
-          ? "How close your trainer profile is to future marketplace publishing."
-          : "A publish-readiness system for the future public trainer profile."
+          ? "How close your public trainer page is to being ready to share."
+          : "A checklist for getting your public trainer page ready to share."
       }
     >
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant={readiness.readyForPublish ? "success" : "warning"}
-              >
+              <Badge variant={getSemanticBadgeVariant(readiness.statusLabel)}>
                 {readiness.statusLabel}
               </Badge>
-              <Badge variant="secondary">
+              <Badge variant="info">
                 {readiness.completionPercent}% complete
               </Badge>
             </div>
@@ -46,14 +45,22 @@ export function PtHubReadinessPanel({
               {readiness.completionPercent}%
             </p>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-background/40 p-3 text-primary">
-            <Sparkles className="h-5 w-5" />
+          <div
+            className={`rounded-2xl border p-3 ${
+              readiness.readyForPublish
+                ? "border-success/22 bg-success/12 text-success"
+                : "border-warning/22 bg-warning/12 text-warning"
+            }`}
+          >
+            <Sparkles className="h-5 w-5 [stroke-width:1.7]" />
           </div>
         </div>
 
         <div className="h-2 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-primary transition-[width]"
+            className={`h-full rounded-full transition-[width] ${
+              readiness.readyForPublish ? "bg-success" : "bg-warning"
+            }`}
             style={{ width: `${readiness.completionPercent}%` }}
           />
         </div>
@@ -62,13 +69,13 @@ export function PtHubReadinessPanel({
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
               {readiness.readyForPublish
-                ? "Your profile has the essentials needed for a publish-ready state."
-                : `${readiness.missingItems.length} item(s) still need attention before publish readiness.`}
+                ? "Your profile has the key details needed to go live."
+                : `${readiness.missingItems.length} item(s) still need attention before you share it.`}
             </p>
             {!readiness.readyForPublish ? (
               <div className="flex flex-wrap gap-2">
                 {readiness.missingItems.slice(0, 3).map((item) => (
-                  <Badge key={item} variant="muted">
+                  <Badge key={item} variant="warning">
                     {item}
                   </Badge>
                 ))}
@@ -85,9 +92,9 @@ export function PtHubReadinessPanel({
                 >
                   <div className="flex items-start gap-3">
                     {item.complete ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-success [stroke-width:1.7]" />
                     ) : (
-                      <CircleDashed className="mt-0.5 h-4 w-4 text-warning" />
+                      <CircleDashed className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />
                     )}
                     <div>
                       <p className="text-sm font-medium text-foreground">
@@ -100,7 +107,7 @@ export function PtHubReadinessPanel({
                       ) : null}
                     </div>
                   </div>
-                  <Badge variant={item.complete ? "success" : "muted"}>
+                  <Badge variant={item.complete ? "success" : "warning"}>
                     {item.complete ? "Done" : "Missing"}
                   </Badge>
                 </div>
@@ -110,14 +117,14 @@ export function PtHubReadinessPanel({
             {!readiness.readyForPublish ? (
               <div className="space-y-3 rounded-[24px] border border-warning/30 bg-warning/10 p-4">
                 <div className="flex items-start gap-3">
-                  <CircleAlert className="mt-0.5 h-4 w-4 text-warning" />
+                  <CircleAlert className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Quick wins
+                      Fastest upgrades
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Focus on the items below to move fastest toward publish
-                      readiness.
+                      Work through these first to get your public profile ready
+                      faster.
                     </p>
                   </div>
                 </div>

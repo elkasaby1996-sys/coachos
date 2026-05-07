@@ -1,21 +1,41 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   CalendarDays,
+  Clock3,
+  Info,
   MessageCircle,
   Rocket,
   Sparkles,
   Trash2,
+  UsersRound,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import {
+  StaggerGroup,
+  StaggerItem,
+} from "../../components/common/motion-primitives";
+import {
+  ActionButtonLabel,
+  ActionStatusMessage,
+  AnimatedValue,
+  LoadingPanel,
+} from "../../components/common/action-feedback";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatCard } from "../../components/pt/dashboard/StatCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
-import { EmptyState } from "../../components/ui/coachos";
+import {
+  EmptyState,
+  LifecycleBadge,
+  RiskBadge,
+  TagInfoBadge,
+} from "../../components/ui/coachos";
 import {
   Card,
   CardContent,
@@ -23,7 +43,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
@@ -31,13 +51,19 @@ import {
   checkinOperationalStatusMap,
   getCheckinOperationalState,
 } from "../../lib/checkin-review";
+import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ClientRecord = {
   id: string;
   workspace_id: string;
   user_id: string;
   status: string | null;
+  lifecycle_state: string | null;
+  manual_risk_flag: boolean | null;
   display_name: string | null;
   created_at: string;
   tags: string[] | null;
@@ -84,6 +110,7 @@ type AttentionTone = "neutral" | "warning" | "danger";
 type ClientAttentionRow = {
   id: string;
   name: string;
+  lifecycleState: string | null;
   lifecycle: string;
   lifecycleTone: AttentionTone;
   onboardingLabel: string | null;
@@ -132,14 +159,16 @@ const buildMetricDelta = ({
 };
 
 export function PtDashboardPage() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const navigate = useNavigate();
   const messagesEnabled = true;
   const {
     workspaceId: cachedWorkspaceId,
     loading: workspaceLoading,
     error: workspaceError,
+    refreshWorkspace,
   } = useWorkspace();
+  const workspaceRecoveryAttemptRef = useRef<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -155,7 +184,9 @@ export function PtDashboardPage() {
   const [coachTodos, setCoachTodos] = useState<CoachTodo[]>([]);
   const [todoDraft, setTodoDraft] = useState("");
   const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
-  const [todoEdits, setTodoEdits] = useState<Record<string, string>>({});
+  const [todoActionState, setTodoActionState] = useState<
+    "idle" | "saving" | "success" | "error"
+  >("idle");
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -173,6 +204,12 @@ export function PtDashboardPage() {
       try {
         if (!cachedWorkspaceId) {
           setLoadError("Workspace not found for this PT.");
+          setIsLoading(false);
+          return;
+        }
+        if (!UUID_PATTERN.test(cachedWorkspaceId)) {
+          setLoadError("Workspace context is invalid. Refreshing workspace...");
+          refreshWorkspace();
           setIsLoading(false);
           return;
         }
@@ -211,15 +248,42 @@ export function PtDashboardPage() {
         } else {
           setOnboardingRows([]);
         }
+        workspaceRecoveryAttemptRef.current = null;
       } catch (error: any) {
-        setLoadError(error?.message ?? "Failed to load dashboard.");
+        const message = String(error?.message ?? "");
+        const shouldRecoverWorkspace =
+          Boolean(cachedWorkspaceId) &&
+          (message.includes("Not authorized") ||
+            message.includes("Workspace is required") ||
+            message.includes("invalid input syntax for type uuid"));
+        if (shouldRecoverWorkspace) {
+          const recoveryKey = `${cachedWorkspaceId}:${message}`;
+          if (workspaceRecoveryAttemptRef.current !== recoveryKey) {
+            workspaceRecoveryAttemptRef.current = recoveryKey;
+            refreshWorkspace();
+          }
+        }
+        setClients([]);
+        setAssignedWorkouts([]);
+        setCheckins([]);
+        setMessages([]);
+        setUnreadCount(0);
+        setOnboardingRows([]);
+        setCoachTodos([]);
+        setLoadError(message || "Failed to load dashboard.");
       } finally {
         setIsLoading(false);
       }
     };
 
     void loadDashboard();
-  }, [cachedWorkspaceId, messagesEnabled, user?.id, workspaceLoading]);
+  }, [
+    cachedWorkspaceId,
+    messagesEnabled,
+    refreshWorkspace,
+    user?.id,
+    workspaceLoading,
+  ]);
 
   useEffect(() => {
     if (workspaceError) {
@@ -231,6 +295,7 @@ export function PtDashboardPage() {
     if (!user?.id || !workspaceId || !todoDraft.trim()) return;
     const title = todoDraft.trim();
     setTodoDraft("");
+    setTodoActionState("saving");
     const { data, error } = await supabase
       .from("coach_todos")
       .insert({ title, coach_id: user.id, workspace_id: workspaceId })
@@ -238,7 +303,12 @@ export function PtDashboardPage() {
       .single();
     if (!error && data) {
       setCoachTodos((prev) => [...prev, data as CoachTodo]);
+      setTodoActionState("success");
+      window.setTimeout(() => setTodoActionState("idle"), 1200);
+      return;
     }
+    setTodoActionState("error");
+    window.setTimeout(() => setTodoActionState("idle"), 1800);
   };
 
   const toggleTodo = async (todo: CoachTodo) => {
@@ -246,27 +316,6 @@ export function PtDashboardPage() {
     const { data, error } = await supabase
       .from("coach_todos")
       .update({ is_done: !todo.is_done })
-      .eq("id", todo.id)
-      .select("id, title, is_done, created_at")
-      .single();
-    if (!error && data) {
-      setCoachTodos((prev) =>
-        prev.map((row) => (row.id === todo.id ? (data as CoachTodo) : row)),
-      );
-    }
-    setTodoBusyId(null);
-  };
-
-  const updateTodoTitle = async (todo: CoachTodo, title: string) => {
-    setTodoBusyId(todo.id);
-    const trimmed = title.trim();
-    if (!trimmed) {
-      await deleteTodo(todo);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("coach_todos")
-      .update({ title: trimmed })
       .eq("id", todo.id)
       .select("id, title, is_done, created_at")
       .single();
@@ -309,17 +358,37 @@ export function PtDashboardPage() {
     return Math.max(0, Math.floor((today - ms) / (1000 * 60 * 60 * 24)));
   };
 
-  const toneClassName = (tone: AttentionTone) =>
-    tone === "danger"
-      ? "border-destructive/30 text-destructive"
-      : tone === "warning"
-        ? "border-amber-300/40 text-amber-200"
-        : "border-border text-muted-foreground";
+  const getAttentionDescription = (label: string) => {
+    switch (label) {
+      case "Manual at-risk flag":
+        return "A PT manually marked this client as needing extra attention.";
+      case "Onboarding review":
+        return "The client has submitted onboarding and it now needs PT review.";
+      case "Onboarding":
+        return "The client is still moving through onboarding steps.";
+      case "Check-in overdue":
+        return "A scheduled check-in is overdue and needs follow-up.";
+      case "Check-in due":
+        return "A scheduled check-in is currently due.";
+      case "Upcoming check-in":
+        return "A scheduled check-in is coming up soon.";
+      case "Long idle gap":
+        return "Recent client activity has been quiet long enough to need review.";
+      case "Recent inactivity":
+        return "Client activity has slowed and may need follow-up.";
+      case "Lifecycle review":
+        return "The lifecycle state needs attention because this client is not currently active.";
+      case "Adherence low":
+        return "Recent adherence is low enough that the plan may need adjustment.";
+      default:
+        return "This tag highlights why the client is being surfaced in the coaching queue.";
+    }
+  };
 
   const activeClientsCount = useMemo(
     () =>
       clients.filter(
-        (client) => (client.status ?? "active").toLowerCase() === "active",
+        (client) => client.lifecycle_state?.toLowerCase() === "active",
       ).length,
     [clients],
   );
@@ -382,7 +451,48 @@ export function PtDashboardPage() {
       }).length,
     [checkinRows, upcomingWindowEnd],
   );
+  const queueSegments = useMemo(() => {
+    const total = Math.max(
+      checkinDueNowCount + checkinOverdueCount + checkinSoonCount,
+      1,
+    );
 
+    return [
+      {
+        key: "overdue",
+        label: "Overdue",
+        helper: "Past the due date and needs follow-up first.",
+        value: checkinOverdueCount,
+        icon: AlertTriangle,
+        toneClassName:
+          "border-rose-500/30 bg-rose-500/10 text-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-rose-400/90",
+      },
+      {
+        key: "due",
+        label: "Due now",
+        helper: "Ready for review in the current queue window.",
+        value: checkinDueNowCount,
+        icon: Clock3,
+        toneClassName:
+          "border-amber-500/30 bg-amber-500/10 text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-amber-300/90",
+      },
+      {
+        key: "soon",
+        label: "Due soon",
+        helper: "Upcoming check-ins inside the next 7 days.",
+        value: checkinSoonCount,
+        icon: CalendarDays,
+        toneClassName:
+          "border-sky-500/30 bg-sky-500/10 text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-sky-400/90",
+      },
+    ].map((item) => ({
+      ...item,
+      widthPercent: `${Math.max((item.value / total) * 100, item.value > 0 ? 10 : 0)}%`,
+    }));
+  }, [checkinDueNowCount, checkinOverdueCount, checkinSoonCount]);
   const checkinsTodayCount = useMemo(() => {
     if (checkinRows.length === 0) return 0;
     return checkinRows.filter(
@@ -391,18 +501,17 @@ export function PtDashboardPage() {
         checkin.week_ending_saturday === todayStr,
     ).length;
   }, [checkinRows, todayStr]);
+
   const activeClientsDelta = useMemo(() => {
     const currentWindow = clients.filter((client) => {
-      const status = (client.status ?? "active").toLowerCase();
       return (
-        status === "active" &&
+        client.lifecycle_state?.toLowerCase() === "active" &&
         client.created_at >= addDaysToDateString(todayStr, -6)
       );
     }).length;
     const previousWindow = clients.filter((client) => {
-      const status = (client.status ?? "active").toLowerCase();
       return (
-        status === "active" &&
+        client.lifecycle_state?.toLowerCase() === "active" &&
         client.created_at >= previousWeekStart &&
         client.created_at <= previousWeekEnd
       );
@@ -472,9 +581,10 @@ export function PtDashboardPage() {
       const name = client.display_name?.trim()
         ? client.display_name
         : `Client ${client.user_id.slice(0, 6)}`;
-      const lifecycle = normalizeLabel(client.status);
+      const lifecycleMeta = getClientLifecycleMeta(client.lifecycle_state);
+      const lifecycle = lifecycleMeta.label;
       const lifecycleTone: AttentionTone =
-        (client.status ?? "active").toLowerCase() === "active"
+        client.lifecycle_state?.toLowerCase() === "active"
           ? "neutral"
           : "warning";
       const onboardingStatus =
@@ -514,7 +624,11 @@ export function PtDashboardPage() {
       let attentionTone: AttentionTone = "neutral";
       let attentionScore = 0;
 
-      if (
+      if (client.manual_risk_flag) {
+        attentionLabel = "Manual at-risk flag";
+        attentionTone = "danger";
+        attentionScore = 82;
+      } else if (
         onboardingStatus === "review_needed" ||
         onboardingStatus === "submitted"
       ) {
@@ -595,6 +709,7 @@ export function PtDashboardPage() {
       return {
         id: client.id,
         name,
+        lifecycleState: client.lifecycle_state,
         lifecycle,
         lifecycleTone,
         onboardingLabel,
@@ -646,50 +761,83 @@ export function PtDashboardPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <StaggerGroup
+        className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_320px]"
+        stagger={0.05}
+      >
         {isLoading ? (
           Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-28 w-full" />
+            <StaggerItem key={index}>
+              <LoadingPanel
+                title="Loading metrics"
+                description="Refreshing today’s coaching snapshot."
+                className="h-28"
+              />
+            </StaggerItem>
           ))
         ) : (
           <>
-            <StatCard
-              label="Clients"
-              value={activeClientsCount}
-              helper="Active"
-              icon={Sparkles}
-              delta={buildMetricDelta({
-                delta: activeClientsDelta,
-              })}
-            />
-            <StatCard
-              label="Avg adherence"
-              value={`${adherencePercent}%`}
-              helper="7d"
-              icon={Rocket}
-              delta={buildMetricDelta({
-                delta: adherenceDelta,
-                suffix: "%",
-              })}
-            />
-            <StatCard
-              label="Unread messages"
-              value={unreadCount}
-              helper="Unread"
-              icon={MessageCircle}
-            />
-            <StatCard
-              label="Check-ins today"
-              value={checkinsTodayCount}
-              helper="Due"
-              icon={CalendarDays}
-            />
+            <StaggerItem>
+              <StatCard
+                label="Clients"
+                value={activeClientsCount}
+                helper="Active"
+                icon={UsersRound}
+                module="clients"
+                onClick={() => navigate("/pt/clients?lifecycle=active")}
+                ariaLabel="Open active clients"
+                delta={buildMetricDelta({
+                  delta: activeClientsDelta,
+                })}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                label="Avg adherence"
+                value={`${adherencePercent}%`}
+                helper="7d"
+                icon={Rocket}
+                module="analytics"
+                onClick={() => navigate("/pt/clients?segment=at_risk")}
+                ariaLabel="Open clients at risk from adherence"
+                delta={buildMetricDelta({
+                  delta: adherenceDelta,
+                  suffix: "%",
+                })}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                label="Unread messages"
+                value={unreadCount}
+                helper="Unread"
+                icon={MessageCircle}
+                module="coaching"
+                onClick={() => navigate("/pt/messages")}
+                ariaLabel="Open unread messages"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                label="Check-ins today"
+                value={checkinsTodayCount}
+                helper="Due"
+                icon={CalendarDays}
+                module="checkins"
+                onClick={() => navigate("/pt/checkins")}
+                ariaLabel="Open today's check-ins"
+              />
+            </StaggerItem>
           </>
         )}
-      </div>
+      </StaggerGroup>
 
-      <div className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.7fr)_320px]">
-        <div className="space-y-4">
+      <StaggerGroup
+        className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.8fr)]"
+        stagger={0.07}
+        delayChildren={0.05}
+      >
+        <StaggerItem className="space-y-4">
           <DashboardCard
             className="self-start"
             title={clientPanelTitle}
@@ -704,11 +852,10 @@ export function PtDashboardPage() {
             }
           >
             {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <Skeleton key={index} className="h-16 w-full" />
-                ))}
-              </div>
+              <LoadingPanel
+                title="Loading client queue"
+                description="Ranking the clients who need attention first."
+              />
             ) : priorityClientRows.length > 0 ? (
               <div className={showSingleClientCard ? "space-y-3" : "space-y-2"}>
                 {priorityClientRows.map((client) => (
@@ -732,21 +879,21 @@ export function PtDashboardPage() {
                         </span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
-                            client.lifecycleTone,
-                          )}`}
-                        >
-                          {client.lifecycle}
-                        </span>
+                        <LifecycleBadge
+                          lifecycleState={client.lifecycleState}
+                          interactive={false}
+                        />
+                        {client.attentionLabel === "Manual at-risk flag" ? (
+                          <RiskBadge riskState="at_risk" interactive={false} />
+                        ) : null}
                         {client.onboardingLabel ? (
-                          <span
-                            className={`rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
-                              "warning",
-                            )}`}
-                          >
-                            {client.onboardingLabel}
-                          </span>
+                          <TagInfoBadge
+                            label={client.onboardingLabel}
+                            variant="warning"
+                            title="Onboarding status"
+                            description="This client still has onboarding work pending before coaching is fully settled."
+                            disabled
+                          />
                         ) : null}
                         {client.checkinState ? (
                           <StatusPill
@@ -767,13 +914,23 @@ export function PtDashboardPage() {
                         <span>Next: {client.nextActionLabel}</span>
                       </div>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] ${toneClassName(
-                        client.attentionTone,
-                      )}`}
-                    >
-                      {client.attentionLabel}
-                    </span>
+                    <div className="shrink-0">
+                      <TagInfoBadge
+                        label={client.attentionLabel}
+                        variant={
+                          client.attentionTone === "danger"
+                            ? "danger"
+                            : client.attentionTone === "warning"
+                              ? "warning"
+                              : "neutral"
+                        }
+                        title="Why this client is highlighted"
+                        description={getAttentionDescription(
+                          client.attentionLabel,
+                        )}
+                        disabled
+                      />
+                    </div>
                   </button>
                 ))}
               </div>
@@ -795,7 +952,7 @@ export function PtDashboardPage() {
             )}
           </DashboardCard>
 
-          <div className="grid gap-4 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid items-start gap-4">
             <DashboardCard
               title="Recent Check-ins"
               action={
@@ -809,11 +966,10 @@ export function PtDashboardPage() {
               }
             >
               {isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <Skeleton key={index} className="h-12 w-full" />
-                  ))}
-                </div>
+                <LoadingPanel
+                  title="Loading check-ins"
+                  description="Collecting the latest review queue."
+                />
               ) : recentCheckins.length > 0 ? (
                 <div className="space-y-2.5">
                   {recentCheckins.map((row) => {
@@ -871,11 +1027,10 @@ export function PtDashboardPage() {
               }
             >
               {isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <Skeleton key={index} className="h-14 w-full" />
-                  ))}
-                </div>
+                <LoadingPanel
+                  title="Loading messages"
+                  description="Pulling in the most recent client conversations."
+                />
               ) : messageRows.length > 0 ? (
                 <div
                   className={
@@ -916,9 +1071,9 @@ export function PtDashboardPage() {
               )}
             </DashboardCard>
           </div>
-        </div>
+        </StaggerItem>
 
-        <div className="space-y-4">
+        <StaggerItem className="space-y-4">
           <DashboardCard
             title="Queue"
             className="border-primary/10"
@@ -933,36 +1088,58 @@ export function PtDashboardPage() {
             }
           >
             {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <Skeleton key={index} className="h-10 w-full" />
-                ))}
-              </div>
+              <LoadingPanel
+                title="Loading queue"
+                description="Rebuilding your check-in pressure points."
+              />
             ) : (
-              <div className="surface-subtle grid grid-cols-3 gap-2 rounded-[1.35rem] p-2">
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Due now
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    {checkinDueNowCount}
-                  </p>
+              <div className="space-y-3">
+                <div className="h-2.5 overflow-hidden rounded-full bg-background/65">
+                  <div className="flex h-full w-full gap-px overflow-hidden rounded-full">
+                    {queueSegments.map((segment) => (
+                      <div
+                        key={segment.key}
+                        className={segment.meterClassName}
+                        style={{ width: segment.widthPercent }}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Overdue
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    {checkinOverdueCount}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Due soon
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    {checkinSoonCount}
-                  </p>
+
+                <div className="space-y-2">
+                  {queueSegments.map((segment) => {
+                    const Icon = segment.icon;
+
+                    return (
+                      <button
+                        key={segment.key}
+                        type="button"
+                        onClick={() => navigate("/pt/checkins")}
+                        className="surface-subtle flex w-full items-center gap-3 rounded-[1.2rem] border border-border/65 px-3.5 py-3 text-left transition duration-200 hover:border-border hover:bg-background/70"
+                      >
+                        <span
+                          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${segment.toneClassName}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground">
+                              {segment.label}
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {segment.helper}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            <AnimatedValue value={segment.value} />
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -970,91 +1147,107 @@ export function PtDashboardPage() {
 
           <DashboardCard title="To-Do list" className="border-border/80">
             <div className="space-y-3">
-              <div className="surface-subtle flex items-center gap-2 px-2 py-2">
-                <Input
-                  value={todoDraft}
-                  onChange={(event) => setTodoDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void addTodo();
-                    }
-                  }}
-                  placeholder="Add a new task"
-                  className="h-9 border-transparent bg-transparent shadow-none"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => void addTodo()}
-                  disabled={!todoDraft.trim()}
+              <div className="surface-subtle space-y-1.5 px-3 py-3">
+                <Label
+                  htmlFor="coach-dashboard-task"
+                  className="text-xs font-semibold text-muted-foreground"
                 >
-                  Add
-                </Button>
+                  Quick task
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="coach-dashboard-task"
+                    value={todoDraft}
+                    onChange={(event) => setTodoDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void addTodo();
+                      }
+                    }}
+                    placeholder="Follow up with Omar"
+                    className="h-9 border-transparent bg-transparent shadow-none"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => void addTodo()}
+                    disabled={!todoDraft.trim()}
+                  >
+                    <ActionButtonLabel
+                      state={todoActionState}
+                      idleLabel="Add"
+                      savingLabel="Adding..."
+                      successLabel="Added"
+                      errorLabel="Try again"
+                    />
+                  </Button>
+                </div>
               </div>
+              {todoActionState !== "idle" ? (
+                <ActionStatusMessage
+                  tone={todoActionState === "error" ? "error" : "success"}
+                >
+                  {todoActionState === "error"
+                    ? "We couldn't save that task right now."
+                    : "Task saved to your focus list."}
+                </ActionStatusMessage>
+              ) : null}
               {coachTodos.length === 0 ? (
-                <EmptyState
-                  title="No tasks yet"
-                  description="Add the next action."
-                />
+                <div className="surface-subtle flex items-start gap-3 rounded-2xl px-3.5 py-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground">
+                    <Info className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      No tasks yet
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Add one quick action to keep today&apos;s focus visible.
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-2">
-                  {coachTodos.map((todo) => {
-                    const draft = todoEdits[todo.id] ?? todo.title;
-                    return (
-                      <div
-                        key={todo.id}
-                        className="surface-subtle flex items-center gap-2 px-3 py-2.5 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={todo.is_done}
-                          onChange={() => void toggleTodo(todo)}
-                          className="h-4 w-4 accent-primary"
-                          disabled={todoBusyId === todo.id}
-                        />
-                        <input
-                          value={draft}
-                          onChange={(event) =>
-                            setTodoEdits((prev) => ({
-                              ...prev,
-                              [todo.id]: event.target.value,
-                            }))
-                          }
-                          onBlur={() => {
-                            if (draft !== todo.title) {
-                              void updateTodoTitle(todo, draft);
-                            }
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              void updateTodoTitle(todo, draft);
-                            }
-                          }}
-                          className={`w-full bg-transparent text-sm outline-none ${
+                  {coachTodos.map((todo) => (
+                    <div
+                      key={todo.id}
+                      className="surface-subtle flex items-center gap-3 px-3 py-2.5 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={todo.is_done}
+                        onChange={() => void toggleTodo(todo)}
+                        className="h-4 w-4 accent-primary"
+                        disabled={todoBusyId === todo.id}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`truncate text-sm ${
                             todo.is_done
                               ? "text-muted-foreground line-through"
                               : "text-foreground"
                           }`}
-                          disabled={todoBusyId === todo.id}
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => void deleteTodo(todo)}
-                          disabled={todoBusyId === todo.id}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                          {todo.title}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Delete task"
+                        onClick={() => void deleteTodo(todo)}
+                        disabled={todoBusyId === todo.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           </DashboardCard>
-        </div>
-      </div>
+        </StaggerItem>
+      </StaggerGroup>
     </div>
   );
 }

@@ -1,198 +1,335 @@
-import { useMemo, useState } from "react";
-import { Search, Users2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  PauseCircle,
+  Search,
+  ShieldAlert,
+  UsersRound,
+} from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
+import { Skeleton } from "../../components/ui/skeleton";
 import { PtHubClientTable } from "../../features/pt-hub/components/pt-hub-client-table";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
 import {
-  getPtClientBaseStats,
-  usePtHubClients,
+  usePtHubClientStats,
+  usePtHubClientsPage,
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTClientSummary } from "../../features/pt-hub/types";
-import {
-  matchesClientSegment,
-  normalizeClientLifecycleState,
-  type ClientSegmentKey,
-} from "../../lib/client-lifecycle";
+import { type ClientSegmentKey } from "../../lib/client-lifecycle";
+import { useI18n } from "../../lib/i18n";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtHubClientsPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { switchWorkspace } = useWorkspace();
-  const clientsQuery = usePtHubClients();
+  const statsQuery = usePtHubClientStats();
   const workspacesQuery = usePtHubWorkspaces();
-  const [searchValue, setSearchValue] = useState("");
-  const [workspaceFilter, setWorkspaceFilter] = useState<string>("all");
-  const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
-  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
+  const [searchValue, setSearchValue] = useState(
+    () => searchParams.get("search") ?? "",
+  );
+  const [workspaceFilter, setWorkspaceFilter] = useState<string>(
+    () => searchParams.get("workspace") ?? "all",
+  );
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>(
+    () => searchParams.get("lifecycle") ?? "all",
+  );
+  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>(() => {
+    const value = searchParams.get("segment");
+    return value === "onboarding_incomplete" ||
+      value === "checkin_overdue" ||
+      value === "at_risk" ||
+      value === "paused"
+      ? value
+      : "all";
+  });
+  const [page, setPage] = useState(0);
+  const deferredSearchValue = useDeferredValue(searchValue);
+  const clientsQuery = usePtHubClientsPage({
+    page,
+    pageSize: 25,
+    workspaceId: workspaceFilter,
+    lifecycle: lifecycleFilter,
+    segment: segmentFilter,
+    search: deferredSearchValue,
+  });
 
-  const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
   const workspaces = useMemo(
     () => workspacesQuery.data ?? [],
     [workspacesQuery.data],
   );
-  const stats = getPtClientBaseStats(clients);
+  const clients = clientsQuery.data?.clients ?? [];
+  const stats = statsQuery.data;
+  const totalCount = clientsQuery.data?.totalCount ?? 0;
+  const pageSize = clientsQuery.data?.pageSize ?? 25;
+  const rangeStart = totalCount === 0 ? 0 : page * pageSize + 1;
+  const rangeEnd =
+    totalCount === 0 ? 0 : Math.min((page + 1) * pageSize, totalCount);
+  const isTableLoading =
+    clientsQuery.isLoading || (clientsQuery.isFetching && !clientsQuery.data);
+  const isEmpty = totalCount === 0;
+  const hasAnyClients = (stats?.totalClients ?? 0) > 0;
+  const hasActiveFilters =
+    searchValue.trim().length > 0 ||
+    workspaceFilter !== "all" ||
+    lifecycleFilter !== "all" ||
+    segmentFilter !== "all";
 
-  const filteredClients = useMemo(() => {
-    const normalizedSearch = searchValue.trim().toLowerCase();
-    return clients.filter((client) => {
-      const matchesWorkspace =
-        workspaceFilter === "all"
-          ? true
-          : client.workspaceId === workspaceFilter;
-      const matchesLifecycle =
-        lifecycleFilter === "all"
-          ? true
-          : normalizeClientLifecycleState(client.lifecycleState) ===
-            lifecycleFilter;
-      const matchesSegment = matchesClientSegment(client, segmentFilter);
-      const haystack = [
-        client.displayName,
-        client.goal ?? "",
-        client.workspaceName,
-        client.lifecycleState,
-        ...(client.riskFlags ?? []),
-        client.onboardingStatus ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      const matchesSearch = normalizedSearch
-        ? haystack.includes(normalizedSearch)
-        : true;
-      return (
-        matchesWorkspace && matchesLifecycle && matchesSegment && matchesSearch
-      );
-    });
-  }, [clients, lifecycleFilter, searchValue, segmentFilter, workspaceFilter]);
+  useEffect(() => {
+    setPage(0);
+  }, [deferredSearchValue, lifecycleFilter, segmentFilter, workspaceFilter]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    if (deferredSearchValue.trim()) {
+      nextParams.set("search", deferredSearchValue.trim());
+    }
+    if (workspaceFilter !== "all") {
+      nextParams.set("workspace", workspaceFilter);
+    }
+    if (lifecycleFilter !== "all") {
+      nextParams.set("lifecycle", lifecycleFilter);
+    }
+    if (segmentFilter !== "all") {
+      nextParams.set("segment", segmentFilter);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    deferredSearchValue,
+    lifecycleFilter,
+    segmentFilter,
+    setSearchParams,
+    workspaceFilter,
+  ]);
 
   const openClientWorkspace = (client: PTClientSummary) => {
     switchWorkspace(client.workspaceId);
     navigate(`/pt/clients/${client.id}`);
   };
 
+  const resetFilters = () => {
+    setSearchValue("");
+    setWorkspaceFilter("all");
+    setLifecycleFilter("all");
+    setSegmentFilter("all");
+  };
+
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
-        eyebrow="Client Base"
-        title="Monitor the client portfolio across workspaces"
-        description="This is the trainer-level business view of your client base. It gives you portfolio visibility without duplicating workspace-specific client operations."
+        eyebrow={t("ptHub.clients.eyebrow", "Clients")}
+        title={t("ptHub.clients.title", "Manage your clients")}
+        description={t(
+          "ptHub.clients.description",
+          "View every client across your coaching spaces.",
+        )}
       />
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         <StatCard
           surface="pt-hub"
-          label="Total Clients"
-          value={stats.totalClients}
-          helper="Across owned workspaces"
-          icon={Users2}
+          module="clients"
+          label={t("ptHub.clients.kpi.total", "Total Clients")}
+          value={stats?.totalClients ?? 0}
+          helper={t(
+            "ptHub.clients.kpi.totalHelper",
+            "Across all coaching spaces",
+          )}
+          icon={UsersRound}
           accent
         />
         <StatCard
           surface="pt-hub"
-          label="Active"
-          value={stats.activeClients}
-          helper="Currently coached"
+          module="clients"
+          label={t("ptHub.clients.kpi.active", "Active")}
+          value={stats?.activeClients ?? 0}
+          helper={t("ptHub.clients.kpi.activeHelper", "Currently in training")}
+          icon={Activity}
+          iconClassName="text-[var(--state-success-text)]"
         />
         <StatCard
           surface="pt-hub"
-          label="At Risk"
-          value={stats.atRiskClients}
-          helper="Flagged for coach attention"
+          module="clients"
+          label={t("ptHub.clients.kpi.atRisk", "At Risk")}
+          value={stats?.atRiskClients ?? 0}
+          helper={t("ptHub.clients.kpi.atRiskHelper", "Needs your attention")}
+          icon={ShieldAlert}
+          iconClassName="text-[var(--state-danger-text)]"
         />
         <StatCard
           surface="pt-hub"
-          label="Onboarding Incomplete"
-          value={stats.onboardingIncompleteClients}
-          helper="Not fully activated yet"
-        />
-        <StatCard
-          surface="pt-hub"
-          label="Paused"
-          value={stats.pausedClients}
-          helper="Intentional hold or retention risk"
+          module="clients"
+          label={t("ptHub.clients.kpi.paused", "Paused")}
+          value={stats?.pausedClients ?? 0}
+          helper={t("ptHub.clients.kpi.pausedHelper", "Currently paused")}
+          icon={PauseCircle}
+          iconClassName="text-[var(--state-warning-text)]"
         />
       </div>
 
       <PtHubSectionCard
-        title="Client portfolio"
-        description="Search by client, workspace, goal, or status and jump directly back into the correct coaching context."
-        contentClassName="space-y-6"
+        title={t("ptHub.clients.listTitle", "Client List")}
+        contentClassName="space-y-4"
       >
-        <div className="rounded-[24px] border border-border/60 bg-background/35 p-4">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search clients, goals, or workspace"
-              />
-            </div>
-            <select
-              className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
-              value={workspaceFilter}
-              onChange={(event) => setWorkspaceFilter(event.target.value)}
-            >
-              <option value="all">All workspaces</option>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
-              value={lifecycleFilter}
-              onChange={(event) => setLifecycleFilter(event.target.value)}
-            >
-              <option value="all">All lifecycles</option>
-              <option value="invited">Invited</option>
-              <option value="onboarding">Onboarding</option>
-              <option value="paused">Paused</option>
-              <option value="active">Active</option>
-              <option value="at_risk">At risk</option>
-              <option value="completed">Completed</option>
-              <option value="churned">Churned</option>
-            </select>
-            <select
-              className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
-              value={segmentFilter}
-              onChange={(event) =>
-                setSegmentFilter(event.target.value as ClientSegmentKey)
-              }
-            >
-              <option value="all">All segments</option>
-              <option value="onboarding_incomplete">
-                Onboarding incomplete
-              </option>
-              <option value="checkin_overdue">Check-in overdue</option>
-              <option value="at_risk">At-risk clients</option>
-              <option value="paused">Paused clients</option>
-            </select>
+        <div className="pt-hub-filter-row lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)_auto]">
+          <div className="relative min-w-0">
+            <Search className="app-search-icon h-4 w-4" />
+            <Input
+              className="app-search-input"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={t(
+                "ptHub.clients.searchPlaceholder",
+                "Search clients, goals, or coaching space",
+              )}
+            />
           </div>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={workspaceFilter}
+            onChange={(event) => setWorkspaceFilter(event.target.value)}
+          >
+            <option value="all">
+              {t("ptHub.clients.allCoachingSpaces", "All coaching spaces")}
+            </option>
+            {workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={lifecycleFilter}
+            onChange={(event) => setLifecycleFilter(event.target.value)}
+          >
+            <option value="all">
+              {t("ptHub.clients.allLifecycles", "All lifecycles")}
+            </option>
+            <option value="invited">
+              {t("ptHub.clients.lifecycle.invited", "Invited")}
+            </option>
+            <option value="onboarding">
+              {t("ptHub.clients.lifecycle.onboarding", "Onboarding")}
+            </option>
+            <option value="paused">
+              {t("ptHub.clients.lifecycle.paused", "Paused")}
+            </option>
+            <option value="active">
+              {t("ptHub.clients.lifecycle.active", "Active")}
+            </option>
+            <option value="completed">
+              {t("ptHub.clients.lifecycle.completed", "Completed")}
+            </option>
+            <option value="churned">
+              {t("ptHub.clients.lifecycle.churned", "Churned")}
+            </option>
+          </Select>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={segmentFilter}
+            onChange={(event) =>
+              setSegmentFilter(event.target.value as ClientSegmentKey)
+            }
+          >
+            <option value="all">
+              {t("ptHub.clients.allSegments", "All segments")}
+            </option>
+            <option value="onboarding_incomplete">
+              {t(
+                "ptHub.clients.segment.onboardingIncomplete",
+                "Onboarding incomplete",
+              )}
+            </option>
+            <option value="checkin_overdue">
+              {t("ptHub.clients.segment.checkinOverdue", "Check-in overdue")}
+            </option>
+            <option value="at_risk">
+              {t("ptHub.clients.segment.atRisk", "At-risk clients")}
+            </option>
+            <option value="paused">
+              {t("ptHub.clients.segment.paused", "Paused clients")}
+            </option>
+          </Select>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-11 whitespace-nowrap"
+            disabled={!hasActiveFilters}
+            onClick={resetFilters}
+          >
+            Reset
+          </Button>
         </div>
 
-        {filteredClients.length === 0 ? (
+        {isTableLoading ? (
+          <div className="pt-hub-data-shell space-y-3 p-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
+            ))}
+          </div>
+        ) : isEmpty ? (
           <EmptyState
-            title="No clients found"
+            title={t("ptHub.clients.emptyTitle", "No clients found")}
             description={
-              clients.length === 0
-                ? "No client records exist across your owned workspaces yet."
-                : "No clients match the current workspace, lifecycle, segment, and search filters."
+              hasAnyClients
+                ? t(
+                    "ptHub.clients.emptyFiltered",
+                    "No clients match the current filters.",
+                  )
+                : t(
+                    "ptHub.clients.emptyNone",
+                    "You do not have any client records yet.",
+                  )
             }
-            icon={<Users2 className="h-5 w-5" />}
+            icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
-          <PtHubClientTable
-            clients={filteredClients}
-            onOpen={openClientWorkspace}
-          />
+          <PtHubClientTable clients={clients} onOpen={openClientWorkspace} />
         )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+          <p>
+            {isEmpty
+              ? hasAnyClients
+                ? t(
+                    "ptHub.clients.emptyFiltered",
+                    "No clients match the current filters.",
+                  )
+                : t("ptHub.clients.emptyNoneShort", "No client records yet.")
+              : `${t("ptHub.clients.showing", "Showing")} ${rangeStart}-${rangeEnd} ${t("ptHub.clients.of", "of")} ${totalCount} ${t("ptHub.clients.clientCount", "clients")}`}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+              disabled={page === 0 || clientsQuery.isFetching}
+            >
+              {t("ptHub.clients.previous", "Previous")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((current) => current + 1)}
+              disabled={!clientsQuery.data?.hasMore || clientsQuery.isFetching}
+            >
+              {t("ptHub.clients.next", "Next")}
+            </Button>
+          </div>
+        </div>
       </PtHubSectionCard>
     </section>
   );

@@ -1,6 +1,6 @@
-# CoachOS
+# Repsync
 
-CoachOS is a web-first SaaS prototype for personal trainers and clients. The app includes a PT workspace with dashboards, templates, and client management, plus a mobile-friendly client portal.
+Repsync is a web-first SaaS prototype for personal trainers and clients. The app includes a PT workspace with dashboards, templates, and client management, plus a mobile-friendly client portal.
 
 ## Tech Stack
 
@@ -143,6 +143,12 @@ Set these repository secrets in GitHub Actions:
 - Ops/monitoring checklist: `docs/ops-monitoring-checklist.md`
 - Ops incident runbook: `docs/ops-runbook.md`
 - Lint warnings triage: `docs/docs-lint-triage.md`
+
+## Design System Docs
+
+- App-wide source of truth: `design-system/repsync/MASTER.md`
+- PT Hub page override: `design-system/repsync/pages/pt-hub.md`
+- Practical rollout playbook: `docs/repsync-ui-playbook.md`
 
 ## Repository Governance
 

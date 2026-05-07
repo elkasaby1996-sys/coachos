@@ -18,6 +18,10 @@ import {
   Skeleton,
   StatusPill,
 } from "../../components/ui/coachos";
+import {
+  SurfaceCard,
+  SurfaceCardContent,
+} from "../../components/client/portal";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -27,7 +31,6 @@ import {
   getTodayInTimezone,
   getWeekStartSunday,
 } from "../../lib/date-utils";
-import { formatRelativeTime } from "../../lib/relative-time";
 import {
   checkinOperationalStatusMap,
   getCheckinOperationalState,
@@ -43,6 +46,23 @@ const getMonthStartKey = (date: Date) => {
 
 const getMonthLabel = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+const getClientFirstName = (displayName: string | null) => {
+  const value = displayName?.trim();
+  if (!value) return "Client";
+  return value.split(/\s+/)[0] ?? "Client";
+};
+
+const getPossessiveLabel = (displayName: string | null) => {
+  const firstName = getClientFirstName(displayName);
+  if (firstName.toLowerCase().endsWith("s")) {
+    return `${firstName}'`;
+  }
+  return `${firstName}'s`;
+};
+
+const getCalendarCheckinLabel = (displayName: string | null) =>
+  `${getPossessiveLabel(displayName)} check-in`;
 
 const buildCalendarDays = (monthCursor: Date) => {
   const monthStartKey = getMonthStartKey(monthCursor);
@@ -293,6 +313,7 @@ export function PtCalendarPage() {
       <WorkspacePageHeader
         title="Coach Calendar"
         description="Click a date to view scheduled items."
+        className="w-full justify-end"
         actions={
           <Button
             onClick={() => {
@@ -309,235 +330,245 @@ export function PtCalendarPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <DashboardCard title="Calendar">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-lg font-semibold text-foreground">
-              {monthLabel}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleReturnToToday}
-                disabled={
-                  selectedDateKey === todayKey &&
-                  getMonthStartKey(monthCursor) ===
-                    getMonthStartKey(new Date(`${todayKey}T00:00:00`))
-                }
-              >
-                Today
-              </Button>
-              <Button
-                size="icon"
-                variant="secondary"
-                onClick={() =>
-                  setMonthCursor(
-                    (prev) =>
-                      new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-                  )
-                }
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="secondary"
-                onClick={() =>
-                  setMonthCursor(
-                    (prev) =>
-                      new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-                  )
-                }
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-4 text-sm text-muted-foreground">
-            Click a date to view scheduled items.
-          </div>
-
-          <div className="mt-4 grid grid-cols-7 gap-3 text-xs text-muted-foreground">
-            {"Sun Mon Tue Wed Thu Fri Sat".split(" ").map((day) => (
-              <div key={day} className="text-center uppercase tracking-[0.2em]">
-                {day}
+        <SurfaceCard>
+          <SurfaceCardContent className="px-5 py-5 sm:px-6 sm:py-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-lg font-semibold text-foreground">
+                {monthLabel}
               </div>
-            ))}
-          </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleReturnToToday}
+                  disabled={
+                    selectedDateKey === todayKey &&
+                    getMonthStartKey(monthCursor) ===
+                      getMonthStartKey(new Date(`${todayKey}T00:00:00`))
+                  }
+                >
+                  Today
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  aria-label="Previous month"
+                  onClick={() =>
+                    setMonthCursor(
+                      (prev) =>
+                        new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+                    )
+                  }
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  aria-label="Next month"
+                  onClick={() =>
+                    setMonthCursor(
+                      (prev) =>
+                        new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+                    )
+                  }
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
-          {isLoading ? (
-            <div className="mt-4 space-y-2">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <Skeleton key={index} className="h-10 w-full" />
+            <div className="mt-4 text-sm text-muted-foreground">
+              Click a date to view scheduled items.
+            </div>
+
+            <div className="mt-4 grid grid-cols-7 gap-3 text-xs text-muted-foreground">
+              {"Sun Mon Tue Wed Thu Fri Sat".split(" ").map((day) => (
+                <div
+                  key={day}
+                  className="text-center uppercase tracking-[0.2em]"
+                >
+                  {day}
+                </div>
               ))}
             </div>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
-              {days.map((day) => {
-                const checkins = checkinsByDate.get(day.key) ?? [];
-                const events = eventsByDate.get(day.key) ?? [];
-                const isToday = day.key === todayKey;
-                const isSelected = day.key === selectedDateKey;
-                const hasItems = checkins.length + events.length > 0;
-                const dayState = (
-                  [
-                    "overdue",
-                    "due",
-                    "upcoming",
-                    "submitted",
-                    "reviewed",
-                  ] as CheckinOperationalState[]
-                ).find((state) =>
-                  checkins.some(
-                    (row) =>
-                      getCheckinOperationalState(row, todayKey) === state,
-                  ),
-                );
-                return (
-                  <div
-                    key={day.key}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedDateKey(day.key)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setSelectedDateKey(day.key);
-                      }
-                    }}
-                    className={cn(
-                      "min-h-[160px] rounded-2xl border border-border/70 bg-background/40 p-3 text-left transition hover:border-border",
-                      !day.inMonth && "opacity-50",
-                      isToday && "border-accent/60 bg-accent/10",
-                      isSelected && "border-primary/40 bg-primary/[0.08]",
-                      hasItems &&
-                        !isToday &&
-                        "border-border/80 bg-background/55 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.75)]",
-                      dayState === "submitted" &&
-                        "border-primary/30 bg-primary/[0.07]",
-                      dayState === "overdue" &&
-                        "border-destructive/35 bg-destructive/[0.06]",
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={cn(
-                          "flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-sm font-semibold",
-                          isToday
-                            ? "border-primary/45 bg-primary/16 text-primary"
-                            : "border-border/70 bg-background/60 text-foreground",
-                        )}
-                      >
-                        {day.key.slice(-2)}
-                      </span>
-                      {dayState ? (
-                        <StatusPill
-                          status={dayState}
-                          statusMap={checkinOperationalStatusMap}
-                        />
-                      ) : null}
-                    </div>
 
-                    <div className="mt-3 space-y-2">
-                      {checkins.slice(0, 2).map((row) => {
-                        const client = row.client_id
-                          ? clientMap.get(row.client_id)
-                          : null;
-                        const label = client?.display_name?.trim()
-                          ? client.display_name
-                          : "Client";
-                        const state = getCheckinOperationalState(row, todayKey);
-                        const detail = row.reviewed_at
-                          ? `Reviewed ${formatRelativeTime(row.reviewed_at)}`
-                          : row.submitted_at
-                            ? `Submitted ${formatRelativeTime(row.submitted_at)}`
-                            : checkinOperationalStatusMap[state].label;
-                        return (
+            {isLoading ? (
+              <div className="mt-4 space-y-2">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+                {days.map((day) => {
+                  const checkins = checkinsByDate.get(day.key) ?? [];
+                  const events = eventsByDate.get(day.key) ?? [];
+                  const visibleCheckins = checkins.slice(0, 2);
+                  const visibleEvents =
+                    visibleCheckins.length >= 2
+                      ? []
+                      : events.slice(0, 2 - visibleCheckins.length);
+                  const hiddenItemCount =
+                    checkins.length +
+                    events.length -
+                    visibleCheckins.length -
+                    visibleEvents.length;
+                  const isToday = day.key === todayKey;
+                  const isSelected = day.key === selectedDateKey;
+                  const hasItems = checkins.length + events.length > 0;
+                  const dayState = (
+                    [
+                      "overdue",
+                      "due",
+                      "upcoming",
+                      "submitted",
+                      "reviewed",
+                    ] as CheckinOperationalState[]
+                  ).find((state) =>
+                    checkins.some(
+                      (row) =>
+                        getCheckinOperationalState(row, todayKey) === state,
+                    ),
+                  );
+                  return (
+                    <div
+                      key={day.key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedDateKey(day.key)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedDateKey(day.key);
+                        }
+                      }}
+                      className={cn(
+                        "flex min-h-[176px] flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40 p-4 text-left transition hover:border-border",
+                        !day.inMonth && "opacity-50",
+                        isToday && "border-accent/60 bg-accent/10",
+                        isSelected && "border-primary/40 bg-primary/[0.08]",
+                        hasItems &&
+                          !isToday &&
+                          "border-border/80 bg-background/55 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.75)]",
+                        dayState === "submitted" &&
+                          "border-primary/30 bg-primary/[0.07]",
+                        dayState === "overdue" &&
+                          "border-destructive/35 bg-destructive/[0.06]",
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={cn(
+                            "flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-sm font-semibold",
+                            isToday
+                              ? "border-primary/45 bg-primary/16 text-primary"
+                              : "border-border/70 bg-background/60 text-foreground",
+                          )}
+                        >
+                          {day.key.slice(-2)}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 flex-1 space-y-2.5">
+                        {visibleCheckins.map((row) => {
+                          const client = row.client_id
+                            ? clientMap.get(row.client_id)
+                            : null;
+                          const state = getCheckinOperationalState(
+                            row,
+                            todayKey,
+                          );
+                          return (
+                            <button
+                              key={row.id}
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (row.client_id) {
+                                  navigate(
+                                    state === "submitted" ||
+                                      state === "reviewed"
+                                      ? `/pt/clients/${row.client_id}?tab=checkins&checkin=${row.id}`
+                                      : `/pt/clients/${row.client_id}?tab=checkins`,
+                                  );
+                                }
+                              }}
+                              aria-label={`Open ${getCalendarCheckinLabel(client?.display_name ?? null)}`}
+                              className={cn(
+                                "group w-full rounded-xl border px-3 py-2 text-left text-xs transition",
+                                state === "overdue"
+                                  ? "border-destructive/30 bg-destructive/[0.06] hover:border-destructive/45"
+                                  : state === "submitted" ||
+                                      state === "reviewed"
+                                    ? "border-primary/25 bg-primary/[0.06] hover:border-primary/40"
+                                    : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30",
+                              )}
+                            >
+                              <div className="truncate font-medium text-foreground transition-colors group-hover:text-primary">
+                                {getCalendarCheckinLabel(
+                                  client?.display_name ?? null,
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+
+                        {visibleEvents.map((row) => (
                           <button
                             key={row.id}
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              if (row.client_id) {
-                                navigate(
-                                  state === "submitted" || state === "reviewed"
-                                    ? `/pt/clients/${row.client_id}?tab=checkins&checkin=${row.id}`
-                                    : `/pt/clients/${row.client_id}?tab=checkins`,
-                                );
-                              }
+                              setSelectedEvent(row);
+                              setEventDetailsOpen(true);
                             }}
-                            className="w-full rounded-lg border border-border/60 bg-muted/30 px-2 py-1 text-left text-xs transition hover:border-border"
+                            aria-label={`Open event ${row.title}`}
+                            className="group w-full rounded-xl border border-border/60 bg-background/55 px-3 py-2 text-left text-xs transition hover:border-border hover:bg-background/75"
                           >
-                            <div className="font-semibold text-foreground">
-                              {label}
-                            </div>
-                            <div className="flex items-center justify-between gap-2 text-muted-foreground">
-                              <span>{detail}</span>
-                              <StatusPill
-                                status={state}
-                                statusMap={checkinOperationalStatusMap}
-                              />
+                            <div className="truncate font-medium text-foreground transition-colors group-hover:text-primary">
+                              {row.title}
                             </div>
                           </button>
-                        );
-                      })}
+                        ))}
 
-                      {events.slice(0, 2).map((row) => (
-                        <button
-                          key={row.id}
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedEvent(row);
-                            setEventDetailsOpen(true);
-                          }}
-                          className="w-full rounded-lg border border-border/60 bg-background px-2 py-1 text-left text-xs transition hover:border-border"
-                        >
-                          <div className="font-semibold text-foreground">
-                            {row.title}
+                        {!hasItems ? (
+                          <div className="pt-12">
+                            <div className="h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
                           </div>
-                          {row.description ? (
-                            <div className="text-muted-foreground line-clamp-1">
-                              {row.description}
-                            </div>
-                          ) : null}
-                        </button>
-                      ))}
+                        ) : hiddenItemCount > 0 ? (
+                          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                            +{hiddenItemCount} more
+                          </div>
+                        ) : null}
+                      </div>
 
-                      {!hasItems ? (
-                        <div className="pt-10">
-                          <div className="h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
-                        </div>
-                      ) : checkins.length + events.length > 4 ? (
-                        <div className="text-[11px] text-muted-foreground">
-                          +{checkins.length + events.length - 4} more items
+                      {hasItems ? (
+                        <div className="mt-4 border-t border-border/55 pt-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                          {checkins.length > 0 ? (
+                            <span>
+                              {checkins.length} check-in
+                              {checkins.length > 1 ? "s" : ""}
+                            </span>
+                          ) : null}
+                          {checkins.length > 0 && events.length > 0 ? (
+                            <span className="px-1.5">/</span>
+                          ) : null}
+                          {events.length > 0 ? (
+                            <span>
+                              {events.length} event
+                              {events.length > 1 ? "s" : ""}
+                            </span>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
-
-                    {hasItems ? (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {checkins.length > 0 ? (
-                          <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                            {checkins.length} check-in
-                            {checkins.length > 1 ? "s" : ""}
-                          </span>
-                        ) : null}
-                        {events.length > 0 ? (
-                          <span className="rounded-full border border-border/70 bg-secondary/18 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            {events.length} event
-                            {events.length > 1 ? "s" : ""}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </DashboardCard>
+                  );
+                })}
+              </div>
+            )}
+          </SurfaceCardContent>
+        </SurfaceCard>
 
         <div className="space-y-6">
           <DashboardCard
@@ -661,10 +692,14 @@ export function PtCalendarPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">
+                <label
+                  htmlFor="calendar-event-date"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
                   Date
                 </label>
                 <Input
+                  id="calendar-event-date"
                   type="date"
                   value={eventDate}
                   onChange={(event) => setEventDate(event.target.value)}

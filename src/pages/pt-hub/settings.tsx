@@ -6,33 +6,33 @@ import {
   savePtHubSettings,
   usePtHubSettings,
 } from "../../features/pt-hub/lib/pt-hub";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 export function PtHubSettingsPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const settingsQuery = usePtHubSettings();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   if (!user?.id || !settingsQuery.data) {
     return (
-      <section className="space-y-6">
+      <section className="pt-hub-page-stack">
         <PtHubPageHeader
           eyebrow="PT Hub Settings"
           title="Account settings"
-          description="Loading trainer business settings..."
+          description="Loading your PT Hub settings..."
         />
       </section>
     );
   }
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="PT Hub Settings"
-        title="Account and business preferences"
-        description="Trainer-level settings belong here, separate from workspace-specific configuration inside the coaching dashboard."
+        title="Account and app settings"
+        description="Manage your account details and PT Hub preferences."
       />
 
       {message ? (

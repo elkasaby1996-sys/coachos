@@ -1,10 +1,15 @@
 import type { ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
+import {
+  getModuleToneForPath,
+  type ModuleTone,
+} from "../../../lib/module-tone";
 import { cn } from "../../../lib/utils";
 
 export function PtHubSectionCard({
@@ -14,6 +19,7 @@ export function PtHubSectionCard({
   children,
   className,
   contentClassName,
+  module,
 }: {
   title: string;
   description?: string;
@@ -21,33 +27,48 @@ export function PtHubSectionCard({
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  module?: ModuleTone;
 }) {
+  const location = useLocation();
+  const resolvedModule = module ?? getModuleToneForPath(location.pathname);
+
   return (
     <Card
+      module={resolvedModule}
       className={cn(
-        "overflow-hidden rounded-[28px] border border-border/70 bg-[linear-gradient(180deg,rgba(18,24,38,0.86),rgba(11,15,25,0.9))] shadow-[0_24px_70px_-52px_rgba(0,0,0,0.85)]",
+        "surface-panel pt-hub-surface-work relative overflow-hidden rounded-[28px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl",
         className,
       )}
     >
-      <CardHeader className="space-y-0 border-b border-border/60 px-5 py-4 sm:px-6">
+      <div className="pt-hub-section-card-overlay pointer-events-none absolute inset-0" />
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]" />
+      <CardHeader
+        module={resolvedModule}
+        className="relative space-y-0 border-b border-border/55 px-4 py-3.5 sm:px-5"
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle className="text-base font-semibold tracking-tight text-foreground">
+            <CardTitle
+              module={resolvedModule}
+              className="text-[1.22rem] font-semibold tracking-[0.005em] text-foreground"
+            >
               {title}
             </CardTitle>
             {description ? (
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              <p className="pt-hub-meta-text max-w-xl text-[0.95rem] leading-6">
                 {description}
               </p>
             ) : null}
           </div>
           {actions ? (
-            <div className="flex flex-wrap gap-2">{actions}</div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {actions}
+            </div>
           ) : null}
         </div>
       </CardHeader>
       <CardContent
-        className={cn("space-y-5 px-5 py-5 sm:px-6", contentClassName)}
+        className={cn("relative space-y-4 px-4 py-4 sm:px-5", contentClassName)}
       >
         {children}
       </CardContent>

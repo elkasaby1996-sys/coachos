@@ -29,6 +29,12 @@ export type ClientOnboardingBasics = {
   timezone?: string;
   gender?: string;
   unit_preference?: string;
+  date_of_birth?: string;
+  height_value?: number | null;
+  height_unit?: string;
+  weight_value_current?: number | null;
+  weight_unit?: string;
+  avatar_url?: string;
 };
 
 export type ClientOnboardingGoals = {
@@ -107,11 +113,13 @@ export type ClientOnboardingClientProfile = {
   id: string;
   workspace_id: string | null;
   display_name: string | null;
+  full_name: string | null;
   phone: string | null;
   location: string | null;
   location_country: string | null;
   timezone: string | null;
   gender: string | null;
+  sex: string | null;
   unit_preference: string | null;
   goal: string | null;
   injuries: string | null;
@@ -121,6 +129,17 @@ export type ClientOnboardingClientProfile = {
   gym_name: string | null;
   email: string | null;
   training_type: string | null;
+  avatar_url: string | null;
+  photo_url: string | null;
+  date_of_birth: string | null;
+  dob: string | null;
+  height_value: number | null;
+  height_unit: string | null;
+  height_cm: number | null;
+  weight_value_current: number | null;
+  weight_unit: string | null;
+  current_weight: number | null;
+  account_onboarding_completed_at: string | null;
 };
 
 export type ClientBaselineEntrySummary = {
@@ -139,6 +158,12 @@ export type ClientOnboardingFieldState = {
     timezone: string;
     gender: string;
     unit_preference: string;
+    date_of_birth: string;
+    height_value: string;
+    height_unit: string;
+    weight_value_current: string;
+    weight_unit: string;
+    avatar_url: string;
   };
   goals: {
     goal: string;

@@ -11,6 +11,63 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { NotificationRecord, NotificationType } from "./types";
+import type { ModuleTone } from "../../../lib/module-tone";
+
+function getTextMetadataValue(
+  metadata: NotificationRecord["metadata"],
+  keys: string[],
+) {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function getNotificationClientName(notification: NotificationRecord) {
+  const metadataName = getTextMetadataValue(notification.metadata, [
+    "client_name",
+    "clientName",
+    "client_display_name",
+    "clientDisplayName",
+    "display_name",
+    "displayName",
+  ]);
+
+  if (metadataName && metadataName.toLowerCase() !== "client") {
+    return metadataName;
+  }
+
+  const bodyMatch = notification.body
+    .trim()
+    .match(/^(.+?)\s+has\s+no\s+recent\s+activity\.?$/i);
+
+  if (bodyMatch?.[1] && bodyMatch[1].trim().toLowerCase() !== "client") {
+    return bodyMatch[1].trim();
+  }
+
+  return null;
+}
+
+export function getNotificationTitle(
+  notification: NotificationRecord,
+  audience: "client" | "pt" = "pt",
+) {
+  const title = notification.title.trim();
+
+  if (audience === "pt" && notification.type === "client_inactive") {
+    const clientName = getNotificationClientName(notification);
+
+    if (clientName && /^client\s+/i.test(title)) {
+      return title.replace(/^client\b/i, clientName);
+    }
+  }
+
+  return title;
+}
 
 export function getNotificationTypeLabel(
   type: NotificationType | string,
@@ -74,14 +131,31 @@ export function getNotificationIcon(notification: NotificationRecord) {
   }
 }
 
-export function getNotificationIconClasses(notification: NotificationRecord) {
-  if (!notification.is_read) {
-    return "border-primary/25 bg-primary/10 text-primary";
+export function getNotificationModuleTone(
+  notification: NotificationRecord,
+): ModuleTone {
+  switch (notification.type) {
+    case "workout_assigned":
+    case "workout_updated":
+    case "message_received":
+      return "coaching";
+    case "checkin_requested":
+    case "checkin_submitted":
+    case "checkin_due_tomorrow":
+    case "workout_due_today":
+      return "checkins";
+    case "milestone_achieved":
+      return "analytics";
+    case "client_joined_workspace":
+    case "invite_accepted":
+      return "clients";
+    case "birthday_reminder":
+      return "profile";
+    case "client_inactive":
+      return "clients";
+    default:
+      return "settings";
   }
-  if (notification.priority === "high") {
-    return "border-warning/25 bg-warning/10 text-warning";
-  }
-  return "border-border/70 bg-secondary/40 text-muted-foreground";
 }
 
 export function sortNotifications<T extends { created_at: string }>(rows: T[]) {

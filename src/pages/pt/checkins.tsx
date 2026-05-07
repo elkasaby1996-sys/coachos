@@ -1,11 +1,18 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  CalendarClock,
+  ClipboardCheck,
+  TimerReset,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
   DashboardCard,
   EmptyState,
   Skeleton,
+  StatCard,
   StatusPill,
 } from "../../components/ui/coachos";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
@@ -19,6 +26,7 @@ import {
   getCheckinOperationalState,
   type CheckinOperationalState,
 } from "../../lib/checkin-review";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
 
 type ClientRow = {
   id: string;
@@ -157,6 +165,41 @@ export function PtCheckinsQueuePage() {
     ],
     [],
   );
+
+  const dueNowRows = useMemo(
+    () =>
+      queueRows.filter(
+        (row) => row.status === "submitted" || row.status === "due",
+      ),
+    [queueRows],
+  );
+  const overdueRows = useMemo(
+    () => queueRows.filter((row) => row.status === "overdue"),
+    [queueRows],
+  );
+  const upcomingRows = useMemo(
+    () => queueRows.filter((row) => row.status === "upcoming"),
+    [queueRows],
+  );
+
+  const dueNowWindow = useWindowedRows({
+    rows: dueNowRows,
+    initialCount: 10,
+    step: 10,
+    resetKey: dueNowRows.length,
+  });
+  const overdueWindow = useWindowedRows({
+    rows: overdueRows,
+    initialCount: 10,
+    step: 10,
+    resetKey: overdueRows.length,
+  });
+  const upcomingWindow = useWindowedRows({
+    rows: upcomingRows,
+    initialCount: 10,
+    step: 10,
+    resetKey: upcomingRows.length,
+  });
 
   const renderQueueRows = (
     rows: QueueRow[],
@@ -315,57 +358,71 @@ export function PtCheckinsQueuePage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Check-in Queue"
+        className="w-full justify-end"
         actions={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => navigate("/pt/checkins/templates")}
-            >
-              Manage templates
-            </Button>
-            <Button onClick={() => navigate("/pt/clients")}>
-              View clients
-            </Button>
-          </>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/pt/checkins/templates")}
+          >
+            Manage templates
+          </Button>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {[
-          {
-            label: "Submitted",
-            value: submittedCount,
-          },
-          {
-            label: "Overdue",
-            value: overdueCount,
-          },
-          {
-            label: "Due now",
-            value: dueCount,
-          },
-          {
-            label: "Soon",
-            value: upcomingCount,
-          },
-        ].map((card) => (
-          <div key={card.label} className="ops-surface px-4 py-4">
-            <div className="ops-kicker">{card.label}</div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {card.value}
-            </div>
-          </div>
-        ))}
+      <div className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Submitted"
+          value={submittedCount}
+          helper="Ready for review"
+          icon={ClipboardCheck}
+          accent
+          module="checkins"
+          iconClassName="text-[var(--state-success-text)]"
+          className="h-full"
+        />
+        <StatCard
+          label="Overdue"
+          value={overdueCount}
+          helper="Needs follow-up"
+          icon={AlertTriangle}
+          module="checkins"
+          iconClassName="text-[var(--state-danger-text)]"
+          className="h-full"
+        />
+        <StatCard
+          label="Due now"
+          value={dueCount}
+          helper="Waiting today"
+          icon={CalendarClock}
+          module="checkins"
+          iconClassName="text-[var(--state-warning-text)]"
+          className="h-full"
+        />
+        <StatCard
+          label="Soon"
+          value={upcomingCount}
+          helper="Coming up next"
+          icon={TimerReset}
+          module="checkins"
+          iconClassName="text-[var(--state-info-text)]"
+          className="h-full"
+        />
       </div>
 
       <div className="space-y-6">
         {queueSections.map((section) => {
-          const rows = queueRows.filter((row) => {
-            if (section.key === "due-now") {
-              return row.status === "submitted" || row.status === "due";
-            }
-            return row.status === section.key;
-          });
+          const rows =
+            section.key === "due-now"
+              ? dueNowRows
+              : section.key === "overdue"
+                ? overdueRows
+                : upcomingRows;
+          const windowed =
+            section.key === "due-now"
+              ? dueNowWindow
+              : section.key === "overdue"
+                ? overdueWindow
+                : upcomingWindow;
           return (
             <DashboardCard key={section.key} title={section.title}>
               {isLoading ? (
@@ -380,10 +437,23 @@ export function PtCheckinsQueuePage() {
                   description={section.emptyDescription}
                 />
               ) : (
-                renderQueueRows(
-                  rows,
-                  section.key === "due-now" ? "Review" : "Open",
-                )
+                <div className="space-y-4">
+                  {renderQueueRows(
+                    windowed.visibleRows,
+                    section.key === "due-now" ? "Review" : "Open",
+                  )}
+                  {windowed.hasHiddenRows ? (
+                    <div className="flex justify-center">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={windowed.showMore}
+                      >
+                        Show {Math.min(windowed.hiddenCount, 10)} more
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
               )}
             </DashboardCard>
           );

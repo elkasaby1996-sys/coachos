@@ -2,15 +2,25 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ErrorBoundary } from "@sentry/react";
 import { ThemeProvider } from "./components/common/theme-provider";
+import { AppErrorBoundary } from "./components/common/app-error-boundary";
 import { AuthProvider } from "./lib/auth";
 import { App } from "./routes/app";
 import { initializeThemePreference } from "./lib/theme";
-import { HealthPage } from "./pages/public/health";
+import { I18nProvider } from "./lib/i18n";
+import { initSentry } from "./lib/sentry";
+import {
+  installSentryMetricSmokeTest,
+  reportInitialPageLoadMetric,
+} from "./lib/sentry-metrics";
 import "./styles/globals.css";
+import "./styles/style.css";
+import "./styles/color-language.css";
 
 initializeThemePreference("dark");
+initSentry();
+reportInitialPageLoadMetric();
+installSentryMetricSmokeTest();
 
 const isHardFail = (error: any) => {
   const status = error?.status;
@@ -56,21 +66,17 @@ const queryClient = new QueryClient({
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    {window.location.pathname === "/health" ? (
-      <HealthPage />
-    ) : (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <BrowserRouter>
-              <ErrorBoundary fallback={<p>Something went wrong.</p>}>
-                <App />
-              </ErrorBoundary>
-            </BrowserRouter>
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    )}
-  </React.StrictMode>,
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppErrorBoundary>
+              <App />
+            </AppErrorBoundary>
+          </BrowserRouter>
+        </AuthProvider>
+      </I18nProvider>
+    </ThemeProvider>
+  </QueryClientProvider>,
 );

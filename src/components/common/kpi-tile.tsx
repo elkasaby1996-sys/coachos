@@ -1,5 +1,6 @@
 import { Card } from "../ui/card";
 import { cn } from "../../lib/utils";
+import { type ModuleTone } from "../../lib/module-tone";
 
 interface KpiTileProps {
   label: string;
@@ -7,6 +8,7 @@ interface KpiTileProps {
   delta?: string;
   sparkline?: number[];
   accent?: boolean;
+  module?: ModuleTone;
 }
 
 export function KpiTile({
@@ -15,11 +17,15 @@ export function KpiTile({
   delta,
   sparkline = [],
   accent = false,
+  module,
 }: KpiTileProps) {
   const max = Math.max(...sparkline, 1);
 
   return (
-    <Card className="group relative overflow-hidden border-border/70 bg-card/80 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card">
+    <Card
+      module={module}
+      className="group relative overflow-hidden border-border/70 bg-card/80 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">

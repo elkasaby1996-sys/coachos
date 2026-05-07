@@ -1,0 +1,115 @@
+.pt-workspace-theme {
+  font-family: "Barlow", "DM Sans", "Geist Sans", sans-serif;
+}
+
+.pt-workspace-theme h1,
+.pt-workspace-theme h2,
+.pt-workspace-theme h3,
+.pt-workspace-theme h4,
+.pt-workspace-theme h5,
+.pt-workspace-theme h6 {
+  font-family:
+    "Barlow Condensed", "Plus Jakarta Sans", "DM Sans", "Geist Sans", sans-serif;
+  letter-spacing: 0.03em;
+}
+
+.pt-workspace-theme.pt-workspace-theme-light .theme-shell-canvas::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  background:
+    radial-gradient(
+      circle at 18% 22%,
+      oklch(var(--bg-muted) / 0.17),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 78% 18%,
+      oklch(var(--chart-4) / 0.07),
+      transparent 22%
+    ),
+    radial-gradient(
+      circle at 72% 78%,
+      oklch(var(--neutral) / 0.055),
+      transparent 20%
+    ),
+    radial-gradient(
+      circle at 28% 82%,
+      oklch(var(--chart-3) / 0.045),
+      transparent 20%
+    );
+  filter: blur(136px) saturate(68%);
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation: pt-hub-aurora-shift 36s cubic-bezier(0.42, 0, 0.2, 1) infinite
+    alternate;
+  pointer-events: none;
+  z-index: -2;
+  opacity: 0.22;
+}
+
+.pt-workspace-theme.pt-workspace-theme-light .theme-shell-canvas::after {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  background-image:
+    linear-gradient(oklch(var(--border-subtle) / 0.055) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      oklch(var(--border-subtle) / 0.055) 1px,
+      transparent 1px
+    );
+  background-size: 84px 84px;
+  mask-image: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.8),
+    transparent 86%
+  );
+  opacity: 0.05;
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation: pt-hub-grid-float 44s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.pt-workspace-theme.pt-workspace-theme-light .surface-panel::before,
+.pt-workspace-theme.pt-workspace-theme-light .surface-panel-strong::before,
+.pt-workspace-theme.pt-workspace-theme-light .surface-panel-portal::before {
+  background: linear-gradient(
+    90deg,
+    oklch(var(--chart-4) / 0.24),
+    oklch(var(--neutral) / 0.16),
+    transparent
+  );
+  opacity: 0.26;
+}
+
+.pt-workspace-theme.pt-workspace-theme-light .surface-panel::after,
+.pt-workspace-theme.pt-workspace-theme-light .surface-panel-strong::after,
+.pt-workspace-theme.pt-workspace-theme-light .surface-panel-portal::after {
+  background:
+    linear-gradient(
+      180deg,
+      oklch(1 0 0 / 0.08),
+      transparent 20%,
+      transparent 78%,
+      oklch(var(--bg-muted) / 0.12)
+    ),
+    radial-gradient(
+      circle at top left,
+      oklch(var(--bg-muted) / 0.16),
+      transparent 26%
+    );
+}
+
+.pt-workspace-theme .pt-content-zoom {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .pt-workspace-theme .theme-shell-canvas::after {
+    opacity: 0.08;
+    animation-duration: 56s;
+  }
+}

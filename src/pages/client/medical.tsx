@@ -15,8 +15,10 @@ import {
   SurfaceCardHeader,
   SurfaceCardTitle,
 } from "../../components/client/portal";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
+import { validateMedicalDocumentFile } from "../../lib/upload-validation";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 type ClientMedicalProfile = {
   id: string;
@@ -83,7 +85,7 @@ const getErrorMessage = (error: unknown) => {
 };
 
 export function ClientMedicalPage() {
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [historyTitle, setHistoryTitle] = useState("");
@@ -180,6 +182,27 @@ export function ClientMedicalPage() {
     [recordsQuery.data],
   );
 
+  const historyWindow = useWindowedRows({
+    rows: historyEntries,
+    initialCount: 8,
+    step: 8,
+    resetKey: historyEntries.length,
+  });
+
+  const labWindow = useWindowedRows({
+    rows: labEntries,
+    initialCount: 8,
+    step: 8,
+    resetKey: labEntries.length,
+  });
+
+  const documentWindow = useWindowedRows({
+    rows: documentsQuery.data ?? [],
+    initialCount: 8,
+    step: 8,
+    resetKey: documentsQuery.data?.length ?? 0,
+  });
+
   const handleSaveHistory = async () => {
     const trimmedTitle = historyTitle.trim();
     const trimmedNotes = historyNotes.trim();
@@ -193,15 +216,21 @@ export function ClientMedicalPage() {
     }
     setHistoryStatus("saving");
     setHistoryMessage(null);
-    const { error } = await supabase.from("client_medical_records").insert({
-      client_id: clientId,
-      workspace_id: workspaceId,
-      entry_type: "history",
-      title: trimmedTitle,
-      observed_at: historyDate || null,
-      notes: trimmedNotes || null,
-      created_by: session.user.id,
-    });
+    const { data, error } = await supabase
+      .from("client_medical_records")
+      .insert({
+        client_id: clientId,
+        workspace_id: workspaceId,
+        entry_type: "history",
+        title: trimmedTitle,
+        observed_at: historyDate || null,
+        notes: trimmedNotes || null,
+        created_by: session.user.id,
+      })
+      .select(
+        "id, entry_type, title, result_value, unit, observed_at, notes, created_at",
+      )
+      .single();
 
     if (error) {
       setHistoryStatus("error");
@@ -214,9 +243,10 @@ export function ClientMedicalPage() {
     setHistoryNotes("");
     setHistoryStatus("idle");
     setHistoryMessage("Medical history saved.");
-    await queryClient.invalidateQueries({
-      queryKey: ["client-medical-records", clientId, workspaceId],
-    });
+    queryClient.setQueryData<MedicalRecordRow[]>(
+      ["client-medical-records", clientId, workspaceId],
+      (current) => [data as MedicalRecordRow, ...(current ?? [])],
+    );
   };
 
   const handleSaveLabResult = async () => {
@@ -235,17 +265,23 @@ export function ClientMedicalPage() {
     }
     setLabStatus("saving");
     setLabMessage(null);
-    const { error } = await supabase.from("client_medical_records").insert({
-      client_id: clientId,
-      workspace_id: workspaceId,
-      entry_type: "lab_result",
-      title: trimmedName,
-      result_value: trimmedValue,
-      unit: trimmedUnit || null,
-      observed_at: labDate || null,
-      notes: trimmedNotes || null,
-      created_by: session.user.id,
-    });
+    const { data, error } = await supabase
+      .from("client_medical_records")
+      .insert({
+        client_id: clientId,
+        workspace_id: workspaceId,
+        entry_type: "lab_result",
+        title: trimmedName,
+        result_value: trimmedValue,
+        unit: trimmedUnit || null,
+        observed_at: labDate || null,
+        notes: trimmedNotes || null,
+        created_by: session.user.id,
+      })
+      .select(
+        "id, entry_type, title, result_value, unit, observed_at, notes, created_at",
+      )
+      .single();
 
     if (error) {
       setLabStatus("error");
@@ -260,9 +296,10 @@ export function ClientMedicalPage() {
     setLabNotes("");
     setLabStatus("idle");
     setLabMessage("Lab result saved.");
-    await queryClient.invalidateQueries({
-      queryKey: ["client-medical-records", clientId, workspaceId],
-    });
+    queryClient.setQueryData<MedicalRecordRow[]>(
+      ["client-medical-records", clientId, workspaceId],
+      (current) => [data as MedicalRecordRow, ...(current ?? [])],
+    );
   };
 
   const handleUploadDocument = async () => {
@@ -270,6 +307,15 @@ export function ClientMedicalPage() {
       return;
     setDocumentStatus("saving");
     setDocumentMessage(null);
+    try {
+      validateMedicalDocumentFile(documentFile);
+    } catch (error) {
+      setDocumentStatus("error");
+      setDocumentMessage(
+        error instanceof Error ? error.message : "Invalid medical document.",
+      );
+      return;
+    }
 
     const sanitizedFileName = sanitizeStorageFileName(documentFile.name);
     const storagePath = `${clientId}/${crypto.randomUUID()}-${sanitizedFileName}`;
@@ -286,7 +332,7 @@ export function ClientMedicalPage() {
       return;
     }
 
-    const { error: insertError } = await supabase
+    const { data: insertedDocument, error: insertError } = await supabase
       .from("client_medical_documents")
       .insert({
         client_id: clientId,
@@ -298,7 +344,11 @@ export function ClientMedicalPage() {
         storage_path: storagePath,
         observed_at: documentDate || null,
         uploaded_by: session.user.id,
-      });
+      })
+      .select(
+        "id, label, file_name, mime_type, file_size, storage_path, observed_at, created_at",
+      )
+      .single();
 
     if (insertError) {
       await supabase.storage.from("medical_documents").remove([storagePath]);
@@ -313,9 +363,10 @@ export function ClientMedicalPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     setDocumentStatus("idle");
     setDocumentMessage("Medical report uploaded.");
-    await queryClient.invalidateQueries({
-      queryKey: ["client-medical-documents", clientId, workspaceId],
-    });
+    queryClient.setQueryData<MedicalDocumentRow[]>(
+      ["client-medical-documents", clientId, workspaceId],
+      (current) => [insertedDocument as MedicalDocumentRow, ...(current ?? [])],
+    );
   };
 
   const handleOpenDocument = async (documentRow: MedicalDocumentRow) => {
@@ -381,10 +432,14 @@ export function ClientMedicalPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
+                  <label
+                    htmlFor="client-medical-history-date"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
                     Relevant date
                   </label>
                   <Input
+                    id="client-medical-history-date"
                     type="date"
                     value={historyDate}
                     onChange={(event) => setHistoryDate(event.target.value)}
@@ -469,10 +524,14 @@ export function ClientMedicalPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground">
+                  <label
+                    htmlFor="client-medical-lab-date"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
                     Test date
                   </label>
                   <Input
+                    id="client-medical-lab-date"
                     type="date"
                     value={labDate}
                     onChange={(event) => setLabDate(event.target.value)}
@@ -534,10 +593,14 @@ export function ClientMedicalPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">
+                    <label
+                      htmlFor="client-medical-report-date"
+                      className="text-xs font-semibold text-muted-foreground"
+                    >
                       Report date
                     </label>
                     <Input
+                      id="client-medical-report-date"
                       type="date"
                       value={documentDate}
                       onChange={(event) => setDocumentDate(event.target.value)}
@@ -604,23 +667,36 @@ export function ClientMedicalPage() {
                   description={getErrorMessage(recordsQuery.error)}
                 />
               ) : historyEntries.length > 0 ? (
-                historyEntries.map((entry) => (
-                  <SectionCard key={entry.id} className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground">
-                        {entry.title}
-                      </p>
-                      <span className="text-xs text-muted-foreground">
-                        {formatShortDate(entry.observed_at)}
-                      </span>
+                <>
+                  {historyWindow.visibleRows.map((entry) => (
+                    <SectionCard key={entry.id} className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground">
+                          {entry.title}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {formatShortDate(entry.observed_at)}
+                        </span>
+                      </div>
+                      {entry.notes ? (
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                          {entry.notes}
+                        </p>
+                      ) : null}
+                    </SectionCard>
+                  ))}
+                  {historyWindow.hasHiddenRows ? (
+                    <div className="flex justify-center pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={historyWindow.showMore}
+                      >
+                        Show {Math.min(historyWindow.hiddenCount, 8)} more
+                      </Button>
                     </div>
-                    {entry.notes ? (
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                        {entry.notes}
-                      </p>
-                    ) : null}
-                  </SectionCard>
-                ))
+                  ) : null}
+                </>
               ) : (
                 <EmptyStateBlock
                   title="No medical history yet"
@@ -651,29 +727,42 @@ export function ClientMedicalPage() {
                   description={getErrorMessage(recordsQuery.error)}
                 />
               ) : labEntries.length > 0 ? (
-                labEntries.map((entry) => (
-                  <SectionCard key={entry.id} className="space-y-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {entry.title}
-                        </p>
-                        <p className="mt-1 text-lg font-semibold text-foreground">
-                          {entry.result_value}
-                          {entry.unit ? ` ${entry.unit}` : ""}
-                        </p>
+                <>
+                  {labWindow.visibleRows.map((entry) => (
+                    <SectionCard key={entry.id} className="space-y-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {entry.title}
+                          </p>
+                          <p className="mt-1 text-lg font-semibold text-foreground">
+                            {entry.result_value}
+                            {entry.unit ? ` ${entry.unit}` : ""}
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatShortDate(entry.observed_at)}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatShortDate(entry.observed_at)}
-                      </span>
+                      {entry.notes ? (
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                          {entry.notes}
+                        </p>
+                      ) : null}
+                    </SectionCard>
+                  ))}
+                  {labWindow.hasHiddenRows ? (
+                    <div className="flex justify-center pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={labWindow.showMore}
+                      >
+                        Show {Math.min(labWindow.hiddenCount, 8)} more
+                      </Button>
                     </div>
-                    {entry.notes ? (
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                        {entry.notes}
-                      </p>
-                    ) : null}
-                  </SectionCard>
-                ))
+                  ) : null}
+                </>
               ) : (
                 <EmptyStateBlock
                   title="No lab values added yet"
@@ -704,41 +793,54 @@ export function ClientMedicalPage() {
                   description={getErrorMessage(documentsQuery.error)}
                 />
               ) : (documentsQuery.data ?? []).length > 0 ? (
-                (documentsQuery.data ?? []).map((documentRow) => (
-                  <SectionCard
-                    key={documentRow.id}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">
-                        {documentRow.label?.trim() || documentRow.file_name}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {documentRow.file_name}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatFileSize(documentRow.file_size)}</span>
-                        <span>•</span>
-                        <span>
-                          {formatShortDate(
-                            documentRow.observed_at,
-                            formatShortDate(documentRow.created_at),
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleOpenDocument(documentRow)}
-                      disabled={openingDocumentId === documentRow.id}
+                <>
+                  {documentWindow.visibleRows.map((documentRow) => (
+                    <SectionCard
+                      key={documentRow.id}
+                      className="flex flex-wrap items-center justify-between gap-3"
                     >
-                      {openingDocumentId === documentRow.id
-                        ? "Opening..."
-                        : "Open"}
-                    </Button>
-                  </SectionCard>
-                ))
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {documentRow.label?.trim() || documentRow.file_name}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {documentRow.file_name}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatFileSize(documentRow.file_size)}</span>
+                          <span>•</span>
+                          <span>
+                            {formatShortDate(
+                              documentRow.observed_at,
+                              formatShortDate(documentRow.created_at),
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleOpenDocument(documentRow)}
+                        disabled={openingDocumentId === documentRow.id}
+                      >
+                        {openingDocumentId === documentRow.id
+                          ? "Opening..."
+                          : "Open"}
+                      </Button>
+                    </SectionCard>
+                  ))}
+                  {documentWindow.hasHiddenRows ? (
+                    <div className="flex justify-center pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={documentWindow.showMore}
+                      >
+                        Show {Math.min(documentWindow.hiddenCount, 8)} more
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <EmptyStateBlock
                   title="No uploaded reports yet"

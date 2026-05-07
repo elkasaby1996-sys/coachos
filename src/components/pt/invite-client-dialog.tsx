@@ -13,7 +13,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { getWorkspaceIdForUser } from "../../lib/workspace";
 
 type InviteRecord = {
@@ -70,7 +70,7 @@ function getInviteMeta(selection: ExpirySelection) {
 }
 
 export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const [open, setOpen] = useState(false);
   const [expirySelection, setExpirySelection] =
     useState<ExpirySelection>("24h");
@@ -158,8 +158,8 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
 
-      <DialogContent className="overflow-hidden border-border/80 bg-[oklch(0.21_0.015_255)] p-0 shadow-[0_0_0_1px_oklch(1_0_0/0.03),0_28px_72px_-34px_rgb(0_0_0/0.85)] sm:max-w-[540px]">
-        <div className="border-b border-border/70 bg-[oklch(0.23_0.015_255)] px-6 pb-4 pt-5 sm:px-6">
+      <DialogContent className="overflow-hidden border-border/80 bg-card p-0 shadow-[var(--dialog-shadow)] sm:max-w-[540px]">
+        <div className="border-b border-border/70 bg-secondary/35 px-6 pb-4 pt-5 sm:px-6">
           <DialogHeader className="max-w-[410px] gap-1.5 pr-10">
             <DialogTitle className="text-[1.15rem] tracking-tight">
               Invite client
@@ -233,7 +233,7 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
 
             {!invite ? (
               <div className="flex items-center gap-3 rounded-xl border border-dashed border-border/70 bg-secondary/16 px-4 py-4 text-sm text-muted-foreground/90">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-[oklch(0.24_0.015_255)] text-muted-foreground">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-secondary/55 text-muted-foreground">
                   <Link2 className="h-4 w-4" />
                 </div>
                 <div className="space-y-0.5">
@@ -249,7 +249,7 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
                   <Input
                     value={inviteLink}
                     readOnly
-                    className="h-11 border-border/75 bg-[oklch(0.18_0.012_255)] text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] placeholder:text-muted-foreground/50 selection:bg-primary/25"
+                    className="h-11 border-border/75 bg-background text-foreground shadow-[inset_0_1px_0_oklch(var(--bg-surface-elevated)/0.4)] placeholder:text-muted-foreground/50 selection:bg-primary/25"
                   />
                   <div className="flex shrink-0 flex-col gap-1.5 sm:w-[124px]">
                     <Button type="button" onClick={handleCopy} className="h-11">
@@ -286,7 +286,7 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
           </section>
         </div>
 
-        <DialogFooter className="border-t border-border/70 bg-[oklch(0.22_0.014_255)] px-6 py-2.5 sm:px-6">
+        <DialogFooter className="border-t border-border/70 bg-secondary/35 px-6 py-2.5 sm:px-6">
           {invite ? (
             <Button
               type="button"

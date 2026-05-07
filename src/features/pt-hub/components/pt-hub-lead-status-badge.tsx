@@ -1,27 +1,21 @@
 import { Badge } from "../../../components/ui/badge";
+import type { BadgeVariant } from "../../../components/ui/badge";
 import type { PTLeadStatus } from "../types";
 
-const statusVariant: Record<
-  PTLeadStatus,
-  "secondary" | "success" | "warning" | "danger" | "muted"
-> = {
+const statusVariant: Record<PTLeadStatus, BadgeVariant> = {
   new: "warning",
-  reviewed: "secondary",
-  contacted: "secondary",
-  consultation_booked: "success",
-  accepted: "success",
-  rejected: "danger",
-  archived: "muted",
+  contacted: "info",
+  approved_pending_workspace: "warning",
+  converted: "success",
+  declined: "danger",
 };
 
 const statusLabel: Record<PTLeadStatus, string> = {
   new: "New",
-  reviewed: "Reviewed",
   contacted: "Contacted",
-  consultation_booked: "Consultation booked",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  archived: "Archived",
+  approved_pending_workspace: "Approved pending workspace",
+  converted: "Converted",
+  declined: "Declined",
 };
 
 export function PtHubLeadStatusBadge({ status }: { status: PTLeadStatus }) {
