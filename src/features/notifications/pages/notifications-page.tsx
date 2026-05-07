@@ -2,13 +2,15 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, BellRing } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import { Skeleton } from "../../../components/ui/skeleton";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "../../../components/ui/tabs";
-import { useAuth } from "../../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
+import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
 import { NotificationItem } from "../components/notification-item";
 import {
@@ -21,6 +23,10 @@ import {
   SurfaceCardHeader,
   SurfaceCardTitle,
 } from "../../../components/client/portal";
+import {
+  StaggerGroup,
+  StaggerItem,
+} from "../../../components/common/motion-primitives";
 import {
   useInfiniteNotifications,
   useMarkAllNotificationsRead,
@@ -65,7 +71,8 @@ const groupPtNotifications = (rows: NotificationRecord[]) => {
 
 export function NotificationsPage() {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user } = useSessionAuth();
+  const { role } = useBootstrapAuth();
   const isClientPortal = role === "client";
   const [activeTab, setActiveTab] = useState<NotificationFilter>("all");
   const allQuery = useInfiniteNotifications({
@@ -86,11 +93,22 @@ export function NotificationsPage() {
   const unreadCount = useMemo(() => {
     return allNotifications.filter((row) => !row.is_read).length;
   }, [allNotifications]);
+  const unreadNotifications = useMemo(() => {
+    return unreadQuery.data?.pages.flat() ?? [];
+  }, [unreadQuery.data?.pages]);
   const notificationsError = allQuery.error ?? unreadQuery.error;
-  const highPriorityCount = useMemo(
-    () => allNotifications.filter((row) => row.priority === "high").length,
-    [allNotifications],
-  );
+  const allWindow = useWindowedRows({
+    rows: allNotifications,
+    initialCount: 18,
+    step: 18,
+    resetKey: `all:${allNotifications.length}`,
+  });
+  const unreadWindow = useWindowedRows({
+    rows: unreadNotifications,
+    initialCount: 18,
+    step: 18,
+    resetKey: `unread:${unreadNotifications.length}`,
+  });
 
   const handleOpenNotification = async (notification: NotificationRecord) => {
     if (!notification.is_read) {
@@ -113,6 +131,7 @@ export function NotificationsPage() {
       title="Notifications"
       subtitle="Coach updates, plan changes, reminders, and messages in one place."
       stateText={clientStateText}
+      module="settings"
       actions={
         <Button
           variant="secondary"
@@ -126,8 +145,9 @@ export function NotificationsPage() {
     />
   ) : (
     <WorkspacePageHeader
+      module="settings"
       title="Notifications"
-      description="Activity across clients, messages, invites, and schedule changes in a denser operational inbox."
+      description="Review client activity, coach communication, invites, and schedule changes in one notification center."
       actions={
         <Button
           variant="secondary"
@@ -143,44 +163,6 @@ export function NotificationsPage() {
   return (
     <div className={isClientPortal ? "portal-shell-tight" : "space-y-6"}>
       {pageHeader}
-
-      {!isClientPortal ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Unread
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {unreadCount}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Updates still waiting for review.
-            </div>
-          </div>
-          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              High priority
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {highPriorityCount}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Notification rows marked urgent.
-            </div>
-          </div>
-          <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Recent activity
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {allNotifications.length}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Notifications currently loaded in the workspace inbox.
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {isClientPortal ? (
         <StatusBanner
@@ -216,17 +198,20 @@ export function NotificationsPage() {
         />
       ) : null}
 
-      <SurfaceCard className={isClientPortal ? "" : "rounded-[24px]"}>
+      <SurfaceCard
+        module="settings"
+        className={isClientPortal ? "" : "rounded-[24px]"}
+      >
         <SurfaceCardHeader className="gap-4 pb-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
               <SurfaceCardTitle className="text-xl">
-                {isClientPortal ? "Recent updates" : "Inbox"}
+                {isClientPortal ? "Recent updates" : "Notifications"}
               </SurfaceCardTitle>
               <SurfaceCardDescription>
                 {isClientPortal
                   ? "Open anything that changes what you should do next."
-                  : "Review operational activity across the workspace."}
+                  : "Track the latest workspace activity and open anything that needs attention."}
               </SurfaceCardDescription>
             </div>
             {isClientPortal ? (
@@ -246,7 +231,24 @@ export function NotificationsPage() {
                       : "This feed will populate as coach updates and reminders are created."}
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm lg:min-w-[14rem]">
+                <p className="font-semibold text-foreground">
+                  {unreadCount > 0
+                    ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
+                    : allNotifications.length > 0
+                      ? "Everything reviewed"
+                      : "No notifications yet"}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {unreadCount > 0
+                    ? "Use Unread to clear anything new first, then switch back to All for the full activity stream."
+                    : allNotifications.length > 0
+                      ? "Use All to revisit recent workspace activity whenever you need context."
+                      : "Client, invite, and schedule activity will appear here as it happens."}
+                </p>
+              </div>
+            )}
           </div>
         </SurfaceCardHeader>
 
@@ -258,6 +260,7 @@ export function NotificationsPage() {
             <TabsList className="grid h-auto w-full max-w-md grid-cols-1 gap-2 rounded-[var(--radius-lg)] bg-transparent p-0 sm:grid-cols-2">
               <TabsTrigger
                 value="all"
+                module="settings"
                 className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
               >
                 <span>All</span>
@@ -267,6 +270,7 @@ export function NotificationsPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="unread"
+                module="settings"
                 className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
               >
                 <span>New</span>
@@ -277,8 +281,11 @@ export function NotificationsPage() {
             </TabsList>
 
             {(["all", "unread"] as NotificationFilter[]).map((filter) => {
-              const query = filter === "unread" ? unreadQuery : allQuery;
-              const rows = query.data?.pages.flat() ?? [];
+              const isUnreadFilter = filter === "unread";
+              const query = isUnreadFilter ? unreadQuery : allQuery;
+              const rows = isUnreadFilter ? unreadNotifications : allNotifications;
+              const windowed = isUnreadFilter ? unreadWindow : allWindow;
+              const visibleRows = windowed.visibleRows;
               const emptyTitle =
                 filter === "unread"
                   ? "No new notifications"
@@ -297,14 +304,13 @@ export function NotificationsPage() {
               return (
                 <TabsContent key={filter} value={filter} className="mt-0">
                   {query.isLoading ? (
-                    <div className="space-y-3">
+                    <StaggerGroup className="space-y-3" stagger={0.05}>
                       {Array.from({ length: 6 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className="h-28 rounded-[var(--radius-lg)] border border-border/60 bg-secondary/18"
-                        />
+                        <StaggerItem key={index}>
+                          <Skeleton className="h-28 rounded-[var(--radius-lg)] border border-border/60" />
+                        </StaggerItem>
                       ))}
-                    </div>
+                    </StaggerGroup>
                   ) : rows.length === 0 ? (
                     <EmptyStateBlock
                       centered
@@ -332,17 +338,28 @@ export function NotificationsPage() {
                       }
                     />
                   ) : isClientPortal ? (
-                    <div className="space-y-3">
-                      {rows.map((notification) => (
-                        <NotificationItem
-                          key={notification.id}
-                          notification={notification}
-                          audience="client"
-                          onClick={() => handleOpenNotification(notification)}
-                        />
+                    <StaggerGroup className="space-y-3" stagger={0.04}>
+                      {visibleRows.map((notification) => (
+                        <StaggerItem key={notification.id}>
+                          <NotificationItem
+                            notification={notification}
+                            audience="client"
+                            onClick={() => handleOpenNotification(notification)}
+                          />
+                        </StaggerItem>
                       ))}
+                      {windowed.hasHiddenRows ? (
+                        <StaggerItem className="flex justify-center pt-1">
+                          <Button
+                            variant="secondary"
+                            onClick={windowed.showMore}
+                          >
+                            Show {Math.min(windowed.hiddenCount, 18)} more
+                          </Button>
+                        </StaggerItem>
+                      ) : null}
                       {query.hasNextPage ? (
-                        <div className="flex justify-center pt-2">
+                        <StaggerItem className="flex justify-center pt-2">
                           <Button
                             variant="secondary"
                             onClick={() => query.fetchNextPage()}
@@ -352,13 +369,13 @@ export function NotificationsPage() {
                               ? "Loading..."
                               : "Load more"}
                           </Button>
-                        </div>
+                        </StaggerItem>
                       ) : null}
-                    </div>
+                    </StaggerGroup>
                   ) : (
-                    <div className="space-y-5">
-                      {groupPtNotifications(rows).map((group) => (
-                        <div key={group.label} className="space-y-3">
+                    <StaggerGroup className="space-y-5" stagger={0.06}>
+                      {groupPtNotifications(visibleRows).map((group) => (
+                        <StaggerItem key={group.label} className="space-y-3">
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <div className="text-sm font-semibold text-foreground">
@@ -370,22 +387,33 @@ export function NotificationsPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-3">
+                          <StaggerGroup className="space-y-3" stagger={0.04}>
                             {group.rows.map((notification) => (
-                              <NotificationItem
-                                key={notification.id}
-                                notification={notification}
-                                audience="pt"
-                                onClick={() =>
-                                  handleOpenNotification(notification)
-                                }
-                              />
+                              <StaggerItem key={notification.id}>
+                                <NotificationItem
+                                  notification={notification}
+                                  audience="pt"
+                                  onClick={() =>
+                                    handleOpenNotification(notification)
+                                  }
+                                />
+                              </StaggerItem>
                             ))}
-                          </div>
-                        </div>
+                          </StaggerGroup>
+                        </StaggerItem>
                       ))}
+                      {windowed.hasHiddenRows ? (
+                        <StaggerItem className="flex justify-center pt-1">
+                          <Button
+                            variant="secondary"
+                            onClick={windowed.showMore}
+                          >
+                            Show {Math.min(windowed.hiddenCount, 18)} more
+                          </Button>
+                        </StaggerItem>
+                      ) : null}
                       {query.hasNextPage ? (
-                        <div className="flex justify-center pt-2">
+                        <StaggerItem className="flex justify-center pt-2">
                           <Button
                             variant="secondary"
                             onClick={() => query.fetchNextPage()}
@@ -395,9 +423,9 @@ export function NotificationsPage() {
                               ? "Loading..."
                               : "Load more"}
                           </Button>
-                        </div>
+                        </StaggerItem>
                       ) : null}
-                    </div>
+                    </StaggerGroup>
                   )}
                 </TabsContent>
               );

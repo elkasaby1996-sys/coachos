@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { Bell } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Separator } from "../../../components/ui/separator";
+import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { NotificationItem } from "./notification-item";
 import type { NotificationRecord } from "../lib/types";
 
@@ -23,9 +25,38 @@ export function NotificationPanel({
   viewAllHref: string;
 }) {
   const audience = viewAllHref.startsWith("/app") ? "client" : "pt";
+  const reduceMotion = useReducedMotion();
+  const {
+    visibleRows,
+    hasHiddenRows,
+    hiddenCount,
+    showMore,
+  } = useWindowedRows({
+    rows: notifications,
+    initialCount: 8,
+    step: 8,
+    resetKey: `${viewAllHref}:${notifications.length}:${unreadCount}`,
+  });
 
   return (
-    <div className="w-[380px] max-w-[92vw] overflow-hidden rounded-2xl border border-border/70 bg-[oklch(0.2_0.015_255)] shadow-[0_22px_56px_-32px_rgb(0_0_0/0.8)]">
+    <motion.div
+      className="overflow-hidden"
+      initial={reduceMotion ? undefined : "hidden"}
+      animate={reduceMotion ? undefined : "visible"}
+      variants={
+        reduceMotion
+          ? undefined
+          : {
+              hidden: {},
+              visible: {
+                transition: {
+                  staggerChildren: 0.035,
+                  delayChildren: 0.03,
+                },
+              },
+            }
+      }
+    >
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-foreground">Notifications</p>
@@ -67,15 +98,36 @@ export function NotificationPanel({
             </p>
           </div>
         ) : (
-          notifications.map((notification) => (
-            <NotificationItem
+          <>
+            {visibleRows.map((notification) => (
+            <motion.div
               key={notification.id}
-              notification={notification}
-              audience={audience}
-              compact
-              onClick={() => onNotificationClick(notification)}
-            />
-          ))
+              variants={
+                reduceMotion
+                  ? undefined
+                  : {
+                      hidden: { opacity: 0, y: 10 },
+                      visible: { opacity: 1, y: 0 },
+                    }
+              }
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <NotificationItem
+                notification={notification}
+                audience={audience}
+                compact
+                onClick={() => onNotificationClick(notification)}
+              />
+            </motion.div>
+            ))}
+            {hasHiddenRows ? (
+              <div className="flex justify-center pt-1">
+                <Button variant="secondary" size="sm" onClick={showMore}>
+                  Show {Math.min(hiddenCount, 8)} more
+                </Button>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
 
@@ -85,6 +137,6 @@ export function NotificationPanel({
           <Link to={viewAllHref}>View all</Link>
         </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }

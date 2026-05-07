@@ -13,7 +13,7 @@ import {
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Something went wrong.";
@@ -84,7 +84,7 @@ const parseWorkoutTemplate = (value: AssignedWorkoutRow["workout_template"]) =>
 export function ClientWorkoutSummaryPage() {
   const navigate = useNavigate();
   const { assignedWorkoutId } = useParams();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
 
   const clientQuery = useQuery({
     queryKey: ["client", session?.user?.id],

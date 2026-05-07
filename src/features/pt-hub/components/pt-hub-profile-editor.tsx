@@ -1,28 +1,55 @@
-import { useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ImageIcon, Save, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Circle,
+  EyeOff,
+  Globe,
+  ImageIcon,
+  Lock,
+  Plus,
+  Save,
+  Sparkles,
+  Upload,
+  X,
+} from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { Switch } from "../../../components/ui/switch";
+import { Textarea } from "../../../components/ui/textarea";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "../../../components/ui/tabs";
+import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import type { StoredProfileDraft } from "../lib/pt-hub";
 import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
+import {
+  uploadPtProfileMedia,
+  type PtProfileMediaKind,
+} from "../lib/pt-profile-media";
 import type {
+  PTAccountSettingsDraft,
   PTAvailabilityMode,
   PTCoachingMode,
   PTProfile,
   PTProfileReadiness,
+  PTProfileReadinessItem,
   PTPublicationState,
 } from "../types";
-import { PtHubPublicationPanel } from "./pt-hub-publication-panel";
-import { PtHubReadinessPanel } from "./pt-hub-readiness-panel";
 import { PtHubSectionCard } from "./pt-hub-section-card";
+import { useSessionAuth } from "../../../lib/auth";
+import { cn } from "../../../lib/utils";
+import {
+  getCharacterLimitState,
+  hasCharacterLimitError,
+} from "../../../lib/character-limits";
+import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
 
 const coachingModeOptions: Array<{
   value: PTCoachingMode;
@@ -31,7 +58,7 @@ const coachingModeOptions: Array<{
   { value: "one_on_one", label: "1:1 coaching" },
   { value: "programming", label: "Programming" },
   { value: "nutrition", label: "Nutrition" },
-  { value: "accountability", label: "Accountability" },
+  { value: "accountability", label: "Consultation" },
 ];
 
 const availabilityModeOptions: Array<{
@@ -40,6 +67,65 @@ const availabilityModeOptions: Array<{
 }> = [
   { value: "online", label: "Online" },
   { value: "in_person", label: "In-person" },
+];
+
+const profileBuilderSteps = [
+  {
+    value: "identity",
+    label: "Identity",
+    description: "Name, hero media, and story",
+    keys: ["profile_photo", "banner", "display_name", "headline", "bio"],
+  },
+  {
+    value: "proof",
+    label: "Proof",
+    description: "Specialties, credentials, and results",
+    keys: ["specialties", "certifications", "coaching_style"],
+  },
+  {
+    value: "offer",
+    label: "Offer",
+    description: "Packages and selling surface",
+    keys: [],
+  },
+  {
+    value: "visibility",
+    label: "Visibility",
+    description: "URL, discovery, and social proof",
+    keys: ["social_links", "cta_ready"],
+  },
+  {
+    value: "preview",
+    label: "Preview",
+    description: "Check the public storefront",
+    keys: [],
+  },
+] as const;
+
+const visibilityOptions: Array<{
+  value: PTAccountSettingsDraft["profileVisibility"];
+  label: string;
+  description: string;
+  icon: typeof Circle;
+}> = [
+  {
+    value: "draft",
+    label: "Draft",
+    description: "Keep the profile in setup while you edit content.",
+    icon: Circle,
+  },
+  {
+    value: "private",
+    label: "Private",
+    description: "Publishable content stays hidden from discovery.",
+    icon: Lock,
+  },
+  {
+    value: "listed",
+    label: "Listed when published",
+    description: "Make the profile eligible for public listing after publish.",
+    icon: Globe,
+  },
 ];
 
 function listToInput(values: string[]) {
@@ -53,10 +139,240 @@ function inputToList(value: string) {
     .filter(Boolean);
 }
 
-function createDraft(profile: PTProfile): StoredProfileDraft {
+function createTransformationDraft() {
   return {
-    fullName: profile.fullName,
-    displayName: profile.displayName,
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `transformation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: "",
+    summary: "",
+    beforeImageUrl: null,
+    afterImageUrl: null,
+  };
+}
+
+function UploadButton({
+  label,
+  uploading,
+  disabled,
+  accept = "image/jpeg,image/png,image/webp",
+  onFileSelected,
+}: {
+  label: string;
+  uploading: boolean;
+  disabled?: boolean;
+  accept?: string;
+  onFileSelected: (file: File) => Promise<void> | void;
+}) {
+  return (
+    <label className="block">
+      <input
+        type="file"
+        accept={accept}
+        className="sr-only"
+        disabled={disabled || uploading}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = "";
+          if (!file) return;
+          void onFileSelected(file);
+        }}
+      />
+      <span className="inline-flex">
+        <Button
+          type="button"
+          variant="secondary"
+          className="gap-2"
+          disabled={disabled || uploading}
+          asChild
+        >
+          <span>
+            <Upload className="h-4 w-4" />
+            {uploading ? "Uploading..." : label}
+          </span>
+        </Button>
+      </span>
+    </label>
+  );
+}
+
+function getStepCompletion(
+  keys: readonly PTProfileReadinessItem["key"][],
+  readiness: PTProfileReadiness,
+) {
+  if (keys.length === 0) return { complete: 0, total: 0, percent: 100 };
+
+  const complete = keys.filter((key) =>
+    readiness.checklist.find((item) => item.key === key && item.complete),
+  ).length;
+
+  return {
+    complete,
+    total: keys.length,
+    percent: Math.round((complete / keys.length) * 100),
+  };
+}
+
+function ChipInput({
+  id,
+  label,
+  helperText,
+  placeholder,
+  values,
+  value,
+  isInvalid,
+  onValueChange,
+  onValuesChange,
+}: {
+  id: string;
+  label: string;
+  helperText: string;
+  placeholder: string;
+  values: string[];
+  value: string;
+  isInvalid: boolean;
+  onValueChange: (value: string) => void;
+  onValuesChange: (values: string[]) => void;
+}) {
+  const commitValue = (rawValue: string) => {
+    const nextItems = inputToList(rawValue);
+    if (nextItems.length === 0) return;
+
+    const merged = Array.from(new Set([...values, ...nextItems]));
+    onValuesChange(merged);
+    onValueChange("");
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter" && event.key !== ",") return;
+
+    event.preventDefault();
+    commitValue(value);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium text-foreground">
+        {label}
+      </label>
+      <p className="max-w-[62ch] text-sm leading-6 text-muted-foreground">
+        {helperText}
+      </p>
+      <Input
+        id={id}
+        isInvalid={isInvalid}
+        value={value}
+        onChange={(event) => onValueChange(event.target.value)}
+        onBlur={() => commitValue(value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+      />
+      <div className="flex min-h-9 flex-wrap gap-2">
+        {values.length > 0 ? (
+          values.map((item) => (
+            <Badge key={item} variant="muted" className="gap-1.5 pr-1">
+              {item}
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() =>
+                  onValuesChange(
+                    values.filter((valueItem) => valueItem !== item),
+                  )
+                }
+                aria-label={`Remove ${item}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Press Enter after each item to build this list.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PtHubLiveProfilePreview({
+  form,
+  displayNameValue,
+}: {
+  form: StoredProfileDraft;
+  displayNameValue: string;
+}) {
+  return (
+    <div className="pt-hub-live-preview overflow-hidden rounded-[24px] border border-border/70 bg-background/55">
+      <div className="relative h-20 overflow-hidden bg-muted">
+        {form.bannerImageUrl ? (
+          <img
+            src={form.bannerImageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-[radial-gradient(circle_at_20%_20%,oklch(var(--primary)/0.26),transparent_34%),linear-gradient(135deg,oklch(var(--bg-surface-elevated)/0.9),oklch(var(--bg-surface)/0.74))]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/20 to-transparent" />
+      </div>
+      <div className="relative space-y-3 px-4 pb-4 pt-0">
+        <div className="-mt-10 flex items-end justify-between gap-3">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-border/70 bg-background shadow-[0_16px_34px_-26px_oklch(0_0_0/0.65)]">
+            {form.profilePhotoUrl ? (
+              <img
+                src={form.profilePhotoUrl}
+                alt={displayNameValue || "Profile photo preview"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+            )}
+          </div>
+          <Badge variant={form.isPublished ? "success" : "secondary"}>
+            {form.isPublished ? "Published" : "Draft"}
+          </Badge>
+        </div>
+        <div>
+          <p className="text-lg font-semibold leading-tight text-foreground">
+            {displayNameValue || "Display name"}
+          </p>
+          <p className="mt-1 text-sm font-medium leading-5 text-primary">
+            {form.headline || "Headline appears here"}
+          </p>
+        </div>
+        <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+          {form.shortBio ||
+            "Add a short bio so prospects understand your coaching style, proof, and ideal client fit."}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {form.specialties.length > 0 ? (
+            form.specialties.slice(0, 2).map((item) => (
+              <Badge key={item} variant="muted">
+                {item}
+              </Badge>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Specialties will appear here.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function createDraft(profile: PTProfile): StoredProfileDraft {
+  const normalizedDisplayName =
+    profile.displayName.trim() || profile.fullName.trim();
+  const normalizedFullName = profile.fullName.trim() || normalizedDisplayName;
+
+  return {
+    fullName: normalizedFullName,
+    displayName: normalizedDisplayName,
     slug: profile.slug,
     headline: profile.headline,
     searchableHeadline: profile.searchableHeadline,
@@ -78,35 +394,299 @@ function createDraft(profile: PTProfile): StoredProfileDraft {
   };
 }
 
+function applyUploadedProfileMedia(
+  draft: StoredProfileDraft,
+  params: {
+    kind: PtProfileMediaKind;
+    publicUrl: string;
+    transformationId?: string;
+  },
+) {
+  if (params.kind === "profile-photo") {
+    return { ...draft, profilePhotoUrl: params.publicUrl };
+  }
+
+  if (params.kind === "banner") {
+    return { ...draft, bannerImageUrl: params.publicUrl };
+  }
+
+  return {
+    ...draft,
+    transformations: draft.transformations.map((item) =>
+      item.id === params.transformationId
+        ? {
+            ...item,
+            beforeImageUrl:
+              params.kind === "transformation-before"
+                ? params.publicUrl
+                : item.beforeImageUrl,
+            afterImageUrl:
+              params.kind === "transformation-after"
+                ? params.publicUrl
+                : item.afterImageUrl,
+          }
+        : item,
+    ),
+  };
+}
+
+function PtHubProfileLaunchPanel({
+  form,
+  displayNameValue,
+  readiness,
+  publicationState,
+  profileVisibility,
+  saving,
+  publishing,
+  updatingVisibility,
+  mediaBusy,
+  hasChanges,
+  hasOverLimitErrors,
+  onProfileVisibilityChange,
+  onSave,
+  onTogglePublish,
+}: {
+  form: StoredProfileDraft;
+  displayNameValue: string;
+  readiness: PTProfileReadiness;
+  publicationState: PTPublicationState;
+  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
+  saving: boolean;
+  publishing: boolean;
+  updatingVisibility: boolean;
+  mediaBusy: boolean;
+  hasChanges: boolean;
+  hasOverLimitErrors: boolean;
+  onProfileVisibilityChange: (
+    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
+  ) => Promise<void>;
+  onSave: (draft: StoredProfileDraft) => Promise<void>;
+  onTogglePublish: (nextPublished: boolean) => Promise<void>;
+}) {
+  const missingItems = readiness.checklist.filter((item) => !item.complete);
+  const topMissingItems = missingItems.slice(0, 2);
+  const remainingMissingCount = missingItems.length - topMissingItems.length;
+  const selectedVisibilityOption =
+    visibilityOptions.find((option) => option.value === profileVisibility) ??
+    visibilityOptions[0]!;
+  const canPublishNow =
+    publicationState.canPublish && !hasChanges && !hasOverLimitErrors;
+  const primaryActionLabel = hasChanges
+    ? "Save profile"
+    : publicationState.isPublished
+      ? "Unpublish profile"
+      : "Publish profile";
+
+  return (
+    <aside className="pt-hub-profile-launch-rail space-y-5">
+      <PtHubSectionCard
+        title="Launch panel"
+        description="Readiness, visibility, preview, and final actions in one place."
+        contentClassName="space-y-4"
+        actions={
+          <Badge
+            variant={getSemanticBadgeVariant(
+              publicationState.isPublished ? "Published" : "Unpublished",
+            )}
+          >
+            {publicationState.isPublished ? "Published" : "Unpublished"}
+          </Badge>
+        }
+      >
+        <div className="space-y-2.5">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                Profile readiness
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {readiness.readyForPublish
+                  ? "Ready to publish."
+                  : `${missingItems.length} blocker${missingItems.length === 1 ? "" : "s"} before launch.`}
+              </p>
+            </div>
+            <span className="font-mono text-[1.65rem] font-semibold leading-none tabular-nums text-foreground">
+              {readiness.completionPercent}%
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full rounded-full transition-[width] duration-500",
+                readiness.readyForPublish ? "bg-success" : "bg-warning",
+              )}
+              style={{ width: `${readiness.completionPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {missingItems.length > 0 ? (
+          <div className="rounded-[20px] border border-warning/22 bg-warning/12 p-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+              <p className="text-sm font-medium text-foreground">
+                Finish first
+              </p>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {topMissingItems.map((item) => (
+                <Badge key={item.key} variant="warning">
+                  {item.label}
+                </Badge>
+              ))}
+              {remainingMissingCount > 0 ? (
+                <Badge variant="secondary">+{remainingMissingCount} more</Badge>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Visibility</p>
+            <span className="text-xs font-medium text-muted-foreground">
+              {selectedVisibilityOption.label}
+            </span>
+          </div>
+          <div
+            className="grid grid-cols-3 gap-1.5"
+            aria-label="Profile launch visibility"
+          >
+            {visibilityOptions.map((option) => {
+              const Icon = option.icon;
+              const selected = profileVisibility === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={cn(
+                    "pt-hub-visibility-choice flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[16px] border px-2 py-2 text-center transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected
+                      ? "border-primary/45 bg-primary/10 text-foreground"
+                      : "border-border/60 bg-background/28 text-muted-foreground hover:border-border/80 hover:bg-background/45 hover:text-foreground",
+                  )}
+                  disabled={publishing || updatingVisibility}
+                  onClick={() => void onProfileVisibilityChange(option.value)}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate text-xs font-semibold">
+                    {option.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {selectedVisibilityOption.description}
+          </p>
+        </div>
+
+        <PtHubLiveProfilePreview
+          form={form}
+          displayNameValue={displayNameValue}
+        />
+
+        <div className="grid gap-3">
+          <Button
+            asChild
+            variant="secondary"
+            className="w-full justify-between"
+          >
+            <Link to="/pt-hub/profile/preview">
+              Open full preview
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            className="w-full justify-between"
+            disabled={
+              saving ||
+              publishing ||
+              updatingVisibility ||
+              mediaBusy ||
+              hasOverLimitErrors ||
+              (!hasChanges && !publicationState.isPublished && !canPublishNow)
+            }
+            onClick={() => {
+              if (hasChanges) {
+                void onSave({
+                  ...form,
+                  fullName: displayNameValue,
+                  displayName: displayNameValue,
+                });
+                return;
+              }
+
+              void onTogglePublish(!publicationState.isPublished);
+            }}
+          >
+            <span>
+              {mediaBusy
+                ? "Finish uploads first"
+                : saving
+                  ? "Saving..."
+                  : publishing
+                    ? "Updating..."
+                    : hasOverLimitErrors
+                      ? "Fix field limits"
+                      : primaryActionLabel}
+            </span>
+            {hasChanges ? (
+              <Save className="h-4 w-4" />
+            ) : publicationState.isPublished ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Globe className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </PtHubSectionCard>
+    </aside>
+  );
+}
+
 export function PtHubProfileEditor({
   profile,
   readiness,
   publicationState,
+  profileVisibility,
   saving,
   publishing,
+  updatingVisibility,
+  onProfileVisibilityChange,
   onSave,
   onTogglePublish,
 }: {
   profile: PTProfile;
   readiness: PTProfileReadiness;
   publicationState: PTPublicationState;
+  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   saving: boolean;
   publishing: boolean;
+  updatingVisibility: boolean;
+  onProfileVisibilityChange: (
+    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
+  ) => Promise<void>;
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
+  const reduceMotion = useReducedMotion();
+  const fieldIdPrefix = useId();
+  const [activeTab, setActiveTab] = useState("identity");
+  const { user } = useSessionAuth();
   const [form, setForm] = useState<StoredProfileDraft>(createDraft(profile));
-  const [specialtiesInput, setSpecialtiesInput] = useState(
-    listToInput(profile.specialties),
-  );
-  const [certificationsInput, setCertificationsInput] = useState(
-    listToInput(profile.certifications),
-  );
+  const [specialtiesInput, setSpecialtiesInput] = useState("");
+  const [certificationsInput, setCertificationsInput] = useState("");
+  const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   useEffect(() => {
     setForm(createDraft(profile));
-    setSpecialtiesInput(listToInput(profile.specialties));
-    setCertificationsInput(listToInput(profile.certifications));
+    setSpecialtiesInput("");
+    setCertificationsInput("");
+    setMediaError(null);
+    setUploadingTarget(null);
   }, [profile]);
 
   const toggleValue = <TValue extends string>(
@@ -123,45 +703,245 @@ export function PtHubProfileEditor({
   const quickWins = readiness.checklist
     .filter((item) => !item.complete)
     .slice(0, 4);
+  const mediaBusy = Boolean(uploadingTarget);
+  const displayNameValue = form.displayName.trim() || form.fullName.trim();
+  const displayNameLimitState = getCharacterLimitState({
+    value: form.displayName,
+    kind: "short_name",
+    fieldLabel: "Display name",
+  });
+  const headlineLimitState = getCharacterLimitState({
+    value: form.headline,
+    kind: "entity_name",
+    fieldLabel: "Headline",
+  });
+  const shortBioLimitState = getCharacterLimitState({
+    value: form.shortBio,
+    kind: "bio",
+    fieldLabel: "Short bio",
+  });
+  const specialtiesLimitState = getCharacterLimitState({
+    value: listToInput([...form.specialties, specialtiesInput]),
+    kind: "default_text",
+    fieldLabel: "Specialties",
+  });
+  const certificationsLimitState = getCharacterLimitState({
+    value: listToInput([...form.certifications, certificationsInput]),
+    kind: "default_text",
+    fieldLabel: "Certifications",
+  });
+  const coachingStyleLimitState = getCharacterLimitState({
+    value: form.coachingStyle,
+    kind: "default_text",
+    fieldLabel: "Coaching style",
+  });
+  const slugLimitState = getCharacterLimitState({
+    value: form.slug,
+    kind: "short_name",
+    fieldLabel: "Public slug",
+  });
+  const locationLimitState = getCharacterLimitState({
+    value: form.locationLabel,
+    kind: "default_text",
+    fieldLabel: "Location",
+  });
+  const transformationTitleStates = form.transformations.map((item) =>
+    getCharacterLimitState({
+      value: item.title,
+      kind: "entity_name",
+      fieldLabel: "Transformation title",
+    }),
+  );
+  const transformationSummaryStates = form.transformations.map((item) =>
+    getCharacterLimitState({
+      value: item.summary,
+      kind: "default_text",
+      fieldLabel: "Transformation summary",
+    }),
+  );
+  const socialLinkStates = form.socialLinks.map((link) =>
+    getCharacterLimitState({
+      value: link.url,
+      kind: "default_text",
+      fieldLabel: `${link.label} URL`,
+    }),
+  );
+  const hasOverLimitErrors = hasCharacterLimitError([
+    displayNameLimitState,
+    headlineLimitState,
+    shortBioLimitState,
+    specialtiesLimitState,
+    certificationsLimitState,
+    coachingStyleLimitState,
+    slugLimitState,
+    locationLimitState,
+    ...transformationTitleStates,
+    ...transformationSummaryStates,
+    ...socialLinkStates,
+  ]);
+
+  const updateTransformation = (
+    transformationId: string,
+    patch: Partial<StoredProfileDraft["transformations"][number]>,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      transformations: prev.transformations.map((item) =>
+        item.id === transformationId ? { ...item, ...patch } : item,
+      ),
+    }));
+  };
+
+  const handleMediaUpload = async (params: {
+    file: File;
+    kind:
+      | "profile-photo"
+      | "banner"
+      | "transformation-before"
+      | "transformation-after";
+    targetKey: string;
+    transformationId?: string;
+  }) => {
+    if (!user?.id) {
+      setMediaError("Please sign in again before uploading media.");
+      return;
+    }
+
+    setUploadingTarget(params.targetKey);
+    setMediaError(null);
+    try {
+      const { publicUrl } = await uploadPtProfileMedia({
+        userId: user.id,
+        file: params.file,
+        kind: params.kind,
+        transformationId: params.transformationId,
+      });
+
+      const nextDraft = applyUploadedProfileMedia(form, {
+        kind: params.kind,
+        publicUrl,
+        transformationId: params.transformationId,
+      });
+
+      setForm(nextDraft);
+      await onSave(nextDraft);
+    } catch (error) {
+      setMediaError(
+        error instanceof Error
+          ? error.message
+          : "Unable to upload profile media.",
+      );
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.34fr)_340px]">
-      <Tabs defaultValue="identity" className="min-w-0">
-        <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-[22px] border border-border/60 bg-background/35 p-2">
-          <TabsTrigger value="identity">Identity</TabsTrigger>
-          <TabsTrigger value="expertise">Expertise</TabsTrigger>
-          <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
-          <TabsTrigger value="social">Social Links</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+    <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.36fr)_360px]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
+        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4.25rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[24px] p-1.5 xl:overflow-visible">
+          {profileBuilderSteps.map((step) => {
+            const isActive = activeTab === step.value;
+            const completion = getStepCompletion(step.keys, readiness);
+            const isComplete = completion.percent === 100;
+
+            return (
+              <TabsTrigger
+                key={step.value}
+                className={cn(
+                  "pt-hub-profile-step-trigger group flex items-center",
+                  isActive ? "text-foreground" : "text-muted-foreground",
+                  isActive
+                    ? "min-w-[12.5rem] gap-3 xl:flex-[1.7]"
+                    : "min-w-[6.25rem] justify-center gap-2 sm:min-w-[7.25rem] xl:flex-1",
+                )}
+                value={step.value}
+              >
+                {isActive ? (
+                  <motion.span
+                    layoutId="pt-hub-profile-tab-active-pill"
+                    className="pt-hub-tab-active-pill absolute inset-0 rounded-[22px] border"
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : {
+                            type: "spring",
+                            stiffness: 280,
+                            damping: 30,
+                          }
+                    }
+                  />
+                ) : null}
+                <span
+                  className={cn(
+                    "relative z-10 flex shrink-0 items-center justify-center rounded-full border",
+                    isActive ? "h-8 w-8" : "h-7 w-7",
+                    isComplete
+                      ? "border-success/40 bg-success/12 text-success"
+                      : "border-border/70 bg-background/40 text-muted-foreground",
+                  )}
+                  aria-hidden="true"
+                >
+                  {isComplete ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <span className="font-mono text-[11px] tabular-nums">
+                      {completion.total > 0
+                        ? `${completion.complete}/${completion.total}`
+                        : "OK"}
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    "relative z-10 min-w-0 text-left",
+                    !isActive && "flex min-w-0 flex-col items-start",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "block font-semibold",
+                      isActive ? "text-sm" : "text-xs sm:text-sm",
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                  {isActive ? (
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {step.description}
+                    </span>
+                  ) : null}
+                </span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
-        {!readiness.readyForPublish ? (
-          <div className="mt-5 rounded-[24px] border border-border/60 bg-background/30 px-5 py-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-medium text-foreground">
-                    Editor priorities
-                  </p>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Complete the next few high-signal items inside the editor to
-                  strengthen publish readiness.
+        <div className="pt-hub-support-rail mt-5 rounded-[24px] px-5 py-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)] lg:items-center">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">
+                  Launch priorities
                 </p>
+                <Badge variant="secondary">
+                  {readiness.completionPercent}% complete
+                </Badge>
               </div>
-              <Badge variant="secondary">
-                {readiness.completionPercent}% complete
-              </Badge>
+              <p className="max-w-[66ch] text-sm leading-6 text-muted-foreground">
+                Complete the highest-signal items while you edit. The launch
+                panel keeps save, preview, visibility, and publishing in one
+                place.
+              </p>
             </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {quickWins.map((item) => (
-                <div
-                  key={item.key}
-                  className="rounded-[18px] bg-background/45 px-4 py-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
+            <div className="grid gap-2">
+              {quickWins.length > 0 ? (
+                quickWins.slice(0, 3).map((item) => (
+                  <div
+                    key={item.key}
+                    className="pt-hub-support-tile flex items-start justify-between gap-3 rounded-[18px] px-4 py-3"
+                  >
                     <div>
                       <p className="text-sm font-medium text-foreground">
                         {item.label}
@@ -179,140 +959,195 @@ export function PtHubProfileEditor({
                       <Link to={item.href}>Fix</Link>
                     </Button>
                   </div>
+                ))
+              ) : (
+                <div className="pt-hub-support-tile rounded-[18px] px-4 py-3">
+                  <p className="text-sm font-medium text-foreground">
+                    Ready to publish
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Review the live preview, then publish from the launch panel.
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
+          </div>
+        </div>
+
+        {mediaError ? (
+          <div className="mt-5 rounded-[22px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {mediaError}
           </div>
         ) : null}
 
         <TabsContent value="identity" className="space-y-5">
-          <PtHubSectionCard
-            title="Profile media"
-            description="Keep the public-facing visual system deliberate. Upload storage can wire in later without changing the editor structure."
-            contentClassName="space-y-4"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[24px] border border-dashed border-border/70 bg-background/35 p-4">
-                <div className="flex h-28 items-center justify-center rounded-[20px] border border-border/60 bg-background/70">
-                  {form.profilePhotoUrl ? (
-                    <img
-                      src={form.profilePhotoUrl}
-                      alt={
-                        form.displayName || form.fullName || "Profile preview"
-                      }
-                      className="h-full w-full rounded-[20px] object-cover"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <ImageIcon className="h-4 w-4" />
-                      Profile photo preview
-                    </div>
-                  )}
-                </div>
-                <p className="mt-4 text-sm font-medium text-foreground">
-                  Profile photo
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Use a square headshot for the public-facing coach identity.
-                </p>
-                <Input
-                  className="mt-4"
-                  placeholder="Image URL or upload wiring later"
-                  value={form.profilePhotoUrl ?? ""}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      profilePhotoUrl: event.target.value || null,
-                    }))
-                  }
-                />
-              </div>
-              <div className="rounded-[24px] border border-dashed border-border/70 bg-background/35 p-4">
-                <div className="flex h-28 items-center justify-center rounded-[20px] border border-border/60 bg-background/70">
-                  {form.bannerImageUrl ? (
-                    <img
-                      src={form.bannerImageUrl}
-                      alt="Banner preview"
-                      className="h-full w-full rounded-[20px] object-cover"
-                    />
-                  ) : (
+          <PtHubSectionCard title="Profile media" contentClassName="space-y-4">
+            <div className="pt-hub-media-builder overflow-hidden rounded-[28px] border border-border/65 bg-background/35">
+              <div className="relative h-64 overflow-hidden bg-muted">
+                {form.bannerImageUrl ? (
+                  <img
+                    src={form.bannerImageUrl}
+                    alt="Banner preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_20%_10%,oklch(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,oklch(var(--bg-surface-elevated)/0.84),oklch(var(--bg-surface)/0.62))]">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <ImageIcon className="h-4 w-4" />
                       Banner preview
                     </div>
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/95 to-transparent" />
+                <div className="absolute bottom-5 left-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-[0_18px_42px_-30px_oklch(0_0_0/0.72)]">
+                  {form.profilePhotoUrl ? (
+                    <img
+                      src={form.profilePhotoUrl}
+                      alt={displayNameValue || "Profile preview"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
                   )}
                 </div>
-                <p className="mt-4 text-sm font-medium text-foreground">
-                  Banner image
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Wide visual used in the public profile hero and future
-                  marketplace listing.
-                </p>
-                <Input
-                  className="mt-4"
-                  placeholder="Banner image URL or upload wiring later"
-                  value={form.bannerImageUrl ?? ""}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      bannerImageUrl: event.target.value || null,
-                    }))
-                  }
-                />
+              </div>
+              <div className="grid gap-5 p-5 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Profile photo
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Square portrait, JPG, PNG, or WebP. Aim for at least
+                      800x800.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <UploadButton
+                      label="Upload photo"
+                      uploading={uploadingTarget === "profile-photo"}
+                      disabled={
+                        mediaBusy && uploadingTarget !== "profile-photo"
+                      }
+                      onFileSelected={async (file) =>
+                        handleMediaUpload({
+                          file,
+                          kind: "profile-photo",
+                          targetKey: "profile-photo",
+                        })
+                      }
+                    />
+                    {form.profilePhotoUrl ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="gap-2"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            profilePhotoUrl: null,
+                          }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Banner image
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Wide storefront image. Use 1600x600 or larger for the
+                      cleanest crop.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <UploadButton
+                      label="Upload banner"
+                      uploading={uploadingTarget === "banner"}
+                      disabled={mediaBusy && uploadingTarget !== "banner"}
+                      onFileSelected={async (file) =>
+                        handleMediaUpload({
+                          file,
+                          kind: "banner",
+                          targetKey: "banner",
+                        })
+                      }
+                    />
+                    {form.bannerImageUrl ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="gap-2"
+                        onClick={() =>
+                          setForm((prev) => ({ ...prev, bannerImageUrl: null }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </div>
           </PtHubSectionCard>
 
           <PtHubSectionCard
-            title="Identity"
-            description="This is the internal PT Hub editor for your future public-facing profile."
+            title="Brand identity"
+            description="Set the public name and core profile story."
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Full name
-                </label>
-                <Input
-                  value={form.fullName}
-                  onChange={(event) =>
-                    setForm((prev) => ({
+            <div className="space-y-2">
+              <label
+                htmlFor={`${fieldIdPrefix}-display-name`}
+                className="text-sm font-medium text-foreground"
+              >
+                Display name
+              </label>
+              <Input
+                id={`${fieldIdPrefix}-display-name`}
+                isInvalid={displayNameLimitState.overLimit}
+                value={form.displayName}
+                onChange={(event) =>
+                  setForm((prev) => {
+                    const nextDisplayName = event.target.value;
+                    return {
                       ...prev,
-                      fullName: event.target.value,
-                    }))
-                  }
-                  placeholder="Your full name"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Display name
-                </label>
-                <Input
-                  value={form.displayName}
-                  onChange={(event) =>
-                    setForm((prev) => {
-                      const nextDisplayName = event.target.value;
-                      return {
-                        ...prev,
-                        displayName: nextDisplayName,
-                        slug:
-                          prev.slug || !nextDisplayName
-                            ? prev.slug
-                            : slugifyValue(nextDisplayName),
-                      };
-                    })
-                  }
-                  placeholder="How clients will see your brand"
-                />
-              </div>
+                      displayName: nextDisplayName,
+                      fullName: nextDisplayName,
+                      slug:
+                        prev.slug || !nextDisplayName
+                          ? prev.slug
+                          : slugifyValue(nextDisplayName),
+                    };
+                  })
+                }
+                placeholder="How clients will see your brand"
+              />
+              <p className="text-sm leading-6 text-muted-foreground">
+                Use the name clients should recognize on your public profile.
+              </p>
+              <FieldCharacterMeta
+                count={displayNameLimitState.count}
+                limit={displayNameLimitState.limit}
+                errorText={displayNameLimitState.errorText}
+              />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-headline`}
+                className="text-sm font-medium text-foreground"
+              >
                 Headline
               </label>
               <Input
+                id={`${fieldIdPrefix}-headline`}
+                isInvalid={headlineLimitState.overLimit}
                 value={form.headline}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -326,106 +1161,132 @@ export function PtHubProfileEditor({
                 }
                 placeholder="High-performance coach for founders, athletes, and operators"
               />
+              <p className="text-sm leading-6 text-muted-foreground">
+                Name the audience, the outcome, and the training edge in one
+                line.
+              </p>
+              <FieldCharacterMeta
+                count={headlineLimitState.count}
+                limit={headlineLimitState.limit}
+                errorText={headlineLimitState.errorText}
+              />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-short-bio`}
+                className="text-sm font-medium text-foreground"
+              >
                 Short bio
               </label>
-              <textarea
-                className="min-h-[160px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                value={form.shortBio}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, shortBio: event.target.value }))
-                }
-                placeholder="Outline your mission, outcomes, and the type of client transformation you specialize in."
-              />
+              <p className="text-sm leading-6 text-muted-foreground">
+                Keep this focused on your method, client fit, and proof.
+              </p>
+              <div className="space-y-1">
+                <div className="relative">
+                  <Textarea
+                    id={`${fieldIdPrefix}-short-bio`}
+                    isInvalid={shortBioLimitState.overLimit}
+                    className="h-[160px] resize-none pb-10"
+                    value={form.shortBio}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        shortBio: event.target.value,
+                      }))
+                    }
+                    placeholder="Outline your mission, outcomes, and the type of client transformation you specialize in."
+                  />
+                  <div className="pointer-events-none absolute bottom-3 right-3">
+                    <span
+                      className={cn(
+                        "inline-flex min-w-[4.4rem] justify-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                        shortBioLimitState.overLimit
+                          ? "border-danger/40 bg-danger/10 text-danger"
+                          : "border-border/80 bg-background/85 text-muted-foreground",
+                      )}
+                      title={`Max ${shortBioLimitState.limit} chars`}
+                      aria-label={`Character count ${shortBioLimitState.count} out of ${shortBioLimitState.limit}`}
+                    >
+                      {shortBioLimitState.count}/{shortBioLimitState.limit}
+                    </span>
+                  </div>
+                </div>
+                {shortBioLimitState.errorText ? (
+                  <p role="alert" className="text-xs text-danger">
+                    {shortBioLimitState.errorText}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </PtHubSectionCard>
         </TabsContent>
 
-        <TabsContent value="expertise" className="space-y-5">
+        <TabsContent value="proof" className="space-y-5">
           <PtHubSectionCard
             title="Positioning and proof"
-            description="Clarify what you help with, the proof behind it, and how you coach."
+            description="Clarify who you coach, what outcomes you drive, and why clients should trust the process."
           >
             <div className="grid gap-5 lg:grid-cols-2">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    Specialties
-                  </label>
-                  <Input
-                    value={specialtiesInput}
-                    onChange={(event) => {
-                      setSpecialtiesInput(event.target.value);
-                      setForm((prev) => ({
-                        ...prev,
-                        specialties: inputToList(event.target.value),
-                      }));
-                    }}
-                    placeholder="Strength, Hypertrophy, Fat loss, Executive performance"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {form.specialties.length > 0 ? (
-                    form.specialties.map((item) => (
-                      <Badge key={item} variant="muted">
-                        {item}
-                      </Badge>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Add specialties to shape your positioning.
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <ChipInput
+                  id={`${fieldIdPrefix}-specialties`}
+                  label="Specialties"
+                  helperText="Add focused lanes prospects can scan quickly."
+                  placeholder="Strength, fat loss, executive performance"
+                  values={form.specialties}
+                  value={specialtiesInput}
+                  isInvalid={specialtiesLimitState.overLimit}
+                  onValueChange={setSpecialtiesInput}
+                  onValuesChange={(nextValues) =>
+                    setForm((prev) => ({ ...prev, specialties: nextValues }))
+                  }
+                />
+                <FieldCharacterMeta
+                  count={specialtiesLimitState.count}
+                  limit={specialtiesLimitState.limit}
+                  errorText={specialtiesLimitState.errorText}
+                />
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    Certifications
-                  </label>
-                  <Input
-                    value={certificationsInput}
-                    onChange={(event) => {
-                      setCertificationsInput(event.target.value);
-                      setForm((prev) => ({
-                        ...prev,
-                        certifications: inputToList(event.target.value),
-                      }));
-                    }}
-                    placeholder="NASM CPT, Precision Nutrition, EXOS"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {form.certifications.length > 0 ? (
-                    form.certifications.map((item) => (
-                      <Badge key={item} variant="secondary">
-                        {item}
-                      </Badge>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Add at least one credential to strengthen trust.
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <ChipInput
+                  id={`${fieldIdPrefix}-certifications`}
+                  label="Certifications"
+                  helperText="Add credentials that support your authority."
+                  placeholder="NASM CPT, Precision Nutrition, EXOS"
+                  values={form.certifications}
+                  value={certificationsInput}
+                  isInvalid={certificationsLimitState.overLimit}
+                  onValueChange={setCertificationsInput}
+                  onValuesChange={(nextValues) =>
+                    setForm((prev) => ({ ...prev, certifications: nextValues }))
+                  }
+                />
+                <FieldCharacterMeta
+                  count={certificationsLimitState.count}
+                  limit={certificationsLimitState.limit}
+                  errorText={certificationsLimitState.errorText}
+                />
               </div>
             </div>
 
             <div className="space-y-2 pt-1">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor={`${fieldIdPrefix}-coaching-style`}
+                className="text-sm font-medium text-foreground"
+              >
                 Coaching style
               </label>
               <p className="text-sm text-muted-foreground">
                 Describe how you coach, communicate, and keep clients
-                accountable.
+                accountable from week one to peak adherence.
               </p>
             </div>
-            <textarea
-              className="min-h-[180px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+            <Textarea
+              id={`${fieldIdPrefix}-coaching-style`}
+              isInvalid={coachingStyleLimitState.overLimit}
+              className="min-h-[180px]"
               value={form.coachingStyle}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -435,48 +1296,305 @@ export function PtHubProfileEditor({
               }
               placeholder="Structured, high-touch, feedback-driven, and deeply habit-focused."
             />
+            <FieldCharacterMeta
+              count={coachingStyleLimitState.count}
+              limit={coachingStyleLimitState.limit}
+              errorText={coachingStyleLimitState.errorText}
+            />
+
+            <div className="space-y-4 pt-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">
+                    Transformation proof
+                  </label>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add before-and-after stories with real media so the public
+                    profile has visual proof.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      transformations: [
+                        ...prev.transformations,
+                        createTransformationDraft(),
+                      ],
+                    }))
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                  Add transformation
+                </Button>
+              </div>
+
+              {form.transformations.length > 0 ? (
+                <div className="space-y-4">
+                  {form.transformations.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="rounded-[22px] border border-border/60 bg-background/35 p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-foreground">
+                          Transformation {index + 1}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="gap-2"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              transformations: prev.transformations.filter(
+                                (entry) => entry.id !== item.id,
+                              ),
+                            }))
+                          }
+                        >
+                          <X className="h-4 w-4" />
+                          Remove
+                        </Button>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">
+                            Title
+                          </label>
+                          <Input
+                            isInvalid={
+                              transformationTitleStates[index]?.overLimit
+                            }
+                            value={item.title}
+                            onChange={(event) =>
+                              updateTransformation(item.id, {
+                                title: event.target.value,
+                              })
+                            }
+                            placeholder="12-week strength and body recomposition"
+                          />
+                          <FieldCharacterMeta
+                            count={transformationTitleStates[index]?.count ?? 0}
+                            limit={
+                              transformationTitleStates[index]?.limit ?? 100
+                            }
+                            errorText={
+                              transformationTitleStates[index]?.errorText
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">
+                            Summary
+                          </label>
+                          <Input
+                            isInvalid={
+                              transformationSummaryStates[index]?.overLimit
+                            }
+                            value={item.summary}
+                            onChange={(event) =>
+                              updateTransformation(item.id, {
+                                summary: event.target.value,
+                              })
+                            }
+                            placeholder="Lost 8kg while building visible strength and consistency."
+                          />
+                          <FieldCharacterMeta
+                            count={
+                              transformationSummaryStates[index]?.count ?? 0
+                            }
+                            limit={
+                              transformationSummaryStates[index]?.limit ?? 255
+                            }
+                            errorText={
+                              transformationSummaryStates[index]?.errorText
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                        <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/55 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            Before photo
+                          </p>
+                          <div className="flex h-40 items-center justify-center overflow-hidden rounded-[18px] border border-border/60 bg-background/70">
+                            {item.beforeImageUrl ? (
+                              <img
+                                src={item.beforeImageUrl}
+                                alt={item.title || "Before transformation"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <ImageIcon className="h-4 w-4" />
+                                Before preview
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <UploadButton
+                              label="Upload before"
+                              uploading={
+                                uploadingTarget === `${item.id}-before`
+                              }
+                              disabled={
+                                mediaBusy &&
+                                uploadingTarget !== `${item.id}-before`
+                              }
+                              onFileSelected={async (file) =>
+                                handleMediaUpload({
+                                  file,
+                                  kind: "transformation-before",
+                                  targetKey: `${item.id}-before`,
+                                  transformationId: item.id,
+                                })
+                              }
+                            />
+                            {item.beforeImageUrl ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={() =>
+                                  updateTransformation(item.id, {
+                                    beforeImageUrl: null,
+                                  })
+                                }
+                              >
+                                <X className="h-4 w-4" />
+                                Remove
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/55 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            After photo
+                          </p>
+                          <div className="flex h-40 items-center justify-center overflow-hidden rounded-[18px] border border-border/60 bg-background/70">
+                            {item.afterImageUrl ? (
+                              <img
+                                src={item.afterImageUrl}
+                                alt={item.title || "After transformation"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <ImageIcon className="h-4 w-4" />
+                                After preview
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <UploadButton
+                              label="Upload after"
+                              uploading={uploadingTarget === `${item.id}-after`}
+                              disabled={
+                                mediaBusy &&
+                                uploadingTarget !== `${item.id}-after`
+                              }
+                              onFileSelected={async (file) =>
+                                handleMediaUpload({
+                                  file,
+                                  kind: "transformation-after",
+                                  targetKey: `${item.id}-after`,
+                                  transformationId: item.id,
+                                })
+                              }
+                            />
+                            {item.afterImageUrl ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={() =>
+                                  updateTransformation(item.id, {
+                                    afterImageUrl: null,
+                                  })
+                                }
+                              >
+                                <X className="h-4 w-4" />
+                                Remove
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
+                  Add transformation stories here to showcase before-and-after
+                  proof on your public coach page.
+                </div>
+              )}
+            </div>
           </PtHubSectionCard>
         </TabsContent>
 
-        <TabsContent value="marketplace" className="space-y-5">
+        <TabsContent value="offer" className="space-y-5">
           <PtHubSectionCard
-            title="Public route"
-            description="This slug powers the public profile URL and future shareable coach page."
+            title="Package management"
+            description="Package editing lives in the dedicated PT Hub Packages surface, so this profile stays focused on storefront positioning."
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Public slug
-                </label>
-                <Input
-                  value={form.slug}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      slug: slugifyValue(event.target.value),
-                    }))
-                  }
-                  placeholder="your-name-coach"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Searchable headline
-                </label>
-                <Input
-                  value={form.searchableHeadline}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      searchableHeadline: event.target.value,
-                    }))
-                  }
-                  placeholder="Used for future marketplace search and discovery"
-                />
+            <div className="rounded-[20px] border border-border/60 bg-background/35 p-4">
+              <p className="text-sm text-muted-foreground">
+                Use PT Hub Packages to create, publish or hide, archive, and
+                reorder packages. This keeps one canonical package-management
+                surface.
+              </p>
+              <div className="mt-3">
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/pt-hub/packages">Open Packages</Link>
+                </Button>
               </div>
             </div>
+          </PtHubSectionCard>
+        </TabsContent>
+
+        <TabsContent value="visibility" className="space-y-5">
+          <PtHubSectionCard
+            title="Public route"
+            description="This slug powers the public profile URL and future shareable coach landing page."
+          >
+            <div className="max-w-xl space-y-2">
+              <label
+                htmlFor={`${fieldIdPrefix}-slug`}
+                className="text-sm font-medium text-foreground"
+              >
+                Public slug
+              </label>
+              <Input
+                id={`${fieldIdPrefix}-slug`}
+                isInvalid={slugLimitState.overLimit}
+                value={form.slug}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    slug: slugifyValue(event.target.value),
+                  }))
+                }
+                placeholder="your-name-coach"
+              />
+              <p className="text-sm leading-6 text-muted-foreground">
+                Keep it short, readable, and close to your public coach name.
+              </p>
+              <FieldCharacterMeta
+                count={slugLimitState.count}
+                limit={slugLimitState.limit}
+                errorText={slugLimitState.errorText}
+              />
+            </div>
             <div className="rounded-[20px] bg-background/45 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Public URL preview
               </p>
               <p className="mt-2 break-all text-sm text-foreground">
@@ -487,9 +1605,9 @@ export function PtHubProfileEditor({
 
           <PtHubSectionCard
             title="Discoverability"
-            description="These fields prepare the profile for future marketplace filtering without building the full directory yet."
+            description="Prepare the profile for filtering, search, and coach discovery."
           >
-            <div className="grid gap-6">
+            <div className="pt-hub-work-grid">
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">
                   Coaching modes
@@ -550,12 +1668,17 @@ export function PtHubProfileEditor({
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_200px]">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
+              <div className="app-form-grid">
+                <div className="app-form-col-12 space-y-2">
+                  <label
+                    htmlFor={`${fieldIdPrefix}-location`}
+                    className="text-sm font-medium text-foreground"
+                  >
                     Location
                   </label>
                   <Input
+                    id={`${fieldIdPrefix}-location`}
+                    isInvalid={locationLimitState.overLimit}
                     value={form.locationLabel}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -565,53 +1688,41 @@ export function PtHubProfileEditor({
                     }
                     placeholder="Riyadh, Saudi Arabia"
                   />
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-foreground">
-                        Marketplace visibility
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Controls future directory discoverability.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={form.marketplaceVisible}
-                      onCheckedChange={(checked) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          marketplaceVisible: checked,
-                        }))
-                      }
-                    />
-                  </div>
+                  <FieldCharacterMeta
+                    count={locationLimitState.count}
+                    limit={locationLimitState.limit}
+                    errorText={locationLimitState.errorText}
+                  />
                 </div>
               </div>
             </div>
           </PtHubSectionCard>
-        </TabsContent>
 
-        <TabsContent value="social" className="space-y-5">
           <PtHubSectionCard
             title="Social links"
-            description="Keep these destination links clean and intentional. The future public page will reuse them."
+            description="Keep destination links clean and intentional. The future public page will reuse them directly."
           >
             <div className="space-y-4">
-              {form.socialLinks.map((link) => (
+              {form.socialLinks.map((link, index) => (
                 <div
                   key={link.platform}
-                  className="grid gap-3 rounded-[18px] bg-background/35 px-4 py-3 md:grid-cols-[160px_1fr]"
+                  className="app-form-grid rounded-[18px] bg-background/35 px-4 py-3"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
+                  <div className="app-form-col-3">
+                    <label
+                      htmlFor={`${fieldIdPrefix}-social-${link.platform}`}
+                      className="text-sm font-medium text-foreground"
+                    >
                       {link.label}
-                    </p>
+                    </label>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       Leave blank to keep it hidden later.
                     </p>
                   </div>
                   <Input
+                    id={`${fieldIdPrefix}-social-${link.platform}`}
+                    className="app-form-col-9"
+                    isInvalid={socialLinkStates[index]?.overLimit}
                     value={link.url}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -625,6 +1736,12 @@ export function PtHubProfileEditor({
                     }
                     placeholder={`https://${link.platform}.com/your-handle`}
                   />
+                  <FieldCharacterMeta
+                    className="app-form-col-9 md:col-start-4"
+                    count={socialLinkStates[index]?.count ?? 0}
+                    limit={socialLinkStates[index]?.limit ?? 255}
+                    errorText={socialLinkStates[index]?.errorText}
+                  />
                 </div>
               ))}
             </div>
@@ -634,15 +1751,15 @@ export function PtHubProfileEditor({
         <TabsContent value="preview" className="space-y-5">
           <PtHubSectionCard
             title="Public profile preview"
-            description="Use the dedicated preview page for the full live layout. This tab keeps a lightweight editorial snapshot inside the editor."
+            description="Use the dedicated preview page for the full layout. This tab keeps a fast editorial snapshot inside the editor."
           >
             <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/70">
-              <div className="h-40 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.35),transparent_42%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(8,12,22,1))]" />
+              <div className="h-40 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.4),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.18),transparent_34%),linear-gradient(135deg,rgba(44,24,16,0.95),rgba(20,14,11,1))]" />
               <div className="space-y-4 p-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-2xl font-semibold text-foreground">
-                      {form.displayName || "Display name"}
+                      {displayNameValue || "Display name"}
                     </p>
                     <p className="mt-1 text-sm text-primary">
                       {form.headline || "Headline goes here"}
@@ -671,33 +1788,23 @@ export function PtHubProfileEditor({
         </TabsContent>
       </Tabs>
 
-      <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-        <PtHubPublicationPanel
+      <div className="xl:sticky xl:top-28 xl:self-start">
+        <PtHubProfileLaunchPanel
+          form={form}
+          displayNameValue={displayNameValue}
+          readiness={readiness}
           publicationState={publicationState}
+          profileVisibility={profileVisibility}
+          saving={saving}
           publishing={publishing}
+          updatingVisibility={updatingVisibility}
+          mediaBusy={mediaBusy}
+          hasChanges={hasChanges}
+          hasOverLimitErrors={hasOverLimitErrors}
+          onProfileVisibilityChange={onProfileVisibilityChange}
+          onSave={onSave}
           onTogglePublish={onTogglePublish}
         />
-
-        <PtHubReadinessPanel readiness={readiness} compact />
-
-        <PtHubSectionCard
-          title="Preview and save"
-          description="Use the internal preview while editing, then save the latest profile changes."
-        >
-          <div className="space-y-3">
-            <Button asChild variant="secondary" className="w-full">
-              <Link to="/pt-hub/profile/preview">Open full preview</Link>
-            </Button>
-            <Button
-              className="w-full"
-              disabled={saving || !hasChanges}
-              onClick={() => onSave(form)}
-            >
-              <Save className="h-4 w-4" />
-              {saving ? "Saving..." : "Save profile"}
-            </Button>
-          </div>
-        </PtHubSectionCard>
       </div>
     </div>
   );

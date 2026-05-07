@@ -1,11 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider";
+import { LoadingScreen } from "./common/bootstrap-gate";
 
 export function ClientOnlyRoute() {
   const { user, role, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
+    return <LoadingScreen message="Checking your client workspace..." />;
   }
 
   if (!user) {
@@ -17,7 +18,7 @@ export function ClientOnlyRoute() {
   }
 
   if (role === "none") {
-    return <Navigate to="/no-workspace" replace />;
+    return <Navigate to="/app/home" replace />;
   }
 
   return <Outlet />;

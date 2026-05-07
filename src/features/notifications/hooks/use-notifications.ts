@@ -123,13 +123,6 @@ export function useMarkNotificationRead(userId: string | null) {
         notificationsKeys.unreadCount(userId),
         (current) => Math.max((current ?? 1) - 1, 0),
       );
-
-      queryClient.invalidateQueries({
-        queryKey: notificationsKeys.listRoot(userId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: notificationsKeys.infiniteRoot(userId),
-      });
     },
   });
 }
@@ -170,13 +163,6 @@ export function useMarkAllNotificationsRead(userId: string | null) {
       );
 
       queryClient.setQueryData(notificationsKeys.unreadCount(userId), 0);
-
-      queryClient.invalidateQueries({
-        queryKey: notificationsKeys.listRoot(userId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: notificationsKeys.infiniteRoot(userId),
-      });
     },
   });
 }

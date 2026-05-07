@@ -15,7 +15,7 @@ import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useThemePreference } from "../../lib/use-theme-preference";
 import { useWorkspace } from "../../lib/use-workspace";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 import { refreshWorkspaceNameAcrossApp } from "../../lib/workspace-query";
 import {
   AVAILABLE_THEME_PREFERENCES,
@@ -30,7 +30,7 @@ export function PtSettingsPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -450,13 +450,13 @@ export function PtSettingsPage() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Baseline templates</CardTitle>
+            <CardTitle>Performance markers</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Manage performance marker templates shown in the baseline wizard.
+              Manage the shared performance marker library used in baseline assessments.
             </p>
           </div>
           <Button asChild size="sm">
-            <Link to="/pt/settings/baseline">Manage templates</Link>
+            <Link to="/pt/settings/baseline">Manage performance markers</Link>
           </Button>
         </CardHeader>
       </Card>
@@ -495,7 +495,7 @@ export function PtSettingsPage() {
                 </label>
                 <p className="text-xs text-muted-foreground">
                   Used when a client has no direct override. If no default is
-                  set, CoachOS falls back to the latest active template.
+                  set, Repsync falls back to the latest active template.
                 </p>
                 <select
                   className="w-full"

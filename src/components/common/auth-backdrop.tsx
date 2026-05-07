@@ -1,5 +1,6 @@
 import { cn } from "../../lib/utils";
-import { Link } from "react-router-dom";
+import { AppShellBackgroundLayer } from "./app-shell-background";
+import { AppFooter } from "./app-footer";
 
 interface AuthBackdropProps {
   children: React.ReactNode;
@@ -13,25 +14,19 @@ export function AuthBackdrop({
   contentClassName,
 }: AuthBackdropProps) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,oklch(var(--primary)/0.24),transparent_38%),radial-gradient(circle_at_84%_14%,oklch(var(--chart-4)/0.14),transparent_38%),radial-gradient(circle_at_50%_100%,oklch(var(--chart-1)/0.12),transparent_46%),linear-gradient(135deg,oklch(var(--background))_12%,oklch(var(--card))_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_35%,oklch(var(--background)/0.84)_100%)]" />
+    <div className="pt-hub-theme pt-hub-theme-dark theme-shell-canvas relative isolate flex h-dvh flex-col overflow-hidden">
+      <AppShellBackgroundLayer animated />
 
-      <div className={cn("relative z-10 w-full", contentClassName)}>
+      <div
+        className={cn(
+          "relative z-10 mx-auto flex min-h-0 w-full flex-1 items-start justify-center overflow-y-auto px-4 py-8 sm:items-center sm:px-6 lg:px-8",
+          contentClassName,
+        )}
+      >
         {children}
       </div>
 
-      <nav className="pointer-events-auto absolute bottom-4 z-20 flex items-center gap-4 text-xs text-muted-foreground">
-        <Link className="hover:text-foreground" to="/privacy">
-          Privacy
-        </Link>
-        <Link className="hover:text-foreground" to="/terms">
-          Terms
-        </Link>
-        <Link className="hover:text-foreground" to="/support">
-          Support
-        </Link>
-      </nav>
+      <AppFooter className="pointer-events-auto relative z-20 w-full shrink-0" />
     </div>
   );
 }

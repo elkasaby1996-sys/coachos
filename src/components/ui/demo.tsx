@@ -12,7 +12,7 @@ export default function CustomAuthDemo() {
     <AuthComponent
       mode="signup"
       logo={<CustomLogo />}
-      brandName="CoachOS"
+      brandName="Repsync"
       onEmailPasswordSubmit={async () => ({ notice: "Demo mode" })}
     />
   );

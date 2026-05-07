@@ -43,7 +43,7 @@ import {
 } from "../../lib/exercise-dataset";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Search } from "lucide-react";
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -292,8 +292,9 @@ export function PtWorkoutTemplateBuilderPage() {
     null,
   );
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
-  const [createExerciseForm, setCreateExerciseForm] =
-    useState<LibraryExerciseForm>(emptyLibraryExerciseForm);
+  const [createExerciseForm, setCreateExerciseForm] = useState<LibraryExerciseForm>(
+    emptyLibraryExerciseForm,
+  );
   const [createExerciseError, setCreateExerciseError] = useState<string | null>(
     null,
   );
@@ -353,9 +354,7 @@ export function PtWorkoutTemplateBuilderPage() {
         .eq("id", workspaceId ?? "")
         .maybeSingle();
       if (error) throw error;
-      return (
-        (data as { owner_user_id: string | null } | null)?.owner_user_id ?? null
-      );
+      return (data as { owner_user_id: string | null } | null)?.owner_user_id ?? null;
     },
   });
 
@@ -476,9 +475,7 @@ export function PtWorkoutTemplateBuilderPage() {
   const handleAddExercise = async () => {
     if (!templateId || selectedExerciseIds.length === 0) return;
     if (!libraryOwnerUserId) {
-      setActionError(
-        "Shared library owner could not be resolved for this workspace.",
-      );
+      setActionError("Shared library owner could not be resolved for this workspace.");
       return;
     }
     setActionStatus("saving");
@@ -498,8 +495,7 @@ export function PtWorkoutTemplateBuilderPage() {
       if (selectedExerciseId.startsWith("dataset:")) {
         const datasetId = selectedExerciseId.replace("dataset:", "");
         const datasetExercise =
-          datasetExercises.find((exercise) => exercise.id === datasetId) ??
-          null;
+          datasetExercises.find((exercise) => exercise.id === datasetId) ?? null;
         if (!datasetExercise) continue;
 
         const existingMatch =
@@ -1325,11 +1321,15 @@ export function PtWorkoutTemplateBuilderPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input
-                placeholder="Search exercises"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+              <div className="relative flex-1">
+                <Search className="app-search-icon h-4 w-4" />
+                <Input
+                  className="app-search-input"
+                  placeholder="Search exercises"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </div>
               <Button
                 type="button"
                 variant="secondary"
@@ -1363,8 +1363,7 @@ export function PtWorkoutTemplateBuilderPage() {
                   {getErrorDetails(exercisesQuery.error).code}:{" "}
                   {getErrorDetails(exercisesQuery.error).message}
                 </div>
-              ) : filteredExercises.length > 0 ||
-                datasetExercises.length > 0 ? (
+              ) : filteredExercises.length > 0 || datasetExercises.length > 0 ? (
                 <>
                   {filteredExercises.map((exercise) => {
                     const selectionKey = `library:${exercise.id}`;
@@ -1444,9 +1443,7 @@ export function PtWorkoutTemplateBuilderPage() {
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {exercise.target ?? exercise.bodyPart ?? "Other"}
-                            {exercise.equipment
-                              ? ` - ${exercise.equipment}`
-                              : ""}
+                            {exercise.equipment ? ` - ${exercise.equipment}` : ""}
                           </div>
                         </button>
                       );
@@ -1644,7 +1641,7 @@ export function PtWorkoutTemplateBuilderPage() {
                 Superset group
               </label>
               <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 w-full app-field px-3 text-sm"
                 value={form.superset_group}
                 onChange={(event) =>
                   setForm((prev) => ({

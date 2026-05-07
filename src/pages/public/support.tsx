@@ -1,25 +1,74 @@
-import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { CheckCircle2, LifeBuoy, Mail, ShieldCheck, Timer } from "lucide-react";
+import { PublicInfoCard, PublicInfoLayout } from "./public-info-layout";
 
-const supportEmail = "support@coachos.com";
+const supportEmail = "support@repsync.com";
 
 export function SupportPage() {
   return (
-    <AuthBackdrop contentClassName="max-w-2xl">
-      <div className="rounded-2xl border border-border/70 bg-card/85 p-6 text-sm text-muted-foreground shadow-[0_30px_60px_-40px_oklch(var(--primary)/0.5)] backdrop-blur-xl sm:p-8">
-        <h1 className="font-serif text-3xl text-foreground">Support</h1>
-        <p className="mt-3">
-          For account, billing, or product issues, contact support and include
-          your account email plus a short description of the problem.
-        </p>
-        <p className="mt-4">
+    <PublicInfoLayout
+      eyebrow="Help desk"
+      title="Support"
+      description="Tell us what happened and we will help you get back into your RepSync workspace. Include the account email, what you were trying to do, and any relevant screenshots."
+      aside={
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 text-foreground">
+            <Mail className="h-4 w-4 text-primary" />
+            <span className="font-semibold">Contact support</span>
+          </div>
           <a
-            className="text-foreground underline"
+            className="inline-flex font-semibold text-foreground underline decoration-primary/30 underline-offset-4 transition-colors hover:text-primary"
             href={`mailto:${supportEmail}`}
           >
             {supportEmail}
           </a>
+          <p className="text-sm leading-6">
+            For account access, billing, or product issues, use the same email
+            linked to your RepSync account.
+          </p>
+          <div className="rounded-xl border border-primary/25 bg-primary/10 p-3 text-xs font-medium leading-5 text-foreground">
+            Never send passwords, payment card numbers, or private client health
+            details by email.
+          </div>
+        </div>
+      }
+    >
+      <PublicInfoCard
+        icon={<LifeBuoy className="h-4 w-4" />}
+        title="What to include"
+      >
+        <ul className="space-y-2">
+          <li>Workspace or account email.</li>
+          <li>Page, action, or workflow affected.</li>
+          <li>What happened and what you expected instead.</li>
+        </ul>
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<Timer className="h-4 w-4" />}
+        title="Response priority"
+      >
+        <p>
+          Access and billing issues are reviewed first. Product questions are
+          handled with the details needed to reproduce the issue.
         </p>
-      </div>
-    </AuthBackdrop>
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<ShieldCheck className="h-4 w-4" />}
+        title="Account safety"
+      >
+        <p>
+          We will never ask for your password. If you cannot sign in, use the
+          password reset flow or email support from your account address.
+        </p>
+      </PublicInfoCard>
+      <PublicInfoCard
+        icon={<CheckCircle2 className="h-4 w-4" />}
+        title="Before you write"
+      >
+        <p>
+          Refresh the page, check your internet connection, and note any error
+          message exactly as it appears.
+        </p>
+      </PublicInfoCard>
+    </PublicInfoLayout>
   );
 }

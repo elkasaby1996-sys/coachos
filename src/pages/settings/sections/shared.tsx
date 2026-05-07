@@ -5,6 +5,10 @@ import {
 } from "../../../components/ui/alert";
 import { Separator } from "../../../components/ui/separator";
 import { cn } from "../../../lib/utils";
+import {
+  getModuleToneClasses,
+  getModuleToneStyle,
+} from "../../../lib/module-tone";
 
 export function SettingsPageShell({
   title,
@@ -15,10 +19,26 @@ export function SettingsPageShell({
   description: string;
   children: React.ReactNode;
 }) {
+  const toneClasses = getModuleToneClasses("settings");
+
   return (
-    <section className="space-y-6">
+    <section className="space-y-6" style={getModuleToneStyle("settings")}>
       <header className="space-y-1">
-        <h2 className="text-[1.85rem] font-semibold tracking-tight text-foreground">
+        <p
+          className={cn(
+            "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
+            toneClasses.text,
+          )}
+        >
+          <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)} />
+          Settings
+        </p>
+        <h2
+          className={cn(
+            "text-[1.85rem] font-semibold tracking-tight text-foreground",
+            toneClasses.title,
+          )}
+        >
           {title}
         </h2>
         <p className="text-sm text-muted-foreground">{description}</p>
@@ -98,11 +118,7 @@ export function SettingsToast({
 
   return (
     <div className="fixed right-6 top-6 z-50 w-[280px]">
-      <Alert
-        className={
-          variant === "error" ? "border-danger/30" : "border-emerald-200"
-        }
-      >
+      <Alert tone={variant === "error" ? "danger" : "success"}>
         <AlertTitle>{variant === "error" ? "Error" : "Saved"}</AlertTitle>
         <AlertDescription>{message}</AlertDescription>
       </Alert>

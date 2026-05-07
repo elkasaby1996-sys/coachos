@@ -686,7 +686,7 @@ export function PtCheckinTemplatesPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="page-kpi-block grid gap-4 sm:grid-cols-3">
         <DashboardCard title="Templates" subtitle="Workspace library">
           {workspaceLoading || templatesQuery.isLoading ? (
             <Skeleton className="h-10 w-full" />
@@ -861,7 +861,7 @@ export function PtCheckinTemplatesPage() {
                 <AlertTitle>Protected template definition</AlertTitle>
                 <AlertDescription>
                   This template already has active assignments or scheduled
-                  check-ins. If you change the question structure, CoachOS will
+                  check-ins. If you change the question structure, Repsync will
                   save a new version so historical submissions stay intact.
                 </AlertDescription>
               </Alert>
@@ -1161,7 +1161,7 @@ export function PtCheckinTemplatesPage() {
                                 Question type
                               </label>
                               <select
-                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                className="h-10 w-full app-field px-3 text-sm"
                                 value={question.type}
                                 onChange={(event) =>
                                   setQuestionDraft(question.id, (current) => ({

@@ -1,26 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  InfiniteData,
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { SendHorizontal } from "lucide-react";
+import { Search, SendHorizontal } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
   DashboardCard,
   EmptyState,
+  LifecycleBadge,
   Skeleton,
-  StatusPill,
 } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
+import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWindowedRows } from "../../hooks/use-windowed-rows";
+import { sendConversationMessage } from "../../lib/messages";
+import { getActionErrorMessage } from "../../lib/request-guard";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { formatRelativeTime } from "../../lib/relative-time";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
+import { Textarea } from "../../components/ui/textarea";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -30,11 +38,14 @@ const formatTime = (timestamp: string | null) => {
   });
 };
 
+const getPtMessagesUnreadKey = (workspaceId: string | null | undefined) =>
+  ["pt-messages-unread", workspaceId ?? "none"] as const;
+
 type ClientRow = {
   id: string;
   display_name: string | null;
   user_id: string | null;
-  status: string | null;
+  lifecycle_state: string | null;
 };
 
 type ConversationRow = {
@@ -58,7 +69,7 @@ type MessageRow = {
 };
 
 export function PtMessagesPage() {
-  const { user } = useAuth();
+  const { user } = useSessionAuth();
   const { workspaceId } = useWorkspace();
   const location = useLocation();
   const navigate = useNavigate();
@@ -79,10 +90,17 @@ export function PtMessagesPage() {
   >(null);
   const [clientSearch, setClientSearch] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [visibleMessageCount, setVisibleMessageCount] = useState(100);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const messagePageSize = 50;
+  const messageLimitState = getCharacterLimitState({
+    value: messageDraft,
+    kind: "default_text",
+    fieldLabel: "Message",
+  });
 
   useEffect(() => {
     if (initialClientId) {
@@ -102,7 +120,7 @@ export function PtMessagesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, display_name, user_id, status")
+        .select("id, display_name, user_id, lifecycle_state")
         .eq("workspace_id", workspaceId ?? "")
         .order("display_name", { ascending: true });
       if (error) throw error;
@@ -113,7 +131,7 @@ export function PtMessagesPage() {
   const conversationsQuery = useQuery({
     queryKey: ["pt-messages-conversations", workspaceId],
     enabled: !!workspaceId,
-    staleTime: 0,
+    staleTime: 1000 * 30,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("conversations")
@@ -212,7 +230,7 @@ export function PtMessagesPage() {
   const messagesQuery = useInfiniteQuery({
     queryKey: ["pt-messages-thread", activeConversationId],
     enabled: !!activeConversationId,
-    staleTime: 0,
+    staleTime: 1000 * 5,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const from = pageParam * messagePageSize;
@@ -237,11 +255,27 @@ export function PtMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [messagesQuery.data]);
+  const renderedMessageRows = useMemo(
+    () =>
+      messageRows.slice(Math.max(0, messageRows.length - visibleMessageCount)),
+    [messageRows, visibleMessageCount],
+  );
+  const hasHiddenLoadedMessages =
+    messageRows.length > renderedMessageRows.length;
+
+  useEffect(() => {
+    setVisibleMessageCount(100);
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    if (messageRows.length <= visibleMessageCount) return;
+    setVisibleMessageCount((current) => Math.max(current, 100));
+  }, [messageRows.length, visibleMessageCount]);
 
   const unreadCountsQuery = useQuery({
-    queryKey: ["pt-messages-unread", conversationsQuery.data],
+    queryKey: getPtMessagesUnreadKey(workspaceId),
     enabled: (conversationsQuery.data ?? []).length > 0,
-    staleTime: 0,
+    staleTime: 1000 * 15,
     queryFn: async () => {
       const conversationIds = (conversationsQuery.data ?? []).map(
         (row) => row.id,
@@ -270,7 +304,7 @@ export function PtMessagesPage() {
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messageRows.length]);
+  }, [renderedMessageRows.length]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -289,7 +323,7 @@ export function PtMessagesPage() {
             queryKey: ["pt-messages-thread", activeConversationId],
           });
           queryClient.invalidateQueries({
-            queryKey: ["pt-messages-unread", conversationsQuery.data],
+            queryKey: getPtMessagesUnreadKey(workspaceId),
           });
         },
       )
@@ -297,7 +331,7 @@ export function PtMessagesPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeConversationId, conversationsQuery.data, queryClient]);
+  }, [activeConversationId, queryClient, workspaceId]);
 
   useEffect(() => {
     if (!activeConversationId) {
@@ -358,48 +392,80 @@ export function PtMessagesPage() {
       .eq("sender_role", "client")
       .then(() => {
         queryClient.invalidateQueries({
-          queryKey: ["pt-messages-unread", conversationsQuery.data],
+          queryKey: getPtMessagesUnreadKey(workspaceId),
         });
       });
-  }, [
-    activeConversationId,
-    conversationsQuery.data,
-    messageRows.length,
-    queryClient,
-  ]);
+  }, [activeConversationId, messageRows.length, queryClient, workspaceId]);
 
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!activeConversationId) throw new Error("No conversation selected.");
+      if (messageLimitState.overLimit) {
+        throw new Error(messageLimitState.errorText ?? "Message is too long.");
+      }
       if (!messageDraft.trim()) return;
       const senderName =
         (user?.user_metadata?.full_name as string | undefined) ??
         user?.email ??
         "Coach";
-      const body = messageDraft.trim();
-      const { error } = await supabase.from("messages").insert({
-        conversation_id: activeConversationId,
-        sender_user_id: user?.id ?? null,
-        sender_role: "pt",
-        sender_name: senderName,
-        body,
-        preview: body.slice(0, 140),
+      return (await sendConversationMessage({
+        conversationId: activeConversationId,
+        senderUserId: user?.id ?? null,
+        senderRole: "pt",
+        senderName,
+        body: messageDraft,
         unread: false,
-      });
-      if (error) throw error;
+      })) as MessageRow;
     },
-    onSuccess: async () => {
+    onSuccess: async (message) => {
+      setSendError(null);
       setMessageDraft("");
       updateTyping(false);
-      await queryClient.invalidateQueries({
-        queryKey: ["pt-messages-thread", activeConversationId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["pt-messages-conversations", workspaceId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["pt-messages-unread", conversationsQuery.data],
-      });
+      if (!activeConversationId || !message) return;
+
+      queryClient.setQueryData<InfiniteData<MessageRow[]>>(
+        ["pt-messages-thread", activeConversationId],
+        (current) => {
+          if (!current) {
+            return {
+              pageParams: [0],
+              pages: [[message]],
+            };
+          }
+
+          const pages = [...current.pages];
+          if (pages.length === 0) {
+            pages.push([message]);
+          } else {
+            const lastPage = pages[pages.length - 1] ?? [];
+            pages[pages.length - 1] = [...lastPage, message];
+          }
+
+          return {
+            ...current,
+            pages,
+          };
+        },
+      );
+
+      queryClient.setQueryData<ConversationRow[]>(
+        ["pt-messages-conversations", workspaceId],
+        (current) =>
+          current?.map((row) =>
+            row.id === activeConversationId
+              ? {
+                  ...row,
+                  last_message_at: message.created_at,
+                  last_message_preview: message.body ?? "",
+                  last_message_sender_name: message.sender_name,
+                  last_message_sender_role: message.sender_role,
+                }
+              : row,
+          ) ?? current,
+      );
+    },
+    onError: (error) => {
+      setSendError(getActionErrorMessage(error, "Unable to send message."));
     },
   });
 
@@ -430,7 +496,7 @@ export function PtMessagesPage() {
           conversation?.last_message_preview?.trim() ||
           (conversation?.last_message_sender_role === "client"
             ? "Client started a new thread."
-            : client.status?.trim()) ||
+            : getClientLifecycleMeta(client.lifecycle_state).label) ||
           "No messages yet";
         return {
           client,
@@ -443,9 +509,7 @@ export function PtMessagesPage() {
       })
       .filter((row) => {
         if (!query) return true;
-        return `${row.name} ${row.preview} ${row.client.status ?? ""}`
-          .toLowerCase()
-          .includes(query);
+        return row.name.toLowerCase().includes(query);
       })
       .sort((left, right) => {
         if (left.unreadCount !== right.unreadCount) {
@@ -467,6 +531,17 @@ export function PtMessagesPage() {
   const selectedConversationRow =
     clientInboxRows.find((row) => row.client.id === selectedClientId) ?? null;
   const selectedClient = selectedConversationRow?.client ?? null;
+  const {
+    visibleRows: visibleClientInboxRows,
+    hasHiddenRows: hasHiddenClientInboxRows,
+    hiddenCount: hiddenClientInboxCount,
+    showMore: showMoreClientInboxRows,
+  } = useWindowedRows({
+    rows: clientInboxRows,
+    initialCount: 18,
+    step: 18,
+    resetKey: `${clientSearch}:${clientInboxRows.length}`,
+  });
   const unreadConversationCount = useMemo(
     () => clientInboxRows.filter((row) => row.unreadCount > 0).length,
     [clientInboxRows],
@@ -479,17 +554,10 @@ export function PtMessagesPage() {
 
   return (
     <div className="space-y-6">
-      <WorkspacePageHeader
-        title="Messages"
-        actions={
-          <Button variant="secondary" onClick={() => navigate("/pt/clients")}>
-            View clients
-          </Button>
-        }
-      />
+      <WorkspacePageHeader title="Messages" />
 
       <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <DashboardCard title="Conversations">
+        <DashboardCard title="Conversations" disableHoverMotion>
           {clientsQuery.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -505,11 +573,15 @@ export function PtMessagesPage() {
             />
           ) : (
             <div className="space-y-4">
-              <Input
-                value={clientSearch}
-                onChange={(event) => setClientSearch(event.target.value)}
-                placeholder="Search client, status, or recent message"
-              />
+              <div className="relative">
+                <Search className="app-search-icon h-4 w-4" />
+                <Input
+                  className="app-search-input"
+                  value={clientSearch}
+                  onChange={(event) => setClientSearch(event.target.value)}
+                  placeholder="Search clients"
+                />
+              </div>
 
               {clientInboxRows.length === 0 ? (
                 <EmptyState
@@ -518,7 +590,7 @@ export function PtMessagesPage() {
                 />
               ) : (
                 <div className="space-y-2">
-                  {clientInboxRows.map((row) => {
+                  {visibleClientInboxRows.map((row) => {
                     const isActive = row.client.id === selectedClientId;
                     return (
                       <button
@@ -535,16 +607,26 @@ export function PtMessagesPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
                             <div className="flex items-center gap-2">
-                              <div className="truncate font-semibold text-foreground">
+                              <div
+                                className="truncate font-semibold text-foreground"
+                                title={row.name}
+                              >
                                 {row.name}
                               </div>
-                              {row.client.status ? (
+                              {row.client.lifecycle_state ? (
                                 <span className="text-xs text-muted-foreground">
-                                  {row.client.status}
+                                  {
+                                    getClientLifecycleMeta(
+                                      row.client.lifecycle_state,
+                                    ).label
+                                  }
                                 </span>
                               ) : null}
                             </div>
-                            <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+                            <p
+                              className="line-clamp-2 text-sm leading-5 text-muted-foreground"
+                              title={row.preview}
+                            >
                               {row.preview}
                             </p>
                           </div>
@@ -564,6 +646,17 @@ export function PtMessagesPage() {
                       </button>
                     );
                   })}
+                  {hasHiddenClientInboxRows ? (
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={showMoreClientInboxRows}
+                      >
+                        Show {Math.min(hiddenClientInboxCount, 18)} more
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -571,21 +664,26 @@ export function PtMessagesPage() {
         </DashboardCard>
 
         <DashboardCard
+          disableHoverMotion
+          action={
+            selectedClient ? (
+              <LifecycleBadge lifecycleState={selectedClient.lifecycle_state} />
+            ) : null
+          }
           title={
             selectedClient ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-lg font-semibold text-foreground">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-base font-semibold text-foreground">
                   {selectedConversationRow?.name ?? "Client"}
                 </span>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-auto px-2 py-1 text-xs"
+                  className="h-7 shrink-0 rounded-full px-2 text-xs"
                   onClick={() => navigate(`/pt/clients/${selectedClient.id}`)}
                 >
                   Open profile
                 </Button>
-                <StatusPill status={selectedClient.status ?? "active"} />
               </div>
             ) : (
               "Conversation"
@@ -593,27 +691,12 @@ export function PtMessagesPage() {
           }
         >
           {!selectedClient ? (
-            <div className="flex h-[560px] flex-col justify-between gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
+            <div className="flex h-[560px] flex-col gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
               <div className="space-y-4">
                 <EmptyState
                   title="Choose a conversation"
                   description="Select a client to open the thread."
                 />
-              </div>
-              <div className="rounded-[20px] border border-border/70 bg-background/45 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Quick reply ideas
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {suggestedReplies.map((prompt) => (
-                    <span
-                      key={prompt}
-                      className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground"
-                    >
-                      {prompt}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           ) : messagesQuery.isLoading ? (
@@ -673,7 +756,20 @@ export function PtMessagesPage() {
                         </Button>
                       </div>
                     ) : null}
-                    {messageRows.map((message) => {
+                    {hasHiddenLoadedMessages ? (
+                      <div className="flex justify-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setVisibleMessageCount((current) => current + 100)
+                          }
+                        >
+                          Show older loaded messages
+                        </Button>
+                      </div>
+                    ) : null}
+                    {renderedMessageRows.map((message) => {
                       const isCoach = message.sender_role === "pt";
                       return (
                         <div
@@ -691,9 +787,14 @@ export function PtMessagesPage() {
                                 : "border-border/60 bg-secondary/45 text-foreground",
                             )}
                           >
-                            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                            <div
+                              className={cn(
+                                "text-[10px] tracking-[0.16em] text-muted-foreground",
+                                isCoach ? "normal-case" : "uppercase",
+                              )}
+                            >
                               {isCoach
-                                ? "Coach"
+                                ? "You"
                                 : (message.sender_name ?? "Client")}
                             </div>
                             <div>{message.body ?? ""}</div>
@@ -714,15 +815,25 @@ export function PtMessagesPage() {
                 <div ref={scrollRef} />
               </div>
               <div className="rounded-[22px] border border-border/70 bg-background/45 p-3">
+                {sendError ? (
+                  <p className="mb-3 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+                    {sendError}
+                  </p>
+                ) : null}
                 <div className="flex items-stretch gap-2">
-                  <textarea
-                    className="h-12 min-h-12 w-full resize-none rounded-[16px] border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  <Textarea
+                    isInvalid={messageLimitState.overLimit}
+                    className="!h-12 !min-h-12 !resize-none overflow-hidden rounded-[16px] border-border/70 bg-background px-3 py-3 text-sm leading-6 text-foreground shadow-sm"
                     value={messageDraft}
-                    onChange={(event) => setMessageDraft(event.target.value)}
-                    placeholder="Write a coaching reply"
+                    onChange={(event) => {
+                      if (sendError) setSendError(null);
+                      setMessageDraft(event.target.value);
+                    }}
+                    placeholder="Type a message..."
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
+                        if (messageLimitState.overLimit) return;
                         sendMutation.mutate();
                       }
                     }}
@@ -740,7 +851,11 @@ export function PtMessagesPage() {
                   />
                   <Button
                     onClick={() => sendMutation.mutate()}
-                    disabled={!messageDraft.trim() || sendMutation.isPending}
+                    disabled={
+                      !messageDraft.trim() ||
+                      sendMutation.isPending ||
+                      messageLimitState.overLimit
+                    }
                     className="h-12 w-12 shrink-0 rounded-[16px] px-0"
                     aria-label={
                       sendMutation.isPending
@@ -751,6 +866,12 @@ export function PtMessagesPage() {
                     <SendHorizontal className="h-4 w-4" />
                   </Button>
                 </div>
+                <FieldCharacterMeta
+                  className="mt-2"
+                  count={messageLimitState.count}
+                  limit={messageLimitState.limit}
+                  errorText={messageLimitState.errorText}
+                />
               </div>
             </div>
           )}

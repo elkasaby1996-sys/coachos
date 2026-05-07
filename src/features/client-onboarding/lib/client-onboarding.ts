@@ -181,17 +181,54 @@ export function getDraftFields(
   return {
     basics: {
       display_name: normalizeText(
-        basics.display_name ?? client.display_name ?? "",
+        client.full_name ?? basics.display_name ?? client.display_name ?? "",
       ),
-      phone: normalizeText(basics.phone ?? client.phone ?? ""),
+      phone: normalizeText(client.phone ?? basics.phone ?? ""),
       email: normalizeText(basics.email ?? client.email ?? sessionEmail ?? ""),
       location: normalizeText(
         basics.location_country ?? basics.location ?? client.location ?? "",
       ),
       timezone: normalizeText(basics.timezone ?? client.timezone ?? ""),
-      gender: normalizeText(basics.gender ?? client.gender ?? ""),
+      gender: normalizeText(client.sex ?? client.gender ?? basics.gender ?? ""),
       unit_preference: normalizeText(
         basics.unit_preference ?? client.unit_preference ?? "",
+      ),
+      date_of_birth: normalizeText(
+        client.date_of_birth ?? client.dob ?? basics.date_of_birth ?? "",
+      ),
+      height_value:
+        client.height_value !== null && client.height_value !== undefined
+          ? String(client.height_value)
+          : client.height_cm !== null && client.height_cm !== undefined
+            ? String(client.height_cm)
+            : basics.height_value !== null && basics.height_value !== undefined
+              ? String(basics.height_value)
+              : "",
+      height_unit: normalizeText(
+        client.height_unit ??
+          (client.height_cm !== null && client.height_cm !== undefined
+            ? "cm"
+            : null) ??
+          basics.height_unit ??
+          "cm",
+      ),
+      weight_value_current:
+        client.weight_value_current !== null &&
+        client.weight_value_current !== undefined
+          ? String(client.weight_value_current)
+          : client.current_weight !== null && client.current_weight !== undefined
+            ? String(client.current_weight)
+            : basics.weight_value_current !== null &&
+                basics.weight_value_current !== undefined
+              ? String(basics.weight_value_current)
+              : "",
+      weight_unit: normalizeText(
+        client.weight_unit ??
+          basics.weight_unit ??
+          (client.unit_preference === "imperial" ? "lb" : "kg"),
+      ),
+      avatar_url: normalizeText(
+        client.avatar_url ?? client.photo_url ?? basics.avatar_url ?? "",
       ),
     },
     goals: {
@@ -269,13 +306,10 @@ export function getCurrentStepPayload(
   switch (stepKey) {
     case "basics":
       return {
-        display_name: normalizeText(draft.basics.display_name),
-        phone: normalizeText(draft.basics.phone),
         email: normalizeText(draft.basics.email),
         location: normalizeText(draft.basics.location),
         location_country: normalizeText(draft.basics.location),
         timezone: normalizeText(draft.basics.timezone),
-        gender: normalizeText(draft.basics.gender),
         unit_preference: normalizeText(
           draft.basics.unit_preference,
         ).toLowerCase(),
@@ -350,11 +384,14 @@ export function validateStep(
     case "basics":
       if (!hasText(draft.basics.display_name)) return "Full name is required.";
       if (!hasText(draft.basics.phone)) return "Phone is required.";
-      if (!hasText(draft.basics.email)) return "Email is required.";
-      if (!hasText(draft.basics.location)) return "Location is required.";
-      if (!hasText(draft.basics.timezone)) return "Timezone is required.";
-      if (!hasText(draft.basics.unit_preference))
-        return "Choose your preferred units.";
+      if (!hasText(draft.basics.date_of_birth))
+        return "Date of birth is required.";
+      if (!hasText(draft.basics.gender))
+        return "Sex / gender is required.";
+      if (!hasPositiveNumber(Number(draft.basics.height_value)))
+        return "Height is required.";
+      if (!hasPositiveNumber(Number(draft.basics.weight_value_current)))
+        return "Current weight is required.";
       return null;
     case "goals":
       if (!hasText(draft.goals.goal)) return "Primary goal is required.";

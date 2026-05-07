@@ -32,8 +32,10 @@ export const PtSignupPage = lazy(() =>
     default: m.PtSignupPage,
   })),
 );
-export const WelcomePage = lazy(() =>
-  import("../pages/public/welcome").then((m) => ({ default: m.WelcomePage })),
+export const ClientSignupPage = lazy(() =>
+  import("../pages/public/client-signup").then((m) => ({
+    default: m.ClientSignupPage,
+  })),
 );
 export const PublicCoachProfilePage = lazy(() =>
   import("../pages/public/coach-profile").then((m) => ({
@@ -151,6 +153,11 @@ export const PtHubProfilePreviewPage = lazy(() =>
     default: m.PtHubProfilePreviewPage,
   })),
 );
+export const PtHubPackagesPage = lazy(() =>
+  import("../pages/pt-hub/packages").then((m) => ({
+    default: m.PtHubPackagesPage,
+  })),
+);
 export const PtHubWorkspacesPage = lazy(() =>
   import("../pages/pt-hub/workspaces").then((m) => ({
     default: m.PtHubWorkspacesPage,
@@ -159,6 +166,11 @@ export const PtHubWorkspacesPage = lazy(() =>
 export const PtHubLeadsPage = lazy(() =>
   import("../pages/pt-hub/leads").then((m) => ({
     default: m.PtHubLeadsPage,
+  })),
+);
+export const PtHubLeadDetailPage = lazy(() =>
+  import("../pages/pt-hub/lead-detail").then((m) => ({
+    default: m.PtHubLeadDetailPage,
   })),
 );
 export const PtHubClientsPage = lazy(() =>
@@ -181,6 +193,36 @@ export const PtHubSettingsPage = lazy(() =>
     default: m.PtHubSettingsPage,
   })),
 );
+export const PtHubSettingsLayoutPage = lazy(() =>
+  import("../pages/pt-hub/settings/layout").then((m) => ({
+    default: m.PtHubSettingsLayoutPage,
+  })),
+);
+export const PtHubSettingsAccountTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/account").then((m) => ({
+    default: m.PtHubSettingsAccountTab,
+  })),
+);
+export const PtHubSettingsNotificationsTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/notifications").then((m) => ({
+    default: m.PtHubSettingsNotificationsTab,
+  })),
+);
+export const PtHubSettingsPreferencesTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/preferences").then((m) => ({
+    default: m.PtHubSettingsPreferencesTab,
+  })),
+);
+export const PtHubSettingsSecurityTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/security").then((m) => ({
+    default: m.PtHubSettingsSecurityTab,
+  })),
+);
+export const PtHubSettingsBillingTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/billing").then((m) => ({
+    default: m.PtHubSettingsBillingTab,
+  })),
+);
 
 export const SettingsLayout = lazy(() =>
   import("../pages/settings/SettingsLayout").then((m) => ({
@@ -190,11 +232,6 @@ export const SettingsLayout = lazy(() =>
 export const WorkspaceSettings = lazy(() =>
   import("../pages/settings/sections/WorkspaceSettings").then((m) => ({
     default: m.WorkspaceSettings,
-  })),
-);
-export const PublicProfileSettings = lazy(() =>
-  import("../pages/settings/sections/PublicProfileSettings").then((m) => ({
-    default: m.PublicProfileSettings,
   })),
 );
 export const AccountSettings = lazy(() =>
@@ -222,6 +259,51 @@ export const DangerZoneSettings = lazy(() =>
     default: m.DangerZoneSettings,
   })),
 );
+export const WorkspaceSettingsLayoutPage = lazy(() =>
+  import("../pages/workspace/settings/layout").then((m) => ({
+    default: m.WorkspaceSettingsLayoutPage,
+  })),
+);
+export const WorkspaceSettingsGeneralTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/general").then((m) => ({
+    default: m.WorkspaceSettingsGeneralTab,
+  })),
+);
+export const WorkspaceSettingsClientExperienceTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/client-experience").then((m) => ({
+    default: m.WorkspaceSettingsClientExperienceTab,
+  })),
+);
+export const WorkspaceSettingsTeamTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/team").then((m) => ({
+    default: m.WorkspaceSettingsTeamTab,
+  })),
+);
+export const WorkspaceSettingsDefaultsTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/defaults").then((m) => ({
+    default: m.WorkspaceSettingsDefaultsTab,
+  })),
+);
+export const WorkspaceSettingsAutomationsTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/automations").then((m) => ({
+    default: m.WorkspaceSettingsAutomationsTab,
+  })),
+);
+export const WorkspaceSettingsIntegrationsTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/integrations").then((m) => ({
+    default: m.WorkspaceSettingsIntegrationsTab,
+  })),
+);
+export const WorkspaceSettingsDangerTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/danger").then((m) => ({
+    default: m.WorkspaceSettingsDangerTab,
+  })),
+);
+export const LegacySettingsRedirectPage = lazy(() =>
+  import("../pages/settings/legacy/legacy-settings-redirect").then((m) => ({
+    default: m.LegacySettingsRedirectPage,
+  })),
+);
 
 export const NotificationsPage = lazy(() =>
   import("../features/notifications/pages/notifications-page").then((m) => ({
@@ -232,6 +314,11 @@ export const NotificationsPage = lazy(() =>
 export const ClientHomePage = lazy(() =>
   import("../pages/client/home").then((m) => ({ default: m.ClientHomePage })),
 );
+export const ClientAccountOnboardingPage = lazy(() =>
+  import("../pages/client/client-account-onboarding").then((m) => ({
+    default: m.ClientAccountOnboardingPage,
+  })),
+);
 export const ClientWorkoutDetailPage = lazy(() =>
   import("../pages/client/workout-detail").then((m) => ({
     default: m.ClientWorkoutDetailPage,
@@ -240,6 +327,11 @@ export const ClientWorkoutDetailPage = lazy(() =>
 export const ClientWorkoutTodayPage = lazy(() =>
   import("../pages/client/workout-today").then((m) => ({
     default: m.ClientWorkoutTodayPage,
+  })),
+);
+export const ClientWorkoutsPage = lazy(() =>
+  import("../pages/client/workouts").then((m) => ({
+    default: m.ClientWorkoutsPage,
   })),
 );
 export const ClientWorkoutRunPage = lazy(() =>
@@ -267,6 +359,11 @@ export const ClientProfilePage = lazy(() =>
     default: m.ClientProfilePage,
   })),
 );
+export const ClientSettingsPage = lazy(() =>
+  import("../pages/client/settings").then((m) => ({
+    default: m.ClientSettingsPage,
+  })),
+);
 export const ClientHabitsPage = lazy(() =>
   import("../pages/client/habits").then((m) => ({
     default: m.ClientHabitsPage,
@@ -290,6 +387,16 @@ export const ClientMedicalPage = lazy(() =>
 export const ClientNutritionDayPage = lazy(() =>
   import("../pages/client/nutrition-day").then((m) => ({
     default: m.ClientNutritionDayPage,
+  })),
+);
+export const ClientNutritionPage = lazy(() =>
+  import("../pages/client/nutrition").then((m) => ({
+    default: m.ClientNutritionPage,
+  })),
+);
+export const ClientNutritionCreatePlanPage = lazy(() =>
+  import("../pages/client/nutrition-create-plan").then((m) => ({
+    default: m.ClientNutritionCreatePlanPage,
   })),
 );
 export const ClientOnboardingPage = lazy(() =>

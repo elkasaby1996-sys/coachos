@@ -1,77 +1,113 @@
-import { AlertTriangle, ExternalLink, EyeOff, Globe } from "lucide-react";
-import { Link } from "react-router-dom";
+import { AlertTriangle, EyeOff, Globe } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import type { PTPublicationState } from "../types";
+import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
+import type {
+  PTAccountSettingsDraft,
+  PTProfileReadiness,
+  PTPublicationState,
+} from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 
 export function PtHubPublicationPanel({
   publicationState,
+  readiness,
+  profileVisibility,
   publishing,
+  updatingVisibility,
+  onProfileVisibilityChange,
   onTogglePublish,
 }: {
   publicationState: PTPublicationState;
+  readiness: PTProfileReadiness;
+  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   publishing: boolean;
+  updatingVisibility: boolean;
+  onProfileVisibilityChange: (
+    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
+  ) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
   return (
     <PtHubSectionCard
-      title="Publishing controls"
-      description="Control whether this trainer profile is publicly reachable and ready for future marketplace inclusion."
+      title="Publish status"
+      actions={
+        <Badge
+          variant={getSemanticBadgeVariant(
+            publicationState.isPublished ? "Published" : "Unpublished",
+          )}
+        >
+          {publicationState.isPublished ? "Published" : "Unpublished"}
+        </Badge>
+      }
+      contentClassName="space-y-4"
     >
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={publicationState.isPublished ? "default" : "muted"}>
-            {publicationState.isPublished ? "Published" : "Unpublished"}
-          </Badge>
-          <Badge variant="secondary">
-            {publicationState.marketplaceStatus}
-          </Badge>
+        <div className="space-y-3 rounded-[24px] border border-border/60 bg-background/34 px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={getSemanticBadgeVariant(readiness.statusLabel)}>
+                {readiness.statusLabel}
+              </Badge>
+              <Badge variant="info">{readiness.completionPercent}% ready</Badge>
+            </div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Profile readiness
+            </p>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className={
+                readiness.readyForPublish ? "h-full rounded-full bg-success" : "h-full rounded-full bg-warning"
+              }
+              style={{ width: `${readiness.completionPercent}%` }}
+            />
+          </div>
         </div>
 
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-            Public URL
+            Profile visibility
           </p>
-          <p className="mt-2 break-all text-sm text-foreground">
-            {publicationState.publicUrl ??
-              "Add a slug to generate a public URL."}
+          <div className="flex flex-wrap gap-2">
+            {([
+              { value: "draft", label: "Draft" },
+              { value: "private", label: "Private" },
+              { value: "listed", label: "Ready to list" },
+            ] as const).map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={
+                  profileVisibility === option.value ? "default" : "secondary"
+                }
+                disabled={publishing || updatingVisibility}
+                onClick={() => void onProfileVisibilityChange(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Profile visibility must be set to Ready to list.
           </p>
-          {publicationState.publicUrl ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button asChild size="sm" variant="secondary">
-                <a
-                  href={publicationState.publicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open public page
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </Button>
-              <Button asChild size="sm" variant="ghost">
-                <Link to="/pt-hub/profile/preview">Internal preview</Link>
-              </Button>
-            </div>
-          ) : null}
         </div>
 
         {!publicationState.canPublish && !publicationState.isPublished ? (
-          <div className="rounded-[22px] bg-warning/10 p-4">
+          <div className="space-y-2 rounded-[22px] border border-warning/22 bg-warning/12 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 text-warning" />
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">
-                  Publishing is blocked
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {publicationState.blockers.map((blocker) => (
-                    <Badge key={blocker} variant="muted">
-                      {blocker}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+              <p className="text-sm font-medium text-foreground">
+                Finish these before publishing.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {publicationState.blockers.map((blocker) => (
+                <Badge key={blocker} variant="warning">
+                  {blocker}
+                </Badge>
+              ))}
             </div>
           </div>
         ) : null}
@@ -80,6 +116,7 @@ export function PtHubPublicationPanel({
           className="w-full justify-between"
           disabled={
             publishing ||
+            updatingVisibility ||
             (!publicationState.canPublish && !publicationState.isPublished)
           }
           onClick={() => onTogglePublish(!publicationState.isPublished)}

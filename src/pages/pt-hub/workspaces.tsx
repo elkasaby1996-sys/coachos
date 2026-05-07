@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubWorkspaceCard } from "../../features/pt-hub/components/pt-hub-workspace-card";
 import {
@@ -20,6 +21,7 @@ import {
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import { useWorkspace } from "../../lib/use-workspace";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 export function PtHubWorkspacesPage() {
   const navigate = useNavigate();
@@ -30,6 +32,12 @@ export function PtHubWorkspacesPage() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const workspaceNameLimitState = getCharacterLimitState({
+    value: workspaceName,
+    kind: "entity_name",
+    fieldLabel: "Space name",
+  });
+  const hasOverLimitErrors = workspaceNameLimitState.overLimit;
 
   const openWorkspace = (workspaceId: string) => {
     switchWorkspace(workspaceId);
@@ -37,6 +45,13 @@ export function PtHubWorkspacesPage() {
   };
 
   const handleCreateWorkspace = async () => {
+    if (hasOverLimitErrors) {
+      setError(
+        workspaceNameLimitState.errorText ??
+          "Please fix over-limit fields before continuing.",
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -62,29 +77,30 @@ export function PtHubWorkspacesPage() {
   const workspaces = workspacesQuery.data ?? [];
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
-        eyebrow="Workspace Portfolio"
-        title="Manage workspace entry points"
-        description="Workspaces stay dedicated to coaching operations. PT Hub lets you review and launch them from one business-level surface."
+        eyebrow="Coaching Spaces"
+        title="Manage your coaching spaces"
+        description="Open, create, and organize the spaces where you coach clients."
+        className="justify-end"
         actions={
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
-            Create Workspace
+            Create Space
           </Button>
         }
       />
 
       {workspaces.length === 0 ? (
         <EmptyState
-          title="No workspaces owned yet"
-          description="Phase 1 supports real workspace creation through the existing RPC. Create one here, then jump into the operational dashboard when you are ready."
-          actionLabel="Create workspace"
+          title="No coaching spaces yet"
+          description="Create your first coaching space, then open the coaching dashboard."
+          actionLabel="Create space"
           onAction={() => setDialogOpen(true)}
           className="rounded-[28px] border-border/70 bg-card/70 p-8"
         />
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="pt-hub-work-grid xl:grid-cols-2">
           {workspaces.map((workspace) => (
             <PtHubWorkspaceCard
               key={workspace.id}
@@ -98,17 +114,18 @@ export function PtHubWorkspacesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="w-[92vw] max-w-[460px]">
           <DialogHeader>
-            <DialogTitle>Create workspace</DialogTitle>
+            <DialogTitle>Create coaching space</DialogTitle>
             <DialogDescription>
-              This uses the existing <code>create_workspace</code> RPC and keeps
-              the current workspace dashboard intact.
+              This will create a new coaching space using the current workspace
+              setup.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <label className="text-sm font-medium text-foreground">
-              Workspace name
+              Space name
             </label>
             <Input
+              isInvalid={workspaceNameLimitState.overLimit}
               value={workspaceName}
               onChange={(event) => setWorkspaceName(event.target.value)}
               placeholder="Velocity Performance"
@@ -118,6 +135,11 @@ export function PtHubWorkspacesPage() {
                   void handleCreateWorkspace();
                 }
               }}
+            />
+            <FieldCharacterMeta
+              count={workspaceNameLimitState.count}
+              limit={workspaceNameLimitState.limit}
+              errorText={workspaceNameLimitState.errorText}
             />
             {error ? <p className="text-xs text-danger">{error}</p> : null}
           </div>
@@ -129,8 +151,11 @@ export function PtHubWorkspacesPage() {
             >
               Cancel
             </Button>
-            <Button disabled={saving} onClick={handleCreateWorkspace}>
-              {saving ? "Creating..." : "Create workspace"}
+            <Button
+              disabled={saving || hasOverLimitErrors}
+              onClick={handleCreateWorkspace}
+            >
+              {saving ? "Creating..." : "Create space"}
             </Button>
           </DialogFooter>
         </DialogContent>

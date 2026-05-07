@@ -1,6 +1,6 @@
-# Contributing To CoachOS
+# Contributing To Repsync
 
-Thanks for contributing to CoachOS. This repo ships both application code and Supabase schema history, so changes should be made with a release mindset rather than as isolated code edits.
+Thanks for contributing to Repsync. This repo ships both application code and Supabase schema history, so changes should be made with a release mindset rather than as isolated code edits.
 
 ## Core Workflow
 
@@ -66,6 +66,30 @@ If a change affects smoke-tested flows, run:
 ```bash
 npm run test:e2e:smoke
 ```
+
+## UI And Design Changes
+
+Before changing page-level UI, review the design docs in this order:
+
+1. `design-system/repsync/MASTER.md`
+2. `design-system/repsync/pages/<page>.md` when available
+3. `docs/repsync-ui-playbook.md`
+
+When doing any UI/UX modification, `ui-ux-pro-max` is mandatory.
+
+Required workflow for UI/UX tasks:
+
+1. Run `ui-ux-pro-max` with `--design-system` first for the target page/feature.
+2. Use the returned design-system guidance while implementing.
+3. If needed, run follow-up domain searches (`--domain ux`, `--domain style`, etc.) before final styling decisions.
+
+Example command:
+
+```bash
+python .codex/skills/ui-ux-pro-max/scripts/search.py "repsync <page> <ui task>" --design-system -p "RepSync"
+```
+
+For UI work, prefer extending the existing surface, spacing, typography, and interaction patterns instead of creating a brand-new visual language per page.
 
 ## Supabase Changes
 

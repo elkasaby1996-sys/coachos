@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import {
@@ -12,7 +13,8 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu";
-import { useAuth } from "../../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
+import { cn } from "../../../lib/utils";
 import { NotificationPanel } from "./notification-panel";
 import {
   useMarkAllNotificationsRead,
@@ -24,12 +26,22 @@ import { useNotificationRealtime } from "../hooks/use-notification-realtime";
 import { useSyncNotificationReminders } from "../hooks/use-sync-notification-reminders";
 import type { NotificationRecord } from "../lib/types";
 
-export function NotificationBell({ viewAllHref }: { viewAllHref: string }) {
+export function NotificationBell({
+  viewAllHref,
+  buttonClassName,
+  iconClassName,
+}: {
+  viewAllHref: string;
+  buttonClassName?: string;
+  iconClassName?: string;
+}) {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user } = useSessionAuth();
+  const { role } = useBootstrapAuth();
   const [open, setOpen] = useState(false);
   const [toastNotification, setToastNotification] =
     useState<NotificationRecord | null>(null);
+  const reduceMotion = useReducedMotion();
   const notificationsQuery = useNotificationsList({
     userId: user?.id ?? null,
     limit: 8,
@@ -69,22 +81,38 @@ export function NotificationBell({ viewAllHref }: { viewAllHref: string }) {
 
   return (
     <>
-      {toastNotification ? (
-        <Alert className="fixed right-4 top-4 z-[70] w-[360px] max-w-[calc(100vw-2rem)] border-warning/30 bg-[oklch(0.2_0.02_255)] shadow-[0_20px_44px_-28px_rgb(0_0_0/0.85)]">
-          <AlertTitle>{toastNotification.title}</AlertTitle>
-          <AlertDescription>{toastNotification.body}</AlertDescription>
-        </Alert>
-      ) : null}
+      <AnimatePresence>
+        {toastNotification ? (
+          <motion.div
+            initial={
+              reduceMotion ? { opacity: 1 } : { opacity: 0, y: -18, scale: 0.98 }
+            }
+            animate={
+              reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }
+            }
+            exit={
+              reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.98 }
+            }
+            transition={{ duration: reduceMotion ? 0.16 : 0.24, ease: "easeOut" }}
+            className="fixed right-4 top-4 z-[70]"
+          >
+            <Alert className="w-[360px] max-w-[calc(100vw-2rem)] border-warning/30 bg-[oklch(0.2_0.02_255)] shadow-[0_20px_44px_-28px_rgb(0_0_0/0.85)]">
+              <AlertTitle>{toastNotification.title}</AlertTitle>
+              <AlertDescription>{toastNotification.body}</AlertDescription>
+            </Alert>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="relative"
+            className={cn("relative", buttonClassName)}
             aria-label="Notifications"
           >
-            <Bell className="h-4 w-4" />
+            <Bell className={cn("h-4 w-4", iconClassName)} />
             {unreadCount > 0 ? (
               <>
                 <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-accent" />
@@ -96,9 +124,10 @@ export function NotificationBell({ viewAllHref }: { viewAllHref: string }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          variant="panel"
           align="end"
           sideOffset={10}
-          className="border-0 bg-transparent p-0 shadow-none"
+          className="w-[380px] max-w-[92vw]"
         >
           <NotificationPanel
             notifications={notifications}

@@ -1,371 +1,407 @@
 import {
-  ArrowRight,
-  Building2,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
-  CreditCard,
+  MessageSquarePlus,
   Sparkles,
-  Settings,
-  UserCircle2,
-  Users2,
+  UsersRound,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
-import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
+import {
+  PtHubActionCenter,
+  PtHubLaunchChecklistCard,
+  PtHubOverviewErrorState,
+  PtHubOverviewLoadingState,
+  PtHubRecentActivityCard,
+  PtHubQuickActionsCard,
+  PtHubSetupNoticeStrip,
+  PtHubSummaryCard,
+} from "../../features/pt-hub/components/pt-hub-overview-sections";
+import {
+  useMarkNotificationRead,
+  useNotificationsList,
+  useUnreadNotificationCount,
+} from "../../features/notifications/hooks/use-notifications";
+import type { NotificationRecord } from "../../features/notifications/lib/types";
+import { getPtHubOverviewDashboardModel } from "../../features/pt-hub/lib/overview-dashboard";
 import {
   usePtHubAnalytics,
+  usePtHubClients,
+  usePtHubLeads,
   usePtHubOverview,
   usePtHubPayments,
   usePtHubProfile,
   usePtHubProfileReadiness,
+  usePtHubPublicationState,
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
-import { formatRelativeTime } from "../../lib/relative-time";
+import { useSessionAuth } from "../../lib/auth";
+import { getModuleToneForPath } from "../../lib/module-tone";
+import { cn } from "../../lib/utils";
 import { useWorkspace } from "../../lib/use-workspace";
 
-const buildMetricDelta = (delta: number | null | undefined, suffix = "") => {
-  if (typeof delta !== "number" || Number.isNaN(delta)) return null;
-  const rounded = Math.round(delta);
-  return {
-    value: `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`,
-    tone: rounded === 0 ? "neutral" : rounded > 0 ? "positive" : "negative",
-  } as const;
-};
+const metricIconMap = {
+  "active-clients": UsersRound,
+  "new-leads-month": MessageSquarePlus,
+  "checkins-due": Sparkles,
+  "onboarding-in-progress": ClipboardList,
+} as const satisfies Record<string, LucideIcon>;
+
+function getMetricGridClassName(metricCount: number) {
+  if (metricCount <= 2) return "pt-hub-kpi-grid-wide";
+  return "";
+}
+
+function getNotificationWorkspaceId(notification: NotificationRecord) {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object") return null;
+
+  if (typeof metadata.workspace_id === "string") {
+    return metadata.workspace_id;
+  }
+
+  if (typeof metadata.workspaceId === "string") {
+    return metadata.workspaceId;
+  }
+
+  return null;
+}
 
 export function PtHubOverviewPage() {
   const navigate = useNavigate();
+  const { user } = useSessionAuth();
   const { switchWorkspace } = useWorkspace();
+  const [businessSetupCollapsed, setBusinessSetupCollapsed] = useState(false);
+  const [billingCollapsed, setBillingCollapsed] = useState(false);
+  const [supportExpanded, setSupportExpanded] = useState(false);
   const overviewQuery = usePtHubOverview();
   const workspacesQuery = usePtHubWorkspaces();
   const profileQuery = usePtHubProfile();
   const readinessQuery = usePtHubProfileReadiness();
   const paymentsQuery = usePtHubPayments();
   const analyticsQuery = usePtHubAnalytics();
+  const leadsQuery = usePtHubLeads();
+  const clientsQuery = usePtHubClients();
+  const publicationQuery = usePtHubPublicationState();
+  const notificationsQuery = useNotificationsList({
+    userId: user?.id ?? null,
+    limit: 4,
+    filter: "all",
+  });
+  const unreadNotificationCountQuery = useUnreadNotificationCount(
+    user?.id ?? null,
+  );
+  const markNotificationReadMutation = useMarkNotificationRead(
+    user?.id ?? null,
+  );
 
-  const stats = overviewQuery.data;
-  const latestWorkspace = workspacesQuery.data?.[0] ?? null;
-  const readiness = readinessQuery.data;
-  const quickFixes =
-    readiness?.checklist.filter((item) => !item.complete).slice(0, 3) ?? [];
+  const queries = [
+    overviewQuery,
+    workspacesQuery,
+    profileQuery,
+    readinessQuery,
+    paymentsQuery,
+    analyticsQuery,
+    leadsQuery,
+    clientsQuery,
+    publicationQuery,
+  ] as const;
 
-  const openLatestWorkspace = () => {
-    if (!latestWorkspace) return;
-    switchWorkspace(latestWorkspace.id);
-    navigate("/pt/dashboard");
+  const hasRequiredData = Boolean(
+    overviewQuery.data &&
+    workspacesQuery.data &&
+    profileQuery.data &&
+    readinessQuery.data &&
+    paymentsQuery.data &&
+    analyticsQuery.data &&
+    leadsQuery.data &&
+    clientsQuery.data &&
+    publicationQuery.data,
+  );
+  const isInitialLoading = queries.some((query) => query.isLoading);
+  const hasError = queries.some((query) => query.error);
+
+  const retryAll = () => {
+    void Promise.all(queries.map((query) => query.refetch()));
   };
 
-  const recentItems = [
-    latestWorkspace
-      ? {
-          title: "Workspace ready for coaching operations",
-          description: `${latestWorkspace.name} was updated ${formatRelativeTime(latestWorkspace.lastUpdated)}.`,
-          meta: "Workspace",
-        }
-      : null,
-    stats?.applicationsThisMonth
-      ? {
-          title: "Application flow is active",
-          description: `${stats.applicationsThisMonth} application(s) arrived in the last 30 days, including ${stats.applicationsThisWeek} this week.`,
-          meta: "Leads",
-        }
-      : null,
-    profileQuery.data
-      ? {
-          title: "Public profile is progressing",
-          description: `${readiness?.completionPercent ?? profileQuery.data.completionPercent}% of publish readiness is complete.`,
-          meta: profileQuery.data.updatedAt
-            ? `Updated ${formatRelativeTime(profileQuery.data.updatedAt)}`
-            : "Draft",
-        }
-      : null,
-  ].filter(Boolean) as Array<{
-    title: string;
-    description: string;
-    meta: string;
-  }>;
+  if (!hasRequiredData && isInitialLoading) {
+    return <PtHubOverviewLoadingState />;
+  }
+
+  if (!hasRequiredData && hasError) {
+    return <PtHubOverviewErrorState onRetry={retryAll} />;
+  }
+
+  const stats = overviewQuery.data;
+  const workspaces = workspacesQuery.data ?? [];
+  const profile = profileQuery.data;
+  const readiness = readinessQuery.data;
+  const payments = paymentsQuery.data;
+  const analytics = analyticsQuery.data;
+  const leads = leadsQuery.data ?? [];
+  const clients = clientsQuery.data ?? [];
+  const publicationState = publicationQuery.data;
+  const notifications = notificationsQuery.data ?? [];
+  const unreadNotificationCount = unreadNotificationCountQuery.data ?? 0;
+
+  const dashboardModel = getPtHubOverviewDashboardModel({
+    stats,
+    analytics,
+    readiness,
+    profile,
+    publicationState,
+    workspaces,
+    leads,
+    clients,
+    subscription: payments?.subscription,
+    revenue: payments?.revenue,
+  });
+
+  const showBusinessSetup = dashboardModel.setupCompletionPercent < 100;
+  const metricGridClassName = getMetricGridClassName(
+    dashboardModel.metrics.length,
+  );
+  const businessSetupToggleId = "pt-hub-business-setup-panel";
+  const billingToggleId = "pt-hub-revenue-billing-panel";
+
+  const handleOpenNotification = async (notification: NotificationRecord) => {
+    const workspaceId = getNotificationWorkspaceId(notification);
+    if (workspaceId) {
+      switchWorkspace(workspaceId);
+    }
+
+    if (!notification.is_read) {
+      await markNotificationReadMutation.mutateAsync(notification.id);
+    }
+
+    if (notification.action_url) {
+      navigate(notification.action_url);
+    }
+  };
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-[28px] border border-border/70 bg-[linear-gradient(180deg,rgba(17,23,36,0.88),rgba(11,15,24,0.82))] px-5 py-5 sm:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">PT Hub Overview</Badge>
-              <Badge variant="muted">
-                {stats?.businessHealthLabel ?? "Setup in progress"}
-              </Badge>
-            </div>
-            <div className="space-y-1.5">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-                Business command center
-              </h1>
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                Monitor demand, profile readiness, and workspace portfolio
-                health before stepping into coaching operations.
-              </p>
-            </div>
-          </div>
+    <section
+      className="pt-hub-page-stack pt-hub-overview-page"
+      data-density="roomy"
+      data-testid="pt-hub-page"
+    >
+      {showBusinessSetup ? (
+        <PtHubSetupNoticeStrip
+          completionPercent={dashboardModel.setupCompletionPercent}
+        />
+      ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="secondary">
-              <Link to="/pt-hub/profile">Edit profile</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link to="/pt-hub/workspaces">View workspaces</Link>
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={openLatestWorkspace}
-              disabled={!latestWorkspace}
+      <div
+        className={cn("pt-hub-kpi-ledger pt-hub-kpi-grid", metricGridClassName)}
+        data-columns={dashboardModel.metrics.length === 4 ? "4" : undefined}
+      >
+        {dashboardModel.metrics.map((metric) => {
+          const Icon = metricIconMap[metric.id as keyof typeof metricIconMap];
+          const card = (
+            <StatCard
+              key={metric.id}
+              surface="pt-hub"
+              label={metric.label}
+              value={metric.value}
+              helper={metric.helper}
+              icon={Icon}
+              accent={metric.accent}
+              delta={metric.delta}
+              module={
+                metric.href ? getModuleToneForPath(metric.href) : "overview"
+              }
+              className="pt-hub-kpi-ledger-card h-full"
+              disableHoverMotion
+            />
+          );
+
+          if (!metric.href) return card;
+
+          return (
+            <Link
+              key={metric.id}
+              to={metric.href}
+              className="pt-hub-kpi-link block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={`${metric.label}: ${metric.value}. ${metric.helper}`}
             >
-              Open workspace
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+              {card}
+            </Link>
+          );
+        })}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-4">
-        <StatCard
-          surface="pt-hub"
-          label="Active Workspaces"
-          value={stats?.activeWorkspaces ?? 0}
-          helper="Owned workspaces"
-          icon={Building2}
-          accent
+      <div className="pt-hub-work-grid-main">
+        <PtHubActionCenter
+          items={dashboardModel.actionItems}
+          mode={dashboardModel.mode}
         />
-        <StatCard
-          surface="pt-hub"
-          label="Active Clients"
-          value={stats?.activeClients ?? 0}
-          helper="Across all workspaces"
-          icon={Users2}
-        />
-        <StatCard
-          surface="pt-hub"
-          label="Applications"
-          value={stats?.applicationsThisMonth ?? 0}
-          helper={`${stats?.applicationsThisWeek ?? 0} this week`}
-          icon={ClipboardList}
-          delta={buildMetricDelta(
-            (stats?.applicationsThisMonth ?? 0) -
-              (stats?.applicationsPreviousWindow ?? 0),
-          )}
-        />
-        <StatCard
-          surface="pt-hub"
-          label="Profile Readiness"
-          value={`${readiness?.completionPercent ?? stats?.profileCompletionPercent ?? 0}%`}
-          helper={
-            readiness?.readyForPublish
-              ? "Ready for publish"
-              : "Still in progress"
+        <PtHubRecentActivityCard
+          notifications={notifications}
+          unreadCount={unreadNotificationCount}
+          isLoading={notificationsQuery.isLoading}
+          errorMessage={
+            notificationsQuery.error instanceof Error
+              ? notificationsQuery.error.message
+              : notificationsQuery.error
+                ? "Notifications could not be loaded right now."
+                : null
           }
-          icon={UserCircle2}
+          onOpenNotification={(notification) => {
+            void handleOpenNotification(notification);
+          }}
+          module="overview"
         />
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_340px]">
-        <div className="space-y-8">
-          <section className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Primary
-              </p>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Recent activity
-              </h2>
-            </div>
-            <div className="rounded-[28px] border border-border/70 bg-[linear-gradient(180deg,rgba(17,23,36,0.72),rgba(11,15,24,0.7))] p-5">
-              {recentItems.length > 0 ? (
-                <div className="space-y-4">
-                  {recentItems.map((item, index) => (
-                    <div
-                      key={`${item.title}-${item.meta}`}
-                      className="flex gap-4"
-                    >
-                      <div className="flex flex-col items-center">
-                        <div className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" />
-                        {index < recentItems.length - 1 ? (
-                          <div className="mt-2 h-full min-h-10 w-px bg-border/70" />
-                        ) : null}
-                      </div>
-                      <div className="min-w-0 flex-1 pb-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm font-medium text-foreground">
-                            {item.title}
-                          </p>
-                          <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            {item.meta}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                          {item.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title="Business activity will collect here"
-                  description="As profile updates, leads, and workspace movement pick up, this feed will highlight the highest-signal changes."
-                  icon={<ClipboardList className="h-5 w-5" />}
-                />
-              )}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Secondary
-              </p>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Quick actions
-              </h2>
-            </div>
-            <PtHubSectionCard
-              title="Move the business forward"
-              description="Use PT Hub to progress the business layer before you jump into coaching operations."
-            >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button asChild className="justify-between">
-                  <Link to="/pt-hub/profile">
-                    Edit Public Profile
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="secondary" className="justify-between">
-                  <Link to="/pt-hub/leads">
-                    Review Leads
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="secondary" className="justify-between">
-                  <Link to="/pt-hub/clients">
-                    View Client Base
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="secondary" className="justify-between">
-                  <Link to="/pt-hub/settings">
-                    Update Settings
-                    <Settings className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </PtHubSectionCard>
-          </section>
+      {showBusinessSetup ? (
+        <div className="pt-hub-work-grid">
+          <div id={businessSetupToggleId}>
+            <PtHubLaunchChecklistCard
+              module="profile"
+              title="Launch checklist"
+              description="Top setup blockers only."
+              items={dashboardModel.launchChecklist}
+              completionPercent={dashboardModel.setupCompletionPercent}
+              collapsed={businessSetupCollapsed}
+              actions={
+                <button
+                  type="button"
+                  aria-expanded={!businessSetupCollapsed}
+                  aria-controls={businessSetupToggleId}
+                  className="pt-hub-collapse-action inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  onClick={() =>
+                    setBusinessSetupCollapsed((current) => !current)
+                  }
+                >
+                  <span className="sr-only">
+                    {businessSetupCollapsed
+                      ? "Expand launch checklist"
+                      : "Collapse launch checklist"}
+                  </span>
+                  <span aria-hidden>
+                    {businessSetupCollapsed ? "Show" : "Hide"}
+                  </span>
+                  {businessSetupCollapsed ? (
+                    <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                  ) : (
+                    <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                  )}
+                </button>
+              }
+            />
+          </div>
         </div>
+      ) : null}
 
-        <div className="space-y-8">
-          <section className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Status
-              </p>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Business status
-              </h2>
-            </div>
-            <PtHubSectionCard
-              title="Profile and platform status"
-              description="A compact read on publish readiness, billing state, and workspace entry."
-              contentClassName="space-y-5"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge
-                        variant={
-                          readiness?.readyForPublish ? "success" : "warning"
-                        }
-                      >
-                        {readiness?.statusLabel ?? "Not ready"}
-                      </Badge>
-                      <Badge variant="secondary">
-                        {readiness?.completionPercent ?? 0}% complete
-                      </Badge>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {readiness?.readyForPublish
-                        ? "Your public-facing setup is in strong shape for future publishing."
-                        : `${quickFixes.length > 0 ? quickFixes.length : (readiness?.missingItems.length ?? 0)} area(s) still need attention before publish readiness feels complete.`}
-                    </p>
-                  </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/45 text-primary">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                </div>
-
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-[width]"
-                    style={{ width: `${readiness?.completionPercent ?? 0}%` }}
-                  />
-                </div>
-              </div>
-
-              {!readiness?.readyForPublish && quickFixes.length > 0 ? (
-                <div className="space-y-3">
-                  {quickFixes.map((item) => (
-                    <div
-                      key={item.key}
-                      className="flex items-start justify-between gap-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {item.label}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                          {item.guidance}
-                        </p>
-                      </div>
-                      <Button asChild size="sm" variant="secondary">
-                        <Link to={item.href}>Complete</Link>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="space-y-4 border-t border-border/60 pt-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    Subscription
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {paymentsQuery.data?.subscription.planName ?? "CoachOS Pro"}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {paymentsQuery.data?.subscription.billingConnected
-                      ? "Live billing connection is active."
-                      : "Billing remains intentionally lightweight here until full live integrations are connected."}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    Workspace layer
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {latestWorkspace?.name ?? "No workspace yet"}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {latestWorkspace
-                      ? "Enter coaching operations only when you need execution detail."
-                      : "Create a workspace to begin coaching operations."}
-                  </p>
-                </div>
-              </div>
-            </PtHubSectionCard>
-          </section>
+      <div className="pt-hub-support-disclosure surface-panel relative overflow-hidden rounded-[28px] border border-border/70 px-4 py-4 shadow-[var(--surface-shadow)] sm:px-5">
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="pt-hub-kicker">Supporting details</p>
+            <p className="pt-hub-meta-text mt-1 max-w-3xl text-[0.94rem] leading-6">
+              Setup status, leads, clients, shortcuts, and payments are here
+              when you need more detail.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-expanded={supportExpanded}
+            className="pt-hub-collapse-action inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => setSupportExpanded((current) => !current)}
+          >
+            <span>{supportExpanded ? "Hide details" : "Show details"}</span>
+            {supportExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+            )}
+          </button>
         </div>
       </div>
+
+      {supportExpanded ? (
+        <>
+          <div className="pt-hub-secondary-grid grid xl:grid-cols-3">
+            <PtHubSummaryCard
+              module="overview"
+              title="Setup status"
+              items={dashboardModel.businessSummary}
+            />
+            <PtHubSummaryCard
+              module="leads"
+              title="Leads"
+              items={dashboardModel.pipelineSummary}
+              isEmpty={leads.length === 0}
+              emptyState={{
+                title: "No leads yet",
+                description:
+                  "Publish and share your coach page so potential clients can contact you.",
+                href: "/pt-hub/profile/preview",
+                ctaLabel: "Open public preview",
+              }}
+            />
+            <PtHubSummaryCard
+              module="checkins"
+              title="Clients"
+              items={dashboardModel.clientHealthSummary}
+              isEmpty={clients.length === 0}
+              emptyState={{
+                title: "No clients to review yet",
+                description:
+                  "Once clients join, this section will surface onboarding gaps, overdue check-ins, and risk signals.",
+                href: "/pt-hub/workspaces",
+                ctaLabel: "Open coaching spaces",
+              }}
+            />
+          </div>
+
+          <PtHubQuickActionsCard
+            title="Route shortcuts"
+            description="Use these when you need a direct jump outside the priority queue."
+            actions={dashboardModel.quickActions}
+          />
+
+          {dashboardModel.mode !== "activation" ? (
+            <div className="pt-hub-work-grid">
+              <div id={billingToggleId}>
+                <PtHubSummaryCard
+                  module="billing"
+                  title="Revenue and billing"
+                  description="Payments, invoices, and revenue basics."
+                  items={dashboardModel.billingSummary}
+                  collapsed={billingCollapsed}
+                  actions={
+                    <button
+                      type="button"
+                      aria-expanded={!billingCollapsed}
+                      aria-controls={billingToggleId}
+                      className="pt-hub-collapse-action inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => setBillingCollapsed((current) => !current)}
+                    >
+                      <span className="sr-only">
+                        {billingCollapsed
+                          ? "Expand revenue and billing"
+                          : "Collapse revenue and billing"}
+                      </span>
+                      <span aria-hidden>
+                        {billingCollapsed ? "Show" : "Hide"}
+                      </span>
+                      {billingCollapsed ? (
+                        <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                      ) : (
+                        <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                      )}
+                    </button>
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </section>
   );
 }

@@ -51,20 +51,20 @@ export function PtHubSettingsPanel({
   const hasChanges = JSON.stringify(form) !== JSON.stringify(initialSettings);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
-      <div className="space-y-6">
+    <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.2fr)_340px]">
+      <div className="pt-hub-page-stack">
         <PtHubSectionCard
-          title="Account info"
-          description="Identity and default business settings for the trainer layer."
+          title="Coach account"
+          description="Identity and base operating settings for the business-side PT Hub."
         >
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Account email">
+          <div className="app-form-grid">
+            <Field label="Account email" className="app-form-col-6">
               <Input value={email} readOnly disabled />
             </Field>
-            <Field label="Trainer ID">
+            <Field label="Trainer ID" className="app-form-col-6">
               <Input value={userId} readOnly disabled />
             </Field>
-            <Field label="Default timezone">
+            <Field label="Default timezone" className="app-form-col-6">
               <Input
                 value={form.timezone}
                 onChange={(event) =>
@@ -72,7 +72,7 @@ export function PtHubSettingsPanel({
                 }
               />
             </Field>
-            <Field label="City or region">
+            <Field label="City or region" className="app-form-col-6">
               <Input
                 value={form.city}
                 onChange={(event) =>
@@ -85,11 +85,11 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
 
         <PtHubSectionCard
-          title="Contact info"
-          description="Business-facing contact details used for future public and billing flows."
+          title="Brand contacts"
+          description="Public-facing and billing-ready contact details for your coaching brand."
         >
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Contact email">
+          <div className="app-form-grid">
+            <Field label="Contact email" className="app-form-col-6">
               <Input
                 value={form.contactEmail}
                 onChange={(event) =>
@@ -101,7 +101,7 @@ export function PtHubSettingsPanel({
                 placeholder="coach@yourbrand.com"
               />
             </Field>
-            <Field label="Support email">
+            <Field label="Support email" className="app-form-col-6">
               <Input
                 value={form.supportEmail}
                 onChange={(event) =>
@@ -113,7 +113,7 @@ export function PtHubSettingsPanel({
                 placeholder="support@yourbrand.com"
               />
             </Field>
-            <Field label="Phone" className="md:col-span-2">
+            <Field label="Phone" className="app-form-col-12">
               <Input
                 value={form.phone}
                 onChange={(event) =>
@@ -126,8 +126,8 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
 
         <PtHubSectionCard
-          title="Notification preferences"
-          description="Keep PT Hub communication focused on the signals you actually need."
+          title="Signal preferences"
+          description="Keep PT Hub communication focused on the business signals that matter."
         >
           <div className="space-y-4">
             <PreferenceRow
@@ -148,7 +148,7 @@ export function PtHubSettingsPanel({
             />
             <PreferenceRow
               label="Product updates"
-              hint="Non-critical CoachOS updates and release notes."
+              hint="Non-critical Repsync updates and release notes."
               checked={form.productUpdates}
               onCheckedChange={(checked) =>
                 setForm((prev) => ({ ...prev, productUpdates: checked }))
@@ -158,10 +158,10 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
       </div>
 
-      <div className="space-y-6">
+      <div className="pt-hub-page-stack">
         <PtHubSectionCard
           title="Profile visibility"
-          description="Publishing intent and future marketplace discoverability start here."
+          description="Control how exposed your coach brand is while launch infrastructure evolves."
         >
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -185,26 +185,26 @@ export function PtHubSettingsPanel({
               ))}
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
-              A profile must be set to Ready to list before PT Hub will allow
-              publishing.
+              Set the profile to Ready to list when the brand, offer, and proof
+              are aligned enough for public traffic.
             </p>
           </div>
         </PtHubSectionCard>
 
         <PtHubSectionCard
           title="Security"
-          description="Authentication management still lives in the existing account flow."
+          description="Authentication controls still live in the existing account flow."
         >
           <div className="rounded-[22px] border border-warning/30 bg-warning/10 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 text-warning" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  Password and deeper auth controls are external
+                  Password and deeper authentication controls are external
                 </p>
                 <p className="text-sm leading-6 text-muted-foreground">
                   Password reset and advanced authentication settings still
-                  route through the existing account settings experience.
+                  route through the main Repsync account settings flow.
                 </p>
               </div>
             </div>
@@ -212,8 +212,8 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
 
         <PtHubSectionCard
-          title="Subscription"
-          description="Billing stays honest here without pretending live infrastructure exists where it does not."
+          title="Platform subscription"
+          description="Billing stays explicit here without inventing live infrastructure where it does not exist."
         >
           <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
             <div className="flex items-start justify-between gap-4">
@@ -232,18 +232,16 @@ export function PtHubSettingsPanel({
 
         <PtHubSectionCard
           title="Save changes"
-          description="Keep trainer-level business settings current before moving back into workspace operations."
+          description="Lock in PT Hub operating preferences before returning to delivery work."
         >
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-background/70 text-primary">
-                  {form.weeklyDigest ? (
-                    <BellRing className="h-4 w-4" />
-                  ) : (
-                    <ShieldCheck className="h-4 w-4" />
-                  )}
-                </div>
+                {form.weeklyDigest ? (
+                  <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                ) : (
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                )}
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     {hasChanges
@@ -252,8 +250,8 @@ export function PtHubSettingsPanel({
                   </p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
                     {hasChanges
-                      ? "Review and save the business-layer preferences before leaving this page."
-                      : "Your PT Hub settings are currently aligned with the saved account state."}
+                      ? "Review and save your PT Hub operating preferences before leaving this page."
+                      : "Your PT Hub settings are aligned with the saved account state."}
                   </p>
                 </div>
               </div>

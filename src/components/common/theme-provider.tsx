@@ -150,8 +150,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchAppearancePreference();
-    const { data } = supabase.auth.onAuthStateChange(() => {
-      fetchAppearancePreference();
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "TOKEN_REFRESHED") return;
+      void fetchAppearancePreference();
     });
 
     return () => {

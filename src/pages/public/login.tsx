@@ -23,7 +23,7 @@ export function LoginPage() {
   return (
     <AuthComponent
       mode="signin"
-      brandName="CoachOS"
+      brandName="Repsync"
       logo={
         <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
           <Dumbbell className="h-4 w-4" />
@@ -69,6 +69,15 @@ export function LoginPage() {
         }
 
         return { notice: "Redirecting to Google..." };
+      }}
+      onApple={async () => {
+        return { notice: "Apple sign-in will be wired next." };
+      }}
+      onFacebook={async () => {
+        return { notice: "Facebook sign-in will be wired next." };
+      }}
+      onPhone={async () => {
+        return { notice: "Phone sign-in will be wired next." };
       }}
     />
   );

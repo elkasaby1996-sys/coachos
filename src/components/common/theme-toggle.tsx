@@ -19,11 +19,12 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="ghost"
+      variant="secondary"
       size="icon"
       onClick={() => void cycleThemePreference()}
       aria-label={`Theme: ${themePreference}`}
       title={`Theme: ${themePreference}`}
+      className="rounded-full border border-border/70 bg-card/68 text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]"
     >
       {icon}
     </Button>

@@ -14,7 +14,7 @@ import {
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorDetails } from "../../lib/supabase-errors";
-import { useAuth } from "../../lib/auth";
+import { useSessionAuth } from "../../lib/auth";
 
 type SetState = {
   id?: string;
@@ -86,7 +86,7 @@ const getWorkoutTemplate = (value: any) =>
 export function ClientWorkoutDetailPage() {
   const { assignedWorkoutId } = useParams();
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session } = useSessionAuth();
   const queryClient = useQueryClient();
   const [saveIndex, setSaveIndex] = useState<number | null>(null);
   const [showSummary, setShowSummary] = useState(false);
@@ -114,7 +114,7 @@ export function ClientWorkoutDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, completed_at, workout_template:workout_templates(id, name, description, workout_type_tag)",
+          "id, status, completed_at, coach_note, workout_template:workout_templates(id, name, description, workout_type_tag)",
         )
         .eq("id", assignedWorkoutId ?? "")
         .eq("client_id", clientId ?? "")
@@ -566,6 +566,19 @@ export function ClientWorkoutDetailPage() {
         </div>
       ) : null}
 
+      {assignedQuery.data?.coach_note ? (
+        <Card className="border-border/70 bg-card/80">
+          <CardContent className="space-y-2 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Coach note
+            </p>
+            <p className="text-sm leading-6 text-foreground">
+              {assignedQuery.data.coach_note}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {assignedQuery.isLoading || workoutSessionQuery.isLoading ? (
         <Card>
           <CardHeader>
@@ -816,7 +829,7 @@ export function ClientWorkoutDetailPage() {
                                   {member.exercise.name}
                                 </div>
                                 <input
-                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  className="h-9 app-field px-2 text-sm"
                                   type="number"
                                   inputMode="numeric"
                                   placeholder="Reps"
@@ -834,7 +847,7 @@ export function ClientWorkoutDetailPage() {
                                   }
                                 />
                                 <input
-                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  className="h-9 app-field px-2 text-sm"
                                   type="number"
                                   inputMode="decimal"
                                   placeholder="Weight"
@@ -852,7 +865,7 @@ export function ClientWorkoutDetailPage() {
                                   }
                                 />
                                 <input
-                                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                  className="h-9 app-field px-2 text-sm"
                                   type="number"
                                   inputMode="decimal"
                                   placeholder="RPE"
@@ -906,7 +919,7 @@ export function ClientWorkoutDetailPage() {
                         Set {setIndex + 1}
                       </div>
                       <input
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 app-field px-2 text-sm"
                         type="number"
                         inputMode="numeric"
                         placeholder="Reps"
@@ -922,7 +935,7 @@ export function ClientWorkoutDetailPage() {
                         onBlur={() => saveSet(exerciseIndex, setIndex)}
                       />
                       <input
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 app-field px-2 text-sm"
                         type="number"
                         inputMode="decimal"
                         placeholder="Weight"
@@ -938,7 +951,7 @@ export function ClientWorkoutDetailPage() {
                         onBlur={() => saveSet(exerciseIndex, setIndex)}
                       />
                       <input
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 app-field px-2 text-sm"
                         type="number"
                         inputMode="decimal"
                         placeholder="RPE"

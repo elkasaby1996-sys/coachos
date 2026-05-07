@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   getClientLifecycleReason,
+  getClientRiskState,
   getClientRiskFlagMeta,
+  getClientLifecycleMeta,
   isClientAtRisk,
   matchesClientSegment,
   normalizeClientLifecycleState,
@@ -9,10 +11,11 @@ import {
 } from "../../src/lib/client-lifecycle";
 
 describe("client lifecycle helpers", () => {
-  it("normalizes unknown lifecycle states back to active", () => {
-    expect(normalizeClientLifecycleState(null)).toBe("active");
-    expect(normalizeClientLifecycleState("mystery")).toBe("active");
+  it("returns an explicit unknown lifecycle state instead of silently treating it as active", () => {
+    expect(normalizeClientLifecycleState(null)).toBe("unknown");
+    expect(normalizeClientLifecycleState("mystery")).toBe("unknown");
     expect(normalizeClientLifecycleState("paused")).toBe("paused");
+    expect(getClientLifecycleMeta("mystery").label).toBe("Unknown");
   });
 
   it("deduplicates and filters risk flags", () => {
@@ -26,19 +29,29 @@ describe("client lifecycle helpers", () => {
     ).toEqual(["missed_checkins", "inactive_client"]);
   });
 
-  it("surfaces at-risk clients from lifecycle or derived flags", () => {
+  it("surfaces at-risk clients from manual override or derived flags", () => {
     expect(
       isClientAtRisk({
         lifecycle_state: "active",
         risk_flags: ["inactive_client"],
       }),
     ).toBe(true);
-    expect(isClientAtRisk({ lifecycle_state: "at_risk", risk_flags: [] })).toBe(
-      true,
-    );
+    expect(
+      isClientAtRisk({
+        lifecycle_state: "active",
+        manual_risk_flag: true,
+        risk_flags: [],
+      }),
+    ).toBe(true);
     expect(isClientAtRisk({ lifecycle_state: "active", risk_flags: [] })).toBe(
       false,
     );
+    expect(
+      getClientRiskState({
+        lifecycle_state: "active",
+        risk_flags: [],
+      }),
+    ).toBe("healthy");
   });
 
   it("matches the required smart segments", () => {

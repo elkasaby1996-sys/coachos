@@ -1,4 +1,4 @@
-import { StatusPill } from "../dashboard/StatusPill";
+import { LifecycleBadge } from "../../ui/coachos";
 
 const makeInitials = (name: string) =>
   name
@@ -49,7 +49,7 @@ export function ClientListRow({
                   <div className="truncate text-base font-semibold text-foreground">
                     {name}
                   </div>
-                  <StatusPill status={status ?? "active"} />
+                  <LifecycleBadge lifecycleState={status} />
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Last activity {lastActivity}

@@ -20,6 +20,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
+import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import {
   Tabs,
   TabsContent,
@@ -27,15 +28,24 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import {
+  clearPendingInviteToken,
+  ensureClientProfile,
+  getUserAvatarUrl,
+  getUserDisplayName,
+  isClientAccountComplete,
+  persistPendingInviteToken,
+} from "../../lib/account-profiles";
+import {
   signInWithOAuth,
   signInWithOtpEmail,
   signInWithOtpPhone,
   signUpWithEmailPassword,
   verifyPhoneOtp,
 } from "../../lib/auth-helpers";
-import { useAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { getCharacterLimitState } from "../../lib/character-limits";
 
 type VerifyInviteRow = {
   is_valid: boolean;
@@ -44,8 +54,14 @@ type VerifyInviteRow = {
   workspace_id: string | null;
   workspace_name: string | null;
   workspace_logo_url: string | null;
+  pt_display_name?: string | null;
   role: string | null;
   expires_at: string | null;
+};
+
+type AcceptInviteResult = {
+  workspace_id: string | null;
+  client_id: string | null;
 };
 
 type InviteTab = "social" | "email_link" | "phone_code" | "email_password";
@@ -62,10 +78,38 @@ function getErrorMessage(err: unknown): string {
   return "Something went wrong.";
 }
 
+function toOptionalTrimmedText(value: string | null | undefined) {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+function buildInviteJoinSearchParams(params: {
+  workspaceId: string | null;
+  workspaceName: string | null;
+  ptDisplayName: string | null;
+}) {
+  const nextParams = new URLSearchParams({
+    invite_joined: "1",
+  });
+
+  if (params.workspaceId) {
+    nextParams.set("joined_workspace_id", params.workspaceId);
+  }
+  if (params.workspaceName) {
+    nextParams.set("joined_workspace_name", params.workspaceName);
+  }
+  if (params.ptDisplayName) {
+    nextParams.set("joined_pt_name", params.ptDisplayName);
+  }
+
+  return nextParams;
+}
+
 export function InvitePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { session, loading, refreshRole } = useAuth();
+  const { session, authLoading } = useSessionAuth();
+  const { accountType, patchBootstrap, refreshRole } = useBootstrapAuth();
   const [activeTab, setActiveTab] = useState<InviteTab>("social");
   const [inviteLoading, setInviteLoading] = useState(true);
   const [invite, setInvite] = useState<VerifyInviteRow | null>(null);
@@ -80,6 +124,26 @@ export function InvitePage() {
   const [password, setPassword] = useState("");
   const [phoneStep, setPhoneStep] = useState<"send" | "verify">("send");
   const acceptingInviteRef = useRef(false);
+  const emailLimitState = getCharacterLimitState({
+    value: email,
+    kind: "email",
+    fieldLabel: "Email",
+  });
+  const phoneLimitState = getCharacterLimitState({
+    value: phone,
+    kind: "default_text",
+    fieldLabel: "Phone",
+  });
+  const passwordEmailLimitState = getCharacterLimitState({
+    value: passwordEmail,
+    kind: "email",
+    fieldLabel: "Email",
+  });
+  const passwordLimitState = getCharacterLimitState({
+    value: password,
+    kind: "default_text",
+    fieldLabel: "Password",
+  });
 
   const tokenValue = token ?? "";
   const redirectTo = useMemo(
@@ -135,6 +199,7 @@ export function InvitePage() {
 
   useEffect(() => {
     if (!session?.user || !invite?.is_valid || !tokenValue) return;
+    if (accountType === "pt") return;
     if (acceptingInviteRef.current) return;
     const accept = async () => {
       acceptingInviteRef.current = true;
@@ -142,13 +207,79 @@ export function InvitePage() {
       setError(null);
       setNotice(null);
       try {
-        const { error: acceptError } = await supabase.rpc("accept_invite", {
-          p_token: tokenValue,
+        persistPendingInviteToken(tokenValue);
+        const clientProfile = await ensureClientProfile({
+          userId: session.user.id,
+          fullName:
+            window.localStorage.getItem("coachos_client_signup_name") ??
+            getUserDisplayName(session.user),
+          avatarUrl: getUserAvatarUrl(session.user),
+          email: session.user.email ?? null,
         });
+        if (!isClientAccountComplete(clientProfile)) {
+          patchBootstrap({
+            accountType: "client",
+            role: "client",
+            clientProfile,
+            activeClientId: clientProfile?.id ?? null,
+            clientAccountComplete: false,
+            hasWorkspaceMembership: false,
+            clientWorkspaceOnboardingHardGateRequired: false,
+          });
+          navigate(
+            `/client/onboarding/account?invite=${encodeURIComponent(tokenValue)}`,
+            { replace: true },
+          );
+          acceptingInviteRef.current = false;
+          setBusyAction(null);
+          return;
+        }
+
+        const { data: acceptData, error: acceptError } = await supabase.rpc(
+          "accept_invite",
+          {
+            p_token: tokenValue,
+          },
+        );
         if (acceptError) throw acceptError;
-        setNotice("Invite accepted. Redirecting...");
-        await refreshRole?.();
-        navigate("/app/onboarding", { replace: true });
+        const acceptRow = (Array.isArray(acceptData)
+          ? (acceptData[0] ?? null)
+          : acceptData) as AcceptInviteResult | null;
+        const joinedWorkspaceId =
+          toOptionalTrimmedText(acceptRow?.workspace_id) ??
+          toOptionalTrimmedText(invite.workspace_id);
+        const joinedWorkspaceName = toOptionalTrimmedText(invite.workspace_name);
+        const joinedPtDisplayName = toOptionalTrimmedText(
+          invite.pt_display_name,
+        );
+
+        setNotice("Invite accepted. Redirecting to dashboard...");
+        clearPendingInviteToken();
+        patchBootstrap((prev) => ({
+          accountType: "client",
+          role: "client",
+          hasWorkspaceMembership: true,
+          clientWorkspaceOnboardingHardGateRequired: true,
+          activeWorkspaceId: joinedWorkspaceId ?? prev.activeWorkspaceId,
+          clientProfile: prev.clientProfile
+            ? {
+                ...prev.clientProfile,
+                workspace_id:
+                  joinedWorkspaceId ?? prev.clientProfile.workspace_id,
+              }
+            : prev.clientProfile,
+        }));
+        try {
+          await refreshRole?.();
+        } catch {
+          // Keep navigation deterministic even if bootstrap refresh fails transiently.
+        }
+        const nextParams = buildInviteJoinSearchParams({
+          workspaceId: joinedWorkspaceId,
+          workspaceName: joinedWorkspaceName,
+          ptDisplayName: joinedPtDisplayName,
+        });
+        navigate(`/app/home?${nextParams.toString()}`, { replace: true });
       } catch (err) {
         acceptingInviteRef.current = false;
         setError(getErrorMessage(err) || "Failed to accept invite.");
@@ -157,7 +288,18 @@ export function InvitePage() {
       }
     };
     accept();
-  }, [session?.user, invite?.is_valid, tokenValue, navigate, refreshRole]);
+  }, [
+    accountType,
+    invite?.workspace_id,
+    invite?.workspace_name,
+    invite?.pt_display_name,
+    session?.user,
+    invite?.is_valid,
+    tokenValue,
+    navigate,
+    patchBootstrap,
+    refreshRole,
+  ]);
 
   const isRateLimited = (message: string) =>
     message.toLowerCase().includes("rate limit");
@@ -181,6 +323,10 @@ export function InvitePage() {
   const handleEmailOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextEmail = email.trim();
+    if (emailLimitState.overLimit) {
+      setError(emailLimitState.errorText);
+      return;
+    }
     if (!EMAIL_REGEX.test(nextEmail)) {
       setError("Enter a valid email address.");
       return;
@@ -208,6 +354,10 @@ export function InvitePage() {
   const handlePhoneOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextPhone = phone.trim();
+    if (phoneLimitState.overLimit) {
+      setError(phoneLimitState.errorText);
+      return;
+    }
     if (!PHONE_REGEX.test(nextPhone)) {
       setError(
         "Enter a valid phone number in international format (e.g. +15555555555).",
@@ -248,6 +398,14 @@ export function InvitePage() {
   const handleEmailPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextEmail = passwordEmail.trim();
+    if (passwordEmailLimitState.overLimit || passwordLimitState.overLimit) {
+      setError(
+        passwordEmailLimitState.errorText ??
+          passwordLimitState.errorText ??
+          "Please fix over-limit fields before continuing.",
+      );
+      return;
+    }
     if (!EMAIL_REGEX.test(nextEmail)) {
       setError("Enter a valid email address.");
       return;
@@ -306,7 +464,7 @@ export function InvitePage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-5 rounded-2xl border border-border/50 bg-card/60 p-5 shadow-[0_0_0_1px_oklch(var(--primary)/0.08),0_16px_48px_-28px_oklch(var(--primary)/0.6)] focus-within:shadow-[0_0_0_1px_oklch(var(--primary)/0.25),0_20px_56px_-26px_oklch(var(--primary)/0.75)]">
-            {inviteLoading || loading ? (
+            {inviteLoading || authLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-1/2" />
                 <Skeleton className="h-10 w-full" />
@@ -337,7 +495,12 @@ export function InvitePage() {
               </Alert>
             ) : null}
 
-            {session?.user ? (
+            {session?.user && accountType === "pt" ? (
+              <div className="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+                This account is set up as a coach. Sign out and use a client
+                account to accept this invite.
+              </div>
+            ) : session?.user ? (
               <div className="rounded-xl border border-border/70 bg-secondary/40 p-3 text-sm">
                 Signed in as{" "}
                 <span className="font-medium">
@@ -348,7 +511,7 @@ export function InvitePage() {
                   ? " Finalizing invite..."
                   : " Finishing invite acceptance..."}
               </div>
-            ) : invite && invite.is_valid && !(inviteLoading || loading) ? (
+            ) : invite && invite.is_valid && !(inviteLoading || authLoading) ? (
               <Tabs
                 value={activeTab}
                 onValueChange={(value) => setActiveTab(value as InviteTab)}
@@ -425,17 +588,25 @@ export function InvitePage() {
                       <Input
                         id="invite-email-link"
                         type="email"
+                        isInvalid={emailLimitState.overLimit}
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="you@example.com"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={emailLimitState.count}
+                        limit={emailLimitState.limit}
+                        errorText={emailLimitState.errorText}
                       />
                     </div>
                     <Button
                       type="submit"
                       className="w-full"
                       disabled={
-                        Boolean(busyAction) || tabDisabled("email_link")
+                        Boolean(busyAction) ||
+                        tabDisabled("email_link") ||
+                        emailLimitState.overLimit
                       }
                     >
                       {busyAction === "email_link" ? (
@@ -469,10 +640,16 @@ export function InvitePage() {
                       <Input
                         id="invite-phone"
                         type="tel"
+                        isInvalid={phoneLimitState.overLimit}
                         value={phone}
                         onChange={(event) => setPhone(event.target.value)}
                         placeholder="+15555555555"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={phoneLimitState.count}
+                        limit={phoneLimitState.limit}
+                        errorText={phoneLimitState.errorText}
                       />
                     </div>
                     {phoneStep === "verify" ? (
@@ -496,7 +673,9 @@ export function InvitePage() {
                       type="submit"
                       className="w-full"
                       disabled={
-                        Boolean(busyAction) || tabDisabled("phone_code")
+                        Boolean(busyAction) ||
+                        tabDisabled("phone_code") ||
+                        phoneLimitState.overLimit
                       }
                     >
                       {busyAction === "phone_code" ? (
@@ -530,12 +709,18 @@ export function InvitePage() {
                       <Input
                         id="invite-email-password"
                         type="email"
+                        isInvalid={passwordEmailLimitState.overLimit}
                         value={passwordEmail}
                         onChange={(event) =>
                           setPasswordEmail(event.target.value)
                         }
                         placeholder="you@example.com"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={passwordEmailLimitState.count}
+                        limit={passwordEmailLimitState.limit}
+                        errorText={passwordEmailLimitState.errorText}
                       />
                     </div>
                     <div className="space-y-2">
@@ -548,17 +733,26 @@ export function InvitePage() {
                       <Input
                         id="invite-password"
                         type="password"
+                        isInvalid={passwordLimitState.overLimit}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="Minimum 8 characters"
                         required
+                      />
+                      <FieldCharacterMeta
+                        count={passwordLimitState.count}
+                        limit={passwordLimitState.limit}
+                        errorText={passwordLimitState.errorText}
                       />
                     </div>
                     <Button
                       type="submit"
                       className="w-full"
                       disabled={
-                        Boolean(busyAction) || tabDisabled("email_password")
+                        Boolean(busyAction) ||
+                        tabDisabled("email_password") ||
+                        passwordEmailLimitState.overLimit ||
+                        passwordLimitState.overLimit
                       }
                     >
                       {busyAction === "email_password" ? (
@@ -580,7 +774,7 @@ export function InvitePage() {
                   </p>
                 </TabsContent>
               </Tabs>
-            ) : !inviteLoading && !loading ? (
+            ) : !inviteLoading && !authLoading ? (
               <div className="rounded-xl border border-border/70 bg-secondary/30 p-4 text-sm text-muted-foreground">
                 This invite cannot be used right now. Ask your coach for a fresh
                 invite.
