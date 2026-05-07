@@ -16,12 +16,12 @@ test.describe("Smoke: PT assign workout", () => {
     ]);
     test.skip(!required.ok, `Missing env: ${required.missing.join(", ")}`);
 
-    await signInWithEmail(
-      page,
-      process.env.E2E_PT_EMAIL!,
-      process.env.E2E_PT_PASSWORD!,
-    );
     try {
+      await signInWithEmail(
+        page,
+        process.env.E2E_PT_EMAIL!,
+        process.env.E2E_PT_PASSWORD!,
+      );
       await ensureAuthenticatedNavigation(
         page,
         `/pt/clients/${process.env.E2E_CLIENT_ID}?tab=workout`,

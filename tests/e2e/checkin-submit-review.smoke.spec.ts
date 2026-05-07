@@ -25,12 +25,12 @@ test.describe("Smoke: check-in submit and PT review", () => {
       test.skip(true, reason);
     };
 
-    await signInWithEmail(
-      clientPage,
-      process.env.E2E_CLIENT_EMAIL!,
-      process.env.E2E_CLIENT_PASSWORD!,
-    );
     try {
+      await signInWithEmail(
+        clientPage,
+        process.env.E2E_CLIENT_EMAIL!,
+        process.env.E2E_CLIENT_PASSWORD!,
+      );
       await ensureAuthenticatedNavigation(
         clientPage,
         "/app/checkin",
