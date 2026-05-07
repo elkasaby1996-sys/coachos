@@ -157,23 +157,30 @@ begin
 end;
 $$;
 
-UPDATE public.notifications
-SET
-  title = format('%s inactive for 2+ days', body_match.client_name),
-  metadata = jsonb_set(
-    coalesce(public.notifications.metadata, '{}'::jsonb),
-    '{client_name}',
-    to_jsonb(body_match.client_name)
-  )
-FROM (
-  SELECT
-    id,
-    trim((regexp_match(body, '^(.+?) has no recent activity\.?$'))[1]) AS client_name
-  FROM public.notifications
-  WHERE type = 'client_inactive'
-    AND title = 'Client inactive for 2+ days'
-    AND body ~ '^.+? has no recent activity\.?$'
-) AS body_match
-WHERE public.notifications.id = body_match.id
-  AND body_match.client_name IS NOT NULL
-  AND lower(body_match.client_name) <> 'client';
+ALTER TABLE public.notifications DISABLE TRIGGER restrict_notification_updates_trigger;
+
+DO $$
+BEGIN
+  UPDATE public.notifications
+  SET
+    title = format('%s inactive for 2+ days', body_match.client_name),
+    metadata = jsonb_set(
+      coalesce(public.notifications.metadata, '{}'::jsonb),
+      '{client_name}',
+      to_jsonb(body_match.client_name)
+    )
+  FROM (
+    SELECT
+      id,
+      trim((regexp_match(body, '^(.+?) has no recent activity\.?$'))[1]) AS client_name
+    FROM public.notifications
+    WHERE type = 'client_inactive'
+      AND title = 'Client inactive for 2+ days'
+      AND body ~ '^.+? has no recent activity\.?$'
+  ) AS body_match
+  WHERE public.notifications.id = body_match.id
+    AND body_match.client_name IS NOT NULL
+    AND lower(body_match.client_name) <> 'client';
+END $$;
+
+ALTER TABLE public.notifications ENABLE TRIGGER restrict_notification_updates_trigger;

@@ -36,6 +36,7 @@ import {
   persistPendingInviteToken,
 } from "../../lib/account-profiles";
 import {
+  buildAuthCallbackUrl,
   signInWithOAuth,
   signInWithOtpEmail,
   signInWithOtpPhone,
@@ -147,7 +148,13 @@ export function InvitePage() {
 
   const tokenValue = token ?? "";
   const redirectTo = useMemo(
-    () => `${window.location.origin}/invite/${tokenValue}`,
+    () =>
+      buildAuthCallbackUrl({
+        type: "invite",
+        intent: "client",
+        invite: tokenValue,
+        next: `/invite/${tokenValue}`,
+      }),
     [tokenValue],
   );
 

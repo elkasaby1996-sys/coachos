@@ -23,6 +23,7 @@ import {
   updatePtProfile,
 } from "../../lib/account-profiles";
 import {
+  buildAuthCallbackUrl,
   signInWithOAuth,
   signUpWithEmailPassword,
 } from "../../lib/auth-helpers";
@@ -215,7 +216,11 @@ export function PtSignupPage() {
     try {
       persistPtSignupDraft();
       const normalizedPhone = normalizePhoneWithCountry(phone, country);
-      const redirectTo = `${window.location.origin}/pt/onboarding/workspace`;
+      const redirectTo = buildAuthCallbackUrl({
+        type: "signup",
+        intent: "pt",
+        next: "/pt/onboarding/workspace",
+      });
       const { data, error: signUpError } = await signUpWithEmailPassword(
         email.trim(),
         password,
@@ -279,7 +284,11 @@ export function PtSignupPage() {
       persistPtSignupDraft();
       const { error: oauthError } = await signInWithOAuth(
         "google",
-        `${window.location.origin}/pt/onboarding/workspace`,
+        buildAuthCallbackUrl({
+          type: "oauth",
+          intent: "pt",
+          next: "/pt/onboarding/workspace",
+        }),
       );
       if (oauthError) throw oauthError;
     } catch (nextError) {

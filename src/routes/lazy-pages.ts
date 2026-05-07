@@ -19,6 +19,21 @@ export const ClientLayout = lazy(() =>
 export const LoginPage = lazy(() =>
   import("../pages/public/login").then((m) => ({ default: m.LoginPage })),
 );
+export const AuthCallbackPage = lazy(() =>
+  import("../pages/public/auth-callback").then((m) => ({
+    default: m.AuthCallbackPage,
+  })),
+);
+export const ForgotPasswordPage = lazy(() =>
+  import("../pages/public/forgot-password").then((m) => ({
+    default: m.ForgotPasswordPage,
+  })),
+);
+export const ResetPasswordPage = lazy(() =>
+  import("../pages/public/reset-password").then((m) => ({
+    default: m.ResetPasswordPage,
+  })),
+);
 export const NoWorkspacePage = lazy(() =>
   import("../pages/public/no-workspace").then((m) => ({
     default: m.NoWorkspacePage,
