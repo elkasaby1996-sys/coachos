@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import WebSocket from "ws";
 
 type SeedUser = {
   email: string;
@@ -76,6 +77,9 @@ function getAdminClient() {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+    realtime: {
+      transport: WebSocket,
     },
   });
 }
