@@ -27,6 +27,8 @@ import {
   ClientWorkoutSummaryPage,
   ClientWorkoutsPage,
   ClientSignupPage,
+  AuthCallbackPage,
+  ForgotPasswordPage,
   HealthPage,
   InvitePage,
   LegacySettingsRedirectPage,
@@ -72,6 +74,7 @@ import {
   PtWorkoutTemplatePreviewPage,
   PtWorkoutTemplatesPage,
   PtWorkspaceOnboardingPage,
+  ResetPasswordPage,
   SignupRolePage,
   SupportPage,
   TermsPage,
@@ -532,6 +535,12 @@ export function App() {
 
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/auth/forgot-password"
+            element={<ForgotPasswordPage />}
+          />
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route path="/signup" element={<SignupRolePage />} />
           <Route path="/signup/pt" element={<PtSignupPage />} />
           <Route path="/signup/client" element={<ClientSignupPage />} />

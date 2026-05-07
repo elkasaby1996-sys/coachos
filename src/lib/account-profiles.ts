@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { ensureNotificationPreferenceDefaults } from "../features/notifications/lib/notification-service";
 
 export const PENDING_INVITE_STORAGE_KEY = "coachos_pending_invite_token";
 export const SIGNUP_INTENT_STORAGE_KEY = "coachos_signup_intent";
@@ -269,6 +270,11 @@ export async function ensurePtProfile(params: {
   fullName?: string | null;
   coachBusinessName?: string | null;
 }) {
+  await ensureNotificationPreferenceDefaults({
+    userId: params.userId,
+    actorType: "pt",
+  });
+
   const existing = await getExistingPtProfile(params.userId);
   const payload = {
     user_id: params.userId,
@@ -368,6 +374,11 @@ export async function ensureClientProfile(params: {
   avatarUrl?: string | null;
   email?: string | null;
 }) {
+  await ensureNotificationPreferenceDefaults({
+    userId: params.userId,
+    actorType: "client",
+  });
+
   const { data, error } = await supabase.rpc("ensure_client_profile", {
     p_user_id: params.userId,
     p_full_name: normalizeText(params.fullName),

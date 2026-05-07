@@ -1,16 +1,26 @@
 export const notificationTypes = [
   "workout_assigned",
+  "program_assigned",
+  "habit_assigned",
+  "task_assigned",
   "workout_updated",
   "checkin_requested",
   "checkin_submitted",
   "message_received",
+  "file_shared",
   "birthday_reminder",
   "milestone_achieved",
   "client_joined_workspace",
+  "client_assigned_workspace",
   "invite_accepted",
+  "invite_sent",
+  "join_request_submitted",
+  "join_request_approved",
+  "join_request_declined",
   "workout_due_today",
   "checkin_due_tomorrow",
   "client_inactive",
+  "security",
   "system",
 ] as const;
 
@@ -50,9 +60,21 @@ export type NotificationRecord = {
 
 export type NotificationPreferences = {
   user_id: string;
+  actor_type?: "pt" | "client" | "unknown";
   in_app_enabled: boolean;
   email_enabled: boolean;
   push_enabled: boolean;
+  lead_alerts?: boolean;
+  join_requests?: boolean;
+  client_escalation?: boolean;
+  missed_checkins?: boolean;
+  client_onboarding?: boolean;
+  weekly_digest?: boolean;
+  product_updates?: boolean;
+  program_assigned?: boolean;
+  habit_reminders?: boolean;
+  files_resources?: boolean;
+  appointment_reminders?: boolean;
   workout_assigned: boolean;
   workout_updated: boolean;
   checkin_requested: boolean;
@@ -67,3 +89,70 @@ export type NotificationPreferences = {
 };
 
 export type NotificationFilter = "all" | "unread";
+
+export type NotificationChannel = "in_app" | "email" | "push";
+
+export type NotificationDeliveryStatus =
+  | "queued"
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "failed"
+  | "retrying"
+  | "suppressed_preference"
+  | "suppressed_unsubscribed"
+  | "suppressed_no_channel"
+  | "bounced";
+
+export type NotificationDeliveryLog = {
+  event_id: string;
+  recipient_user_id: string;
+  recipient_email: string | null;
+  notification_type: NotificationType;
+  template_key: string;
+  channel: NotificationChannel;
+  status: NotificationDeliveryStatus;
+  provider: string | null;
+  provider_message_id: string | null;
+  retry_count: number;
+  failure_code: string | null;
+  failure_reason: string | null;
+  idempotency_key: string;
+};
+
+export type NotificationEvent = {
+  id?: string;
+  recipient_user_id: string;
+  actor_type: "pt" | "client" | "system";
+  type: NotificationType;
+  title: string;
+  body: string;
+  action_url: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata: NotificationMetadata;
+  transactional: boolean;
+  idempotency_key: string;
+};
+
+export type PushSubscriptionInput = {
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent?: string | null;
+};
+
+export type PushSubscriptionPayload = PushSubscriptionInput & {
+  status: "active";
+  last_seen_at: string;
+};
+
+export type PushSubscriptionStatusUpdate = {
+  status: "active" | "invalid" | "revoked";
+  last_seen_at?: string;
+  last_success_at?: string;
+  last_failure_at?: string;
+  failure_reason?: string | null;
+  updated_at: string;
+};

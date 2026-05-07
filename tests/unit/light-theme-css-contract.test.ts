@@ -2,16 +2,22 @@ import { describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const styleCss = readFileSync(resolve("src/styles/style.css"), "utf8");
-const globalsCss = readFileSync(resolve("src/styles/globals.css"), "utf8");
+const styleCss = readFileSync(resolve("src/styles/style.css"), "utf8").replace(
+  /\r\n/g,
+  "\n",
+);
+const globalsCss = readFileSync(
+  resolve("src/styles/globals.css"),
+  "utf8",
+).replace(/\r\n/g, "\n");
 const ptHubShellCss = readFileSync(
   resolve("src/styles/pt-hub-shell.css"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const ptWorkspaceShellCss = readFileSync(
   resolve("src/styles/pt-workspace-shell.css"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const ptHubOverviewSectionsTsx = readFileSync(
   resolve("src/features/pt-hub/components/pt-hub-overview-sections.tsx"),
   "utf8",

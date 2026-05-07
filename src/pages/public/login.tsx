@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Dumbbell } from "lucide-react";
 import { AuthComponent } from "../../components/ui/sign-up";
 import {
+  buildAuthCallbackUrl,
   signInWithEmailPassword,
   signInWithOAuth,
 } from "../../lib/auth-helpers";
@@ -62,7 +63,10 @@ export function LoginPage() {
           };
         }
 
-        const redirectTo = `${window.location.origin}${redirectTarget}`;
+        const redirectTo = buildAuthCallbackUrl({
+          type: "oauth",
+          next: redirectTarget,
+        });
         const { error } = await signInWithOAuth("google", redirectTo);
         if (error) {
           return { error: error.message };

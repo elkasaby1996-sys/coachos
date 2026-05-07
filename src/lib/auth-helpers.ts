@@ -2,6 +2,37 @@ import { supabase } from "./supabase";
 import { runClientGuardedAction } from "./request-guard";
 
 export type AuthOAuthProvider = "google" | "apple" | "facebook";
+export type AuthEmailOtpType = "signup" | "recovery" | "email_change";
+
+const authCallbackPath = "/auth/callback";
+
+function normalizeRedirectPath(path: string | null | undefined) {
+  const value = path?.trim() ?? "";
+  if (!value || !value.startsWith("/")) return "/";
+  if (value.startsWith("//")) return "/";
+  return value;
+}
+
+export function buildAuthCallbackUrl(params?: {
+  next?: string | null;
+  intent?: "pt" | "client" | null;
+  invite?: string | null;
+  type?: AuthEmailOtpType | "oauth" | "invite" | "activation" | null;
+}) {
+  const url = new URL(authCallbackPath, window.location.origin);
+  const next = normalizeRedirectPath(params?.next);
+  if (next !== "/") url.searchParams.set("next", next);
+  if (params?.intent === "pt" || params?.intent === "client") {
+    url.searchParams.set("intent", params.intent);
+  }
+  if (params?.invite?.trim()) {
+    url.searchParams.set("invite", params.invite.trim());
+  }
+  if (params?.type) {
+    url.searchParams.set("type", params.type);
+  }
+  return url.toString();
+}
 
 export async function signInWithOAuth(
   provider: AuthOAuthProvider,
@@ -89,4 +120,45 @@ export async function signInWithEmailPassword(email: string, password: string) {
         password,
       }),
   });
+}
+
+export async function resendSignupVerification(
+  email: string,
+  redirectTo: string,
+) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return runClientGuardedAction({
+    action: "auth-resend-signup",
+    scope: normalizedEmail,
+    cooldownMs: 60_000,
+    message:
+      "Please wait a minute before requesting another verification email.",
+    run: () =>
+      supabase.auth.resend({
+        type: "signup",
+        email: normalizedEmail,
+        options: { emailRedirectTo: redirectTo },
+      }),
+  });
+}
+
+export async function sendPasswordRecoveryEmail(
+  email: string,
+  redirectTo: string,
+) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return runClientGuardedAction({
+    action: "auth-password-recovery",
+    scope: normalizedEmail,
+    cooldownMs: 60_000,
+    message: "Please wait a minute before requesting another recovery email.",
+    run: () =>
+      supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo,
+      }),
+  });
+}
+
+export async function updatePassword(password: string) {
+  return supabase.auth.updateUser({ password });
 }

@@ -36,7 +36,7 @@ describe("animated auth component contract", () => {
       source.lastIndexOf("{socialButtons}"),
     );
     expect(source).toContain("data-auth-social={provider.id}");
-    expect(source).toContain("Forgot Your Password?");
+    expect(source).toContain("Forgot your password?");
     expect(source).toContain("displayBrandName");
     expect(source).toContain("auth-secondary-link");
     expect(globalsSource).toContain(".auth-secondary-link:hover");
