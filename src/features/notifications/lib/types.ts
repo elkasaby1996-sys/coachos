@@ -104,6 +104,22 @@ export type NotificationDeliveryStatus =
   | "suppressed_no_channel"
   | "bounced";
 
+export type NotificationDeliveryLog = {
+  event_id: string;
+  recipient_user_id: string;
+  recipient_email: string | null;
+  notification_type: NotificationType;
+  template_key: string;
+  channel: NotificationChannel;
+  status: NotificationDeliveryStatus;
+  provider: string | null;
+  provider_message_id: string | null;
+  retry_count: number;
+  failure_code: string | null;
+  failure_reason: string | null;
+  idempotency_key: string;
+};
+
 export type NotificationEvent = {
   id?: string;
   recipient_user_id: string;
@@ -125,4 +141,18 @@ export type PushSubscriptionInput = {
   p256dh: string;
   auth: string;
   user_agent?: string | null;
+};
+
+export type PushSubscriptionPayload = PushSubscriptionInput & {
+  status: "active";
+  last_seen_at: string;
+};
+
+export type PushSubscriptionStatusUpdate = {
+  status: "active" | "invalid" | "revoked";
+  last_seen_at?: string;
+  last_success_at?: string;
+  last_failure_at?: string;
+  failure_reason?: string | null;
+  updated_at: string;
 };

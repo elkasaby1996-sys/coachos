@@ -4,42 +4,19 @@ import type {
   NotificationPreferences,
   NotificationRecord,
 } from "../lib/types";
+import { buildProfileNotificationPreferenceDefaults } from "../lib/notification-service";
 
 const notificationColumns =
   "id, recipient_user_id, type, category, priority, title, body, action_url, entity_type, entity_id, image_url, metadata, is_read, read_at, delivery_in_app, delivery_email, delivery_push, created_at";
 
 const preferenceColumns =
-  "user_id, in_app_enabled, email_enabled, push_enabled, workout_assigned, workout_updated, checkin_requested, checkin_submitted, message_received, reminders_enabled, milestone_events, inactivity_alerts, system_events, created_at, updated_at";
+  "user_id, actor_type, in_app_enabled, email_enabled, push_enabled, lead_alerts, join_requests, client_escalation, missed_checkins, client_onboarding, weekly_digest, product_updates, program_assigned, habit_reminders, files_resources, appointment_reminders, workout_assigned, workout_updated, checkin_requested, checkin_submitted, message_received, reminders_enabled, milestone_events, inactivity_alerts, system_events, created_at, updated_at";
 
 export const defaultNotificationPreferences = (
   userId: string,
   actorType: "pt" | "client" | "unknown" = "unknown",
 ): NotificationPreferences => ({
-  user_id: userId,
-  actor_type: actorType,
-  in_app_enabled: true,
-  email_enabled: false,
-  push_enabled: false,
-  lead_alerts: actorType === "pt",
-  join_requests: actorType === "pt",
-  client_escalation: actorType === "pt",
-  missed_checkins: actorType === "pt",
-  client_onboarding: actorType === "pt",
-  weekly_digest: actorType === "pt",
-  product_updates: true,
-  program_assigned: actorType !== "pt",
-  habit_reminders: actorType !== "pt",
-  files_resources: actorType !== "pt",
-  appointment_reminders: actorType !== "pt",
-  workout_assigned: true,
-  workout_updated: true,
-  checkin_requested: true,
-  checkin_submitted: true,
-  message_received: true,
-  reminders_enabled: true,
-  milestone_events: true,
-  inactivity_alerts: true,
-  system_events: true,
+  ...buildProfileNotificationPreferenceDefaults(userId, actorType),
   created_at: new Date(0).toISOString(),
   updated_at: new Date(0).toISOString(),
 });

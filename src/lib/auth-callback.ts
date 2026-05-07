@@ -66,7 +66,14 @@ export function parseAuthCallbackUrl(input: string): AuthCallbackParams {
   const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
   const searchKind = normalizeKind(url.searchParams.get("type"));
   const hashKind = normalizeKind(hashParams.get("type"));
-  const kind = searchKind === "unknown" ? hashKind : searchKind;
+  const explicitKind = searchKind === "unknown" ? hashKind : searchKind;
+  const nextPath =
+    normalizePath(url.searchParams.get("next")) ??
+    normalizePath(hashParams.get("next"));
+  const kind =
+    explicitKind === "unknown" && nextPath === "/auth/reset-password"
+      ? "recovery"
+      : explicitKind;
   const errorDescription =
     url.searchParams.get("error_description") ??
     hashParams.get("error_description") ??
@@ -77,9 +84,7 @@ export function parseAuthCallbackUrl(input: string): AuthCallbackParams {
 
   return {
     kind,
-    nextPath:
-      normalizePath(url.searchParams.get("next")) ??
-      normalizePath(hashParams.get("next")),
+    nextPath,
     intent: normalizeIntent(
       url.searchParams.get("intent") ?? hashParams.get("intent"),
     ),

@@ -1,10 +1,14 @@
 import { supabase } from "../../../lib/supabase";
 import type {
   NotificationChannel,
+  NotificationDeliveryLog,
+  NotificationDeliveryStatus,
   NotificationEvent,
   NotificationPreferences,
   NotificationType,
   PushSubscriptionInput,
+  PushSubscriptionPayload,
+  PushSubscriptionStatusUpdate,
 } from "./types";
 
 type PreferenceKey =
@@ -57,6 +61,61 @@ const notificationPreferenceMap: Record<NotificationType, PreferenceKey> = {
   security: "system_events",
   system: "system_events",
 };
+
+export function buildProfileNotificationPreferenceDefaults(
+  userId: string,
+  actorType: "pt" | "client" | "unknown",
+) {
+  return {
+    user_id: userId,
+    actor_type: actorType,
+    in_app_enabled: true,
+    email_enabled: false,
+    push_enabled: false,
+    lead_alerts: actorType === "pt",
+    join_requests: actorType === "pt",
+    client_escalation: actorType === "pt",
+    missed_checkins: actorType === "pt",
+    client_onboarding: actorType === "pt",
+    weekly_digest: actorType === "pt",
+    product_updates: true,
+    program_assigned: actorType !== "pt",
+    habit_reminders: actorType !== "pt",
+    files_resources: actorType !== "pt",
+    appointment_reminders: actorType !== "pt",
+    workout_assigned: true,
+    workout_updated: true,
+    checkin_requested: true,
+    checkin_submitted: true,
+    message_received: true,
+    reminders_enabled: true,
+    milestone_events: true,
+    inactivity_alerts: true,
+    system_events: true,
+  };
+}
+
+export async function ensureNotificationPreferenceDefaults(params: {
+  userId: string;
+  actorType: "pt" | "client" | "unknown";
+}) {
+  const { data, error } = await supabase
+    .from("notification_preferences")
+    .upsert(
+      buildProfileNotificationPreferenceDefaults(
+        params.userId,
+        params.actorType,
+      ),
+      {
+        onConflict: "user_id",
+        ignoreDuplicates: true,
+      },
+    )
+    .select("user_id")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
 
 export function shouldDeliverNotification(params: {
   channel: NotificationChannel;
@@ -159,26 +218,127 @@ export async function queueNotificationEvent(event: NotificationEvent) {
   return data;
 }
 
-export async function registerPushSubscription(input: PushSubscriptionInput) {
+function normalizeOptionalText(value: string | null | undefined) {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function buildNotificationDeliveryLog(params: {
+  eventId: string;
+  recipientUserId: string;
+  recipientEmail?: string | null;
+  type: NotificationType;
+  templateKey: string;
+  channel: NotificationChannel;
+  status: NotificationDeliveryStatus;
+  provider?: string | null;
+  providerMessageId?: string | null;
+  retryCount?: number;
+  failureCode?: string | null;
+  failureReason?: string | null;
+  idempotencyKey: string;
+}): NotificationDeliveryLog {
+  return {
+    event_id: params.eventId,
+    recipient_user_id: params.recipientUserId,
+    recipient_email: normalizeOptionalText(params.recipientEmail),
+    notification_type: params.type,
+    template_key: params.templateKey,
+    channel: params.channel,
+    status: params.status,
+    provider: normalizeOptionalText(params.provider),
+    provider_message_id: normalizeOptionalText(params.providerMessageId),
+    retry_count: params.retryCount ?? 0,
+    failure_code: normalizeOptionalText(params.failureCode),
+    failure_reason: normalizeOptionalText(params.failureReason),
+    idempotency_key: `${params.idempotencyKey}:${params.channel}`,
+  };
+}
+
+export async function logNotificationDelivery(
+  delivery: NotificationDeliveryLog,
+) {
+  const { data, error } = await supabase
+    .from("notification_deliveries")
+    .upsert(delivery, { onConflict: "idempotency_key" })
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export function buildPushSubscriptionPayload(
+  input: PushSubscriptionInput,
+): PushSubscriptionPayload {
   const endpoint = input.endpoint.trim();
   if (!endpoint.startsWith("https://")) {
     throw new Error("Push endpoint must be an HTTPS URL.");
   }
 
+  return {
+    user_id: input.user_id,
+    endpoint,
+    p256dh: input.p256dh,
+    auth: input.auth,
+    user_agent:
+      input.user_agent ??
+      (typeof navigator === "undefined" ? null : navigator.userAgent),
+    status: "active",
+    last_seen_at: new Date().toISOString(),
+  };
+}
+
+export function buildPushSubscriptionStatusUpdate(params: {
+  status: "active" | "invalid" | "revoked";
+  failureReason?: string | null;
+}): PushSubscriptionStatusUpdate {
+  const now = new Date().toISOString();
+  if (params.status === "active") {
+    return {
+      status: "active",
+      last_seen_at: now,
+      last_success_at: now,
+      failure_reason: null,
+      updated_at: now,
+    };
+  }
+
+  return {
+    status: params.status,
+    last_failure_at: now,
+    failure_reason: normalizeOptionalText(params.failureReason),
+    updated_at: now,
+  };
+}
+
+export async function registerPushSubscription(input: PushSubscriptionInput) {
+  const payload = buildPushSubscriptionPayload(input);
+
   const { data, error } = await supabase
     .from("push_subscriptions")
-    .upsert(
-      {
-        user_id: input.user_id,
-        endpoint,
-        p256dh: input.p256dh,
-        auth: input.auth,
-        user_agent: input.user_agent ?? navigator.userAgent,
-        status: "active",
-        last_seen_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,endpoint" },
+    .upsert(payload, { onConflict: "user_id,endpoint" })
+    .select("id, user_id, endpoint, status, last_seen_at")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function updatePushSubscriptionStatus(params: {
+  userId: string;
+  endpoint: string;
+  status: "active" | "invalid" | "revoked";
+  failureReason?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .update(
+      buildPushSubscriptionStatusUpdate({
+        status: params.status,
+        failureReason: params.failureReason,
+      }),
     )
+    .eq("user_id", params.userId)
+    .eq("endpoint", params.endpoint.trim())
     .select("id, user_id, endpoint, status, last_seen_at")
     .maybeSingle();
   if (error) throw error;

@@ -21,7 +21,7 @@ describe("auth callback parsing", () => {
       "https://app.example.com/auth/callback?code=secret-code&next=/auth/reset-password",
     );
 
-    expect(parsed.kind).toBe("unknown");
+    expect(parsed.kind).toBe("recovery");
     expect(parsed.hasCode).toBe(true);
     expect(parsed.nextPath).toBe("/auth/reset-password");
   });

@@ -15,3 +15,7 @@ additional_redirect_urls = [
   "http://localhost:5173/**",
   "http://127.0.0.1:5173/**",
 ]
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true

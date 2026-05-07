@@ -7,6 +7,10 @@ import {
   usePtHubSettings,
 } from "../../../../features/pt-hub/lib/pt-hub";
 import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from "../../../../features/notifications/hooks/use-notifications";
+import {
   DisabledSettingField,
   SettingsFieldRow,
   SettingsHelperCallout,
@@ -60,18 +64,39 @@ export function PtHubSettingsNotificationsTab() {
   const queryClient = useQueryClient();
   const { user } = useSessionAuth();
   const settingsQuery = usePtHubSettings();
+  const notificationPreferencesQuery = useNotificationPreferences(
+    user?.id ?? null,
+    "pt",
+  );
+  const updateNotificationPreferences = useUpdateNotificationPreferences(
+    user?.id ?? null,
+  );
   const [form, setForm] = useState<NotificationFormState>(defaultState);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const initialState = useMemo(() => {
+    const preferences = notificationPreferencesQuery.data;
+    if (preferences) {
+      return {
+        clientAlerts: Boolean(
+          preferences.lead_alerts &&
+          preferences.join_requests &&
+          preferences.client_escalation &&
+          preferences.missed_checkins &&
+          preferences.client_onboarding,
+        ),
+        weeklyDigest: preferences.weekly_digest !== false,
+        productUpdates: preferences.product_updates === true,
+      } satisfies NotificationFormState;
+    }
     if (!settingsQuery.data) return defaultState;
     return {
       clientAlerts: settingsQuery.data.clientAlerts,
       weeklyDigest: settingsQuery.data.weeklyDigest,
       productUpdates: settingsQuery.data.productUpdates,
     } satisfies NotificationFormState;
-  }, [settingsQuery.data]);
+  }, [notificationPreferencesQuery.data, settingsQuery.data]);
 
   useEffect(() => {
     setForm(initialState);
@@ -94,10 +119,21 @@ export function PtHubSettingsNotificationsTab() {
           productUpdates: form.productUpdates,
         },
       });
+      await updateNotificationPreferences.mutateAsync({
+        actor_type: "pt",
+        lead_alerts: form.clientAlerts,
+        join_requests: form.clientAlerts,
+        client_escalation: form.clientAlerts,
+        missed_checkins: form.clientAlerts,
+        client_onboarding: form.clientAlerts,
+        weekly_digest: form.weeklyDigest,
+        product_updates: form.productUpdates,
+      });
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["pt-hub-settings"] }),
         queryClient.invalidateQueries({ queryKey: ["pt-hub-overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
       ]);
       return true;
     } catch (error) {
@@ -123,7 +159,7 @@ export function PtHubSettingsNotificationsTab() {
     onSave: saveNotifications,
   });
 
-  if (!settingsQuery.data) {
+  if (!settingsQuery.data && !notificationPreferencesQuery.data) {
     return (
       <SettingsSectionCard
         title="Notifications"
@@ -198,20 +234,20 @@ export function PtHubSettingsNotificationsTab() {
         description="Channel-level controls are not fully supported yet."
       >
         <SettingsFieldRow label="Email channel" hint="Backend support pending.">
-          <DisabledSettingField value="Not configurable yet" />
+          <DisabledSettingField value="Use client portal settings for client channels." />
         </SettingsFieldRow>
         <SettingsFieldRow
           label="In-app channel"
           hint="Backend support pending."
         >
-          <DisabledSettingField value="Not configurable yet" />
+          <DisabledSettingField value="Always available for product notifications." />
         </SettingsFieldRow>
         <SettingsFieldRow label="Push channel" hint="Backend support pending.">
-          <DisabledSettingField value="Not configurable yet" />
+          <DisabledSettingField value="Enable push from supported devices." />
         </SettingsFieldRow>
         <SettingsHelperCallout
           title="Honest placeholder"
-          body="Channel-specific delivery controls will be enabled when backend support is available."
+          body="PT Hub stores global product preferences here. Workspace reminder rules stay in Workspace settings."
         />
       </SettingsSectionCard>
 
