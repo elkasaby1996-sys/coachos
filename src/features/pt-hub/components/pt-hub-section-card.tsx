@@ -36,21 +36,21 @@ export function PtHubSectionCard({
     <Card
       module={resolvedModule}
       className={cn(
-        "surface-panel relative overflow-hidden rounded-[30px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl",
+        "surface-panel pt-hub-surface-work relative overflow-hidden rounded-[28px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl",
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_30%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.06),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.1),transparent_40%,oklch(var(--bg-surface)/0.06))]" />
+      <div className="pt-hub-section-card-overlay pointer-events-none absolute inset-0" />
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]" />
       <CardHeader
         module={resolvedModule}
-        className="relative space-y-0 border-b border-border/55 px-5 py-4 sm:px-6"
+        className="relative space-y-0 border-b border-border/55 px-4 py-3.5 sm:px-5"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle
               module={resolvedModule}
-              className="text-[1.45rem] font-semibold uppercase tracking-[0.05em] text-foreground"
+              className="text-[1.22rem] font-semibold tracking-[0.005em] text-foreground"
             >
               {title}
             </CardTitle>
@@ -61,14 +61,14 @@ export function PtHubSectionCard({
             ) : null}
           </div>
           {actions ? (
-            <div className="pt-hub-action-shelf flex flex-wrap gap-2 rounded-[20px] p-1.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               {actions}
             </div>
           ) : null}
         </div>
       </CardHeader>
       <CardContent
-        className={cn("relative space-y-5 px-5 py-5 sm:px-6", contentClassName)}
+        className={cn("relative space-y-4 px-4 py-4 sm:px-5", contentClassName)}
       >
         {children}
       </CardContent>

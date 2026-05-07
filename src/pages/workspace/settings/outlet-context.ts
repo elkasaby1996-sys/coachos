@@ -6,6 +6,10 @@ type WorkspaceSettingsRow = {
   logo_url: string | null;
   owner_user_id: string | null;
   default_checkin_template_id: string | null;
+  timezone: string | null;
+  unit_preference: string | null;
+  week_start_day: string | null;
+  client_welcome_message: string | null;
   created_at: string | null;
   updated_at: string | null;
 };

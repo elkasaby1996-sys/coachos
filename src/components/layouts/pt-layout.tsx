@@ -53,6 +53,7 @@ import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
 import { RouteTransition } from "../common/route-transition";
+import { WorkspaceSwitcherMenu } from "../common/workspace-switcher-menu";
 import { InviteClientDialog } from "../pt/invite-client-dialog";
 import { PtMessageComposeProvider } from "../pt/pt-message-compose";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
@@ -258,6 +259,13 @@ const ptSearchRoutes: SearchResult[] = [
     href: "/pt/templates/workouts",
   },
   {
+    id: "route-nutrition",
+    type: "route",
+    label: "Nutrition Programs",
+    meta: "Nutrition templates and planning",
+    href: "/pt/nutrition-programs",
+  },
+  {
     id: "route-checkins",
     type: "route",
     label: "Check-in Templates",
@@ -406,7 +414,7 @@ function SidebarNav({
             <p
               className={cn(
                 "px-2 text-[10px] font-semibold uppercase tracking-[0.32em]",
-                isLightMode ? "text-slate-500" : "text-muted-foreground/80",
+                isLightMode ? "text-muted-foreground" : "text-muted-foreground/80",
               )}
             >
               {group.label}
@@ -614,6 +622,14 @@ export function PtLayout() {
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === headerWorkspaceId) ?? null;
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
+  const workspaceSwitcherItems = workspaces.map((workspace) => ({
+    id: workspace.id,
+    name: workspace.name,
+    meta:
+      workspace.id === headerWorkspaceId
+        ? "Current coaching workspace"
+        : "Coaching workspace",
+  }));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const profileDisplayName =
     getPreferredPersonDisplayName(
@@ -711,37 +727,53 @@ export function PtLayout() {
     queryFn: async () => {
       const wildcard = `%${normalizedSearch}%`;
 
-      const [clientsResult, programsResult, workoutsResult, checkinsResult] =
-        await Promise.all([
-          supabase
-            .from("clients")
-            .select("id, display_name, goal")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`display_name.ilike.${wildcard},goal.ilike.${wildcard}`)
-            .limit(5),
-          supabase
-            .from("program_templates")
-            .select("id, name, description")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
-            .limit(5),
-          supabase
-            .from("workout_templates")
-            .select("id, name, workout_type_tag")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`name.ilike.${wildcard},workout_type_tag.ilike.${wildcard}`)
-            .limit(5),
-          supabase
-            .from("checkin_templates")
-            .select("id, name, description")
-            .eq("workspace_id", workspaceId ?? "")
-            .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
-            .limit(5),
-        ]);
+      const [
+        clientsResult,
+        programsResult,
+        workoutsResult,
+        nutritionResult,
+        checkinsResult,
+      ] = await Promise.all([
+        supabase
+          .from("clients")
+          .select("id, display_name, goal")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(`display_name.ilike.${wildcard},goal.ilike.${wildcard}`)
+          .limit(5),
+        supabase
+          .from("program_templates")
+          .select("id, name, description, program_type_tag")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(
+            `name.ilike.${wildcard},description.ilike.${wildcard},program_type_tag.ilike.${wildcard}`,
+          )
+          .limit(5),
+        supabase
+          .from("workout_templates")
+          .select("id, name, workout_type_tag")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(`name.ilike.${wildcard},workout_type_tag.ilike.${wildcard}`)
+          .limit(5),
+        supabase
+          .from("nutrition_templates")
+          .select("id, name, description, nutrition_type_tag")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(
+            `name.ilike.${wildcard},description.ilike.${wildcard},nutrition_type_tag.ilike.${wildcard}`,
+          )
+          .limit(5),
+        supabase
+          .from("checkin_templates")
+          .select("id, name, description")
+          .eq("workspace_id", workspaceId ?? "")
+          .or(`name.ilike.${wildcard},description.ilike.${wildcard}`)
+          .limit(5),
+      ]);
 
       if (clientsResult.error) throw clientsResult.error;
       if (programsResult.error) throw programsResult.error;
       if (workoutsResult.error) throw workoutsResult.error;
+      if (nutritionResult.error) throw nutritionResult.error;
       if (checkinsResult.error) throw checkinsResult.error;
 
       const routeMatches = searchRoutes.filter((item) =>
@@ -763,7 +795,10 @@ export function PtLayout() {
           id: `program-${program.id}`,
           type: "program",
           label: program.name?.trim() || "Program",
-          meta: program.description?.trim() || "Program template",
+          meta:
+            program.program_type_tag?.trim() ||
+            program.description?.trim() ||
+            "Program template",
           href: `/pt/programs/${program.id}/edit`,
         }),
       );
@@ -775,6 +810,19 @@ export function PtLayout() {
           label: workout.name?.trim() || "Workout template",
           meta: workout.workout_type_tag?.trim() || "Workout template",
           href: `/pt/templates/workouts/${workout.id}`,
+        }),
+      );
+
+      const nutritionResults: SearchResult[] = (nutritionResult.data ?? []).map(
+        (program) => ({
+          id: `nutrition-${program.id}`,
+          type: "program",
+          label: program.name?.trim() || "Nutrition program",
+          meta:
+            program.nutrition_type_tag?.trim() ||
+            program.description?.trim() ||
+            "Nutrition program",
+          href: `/pt/nutrition/programs/${program.id}`,
         }),
       );
 
@@ -793,13 +841,14 @@ export function PtLayout() {
         ...clientResults,
         ...programResults,
         ...workoutResults,
+        ...nutritionResults,
         ...checkinResults,
       ].slice(0, 10);
     },
   });
 
   const searchResults = useMemo(() => {
-    if (normalizedSearch.length === 0) return searchRoutes.slice(0, 6);
+    if (normalizedSearch.length === 0) return [];
     return searchQuery.data ?? [];
   }, [normalizedSearch.length, searchQuery.data, searchRoutes]);
 
@@ -875,9 +924,7 @@ export function PtLayout() {
   ).toUpperCase();
 
   const searchOverlay =
-    searchOpen &&
-    searchPanelLayout &&
-    typeof document !== "undefined"
+    searchOpen && searchPanelLayout && typeof document !== "undefined"
       ? createPortal(
           <div
             ref={searchShellRef}
@@ -889,7 +936,7 @@ export function PtLayout() {
               width: searchPanelLayout.width,
             }}
           >
-            <div className="surface-panel-subtle rounded-[28px] border border-border/70 p-3 shadow-[var(--popover-shadow)] backdrop-blur-2xl sm:p-4">
+            <div className="space-y-2">
               <div className="relative w-full">
                 <Search className="app-search-icon h-3.5 w-3.5" />
                 <Input
@@ -935,44 +982,46 @@ export function PtLayout() {
                   }}
                 />
               </div>
-              <div className="mt-3 overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
-                {searchQuery.isLoading ? (
-                  <div className="px-3 py-3 text-sm text-muted-foreground">
-                    Searching workspace...
-                  </div>
-                ) : searchResults.length === 0 ? (
-                  <div className="px-3 py-3 text-sm text-muted-foreground">
-                    No matching results. Try a client name, program, or
-                    template.
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {searchResults.map((result, index) => (
-                      <button
-                        key={result.id}
-                        type="button"
-                        className={cn(
-                          "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
-                          index === searchHighlightIndex
-                            ? "bg-card/80 text-foreground"
-                            : "text-foreground/90 hover:bg-card/72",
-                        )}
-                        onMouseEnter={() => setSearchHighlightIndex(index)}
-                        onClick={() => handleSearchSelect(result)}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {result.label}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {result.meta}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {normalizedSearch.length > 0 ? (
+                <div className="overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
+                  {searchQuery.isLoading ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">
+                      Searching workspace...
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">
+                      No matching results. Try a client name, program, or
+                      template.
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {searchResults.map((result, index) => (
+                        <button
+                          key={result.id}
+                          type="button"
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors",
+                            index === searchHighlightIndex
+                              ? "bg-card/80 text-foreground"
+                              : "text-foreground/90 hover:bg-card/72",
+                          )}
+                          onMouseEnter={() => setSearchHighlightIndex(index)}
+                          onClick={() => handleSearchSelect(result)}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {result.label}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {result.meta}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>,
           document.body,
@@ -1016,7 +1065,7 @@ export function PtLayout() {
         className="pt-workspace-theme theme-shell-canvas relative isolate min-h-screen overflow-hidden"
         style={getModuleToneStyle(currentModule)}
       >
-        <AppShellBackgroundLayer />
+        <AppShellBackgroundLayer mode={isLightMode ? "light" : "dark"} />
         <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
           <Card className="w-full max-w-md">
             <CardHeader>
@@ -1047,7 +1096,7 @@ export function PtLayout() {
       )}
       style={getModuleToneStyle(currentModule)}
     >
-      <AppShellBackgroundLayer />
+      <AppShellBackgroundLayer mode={isLightMode ? "light" : "dark"} />
       <div
         className={cn(
           "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition lg:hidden",
@@ -1106,7 +1155,7 @@ export function PtLayout() {
         >
           <aside
             className={cn(
-              "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:p-3",
+              "hidden lg:fixed lg:bottom-[72px] lg:left-0 lg:top-0 lg:z-30 lg:block lg:p-3",
               desktopNavCollapsed ? "lg:w-[128px]" : "lg:w-[320px]",
             )}
           >
@@ -1248,7 +1297,9 @@ export function PtLayout() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className={getHeaderBellButtonClassName(isLightMode)}
+                            className={getHeaderBellButtonClassName(
+                              isLightMode,
+                            )}
                             aria-expanded={searchOpen}
                             aria-controls="pt-workspace-search-panel"
                             aria-label="Open workspace search"
@@ -1315,78 +1366,28 @@ export function PtLayout() {
                               </span>
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            variant="menu"
-                            align="end"
-                            sideOffset={10}
-                            className="w-72"
-                          >
-                            <DropdownMenuLabel>
-                              Active workspace
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => navigate("/pt-hub")}
-                            >
-                              <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <span className="app-dropdown-icon-badge">
-                                  <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="truncate font-medium text-foreground">
-                                    Repsync PT Hub
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Business and admin workspace
-                                  </p>
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {workspaceSwitcherQuery.isLoading ? (
-                              <DropdownMenuItem disabled>
-                                Loading workspaces...
-                              </DropdownMenuItem>
-                            ) : workspaces.length === 0 ? (
-                              <DropdownMenuItem disabled>
-                                No workspaces found
-                              </DropdownMenuItem>
-                            ) : (
-                              workspaces.map((workspace) => (
-                                <DropdownMenuItem
-                                  key={workspace.id}
-                                  onClick={() => {
-                                    switchWorkspace(workspace.id);
-                                    navigate("/pt/dashboard");
-                                  }}
-                                >
-                                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                                    <span className="app-dropdown-icon-badge">
-                                      <Building2 className="h-4 w-4 [stroke-width:1.7]" />
-                                    </span>
-                                    <p className="truncate font-medium text-foreground">
-                                      {workspace.name?.trim() || "PT Workspace"}
-                                    </p>
-                                  </div>
-                                  {workspace.id === headerWorkspaceId ? (
-                                    <Check className="h-4 w-4 text-primary [stroke-width:1.9]" />
-                                  ) : null}
-                                </DropdownMenuItem>
-                              ))
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setCreateWorkspaceError(null);
-                                setCreateWorkspaceOpen(true);
-                              }}
-                            >
-                              <span className="app-dropdown-icon-badge">
-                                <Plus className="h-4 w-4 [stroke-width:1.7]" />
-                              </span>
-                              Create workspace
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                          <WorkspaceSwitcherMenu
+                            label="Active workspace"
+                            hubLabel="Repsync PT Hub"
+                            hubMeta="Business and admin workspace"
+                            hubActive={false}
+                            onSelectHub={() => navigate("/pt-hub")}
+                            workspaces={workspaceSwitcherItems}
+                            currentWorkspaceId={headerWorkspaceId}
+                            onSelectWorkspace={(selectedWorkspaceId) => {
+                              switchWorkspace(selectedWorkspaceId);
+                              navigate("/pt/dashboard");
+                            }}
+                            loading={workspaceSwitcherQuery.isLoading}
+                            loadingLabel="Loading workspaces..."
+                            emptyLabel="No workspaces found"
+                            createLabel="Create workspace"
+                            createMeta="Start a new coaching workspace"
+                            onCreateWorkspace={() => {
+                              setCreateWorkspaceError(null);
+                              setCreateWorkspaceOpen(true);
+                            }}
+                          />
                         </DropdownMenu>
 
                         <DropdownMenu>
@@ -1429,14 +1430,14 @@ export function PtLayout() {
                               onClick={() => navigate(workspaceSettingsPath)}
                             >
                               <span className="app-dropdown-icon-badge">
-                                <Settings className="h-4 w-4 [stroke-width:1.7]" />
+                                <Settings className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                               </span>
                               Settings
                             </DropdownMenuItem>
                             <div className="app-dropdown-utility-row">
                               <div className="flex min-w-0 items-center gap-3">
                                 <span className="app-dropdown-icon-badge">
-                                  <Moon className="h-4 w-4 [stroke-width:1.7]" />
+                                  <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                                 </span>
                                 <span className="text-sm font-medium text-foreground">
                                   Theme
@@ -1455,7 +1456,7 @@ export function PtLayout() {
                               onClick={signOut}
                             >
                               <span className="app-dropdown-icon-badge">
-                                <LogOut className="h-4 w-4 [stroke-width:1.7]" />
+                                <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
                               </span>
                               {isSigningOut ? "Signing out..." : "Sign out"}
                             </DropdownMenuItem>

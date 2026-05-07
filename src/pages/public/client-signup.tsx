@@ -4,7 +4,12 @@ import { Globe, UserRound } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import {
@@ -15,7 +20,10 @@ import {
   persistSignupIntent,
   persistPendingInviteToken,
 } from "../../lib/account-profiles";
-import { signInWithOAuth, signUpWithEmailPassword } from "../../lib/auth-helpers";
+import {
+  signInWithOAuth,
+  signUpWithEmailPassword,
+} from "../../lib/auth-helpers";
 import {
   getAuthenticatedRedirectPath,
   useBootstrapAuth,
@@ -38,7 +46,10 @@ export function ClientSignupPage() {
   } = useBootstrapAuth();
   const { authLoading, session, user } = useSessionAuth();
   const pendingInviteToken = useMemo(
-    () => extractInviteToken(searchParams.get("invite") ?? getPendingInviteToken() ?? ""),
+    () =>
+      extractInviteToken(
+        searchParams.get("invite") ?? getPendingInviteToken() ?? "",
+      ),
     [searchParams],
   );
   const [fullName, setFullName] = useState("");
@@ -145,7 +156,9 @@ export function ClientSignupPage() {
       );
     } catch (nextError) {
       setError(
-        nextError instanceof Error ? nextError.message : "Unable to create account.",
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to create account.",
       );
     } finally {
       setBusyAction("idle");
@@ -175,7 +188,10 @@ export function ClientSignupPage() {
       if (pendingInviteToken) {
         persistPendingInviteToken(pendingInviteToken);
       }
-      window.localStorage.setItem("coachos_client_signup_name", fullName.trim());
+      window.localStorage.setItem(
+        "coachos_client_signup_name",
+        fullName.trim(),
+      );
       const { error: oauthError } = await signInWithOAuth(
         "google",
         `${window.location.origin}${targetHref}`,
@@ -183,7 +199,9 @@ export function ClientSignupPage() {
       if (oauthError) throw oauthError;
     } catch (nextError) {
       setError(
-        nextError instanceof Error ? nextError.message : "Unable to continue with Google.",
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to continue with Google.",
       );
       setBusyAction("idle");
     }
@@ -197,15 +215,18 @@ export function ClientSignupPage() {
             <UserRound className="h-5 w-5" />
           </div>
           <div className="space-y-1.5">
-            <CardTitle className="text-2xl">Create your client account</CardTitle>
+            <CardTitle className="text-2xl">
+              Create your client account
+            </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Build your profile now and connect to a coach whenever you're ready.
+              Build your profile now and connect to a coach whenever you're
+              ready.
             </p>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form className="space-y-4" onSubmit={handleEmailSignup}>
-            <div className="space-y-2">
+          <form className="app-form-grid" onSubmit={handleEmailSignup}>
+            <div className="app-form-col-12 space-y-2">
               <label htmlFor="client-full-name" className="text-sm font-medium">
                 Full name
               </label>
@@ -222,7 +243,7 @@ export function ClientSignupPage() {
                 errorText={fullNameLimitState.errorText}
               />
             </div>
-            <div className="space-y-2">
+            <div className="app-form-col-12 space-y-2">
               <label htmlFor="client-email" className="text-sm font-medium">
                 Email
               </label>
@@ -240,7 +261,7 @@ export function ClientSignupPage() {
                 errorText={emailLimitState.errorText}
               />
             </div>
-            <div className="space-y-2">
+            <div className="app-form-col-12 space-y-2">
               <label htmlFor="client-password" className="text-sm font-medium">
                 Password
               </label>
@@ -254,18 +275,18 @@ export function ClientSignupPage() {
             </div>
 
             {error ? (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div className="app-form-col-12 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             ) : null}
             {notice ? (
-              <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+              <div className="app-form-col-12 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
                 {notice}
               </div>
             ) : null}
 
             <Button
-              className="h-11 w-full"
+              className="app-form-col-12 h-11 w-full"
               type="submit"
               disabled={busyAction !== "idle" || hasOverLimitErrors}
             >
@@ -286,7 +307,9 @@ export function ClientSignupPage() {
             disabled={busyAction !== "idle" || hasOverLimitErrors}
           >
             <Globe className="h-4 w-4" />
-            {busyAction === "google" ? "Redirecting..." : "Continue with Google"}
+            {busyAction === "google"
+              ? "Redirecting..."
+              : "Continue with Google"}
           </Button>
 
           {pendingInviteToken ? (
@@ -296,7 +319,10 @@ export function ClientSignupPage() {
           ) : null}
 
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account? <Link className="text-foreground underline" to="/login">Sign in</Link>
+            Already have an account?{" "}
+            <Link className="text-foreground underline" to="/login">
+              Sign in
+            </Link>
           </p>
         </CardContent>
       </Card>

@@ -62,6 +62,9 @@ export interface PtHubOverviewSummaryItem {
   value: string;
   detail?: string;
   tone?: SummaryTone;
+  href?: string;
+  ctaLabel?: string;
+  workspaceId?: string | null;
 }
 
 export interface PtHubOverviewQuickAction {
@@ -110,28 +113,6 @@ function buildMetricDelta(
   return {
     value: `${rounded > 0 ? "+" : rounded < 0 ? "-" : ""}${Math.abs(rounded)}${suffix}`,
     tone: rounded === 0 ? "neutral" : rounded > 0 ? "info" : "danger",
-  };
-}
-
-function buildEarningsMetric(
-  revenue: PTRevenueSnapshot | null | undefined,
-): PtHubOverviewMetric {
-  const revenueConnected = revenue?.revenueConnected === true;
-  const monthlyEarningsValue =
-    revenueConnected && revenue?.monthlyRevenueLabel
-      ? revenue.monthlyRevenueLabel
-      : "TBW";
-
-  return {
-    id: "monthly-earnings",
-    label: "Monthly earnings",
-    value: monthlyEarningsValue,
-    helper: "This month",
-    href: "/pt-hub/payments",
-    delta: {
-      value: revenueConnected ? "Live" : "Pending",
-      tone: getSemanticToneForStatus(revenueConnected ? "Live" : "Pending"),
-    },
   };
 }
 
@@ -253,7 +234,6 @@ function getOverviewMode(params: {
 function buildMetrics(params: {
   stats: PTOverviewStats | null | undefined;
   clientStats: ReturnType<typeof getPtClientBaseStats>;
-  revenue: PTRevenueSnapshot | null | undefined;
 }) {
   const leadDelta = buildMetricDelta(
     (params.stats?.applicationsThisMonth ?? 0) -
@@ -264,19 +244,24 @@ function buildMetrics(params: {
     params.clientStats.onboardingIncompleteClients;
 
   return [
-    buildEarningsMetric(params.revenue),
     {
       id: "active-clients",
       label: "Active clients",
       value: params.clientStats.activeClients,
-      helper: "Across all workspaces",
+      helper:
+        params.clientStats.activeClients > 0
+          ? "Clients in service"
+          : "No active clients yet",
       href: "/pt-hub/clients",
     },
     {
       id: "new-leads-month",
       label: "New leads",
       value: params.stats?.applicationsThisMonth ?? 0,
-      helper: "This month",
+      helper:
+        (params.stats?.applicationsThisMonth ?? 0) > 0
+          ? "Leads this month"
+          : "No new leads this month",
       href: "/pt-hub/leads",
       delta: leadDelta,
     },
@@ -284,7 +269,8 @@ function buildMetrics(params: {
       id: "checkins-due",
       label: "Check-ins due",
       value: overdueCheckinCount,
-      helper: "Due or overdue",
+      helper:
+        overdueCheckinCount > 0 ? "Needs review today" : "No reviews waiting",
       href: "/pt/checkins",
       delta:
         overdueCheckinCount > 0
@@ -301,7 +287,10 @@ function buildMetrics(params: {
       id: "onboarding-in-progress",
       label: "Onboarding in progress",
       value: onboardingInProgressCount,
-      helper: "Still onboarding",
+      helper:
+        onboardingInProgressCount > 0
+          ? "Clients still entering service"
+          : "No setup blockers",
       href: "/pt-hub/clients",
       delta:
         onboardingInProgressCount > 0
@@ -404,8 +393,8 @@ function buildActionItems(params: {
         : "Check at-risk clients",
       badge: formatCount(params.clientStats.atRiskClients, "client"),
       description: mostUrgentAtRiskClient
-        ? `${params.clientStats.atRiskClients} client(s) are carrying risk signals across the business. Start in ${mostUrgentAtRiskClient.workspaceName}.`
-        : "These clients are carrying risk signals such as missed check-ins, low responsiveness, or inactivity across the business.",
+        ? `${params.clientStats.atRiskClients} client(s) need a closer look. Start in ${mostUrgentAtRiskClient.workspaceName}.`
+        : "These clients have missed check-ins, low replies, or recent inactivity.",
       href: mostUrgentAtRiskClient
         ? `/pt/clients/${mostUrgentAtRiskClient.id}`
         : "/pt-hub/clients",
@@ -430,7 +419,7 @@ function buildActionItems(params: {
       ),
       description: mostUrgentOnboardingClient
         ? `${params.clientStats.onboardingIncompleteClients} client(s) are still missing onboarding steps. Start in ${mostUrgentOnboardingClient.workspaceName}.`
-        : "Some clients are still missing onboarding steps, which makes delivery and accountability harder to manage.",
+        : "Some clients are still missing onboarding steps, which makes plans and check-ins harder to manage.",
       href: mostUrgentOnboardingClient
         ? `/pt/clients/${mostUrgentOnboardingClient.id}`
         : "/pt-hub/clients",
@@ -449,7 +438,7 @@ function buildActionItems(params: {
       label: "Finish profile setup",
       badge: formatCount(incompleteChecklist.length, "blocker"),
       description:
-        "Finish the missing coach-page basics so your public presence supports the business instead of holding it back.",
+        "Finish the missing coach-page basics so people can understand your offer and contact you.",
       href: "/pt-hub/profile",
       ctaLabel: "Open profile setup",
       tone: getSemanticToneForStatus("Setup in progress"),
@@ -463,7 +452,7 @@ function buildActionItems(params: {
       label: "Publish your public profile",
       badge: params.publicationState?.canPublish ? "Ready to publish" : "Draft",
       description: params.publicationState?.canPublish
-        ? "Your coach page is ready to go live so the business can start collecting real inquiries."
+        ? "Your coach page is ready to go live and collect leads."
         : "Finish the key setup blockers first, then publish the coach page so people can discover you.",
       href: "/pt-hub/profile",
       ctaLabel: params.publicationState?.canPublish
@@ -482,7 +471,7 @@ function buildActionItems(params: {
       label: "Create your first coaching space",
       badge: "Not created",
       description:
-        "Set up the first coaching space so the business has a delivery home for new and active clients.",
+        "Set up the first coaching space so clients have a place for plans, check-ins, and messages.",
       href: "/pt-hub/workspaces",
       ctaLabel: "Create coaching space",
       tone: getSemanticToneForStatus("Not created"),
@@ -493,10 +482,10 @@ function buildActionItems(params: {
   if (params.leads.length === 0) {
     upsertAction({
       id: "start-lead-flow",
-      label: "Start lead flow",
+      label: "Get your first lead",
       badge: "No leads yet",
       description:
-        "Review the coach page, make sure the positioning is clear, and start sharing it to bring in the first inquiry.",
+        "Review your coach page, then share it so a potential client can contact you.",
       href: "/pt-hub/profile/preview",
       ctaLabel: "Review coach page",
       tone: "neutral",
@@ -595,7 +584,7 @@ function buildLaunchChecklist(params: {
       id: "acquire-first-lead",
       label: "Bring in your first lead",
       description:
-        "Share the public profile once it looks right so the first inquiry has somewhere to come from.",
+        "Share your coach page once it looks right so potential clients can contact you.",
       href: "/pt-hub/profile/preview",
       ctaLabel: "Open preview",
       complete: params.leads.length > 0,
@@ -619,19 +608,19 @@ function buildQuickActions(): PtHubOverviewQuickAction[] {
     {
       id: "coaching-spaces",
       label: "Coaching spaces",
-      description: "Create or open the spaces where coaching delivery happens.",
+      description: "Create or open client workspaces.",
       href: "/pt-hub/workspaces",
     },
     {
       id: "lead-inbox",
       label: "Lead inbox",
-      description: "Review inquiries and move them into the pipeline.",
+      description: "Reply to new leads and update their status.",
       href: "/pt-hub/leads",
     },
     {
       id: "clients",
       label: "Clients",
-      description: "Check onboarding, risk, and delivery follow-up.",
+      description: "Check onboarding, risk, and follow-ups.",
       href: "/pt-hub/clients",
     },
     {
@@ -653,24 +642,32 @@ function buildPipelineSummary(params: {
       label: "Awaiting response",
       value: formatCount(getUnrepliedLeadCount(params.leads), "lead"),
       tone: getSemanticToneForStatus("Awaiting response"),
+      href: "/pt-hub/leads",
+      ctaLabel: "Open leads",
     },
     {
       id: "pipeline-moving",
       label: "In progress",
       value: formatCount(getPipelineLeadCount(params.leads), "lead"),
       tone: getSemanticToneForStatus("In progress"),
+      href: "/pt-hub/leads",
+      ctaLabel: "Open leads",
     },
     {
       id: "converted",
       label: "Converted",
       value: formatCount(getAcceptedLeadCount(params.leads), "lead"),
       tone: getSemanticToneForStatus("Converted"),
+      href: "/pt-hub/leads",
+      ctaLabel: "View conversions",
     },
     {
       id: "new-this-month",
       label: "New this month",
       value: formatCount(params.stats?.applicationsThisMonth ?? 0, "lead"),
       tone: getSemanticToneForStatus("New this month"),
+      href: "/pt-hub/leads",
+      ctaLabel: "Open leads",
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }
@@ -685,18 +682,24 @@ function buildClientHealthSummary(params: {
       label: "Needs attention",
       value: formatCount(params.clientsNeedingAttentionCount, "client"),
       tone: getSemanticToneForStatus("Needs attention"),
+      href: "/pt-hub/clients",
+      ctaLabel: "Open clients",
     },
     {
       id: "at-risk",
       label: "At risk",
       value: formatCount(params.clientStats.atRiskClients, "client"),
       tone: getSemanticToneForStatus("At risk"),
+      href: "/pt-hub/clients",
+      ctaLabel: "Review risk",
     },
     {
       id: "checkin-overdue",
       label: "Check-ins overdue",
       value: formatCount(params.clientStats.overdueCheckinClients, "client"),
       tone: getSemanticToneForStatus("Overdue"),
+      href: "/pt/checkins",
+      ctaLabel: "Open check-ins",
     },
     {
       id: "onboarding-incomplete",
@@ -706,6 +709,8 @@ function buildClientHealthSummary(params: {
         "client",
       ),
       tone: getSemanticToneForStatus("Onboarding incomplete"),
+      href: "/pt-hub/clients",
+      ctaLabel: "Review onboarding",
     },
   ] satisfies PtHubOverviewSummaryItem[];
 }
@@ -724,19 +729,19 @@ function buildBusinessSummary(params: {
   return [
     {
       id: "business-state",
-      label: "Business state",
+      label: "Setup status",
       value: params.stats?.businessHealthLabel ?? "Setup in progress",
       detail:
-        "A quick read on whether the business is still being set up or already building momentum.",
+        "Shows whether you still need setup work or can focus on clients and leads.",
       tone: "info",
     },
     {
       id: "workspace-system",
-      label: "Workspace system",
+      label: "Coaching spaces",
       value: formatCount(params.workspaces.length, "space"),
       detail: latestWorkspace
         ? `Latest workspace: ${latestWorkspace.name}`
-        : "Create the first coaching space so clients have a real delivery home.",
+        : "Create the first coaching space so clients have a place for plans and check-ins.",
       tone: "neutral",
     },
     {
@@ -744,8 +749,8 @@ function buildBusinessSummary(params: {
       label: "Coach page",
       value: params.publicationState?.isPublished ? "Live" : "Draft",
       detail: params.publicationState?.isPublished
-        ? "Your public-facing page is live and can support inbound lead flow."
-        : "The public-facing page is not live yet, so discovery and lead capture are still limited.",
+        ? "Your coach page is live and can collect leads."
+        : "Publish your coach page so people can find you and contact you.",
       tone: getSemanticToneForStatus(
         params.publicationState?.isPublished ? "Published" : "Draft",
       ),
@@ -758,8 +763,8 @@ function buildBusinessSummary(params: {
         unpublishedBlockers > 0
           ? `${unpublishedBlockers} profile item(s) still need attention.`
           : params.leads.length > 0
-            ? "The coach page is ready to support real demand."
-            : "The coach page is in a healthy place and ready to support lead generation.",
+            ? "Your coach page is ready for new leads."
+            : "Your coach page is ready to share.",
       tone: getSemanticToneForStatus(
         unpublishedBlockers > 0 ? "Onboarding incomplete" : "Healthy",
       ),
@@ -782,7 +787,7 @@ function buildBillingSummary(params: {
     {
       id: "billing-status",
       label: "Billing state",
-      value: params.subscription?.billingStatus ?? "Billing placeholder",
+      value: params.subscription?.billingStatus ?? "Manual billing",
       detail:
         params.subscription?.billingConnected === true
           ? "Billing is connected"
@@ -851,17 +856,15 @@ export function getPtHubOverviewDashboardModel(
 
   return {
     mode,
-    modeLabel:
-      mode === "activation" ? "Business foundations" : "Operating dashboard",
+    modeLabel: mode === "activation" ? "Setup mode" : "Operating mode",
     modeDescription:
       mode === "activation"
-        ? "Build the business foundation across workspace setup, coach-page trust, and lead readiness."
-        : "Focus on the next decisions that keep leads moving, clients healthy, and delivery on track.",
+        ? "Publish your coach page, create a coaching space, and get your first lead."
+        : "Reply to leads, check clients, and keep coaching work moving.",
     setupCompletionPercent,
     metrics: buildMetrics({
       stats: params.stats,
       clientStats,
-      revenue: params.revenue,
     }),
     actionItems: buildActionItems({
       readiness: params.readiness,

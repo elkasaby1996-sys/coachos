@@ -4,8 +4,8 @@ import { formatRelativeTime } from "../../../lib/relative-time";
 import { cn } from "../../../lib/utils";
 import {
   getNotificationIcon,
-  getNotificationIconClasses,
   getNotificationModuleTone,
+  getNotificationTitle,
   getNotificationTypeLabel,
 } from "../lib/notification-utils";
 import type { NotificationRecord } from "../lib/types";
@@ -32,6 +32,15 @@ export function NotificationItem({
   const hasAction = Boolean(notification.action_url);
   const module = getNotificationModuleTone(notification);
   const moduleClasses = getModuleToneClasses(module);
+  const title = getNotificationTitle(notification, audience);
+  const body = notification.body.trim();
+  const compactHeadline =
+    compact &&
+    audience === "pt" &&
+    body &&
+    title.localeCompare(typeLabel, undefined, { sensitivity: "accent" }) === 0
+      ? body
+      : title;
 
   return (
     <button
@@ -49,22 +58,17 @@ export function NotificationItem({
     >
       <div
         className={cn(
-          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
-          getNotificationIconClasses(notification),
-          moduleClasses.iconBadge,
-          compact ? "h-9 w-9 rounded-lg" : "",
+          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center",
+          compact ? "h-9 w-9" : "",
         )}
       >
         <Icon className={cn("h-4 w-4", moduleClasses.title)} />
       </div>
-      <div className="min-w-0 flex-1 space-y-2">
+      <div
+        className={cn("min-w-0 flex-1", compact ? "space-y-1.5" : "space-y-2")}
+      >
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "text-xs font-medium",
-              moduleClasses.text,
-            )}
-          >
+          <span className={cn("text-xs font-medium", moduleClasses.text)}>
             {typeLabel}
           </span>
           {notification.priority === "high" ? (
@@ -81,11 +85,13 @@ export function NotificationItem({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0 space-y-1">
             <p className="line-clamp-1 text-sm font-semibold text-foreground">
-              {notification.title}
+              {compact ? compactHeadline : title}
             </p>
-            <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-              {notification.body}
-            </p>
+            {!compact ? (
+              <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                {body}
+              </p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2 sm:pl-2">
             <span className="shrink-0 text-xs text-muted-foreground">
@@ -99,9 +105,11 @@ export function NotificationItem({
             />
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>{hasAction ? "Open update" : "For reference"}</span>
-        </div>
+        {!compact ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>{hasAction ? "Open update" : "For reference"}</span>
+          </div>
+        ) : null}
       </div>
     </button>
   );

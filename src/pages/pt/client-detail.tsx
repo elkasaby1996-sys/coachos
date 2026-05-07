@@ -105,6 +105,7 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { getNextCheckinDueDate } from "../../lib/checkin-schedule";
 import {
+  checkinOperationalStatusMap,
   checkinReviewStatusMap,
   getCheckinReviewState,
 } from "../../lib/checkin-review";
@@ -1273,7 +1274,7 @@ export function PtClientDetailPage() {
 
   const activeProgramQuery = useQuery({
     queryKey: ["client-program-active", clientId],
-    enabled: !!clientId && (isWorkoutTab || isOnboardingTab || isOverviewTab),
+    enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_programs")
@@ -1360,7 +1361,7 @@ export function PtClientDetailPage() {
 
   const upcomingQuery = useQuery({
     queryKey: ["assigned-workouts-upcoming", clientId, todayKey, planEndKey],
-    enabled: !!clientId && needsWorkoutPlanningData,
+    enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assigned_workouts")
@@ -1394,7 +1395,7 @@ export function PtClientDetailPage() {
 
   const workoutSessionsQuery = useQuery({
     queryKey: ["workout-sessions", upcomingAssignedWorkoutIds],
-    enabled: upcomingAssignedWorkoutIds.length > 0 && isOverviewTab,
+    enabled: upcomingAssignedWorkoutIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_sessions")
@@ -1422,7 +1423,7 @@ export function PtClientDetailPage() {
 
   const workoutSetLogsQuery = useQuery({
     queryKey: ["workout-set-logs", workoutSessionIds],
-    enabled: workoutSessionIds.length > 0 && isOverviewTab,
+    enabled: workoutSessionIds.length > 0,
     queryFn: async () => {
       if (workoutSessionIds.length === 0) return [];
       const { data, error } = await supabase
@@ -1452,6 +1453,27 @@ export function PtClientDetailPage() {
     });
     return map;
   }, [workoutSetLogsQuery.data, workoutSessionIdMap]);
+
+  const recentAssignedWorkoutsQuery = useQuery({
+    queryKey: ["assigned-workouts-recent", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assigned_workouts")
+        .select("id, status, scheduled_date, created_at, completed_at")
+        .eq("client_id", clientId ?? "")
+        .order("scheduled_date", { ascending: false })
+        .limit(24);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string;
+        status: string | null;
+        scheduled_date: string | null;
+        created_at: string | null;
+        completed_at: string | null;
+      }>;
+    },
+  });
 
   const assignedExercisesQuery = useQuery({
     queryKey: ["assigned-workout-exercises", selectedAssignedWorkoutId],
@@ -1598,7 +1620,7 @@ export function PtClientDetailPage() {
 
   const checkinsQuery = useQuery({
     queryKey: ["pt-client-checkins", clientId, active, checkinsPage],
-    enabled: !!clientId && needsCheckinsData,
+    enabled: !!clientId,
     queryFn: async () => {
       const { error: ensureError } = await supabase.rpc(
         "ensure_client_checkins",
@@ -1617,7 +1639,7 @@ export function PtClientDetailPage() {
         )
         .eq("client_id", clientId ?? "")
         .order("week_ending_saturday", { ascending: false });
-      if (active === "overview") {
+      if (active !== "checkins") {
         const { data, error } = await base.limit(6);
         if (error) throw error;
         return (data ?? []) as CheckinRow[];
@@ -1663,7 +1685,7 @@ export function PtClientDetailPage() {
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
-    enabled: !!clientId && !!habitsToday && needsHabitsSummaryData,
+    enabled: !!clientId && !!habitsToday,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
@@ -1695,7 +1717,7 @@ export function PtClientDetailPage() {
 
   const habitsStreakQuery = useQuery({
     queryKey: ["pt-client-habits-streak", clientId, habitsToday],
-    enabled: !!clientId && !!habitsToday && needsHabitsSummaryData,
+    enabled: !!clientId && !!habitsToday,
     queryFn: async () => {
       const streakStart = addDaysToDateString(habitsToday, -29);
       const { data, error } = await supabase
@@ -2735,39 +2757,90 @@ export function PtClientDetailPage() {
     return adherenceStat - previousAdherenceStat;
   }, [adherenceStat, previousAdherenceStat]);
 
-  const lastCheckin = useMemo(() => {
+  const latestClosedCheckin = useMemo(() => {
     if (!checkinsRows || checkinsRows.length === 0) return null;
-    const latest = checkinsRows[0];
-    return latest.submitted_at ?? latest.week_ending_saturday ?? null;
+    return (
+      [...checkinsRows]
+        .filter((row) => row.submitted_at || row.reviewed_at)
+        .sort((a, b) => {
+          const aDate =
+            a.reviewed_at ??
+            a.submitted_at ??
+            a.week_ending_saturday ??
+            a.created_at ??
+            "";
+          const bDate =
+            b.reviewed_at ??
+            b.submitted_at ??
+            b.week_ending_saturday ??
+            b.created_at ??
+            "";
+          return bDate.localeCompare(aDate);
+        })[0] ?? null
+    );
   }, [checkinsRows]);
 
-  const checkinStatus = useMemo(() => {
+  const primaryPendingCheckin = useMemo(() => {
     if (!checkinsRows || checkinsRows.length === 0) return null;
-    const latest = checkinsRows[0];
-    return checkinReviewStatusMap[getCheckinReviewState(latest, todayKey)]
-      .label;
-  }, [checkinsRows, todayKey]);
+    return (
+      [...checkinsRows]
+        .filter((row) => !row.submitted_at && !row.reviewed_at)
+        .sort((a, b) =>
+          (a.week_ending_saturday ?? "").localeCompare(
+            b.week_ending_saturday ?? "",
+          ),
+        )[0] ?? null
+    );
+  }, [checkinsRows]);
+
+  const lastCheckin = useMemo(() => {
+    if (latestClosedCheckin) {
+      return (
+        latestClosedCheckin.reviewed_at ??
+        latestClosedCheckin.submitted_at ??
+        latestClosedCheckin.week_ending_saturday ??
+        null
+      );
+    }
+    return primaryPendingCheckin?.week_ending_saturday ?? null;
+  }, [latestClosedCheckin, primaryPendingCheckin]);
+
+  const checkinStatus = useMemo(() => {
+    if (latestClosedCheckin) {
+      return checkinReviewStatusMap[
+        getCheckinReviewState(latestClosedCheckin, todayKey)
+      ].label;
+    }
+    if (primaryPendingCheckin) {
+      return checkinOperationalStatusMap[
+        getCheckinReviewState(primaryPendingCheckin, todayKey)
+      ].label;
+    }
+    return null;
+  }, [latestClosedCheckin, primaryPendingCheckin, todayKey]);
 
   const lastWorkout = useMemo(() => {
     if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) {
       return workoutSetLogsQuery.data[0].created_at ?? null;
     }
-    const completed = (upcomingQuery.data ?? []).find(
-      (row) => row.status === "completed",
+    const completed = (recentAssignedWorkoutsQuery.data ?? []).find(
+      (row) => row.status === "completed" || !!row.completed_at,
     );
     return completed?.completed_at ?? completed?.scheduled_date ?? null;
-  }, [workoutSetLogsQuery.data, upcomingQuery.data]);
+  }, [recentAssignedWorkoutsQuery.data, workoutSetLogsQuery.data]);
 
   const lastWorkoutStatus = useMemo(() => {
     if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0)
       return "Completed";
-    const completed = (upcomingQuery.data ?? []).find(
-      (row) => row.status === "completed",
+    const completed = (recentAssignedWorkoutsQuery.data ?? []).find(
+      (row) => row.status === "completed" || !!row.completed_at,
     );
     if (completed) return "Completed";
-    const planned = (upcomingQuery.data ?? [])[0];
+    const planned = (recentAssignedWorkoutsQuery.data ?? []).find(
+      (row) => row.status !== "completed",
+    );
     return planned ? "Planned" : null;
-  }, [workoutSetLogsQuery.data, upcomingQuery.data]);
+  }, [recentAssignedWorkoutsQuery.data, workoutSetLogsQuery.data]);
 
   const lastSeen = useMemo(() => {
     if (clientSnapshot?.updated_at)
@@ -2831,6 +2904,24 @@ export function PtClientDetailPage() {
       )
       .slice(0, 5);
   }, [checkinsRows, habitsToday, todayKey]);
+  const nextScheduledCheckin = useMemo(() => {
+    if (!checkinsRows || checkinsRows.length === 0) return null;
+    return (
+      [...checkinsRows]
+        .filter(
+          (checkin) =>
+            checkin.week_ending_saturday &&
+            !checkin.submitted_at &&
+            !checkin.reviewed_at &&
+            checkin.week_ending_saturday >= todayKey,
+        )
+        .sort((a, b) =>
+          (a.week_ending_saturday ?? "").localeCompare(
+            b.week_ending_saturday ?? "",
+          ),
+        )[0] ?? null
+    );
+  }, [checkinsRows, todayKey]);
 
   const todaySession = useMemo(() => {
     return (
@@ -3862,8 +3953,13 @@ export function PtClientDetailPage() {
   const identityLoading = clientQuery.isLoading;
   const scheduleLoading = templatesQuery.isLoading || upcomingQuery.isLoading;
   const statsLoading =
-    coachActivityQuery.isLoading ||
+    activeProgramQuery.isLoading ||
+    upcomingQuery.isLoading ||
+    workoutSessionsQuery.isLoading ||
+    workoutSetLogsQuery.isLoading ||
+    recentAssignedWorkoutsQuery.isLoading ||
     habitsQuery.isLoading ||
+    habitsStreakQuery.isLoading ||
     checkinsQuery.isLoading;
 
   return (
@@ -3955,8 +4051,8 @@ export function PtClientDetailPage() {
                         clientSnapshot?.timezone,
                       ]
                         .filter(Boolean)
-                        .join(" â€¢ ") || "Client coaching view"}
-                      {joinedLabel ? ` â€¢ Joined ${joinedLabel}` : ""}
+                        .join(" • ") || "Client coaching view"}
+                      {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       <span className="ops-chip text-muted-foreground">
@@ -4002,7 +4098,7 @@ export function PtClientDetailPage() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={openProfileEdit}>
                         <span className="app-dropdown-icon-badge">
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4 text-[var(--module-profile-text)]" />
                         </span>
                         Edit profile
                       </DropdownMenuItem>
@@ -4011,9 +4107,9 @@ export function PtClientDetailPage() {
                       >
                         <span className="app-dropdown-icon-badge">
                           {isOverviewCollapsed ? (
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4 text-[var(--module-profile-text)]" />
                           ) : (
-                            <EyeOff className="h-4 w-4" />
+                            <EyeOff className="h-4 w-4 text-[var(--module-profile-text)]" />
                           )}
                         </span>
                         {isOverviewCollapsed
@@ -4025,7 +4121,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("active")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <Play className="h-4 w-4" />
+                          <Play className="h-4 w-4 text-[var(--state-success-text)]" />
                         </span>
                         Mark active
                       </DropdownMenuItem>
@@ -4033,7 +4129,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("paused")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <Moon className="h-4 w-4" />
+                          <Moon className="h-4 w-4 text-[var(--state-warning-text)]" />
                         </span>
                         Mark paused
                       </DropdownMenuItem>
@@ -4045,7 +4141,7 @@ export function PtClientDetailPage() {
                         }
                       >
                         <span className="app-dropdown-icon-badge">
-                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTriangle className="h-4 w-4 text-[var(--state-danger-text)]" />
                         </span>
                         {clientSnapshot?.manual_risk_flag
                           ? "Clear at risk"
@@ -4055,7 +4151,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("completed")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="h-4 w-4 text-[var(--state-success-text)]" />
                         </span>
                         Mark completed
                       </DropdownMenuItem>
@@ -4063,7 +4159,7 @@ export function PtClientDetailPage() {
                         onClick={() => openLifecycleDialog("churned")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <Ban className="h-4 w-4" />
+                          <Ban className="h-4 w-4 text-[var(--state-danger-text)]" />
                         </span>
                         Mark churned
                       </DropdownMenuItem>
@@ -4315,6 +4411,7 @@ export function PtClientDetailPage() {
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
                   helper="Last 7 days"
                   icon={Sparkles}
+                  module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                   delta={buildMetricDelta({
@@ -4324,9 +4421,10 @@ export function PtClientDetailPage() {
                 />
                 <StatCard
                   label="Consistency streak"
-                  value={habitStreak > 0 ? `${habitStreak}d` : "--"}
+                  value={`${habitStreak}d`}
                   helper="Habit streak"
                   icon={Rocket}
+                  module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                   delta={buildMetricDelta({
@@ -4338,11 +4436,14 @@ export function PtClientDetailPage() {
                   label="Check-in status"
                   value={checkinStatus ?? "--"}
                   helper={
-                    lastCheckin
-                      ? formatRelativeTime(lastCheckin)
-                      : "No check-ins"
+                    nextScheduledCheckin?.week_ending_saturday
+                      ? `Next due ${nextScheduledCheckin.week_ending_saturday}`
+                      : lastCheckin
+                        ? `Last activity ${formatRelativeTime(lastCheckin)}`
+                        : "No check-ins"
                   }
                   icon={CalendarDays}
+                  module="checkins"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                 />
@@ -4351,6 +4452,7 @@ export function PtClientDetailPage() {
                   value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
                   helper={lastWorkoutStatus ?? "No workouts"}
                   icon={Sparkles}
+                  module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
                 />
@@ -7165,7 +7267,11 @@ function PtClientBaselineTab({
             ))}
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-            <Button size="sm" variant="secondary" onClick={() => navigate("/pt/settings/baseline")}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate("/pt/settings/baseline")}
+            >
               Manage in settings
             </Button>
           </div>
@@ -7794,6 +7900,7 @@ function PtClientHabitsTab({
                 value={`${Number.isFinite(adherencePct) ? adherencePct : 0}%`}
                 helper="Logged days / 7"
                 icon={Sparkles}
+                module="analytics"
                 className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta:
@@ -7809,6 +7916,7 @@ function PtClientHabitsTab({
                 value={`${habitStreak} days`}
                 helper="Days logged in a row"
                 icon={Rocket}
+                module="analytics"
                 className="h-full min-h-[170px]"
                 delta={buildMetricDelta({
                   delta: habitStreak - previousHabitStreak,
@@ -7828,6 +7936,7 @@ function PtClientHabitsTab({
                 }
                 helper="7-day averages"
                 icon={Flame}
+                module="analytics"
                 className="h-full min-h-[170px]"
                 delta={
                   typeof avgSteps === "number" &&
@@ -9153,5 +9262,3 @@ function PtClientLogsTab({
     </Card>
   );
 }
-
-

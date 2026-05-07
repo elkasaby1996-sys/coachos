@@ -373,14 +373,14 @@ export function JoinPage() {
               new link.
             </div>
           ) : (
-            <form className="space-y-4" onSubmit={handleJoin}>
-              <p className="text-sm text-muted-foreground">
+            <form className="app-form-grid" onSubmit={handleJoin}>
+              <p className="app-form-col-12 text-sm text-muted-foreground">
                 Signed in as{" "}
                 <span className="font-semibold text-foreground">
                   {session.user.email}
                 </span>
               </p>
-              <div className="space-y-2">
+              <div className="app-form-col-12 space-y-2">
                 <label className="text-sm font-medium" htmlFor="display-name">
                   Display name
                 </label>
@@ -398,7 +398,7 @@ export function JoinPage() {
                   errorText={displayNameLimitState.errorText}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="app-form-col-12 space-y-2">
                 <label className="text-sm font-medium" htmlFor="goal">
                   Goal (optional)
                 </label>
@@ -417,7 +417,7 @@ export function JoinPage() {
                 />
               </div>
               <Button
-                className="w-full"
+                className="app-form-col-12 w-full"
                 type="submit"
                 disabled={status === "joining" || hasOverLimitErrors}
               >

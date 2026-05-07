@@ -1,11 +1,18 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  CalendarClock,
+  ClipboardCheck,
+  TimerReset,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
   DashboardCard,
   EmptyState,
   Skeleton,
+  StatCard,
   StatusPill,
 } from "../../components/ui/coachos";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
@@ -351,47 +358,55 @@ export function PtCheckinsQueuePage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title="Check-in Queue"
+        className="w-full justify-end"
         actions={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => navigate("/pt/checkins/templates")}
-            >
-              Manage templates
-            </Button>
-            <Button onClick={() => navigate("/pt/clients")}>
-              View clients
-            </Button>
-          </>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/pt/checkins/templates")}
+          >
+            Manage templates
+          </Button>
         }
       />
 
-      <div className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {[
-          {
-            label: "Submitted",
-            value: submittedCount,
-          },
-          {
-            label: "Overdue",
-            value: overdueCount,
-          },
-          {
-            label: "Due now",
-            value: dueCount,
-          },
-          {
-            label: "Soon",
-            value: upcomingCount,
-          },
-        ].map((card) => (
-          <div key={card.label} className="ops-surface px-4 py-4">
-            <div className="ops-kicker">{card.label}</div>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
-              {card.value}
-            </div>
-          </div>
-        ))}
+      <div className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Submitted"
+          value={submittedCount}
+          helper="Ready for review"
+          icon={ClipboardCheck}
+          accent
+          module="checkins"
+          iconClassName="text-[var(--state-success-text)]"
+          className="h-full"
+        />
+        <StatCard
+          label="Overdue"
+          value={overdueCount}
+          helper="Needs follow-up"
+          icon={AlertTriangle}
+          module="checkins"
+          iconClassName="text-[var(--state-danger-text)]"
+          className="h-full"
+        />
+        <StatCard
+          label="Due now"
+          value={dueCount}
+          helper="Waiting today"
+          icon={CalendarClock}
+          module="checkins"
+          iconClassName="text-[var(--state-warning-text)]"
+          className="h-full"
+        />
+        <StatCard
+          label="Soon"
+          value={upcomingCount}
+          helper="Coming up next"
+          icon={TimerReset}
+          module="checkins"
+          iconClassName="text-[var(--state-info-text)]"
+          className="h-full"
+        />
       </div>
 
       <div className="space-y-6">

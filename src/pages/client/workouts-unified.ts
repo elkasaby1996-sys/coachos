@@ -267,8 +267,8 @@ export function preparePersonalWorkoutDraft(params: {
 const isScheduledFuture = (scheduledDate: string | null, todayKey: string) =>
   Boolean(scheduledDate && scheduledDate > todayKey);
 
-const isDueTodayOrOverdue = (scheduledDate: string | null, todayKey: string) =>
-  Boolean(!scheduledDate || scheduledDate <= todayKey);
+const isScheduledToday = (scheduledDate: string | null, todayKey: string) =>
+  scheduledDate === todayKey;
 
 export function applyUnifiedWorkoutFilter(
   rows: UnifiedWorkoutRow[],
@@ -288,7 +288,7 @@ export function applyUnifiedWorkoutFilter(
         if (isTerminalWorkoutStatus(row.status)) {
           return false;
         }
-        return isDueTodayOrOverdue(row.scheduledDate, todayKey);
+        return isScheduledToday(row.scheduledDate, todayKey);
       });
     case "upcoming":
       return rows.filter(
@@ -330,7 +330,9 @@ export function groupUnifiedWorkoutsByState(
       return;
     }
 
-    grouped.today.push(row);
+    if (isScheduledToday(row.scheduledDate, todayKey)) {
+      grouped.today.push(row);
+    }
   });
 
   grouped.inProgress.sort((a, b) => {
@@ -342,19 +344,6 @@ export function groupUnifiedWorkoutsByState(
   });
 
   grouped.today.sort((a, b) => {
-    const overdueRankA =
-      a.scheduledDate && a.scheduledDate < todayKey
-        ? 0
-        : a.scheduledDate === todayKey
-          ? 1
-          : 2;
-    const overdueRankB =
-      b.scheduledDate && b.scheduledDate < todayKey
-        ? 0
-        : b.scheduledDate === todayKey
-          ? 1
-          : 2;
-    if (overdueRankA !== overdueRankB) return overdueRankA - overdueRankB;
     return (
       getDateRank(a.scheduledDate, Number.MAX_SAFE_INTEGER) -
       getDateRank(b.scheduledDate, Number.MAX_SAFE_INTEGER)

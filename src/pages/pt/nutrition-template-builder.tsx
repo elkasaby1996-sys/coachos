@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "lucide-react";
@@ -64,6 +64,15 @@ export function PtNutritionTemplateBuilderPage() {
   const [selectedDay, setSelectedDay] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [metaSaveStatus, setMetaSaveStatus] = useState<"idle" | "saving">(
+    "idle",
+  );
+  const [metaForm, setMetaForm] = useState({
+    name: "",
+    nutritionTypeTag: "",
+    description: "",
+    durationWeeks: 1,
+  });
 
   const [componentOpen, setComponentOpen] = useState(false);
   const [componentMealId, setComponentMealId] = useState<string | null>(null);
@@ -76,6 +85,16 @@ export function PtNutritionTemplateBuilderPage() {
   const [fat, setFat] = useState("");
   const [recipeText, setRecipeText] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (!template) return;
+    setMetaForm({
+      name: template.name,
+      nutritionTypeTag: template.nutrition_type_tag ?? "",
+      description: template.description ?? "",
+      durationWeeks: template.duration_weeks,
+    });
+  }, [template]);
 
   const activeDay = useMemo(
     () =>
@@ -123,12 +142,48 @@ export function PtNutritionTemplateBuilderPage() {
     ]);
   };
 
+  const saveProgramMeta = async () => {
+    if (!templateId) return;
+    if (!metaForm.name.trim()) {
+      setErrorMessage("Program name is required.");
+      return;
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setMetaSaveStatus("saving");
+
+    const { error } = await supabase
+      .from("nutrition_templates")
+      .update({
+        name: metaForm.name.trim(),
+        nutrition_type_tag: metaForm.nutritionTypeTag.trim() || null,
+        description: metaForm.description.trim() || null,
+        duration_weeks: Math.max(1, metaForm.durationWeeks),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", templateId);
+
+    if (error) {
+      setErrorMessage(error.message);
+      setMetaSaveStatus("idle");
+      return;
+    }
+
+    await invalidate();
+    setMetaSaveStatus("idle");
+    setSuccessMessage("Program details saved.");
+  };
+
   const getDayFor = (weekIndex: number, dayOfWeek: number) =>
     template?.days.find(
       (day) => day.week_index === weekIndex && day.day_of_week === dayOfWeek,
     ) ?? null;
 
-  const ensureDay = async (weekIndex = selectedWeek, dayOfWeek = selectedDay) => {
+  const ensureDay = async (
+    weekIndex = selectedWeek,
+    dayOfWeek = selectedDay,
+  ) => {
     if (!templateId) return null;
     const existingDay = getDayFor(weekIndex, dayOfWeek);
     if (existingDay?.id) return existingDay.id;
@@ -321,13 +376,19 @@ export function PtNutritionTemplateBuilderPage() {
     const sourceSlot = slots.find((slot) => slot.slot === slotName);
     const sourceComponents = sourceSlot?.components ?? [];
     if (!sourceComponents.length) {
-      setErrorMessage("Add at least one component before applying this slot to all days.");
+      setErrorMessage(
+        "Add at least one component before applying this slot to all days.",
+      );
       return;
     }
 
     let appliedCount = 0;
 
-    for (let weekIndex = 1; weekIndex <= template.duration_weeks; weekIndex += 1) {
+    for (
+      let weekIndex = 1;
+      weekIndex <= template.duration_weeks;
+      weekIndex += 1
+    ) {
       for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek += 1) {
         if (weekIndex === selectedWeek && dayOfWeek === selectedDay) continue;
 
@@ -424,8 +485,85 @@ export function PtNutritionTemplateBuilderPage() {
         </div>
       ) : null}
       {successMessage ? (
-        <ActionStatusMessage tone="success">{successMessage}</ActionStatusMessage>
+        <ActionStatusMessage tone="success">
+          {successMessage}
+        </ActionStatusMessage>
       ) : null}
+
+      <DashboardCard
+        title="Program Meta"
+        subtitle="Keep the nutrition program label, tag, and duration aligned with the library."
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-xs font-semibold text-muted-foreground">
+              Name
+            </label>
+            <Input
+              value={metaForm.name}
+              onChange={(event) =>
+                setMetaForm((prev) => ({ ...prev, name: event.target.value }))
+              }
+              placeholder="Program name"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground">
+              Weeks
+            </label>
+            <Input
+              type="number"
+              min={1}
+              value={metaForm.durationWeeks}
+              onChange={(event) =>
+                setMetaForm((prev) => ({
+                  ...prev,
+                  durationWeeks: Math.max(1, Number(event.target.value) || 1),
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-xs font-semibold text-muted-foreground">
+              Nutrition type
+            </label>
+            <Input
+              value={metaForm.nutritionTypeTag}
+              onChange={(event) =>
+                setMetaForm((prev) => ({
+                  ...prev,
+                  nutritionTypeTag: event.target.value,
+                }))
+              }
+              placeholder="Fat loss, Performance, Muscle gain..."
+            />
+          </div>
+          <div className="space-y-2 md:col-span-3">
+            <label className="text-xs font-semibold text-muted-foreground">
+              Description
+            </label>
+            <textarea
+              className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={metaForm.description}
+              onChange={(event) =>
+                setMetaForm((prev) => ({
+                  ...prev,
+                  description: event.target.value,
+                }))
+              }
+              placeholder="Program description"
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button
+            onClick={saveProgramMeta}
+            disabled={metaSaveStatus === "saving"}
+          >
+            {metaSaveStatus === "saving" ? "Saving..." : "Save details"}
+          </Button>
+        </div>
+      </DashboardCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <DashboardCard title="Program Scope" subtitle="Week + day selector">
@@ -461,7 +599,6 @@ export function PtNutritionTemplateBuilderPage() {
                 );
               })}
             </div>
-
           </div>
         </DashboardCard>
 

@@ -49,6 +49,7 @@ import {
   buildClientInboxSourceLabel,
   buildClientInboxThreadParam,
   dedupeLeadThreadSummaries,
+  normalizeCoachDisplayName,
   parseClientInboxThreadParam,
   resolveWorkspaceThreadTitle,
 } from "../../features/lead-chat/lib/client-inbox";
@@ -87,6 +88,20 @@ type WorkspaceCoachMessageRow = {
 type WorkspaceRow = {
   id: string;
   name: string;
+  owner_user_id: string | null;
+};
+
+type WorkspaceCoachProfileRow = {
+  user_id: string;
+  full_name: string | null;
+  display_name: string | null;
+};
+
+type WorkspaceCoachIdentityRow = {
+  workspace_id: string;
+  workspace_name: string | null;
+  owner_user_id: string | null;
+  coach_display_name: string | null;
 };
 
 type MessageRow = {
@@ -198,6 +213,7 @@ export function ClientMessagesPage() {
   const lastMarkedLeadMessageIdRef = useRef<string | null>(null);
   const lastMarkedWorkspaceMessageIdRef = useRef<string | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const threadParam = searchParams.get("thread");
@@ -266,13 +282,37 @@ export function ClientMessagesPage() {
     return Array.from(values);
   }, [workspaceConversationsQuery.data]);
 
+  const workspaceCoachIdentitiesQuery = useQuery({
+    queryKey: ["client-messages-workspace-coach-identities", workspaceIds.join(",")],
+    enabled: workspaceIds.length > 0,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "get_client_workspace_coach_identities",
+        {
+          p_workspace_ids: workspaceIds,
+        },
+      );
+      if (error) throw error;
+      return (data ?? []) as WorkspaceCoachIdentityRow[];
+    },
+  });
+
+  const workspaceCoachIdentityById = useMemo(() => {
+    const map = new Map<string, WorkspaceCoachIdentityRow>();
+    (workspaceCoachIdentitiesQuery.data ?? []).forEach((identity) => {
+      if (identity.workspace_id) map.set(identity.workspace_id, identity);
+    });
+    return map;
+  }, [workspaceCoachIdentitiesQuery.data]);
+
   const workspaceNamesQuery = useQuery({
     queryKey: ["client-messages-workspace-names", workspaceIds.join(",")],
     enabled: workspaceIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspaces")
-        .select("id, name")
+        .select("id, name, owner_user_id")
         .in("id", workspaceIds);
       if (error) throw error;
       return (data ?? []) as WorkspaceRow[];
@@ -289,6 +329,53 @@ export function ClientMessagesPage() {
       ) as Record<string, string>,
     [workspaceNamesQuery.data],
   );
+
+  const workspaceOwnerIdById = useMemo(
+    () =>
+      Object.fromEntries(
+        (workspaceNamesQuery.data ?? []).map((workspace) => [
+          workspace.id,
+          workspace.owner_user_id,
+        ]),
+      ) as Record<string, string | null>,
+    [workspaceNamesQuery.data],
+  );
+
+  const workspaceOwnerUserIds = useMemo(() => {
+    const values = new Set<string>();
+    (workspaceNamesQuery.data ?? []).forEach((workspace) => {
+      if (workspace.owner_user_id) values.add(workspace.owner_user_id);
+    });
+    return Array.from(values);
+  }, [workspaceNamesQuery.data]);
+
+  const workspaceCoachProfilesQuery = useQuery({
+    queryKey: [
+      "client-messages-workspace-coach-profiles",
+      workspaceOwnerUserIds.join(","),
+    ],
+    enabled: workspaceOwnerUserIds.length > 0,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pt_hub_profiles")
+        .select("user_id, full_name, display_name")
+        .in("user_id", workspaceOwnerUserIds);
+      if (error) throw error;
+      return (data ?? []) as WorkspaceCoachProfileRow[];
+    },
+  });
+
+  const workspaceCoachDisplayNameByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    (workspaceCoachProfilesQuery.data ?? []).forEach((profile) => {
+      const displayName =
+        normalizeCoachDisplayName(profile.full_name) ??
+        normalizeCoachDisplayName(profile.display_name);
+      if (displayName) map.set(profile.user_id, displayName);
+    });
+    return map;
+  }, [workspaceCoachProfilesQuery.data]);
 
   const workspaceConversationIds = useMemo(
     () =>
@@ -359,9 +446,23 @@ export function ClientMessagesPage() {
   const mergedThreads = useMemo(() => {
     const workspaceThreads = (workspaceConversationsQuery.data ?? []).map(
       (conversation): UnifiedInboxThread => {
-        const workspaceName = workspaceNameById[conversation.workspace_id] ?? null;
+        const workspaceIdentity = workspaceCoachIdentityById.get(
+          conversation.workspace_id,
+        );
+        const workspaceName =
+          workspaceIdentity?.workspace_name ??
+          workspaceNameById[conversation.workspace_id] ??
+          null;
+        const workspaceOwnerUserId =
+          workspaceIdentity?.owner_user_id ??
+          workspaceOwnerIdById[conversation.workspace_id] ?? null;
         const displayTitle = resolveWorkspaceThreadTitle({
           workspaceName,
+          coachDisplayName:
+            workspaceIdentity?.coach_display_name ??
+            (workspaceOwnerUserId
+              ? workspaceCoachDisplayNameByUserId.get(workspaceOwnerUserId)
+              : null),
           latestCoachSenderName: workspaceCoachNameByConversationId.get(
             conversation.id,
           ),
@@ -432,8 +533,11 @@ export function ClientMessagesPage() {
   }, [
     leadThreadsQuery.data,
     workspaceConversationsQuery.data,
+    workspaceCoachIdentityById,
+    workspaceCoachDisplayNameByUserId,
     workspaceCoachNameByConversationId,
     workspaceNameById,
+    workspaceOwnerIdById,
     workspaceUnreadByConversationId,
   ]);
 
@@ -453,8 +557,14 @@ export function ClientMessagesPage() {
     });
   }, [searchValue, visibleThreads]);
 
+  const threadSourcesLoading =
+    clientProfilesQuery.isLoading ||
+    workspaceConversationsQuery.isLoading ||
+    leadThreadsQuery.isLoading;
+
   useEffect(() => {
     if (visibleThreads.length === 0) {
+      if (threadSourcesLoading) return;
       if (selectedThreadId !== null) {
         setSelectedThreadId(null);
       }
@@ -475,13 +585,17 @@ export function ClientMessagesPage() {
       return;
     }
 
+    if (requestedThreadId && threadSourcesLoading) {
+      return;
+    }
+
     if (
       !selectedThreadId ||
       !visibleThreads.some((thread) => thread.id === selectedThreadId)
     ) {
       setSelectedThreadId(visibleThreads[0]?.id ?? null);
     }
-  }, [selectedThreadId, threadParam, visibleThreads]);
+  }, [selectedThreadId, threadParam, threadSourcesLoading, visibleThreads]);
 
   useEffect(() => {
     const currentParam =
@@ -561,13 +675,12 @@ export function ClientMessagesPage() {
   }, [selectedThreadId]);
 
   useEffect(() => {
-    if (!scrollRef.current || !selectedThreadType) return;
+    if (!selectedThreadType) return;
     if (selectedThreadType === "lead" && selectedThreadIsArchived) return;
 
-    scrollRef.current.scrollIntoView({
-      behavior: selectedThreadType === "workspace" ? "smooth" : "auto",
-      block: "end",
-    });
+    const messageList = messageListRef.current;
+    if (!messageList) return;
+    messageList.scrollTop = messageList.scrollHeight;
   }, [
     leadThreadQuery.data?.messages.length,
     renderedWorkspaceMessages.length,
@@ -755,10 +868,7 @@ export function ClientMessagesPage() {
     };
   }, [updateTyping]);
 
-  const isThreadListLoading =
-    clientProfilesQuery.isLoading ||
-    workspaceConversationsQuery.isLoading ||
-    leadThreadsQuery.isLoading;
+  const isThreadListLoading = threadSourcesLoading;
 
   const hasThreadListError =
     clientProfilesQuery.isError ||
@@ -826,6 +936,7 @@ export function ClientMessagesPage() {
               onClick={() => {
                 void clientProfilesQuery.refetch();
                 void workspaceConversationsQuery.refetch();
+                void workspaceCoachIdentitiesQuery.refetch();
                 void workspaceCoachMessagesQuery.refetch();
                 void leadThreadsQuery.refetch();
               }}
@@ -836,8 +947,8 @@ export function ClientMessagesPage() {
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <SurfaceCard>
+      <div className="grid items-start gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
+        <SurfaceCard className="xl:sticky xl:top-6">
           <SurfaceCardHeader>
             <SurfaceCardTitle>Inbox</SurfaceCardTitle>
             <SurfaceCardDescription>
@@ -991,20 +1102,20 @@ export function ClientMessagesPage() {
           </SurfaceCardHeader>
 
           {!selectedThread ? (
-            <SurfaceCardContent className="py-8">
+            <SurfaceCardContent className="flex min-h-[30rem] items-center justify-center py-8">
               <EmptyStateBlock
                 title="Pick a conversation"
                 description="Select a lead or active coaching conversation from the inbox list."
               />
             </SurfaceCardContent>
           ) : selectedThreadMessageLoading ? (
-            <SurfaceCardContent className="space-y-3 py-6">
+            <SurfaceCardContent className="min-h-[30rem] space-y-3 py-6">
               {Array.from({ length: 6 }).map((_, index) => (
                 <Skeleton key={index} className="h-16 w-full rounded-2xl" />
               ))}
             </SurfaceCardContent>
           ) : selectedThreadMessageError ? (
-            <SurfaceCardContent className="py-8">
+            <SurfaceCardContent className="flex min-h-[30rem] items-center justify-center py-8">
               <EmptyStateBlock
                 title="Unable to load this thread"
                 description="Try again or select another conversation."
@@ -1023,8 +1134,11 @@ export function ClientMessagesPage() {
               />
             </SurfaceCardContent>
           ) : (
-            <div className="flex min-h-[30rem] max-h-[calc(100dvh-12rem)] flex-col">
-              <SurfaceCardContent className="flex-1 space-y-3 overflow-y-auto bg-background/10 pb-6 pt-5">
+            <div className="flex h-[calc(100dvh-12rem)] min-h-[30rem] flex-col">
+              <SurfaceCardContent
+                ref={messageListRef}
+                className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/10 pb-6 pt-5 overscroll-contain"
+              >
                 {selectedThread.type === "workspace" ? (
                   <>
                     {workspaceMessagesQuery.hasNextPage ? (
@@ -1071,7 +1185,13 @@ export function ClientMessagesPage() {
                             >
                               <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                                 <span className="font-medium text-foreground/90">
-                                  {isMine ? "You" : (message.sender_name ?? "Coach")}
+                                  {isMine
+                                    ? "You"
+                                    : (normalizeCoachDisplayName(
+                                        message.sender_name,
+                                      ) ??
+                                      selectedThread.title ??
+                                      "Coach")}
                                 </span>
                                 <span>{formatTime(message.created_at)}</span>
                               </div>
@@ -1148,24 +1268,22 @@ export function ClientMessagesPage() {
               </SurfaceCardContent>
 
               {selectedThread.isWritable ? (
-                <div className="sticky bottom-0 border-t border-border/60 bg-[linear-gradient(180deg,rgba(10,14,22,0.16),rgba(10,14,22,0.94)_24%,rgba(10,14,22,0.98))] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur">
-                  <SectionCard className="space-y-3 border-border/60 bg-background/60 p-4 shadow-none">
+                <div className="sticky bottom-0 border-t border-border/60 bg-[linear-gradient(180deg,rgba(10,14,22,0.16),rgba(10,14,22,0.94)_24%,rgba(10,14,22,0.98))] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+                  <div className="space-y-2">
                     {sendError ? (
                       <p className="rounded-[16px] border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
                         {sendError}
                       </p>
                     ) : null}
 
-                    <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center">
                       <Textarea
                         aria-label="Message"
                         isInvalid={messageLimitState.overLimit}
-                        className="form-control-compact min-h-[76px] flex-1 resize-y bg-background/80"
-                        placeholder={
-                          selectedThread.type === "lead"
-                            ? "Reply in lead chat"
-                            : "Send a message to your coach"
-                        }
+                        rows={1}
+                        className="form-control-compact flex-1 resize-none overflow-y-auto bg-background/80 leading-5"
+                        style={{ height: 44, minHeight: 44, maxHeight: 44 }}
+                        placeholder="Send a message..."
                         value={messageInput}
                         onChange={(event) => {
                           if (sendError) setSendError(null);
@@ -1217,7 +1335,7 @@ export function ClientMessagesPage() {
                       limit={messageLimitState.limit}
                       errorText={messageLimitState.errorText}
                     />
-                  </SectionCard>
+                  </div>
                 </div>
               ) : (
                 <div className="border-t border-border/60 bg-background/55 px-4 py-4">

@@ -47,7 +47,6 @@ import type { NotificationPreferences } from "../../features/notifications/lib/t
 import {
   type SettingsTabLink,
   DisabledSettingField,
-  SettingsHeader,
   SettingsFieldRow,
   SettingsPageShell,
   SettingsSectionCard,
@@ -854,17 +853,7 @@ export function ClientSettingsPage() {
 
   return (
     <div className="space-y-5">
-      <SettingsPageShell
-        header={
-          <SettingsHeader
-            scope="Client"
-            title="Client Profile & Settings"
-            description="Account-level profile, preferences, notifications, privacy, and billing."
-            actions={<Badge variant="secondary">Account-level</Badge>}
-          />
-        }
-        tabs={<SettingsTabs tabs={settingsTabLinks} />}
-      >
+      <SettingsPageShell tabs={<SettingsTabs tabs={settingsTabLinks} />}>
         {banner ? (
           <StatusBanner
             variant={
@@ -1327,23 +1316,6 @@ export function ClientSettingsPage() {
                     >
                       <LogOut className="mr-2 h-4 w-4" />
                       {signOutSessionsSaving ? "Signing out..." : "Sign out all sessions"}
-                    </Button>
-                  </div>
-                </SettingsFieldRow>
-              </SettingsSectionCard>
-
-              <SettingsSectionCard title="Privacy">
-                <SettingsFieldRow label="Policy links">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button asChild variant="secondary">
-                      <Link to="/privacy" target="_blank" rel="noreferrer">
-                        Privacy policy
-                      </Link>
-                    </Button>
-                    <Button asChild variant="secondary">
-                      <Link to="/terms" target="_blank" rel="noreferrer">
-                        Terms of use
-                      </Link>
                     </Button>
                   </div>
                 </SettingsFieldRow>

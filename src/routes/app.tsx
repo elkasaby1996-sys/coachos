@@ -76,7 +76,6 @@ import {
   SupportPage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
-  WorkspaceSettingsBrandTab,
   WorkspaceSettingsClientExperienceTab,
   WorkspaceSettingsDangerTab,
   WorkspaceSettingsDefaultsTab,
@@ -94,6 +93,7 @@ import {
 } from "../lib/auth";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
+import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
 
 type WindowWithIdleCallback = Window & {
   requestIdleCallback?: (
@@ -104,11 +104,7 @@ type WindowWithIdleCallback = Window & {
 };
 
 function FullPageLoader() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-sm text-muted-foreground">Loading...</div>
-    </div>
-  );
+  return <RouteAwareWireframeLoader title="" message="" />;
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -171,7 +167,10 @@ function getProtectedRedirect(params: {
       return getClientAccountOnboardingPath(params.pendingInviteToken);
     }
     if (!params.hasWorkspaceMembership) {
-      if (params.allow.includes("client") && params.pathname.startsWith("/app/")) {
+      if (
+        params.allow.includes("client") &&
+        params.pathname.startsWith("/app/")
+      ) {
         return null;
       }
       return "/app/home";
@@ -221,24 +220,26 @@ function RequireRole({
         ) : (
           <FullPageLoader />
         )
-      ) : (() => {
-        const redirect = getProtectedRedirect({
-          pathname: location.pathname,
-          allow,
-          accountType,
-          hasWorkspaceMembership,
-          ptWorkspaceComplete,
-          ptProfileComplete,
-          clientAccountComplete,
-          clientWorkspaceOnboardingHardGateRequired,
-          pendingInviteToken,
-        });
-        return redirect ? (
-          <Navigate to={redirect} replace />
-        ) : (
-          <>{children}</>
-        );
-      })()}
+      ) : (
+        (() => {
+          const redirect = getProtectedRedirect({
+            pathname: location.pathname,
+            allow,
+            accountType,
+            hasWorkspaceMembership,
+            ptWorkspaceComplete,
+            ptProfileComplete,
+            clientAccountComplete,
+            clientWorkspaceOnboardingHardGateRequired,
+            pendingInviteToken,
+          });
+          return redirect ? (
+            <Navigate to={redirect} replace />
+          ) : (
+            <>{children}</>
+          );
+        })()
+      )}
     </BootstrapGate>
   );
 }
@@ -302,6 +303,9 @@ function PtHubAssetPreloader() {
     const windowWithIdleCallback = window as WindowWithIdleCallback;
     let timeoutHandle: number | null = null;
     let idleHandle: number | null = null;
+    const isPtHubRoute = location.pathname.startsWith("/pt-hub");
+    const idleTimeout = isPtHubRoute ? 3600 : 900;
+    const fallbackDelay = isPtHubRoute ? 3200 : 120;
 
     const preload = () => {
       void preloadPtHubAnimatedBackground();
@@ -309,10 +313,10 @@ function PtHubAssetPreloader() {
 
     if (typeof windowWithIdleCallback.requestIdleCallback === "function") {
       idleHandle = windowWithIdleCallback.requestIdleCallback(preload, {
-        timeout: 900,
+        timeout: idleTimeout,
       });
     } else {
-      timeoutHandle = window.setTimeout(preload, 120);
+      timeoutHandle = window.setTimeout(preload, fallbackDelay);
     }
 
     return () => {
@@ -521,275 +525,287 @@ export function App() {
       <DocumentMetadata />
       <AppShellTransition>
         <Routes location={location}>
-        {/* Smart landing */}
-        <Route path="/" element={<IndexRedirect />} />
+          {/* Smart landing */}
+          <Route path="/" element={<IndexRedirect />} />
 
-        {/* Public */}
-        <Route path="/login" element={<LoginGate />} />
-        <Route path="/signup" element={<SignupRolePage />} />
-        <Route path="/signup/pt" element={<PtSignupPage />} />
-        <Route path="/signup/client" element={<ClientSignupPage />} />
-        <Route path="/invite/:token" element={<InvitePage />} />
-        <Route path="/join/:code" element={<LegacyJoinRedirect />} />
-        <Route path="/coach/:slug" element={<PublicCoachProfilePage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/support" element={<SupportPage />} />
-        <Route path="/health" element={<HealthPage />} />
+          {/* Public */}
+          <Route path="/login" element={<LoginGate />} />
+          <Route path="/signup" element={<SignupRolePage />} />
+          <Route path="/signup/pt" element={<PtSignupPage />} />
+          <Route path="/signup/client" element={<ClientSignupPage />} />
+          <Route path="/invite/:token" element={<InvitePage />} />
+          <Route path="/join/:code" element={<LegacyJoinRedirect />} />
+          <Route path="/coach/:slug" element={<PublicCoachProfilePage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/support" element={<SupportPage />} />
+          <Route path="/health" element={<HealthPage />} />
 
-        <Route
-          path="/no-workspace"
-          element={
-            <RequireAuth>
-              <NoWorkspacePage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/pt/onboarding/workspace"
-          element={
-            <RequireAuth>
-              <PtWorkspaceOnboardingPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/pt/onboarding/profile"
-          element={
-            <RequireAuth>
-              <Navigate to="/pt-hub" replace />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/client/onboarding/account"
-          element={
-            <RequireAuth>
-              <ClientAccountOnboardingPage />
-            </RequireAuth>
-          }
-        />
+          <Route
+            path="/no-workspace"
+            element={
+              <RequireAuth>
+                <NoWorkspacePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/pt/onboarding/workspace"
+            element={
+              <RequireAuth>
+                <PtWorkspaceOnboardingPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/pt/onboarding/profile"
+            element={
+              <RequireAuth>
+                <Navigate to="/pt-hub" replace />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/client/onboarding/account"
+            element={
+              <RequireAuth>
+                <ClientAccountOnboardingPage />
+              </RequireAuth>
+            }
+          />
 
-        <Route
-          path="/pt-hub"
-          element={
-            <RequireAuth>
-              <RequireRole allow={["pt"]}>
-                <PtHubLayout />
-              </RequireRole>
-            </RequireAuth>
-          }
-        >
-          <Route index element={<PtHubOverviewPage />} />
-          <Route path="profile" element={<PtHubProfilePage />} />
-          <Route path="profile/preview" element={<PtHubProfilePreviewPage />} />
-          <Route path="packages" element={<PtHubPackagesPage />} />
-          <Route path="leads" element={<PtHubLeadsPage />} />
-          <Route path="leads/:leadId" element={<PtHubLeadDetailPage />} />
-          <Route path="clients" element={<PtHubClientsPage />} />
-          <Route path="workspaces" element={<PtHubWorkspacesPage />} />
-          <Route path="payments" element={<PtHubPaymentsPage />} />
-          <Route path="analytics" element={<PtHubAnalyticsPage />} />
-          <Route path="settings" element={<PtHubSettingsLayoutPage />}>
-            <Route index element={<Navigate to="account" replace />} />
-            <Route path="account" element={<PtHubSettingsAccountTab />} />
+          <Route
+            path="/pt-hub"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <PtHubLayout />
+                </RequireRole>
+              </RequireAuth>
+            }
+          >
+            <Route index element={<PtHubOverviewPage />} />
+            <Route path="profile" element={<PtHubProfilePage />} />
             <Route
-              path="public-profile"
-              element={<Navigate to="/pt-hub/profile" replace />}
+              path="profile/preview"
+              element={<PtHubProfilePreviewPage />}
+            />
+            <Route path="packages" element={<PtHubPackagesPage />} />
+            <Route path="leads" element={<PtHubLeadsPage />} />
+            <Route path="leads/:leadId" element={<PtHubLeadDetailPage />} />
+            <Route path="clients" element={<PtHubClientsPage />} />
+            <Route path="workspaces" element={<PtHubWorkspacesPage />} />
+            <Route path="payments" element={<PtHubPaymentsPage />} />
+            <Route path="analytics" element={<PtHubAnalyticsPage />} />
+            <Route path="settings" element={<PtHubSettingsLayoutPage />}>
+              <Route index element={<Navigate to="account" replace />} />
+              <Route path="account" element={<PtHubSettingsAccountTab />} />
+              <Route
+                path="public-profile"
+                element={<Navigate to="/pt-hub/profile" replace />}
+              />
+              <Route
+                path="notifications"
+                element={<PtHubSettingsNotificationsTab />}
+              />
+              <Route
+                path="preferences"
+                element={<PtHubSettingsPreferencesTab />}
+              />
+              <Route path="security" element={<PtHubSettingsSecurityTab />} />
+              <Route path="billing" element={<PtHubSettingsBillingTab />} />
+              <Route
+                path="integrations"
+                element={<Navigate to="../account" replace />}
+              />
+            </Route>
+          </Route>
+
+          {/* PT Side */}
+          <Route
+            path="/pt"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <PtLayout />
+                </RequireRole>
+              </RequireAuth>
+            }
+          >
+            <Route path="dashboard" element={<PtDashboardPage />} />
+            <Route path="clients" element={<PtClientsPage />} />
+            <Route path="clients/:clientId" element={<PtClientDetailPage />} />
+            <Route path="programs" element={<PtProgramsPage />} />
+            <Route path="programs/new" element={<PtProgramBuilderPage />} />
+            <Route
+              path="programs/:id/edit"
+              element={<PtProgramBuilderPage />}
             />
             <Route
-              path="notifications"
-              element={<PtHubSettingsNotificationsTab />}
+              path="templates/workouts"
+              element={<PtWorkoutTemplatesPage />}
             />
             <Route
-              path="preferences"
-              element={<PtHubSettingsPreferencesTab />}
+              path="templates/workouts/:id"
+              element={<PtWorkoutTemplatePreviewPage />}
             />
-            <Route path="security" element={<PtHubSettingsSecurityTab />} />
-            <Route path="billing" element={<PtHubSettingsBillingTab />} />
             <Route
-              path="integrations"
-              element={<Navigate to="../account" replace />}
+              path="templates/workouts/:id/edit"
+              element={<PtWorkoutTemplateBuilderPage />}
+            />
+            <Route path="calendar" element={<PtCalendarPage />} />
+            <Route path="checkins" element={<PtCheckinsQueuePage />} />
+            <Route
+              path="checkins/templates"
+              element={<PtCheckinTemplatesPage />}
+            />
+            <Route path="messages" element={<PtMessagesPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="ops/status" element={<PtOpsStatusPage />} />
+            <Route
+              path="settings"
+              element={<Navigate to="/settings/workspace" replace />}
+            />
+            <Route
+              path="settings/baseline"
+              element={<PtBaselineTemplatesPage />}
+            />
+            <Route
+              path="settings/exercises"
+              element={<PtExerciseLibraryPage />}
+            />
+            <Route path="nutrition-programs" element={<PtNutritionPage />} />
+            <Route
+              path="nutrition-templates"
+              element={<Navigate to="/pt/nutrition-programs" replace />}
+            />
+            <Route
+              path="nutrition"
+              element={<Navigate to="/pt/nutrition-programs" replace />}
+            />
+            <Route
+              path="nutrition/programs/:id"
+              element={<PtNutritionTemplateBuilderPage />}
+            />
+            <Route
+              path="nutrition/templates/:id"
+              element={<PtNutritionTemplateBuilderPage />}
             />
           </Route>
-        </Route>
 
-        {/* PT Side */}
-        <Route
-          path="/pt"
-          element={
-            <RequireAuth>
-              <RequireRole allow={["pt"]}>
-                <PtLayout />
-              </RequireRole>
-            </RequireAuth>
-          }
-        >
-          <Route path="dashboard" element={<PtDashboardPage />} />
-          <Route path="clients" element={<PtClientsPage />} />
-          <Route path="clients/:clientId" element={<PtClientDetailPage />} />
-          <Route path="programs" element={<PtProgramsPage />} />
-          <Route path="programs/new" element={<PtProgramBuilderPage />} />
-          <Route path="programs/:id/edit" element={<PtProgramBuilderPage />} />
           <Route
-            path="templates/workouts"
-            element={<PtWorkoutTemplatesPage />}
-          />
-          <Route
-            path="templates/workouts/:id"
-            element={<PtWorkoutTemplatePreviewPage />}
-          />
-          <Route
-            path="templates/workouts/:id/edit"
-            element={<PtWorkoutTemplateBuilderPage />}
-          />
-          <Route path="calendar" element={<PtCalendarPage />} />
-          <Route path="checkins" element={<PtCheckinsQueuePage />} />
-          <Route
-            path="checkins/templates"
-            element={<PtCheckinTemplatesPage />}
-          />
-          <Route path="messages" element={<PtMessagesPage />} />
-          <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="ops/status" element={<PtOpsStatusPage />} />
-          <Route
-            path="settings"
-            element={<Navigate to="/settings/workspace" replace />}
-          />
-          <Route
-            path="settings/baseline"
-            element={<PtBaselineTemplatesPage />}
-          />
-          <Route
-            path="settings/exercises"
-            element={<PtExerciseLibraryPage />}
-          />
-          <Route path="nutrition-programs" element={<PtNutritionPage />} />
-          <Route
-            path="nutrition-templates"
-            element={<Navigate to="/pt/nutrition-programs" replace />}
-          />
-          <Route
-            path="nutrition"
-            element={<Navigate to="/pt/nutrition-programs" replace />}
-          />
-          <Route
-            path="nutrition/programs/:id"
-            element={<PtNutritionTemplateBuilderPage />}
-          />
-          <Route
-            path="nutrition/templates/:id"
-            element={<PtNutritionTemplateBuilderPage />}
-          />
-        </Route>
-
-        <Route
-          path="/workspace/:workspaceId/settings"
-          element={
-            <RequireAuth>
-              <RequireRole allow={["pt"]}>
-                <PtLayout />
-              </RequireRole>
-            </RequireAuth>
-          }
-        >
-          <Route element={<WorkspaceSettingsLayoutPage />}>
-            <Route index element={<Navigate to="general" replace />} />
-            <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
-            <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
-            <Route
-              path="client-experience"
-              element={<WorkspaceSettingsClientExperienceTab />}
-            />
-            <Route path="team" element={<WorkspaceSettingsTeamTab />} />
-            <Route path="defaults" element={<WorkspaceSettingsDefaultsTab />} />
-            <Route
-              path="automations"
-              element={<WorkspaceSettingsAutomationsTab />}
-            />
-            <Route
-              path="integrations"
-              element={<WorkspaceSettingsIntegrationsTab />}
-            />
-            <Route path="danger" element={<WorkspaceSettingsDangerTab />} />
+            path="/workspace/:workspaceId/settings"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <PtLayout />
+                </RequireRole>
+              </RequireAuth>
+            }
+          >
+            <Route element={<WorkspaceSettingsLayoutPage />}>
+              <Route index element={<Navigate to="general" replace />} />
+              <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
+              <Route
+                path="brand"
+                element={<Navigate to="../general" replace />}
+              />
+              <Route
+                path="client-experience"
+                element={<WorkspaceSettingsClientExperienceTab />}
+              />
+              <Route path="team" element={<WorkspaceSettingsTeamTab />} />
+              <Route
+                path="defaults"
+                element={<WorkspaceSettingsDefaultsTab />}
+              />
+              <Route
+                path="automations"
+                element={<WorkspaceSettingsAutomationsTab />}
+              />
+              <Route
+                path="integrations"
+                element={<WorkspaceSettingsIntegrationsTab />}
+              />
+              <Route path="danger" element={<WorkspaceSettingsDangerTab />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route
-          path="/settings"
-          element={
-            <RequireAuth>
-              <RequireRole allow={["pt"]}>
-                <PtLayout />
-              </RequireRole>
-            </RequireAuth>
-          }
-        >
-          <Route index element={<LegacySettingsRedirectPage />} />
-          <Route path=":section" element={<LegacySettingsRedirectPage />} />
-          <Route path="*" element={<LegacySettingsRedirectPage />} />
-        </Route>
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <PtLayout />
+                </RequireRole>
+              </RequireAuth>
+            }
+          >
+            <Route index element={<LegacySettingsRedirectPage />} />
+            <Route path=":section" element={<LegacySettingsRedirectPage />} />
+            <Route path="*" element={<LegacySettingsRedirectPage />} />
+          </Route>
 
-        {/* Client Side */}
-        <Route
-          path="/app"
-          element={
-            <RequireAuth>
-              <RequireRole allow={["client"]}>
-                <ClientLayout />
-              </RequireRole>
-            </RequireAuth>
-          }
-        >
-          <Route path="onboarding" element={<ClientOnboardingPage />} />
-          <Route path="home" element={<ClientHomePage />} />
-          <Route path="workouts" element={<ClientWorkoutsPage />} />
+          {/* Client Side */}
           <Route
-            path="workouts/today"
-            element={<Navigate to="/app/workouts" replace />}
-          />
-          <Route
-            path="workouts/:assignedWorkoutId"
-            element={<ClientWorkoutDetailPage />}
-          />
-          <Route
-            path="workout-run/:assignedWorkoutId"
-            element={<ClientWorkoutRunPage />}
-          />
-          <Route
-            path="workout-summary/:assignedWorkoutId"
-            element={<ClientWorkoutSummaryPage />}
-          />
-          <Route path="checkins" element={<ClientCheckinPage />} />
-          <Route path="checkin" element={<ClientCheckinPage />} />
-          <Route path="messages" element={<ClientMessagesPage />} />
-          <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="settings" element={<ClientSettingsPage />} />
-          <Route
-            path="profile"
-            element={<Navigate to="/app/settings?tab=profile" replace />}
-          />
-          <Route path="habits" element={<ClientHabitsPage />} />
-          <Route path="progress" element={<ClientProgressPage />} />
-          <Route path="nutrition" element={<ClientNutritionPage />} />
-          <Route
-            path="nutrition/new"
-            element={<ClientNutritionCreatePlanPage />}
-          />
-          <Route
-            path="find-coach"
-            element={<Navigate to="/app/home?module=find-coach" replace />}
-          />
-          <Route path="medical" element={<ClientMedicalPage />} />
-          <Route path="baseline" element={<ClientBaselinePage />} />
-          <Route
-            path="nutrition/:assigned_nutrition_day_id"
-            element={<ClientNutritionDayPage />}
-          />
-        </Route>
+            path="/app"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["client"]}>
+                  <ClientLayout />
+                </RequireRole>
+              </RequireAuth>
+            }
+          >
+            <Route path="onboarding" element={<ClientOnboardingPage />} />
+            <Route path="home" element={<ClientHomePage />} />
+            <Route path="workouts" element={<ClientWorkoutsPage />} />
+            <Route
+              path="workouts/today"
+              element={<Navigate to="/app/workouts" replace />}
+            />
+            <Route
+              path="workouts/:assignedWorkoutId"
+              element={<ClientWorkoutDetailPage />}
+            />
+            <Route
+              path="workout-run/:assignedWorkoutId"
+              element={<ClientWorkoutRunPage />}
+            />
+            <Route
+              path="workout-summary/:assignedWorkoutId"
+              element={<ClientWorkoutSummaryPage />}
+            />
+            <Route path="checkins" element={<ClientCheckinPage />} />
+            <Route path="checkin" element={<ClientCheckinPage />} />
+            <Route path="messages" element={<ClientMessagesPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="settings" element={<ClientSettingsPage />} />
+            <Route
+              path="profile"
+              element={<Navigate to="/app/settings?tab=profile" replace />}
+            />
+            <Route path="habits" element={<ClientHabitsPage />} />
+            <Route path="progress" element={<ClientProgressPage />} />
+            <Route path="nutrition" element={<ClientNutritionPage />} />
+            <Route
+              path="nutrition/new"
+              element={<ClientNutritionCreatePlanPage />}
+            />
+            <Route
+              path="find-coach"
+              element={<Navigate to="/app/home?module=find-coach" replace />}
+            />
+            <Route path="medical" element={<ClientMedicalPage />} />
+            <Route path="baseline" element={<ClientBaselinePage />} />
+            <Route
+              path="nutrition/:assigned_nutrition_day_id"
+              element={<ClientNutritionDayPage />}
+            />
+          </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AppShellTransition>
     </Suspense>

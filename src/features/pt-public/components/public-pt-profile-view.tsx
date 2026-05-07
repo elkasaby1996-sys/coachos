@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ExternalLink,
@@ -7,8 +7,6 @@ import {
   Linkedin,
   MapPin,
   Monitor,
-  Sparkles,
-  Star,
   Users,
   Youtube,
 } from "lucide-react";
@@ -33,7 +31,7 @@ const coachingModeLabels: Record<string, string> = {
   one_on_one: "1:1 coaching",
   programming: "Programming",
   nutrition: "Nutrition",
-  accountability: "Accountability",
+  accountability: "Consultation",
 };
 
 const availabilityLabels: Record<string, string> = {
@@ -47,6 +45,14 @@ const socialPlatformIcons = {
   linkedin: Linkedin,
   youtube: Youtube,
 } as const;
+
+function getExternalHref(url: string) {
+  const value = url.trim();
+  if (!value) return "#";
+  if (/^[a-z][a-z\d+.-]*:/i.test(value)) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  return `https://${value}`;
+}
 
 export function PublicPtProfileView({
   profile,
@@ -221,16 +227,6 @@ export function PublicPtProfileView({
                 </div>
 
                 <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">
-                      {preview ? "Internal preview" : "Coach profile"}
-                    </Badge>
-                    {profile.marketplaceVisible ? (
-                      <Badge variant="muted">Marketplace visible</Badge>
-                    ) : (
-                      <Badge variant="muted">Private discovery</Badge>
-                    )}
-                  </div>
                   <div className="space-y-2">
                     <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
                       {title}
@@ -273,10 +269,7 @@ export function PublicPtProfileView({
           <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.15fr)_360px]">
             <div className="space-y-8">
               <section ref={registerSection(0)} className="space-y-4 opacity-0">
-                <SectionHeader
-                  icon={<Sparkles className="h-4 w-4" />}
-                  title="Overview"
-                />
+                <SectionHeader title="Overview" />
                 <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
                     <div className="space-y-3">
@@ -354,10 +347,7 @@ export function PublicPtProfileView({
               ) : null}
 
               <section ref={registerSection(3)} className="space-y-4 opacity-0">
-                <SectionHeader
-                  icon={<Star className="h-4 w-4" />}
-                  title="Proof"
-                />
+                <SectionHeader title="Proof" />
                 <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-4">
@@ -514,7 +504,7 @@ export function PublicPtProfileView({
                         return (
                           <a
                             key={link.platform}
-                            href={link.url}
+                            href={getExternalHref(link.url)}
                             target="_blank"
                             rel="noreferrer"
                             className="flex items-center justify-between rounded-[20px] bg-background/45 px-4 py-3 transition hover:bg-background/65"
@@ -591,7 +581,12 @@ function PublicPackageSection({
                     <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
                       {packageOption.priceLabel ? (
                         <span className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1">
-                          {packageOption.priceLabel}
+                          {packageOption.currencyCode &&
+                          !packageOption.priceLabel
+                            .toUpperCase()
+                            .includes(packageOption.currencyCode.toUpperCase())
+                            ? `${packageOption.priceLabel} ${packageOption.currencyCode}`
+                            : packageOption.priceLabel}
                         </span>
                       ) : null}
                       {packageOption.billingCadenceLabel ? (
@@ -636,10 +631,9 @@ function PublicPackageSection({
   );
 }
 
-function SectionHeader({ title, icon }: { title: string; icon?: ReactNode }) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="flex items-center gap-2">
-      {icon}
+    <div className="flex items-center">
       <h2 className="text-lg font-semibold tracking-tight text-foreground">
         {title}
       </h2>

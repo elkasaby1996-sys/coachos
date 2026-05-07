@@ -55,13 +55,6 @@ export const workspaceSettingsTabs: SettingsTabConfig[] = [
     scope: "workspace",
   },
   {
-    id: "brand",
-    label: "Brand",
-    description: "Client-facing workspace branding.",
-    path: "brand",
-    scope: "workspace",
-  },
-  {
     id: "client-experience",
     label: "Client Experience",
     description: "Onboarding and module behavior.",

@@ -13,15 +13,30 @@ import {
 } from "../../../components/ui/coachos/status-pill";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { getSemanticToneClasses } from "../../../lib/semantic-status";
+import { useI18n } from "../../../lib/i18n";
 import type { PTClientSummary } from "../types";
+
+const statusBadgePriority: Record<string, number> = {
+  risk: 0,
+  low_adherence_trend: 1,
+  missed_checkins: 2,
+  overdue_checkins: 2,
+  no_recent_reply: 3,
+  onboarding: 4,
+  inactive_client: 5,
+  lifecycle: 10,
+};
 
 export function PtHubClientTable({
   clients,
   onOpen,
+  showWorkspaceColumn = true,
 }: {
   clients: PTClientSummary[];
   onOpen: (client: PTClientSummary) => void;
+  showWorkspaceColumn?: boolean;
 }) {
+  const { t } = useI18n();
   const { visibleRows, hasHiddenRows, hiddenCount, showMore } = useWindowedRows(
     {
       rows: clients,
@@ -33,88 +48,163 @@ export function PtHubClientTable({
 
   return (
     <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
-      <div className="hidden grid-cols-[minmax(0,1.2fr)_180px_220px_160px] gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
-        <span>Client</span>
-        <span>Coaching space</span>
-        <span>Lifecycle</span>
-        <span className="text-right">Action</span>
+      <div
+        className={`hidden gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-xs font-semibold normal-case tracking-normal text-muted-foreground lg:grid ${
+          showWorkspaceColumn
+            ? "lg:grid-cols-[minmax(220px,1.35fr)_180px_minmax(270px,0.85fr)_150px]"
+            : "lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px]"
+        }`}
+      >
+        <span>{t("ptHub.clients.table.client", "Client")}</span>
+        {showWorkspaceColumn ? (
+          <span>
+            {t("ptHub.clients.table.coachingSpace", "Coaching space")}
+          </span>
+        ) : null}
+        <span>{t("ptHub.clients.table.lifecycle", "Lifecycle")}</span>
+        <span className="text-right">
+          {t("ptHub.clients.table.action", "Action")}
+        </span>
       </div>
       <div className="space-y-2">
         {visibleRows.map((client) => {
-          const riskFlags = normalizeClientRiskFlags(client.riskFlags).slice(
-            0,
-            2,
-          );
+          const riskFlags = normalizeClientRiskFlags(client.riskFlags);
           const riskState = getClientRiskState(client);
           const clientAtRisk = isClientAtRisk(client);
           const reason = client.pausedReason ?? client.churnReason;
-
-          return (
-            <div
-              key={client.id}
-              className="relative grid gap-4 rounded-[24px] border border-transparent bg-background/55 px-5 py-4 transition-colors hover:border-primary/18 hover:bg-background/75 lg:grid-cols-[minmax(0,1.2fr)_180px_220px_160px] lg:items-center"
-            >
-              <span
-                aria-hidden
-                className={`absolute bottom-4 left-1 top-4 w-[2px] rounded-full ${
-                  getSemanticToneClasses(
-                    client.hasOverdueCheckin || clientAtRisk
-                      ? "danger"
-                      : client.onboardingIncomplete
-                        ? "warning"
-                        : "neutral",
-                  ).marker
-                }`}
-              />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
-                  {client.displayName}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {client.goal || "No goal captured yet"}
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>Recent activity {client.recentActivityLabel}</span>
-                  {reason ? <span>- {reason}</span> : null}
-                </div>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <span className="inline-flex rounded-full border border-border/70 bg-background/72 px-3 py-1">
-                  {client.workspaceName}
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
+          const statusBadges = [
+            {
+              key: "lifecycle",
+              priority: statusBadgePriority.lifecycle,
+              element: (
                 <LifecycleBadge lifecycleState={client.lifecycleState} />
-                {clientAtRisk ? <RiskBadge riskState={riskState} /> : null}
-                {client.onboardingIncomplete && client.onboardingStatus ? (
-                  <TagInfoBadge
-                    label={client.onboardingStatus.replace(/_/g, " ")}
-                    variant="warning"
-                    title="Onboarding status"
-                    description="This client still has onboarding work pending before coaching is fully settled."
-                  />
-                ) : null}
-                {client.hasOverdueCheckin ? (
-                  <TagInfoBadge
-                    label={`${client.overdueCheckinsCount} overdue`}
-                    variant="warning"
-                    title="Overdue check-ins"
-                    description="One or more scheduled check-ins still need a submission or review."
-                  />
-                ) : null}
-                {riskFlags.map((flag) => {
-                  const meta = getClientRiskFlagMeta(flag);
-                  if (!meta) return null;
-                  return (
+              ),
+            },
+            ...(clientAtRisk
+              ? [
+                  {
+                    key: "risk",
+                    priority: statusBadgePriority.risk,
+                    element: <RiskBadge riskState={riskState} />,
+                  },
+                ]
+              : []),
+            ...(client.onboardingIncomplete && client.onboardingStatus
+              ? [
+                  {
+                    key: "onboarding",
+                    priority: statusBadgePriority.onboarding,
+                    element: (
+                      <TagInfoBadge
+                        label={client.onboardingStatus.replace(/_/g, " ")}
+                        variant="warning"
+                        title={t(
+                          "ptHub.clients.table.onboardingStatus",
+                          "Onboarding status",
+                        )}
+                        description={t(
+                          "ptHub.clients.table.onboardingStatusDescription",
+                          "This client still has onboarding work pending before coaching is fully settled.",
+                        )}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+            ...(client.hasOverdueCheckin
+              ? [
+                  {
+                    key: "overdue_checkins",
+                    priority: statusBadgePriority.overdue_checkins,
+                    element: (
+                      <TagInfoBadge
+                        label={`${client.overdueCheckinsCount} ${t("ptHub.clients.table.overdue", "overdue")}`}
+                        variant="warning"
+                        title={t(
+                          "ptHub.clients.table.overdueCheckins",
+                          "Overdue check-ins",
+                        )}
+                        description={t(
+                          "ptHub.clients.table.overdueCheckinsDescription",
+                          "One or more scheduled check-ins still need a submission or review.",
+                        )}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+            ...riskFlags.flatMap((flag) => {
+              const meta = getClientRiskFlagMeta(flag);
+              if (!meta) return [];
+              return [
+                {
+                  key: flag,
+                  priority: statusBadgePriority[flag] ?? 9,
+                  element: (
                     <TagInfoBadge
-                      key={flag}
                       label={meta.shortLabel}
                       variant={meta.variant}
                       title={meta.label}
                       description={meta.description}
                     />
-                  );
-                })}
+                  ),
+                },
+              ];
+            }),
+          ]
+            .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99))
+            .slice(0, 2);
+
+          return (
+            <div
+              key={client.id}
+              className={`grid gap-3 rounded-[20px] border border-transparent bg-background/55 px-4 py-3 transition-colors hover:border-primary/18 hover:bg-background/75 lg:items-center lg:gap-4 ${
+                showWorkspaceColumn
+                  ? "lg:grid-cols-[minmax(220px,1.35fr)_180px_minmax(270px,0.85fr)_150px]"
+                  : "lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px]"
+              }`}
+            >
+              <div className="space-y-1 lg:flex lg:min-w-0 lg:items-center lg:gap-3 lg:space-y-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden
+                    className={`pt-hub-row-status-dot ${
+                      getSemanticToneClasses(
+                        client.hasOverdueCheckin || clientAtRisk
+                          ? "danger"
+                          : client.onboardingIncomplete
+                            ? "warning"
+                            : "neutral",
+                      ).marker
+                    }`}
+                  />
+                  <p className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {client.displayName}
+                  </p>
+                </div>
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground lg:flex-nowrap">
+                  <span className="whitespace-nowrap">
+                    {t("ptHub.clients.table.recentActivity", "Recent activity")}{" "}
+                    {client.recentActivityLabel}
+                  </span>
+                  {reason ? (
+                    <span className="min-w-0 truncate">- {reason}</span>
+                  ) : null}
+                </div>
+              </div>
+              {showWorkspaceColumn ? (
+                <div className="text-sm text-muted-foreground">
+                  <span className="inline-flex rounded-full border border-border/70 bg-background/72 px-3 py-1">
+                    {client.workspaceName}
+                  </span>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
+                {statusBadges.map((badge) => (
+                  <span key={badge.key} className="contents">
+                    {badge.element}
+                  </span>
+                ))}
               </div>
               <div className="flex justify-end">
                 <Button
@@ -122,8 +212,8 @@ export function PtHubClientTable({
                   size="sm"
                   onClick={() => onOpen(client)}
                 >
-                  Open client
-                  <ArrowUpRight className="h-4 w-4 [stroke-width:1.7]" />
+                  {t("ptHub.clients.table.openClient", "Open client")}
+                  <ArrowUpRight className="h-4 w-4 text-[var(--module-clients-text)] [stroke-width:1.7]" />
                 </Button>
               </div>
             </div>
@@ -132,7 +222,9 @@ export function PtHubClientTable({
         {hasHiddenRows ? (
           <div className="flex justify-center px-3 py-2">
             <Button variant="secondary" size="sm" onClick={showMore}>
-              Show {Math.min(hiddenCount, 16)} more clients
+              {t("ptHub.clients.table.showMore", "Show")}{" "}
+              {Math.min(hiddenCount, 16)}{" "}
+              {t("ptHub.clients.table.moreClients", "more clients")}
             </Button>
           </div>
         ) : null}

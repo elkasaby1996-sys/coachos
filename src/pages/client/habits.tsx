@@ -11,7 +11,6 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
-import { ClientReminders } from "../../components/common/client-reminders";
 import {
   PortalPageHeader,
   SectionCard,
@@ -419,8 +418,6 @@ export function ClientHabitsPage() {
         </div>
       </SectionCard>
 
-      <ClientReminders clientId={clientId} timezone={clientTimezone} />
-
       {toastMessage ? (
         <Alert
           className={
@@ -508,14 +505,10 @@ export function ClientHabitsPage() {
                   <p className="text-sm font-semibold text-foreground">
                     Nutrition
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    Recommended today: prioritize calories and protein before
-                    fine-tuning carbs and fats.
-                  </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-2">
-                    <label className="field-label">Calories</label>
+                    <label className="field-label">Calories(kcal)</label>
                     <Input
                       type="number"
                       min="0"
@@ -585,10 +578,6 @@ export function ClientHabitsPage() {
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-foreground">
                     Recovery
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Capture sleep and how you felt so your coach can spot
-                    recovery trends quickly.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -668,10 +657,6 @@ export function ClientHabitsPage() {
                   <p className="text-sm font-semibold text-foreground">
                     Body + activity
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    Log body weight and daily movement for a complete picture of
-                    your day.
-                  </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-2">
@@ -692,20 +677,29 @@ export function ClientHabitsPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="field-label">Weight unit</label>
-                    <select
-                      className={`h-10 w-full rounded-md border px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${logInputClass}`}
-                      value={formState.weight_unit}
-                      onChange={(event) =>
-                        setFormState((prev) => ({
-                          ...prev,
-                          weight_unit: event.target.value as "kg" | "lb",
-                        }))
-                      }
-                      disabled={!isEditable}
-                    >
-                      <option value="kg">kg</option>
-                      <option value="lb">lb</option>
-                    </select>
+                    <div className="grid h-10 grid-cols-2 overflow-hidden rounded-md border border-border/70 bg-background/70">
+                      {(["kg", "lb"] as const).map((unit) => (
+                        <button
+                          key={unit}
+                          type="button"
+                          className={`text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                            formState.weight_unit === unit
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                          }`}
+                          onClick={() =>
+                            setFormState((prev) => ({
+                              ...prev,
+                              weight_unit: unit,
+                            }))
+                          }
+                          disabled={!isEditable}
+                          aria-pressed={formState.weight_unit === unit}
+                        >
+                          {unit}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="field-label">Steps</label>
@@ -729,10 +723,6 @@ export function ClientHabitsPage() {
               <SectionCard className="space-y-3">
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-foreground">Notes</p>
-                  <p className="text-sm text-muted-foreground">
-                    Add context that may help your coach interpret today&apos;s
-                    log.
-                  </p>
                 </div>
                 <textarea
                   className="min-h-[96px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

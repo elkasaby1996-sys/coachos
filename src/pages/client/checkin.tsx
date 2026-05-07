@@ -581,6 +581,13 @@ export function ClientCheckinPage() {
   const handleSubmit = async () => {
     const dueDate = currentCheckin?.week_ending_saturday ?? null;
     if (!clientQuery.data?.id || !dueDate || !templateQuery.data?.id) return;
+    if (checkinState === "upcoming") {
+      setToastVariant("error");
+      setToastMessage(
+        `This check-in opens on ${formatCheckinDueDate(dueDate)}.`,
+      );
+      return;
+    }
     setSubmitting(true);
     setToastMessage(null);
     try {
@@ -718,7 +725,8 @@ export function ClientCheckinPage() {
     }
   };
 
-  const canProceed = hasTemplate && !isLoading;
+  const checkinIsUpcoming = checkinState === "upcoming";
+  const canProceed = hasTemplate && !isLoading && !checkinIsUpcoming;
   const checkinLocked = isSubmitted;
   const checkinDueDateLabel = formatCheckinDueDate(
     currentCheckin?.week_ending_saturday ?? "",
@@ -854,7 +862,7 @@ export function ClientCheckinPage() {
           : checkinState === "overdue"
             ? "Finish this open check-in before moving on to the next cycle."
             : checkinState === "upcoming"
-              ? "Use the current flow to review what will be required when the window opens."
+              ? `This check-in is scheduled for ${checkinDueDateLabel}. It will unlock on that date.`
               : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
   const headerStateText =
     checkinState === "reviewed"
@@ -943,6 +951,7 @@ export function ClientCheckinPage() {
                   const isCurrent = currentCheckin?.id === item.row.id;
                   const isClosed =
                     item.state === "submitted" || item.state === "reviewed";
+                  const isUpcoming = item.state === "upcoming";
 
                   return (
                     <div
@@ -973,12 +982,18 @@ export function ClientCheckinPage() {
                         <Button
                           size="sm"
                           variant={isCurrent ? "default" : "secondary"}
+                          disabled={isUpcoming}
                           onClick={() => {
+                            if (isUpcoming) return;
                             setSelectedCheckinId(item.row.id);
                             setStep(isClosed ? 2 : 0);
                           }}
                         >
-                          {isClosed ? "View" : "Complete"}
+                          {isClosed
+                            ? "View"
+                            : isUpcoming
+                              ? `Opens ${formatCheckinDueDate(item.row.week_ending_saturday)}`
+                              : "Complete"}
                         </Button>
                       </div>
                     </div>
@@ -1075,7 +1090,7 @@ export function ClientCheckinPage() {
                     size="sm"
                     variant="secondary"
                     onClick={() => setStep(0)}
-                    disabled={checkinLocked}
+                    disabled={checkinLocked || checkinIsUpcoming}
                   >
                     Questions
                   </Button>
@@ -1083,11 +1098,15 @@ export function ClientCheckinPage() {
                     size="sm"
                     variant="secondary"
                     onClick={() => setStep(1)}
-                    disabled={checkinLocked}
+                    disabled={checkinLocked || checkinIsUpcoming}
                   >
                     Photos
                   </Button>
-                  <Button size="sm" onClick={() => setStep(2)}>
+                  <Button
+                    size="sm"
+                    onClick={() => setStep(2)}
+                    disabled={checkinIsUpcoming}
+                  >
                     Review
                   </Button>
                 </div>
@@ -1108,13 +1127,23 @@ export function ClientCheckinPage() {
                       ? "current"
                       : "upcoming",
                 onClick:
-                  !checkinLocked && (index <= step || canProceed)
+                  !checkinLocked &&
+                  !checkinIsUpcoming &&
+                  (index <= step || canProceed)
                     ? () => setStep(index)
                     : undefined,
               }))}
             />
           </SurfaceCardContent>
         </SurfaceCard>
+
+        {checkinIsUpcoming ? (
+          <StatusBanner
+            variant="info"
+            title="Check-in not open yet"
+            description={`This cycle is scheduled for ${checkinDueDateLabel}. The questions, photos, and submission controls unlock on that date to keep the check-in tied to the right period.`}
+          />
+        ) : null}
 
         {/* legacy placeholder removed during final onboarding integration
         <EmptyState
@@ -1140,7 +1169,7 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {step === 0 ? (
+        {!checkinIsUpcoming && step === 0 ? (
           <DashboardCard
             title={`${checkinFrequencyLabel} questions`}
             subtitle="Share the latest updates for this check-in period."
@@ -1379,7 +1408,7 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {step === 1 ? (
+        {!checkinIsUpcoming && step === 1 ? (
           <DashboardCard
             title="Progress photos"
             subtitle={
@@ -1532,7 +1561,7 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {step === 2 ? (
+        {!checkinIsUpcoming && step === 2 ? (
           <DashboardCard
             title="Review and submit"
             subtitle={
@@ -1631,7 +1660,21 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {checkinLocked ? (
+        {checkinIsUpcoming ? (
+          <SectionCard className="mt-6 flex flex-col gap-3 border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold text-foreground">
+                Scheduled for {checkinDueDateLabel}
+              </p>
+              <p className="text-muted-foreground">
+                You can complete this check-in when its assigned date arrives.
+              </p>
+            </div>
+            <Button variant="secondary" onClick={() => navigate("/app/home")}>
+              Back to home
+            </Button>
+          </SectionCard>
+        ) : checkinLocked ? (
           <SectionCard className="mt-6 flex flex-col gap-3 border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1 text-sm">
               <p className="font-semibold text-foreground">

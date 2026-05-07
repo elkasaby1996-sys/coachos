@@ -114,7 +114,7 @@ export function ClientWorkoutDetailPage() {
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, completed_at, workout_template:workout_templates(id, name, description, workout_type_tag)",
+          "id, status, completed_at, coach_note, workout_template:workout_templates(id, name, description, workout_type_tag)",
         )
         .eq("id", assignedWorkoutId ?? "")
         .eq("client_id", clientId ?? "")
@@ -564,6 +564,19 @@ export function ClientWorkoutDetailPage() {
             );
           })}
         </div>
+      ) : null}
+
+      {assignedQuery.data?.coach_note ? (
+        <Card className="border-border/70 bg-card/80">
+          <CardContent className="space-y-2 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Coach note
+            </p>
+            <p className="text-sm leading-6 text-foreground">
+              {assignedQuery.data.coach_note}
+            </p>
+          </CardContent>
+        </Card>
       ) : null}
 
       {assignedQuery.isLoading || workoutSessionQuery.isLoading ? (

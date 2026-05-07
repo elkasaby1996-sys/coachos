@@ -51,20 +51,20 @@ export function PtHubSettingsPanel({
   const hasChanges = JSON.stringify(form) !== JSON.stringify(initialSettings);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
-      <div className="space-y-6">
+    <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.2fr)_340px]">
+      <div className="pt-hub-page-stack">
         <PtHubSectionCard
           title="Coach account"
           description="Identity and base operating settings for the business-side PT Hub."
         >
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Account email">
+          <div className="app-form-grid">
+            <Field label="Account email" className="app-form-col-6">
               <Input value={email} readOnly disabled />
             </Field>
-            <Field label="Trainer ID">
+            <Field label="Trainer ID" className="app-form-col-6">
               <Input value={userId} readOnly disabled />
             </Field>
-            <Field label="Default timezone">
+            <Field label="Default timezone" className="app-form-col-6">
               <Input
                 value={form.timezone}
                 onChange={(event) =>
@@ -72,7 +72,7 @@ export function PtHubSettingsPanel({
                 }
               />
             </Field>
-            <Field label="City or region">
+            <Field label="City or region" className="app-form-col-6">
               <Input
                 value={form.city}
                 onChange={(event) =>
@@ -88,8 +88,8 @@ export function PtHubSettingsPanel({
           title="Brand contacts"
           description="Public-facing and billing-ready contact details for your coaching brand."
         >
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Contact email">
+          <div className="app-form-grid">
+            <Field label="Contact email" className="app-form-col-6">
               <Input
                 value={form.contactEmail}
                 onChange={(event) =>
@@ -101,7 +101,7 @@ export function PtHubSettingsPanel({
                 placeholder="coach@yourbrand.com"
               />
             </Field>
-            <Field label="Support email">
+            <Field label="Support email" className="app-form-col-6">
               <Input
                 value={form.supportEmail}
                 onChange={(event) =>
@@ -113,7 +113,7 @@ export function PtHubSettingsPanel({
                 placeholder="support@yourbrand.com"
               />
             </Field>
-            <Field label="Phone" className="md:col-span-2">
+            <Field label="Phone" className="app-form-col-12">
               <Input
                 value={form.phone}
                 onChange={(event) =>
@@ -158,7 +158,7 @@ export function PtHubSettingsPanel({
         </PtHubSectionCard>
       </div>
 
-      <div className="space-y-6">
+      <div className="pt-hub-page-stack">
         <PtHubSectionCard
           title="Profile visibility"
           description="Control how exposed your coach brand is while launch infrastructure evolves."

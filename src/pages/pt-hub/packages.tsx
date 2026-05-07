@@ -1,79 +1,91 @@
-import { Link } from "react-router-dom";
-import { Button } from "../../components/ui/button";
+import { Archive, EyeOff, FileText, Globe2 } from "lucide-react";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubPackageManager } from "../../features/pt-hub/components/pt-hub-package-manager";
-import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
-import { usePtHubPublicationState, usePtPackages } from "../../features/pt-hub/lib/pt-hub";
-import {
-  isPackagePubliclySelectable,
-  summarizePackageDisplayStates,
-} from "../../features/pt-hub/lib/pt-hub-package-state";
+import { usePtPackages } from "../../features/pt-hub/lib/pt-hub";
+import { summarizePackageDisplayStates } from "../../features/pt-hub/lib/pt-hub-package-state";
+import { StatCard } from "../../components/ui/coachos/stat-card";
+
+const PACKAGE_KPI_META = {
+  draft: {
+    label: "Draft",
+    helper: "Internal concepts not visible anywhere public.",
+    icon: FileText,
+    iconClassName: "text-amber-500/80 dark:text-amber-300/80",
+    accent: false,
+    className: "h-full border-border/55 bg-background/35 shadow-none",
+  },
+  hidden: {
+    label: "Active-Hidden",
+    helper: "Live in PT Hub, hidden from your public profile.",
+    icon: EyeOff,
+    iconClassName: "text-muted-foreground",
+    accent: false,
+    className: "h-full border-border/55 bg-background/35 shadow-none",
+  },
+  public: {
+    label: "Active-Public",
+    helper: "Visible on the public profile and lead intake flow.",
+    icon: Globe2,
+    iconClassName: "text-emerald-500/80 dark:text-emerald-300/80",
+    className: "h-full border-border/55 bg-background/35 shadow-none",
+    accent: false,
+  },
+  archived: {
+    label: "Archived",
+    helper: "Retired offers kept for historical package context.",
+    icon: Archive,
+    iconClassName: "text-rose-500/75 dark:text-rose-300/75",
+    accent: false,
+    className: "h-full border-border/55 bg-background/35 shadow-none",
+  },
+} as const;
+
+function resolvePackageKpiMeta(label: string) {
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes("draft")) return PACKAGE_KPI_META.draft;
+  if (normalized.includes("arch")) return PACKAGE_KPI_META.archived;
+  if (normalized.includes("public")) return PACKAGE_KPI_META.public;
+  if (normalized.includes("hidden")) return PACKAGE_KPI_META.hidden;
+
+  return PACKAGE_KPI_META.draft;
+}
 
 export function PtHubPackagesPage() {
   const packagesQuery = usePtPackages();
-  const publicationQuery = usePtHubPublicationState();
   const packages = packagesQuery.data ?? [];
   const packageStateSummary = summarizePackageDisplayStates(packages);
-  const publiclySelectableCount = packages.filter((pkg) =>
-    isPackagePubliclySelectable(pkg),
-  ).length;
 
   return (
-    <section className="space-y-6" data-testid="pt-hub-packages-page">
+    <section className="pt-hub-page-stack" data-testid="pt-hub-packages-page">
       <PtHubPageHeader
         eyebrow="Packages"
         title="Manage your packages"
         description="Create, publish, hide, archive, and reorder PT-scoped packages for your public profile and lead intake."
-        actions={
-          <>
-            {publicationQuery.data?.publicUrl ? (
-              <Button asChild variant="ghost">
-                <a
-                  href={publicationQuery.data.publicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open public page
-                </a>
-              </Button>
-            ) : null}
-            <Button asChild variant="secondary">
-              <Link to="/pt-hub/profile/preview">Preview public profile</Link>
-            </Button>
-          </>
-        }
       />
 
-      <PtHubSectionCard
-        title="Public visibility sync"
-        description="Only Active â€¢ Public packages are shown on your public profile and selectable in the Apply form."
-      >
-        <div className="grid gap-3 md:grid-cols-4">
-          {packageStateSummary.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-border/60 bg-background/35 px-4 py-3"
-            >
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                {item.label}
-              </p>
-              <p className="mt-2 text-xl font-semibold text-foreground">
-                {item.count}
-              </p>
-            </div>
-          ))}
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Publicly selectable now: {publiclySelectableCount}
-        </p>
-      </PtHubSectionCard>
+      <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
+        {packageStateSummary.map((item) => {
+          const meta = resolvePackageKpiMeta(item.label);
+          const Icon = meta.icon;
 
-      <PtHubSectionCard
-        title="Packages"
-        description="Manage package details and state in one canonical PT Hub surface."
-      >
-        <PtHubPackageManager />
-      </PtHubSectionCard>
+          return (
+            <StatCard
+              key={item.label}
+              surface="pt-hub"
+              label={meta.label}
+              value={item.count}
+              helper={meta.helper}
+              icon={Icon}
+              iconClassName={meta.iconClassName}
+              accent={meta.accent}
+              className={meta.className}
+            />
+          );
+        })}
+      </div>
+
+      <PtHubPackageManager />
     </section>
   );
 }

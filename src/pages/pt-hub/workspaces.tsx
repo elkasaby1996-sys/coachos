@@ -77,11 +77,12 @@ export function PtHubWorkspacesPage() {
   const workspaces = workspacesQuery.data ?? [];
 
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Coaching Spaces"
         title="Manage your coaching spaces"
         description="Open, create, and organize the spaces where you coach clients."
+        className="justify-end"
         actions={
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -99,7 +100,7 @@ export function PtHubWorkspacesPage() {
           className="rounded-[28px] border-border/70 bg-card/70 p-8"
         />
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="pt-hub-work-grid xl:grid-cols-2">
           {workspaces.map((workspace) => (
             <PtHubWorkspaceCard
               key={workspace.id}
@@ -115,7 +116,8 @@ export function PtHubWorkspacesPage() {
           <DialogHeader>
             <DialogTitle>Create coaching space</DialogTitle>
             <DialogDescription>
-              This will create a new coaching space using the current workspace setup.
+              This will create a new coaching space using the current workspace
+              setup.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   CalendarDays,
+  Clock3,
   Info,
   MessageCircle,
   Rocket,
   Sparkles,
   Trash2,
+  UsersRound,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import {
@@ -273,7 +277,13 @@ export function PtDashboardPage() {
     };
 
     void loadDashboard();
-  }, [cachedWorkspaceId, messagesEnabled, refreshWorkspace, user?.id, workspaceLoading]);
+  }, [
+    cachedWorkspaceId,
+    messagesEnabled,
+    refreshWorkspace,
+    user?.id,
+    workspaceLoading,
+  ]);
 
   useEffect(() => {
     if (workspaceError) {
@@ -441,7 +451,48 @@ export function PtDashboardPage() {
       }).length,
     [checkinRows, upcomingWindowEnd],
   );
+  const queueSegments = useMemo(() => {
+    const total = Math.max(
+      checkinDueNowCount + checkinOverdueCount + checkinSoonCount,
+      1,
+    );
 
+    return [
+      {
+        key: "overdue",
+        label: "Overdue",
+        helper: "Past the due date and needs follow-up first.",
+        value: checkinOverdueCount,
+        icon: AlertTriangle,
+        toneClassName:
+          "border-rose-500/30 bg-rose-500/10 text-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-rose-400/90",
+      },
+      {
+        key: "due",
+        label: "Due now",
+        helper: "Ready for review in the current queue window.",
+        value: checkinDueNowCount,
+        icon: Clock3,
+        toneClassName:
+          "border-amber-500/30 bg-amber-500/10 text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-amber-300/90",
+      },
+      {
+        key: "soon",
+        label: "Due soon",
+        helper: "Upcoming check-ins inside the next 7 days.",
+        value: checkinSoonCount,
+        icon: CalendarDays,
+        toneClassName:
+          "border-sky-500/30 bg-sky-500/10 text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        meterClassName: "bg-sky-400/90",
+      },
+    ].map((item) => ({
+      ...item,
+      widthPercent: `${Math.max((item.value / total) * 100, item.value > 0 ? 10 : 0)}%`,
+    }));
+  }, [checkinDueNowCount, checkinOverdueCount, checkinSoonCount]);
   const checkinsTodayCount = useMemo(() => {
     if (checkinRows.length === 0) return 0;
     return checkinRows.filter(
@@ -450,6 +501,7 @@ export function PtDashboardPage() {
         checkin.week_ending_saturday === todayStr,
     ).length;
   }, [checkinRows, todayStr]);
+
   const activeClientsDelta = useMemo(() => {
     const currentWindow = clients.filter((client) => {
       return (
@@ -730,7 +782,10 @@ export function PtDashboardPage() {
                 label="Clients"
                 value={activeClientsCount}
                 helper="Active"
-                icon={Sparkles}
+                icon={UsersRound}
+                module="clients"
+                onClick={() => navigate("/pt/clients?lifecycle=active")}
+                ariaLabel="Open active clients"
                 delta={buildMetricDelta({
                   delta: activeClientsDelta,
                 })}
@@ -742,6 +797,9 @@ export function PtDashboardPage() {
                 value={`${adherencePercent}%`}
                 helper="7d"
                 icon={Rocket}
+                module="analytics"
+                onClick={() => navigate("/pt/clients?segment=at_risk")}
+                ariaLabel="Open clients at risk from adherence"
                 delta={buildMetricDelta({
                   delta: adherenceDelta,
                   suffix: "%",
@@ -754,6 +812,9 @@ export function PtDashboardPage() {
                 value={unreadCount}
                 helper="Unread"
                 icon={MessageCircle}
+                module="coaching"
+                onClick={() => navigate("/pt/messages")}
+                ariaLabel="Open unread messages"
               />
             </StaggerItem>
             <StaggerItem>
@@ -762,6 +823,9 @@ export function PtDashboardPage() {
                 value={checkinsTodayCount}
                 helper="Due"
                 icon={CalendarDays}
+                module="checkins"
+                onClick={() => navigate("/pt/checkins")}
+                ariaLabel="Open today's check-ins"
               />
             </StaggerItem>
           </>
@@ -769,7 +833,7 @@ export function PtDashboardPage() {
       </StaggerGroup>
 
       <StaggerGroup
-        className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.7fr)_320px]"
+        className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.8fr)]"
         stagger={0.07}
         delayChildren={0.05}
       >
@@ -888,7 +952,7 @@ export function PtDashboardPage() {
             )}
           </DashboardCard>
 
-          <div className="grid gap-4 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid items-start gap-4">
             <DashboardCard
               title="Recent Check-ins"
               action={
@@ -1029,30 +1093,53 @@ export function PtDashboardPage() {
                 description="Rebuilding your check-in pressure points."
               />
             ) : (
-              <div className="surface-subtle grid grid-cols-3 gap-2 rounded-[1.35rem] p-2">
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Due now
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    <AnimatedValue value={checkinDueNowCount} />
-                  </p>
+              <div className="space-y-3">
+                <div className="h-2.5 overflow-hidden rounded-full bg-background/65">
+                  <div className="flex h-full w-full gap-px overflow-hidden rounded-full">
+                    {queueSegments.map((segment) => (
+                      <div
+                        key={segment.key}
+                        className={segment.meterClassName}
+                        style={{ width: segment.widthPercent }}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Overdue
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    <AnimatedValue value={checkinOverdueCount} />
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/45 px-3 py-3 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    Due soon
-                  </p>
-                  <p className="mt-1 text-xl font-semibold">
-                    <AnimatedValue value={checkinSoonCount} />
-                  </p>
+
+                <div className="space-y-2">
+                  {queueSegments.map((segment) => {
+                    const Icon = segment.icon;
+
+                    return (
+                      <button
+                        key={segment.key}
+                        type="button"
+                        onClick={() => navigate("/pt/checkins")}
+                        className="surface-subtle flex w-full items-center gap-3 rounded-[1.2rem] border border-border/65 px-3.5 py-3 text-left transition duration-200 hover:border-border hover:bg-background/70"
+                      >
+                        <span
+                          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${segment.toneClassName}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground">
+                              {segment.label}
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {segment.helper}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            <AnimatedValue value={segment.value} />
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1060,32 +1147,41 @@ export function PtDashboardPage() {
 
           <DashboardCard title="To-Do list" className="border-border/80">
             <div className="space-y-3">
-              <div className="surface-subtle flex items-center gap-2 px-2 py-2">
-                <Input
-                  value={todoDraft}
-                  onChange={(event) => setTodoDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void addTodo();
-                    }
-                  }}
-                  placeholder="Add a new task"
-                  className="h-9 border-transparent bg-transparent shadow-none"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => void addTodo()}
-                  disabled={!todoDraft.trim()}
+              <div className="surface-subtle space-y-1.5 px-3 py-3">
+                <Label
+                  htmlFor="coach-dashboard-task"
+                  className="text-xs font-semibold text-muted-foreground"
                 >
-                  <ActionButtonLabel
-                    state={todoActionState}
-                    idleLabel="Add"
-                    savingLabel="Adding..."
-                    successLabel="Added"
-                    errorLabel="Try again"
+                  Quick task
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="coach-dashboard-task"
+                    value={todoDraft}
+                    onChange={(event) => setTodoDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void addTodo();
+                      }
+                    }}
+                    placeholder="Follow up with Omar"
+                    className="h-9 border-transparent bg-transparent shadow-none"
                   />
-                </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => void addTodo()}
+                    disabled={!todoDraft.trim()}
+                  >
+                    <ActionButtonLabel
+                      state={todoActionState}
+                      idleLabel="Add"
+                      savingLabel="Adding..."
+                      successLabel="Added"
+                      errorLabel="Try again"
+                    />
+                  </Button>
+                </div>
               </div>
               {todoActionState !== "idle" ? (
                 <ActionStatusMessage

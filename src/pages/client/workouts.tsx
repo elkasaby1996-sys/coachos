@@ -26,7 +26,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { LoadingPanel } from "../../components/common/action-feedback";
-import { Skeleton, StatusPill } from "../../components/ui/coachos";
+import { Skeleton, StatCard, StatusPill } from "../../components/ui/coachos";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -34,7 +34,6 @@ import { supabase } from "../../lib/supabase";
 import { buildSourceLabel } from "./home-unified";
 import {
   applySupersetDragGrouping,
-  applyUnifiedWorkoutFilter,
   canManagePersonalWorkout,
   groupUnifiedWorkoutsByState,
   isTerminalWorkoutStatus,
@@ -42,9 +41,7 @@ import {
   removeExerciseFromSuperset,
   resolveWorkoutPrimaryAction,
   type PreparedPersonalWorkoutDraft,
-  unifiedWorkoutFilters,
   type PersonalWorkoutExerciseDraft,
-  type UnifiedWorkoutFilterKey,
   type UnifiedWorkoutRow,
 } from "./workouts-unified";
 
@@ -140,6 +137,8 @@ const createExerciseDraft = (): PersonalWorkoutExerciseDraft => ({
   supersetGroup: "",
 });
 
+const COMPLETED_WORKOUT_PAGE_SIZE = 4;
+
 const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
@@ -165,49 +164,12 @@ const formatScheduledDate = (value: string | null, todayKey: string) => {
   });
 };
 
-const getFilterEmptyCopy = (filter: UnifiedWorkoutFilterKey) => {
-  switch (filter) {
-    case "assigned":
-      return {
-        title: "No coach-assigned workouts yet",
-        description:
-          "Assigned sessions from your coach will appear here as soon as they are scheduled.",
-      };
-    case "personal":
-      return {
-        title: "No personal workouts yet",
-        description:
-          "Create a personal workout to keep momentum while coach-assigned sessions are pending.",
-      };
-    case "today":
-      return {
-        title: "No workouts due today",
-        description:
-          "You're clear for now. Check upcoming sessions or create a personal workout when ready.",
-      };
-    case "upcoming":
-      return {
-        title: "No upcoming workouts",
-        description:
-          "Once workouts are scheduled ahead, they will show up here.",
-      };
-    case "all":
-    default:
-      return {
-        title: "No workouts yet",
-        description:
-          "This is your unified workouts hub for personal and coach-assigned sessions.",
-      };
-  }
-};
-
 export function ClientWorkoutsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { session } = useSessionAuth();
   const { activeClientId } = useBootstrapAuth();
-  const [activeFilter, setActiveFilter] =
-    useState<UnifiedWorkoutFilterKey>("all");
+  const [completedPage, setCompletedPage] = useState(1);
   const [isCreateWorkoutOpen, setIsCreateWorkoutOpen] = useState(false);
   const [personalWorkoutName, setPersonalWorkoutName] = useState("");
   const [personalWorkoutDate, setPersonalWorkoutDate] = useState("");
@@ -437,14 +399,9 @@ export function ClientWorkoutsPage() {
     },
   });
 
-  const filteredWorkouts = useMemo(
-    () => applyUnifiedWorkoutFilter(workouts, activeFilter, todayKey),
-    [activeFilter, todayKey, workouts],
-  );
-
   const sections = useMemo(
-    () => groupUnifiedWorkoutsByState(filteredWorkouts, todayKey),
-    [filteredWorkouts, todayKey],
+    () => groupUnifiedWorkoutsByState(workouts, todayKey),
+    [todayKey, workouts],
   );
 
   const resetPersonalWorkoutForm = () => {
@@ -690,7 +647,6 @@ export function ClientWorkoutsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["assigned-workouts-week"],
       });
-      setActiveFilter("personal");
       setIsCreateWorkoutOpen(false);
       resetPersonalWorkoutForm();
     },
@@ -801,7 +757,6 @@ export function ClientWorkoutsPage() {
       });
       setIsEditWorkoutOpen(false);
       resetEditWorkoutForm();
-      setActiveFilter("personal");
     },
   });
 
@@ -841,7 +796,6 @@ export function ClientWorkoutsPage() {
         queryKey: ["assigned-workouts-week"],
       });
       setDeleteWorkoutTarget(null);
-      setActiveFilter("personal");
     },
   });
 
@@ -929,17 +883,35 @@ export function ClientWorkoutsPage() {
     clientQuery.isLoading || workoutsQuery.isLoading || activeSessionsQuery.isLoading;
   const hardError = clientQuery.error ?? workoutsQuery.error ?? null;
   const partialError = activeSessionsQuery.error ?? sourceWorkspacesQuery.error;
-  const activeFilterLabel =
-    unifiedWorkoutFilters.find((filter) => filter.key === activeFilter)?.label ??
-    "All";
-  const totalVisible = filteredWorkouts.length;
   const hasAnyWorkouts = workouts.length > 0;
-  const emptyCopy = getFilterEmptyCopy(activeFilter);
   const createdWorkoutId = createPersonalWorkoutMutation.data;
+  const workoutKpis = [
+    { label: "In progress", value: sections.inProgress.length },
+    { label: "Today", value: sections.today.length },
+    { label: "Upcoming", value: sections.upcoming.length },
+    { label: "Recently completed", value: sections.recentlyCompleted.length },
+  ];
+  const completedPageCount = Math.max(
+    1,
+    Math.ceil(sections.recentlyCompleted.length / COMPLETED_WORKOUT_PAGE_SIZE),
+  );
+  const safeCompletedPage = Math.min(completedPage, completedPageCount);
+  const completedPageStart =
+    (safeCompletedPage - 1) * COMPLETED_WORKOUT_PAGE_SIZE;
+  const visibleCompletedWorkouts = sections.recentlyCompleted.slice(
+    completedPageStart,
+    completedPageStart + COMPLETED_WORKOUT_PAGE_SIZE,
+  );
   const editDialogReady =
     Boolean(editingWorkoutId) &&
     hydratedEditWorkoutId === editingWorkoutId &&
     !editWorkoutExercisesQuery.isLoading;
+
+  useEffect(() => {
+    if (completedPage > completedPageCount) {
+      setCompletedPage(completedPageCount);
+    }
+  }, [completedPage, completedPageCount]);
 
   const renderPersonalManagementActions = (workout: UnifiedWorkoutRow) => {
     if (!canManagePersonalWorkout(workout)) {
@@ -976,7 +948,8 @@ export function ClientWorkoutsPage() {
       <PortalPageHeader
         title="Workouts"
         subtitle="One unified workouts hub across personal and coach-assigned sessions."
-        stateText={`${activeFilterLabel} - ${totalVisible} in view`}
+        stateText={`${workouts.length} workouts`}
+        className="justify-end"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -990,12 +963,22 @@ export function ClientWorkoutsPage() {
             >
               Create workout
             </Button>
-            <Button variant="secondary" onClick={() => navigate("/app/find-coach")}>
-              Find a Coach
-            </Button>
           </div>
         }
       />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {workoutKpis.map((item, index) => (
+          <StatCard
+            key={item.label}
+            label={item.label}
+            value={item.value}
+            accent={index === 0}
+            className="min-h-[8rem]"
+            disableHoverMotion
+          />
+        ))}
+      </div>
 
       <Dialog
         open={isCreateWorkoutOpen}
@@ -1682,55 +1665,6 @@ export function ClientWorkoutsPage() {
             />
           ) : null}
 
-          <SurfaceCard>
-            <SurfaceCardHeader>
-              <SurfaceCardTitle>Filters</SurfaceCardTitle>
-              <SurfaceCardDescription>
-                Keep one workouts experience while narrowing what you want to see.
-              </SurfaceCardDescription>
-            </SurfaceCardHeader>
-            <SurfaceCardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {unifiedWorkoutFilters.map((filter) => (
-                  <Button
-                    key={filter.key}
-                    size="sm"
-                    variant={activeFilter === filter.key ? "default" : "secondary"}
-                    onClick={() => setActiveFilter(filter.key)}
-                  >
-                    {filter.label}
-                  </Button>
-                ))}
-              </div>
-              <SectionCard className="grid gap-3 sm:grid-cols-4">
-                <div className="space-y-1">
-                  <p className="field-label">In progress</p>
-                  <p className="text-xl font-semibold text-foreground">
-                    {sections.inProgress.length}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="field-label">Today</p>
-                  <p className="text-xl font-semibold text-foreground">
-                    {sections.today.length}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="field-label">Upcoming</p>
-                  <p className="text-xl font-semibold text-foreground">
-                    {sections.upcoming.length}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="field-label">Recently completed</p>
-                  <p className="text-xl font-semibold text-foreground">
-                    {sections.recentlyCompleted.length}
-                  </p>
-                </div>
-              </SectionCard>
-            </SurfaceCardContent>
-          </SurfaceCard>
-
           {loading ? (
             <SurfaceCard>
               <SurfaceCardContent className="space-y-3 pt-6">
@@ -1743,10 +1677,10 @@ export function ClientWorkoutsPage() {
                 ))}
               </SurfaceCardContent>
             </SurfaceCard>
-          ) : totalVisible === 0 ? (
+          ) : !hasAnyWorkouts ? (
             <EmptyStateBlock
-              title={emptyCopy.title}
-              description={emptyCopy.description}
+              title="No workouts yet"
+              description="This is your unified workouts hub for personal and coach-assigned sessions."
                 actions={
                   <>
                     <Button
@@ -1821,71 +1755,68 @@ export function ClientWorkoutsPage() {
                 </SurfaceCard>
               ) : null}
 
-              {sections.today.length > 0 ? (
+              <div className="grid gap-6 xl:grid-cols-2">
                 <SurfaceCard>
                   <SurfaceCardHeader>
                     <SurfaceCardTitle>Today</SurfaceCardTitle>
                     <SurfaceCardDescription>
-                      Due now or overdue sessions across all workout sources.
+                      Workouts scheduled for today.
                     </SurfaceCardDescription>
                   </SurfaceCardHeader>
                   <SurfaceCardContent className="space-y-3">
-                    {sections.today.map((workout) => {
-                      const action = resolveWorkoutPrimaryAction(workout);
-                      const isOverdue = Boolean(
-                        workout.scheduledDate &&
-                          workout.scheduledDate < todayKey &&
-                          !isTerminalWorkoutStatus(workout.status),
-                      );
-                      return (
-                        <SectionCard key={workout.id} className="space-y-3">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold text-foreground">
-                                {workout.workoutName}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {workout.workoutTypeTag ?? "Workout"}
-                              </p>
+                    {sections.today.length > 0 ? (
+                      sections.today.map((workout) => {
+                        const action = resolveWorkoutPrimaryAction(workout);
+                        return (
+                          <SectionCard key={workout.id} className="space-y-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {workout.workoutName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {workout.workoutTypeTag ?? "Workout"}
+                                </p>
+                              </div>
+                              <StatusPill status={workout.status} />
                             </div>
-                            <StatusPill
-                              status={isOverdue ? "review_needed" : workout.status}
-                            />
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <Badge variant="muted">{workout.sourceLabel}</Badge>
-                            {workout.programName ? (
-                              <Badge variant="muted">
-                                {workout.programDayIndex
-                                  ? `${workout.programName} - Day ${workout.programDayIndex}`
-                                  : workout.programName}
-                              </Badge>
-                            ) : (
-                              <span>Standalone workout</span>
-                            )}
-                            <span>
-                              {formatScheduledDate(workout.scheduledDate, todayKey)}
-                            </span>
-                          </div>
-                          {workout.coachNote ? (
-                            <p className="text-sm leading-6 text-muted-foreground">
-                              {workout.coachNote}
-                            </p>
-                          ) : null}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button size="sm" onClick={() => navigate(action.href)}>
-                              {action.label}
-                            </Button>
-                            {renderPersonalManagementActions(workout)}
-                          </div>
-                        </SectionCard>
-                      );
-                    })}
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              <Badge variant="muted">{workout.sourceLabel}</Badge>
+                              {workout.programName ? (
+                                <Badge variant="muted">
+                                  {workout.programDayIndex
+                                    ? `${workout.programName} - Day ${workout.programDayIndex}`
+                                    : workout.programName}
+                                </Badge>
+                              ) : null}
+                              <span>
+                                {formatScheduledDate(workout.scheduledDate, todayKey)}
+                              </span>
+                            </div>
+                            {workout.coachNote ? (
+                              <p className="text-sm leading-6 text-muted-foreground">
+                                {workout.coachNote}
+                              </p>
+                            ) : null}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button size="sm" onClick={() => navigate(action.href)}>
+                                {action.label}
+                              </Button>
+                              {renderPersonalManagementActions(workout)}
+                            </div>
+                          </SectionCard>
+                        );
+                      })
+                    ) : (
+                      <SectionCard>
+                        <p className="text-sm text-muted-foreground">
+                          No workouts scheduled for today.
+                        </p>
+                      </SectionCard>
+                    )}
                   </SurfaceCardContent>
                 </SurfaceCard>
-              ) : null}
 
-              {sections.upcoming.length > 0 ? (
                 <SurfaceCard>
                   <SurfaceCardHeader>
                     <SurfaceCardTitle>Upcoming</SurfaceCardTitle>
@@ -1894,61 +1825,69 @@ export function ClientWorkoutsPage() {
                     </SurfaceCardDescription>
                   </SurfaceCardHeader>
                   <SurfaceCardContent className="space-y-3">
-                    {sections.upcoming.map((workout) => {
-                      const action = resolveWorkoutPrimaryAction(workout);
-                      return (
-                        <SectionCard key={workout.id} className="space-y-3">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold text-foreground">
-                                {workout.workoutName}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {workout.workoutTypeTag ?? "Workout"}
-                              </p>
+                    {sections.upcoming.length > 0 ? (
+                      sections.upcoming.map((workout) => {
+                        const action = resolveWorkoutPrimaryAction(workout);
+                        return (
+                          <SectionCard key={workout.id} className="space-y-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {workout.workoutName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {workout.workoutTypeTag ?? "Workout"}
+                                </p>
+                              </div>
+                              <StatusPill status={workout.status} />
                             </div>
-                            <StatusPill status={workout.status} />
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <Badge variant="muted">{workout.sourceLabel}</Badge>
-                            {workout.programName ? (
-                              <Badge variant="muted">
-                                {workout.programDayIndex
-                                  ? `${workout.programName} - Day ${workout.programDayIndex}`
-                                  : workout.programName}
-                              </Badge>
-                            ) : null}
-                            <span>
-                              {formatScheduledDate(workout.scheduledDate, todayKey)}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => navigate(action.href)}
-                            >
-                              {action.label}
-                            </Button>
-                            {renderPersonalManagementActions(workout)}
-                          </div>
-                        </SectionCard>
-                      );
-                    })}
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              <Badge variant="muted">{workout.sourceLabel}</Badge>
+                              {workout.programName ? (
+                                <Badge variant="muted">
+                                  {workout.programDayIndex
+                                    ? `${workout.programName} - Day ${workout.programDayIndex}`
+                                    : workout.programName}
+                                </Badge>
+                              ) : null}
+                              <span>
+                                {formatScheduledDate(workout.scheduledDate, todayKey)}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => navigate(action.href)}
+                              >
+                                {action.label}
+                              </Button>
+                              {renderPersonalManagementActions(workout)}
+                            </div>
+                          </SectionCard>
+                        );
+                      })
+                    ) : (
+                      <SectionCard>
+                        <p className="text-sm text-muted-foreground">
+                          No upcoming workouts scheduled.
+                        </p>
+                      </SectionCard>
+                    )}
                   </SurfaceCardContent>
                 </SurfaceCard>
-              ) : null}
+              </div>
 
-              {sections.recentlyCompleted.length > 0 ? (
-                <SurfaceCard>
-                  <SurfaceCardHeader>
-                    <SurfaceCardTitle>Recently Completed</SurfaceCardTitle>
-                    <SurfaceCardDescription>
-                      Review recent sessions and summaries.
-                    </SurfaceCardDescription>
-                  </SurfaceCardHeader>
-                  <SurfaceCardContent className="space-y-3">
-                    {sections.recentlyCompleted.map((workout) => {
+              <SurfaceCard>
+                <SurfaceCardHeader>
+                  <SurfaceCardTitle>Recently Completed</SurfaceCardTitle>
+                  <SurfaceCardDescription>
+                    Review recent sessions and summaries.
+                  </SurfaceCardDescription>
+                </SurfaceCardHeader>
+                <SurfaceCardContent className="space-y-3">
+                  {visibleCompletedWorkouts.length > 0 ? (
+                    visibleCompletedWorkouts.map((workout) => {
                       const action = resolveWorkoutPrimaryAction(workout);
                       return (
                         <SectionCard key={workout.id} className="space-y-3">
@@ -1990,10 +1929,50 @@ export function ClientWorkoutsPage() {
                           </div>
                         </SectionCard>
                       );
-                    })}
-                  </SurfaceCardContent>
-                </SurfaceCard>
-              ) : null}
+                    })
+                  ) : (
+                    <SectionCard>
+                      <p className="text-sm text-muted-foreground">
+                        Completed workouts will appear here.
+                      </p>
+                    </SectionCard>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <p className="text-xs text-muted-foreground">
+                      Showing {visibleCompletedWorkouts.length} of{" "}
+                      {sections.recentlyCompleted.length} completed workouts
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={safeCompletedPage <= 1}
+                        onClick={() =>
+                          setCompletedPage((page) => Math.max(1, page - 1))
+                        }
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        Page {safeCompletedPage} of {completedPageCount}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={safeCompletedPage >= completedPageCount}
+                        onClick={() =>
+                          setCompletedPage((page) =>
+                            Math.min(completedPageCount, page + 1),
+                          )
+                        }
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </SurfaceCardContent>
+              </SurfaceCard>
             </div>
           )}
         </>

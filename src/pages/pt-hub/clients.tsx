@@ -1,10 +1,15 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Search, UsersRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
+import {
+  Activity,
+  PauseCircle,
+  Search,
+  ShieldAlert,
+  UsersRound,
+} from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
-import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -18,17 +23,34 @@ import {
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTClientSummary } from "../../features/pt-hub/types";
 import { type ClientSegmentKey } from "../../lib/client-lifecycle";
+import { useI18n } from "../../lib/i18n";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtHubClientsPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { switchWorkspace } = useWorkspace();
   const statsQuery = usePtHubClientStats();
   const workspacesQuery = usePtHubWorkspaces();
-  const [searchValue, setSearchValue] = useState("");
-  const [workspaceFilter, setWorkspaceFilter] = useState<string>("all");
-  const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
-  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>("all");
+  const [searchValue, setSearchValue] = useState(
+    () => searchParams.get("search") ?? "",
+  );
+  const [workspaceFilter, setWorkspaceFilter] = useState<string>(
+    () => searchParams.get("workspace") ?? "all",
+  );
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>(
+    () => searchParams.get("lifecycle") ?? "all",
+  );
+  const [segmentFilter, setSegmentFilter] = useState<ClientSegmentKey>(() => {
+    const value = searchParams.get("segment");
+    return value === "onboarding_incomplete" ||
+      value === "checkin_overdue" ||
+      value === "at_risk" ||
+      value === "paused"
+      ? value
+      : "all";
+  });
   const [page, setPage] = useState(0);
   const deferredSearchValue = useDeferredValue(searchValue);
   const clientsQuery = usePtHubClientsPage({
@@ -55,129 +77,222 @@ export function PtHubClientsPage() {
     clientsQuery.isLoading || (clientsQuery.isFetching && !clientsQuery.data);
   const isEmpty = totalCount === 0;
   const hasAnyClients = (stats?.totalClients ?? 0) > 0;
+  const hasActiveFilters =
+    searchValue.trim().length > 0 ||
+    workspaceFilter !== "all" ||
+    lifecycleFilter !== "all" ||
+    segmentFilter !== "all";
 
   useEffect(() => {
     setPage(0);
   }, [deferredSearchValue, lifecycleFilter, segmentFilter, workspaceFilter]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    if (deferredSearchValue.trim()) {
+      nextParams.set("search", deferredSearchValue.trim());
+    }
+    if (workspaceFilter !== "all") {
+      nextParams.set("workspace", workspaceFilter);
+    }
+    if (lifecycleFilter !== "all") {
+      nextParams.set("lifecycle", lifecycleFilter);
+    }
+    if (segmentFilter !== "all") {
+      nextParams.set("segment", segmentFilter);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    deferredSearchValue,
+    lifecycleFilter,
+    segmentFilter,
+    setSearchParams,
+    workspaceFilter,
+  ]);
 
   const openClientWorkspace = (client: PTClientSummary) => {
     switchWorkspace(client.workspaceId);
     navigate(`/pt/clients/${client.id}`);
   };
 
+  const resetFilters = () => {
+    setSearchValue("");
+    setWorkspaceFilter("all");
+    setLifecycleFilter("all");
+    setSegmentFilter("all");
+  };
+
   return (
-    <section className="space-y-6">
+    <section className="pt-hub-page-stack">
       <PtHubPageHeader
-        eyebrow="Clients"
-        title="Manage your clients"
-        description="View every client across your coaching spaces."
+        eyebrow={t("ptHub.clients.eyebrow", "Clients")}
+        title={t("ptHub.clients.title", "Manage your clients")}
+        description={t(
+          "ptHub.clients.description",
+          "View every client across your coaching spaces.",
+        )}
       />
 
-      <div className="page-kpi-block grid gap-4 xl:grid-cols-4">
+      <div className="page-kpi-block pt-hub-kpi-grid" data-columns="4">
         <StatCard
           surface="pt-hub"
-          label="Total Clients"
+          module="clients"
+          label={t("ptHub.clients.kpi.total", "Total Clients")}
           value={stats?.totalClients ?? 0}
-          helper="Across all coaching spaces"
+          helper={t(
+            "ptHub.clients.kpi.totalHelper",
+            "Across all coaching spaces",
+          )}
           icon={UsersRound}
           accent
         />
         <StatCard
           surface="pt-hub"
-          label="Active"
+          module="clients"
+          label={t("ptHub.clients.kpi.active", "Active")}
           value={stats?.activeClients ?? 0}
-          helper="Currently in training"
+          helper={t("ptHub.clients.kpi.activeHelper", "Currently in training")}
+          icon={Activity}
+          iconClassName="text-[var(--state-success-text)]"
         />
         <StatCard
           surface="pt-hub"
-          label="At Risk"
+          module="clients"
+          label={t("ptHub.clients.kpi.atRisk", "At Risk")}
           value={stats?.atRiskClients ?? 0}
-          helper="Needs your attention"
+          helper={t("ptHub.clients.kpi.atRiskHelper", "Needs your attention")}
+          icon={ShieldAlert}
+          iconClassName="text-[var(--state-danger-text)]"
         />
         <StatCard
           surface="pt-hub"
-          label="Paused"
+          module="clients"
+          label={t("ptHub.clients.kpi.paused", "Paused")}
           value={stats?.pausedClients ?? 0}
-          helper="Currently paused"
+          helper={t("ptHub.clients.kpi.pausedHelper", "Currently paused")}
+          icon={PauseCircle}
+          iconClassName="text-[var(--state-warning-text)]"
         />
       </div>
 
       <PtHubSectionCard
-        title="Client List"
-        actions={
-          <InviteClientDialog
-            trigger={<Button variant="secondary">Invite client</Button>}
-          />
-        }
-        contentClassName="space-y-6"
+        title={t("ptHub.clients.listTitle", "Client List")}
+        contentClassName="space-y-4"
       >
-        <div className="rounded-[24px] border border-border/70 bg-background/55 p-4">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]">
-            <div className="relative">
-              <Search className="app-search-icon h-4 w-4" />
-              <Input
-                className="app-search-input"
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search clients, goals, or coaching space"
-              />
-            </div>
-            <Select
-              variant="filter"
-              value={workspaceFilter}
-              onChange={(event) => setWorkspaceFilter(event.target.value)}
-            >
-              <option value="all">All coaching spaces</option>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              variant="filter"
-              value={lifecycleFilter}
-              onChange={(event) => setLifecycleFilter(event.target.value)}
-            >
-              <option value="all">All lifecycles</option>
-              <option value="invited">Invited</option>
-              <option value="onboarding">Onboarding</option>
-              <option value="paused">Paused</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="churned">Churned</option>
-            </Select>
-            <Select
-              variant="filter"
-              value={segmentFilter}
-              onChange={(event) =>
-                setSegmentFilter(event.target.value as ClientSegmentKey)
-              }
-            >
-              <option value="all">All segments</option>
-              <option value="onboarding_incomplete">
-                Onboarding incomplete
-              </option>
-              <option value="checkin_overdue">Check-in overdue</option>
-              <option value="at_risk">At-risk clients</option>
-              <option value="paused">Paused clients</option>
-            </Select>
+        <div className="pt-hub-filter-row lg:grid-cols-[minmax(18rem,1fr)_minmax(12rem,0.52fr)_minmax(10rem,0.42fr)_minmax(10rem,0.42fr)_auto]">
+          <div className="relative min-w-0">
+            <Search className="app-search-icon h-4 w-4" />
+            <Input
+              className="app-search-input"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={t(
+                "ptHub.clients.searchPlaceholder",
+                "Search clients, goals, or coaching space",
+              )}
+            />
           </div>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={workspaceFilter}
+            onChange={(event) => setWorkspaceFilter(event.target.value)}
+          >
+            <option value="all">
+              {t("ptHub.clients.allCoachingSpaces", "All coaching spaces")}
+            </option>
+            {workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={lifecycleFilter}
+            onChange={(event) => setLifecycleFilter(event.target.value)}
+          >
+            <option value="all">
+              {t("ptHub.clients.allLifecycles", "All lifecycles")}
+            </option>
+            <option value="invited">
+              {t("ptHub.clients.lifecycle.invited", "Invited")}
+            </option>
+            <option value="onboarding">
+              {t("ptHub.clients.lifecycle.onboarding", "Onboarding")}
+            </option>
+            <option value="paused">
+              {t("ptHub.clients.lifecycle.paused", "Paused")}
+            </option>
+            <option value="active">
+              {t("ptHub.clients.lifecycle.active", "Active")}
+            </option>
+            <option value="completed">
+              {t("ptHub.clients.lifecycle.completed", "Completed")}
+            </option>
+            <option value="churned">
+              {t("ptHub.clients.lifecycle.churned", "Churned")}
+            </option>
+          </Select>
+          <Select
+            className="w-full"
+            variant="filter"
+            value={segmentFilter}
+            onChange={(event) =>
+              setSegmentFilter(event.target.value as ClientSegmentKey)
+            }
+          >
+            <option value="all">
+              {t("ptHub.clients.allSegments", "All segments")}
+            </option>
+            <option value="onboarding_incomplete">
+              {t(
+                "ptHub.clients.segment.onboardingIncomplete",
+                "Onboarding incomplete",
+              )}
+            </option>
+            <option value="checkin_overdue">
+              {t("ptHub.clients.segment.checkinOverdue", "Check-in overdue")}
+            </option>
+            <option value="at_risk">
+              {t("ptHub.clients.segment.atRisk", "At-risk clients")}
+            </option>
+            <option value="paused">
+              {t("ptHub.clients.segment.paused", "Paused clients")}
+            </option>
+          </Select>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-11 whitespace-nowrap"
+            disabled={!hasActiveFilters}
+            onClick={resetFilters}
+          >
+            Reset
+          </Button>
         </div>
 
         {isTableLoading ? (
-          <div className="space-y-3 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-4">
+          <div className="pt-hub-data-shell space-y-3 p-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
             ))}
           </div>
         ) : isEmpty ? (
           <EmptyState
-            title="No clients found"
+            title={t("ptHub.clients.emptyTitle", "No clients found")}
             description={
               hasAnyClients
-                ? "No clients match the current filters."
-                : "You do not have any client records yet."
+                ? t(
+                    "ptHub.clients.emptyFiltered",
+                    "No clients match the current filters.",
+                  )
+                : t(
+                    "ptHub.clients.emptyNone",
+                    "You do not have any client records yet.",
+                  )
             }
             icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
           />
@@ -189,9 +304,12 @@ export function PtHubClientsPage() {
           <p>
             {isEmpty
               ? hasAnyClients
-                ? "No clients match the current filters."
-                : "No client records yet."
-              : `Showing ${rangeStart}-${rangeEnd} of ${totalCount} clients`}
+                ? t(
+                    "ptHub.clients.emptyFiltered",
+                    "No clients match the current filters.",
+                  )
+                : t("ptHub.clients.emptyNoneShort", "No client records yet.")
+              : `${t("ptHub.clients.showing", "Showing")} ${rangeStart}-${rangeEnd} ${t("ptHub.clients.of", "of")} ${totalCount} ${t("ptHub.clients.clientCount", "clients")}`}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -200,7 +318,7 @@ export function PtHubClientsPage() {
               onClick={() => setPage((current) => Math.max(0, current - 1))}
               disabled={page === 0 || clientsQuery.isFetching}
             >
-              Previous
+              {t("ptHub.clients.previous", "Previous")}
             </Button>
             <Button
               variant="secondary"
@@ -208,7 +326,7 @@ export function PtHubClientsPage() {
               onClick={() => setPage((current) => current + 1)}
               disabled={!clientsQuery.data?.hasMore || clientsQuery.isFetching}
             >
-              Next
+              {t("ptHub.clients.next", "Next")}
             </Button>
           </div>
         </div>

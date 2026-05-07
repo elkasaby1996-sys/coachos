@@ -21,6 +21,19 @@ import {
 const n = (value: number | null | undefined) =>
   typeof value === "number" ? value : 0;
 
+const formatServing = (quantity: number | null, unit: string | null) => {
+  if (quantity === null && !unit) return "Serving";
+  return [quantity ?? null, unit?.trim() || null].filter(Boolean).join(" ");
+};
+
+const formatMacroLine = (values: {
+  calories?: number | null;
+  protein_g?: number | null;
+  carbs_g?: number | null;
+  fat_g?: number | null;
+}) =>
+  `${Math.round(n(values.calories))} cals / ${Math.round(n(values.protein_g))}p / ${Math.round(n(values.carbs_g))}c / ${Math.round(n(values.fat_g))}f`;
+
 const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
@@ -269,9 +282,6 @@ export function ClientNutritionDayPage() {
                         {done ? "Done" : "Pending"}
                       </Badge>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Order #{meal.meal_order}
-                    </p>
                   </button>
                 );
               })}
@@ -288,9 +298,94 @@ export function ClientNutritionDayPage() {
               <div className="space-y-3">
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                   <p className="font-semibold">{selectedMeal.meal_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedMeal.recipe_text ?? "No recipe text"}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatMacroLine(selectedMeal)}
                   </p>
+                </div>
+
+                {dayQuery.data.notes ? (
+                  <div className="rounded-lg border border-border/60 bg-background/45 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Day note
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                      {dayQuery.data.notes}
+                    </p>
+                  </div>
+                ) : null}
+
+                {selectedMeal.notes || selectedMeal.recipe_text ? (
+                  <div className="rounded-lg border border-border/60 bg-background/45 p-3">
+                    {selectedMeal.notes ? (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Meal note
+                        </p>
+                        <p className="whitespace-pre-wrap text-sm leading-6">
+                          {selectedMeal.notes}
+                        </p>
+                      </div>
+                    ) : null}
+                    {selectedMeal.recipe_text ? (
+                      <div className={selectedMeal.notes ? "mt-3 space-y-1" : "space-y-1"}>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Instructions
+                        </p>
+                        <p className="whitespace-pre-wrap text-sm leading-6">
+                          {selectedMeal.recipe_text}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Meal components
+                  </p>
+                  {selectedMeal.components.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedMeal.components.map((component) => (
+                        <div
+                          key={component.id}
+                          className="rounded-lg border border-border/60 bg-muted/20 p-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium">
+                                {component.component_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatServing(component.quantity, component.unit)}
+                              </p>
+                            </div>
+                            <Badge variant="muted">
+                              {formatMacroLine(component)}
+                            </Badge>
+                          </div>
+                          {component.recipe_text ? (
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                              {component.recipe_text}
+                            </p>
+                          ) : null}
+                          {component.notes ? (
+                            <div className="mt-2 rounded-md border border-border/50 bg-background/45 p-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Note
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-sm leading-6">
+                                {component.notes}
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
+                      No meal components have been added yet.
+                    </p>
+                  )}
                 </div>
 
                 <label className="flex items-center gap-2 text-sm">

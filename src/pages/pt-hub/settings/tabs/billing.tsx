@@ -38,7 +38,7 @@ export function PtHubSettingsBillingTab() {
     );
   }
 
-  const { subscription, invoices, revenue } = paymentsQuery.data;
+  const { subscription, invoices } = paymentsQuery.data;
 
   return (
     <div className="space-y-4">
@@ -49,7 +49,6 @@ export function PtHubSettingsBillingTab() {
         <SettingsFieldRow label="Current plan" hint="Source: pt_hub_settings">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{subscription.planName}</Badge>
-            <Badge variant="muted">{subscription.billingStatus}</Badge>
           </div>
         </SettingsFieldRow>
         <SettingsFieldRow
@@ -63,34 +62,21 @@ export function PtHubSettingsBillingTab() {
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="Usage and Revenue Snapshot"
-        description="Read-only overview from current data model."
+        title="Payment Methods"
+        description="Cards and bank details for subscription billing."
       >
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-border/70 bg-card/40 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Monthly revenue
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/40 px-4 py-3">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-foreground">
+              No payment method connected
             </p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {revenue.monthlyRevenueLabel}
-            </p>
-          </div>
-          <div className="rounded-xl border border-border/70 bg-card/40 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Active paying clients
-            </p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {revenue.activePayingClientsLabel}
+            <p className="text-xs text-muted-foreground">
+              Add a card when the billing portal is connected.
             </p>
           </div>
-          <div className="rounded-xl border border-border/70 bg-card/40 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              Potential active clients
-            </p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {revenue.potentialActiveClients}
-            </p>
-          </div>
+          <Button type="button" variant="secondary" disabled>
+            Add payment method (Unavailable)
+          </Button>
         </div>
       </SettingsSectionCard>
 

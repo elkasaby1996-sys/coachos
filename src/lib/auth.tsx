@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import * as Sentry from "@sentry/react";
 import type { Session, User } from "@supabase/supabase-js";
 import {
   type AccountType,
@@ -871,6 +872,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
+
+  useEffect(() => {
+    if (!session?.user) {
+      Sentry.setUser(null);
+      return;
+    }
+
+    Sentry.setUser({
+      id: session.user.id,
+    });
+  }, [session?.user]);
 
   useEffect(() => {
     bootstrapStateRef.current = bootstrapState;

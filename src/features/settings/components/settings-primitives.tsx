@@ -13,6 +13,7 @@ import {
   getModuleToneClasses,
   getModuleToneStyle,
 } from "../../../lib/module-tone";
+import { useI18n } from "../../../lib/i18n";
 
 export type SettingsTabLink = {
   id: string;
@@ -85,7 +86,8 @@ export function SettingsTabs({ tabs }: { tabs: SettingsTabLink[] }) {
   const isTabActive = (to: string) => {
     const [rawPath = "", rawQuery = ""] = to.split("?");
     const tabPath = rawPath.replace(/\/+$/, "");
-    const pathMatches = activePath === tabPath || activePath.startsWith(`${tabPath}/`);
+    const pathMatches =
+      activePath === tabPath || activePath.startsWith(`${tabPath}/`);
     if (!pathMatches) return false;
     if (!rawQuery) return true;
 
@@ -239,6 +241,8 @@ export function StickySaveBar({
   onDiscard: () => void;
   statusText?: string;
 }) {
+  const { t } = useI18n();
+
   if (!isDirty) return null;
 
   return (
@@ -251,18 +255,20 @@ export function StickySaveBar({
         }}
       >
         <p className="text-sm text-muted-foreground">
-          {statusText ?? "Unsaved changes"}
+          {statusText ?? t("settings.unsavedChanges", "Unsaved changes")}
         </p>
         <div className="flex items-center gap-2">
           <Button type="button" variant="secondary" onClick={onDiscard}>
-            Discard
+            {t("common.discard", "Discard")}
           </Button>
           <Button
             type="button"
             onClick={() => void onSave()}
             disabled={Boolean(isSaving)}
           >
-            {isSaving ? "Saving..." : "Save changes"}
+            {isSaving
+              ? t("common.saving", "Saving...")
+              : t("common.saveChanges", "Save changes")}
           </Button>
         </div>
       </div>

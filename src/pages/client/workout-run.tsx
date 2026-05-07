@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { gsap } from "gsap";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -195,6 +195,7 @@ const buildWorkoutSetLogSnapshot = (
 
 export function ClientWorkoutRunPage() {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
   const { assignedWorkoutId } = useParams();
   const workoutId = isUuid(assignedWorkoutId) ? assignedWorkoutId : null;
   const { session } = useSessionAuth();
@@ -240,7 +241,7 @@ export function ClientWorkoutRunPage() {
       const { data: assignedWorkout, error: assignedError } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, workout_template:workout_templates(id, name, workout_type_tag, description)",
+          "id, status, coach_note, workout_template:workout_templates(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId)
         .eq("id", workoutId)
@@ -792,14 +793,17 @@ export function ClientWorkoutRunPage() {
               }
             : current,
       );
-      queryClient.setQueryData(["assigned-workout", workoutId, clientId], (current) => {
-        if (!current || Array.isArray(current)) return current;
-        return {
-          ...current,
-          status: "completed",
-          completed_at: completedAt,
-        };
-      });
+      queryClient.setQueryData(
+        ["assigned-workout", workoutId, clientId],
+        (current) => {
+          if (!current || Array.isArray(current)) return current;
+          return {
+            ...current,
+            status: "completed",
+            completed_at: completedAt,
+          };
+        },
+      );
 
       setFinishStatus("success");
       setFinishOpen(false);
@@ -818,6 +822,14 @@ export function ClientWorkoutRunPage() {
 
     const card = celebrationCardRef.current;
     const statNodes = celebrationStatRefs.current.filter(Boolean);
+    const targets = [card, ...statNodes].filter(Boolean);
+
+    if (reduceMotion) {
+      if (targets.length > 0) {
+        gsap.set(targets, { clearProps: "all" });
+      }
+      return;
+    }
 
     const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
     timeline.fromTo(
@@ -835,7 +847,7 @@ export function ClientWorkoutRunPage() {
     return () => {
       timeline.kill();
     };
-  }, [completionCelebrationOpen]);
+  }, [completionCelebrationOpen, reduceMotion]);
 
   useEffect(() => {
     return () => {
@@ -1093,6 +1105,19 @@ export function ClientWorkoutRunPage() {
         </Alert>
       ) : null}
 
+      {assignedWorkoutQuery.data?.coach_note ? (
+        <Card className="rounded-xl border-border/70 bg-card/80">
+          <CardContent className="space-y-2 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Coach note
+            </p>
+            <p className="text-sm leading-6 text-foreground">
+              {assignedWorkoutQuery.data.coach_note}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {assignedWorkoutQuery.isLoading ||
       workoutSessionQuery.isLoading ||
       setLogsQuery.isLoading ? (
@@ -1145,9 +1170,7 @@ export function ClientWorkoutRunPage() {
                 <CardTitle>Workout</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  This workout has no exercises yet, so it is not runnable.
-                </p>
+                <p>This workout has no exercises yet, so it is not runnable.</p>
                 <div className="flex flex-wrap gap-2">
                   {workoutSession ? (
                     <Button variant="secondary" onClick={handleSkipWorkout}>
