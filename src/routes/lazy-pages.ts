@@ -284,6 +284,11 @@ export const WorkspaceSettingsGeneralTab = lazy(() =>
     default: m.WorkspaceSettingsGeneralTab,
   })),
 );
+export const WorkspaceSettingsBrandTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/brand").then((m) => ({
+    default: m.WorkspaceSettingsBrandTab,
+  })),
+);
 export const WorkspaceSettingsClientExperienceTab = lazy(() =>
   import("../pages/workspace/settings/tabs/client-experience").then((m) => ({
     default: m.WorkspaceSettingsClientExperienceTab,
@@ -321,6 +326,11 @@ export const LegacySettingsRedirectPage = lazy(() =>
 );
 
 export const NotificationsPage = lazy(() =>
+  import("../features/notifications/pages/notifications-page").then((m) => ({
+    default: m.NotificationsPage,
+  })),
+);
+export const PtHubNotificationsPage = lazy(() =>
   import("../features/notifications/pages/notifications-page").then((m) => ({
     default: m.NotificationsPage,
   })),

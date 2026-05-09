@@ -18,12 +18,14 @@ import { cn } from "../../../lib/utils";
 import { NotificationPanel } from "./notification-panel";
 import {
   useMarkAllNotificationsRead,
+  useMarkNotificationClicked,
   useMarkNotificationRead,
   useNotificationsList,
   useUnreadNotificationCount,
 } from "../hooks/use-notifications";
 import { useNotificationRealtime } from "../hooks/use-notification-realtime";
 import { useSyncNotificationReminders } from "../hooks/use-sync-notification-reminders";
+import { resolveNotificationActionUrl } from "../lib/notification-route-resolver";
 import type { NotificationRecord } from "../lib/types";
 
 export function NotificationBell({
@@ -48,6 +50,7 @@ export function NotificationBell({
   });
   const unreadCountQuery = useUnreadNotificationCount(user?.id ?? null);
   const markReadMutation = useMarkNotificationRead(user?.id ?? null);
+  const markClickedMutation = useMarkNotificationClicked(user?.id ?? null);
   const markAllReadMutation = useMarkAllNotificationsRead(user?.id ?? null);
 
   useSyncNotificationReminders({
@@ -70,13 +73,15 @@ export function NotificationBell({
   const unreadCount = unreadCountQuery.data ?? 0;
 
   const handleNotificationClick = async (notification: NotificationRecord) => {
-    if (!notification.is_read) {
-      await markReadMutation.mutateAsync(notification.id);
-    }
+    const audience = role === "client" ? "client" : "pt";
+    const target = resolveNotificationActionUrl(notification, audience);
+    await (notification.action_url
+      ? markClickedMutation.mutateAsync(notification.id)
+      : !notification.is_read
+        ? markReadMutation.mutateAsync(notification.id)
+        : Promise.resolve(null));
     setOpen(false);
-    if (notification.action_url) {
-      navigate(notification.action_url);
-    }
+    navigate(target);
   };
 
   return (
