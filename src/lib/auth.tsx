@@ -57,6 +57,7 @@ type RedirectState = Pick<
 type WorkspaceMembershipRow = {
   workspace_id: string | null;
   role: string | null;
+  status: string | null;
 };
 
 type CachedBootstrapState = Omit<AuthBootstrapState, "bootstrapPath">;
@@ -521,6 +522,17 @@ function buildPendingInviteToken(pathname: string) {
   return inviteTokenFromPath ?? getPendingInviteToken();
 }
 
+function isPtWorkspaceRole(role: string | null | undefined) {
+  return (
+    role === "owner" ||
+    role === "admin" ||
+    role === "coach" ||
+    role === "assistant_coach" ||
+    role === "viewer" ||
+    Boolean(role?.startsWith("pt"))
+  );
+}
+
 function finalizeBootstrapState(
   state: AuthBootstrapCoreState,
   pathname: string,
@@ -666,8 +678,10 @@ export function resolveBootstrapFromLookupResults(params: {
   } = params;
 
   if (membershipResult.status === "ok") {
-    const ptWorkspaceRows = membershipResult.data.filter((member) =>
-      member.role?.startsWith("pt"),
+    const ptWorkspaceRows = membershipResult.data.filter(
+      (member) =>
+        (member.status ?? "active") === "active" &&
+        isPtWorkspaceRole(member.role),
     );
     if (ptWorkspaceRows.length > 0) {
       return {
@@ -771,7 +785,7 @@ async function resolveBootstrapState(params: {
     "Workspace membership",
     supabase
       .from("workspace_members")
-      .select("workspace_id, role")
+      .select("workspace_id, role, status")
       .eq("user_id", user.id)
       .returns<WorkspaceMembershipRow[]>()
       .limit(25),

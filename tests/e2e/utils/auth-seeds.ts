@@ -197,7 +197,11 @@ async function seedAuthSmokeStatesOrThrow() {
         '${authSmokeFixtures.ptIncompleteProfile.workspaceId}'::uuid,
         ${sqlString(authSmokeFixtures.ptIncompleteProfile.workspaceName)},
         '${ptIncompleteUserId}'::uuid
-      );
+      )
+    on conflict (id) do update
+      set name = excluded.name,
+          owner_user_id = excluded.owner_user_id,
+          updated_at = now();
 
     insert into public.workspace_members (workspace_id, user_id, role)
     values
@@ -210,7 +214,12 @@ async function seedAuthSmokeStatesOrThrow() {
         '${authSmokeFixtures.ptIncompleteProfile.workspaceId}'::uuid,
         '${ptIncompleteUserId}'::uuid,
         'pt_owner'
-      );
+      )
+    on conflict (workspace_id, user_id) do update
+      set role = excluded.role,
+          status = 'active',
+          client_access_mode = 'all_clients',
+          updated_at = now();
 
     insert into public.pt_profiles (
       user_id,
@@ -242,7 +251,15 @@ async function seedAuthSmokeStatesOrThrow() {
         null,
         null,
         null
-      );
+      )
+    on conflict (user_id, workspace_id) do update
+      set full_name = excluded.full_name,
+          display_name = excluded.display_name,
+          phone = excluded.phone,
+          location_country = excluded.location_country,
+          location_city = excluded.location_city,
+          onboarding_completed_at = excluded.onboarding_completed_at,
+          updated_at = now();
 
     insert into public.clients (
       id,

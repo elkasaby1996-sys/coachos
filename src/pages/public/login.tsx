@@ -13,13 +13,20 @@ export function LoginPage() {
   const location = useLocation();
 
   const from = (location.state as { from?: unknown } | null)?.from;
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const requestedRedirect = typeof from === "string" ? from : redirectParam;
   const redirectTarget =
-    typeof from === "string" &&
-    (from.startsWith("/join/") ||
-      from.startsWith("/invite/") ||
-      from.startsWith("/pt/onboarding/"))
-      ? from
+    requestedRedirect &&
+    (requestedRedirect.startsWith("/join/") ||
+      requestedRedirect.startsWith("/invite/") ||
+      requestedRedirect.startsWith("/team-invites/") ||
+      requestedRedirect.startsWith("/pt/onboarding/"))
+      ? requestedRedirect
       : "/";
+  const signupLink =
+    redirectTarget !== "/"
+      ? `/signup?redirect=${encodeURIComponent(redirectTarget)}`
+      : "/signup";
 
   return (
     <AuthComponent
@@ -33,7 +40,7 @@ export function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to manage athletes or access your client app."
       primaryLabel="Sign in"
-      secondaryLinkHref="/signup"
+      secondaryLinkHref={signupLink}
       secondaryLinkLabel="Need an account? Sign up"
       onEmailPasswordSubmit={async ({ email, password }) => {
         if (!supabaseConfigured) {

@@ -37,6 +37,7 @@ import { NotificationBell } from "../../features/notifications/components/notifi
 import {
   createPtWorkspace,
   usePtHubSettings,
+  usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import {
   getPreferredPersonDisplayName,
@@ -91,7 +92,28 @@ const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
 type WorkspaceSwitcherOption = {
   id: string;
   name: string | null;
+  relation?: "owned" | "shared";
+  role?: string | null;
 };
+
+function getWorkspaceRoleLabel(role: string | null | undefined) {
+  if (role === "admin") return "Admin";
+  if (role === "coach") return "Coach";
+  if (role === "assistant_coach") return "Assistant Coach";
+  if (role === "viewer") return "Viewer";
+  return "Owner";
+}
+
+function getWorkspaceSwitcherMeta(
+  workspace: WorkspaceSwitcherOption,
+  active: boolean,
+) {
+  const relationMeta =
+    workspace.relation === "shared"
+      ? `Shared workspace · ${getWorkspaceRoleLabel(workspace.role)}`
+      : "Coaching workspace";
+  return active ? `Current · ${relationMeta}` : relationMeta;
+}
 
 type SearchResult =
   | {
@@ -605,32 +627,20 @@ export function PtLayout() {
   const searchTriggerRef = useRef<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
-  const workspaceSwitcherQuery = useQuery({
-    queryKey: ["pt-workspace-switcher", user?.id, workspaceIds],
-    enabled: workspaceIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workspaces")
-        .select("id, name")
-        .in("id", workspaceIds);
-      if (error) throw error;
-      const rows = ((data ?? []) as WorkspaceSwitcherOption[]).sort(
-        (a, b) => workspaceIds.indexOf(a.id) - workspaceIds.indexOf(b.id),
-      );
-      return rows;
-    },
-  });
-  const workspaces = workspaceSwitcherQuery.data ?? [];
+  const workspaceSwitcherQuery = usePtHubWorkspaces();
+  const workspaces = (workspaceSwitcherQuery.data ?? [])
+    .filter((workspace) => workspaceIds.includes(workspace.id))
+    .sort((a, b) => workspaceIds.indexOf(a.id) - workspaceIds.indexOf(b.id));
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === headerWorkspaceId) ?? null;
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
     name: workspace.name,
-    meta:
-      workspace.id === headerWorkspaceId
-        ? "Current coaching workspace"
-        : "Coaching workspace",
+    meta: getWorkspaceSwitcherMeta(
+      workspace,
+      workspace.id === headerWorkspaceId,
+    ),
   }));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const profileDisplayName =

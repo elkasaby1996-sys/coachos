@@ -327,11 +327,16 @@ export function useWorkspace() {
           withTimeout(
             supabase
               .from("workspace_members")
-              .select("workspace_id, created_at")
+              .select("workspace_id, created_at, status")
               .eq("user_id", user.id)
+              .eq("status", "active")
               .order("created_at", { ascending: true })
               .returns<
-                Array<{ workspace_id: string | null; created_at: string }>
+                Array<{
+                  workspace_id: string | null;
+                  created_at: string;
+                  status: string | null;
+                }>
               >(),
             8000,
             "Workspace lookup timed out (8s).",

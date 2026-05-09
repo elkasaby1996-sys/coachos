@@ -1,10 +1,22 @@
 import { supabase } from "./supabase";
 
 export async function getWorkspaceIdForUser(userId: string) {
+  const { data: ownedWorkspace, error: ownedWorkspaceError } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("owner_user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (ownedWorkspaceError) throw ownedWorkspaceError;
+  if (ownedWorkspace?.id) return ownedWorkspace.id;
+
   const { data, error } = await supabase
     .from("workspace_members")
     .select("workspace_id, created_at")
     .eq("user_id", userId)
+    .eq("status", "active")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();

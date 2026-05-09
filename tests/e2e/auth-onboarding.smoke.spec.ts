@@ -72,12 +72,14 @@ test.describe("Smoke: auth and onboarding", () => {
     await waitForAuthSessionReady(page);
     await waitForBootstrapResolved(page);
     await waitForPageReady(page, {
-      testId: "client-lead-dashboard",
+      testId: "client-home-page",
       urlPattern: /\/app\/home$/,
     });
   });
 
-  test("Client invite flow lands in workspace onboarding", async ({ page }) => {
+  test("Client invite flow lands in client home with joined workspace context", async ({
+    page,
+  }) => {
     await signInWithEmail(
       page,
       authSmokeFixtures.clientInvite.email,
@@ -86,15 +88,16 @@ test.describe("Smoke: auth and onboarding", () => {
     await waitForAuthSessionReady(page);
     await waitForBootstrapResolved(page);
     await waitForPageReady(page, {
-      testId: "client-lead-dashboard",
+      testId: "client-home-page",
       urlPattern: /\/app\/home$/,
     });
 
     await page.goto(`/invite/${authSmokeFixtures.clientInvite.inviteToken}`);
     await waitForBootstrapResolved(page);
     await waitForPageReady(page, {
-      testId: "client-workspace-onboarding-page",
-      urlPattern: /\/app\/onboarding$/,
+      testId: "client-home-page",
+      urlPattern: /\/app\/home\?invite_joined=1/,
     });
+    await expect(page).toHaveURL(/joined_workspace_id=/);
   });
 });

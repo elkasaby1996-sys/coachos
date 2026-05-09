@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Navigate,
@@ -78,6 +78,7 @@ import {
   ResetPasswordPage,
   SignupRolePage,
   SupportPage,
+  TeamInviteAcceptancePage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
   WorkspaceSettingsBrandTab,
@@ -99,6 +100,8 @@ import {
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
 import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
+import { supabase } from "../lib/supabase";
+import { useWorkspace } from "../lib/use-workspace";
 
 type WindowWithIdleCallback = Window & {
   requestIdleCallback?: (
@@ -271,7 +274,9 @@ function LoginGate() {
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const redirectTarget =
     redirectParam &&
-    (redirectParam.startsWith("/join/") || redirectParam.startsWith("/invite/"))
+    (redirectParam.startsWith("/join/") ||
+      redirectParam.startsWith("/invite/") ||
+      redirectParam.startsWith("/team-invites/"))
       ? redirectParam
       : null;
 
@@ -290,6 +295,43 @@ function LoginGate() {
 function LegacyJoinRedirect() {
   const { code } = useParams<{ code: string }>();
   return <Navigate to={`/invite/${code ?? ""}`} replace />;
+}
+
+function WorkspaceEntryRedirect() {
+  const { workspaceId } = useParams<{ workspaceId: string }>();
+  const { switchWorkspace } = useWorkspace();
+  const [state, setState] = useState<"loading" | "allowed" | "denied">(
+    "loading",
+  );
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      if (!workspaceId) {
+        setState("denied");
+        return;
+      }
+      const { data, error } = await supabase.rpc("workspace_access_context", {
+        p_workspace_id: workspaceId,
+      });
+      if (!active) return;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (error || !row?.workspace_id) {
+        setState("denied");
+        return;
+      }
+      switchWorkspace(workspaceId);
+      setState("allowed");
+    };
+    void run();
+    return () => {
+      active = false;
+    };
+  }, [switchWorkspace, workspaceId]);
+
+  if (state === "loading") return <FullPageLoader />;
+  if (state === "denied") return <Navigate to="/no-workspace" replace />;
+  return <Navigate to="/pt/dashboard" replace />;
 }
 
 function PtHubAssetPreloader() {
@@ -408,6 +450,7 @@ function isPrivateRoute(pathname: string) {
     pathname.startsWith("/workspace/") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/invite") ||
+    pathname.startsWith("/team-invites") ||
     pathname.startsWith("/join") ||
     pathname.startsWith("/no-workspace") ||
     pathname.startsWith("/client/onboarding")
@@ -547,6 +590,10 @@ export function App() {
           <Route path="/signup/pt" element={<PtSignupPage />} />
           <Route path="/signup/client" element={<ClientSignupPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
+          <Route
+            path="/team-invites/:token"
+            element={<TeamInviteAcceptancePage />}
+          />
           <Route path="/join/:code" element={<LegacyJoinRedirect />} />
           <Route path="/coach/:slug" element={<PublicCoachProfilePage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
@@ -583,6 +630,16 @@ export function App() {
             element={
               <RequireAuth>
                 <ClientAccountOnboardingPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/workspace/:workspaceId"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <WorkspaceEntryRedirect />
+                </RequireRole>
               </RequireAuth>
             }
           />

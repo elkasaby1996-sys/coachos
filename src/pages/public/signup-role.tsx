@@ -1,4 +1,4 @@
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
@@ -10,6 +10,7 @@ import {
 } from "../../lib/auth";
 
 export function SignupRolePage() {
+  const location = useLocation();
   const {
     accountType,
     bootstrapResolved,
@@ -21,6 +22,12 @@ export function SignupRolePage() {
     ptWorkspaceComplete,
   } = useBootstrapAuth();
   const { authLoading, session } = useSessionAuth();
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const inviteRedirect =
+    redirectParam?.startsWith("/team-invites/") === true ? redirectParam : null;
+  const redirectSearch = inviteRedirect
+    ? `?redirect=${encodeURIComponent(inviteRedirect)}`
+    : "";
 
   if (authLoading) {
     return <AuthPageLoader message="Checking your session..." />;
@@ -33,15 +40,18 @@ export function SignupRolePage() {
   if (session) {
     return (
       <Navigate
-        to={getAuthenticatedRedirectPath({
-          accountType,
-          hasWorkspaceMembership,
-          ptWorkspaceComplete,
-          ptProfileComplete,
-          clientAccountComplete,
-          clientWorkspaceOnboardingHardGateRequired,
-          pendingInviteToken,
-        })}
+        to={
+          inviteRedirect ??
+          getAuthenticatedRedirectPath({
+            accountType,
+            hasWorkspaceMembership,
+            ptWorkspaceComplete,
+            ptProfileComplete,
+            clientAccountComplete,
+            clientWorkspaceOnboardingHardGateRequired,
+            pendingInviteToken,
+          })
+        }
         replace
       />
     );
@@ -76,7 +86,7 @@ export function SignupRolePage() {
               profile.
             </p>
             <Button asChild className="mt-4 h-11 w-full">
-              <Link to="/signup/pt">Continue as coach</Link>
+              <Link to={`/signup/pt${redirectSearch}`}>Continue as coach</Link>
             </Button>
           </div>
 
@@ -89,7 +99,9 @@ export function SignupRolePage() {
               an invite.
             </p>
             <Button asChild className="mt-4 h-11 w-full">
-              <Link to="/signup/client">Continue as client</Link>
+              <Link to={`/signup/client${redirectSearch}`}>
+                Continue as client
+              </Link>
             </Button>
           </div>
         </div>

@@ -42,6 +42,11 @@ export const NoWorkspacePage = lazy(() =>
 export const InvitePage = lazy(() =>
   import("../pages/public/invite").then((m) => ({ default: m.InvitePage })),
 );
+export const TeamInviteAcceptancePage = lazy(() =>
+  import("../pages/public/team-invite-acceptance").then((m) => ({
+    default: m.TeamInviteAcceptancePage,
+  })),
+);
 export const PtSignupPage = lazy(() =>
   import("../pages/public/pt-signup").then((m) => ({
     default: m.PtSignupPage,

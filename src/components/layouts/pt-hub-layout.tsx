@@ -346,6 +346,25 @@ function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
   );
 }
 
+function getWorkspaceRoleLabel(role: string | null | undefined) {
+  if (role === "admin") return "Admin";
+  if (role === "coach") return "Coach";
+  if (role === "assistant_coach") return "Assistant Coach";
+  if (role === "viewer") return "Viewer";
+  return "Owner";
+}
+
+function getWorkspaceSwitcherMeta(workspace: {
+  relation?: "owned" | "shared";
+  role?: string | null;
+  clientCount?: number | null;
+}) {
+  if (workspace.relation === "shared") {
+    return `Shared workspace · ${getWorkspaceRoleLabel(workspace.role)}`;
+  }
+  return `${workspace.clientCount ?? 0} active clients`;
+}
+
 export function PtHubLayout() {
   const { t } = useI18n();
   const location = useLocation();
@@ -378,7 +397,7 @@ export function PtHubLayout() {
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
     name: workspace.name,
-    meta: `${workspace.clientCount ?? 0} active clients`,
+    meta: getWorkspaceSwitcherMeta(workspace),
   }));
   const inPtHubWorkspace = location.pathname.startsWith("/pt-hub");
   const publishedProfile = Boolean(profileQuery.data?.isPublished);

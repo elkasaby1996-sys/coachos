@@ -374,10 +374,9 @@ export function PtMessageComposeProvider({
     enabled: !!workspaceId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("clients")
-        .select("id, display_name, user_id, lifecycle_state")
-        .eq("workspace_id", workspaceId ?? "")
-        .order("display_name", { ascending: true });
+        .rpc("pt_message_recipients", {
+          p_workspace_id: workspaceId ?? "",
+        });
       if (error) throw error;
       return (data ?? []) as ClientRow[];
     },
@@ -389,12 +388,9 @@ export function PtMessageComposeProvider({
     staleTime: 1000 * 30,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("conversations")
-        .select(
-          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role",
-        )
-        .eq("workspace_id", workspaceId ?? "")
-        .order("last_message_at", { ascending: false });
+        .rpc("pt_accessible_conversations", {
+          p_workspace_id: workspaceId ?? "",
+        });
       if (error) throw error;
       return (data ?? []) as ConversationRow[];
     },
@@ -626,18 +622,11 @@ export function PtMessageComposeProvider({
     mutationFn: async (clientId: string) => {
       if (!workspaceId) throw new Error("Workspace not found.");
       const { data, error } = await supabase
-        .from("conversations")
-        .upsert(
-          {
-            workspace_id: workspaceId,
-            client_id: clientId,
-          },
-          { onConflict: "workspace_id,client_id" },
-        )
-        .select(
-          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role",
-        )
-        .maybeSingle();
+        .rpc("ensure_pt_conversation", {
+          p_workspace_id: workspaceId,
+          p_client_id: clientId,
+        })
+        .single();
       if (error) throw error;
       return data as ConversationRow | null;
     },
@@ -962,8 +951,8 @@ export function PtMessageComposeProvider({
                       ) : filteredInboxRows.length === 0 ? (
                         inboxRows.length === 0 ? (
                           <EmptyState
-                            title="No conversations yet"
-                            description="Client chats will appear here as soon as the workspace starts messaging."
+                            title="No clients assigned yet"
+                            description="Ask the workspace owner or admin to assign clients to you."
                           />
                         ) : (
                           <EmptyState

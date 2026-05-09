@@ -163,8 +163,13 @@ type PtHubSettingsRow = {
 };
 
 type WorkspaceMemberRow = {
+  id?: string | null;
   workspace_id: string | null;
+  user_id?: string | null;
   role: string | null;
+  status: string | null;
+  client_access_mode?: string | null;
+  joined_at?: string | null;
   created_at: string | null;
 };
 
@@ -185,6 +190,12 @@ type ClientRow = {
   goal: string | null;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type PtProfileNameRow = {
+  user_id: string;
+  display_name: string | null;
+  full_name: string | null;
 };
 
 type PtClientsSummaryRow = {
@@ -508,6 +519,29 @@ function getWorkspaceStatus(
   return "new";
 }
 
+function normalizeWorkspaceRole(
+  role: string | null | undefined,
+): PTWorkspaceSummary["role"] {
+  if (role === "pt_owner") return "owner";
+  if (role === "pt_coach") return "coach";
+  if (
+    role === "owner" ||
+    role === "admin" ||
+    role === "coach" ||
+    role === "assistant_coach" ||
+    role === "viewer"
+  ) {
+    return role;
+  }
+  return "viewer";
+}
+
+function normalizeClientAccessMode(
+  mode: string | null | undefined,
+): PTWorkspaceSummary["clientAccessMode"] {
+  return mode === "assigned_clients_only" ? mode : "all_clients";
+}
+
 export function usePtHubWorkspaces() {
   const { user } = useSessionAuth();
   const { workspaceId: activeWorkspaceId } = useWorkspace();
@@ -523,8 +557,11 @@ export function usePtHubWorkspaces() {
         await Promise.all([
           supabase
             .from("workspace_members")
-            .select("workspace_id, role, created_at")
+            .select(
+              "id, workspace_id, user_id, role, status, client_access_mode, joined_at, created_at",
+            )
             .eq("user_id", userId)
+            .eq("status", "active")
             .returns<WorkspaceMemberRow[]>(),
           supabase
             .from("workspaces")
@@ -540,7 +577,12 @@ export function usePtHubWorkspaces() {
       const ownedWorkspaceRows = data ?? [];
       const memberMap = new Map(
         (memberData ?? [])
-          .filter((row) => Boolean(row.workspace_id))
+          .filter(
+            (row) =>
+              Boolean(row.workspace_id) &&
+              row.status === "active" &&
+              normalizeWorkspaceRole(row.role) !== "owner",
+          )
           .map((row) => [row.workspace_id as string, row]),
       );
       const ownedWorkspaceIds = ownedWorkspaceRows.map((row) => row.id);
@@ -564,6 +606,7 @@ export function usePtHubWorkspaces() {
       }
 
       let clientCountMap = new Map<string, number>();
+      let assignedClientCountMap = new Map<string, number>();
       if (workspaceIds.length > 0) {
         const { data: clients, error: clientsError } = await supabase
           .from("clients")
@@ -584,10 +627,70 @@ export function usePtHubWorkspaces() {
           map.set(client.workspace_id, (map.get(client.workspace_id) ?? 0) + 1);
           return map;
         }, new Map<string, number>());
+
+        const memberIds = Array.from(memberMap.values())
+          .map((member) => member.id)
+          .filter((id): id is string => Boolean(id));
+        if (memberIds.length > 0) {
+          const { data: assignments, error: assignmentsError } = await supabase
+            .from("workspace_member_client_assignments")
+            .select("workspace_id, member_id, client_id")
+            .in("member_id", memberIds)
+            .returns<
+              Array<{
+                workspace_id: string | null;
+                member_id: string | null;
+                client_id: string | null;
+              }>
+            >();
+
+          if (assignmentsError) throw assignmentsError;
+          assignedClientCountMap = (assignments ?? []).reduce(
+            (map, assignment) => {
+              if (!assignment.workspace_id || !assignment.client_id) return map;
+              map.set(
+                assignment.workspace_id,
+                (map.get(assignment.workspace_id) ?? 0) + 1,
+              );
+              return map;
+            },
+            new Map<string, number>(),
+          );
+        }
+      }
+
+      const ownerUserIds = Array.from(
+        new Set(
+          workspaceRows
+            .map((workspace) => workspace.owner_user_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      let ownerNameMap = new Map<string, string>();
+      if (ownerUserIds.length > 0) {
+        const { data: ownerProfiles, error: ownerProfilesError } =
+          await supabase
+            .from("pt_profiles")
+            .select("user_id, display_name, full_name")
+            .in("user_id", ownerUserIds)
+            .returns<PtProfileNameRow[]>();
+
+        if (ownerProfilesError) throw ownerProfilesError;
+        ownerNameMap = (ownerProfiles ?? []).reduce((map, profile) => {
+          map.set(
+            profile.user_id,
+            profile.display_name?.trim() || profile.full_name?.trim() || "",
+          );
+          return map;
+        }, new Map<string, string>());
       }
 
       return workspaceRows.map((workspace) => {
         const clientCount = clientCountMap.get(workspace.id) ?? 0;
+        const isOwned = workspace.owner_user_id === userId;
+        const member = memberMap.get(workspace.id);
+        const role = isOwned ? "owner" : normalizeWorkspaceRole(member?.role);
+        const relation = isOwned ? "owned" : "shared";
         return {
           id: workspace.id,
           name: workspace.name?.trim() || "Untitled workspace",
@@ -599,8 +702,22 @@ export function usePtHubWorkspaces() {
           clientCount,
           lastUpdated: workspace.updated_at ?? workspace.created_at ?? null,
           ownerUserId: workspace.owner_user_id,
-          role: memberMap.get(workspace.id)?.role ?? null,
+          role,
+          relation,
+          memberStatus: "active",
+          ownerName: workspace.owner_user_id
+            ? ownerNameMap.get(workspace.owner_user_id)?.trim() || null
+            : null,
+          clientAccessMode: isOwned
+            ? "all_clients"
+            : normalizeClientAccessMode(member?.client_access_mode),
+          assignedClientCount: isOwned
+            ? null
+            : (assignedClientCountMap.get(workspace.id) ?? 0),
           createdAt: workspace.created_at ?? null,
+          joinedAt: isOwned
+            ? (workspace.created_at ?? null)
+            : (member?.joined_at ?? member?.created_at ?? null),
         } satisfies PTWorkspaceSummary;
       });
     },

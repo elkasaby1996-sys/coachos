@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Dumbbell, Globe } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
@@ -93,6 +93,7 @@ async function getPtNextPath(userId: string) {
 
 export function PtSignupPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     accountType,
     bootstrapResolved,
@@ -116,6 +117,9 @@ export function PtSignupPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const inviteRedirect =
+    redirectParam?.startsWith("/team-invites/") === true ? redirectParam : null;
   const fullNameLimitState = getCharacterLimitState({
     value: fullName,
     kind: "full_name",
@@ -150,15 +154,18 @@ export function PtSignupPage() {
   if (!authLoading && session) {
     return (
       <Navigate
-        to={getAuthenticatedRedirectPath({
-          accountType,
-          hasWorkspaceMembership,
-          ptWorkspaceComplete,
-          ptProfileComplete,
-          clientAccountComplete,
-          clientWorkspaceOnboardingHardGateRequired,
-          pendingInviteToken,
-        })}
+        to={
+          inviteRedirect ??
+          getAuthenticatedRedirectPath({
+            accountType,
+            hasWorkspaceMembership,
+            ptWorkspaceComplete,
+            ptProfileComplete,
+            clientAccountComplete,
+            clientWorkspaceOnboardingHardGateRequired,
+            pendingInviteToken,
+          })
+        }
         replace
       />
     );
@@ -219,7 +226,7 @@ export function PtSignupPage() {
       const redirectTo = buildAuthCallbackUrl({
         type: "signup",
         intent: "pt",
-        next: "/pt/onboarding/workspace",
+        next: inviteRedirect ?? "/pt/onboarding/workspace",
       });
       const { data, error: signUpError } = await signUpWithEmailPassword(
         email.trim(),
@@ -244,7 +251,12 @@ export function PtSignupPage() {
       }
 
       if (data.session?.user?.id) {
-        navigate(await getPtNextPath(data.session.user.id), { replace: true });
+        navigate(
+          inviteRedirect ?? (await getPtNextPath(data.session.user.id)),
+          {
+            replace: true,
+          },
+        );
         return;
       }
 
@@ -287,7 +299,7 @@ export function PtSignupPage() {
         buildAuthCallbackUrl({
           type: "oauth",
           intent: "pt",
-          next: "/pt/onboarding/workspace",
+          next: inviteRedirect ?? "/pt/onboarding/workspace",
         }),
       );
       if (oauthError) throw oauthError;
@@ -495,7 +507,14 @@ export function PtSignupPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link className="text-foreground underline" to="/login">
+            <Link
+              className="text-foreground underline"
+              to={
+                inviteRedirect
+                  ? `/login?redirect=${encodeURIComponent(inviteRedirect)}`
+                  : "/login"
+              }
+            >
               Sign in
             </Link>
           </p>
