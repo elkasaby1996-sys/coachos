@@ -958,9 +958,9 @@ export function ClientProgressPage() {
                               <TrendIcon
                                 className={
                                   trendBase > 0
-                                    ? "h-4 w-4 text-emerald-500"
+                                    ? "h-4 w-4 text-[var(--state-success-text)]"
                                     : trendBase < 0
-                                      ? "h-4 w-4 text-rose-500"
+                                      ? "h-4 w-4 text-[var(--state-danger-text)]"
                                       : "h-4 w-4 text-muted-foreground"
                                 }
                               />

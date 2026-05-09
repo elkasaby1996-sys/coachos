@@ -220,33 +220,33 @@ const bannerConfig: Record<
 > = {
   success: {
     icon: CheckCircle2,
-    root: "border-success/28 bg-success/12 text-foreground",
-    iconClassName: "text-success",
+    root: "",
+    iconClassName: "",
   },
   info: {
     icon: Info,
-    root: "border-accent/30 bg-accent/10 text-foreground",
-    iconClassName: "text-accent",
+    root: "",
+    iconClassName: "",
   },
   warning: {
     icon: TriangleAlert,
-    root: "border-warning/28 bg-warning/12 text-foreground",
-    iconClassName: "text-warning",
+    root: "",
+    iconClassName: "",
   },
   error: {
     icon: XCircle,
-    root: "border-danger/28 bg-danger/12 text-foreground",
-    iconClassName: "text-danger",
+    root: "",
+    iconClassName: "",
   },
   reviewed: {
     icon: ClipboardCheck,
-    root: "border-primary/28 bg-primary/10 text-foreground",
-    iconClassName: "text-primary",
+    root: "",
+    iconClassName: "",
   },
   locked: {
     icon: Lock,
-    root: "border-border/70 bg-muted/28 text-foreground",
-    iconClassName: "text-muted-foreground",
+    root: "",
+    iconClassName: "",
   },
 };
 
@@ -441,7 +441,8 @@ export function StepIndicator({
                 "surface-section flex w-full items-center gap-3 px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 step.state === "current" &&
                   "border-[var(--section-accent-border)] bg-[var(--section-accent-bg-soft)] shadow-[0_12px_36px_-28px_color-mix(in_oklab,var(--section-accent-bg-soft)_74%,transparent)]",
-                step.state === "completed" && "border-success/30 bg-success/10",
+                step.state === "completed" &&
+                  "border-[var(--state-success-border)] bg-[var(--state-success-bg-soft)]",
                 step.state === "upcoming" && "text-muted-foreground",
                 isInteractive &&
                   "hover:-translate-y-0.5 hover:border-border/90 hover:bg-card/55",
@@ -453,7 +454,7 @@ export function StepIndicator({
                   step.state === "current" &&
                     "border-[var(--section-accent-border)] bg-[var(--section-accent-text)] text-[oklch(var(--text-on-accent))]",
                   step.state === "completed" &&
-                    "border-success/40 bg-success/18 text-success",
+                    "border-[var(--state-success-border)] bg-[var(--state-success-bg-soft)] text-[var(--state-success-text)]",
                   step.state === "upcoming" &&
                     "border-border/70 bg-card/60 text-muted-foreground",
                 )}

@@ -1266,7 +1266,7 @@ export function ClientWorkoutRunPage() {
                     }
                   />
                 ) : activeBlock && activeBlock.items.length > 1 ? (
-                  <Card className="rounded-xl border-emerald-500/40 bg-emerald-500/5">
+                  <Card className="rounded-xl border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)]">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle>
                         Superset {activeBlock.supersetGroup}:{" "}

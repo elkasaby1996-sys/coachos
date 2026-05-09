@@ -1119,7 +1119,7 @@ export function ClientWorkoutsPage() {
                         event.preventDefault();
                         handleCreateSupersetDrop(index);
                       }}
-                      className={`${spacingClass} ${groupShapeClass} ${isSupersetDropTarget ? "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-emerald-400/40" : hasSuperset ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}
+                      className={`${spacingClass} ${groupShapeClass} ${isSupersetDropTarget ? "border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)] ring-1 ring-[var(--module-checkins-ring)]" : hasSuperset ? "border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)]" : ""}`}
                     >
                       <div className="grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)_88px_108px_auto_auto]">
                         <button
@@ -1434,7 +1434,7 @@ export function ClientWorkoutsPage() {
                             event.preventDefault();
                             handleEditSupersetDrop(index);
                           }}
-                          className={`${spacingClass} ${groupShapeClass} ${isSupersetDropTarget ? "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-emerald-400/40" : hasSuperset ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}
+                          className={`${spacingClass} ${groupShapeClass} ${isSupersetDropTarget ? "border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)] ring-1 ring-[var(--module-checkins-ring)]" : hasSuperset ? "border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)]" : ""}`}
                         >
                           <div className="grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)_88px_108px_auto_auto]">
                             <button

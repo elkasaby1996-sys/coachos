@@ -1,5 +1,73 @@
 import type { Config } from "tailwindcss";
 
+const moduleColorNames = [
+  "overview",
+  "leads",
+  "clients",
+  "coaching",
+  "checkins",
+  "billing",
+  "analytics",
+  "profile",
+  "settings",
+] as const;
+
+const stateColorNames = [
+  "success",
+  "info",
+  "warning",
+  "danger",
+  "neutral",
+] as const;
+
+const moduleColors = Object.fromEntries(
+  moduleColorNames.map((name) => [
+    name,
+    {
+      DEFAULT: `oklch(var(--module-${name}))`,
+      bg: `var(--module-${name}-bg-soft)`,
+      border: `var(--module-${name}-border)`,
+      text: `var(--module-${name}-text)`,
+      icon: `var(--module-${name}-icon)`,
+      ring: `var(--module-${name}-ring)`,
+    },
+  ]),
+) as Record<
+  (typeof moduleColorNames)[number],
+  {
+    DEFAULT: string;
+    bg: string;
+    border: string;
+    text: string;
+    icon: string;
+    ring: string;
+  }
+>;
+
+const stateColors = Object.fromEntries(
+  stateColorNames.map((name) => [
+    name,
+    {
+      DEFAULT: `oklch(var(--state-${name}))`,
+      bg: `var(--state-${name}-bg-soft)`,
+      border: `var(--state-${name}-border)`,
+      text: `var(--state-${name}-text)`,
+      icon: `var(--state-${name}-icon)`,
+      ring: `var(--state-${name}-ring)`,
+    },
+  ]),
+) as Record<
+  (typeof stateColorNames)[number],
+  {
+    DEFAULT: string;
+    bg: string;
+    border: string;
+    text: string;
+    icon: string;
+    ring: string;
+  }
+>;
+
 export default {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
@@ -40,6 +108,8 @@ export default {
         warning: "oklch(var(--warning))",
         danger: "oklch(var(--danger))",
         neutral: "oklch(var(--neutral))",
+        module: moduleColors,
+        state: stateColors,
         chart: {
           "1": "oklch(var(--chart-1))",
           "2": "oklch(var(--chart-2))",

@@ -666,12 +666,12 @@ export function ClientWorkoutDetailPage() {
                       key={group.key}
                       className={`rounded-lg border p-3 ${
                         groupIsSuperset
-                          ? "border-emerald-500/40 bg-emerald-500/5"
+                          ? "border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)]"
                           : "border-border bg-muted/30"
                       }`}
                     >
                       {groupIsSuperset ? (
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--module-checkins-text)]">
                           Superset {group.supersetGroup}
                         </p>
                       ) : null}
@@ -806,9 +806,9 @@ export function ClientWorkoutDetailPage() {
                     {Array.from({ length: maxSets }).map((_, setIndex) => (
                       <div
                         key={`${group.key}-set-${setIndex}`}
-                        className="space-y-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3"
+                        className="space-y-2 rounded-lg border border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)] p-3"
                       >
-                        <div className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-[var(--module-checkins-text)]">
                           Set {setIndex + 1}
                         </div>
                         <div

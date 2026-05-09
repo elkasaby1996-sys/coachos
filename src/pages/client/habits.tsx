@@ -427,11 +427,7 @@ export function ClientHabitsPage() {
       </SectionCard>
 
       {toastMessage ? (
-        <Alert
-          className={
-            toastVariant === "error" ? "border-danger/30" : "border-emerald-200"
-          }
-        >
+        <Alert tone={toastVariant === "error" ? "danger" : "success"}>
           <AlertTitle>
             {toastVariant === "error" ? "Error" : "Saved"}
           </AlertTitle>
