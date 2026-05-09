@@ -58,6 +58,8 @@ const moduleToneClassMap: Record<ModuleTone, ModuleToneClasses> = {
   settings: buildModuleToneClasses("settings"),
 };
 
+export const FUNCTIONAL_COLOR_VARIANTS = moduleToneClassMap;
+
 function buildModuleToneClasses(_module: ModuleTone): ModuleToneClasses {
   return {
     badge: "section-accent-badge",
@@ -155,4 +157,8 @@ export function getModuleToneStyle(
 
 export function getModuleToneClasses(module: ModuleTone): ModuleToneClasses {
   return moduleToneClassMap[module];
+}
+
+export function getModuleColorVariant(module: ModuleTone): ModuleToneClasses {
+  return getModuleToneClasses(module);
 }

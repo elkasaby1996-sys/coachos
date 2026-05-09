@@ -60,6 +60,8 @@ export const semanticToneClassNames: Record<
   },
 };
 
+export const SEMANTIC_COLOR_VARIANTS = semanticToneClassNames;
+
 const exactSemanticToneMap: Record<string, SemanticTone> = {
   published: "success",
   "published and discoverable": "success",
@@ -147,6 +149,12 @@ export function getSemanticToneClasses(
   if (tone === "positive") return semanticToneClassNames.info;
   if (tone === "negative") return semanticToneClassNames.danger;
   return semanticToneClassNames[tone ?? "neutral"];
+}
+
+export function getStateColorVariant(
+  tone: SemanticToneLike | null | undefined,
+) {
+  return getSemanticToneClasses(tone);
 }
 
 export function getSemanticBadgeVariant(

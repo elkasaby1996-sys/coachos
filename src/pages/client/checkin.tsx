@@ -889,13 +889,7 @@ export function ClientCheckinPage() {
     <div className="portal-shell">
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert
-            className={
-              toastVariant === "error"
-                ? "border-danger/30"
-                : "border-emerald-200"
-            }
-          >
+          <Alert tone={toastVariant === "error" ? "danger" : "success"}>
             <AlertTitle>
               {toastVariant === "error" ? "Error" : "Saved"}
             </AlertTitle>

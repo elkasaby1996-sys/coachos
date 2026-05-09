@@ -640,9 +640,12 @@ export function ClientLayout() {
                   {({ isActive }) => (
                     <>
                       <item.icon
+                        style={getModuleToneStyle(item.module)}
                         className={cn(
                           "h-5 w-5",
-                          isActive ? "text-primary" : "text-current",
+                          isActive
+                            ? getModuleToneClasses(item.module).navIcon
+                            : "text-current",
                         )}
                       />
                       {item.label}

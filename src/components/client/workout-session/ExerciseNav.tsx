@@ -53,7 +53,7 @@ export function ExerciseNav({
                   </span>
                 </div>
                 {isDone ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-xs text-[var(--state-success-text)]">
                     <Check className="h-4 w-4" />
                   </span>
                 ) : null}
