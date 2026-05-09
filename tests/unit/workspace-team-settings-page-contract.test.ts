@@ -60,7 +60,9 @@ describe("workspace team settings page contract", () => {
     expect(pageSource).toContain("resendWorkspaceTeamInvite");
     expect(pageSource).toContain("revokeWorkspaceTeamInvite");
     expect(pageSource).toContain("Revoke invite?");
-    expect(pageSource).toContain("Invite sent");
+    expect(pageSource).toContain("Invite created");
+    expect(pageSource).toContain("Email delivery is queued.");
+    expect(pageSource).toContain("Copy link");
   });
 
   it("protects the owner row from demotion/removal actions", () => {

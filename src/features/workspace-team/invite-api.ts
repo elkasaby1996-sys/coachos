@@ -59,6 +59,12 @@ export type WorkspaceTeamInviteAccepted = {
   redirectTo: string;
 };
 
+export type WorkspaceTeamInviteDeclined = {
+  inviteId: string;
+  workspaceId: string;
+  status: Extract<InviteStatus, "declined">;
+};
+
 export type WorkspaceTeamInviteResent = {
   inviteId: string;
   workspaceId: string;
@@ -205,6 +211,27 @@ export async function acceptWorkspaceTeamInvite(token: string) {
   return parseRpcJson<WorkspaceTeamInviteAccepted>(data);
 }
 
+export async function acceptWorkspaceTeamInviteById(inviteId: string) {
+  const supabase = await getSupabaseClient();
+  const { data, error } = await supabase.rpc(
+    "accept_workspace_team_invite_by_id",
+    {
+      p_invite_id: inviteId,
+    },
+  );
+  if (error) throw error;
+  return parseRpcJson<WorkspaceTeamInviteAccepted>(data);
+}
+
+export async function declineWorkspaceTeamInvite(inviteId: string) {
+  const supabase = await getSupabaseClient();
+  const { data, error } = await supabase.rpc("decline_workspace_team_invite", {
+    p_invite_id: inviteId,
+  });
+  if (error) throw error;
+  return parseRpcJson<WorkspaceTeamInviteDeclined>(data);
+}
+
 export async function resendWorkspaceTeamInvite(input: {
   workspaceId: string;
   inviteId: string;
@@ -217,7 +244,13 @@ export async function resendWorkspaceTeamInvite(input: {
     p_base_url: input.baseUrl,
   });
   if (error) throw error;
-  return parseRpcJson<WorkspaceTeamInviteResent>(data);
+  const result = parseRpcJson<WorkspaceTeamInviteResent & { email?: string }>(
+    data,
+  );
+  return {
+    ...result,
+    invitedEmail: result.invitedEmail ?? result.email ?? "",
+  };
 }
 
 export async function revokeWorkspaceTeamInvite(input: {

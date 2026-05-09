@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
+  Copy,
   MailPlus,
   RefreshCw,
   Search,
@@ -49,6 +50,10 @@ import {
   type WorkspaceTeamInviteRow,
   type WorkspaceTeamMemberRow,
 } from "../../../../features/workspace-team/team-settings";
+import type {
+  WorkspaceTeamInviteCreated,
+  WorkspaceTeamInviteResent,
+} from "../../../../features/workspace-team/invite-api";
 import type {
   ClientAccessMode,
   InviteStatus,
@@ -180,6 +185,58 @@ function TeamToast({
   );
 }
 
+type InviteDeliveryFallback = {
+  email: string;
+  acceptUrl: string;
+  source: "created" | "resent";
+};
+
+function InviteDeliveryFallbackPanel({
+  invite,
+  onCopied,
+  onError,
+}: {
+  invite: InviteDeliveryFallback | null;
+  onCopied: () => void;
+  onError: (message: string) => void;
+}) {
+  if (!invite) return null;
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(invite.acceptUrl);
+      onCopied();
+    } catch {
+      onError("Unable to copy invite link.");
+    }
+  };
+
+  return (
+    <Alert tone="warning">
+      <div className="space-y-3">
+        <div>
+          <AlertTitle>
+            {invite.source === "resent"
+              ? "Invite link refreshed"
+              : "Invite created"}
+          </AlertTitle>
+          <AlertDescription>
+            Email delivery is queued. Share this invite link with {invite.email}
+            if the email does not arrive.
+          </AlertDescription>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input value={invite.acceptUrl} readOnly aria-label="Invite link" />
+          <Button type="button" variant="secondary" onClick={copyInviteLink}>
+            <Copy className="h-4 w-4" />
+            Copy link
+          </Button>
+        </div>
+      </div>
+    </Alert>
+  );
+}
+
 function ClientAssignmentPicker({
   workspaceId,
   selectedClientIds,
@@ -302,7 +359,7 @@ function InviteTeamMemberDialog({
   workspaceId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (invite: WorkspaceTeamInviteCreated) => void;
   onError: (message: string) => void;
 }) {
   const [email, setEmail] = useState("");
@@ -327,7 +384,7 @@ function InviteTeamMemberDialog({
         clientIds,
         baseUrl: window.location.origin,
       }),
-    onSuccess: async () => {
+    onSuccess: async (invite) => {
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });
@@ -337,7 +394,7 @@ function InviteTeamMemberDialog({
       setClientIds([]);
       setSubmitted(false);
       onOpenChange(false);
-      onSuccess();
+      onSuccess(invite);
     },
     onError: (error) => {
       onError(
@@ -616,10 +673,13 @@ function TeamMemberTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {members.map((member) => {
+            {members.map((member, index) => {
               const isOwner = member.role === "owner" || !member.id;
               return (
-                <tr key={member.id ?? member.userId} className="bg-card/20">
+                <tr
+                  key={`${member.id ?? member.userId}:${member.role}:${index}`}
+                  className="bg-card/20"
+                >
                   <td className="px-4 py-3">
                     <p className="font-medium text-foreground">
                       {member.displayName ?? member.email ?? member.userId}
@@ -780,12 +840,14 @@ function PendingInviteTable({
   invites,
   canManage,
   onToast,
+  onInviteLink,
   onError,
 }: {
   workspaceId: string;
   invites: WorkspaceTeamInviteRow[];
   canManage: boolean;
   onToast: (message: string) => void;
+  onInviteLink: (invite: WorkspaceTeamInviteResent) => void;
   onError: (message: string) => void;
 }) {
   const queryClient = useQueryClient();
@@ -798,11 +860,12 @@ function PendingInviteTable({
         inviteId,
         baseUrl: window.location.origin,
       }),
-    onSuccess: async () => {
+    onSuccess: async (invite) => {
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });
-      onToast("Invite resent");
+      onInviteLink(invite);
+      onToast("Invite link refreshed");
     },
     onError: (error) =>
       onError(
@@ -944,6 +1007,8 @@ export function WorkspaceTeamSettingsPage() {
     message: string;
     variant: "success" | "error";
   } | null>(null);
+  const [inviteFallback, setInviteFallback] =
+    useState<InviteDeliveryFallback | null>(null);
 
   const teamQuery = useQuery({
     queryKey: ["workspace-team-settings", workspaceId],
@@ -975,6 +1040,14 @@ export function WorkspaceTeamSettingsPage() {
         message={toast?.message ?? null}
         variant={toast?.variant ?? "success"}
         onDismiss={() => setToast(null)}
+      />
+
+      <InviteDeliveryFallbackPanel
+        invite={inviteFallback}
+        onCopied={() =>
+          setToast({ message: "Invite link copied", variant: "success" })
+        }
+        onError={(message) => setToast({ message, variant: "error" })}
       />
 
       {!canManage ? (
@@ -1032,6 +1105,13 @@ export function WorkspaceTeamSettingsPage() {
               invites={pendingInvites}
               canManage={canManage}
               onToast={(message) => setToast({ message, variant: "success" })}
+              onInviteLink={(invite) =>
+                setInviteFallback({
+                  email: invite.invitedEmail,
+                  acceptUrl: invite.acceptUrl,
+                  source: "resent",
+                })
+              }
               onError={(message) => setToast({ message, variant: "error" })}
             />
           </SettingsSectionCard>
@@ -1042,9 +1122,14 @@ export function WorkspaceTeamSettingsPage() {
         workspaceId={workspaceId}
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        onSuccess={() =>
-          setToast({ message: "Invite sent", variant: "success" })
-        }
+        onSuccess={(invite) => {
+          setInviteFallback({
+            email: invite.invitedEmail,
+            acceptUrl: invite.acceptUrl,
+            source: "created",
+          });
+          setToast({ message: "Invite created", variant: "success" });
+        }}
         onError={(message) => setToast({ message, variant: "error" })}
       />
     </div>

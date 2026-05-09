@@ -7,7 +7,12 @@ export type WorkspaceRole =
 
 export type InvitableWorkspaceRole = Exclude<WorkspaceRole, "owner">;
 
-export type InviteStatus = "pending" | "accepted" | "expired" | "revoked";
+export type InviteStatus =
+  | "pending"
+  | "accepted"
+  | "expired"
+  | "revoked"
+  | "declined";
 
 export type WorkspaceMemberStatus = "active" | "suspended" | "removed";
 

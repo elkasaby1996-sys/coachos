@@ -21,7 +21,6 @@ import {
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
-import { PageContainer } from "../../components/common/page-container";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -284,7 +283,7 @@ export function PtWorkoutTemplatesPage() {
   }, [formattedTemplates, searchQuery, typeFilter, sortBy]);
 
   return (
-    <PageContainer className="max-w-screen-2xl space-y-6">
+    <div className="space-y-6">
       <WorkspacePageHeader
         title="Workout Templates"
         description="Manage the workout template library in the same operational layout as nutrition programs."
@@ -586,6 +585,6 @@ export function PtWorkoutTemplatesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </div>
   );
 }

@@ -52,6 +52,9 @@ describe("email notification channel", () => {
     expect(getEmailTemplateKey("pt", "join_request_submitted")).toBe(
       "pt.join_request_submitted",
     );
+    expect(getEmailTemplateKey("pt", "team_invite_received")).toBe(
+      "pt.workspace_team_invite",
+    );
   });
 
   it("validates required template variables before provider send", () => {
