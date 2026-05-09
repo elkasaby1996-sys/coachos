@@ -29,9 +29,15 @@ import {
 } from "../../../components/common/motion-primitives";
 import {
   useInfiniteNotifications,
+  useArchiveNotification,
   useMarkAllNotificationsRead,
+  useMarkNotificationClicked,
   useMarkNotificationRead,
+  useMarkNotificationUnread,
+  useUnarchiveNotification,
+  useUnreadNotificationCount,
 } from "../hooks/use-notifications";
+import { resolveNotificationActionUrl } from "../lib/notification-route-resolver";
 import type { NotificationFilter, NotificationRecord } from "../lib/types";
 
 const getPtNotificationPeriodLabel = (createdAt: string) => {
@@ -83,20 +89,42 @@ export function NotificationsPage() {
     userId: user?.id ?? null,
     filter: "unread",
   });
+  const actionRequiredQuery = useInfiniteNotifications({
+    userId: user?.id ?? null,
+    filter: "action-required",
+  });
+  const archivedQuery = useInfiniteNotifications({
+    userId: user?.id ?? null,
+    filter: "archived",
+  });
+  const unreadCountQuery = useUnreadNotificationCount(user?.id ?? null);
   const markReadMutation = useMarkNotificationRead(user?.id ?? null);
+  const markUnreadMutation = useMarkNotificationUnread(user?.id ?? null);
+  const markClickedMutation = useMarkNotificationClicked(user?.id ?? null);
+  const archiveMutation = useArchiveNotification(user?.id ?? null);
+  const unarchiveMutation = useUnarchiveNotification(user?.id ?? null);
   const markAllReadMutation = useMarkAllNotificationsRead(user?.id ?? null);
 
   const allNotifications = useMemo(() => {
     return allQuery.data?.pages.flat() ?? [];
   }, [allQuery.data?.pages]);
 
-  const unreadCount = useMemo(() => {
-    return allNotifications.filter((row) => !row.is_read).length;
-  }, [allNotifications]);
+  const unreadCount = unreadCountQuery.data ?? 0;
   const unreadNotifications = useMemo(() => {
     return unreadQuery.data?.pages.flat() ?? [];
   }, [unreadQuery.data?.pages]);
-  const notificationsError = allQuery.error ?? unreadQuery.error;
+  const actionRequiredNotifications = useMemo(() => {
+    return actionRequiredQuery.data?.pages.flat() ?? [];
+  }, [actionRequiredQuery.data?.pages]);
+  const archivedNotifications = useMemo(() => {
+    return archivedQuery.data?.pages.flat() ?? [];
+  }, [archivedQuery.data?.pages]);
+  const notificationsError =
+    allQuery.error ??
+    unreadQuery.error ??
+    actionRequiredQuery.error ??
+    archivedQuery.error ??
+    unreadCountQuery.error;
   const allWindow = useWindowedRows({
     rows: allNotifications,
     initialCount: 18,
@@ -109,15 +137,75 @@ export function NotificationsPage() {
     step: 18,
     resetKey: `unread:${unreadNotifications.length}`,
   });
+  const actionRequiredWindow = useWindowedRows({
+    rows: actionRequiredNotifications,
+    initialCount: 18,
+    step: 18,
+    resetKey: `action-required:${actionRequiredNotifications.length}`,
+  });
+  const archivedWindow = useWindowedRows({
+    rows: archivedNotifications,
+    initialCount: 18,
+    step: 18,
+    resetKey: `archived:${archivedNotifications.length}`,
+  });
 
   const handleOpenNotification = async (notification: NotificationRecord) => {
-    if (!notification.is_read) {
-      await markReadMutation.mutateAsync(notification.id);
-    }
-    if (notification.action_url) {
-      navigate(notification.action_url);
-    }
+    const audience = isClientPortal ? "client" : "pt";
+    const target = resolveNotificationActionUrl(notification, audience);
+    await (notification.action_url
+      ? markClickedMutation.mutateAsync(notification.id)
+      : !notification.is_read
+        ? markReadMutation.mutateAsync(notification.id)
+        : Promise.resolve(null));
+    navigate(target);
   };
+
+  const renderNotificationActions = (notification: NotificationRecord) => {
+    const isArchived = Boolean(notification.archived_at);
+    return (
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-1 sm:px-0">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() =>
+            notification.is_read
+              ? markUnreadMutation.mutate(notification.id)
+              : markReadMutation.mutate(notification.id)
+          }
+          disabled={markReadMutation.isPending || markUnreadMutation.isPending}
+        >
+          {notification.is_read ? "Mark unread" : "Mark read"}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            isArchived
+              ? unarchiveMutation.mutate(notification.id)
+              : archiveMutation.mutate(notification.id)
+          }
+          disabled={archiveMutation.isPending || unarchiveMutation.isPending}
+        >
+          {isArchived ? "Unarchive" : "Archive"}
+        </Button>
+      </div>
+    );
+  };
+
+  const renderNotificationRow = (
+    notification: NotificationRecord,
+    audience: "client" | "pt",
+  ) => (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+      <NotificationItem
+        notification={notification}
+        audience={audience}
+        onClick={() => handleOpenNotification(notification)}
+      />
+      {renderNotificationActions(notification)}
+    </div>
+  );
 
   const clientStateText =
     unreadCount > 0
@@ -257,7 +345,7 @@ export function NotificationsPage() {
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as NotificationFilter)}
           >
-            <TabsList className="grid h-auto w-full max-w-md grid-cols-1 gap-2 rounded-[var(--radius-lg)] bg-transparent p-0 sm:grid-cols-2">
+            <TabsList className="grid h-auto w-full max-w-3xl grid-cols-1 gap-2 rounded-[var(--radius-lg)] bg-transparent p-0 sm:grid-cols-4">
               <TabsTrigger
                 value="all"
                 module="settings"
@@ -278,20 +366,69 @@ export function NotificationsPage() {
                   {unreadCount}
                 </span>
               </TabsTrigger>
+              <TabsTrigger
+                value="action-required"
+                module="settings"
+                className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
+              >
+                <span>Action Required</span>
+                <span className="text-xs text-muted-foreground">
+                  {actionRequiredNotifications.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="archived"
+                module="settings"
+                className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
+              >
+                <span>Archived</span>
+                <span className="text-xs text-muted-foreground">
+                  {archivedNotifications.length}
+                </span>
+              </TabsTrigger>
             </TabsList>
 
-            {(["all", "unread"] as NotificationFilter[]).map((filter) => {
+            {(
+              [
+                "all",
+                "unread",
+                "action-required",
+                "archived",
+              ] as NotificationFilter[]
+            ).map((filter) => {
               const isUnreadFilter = filter === "unread";
-              const query = isUnreadFilter ? unreadQuery : allQuery;
+              const isActionRequiredFilter = filter === "action-required";
+              const isArchivedFilter = filter === "archived";
+              const query = isUnreadFilter
+                ? unreadQuery
+                : isActionRequiredFilter
+                  ? actionRequiredQuery
+                  : isArchivedFilter
+                    ? archivedQuery
+                    : allQuery;
               const rows = isUnreadFilter
                 ? unreadNotifications
-                : allNotifications;
-              const windowed = isUnreadFilter ? unreadWindow : allWindow;
+                : isActionRequiredFilter
+                  ? actionRequiredNotifications
+                  : isArchivedFilter
+                    ? archivedNotifications
+                    : allNotifications;
+              const windowed = isUnreadFilter
+                ? unreadWindow
+                : isActionRequiredFilter
+                  ? actionRequiredWindow
+                  : isArchivedFilter
+                    ? archivedWindow
+                    : allWindow;
               const visibleRows = windowed.visibleRows;
               const emptyTitle =
                 filter === "unread"
                   ? "No new notifications"
-                  : "No recent updates";
+                  : filter === "action-required"
+                    ? "No action required"
+                    : filter === "archived"
+                      ? "No archived notifications"
+                      : "No recent updates";
               const emptyDescription =
                 filter === "unread"
                   ? isClientPortal
@@ -299,9 +436,13 @@ export function NotificationsPage() {
                       ? "You're caught up. Switch to All to review recent updates."
                       : "New updates from your coach will show up here."
                     : "Everything has been reviewed."
-                  : isClientPortal
-                    ? "Coach updates and reminders will appear here as they happen."
-                    : "New activity will show up here.";
+                  : filter === "action-required"
+                    ? "High-priority or action-required updates will appear here."
+                    : filter === "archived"
+                      ? "Archived notifications will appear here after you file them away."
+                      : isClientPortal
+                        ? "Coach updates and reminders will appear here as they happen."
+                        : "New activity will show up here.";
 
               return (
                 <TabsContent key={filter} value={filter} className="mt-0">
@@ -317,7 +458,7 @@ export function NotificationsPage() {
                     <EmptyStateBlock
                       centered
                       icon={
-                        filter === "unread" ? (
+                        filter === "unread" || filter === "action-required" ? (
                           <BellRing className="h-5 w-5" />
                         ) : (
                           <Bell className="h-5 w-5" />
@@ -343,11 +484,7 @@ export function NotificationsPage() {
                     <StaggerGroup className="space-y-3" stagger={0.04}>
                       {visibleRows.map((notification) => (
                         <StaggerItem key={notification.id}>
-                          <NotificationItem
-                            notification={notification}
-                            audience="client"
-                            onClick={() => handleOpenNotification(notification)}
-                          />
+                          {renderNotificationRow(notification, "client")}
                         </StaggerItem>
                       ))}
                       {windowed.hasHiddenRows ? (
@@ -392,13 +529,7 @@ export function NotificationsPage() {
                           <StaggerGroup className="space-y-3" stagger={0.04}>
                             {group.rows.map((notification) => (
                               <StaggerItem key={notification.id}>
-                                <NotificationItem
-                                  notification={notification}
-                                  audience="pt"
-                                  onClick={() =>
-                                    handleOpenNotification(notification)
-                                  }
-                                />
+                                {renderNotificationRow(notification, "pt")}
                               </StaggerItem>
                             ))}
                           </StaggerGroup>

@@ -12,11 +12,15 @@ import type {
 } from "../lib/types";
 import {
   defaultNotificationPreferences,
+  archiveNotification,
   fetchNotificationPreferences,
   fetchNotifications,
   fetchUnreadNotificationCount,
   markAllNotificationsRead,
+  markNotificationClicked,
   markNotificationRead,
+  markNotificationUnread,
+  unarchiveNotification,
   upsertNotificationPreferences,
 } from "../api/notifications";
 
@@ -102,11 +106,15 @@ function updateNotificationInInfiniteData(
   };
 }
 
-export function useMarkNotificationRead(userId: string | null) {
+function useNotificationStateMutation(
+  userId: string | null,
+  mutationFn: (notificationId: string) => Promise<NotificationRecord | null>,
+  unreadCountDelta?: (notification: NotificationRecord) => number,
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: markNotificationRead,
+    mutationFn,
     onSuccess: (notification) => {
       if (!userId || !notification) return;
 
@@ -123,12 +131,50 @@ export function useMarkNotificationRead(userId: string | null) {
         (current) => updateNotificationInInfiniteData(current, notification),
       );
 
-      queryClient.setQueryData<number>(
-        notificationsKeys.unreadCount(userId),
-        (current) => Math.max((current ?? 1) - 1, 0),
-      );
+      if (unreadCountDelta) {
+        queryClient.setQueryData<number>(
+          notificationsKeys.unreadCount(userId),
+          (current) =>
+            Math.max((current ?? 0) + unreadCountDelta(notification), 0),
+        );
+      } else {
+        queryClient.invalidateQueries({
+          queryKey: notificationsKeys.unreadCount(userId),
+        });
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: notificationsKeys.infiniteRoot(userId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: notificationsKeys.listRoot(userId),
+      });
     },
   });
+}
+
+export function useMarkNotificationRead(userId: string | null) {
+  return useNotificationStateMutation(userId, markNotificationRead, () => -1);
+}
+
+export function useMarkNotificationUnread(userId: string | null) {
+  return useNotificationStateMutation(userId, markNotificationUnread, () => 1);
+}
+
+export function useArchiveNotification(userId: string | null) {
+  return useNotificationStateMutation(userId, archiveNotification);
+}
+
+export function useUnarchiveNotification(userId: string | null) {
+  return useNotificationStateMutation(userId, unarchiveNotification);
+}
+
+export function useMarkNotificationClicked(userId: string | null) {
+  return useNotificationStateMutation(
+    userId,
+    markNotificationClicked,
+    () => -1,
+  );
 }
 
 export function useMarkAllNotificationsRead(userId: string | null) {

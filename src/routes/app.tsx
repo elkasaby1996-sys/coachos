@@ -50,6 +50,7 @@ import {
   PtHubLeadDetailPage,
   PtHubLeadsPage,
   PtHubLayout,
+  PtHubNotificationsPage,
   PtHubOverviewPage,
   PtHubPaymentsPage,
   PtHubPackagesPage,
@@ -79,6 +80,7 @@ import {
   SupportPage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
+  WorkspaceSettingsBrandTab,
   WorkspaceSettingsClientExperienceTab,
   WorkspaceSettingsDangerTab,
   WorkspaceSettingsDefaultsTab,
@@ -608,6 +610,7 @@ export function App() {
             <Route path="workspaces" element={<PtHubWorkspacesPage />} />
             <Route path="payments" element={<PtHubPaymentsPage />} />
             <Route path="analytics" element={<PtHubAnalyticsPage />} />
+            <Route path="notifications" element={<PtHubNotificationsPage />} />
             <Route path="settings" element={<PtHubSettingsLayoutPage />}>
               <Route index element={<Navigate to="account" replace />} />
               <Route path="account" element={<PtHubSettingsAccountTab />} />
@@ -717,10 +720,7 @@ export function App() {
             <Route element={<WorkspaceSettingsLayoutPage />}>
               <Route index element={<Navigate to="general" replace />} />
               <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
-              <Route
-                path="brand"
-                element={<Navigate to="../general" replace />}
-              />
+              <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
               <Route
                 path="client-experience"
                 element={<WorkspaceSettingsClientExperienceTab />}
