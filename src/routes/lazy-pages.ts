@@ -243,6 +243,11 @@ export const PtHubSettingsBillingTab = lazy(() =>
     default: m.PtHubSettingsBillingTab,
   })),
 );
+export const PtHubSettingsIntegrationsTab = lazy(() =>
+  import("../pages/pt-hub/settings/tabs/integrations").then((m) => ({
+    default: m.PtHubSettingsIntegrationsTab,
+  })),
+);
 
 export const SettingsLayout = lazy(() =>
   import("../pages/settings/SettingsLayout").then((m) => ({

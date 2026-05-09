@@ -8,6 +8,7 @@ import {
 } from "../../../features/settings/components/settings-primitives";
 import { useWorkspaceSettingsAccess } from "../../../features/settings/hooks/use-workspace-settings-access";
 import { workspaceSettingsTabs } from "../../../features/settings/lib/settings-route-mapping";
+import { routes, type WorkspaceSettingsTab } from "../../../lib/routes";
 import { supabase } from "../../../lib/supabase";
 import { type WorkspaceSettingsOutletContext } from "./outlet-context";
 
@@ -17,18 +18,35 @@ export function WorkspaceSettingsLayoutPage() {
   const { workspaceId: routeWorkspaceId } = useParams<{
     workspaceId: string;
   }>();
-  const access = useWorkspaceSettingsAccess(routeWorkspaceId);
+  const { workspaceSlug: routeWorkspaceSlug } = useParams<{
+    workspaceSlug: string;
+  }>();
+  const slugWorkspaceQuery = useQuery({
+    queryKey: ["workspace-settings-slug", routeWorkspaceSlug],
+    enabled: Boolean(routeWorkspaceSlug && !routeWorkspaceId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, slug")
+        .eq("slug", routeWorkspaceSlug ?? "")
+        .maybeSingle<{ id: string; slug: string | null }>();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const resolvedRouteWorkspaceId = routeWorkspaceId ?? slugWorkspaceQuery.data?.id;
+  const access = useWorkspaceSettingsAccess(resolvedRouteWorkspaceId);
 
   const workspaceQuery = useQuery({
-    queryKey: ["workspace-settings-shell", routeWorkspaceId],
-    enabled: Boolean(routeWorkspaceId && access.isAuthorized),
+    queryKey: ["workspace-settings-shell", resolvedRouteWorkspaceId],
+    enabled: Boolean(resolvedRouteWorkspaceId && access.isAuthorized),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspaces")
         .select(
-          "id, name, logo_url, owner_user_id, default_checkin_template_id, timezone, unit_preference, week_start_day, client_welcome_message, created_at, updated_at",
+          "id, name, slug, logo_url, owner_user_id, default_checkin_template_id, timezone, unit_preference, week_start_day, client_welcome_message, created_at, updated_at",
         )
-        .eq("id", routeWorkspaceId ?? "")
+        .eq("id", resolvedRouteWorkspaceId ?? "")
         .maybeSingle();
       if (error) throw error;
 
@@ -36,7 +54,9 @@ export function WorkspaceSettingsLayoutPage() {
     },
   });
 
-  const resolvedWorkspaceId = routeWorkspaceId ?? access.fallbackWorkspaceId;
+  const resolvedWorkspaceId = resolvedRouteWorkspaceId ?? access.fallbackWorkspaceId;
+  const resolvedWorkspaceSlug =
+    workspaceQuery.data?.slug ?? slugWorkspaceQuery.data?.slug ?? null;
 
   if (!resolvedWorkspaceId) {
     return <Navigate to="/no-workspace" replace />;
@@ -58,7 +78,12 @@ export function WorkspaceSettingsLayoutPage() {
     id: tab.id,
     label: tab.label,
     description: tab.description,
-    to: `/workspace/${resolvedWorkspaceId}/settings/${tab.path}`,
+    to: resolvedWorkspaceSlug
+      ? routes.workspaceSettings(
+          resolvedWorkspaceSlug,
+          tab.path as WorkspaceSettingsTab,
+        )
+      : `/workspace/${resolvedWorkspaceId}/settings/${tab.path}`,
   }));
 
   if (access.loading) {

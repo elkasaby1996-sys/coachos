@@ -62,6 +62,7 @@ export type PTWorkspaceClientAccessMode =
 
 export interface PTWorkspaceSummary {
   id: string;
+  slug: string;
   name: string;
   status: PTWorkspaceStatus;
   clientCount: number | null;
@@ -159,7 +160,9 @@ export interface PTAccountSettingsDraft {
 
 export interface PTClientSummary {
   id: string;
+  urlKey: string;
   workspaceId: string;
+  workspaceSlug: string;
   workspaceName: string;
   displayName: string;
   status: string;

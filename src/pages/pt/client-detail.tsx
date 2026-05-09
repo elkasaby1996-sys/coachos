@@ -621,7 +621,11 @@ type QueryResult<T> = {
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
 
-export function PtClientDetailPage() {
+export function PtClientDetailPage({
+  clientIdOverride,
+}: {
+  clientIdOverride?: string;
+} = {}) {
   const { user } = useSessionAuth();
   const {
     workspaceId: activeWorkspaceId,
@@ -629,7 +633,8 @@ export function PtClientDetailPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
-  const { clientId } = useParams();
+  const { clientId: routeClientId } = useParams();
+  const clientId = clientIdOverride ?? routeClientId;
   const location = useLocation();
   const navigate = useNavigate();
   const { openComposer } = usePtMessageCompose();

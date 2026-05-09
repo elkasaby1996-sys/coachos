@@ -66,7 +66,9 @@ describe("workspace teams release readiness contract", () => {
     expect(inviteAcceptanceContract).toContain("acceptWorkspaceTeamInvite");
     expect(inviteApiSql).toContain("set status = 'accepted'");
     expect(ptHubSharedContract).toContain("Shared workspace");
-    expect(ptHubSharedContract).toContain("navigate(`/workspace/${workspaceId}`)");
+    expect(ptHubSharedContract).toContain(
+      "routes.workspaceOverview(workspace.slug)",
+    );
   });
 
   it("preserves owner backward compatibility without owner member rows", () => {

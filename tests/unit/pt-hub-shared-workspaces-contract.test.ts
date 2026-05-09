@@ -63,11 +63,11 @@ describe("PT Hub shared workspace contract", () => {
     );
   });
 
-  it("opens workspace cards through the workspace entry route", () => {
-    expect(workspacesPage).toContain("navigate(`/workspace/${workspaceId}`)");
+  it("opens workspace cards through canonical slug routes while preserving legacy entry redirects", () => {
+    expect(workspacesPage).toContain("routes.workspaceOverview(workspace.slug)");
     expect(appRoutes).toContain('path="/workspace/:workspaceId"');
-    expect(appRoutes).toContain("workspace_access_context");
-    expect(appRoutes).toContain("p_workspace_id: workspaceId");
+    expect(appRoutes).toContain("LegacyWorkspaceEntryRedirect");
+    expect(appRoutes).toContain('path="/w/:workspaceSlug"');
   });
 
   it("shows shared role labels in both workspace switchers", () => {

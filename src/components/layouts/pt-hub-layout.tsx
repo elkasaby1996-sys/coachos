@@ -62,6 +62,7 @@ import {
   type ModuleTone,
 } from "../../lib/module-tone";
 import { useI18n } from "../../lib/i18n";
+import { routes } from "../../lib/routes";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import "../../styles/pt-hub-shell.css";
@@ -396,6 +397,7 @@ export function PtHubLayout() {
   );
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
+    slug: workspace.slug,
     name: workspace.name,
     meta: getWorkspaceSwitcherMeta(workspace),
   }));
@@ -779,9 +781,11 @@ export function PtHubLayout() {
                       currentWorkspaceId={
                         !inPtHubWorkspace ? workspaceId : null
                       }
-                      onSelectWorkspace={(selectedWorkspaceId) => {
-                        switchWorkspace(selectedWorkspaceId);
-                        navigate("/pt/dashboard");
+                      onSelectWorkspace={(selectedWorkspace) => {
+                        switchWorkspace(selectedWorkspace.id);
+                        navigate(
+                          routes.workspaceOverview(selectedWorkspace.slug),
+                        );
                       }}
                       loading={workspacesQuery.isLoading}
                       loadingLabel={t(

@@ -9,6 +9,7 @@ import {
 } from "../../../lib/client-lifecycle";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { runClientGuardedAction } from "../../../lib/request-guard";
+import { routes } from "../../../lib/routes";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
 import {
@@ -175,6 +176,7 @@ type WorkspaceMemberRow = {
 
 type WorkspaceRow = {
   id: string;
+  slug: string | null;
   name: string | null;
   owner_user_id: string | null;
   updated_at: string | null;
@@ -183,6 +185,7 @@ type WorkspaceRow = {
 
 type ClientRow = {
   id: string;
+  url_key: string | null;
   workspace_id: string | null;
   status: string | null;
   lifecycle_state: string | null;
@@ -200,7 +203,9 @@ type PtProfileNameRow = {
 
 type PtClientsSummaryRow = {
   id: string;
+  url_key?: string | null;
   workspace_id: string | null;
+  workspace_slug?: string | null;
   user_id: string | null;
   status: string | null;
   lifecycle_state: string | null;
@@ -434,8 +439,9 @@ export function slugifyValue(value: string) {
 
 export function getPublicCoachUrl(slug: string | null | undefined) {
   if (!slug) return null;
-  if (typeof window === "undefined") return `/coach/${slug}`;
-  return `${window.location.origin}/coach/${slug}`;
+  const path = routes.publicProfile(slug);
+  if (typeof window === "undefined") return path;
+  return `${window.location.origin}${path}`;
 }
 
 function computeProfileCompletion(profile: StoredProfileDraft) {
@@ -474,6 +480,7 @@ function isLifecycleCoached(lifecycleState: string | null | undefined) {
 function mapPtClientSummary(
   row: PtClientsSummaryRow,
   workspaceName: string,
+  workspaceSlug = "",
 ): PTClientSummary {
   const recentActivityAt =
     row.last_activity_at ??
@@ -484,7 +491,11 @@ function mapPtClientSummary(
 
   return {
     id: row.id,
+    urlKey:
+      row.url_key?.trim() ||
+      `c-${row.id.split("-").join("").slice(0, 8).toLowerCase()}`,
     workspaceId: row.workspace_id ?? "",
+    workspaceSlug: row.workspace_slug?.trim() || workspaceSlug,
     workspaceName,
     displayName: row.display_name?.trim() || "Client",
     status: row.status?.trim() || "active",
@@ -565,7 +576,7 @@ export function usePtHubWorkspaces() {
             .returns<WorkspaceMemberRow[]>(),
           supabase
             .from("workspaces")
-            .select("id, name, owner_user_id, updated_at, created_at")
+            .select("id, slug, name, owner_user_id, updated_at, created_at")
             .eq("owner_user_id", userId)
             .order("updated_at", { ascending: false })
             .returns<WorkspaceRow[]>(),
@@ -596,7 +607,7 @@ export function usePtHubWorkspaces() {
         const { data: resolvedWorkspaces, error: resolvedWorkspacesError } =
           await supabase
             .from("workspaces")
-            .select("id, name, owner_user_id, updated_at, created_at")
+            .select("id, slug, name, owner_user_id, updated_at, created_at")
             .in("id", workspaceIds)
             .order("updated_at", { ascending: false })
             .returns<WorkspaceRow[]>();
@@ -611,7 +622,7 @@ export function usePtHubWorkspaces() {
         const { data: clients, error: clientsError } = await supabase
           .from("clients")
           .select(
-            "id, workspace_id, status, lifecycle_state, display_name, goal, created_at, updated_at",
+            "id, url_key, workspace_id, status, lifecycle_state, display_name, goal, created_at, updated_at",
           )
           .in("workspace_id", workspaceIds)
           .returns<ClientRow[]>();
@@ -693,6 +704,9 @@ export function usePtHubWorkspaces() {
         const relation = isOwned ? "owned" : "shared";
         return {
           id: workspace.id,
+          slug:
+            workspace.slug?.trim() ||
+            workspace.id.split("-").join("").slice(0, 12).toLowerCase(),
           name: workspace.name?.trim() || "Untitled workspace",
           status: getWorkspaceStatus(
             workspace.id,
@@ -1414,7 +1428,7 @@ export function usePtHubLeads() {
 
 export async function fetchPtHubClientSummaries(
   client: PtHubClientsRpcClient,
-  workspaces: Array<Pick<PTWorkspaceSummary, "id" | "name">>,
+  workspaces: Array<Pick<PTWorkspaceSummary, "id" | "name" | "slug">>,
 ) {
   if (workspaces.length === 0) return [] as PTClientSummary[];
 
@@ -1432,6 +1446,9 @@ export async function fetchPtHubClientSummaries(
   const workspaceNameById = new Map(
     workspaces.map((workspace) => [workspace.id, workspace.name]),
   );
+  const workspaceSlugById = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace.slug]),
+  );
 
   return ((data ?? []) as PtHubClientsPageRow[])
     .map((row) =>
@@ -1440,6 +1457,7 @@ export async function fetchPtHubClientSummaries(
         row.workspace_name?.trim() ||
           workspaceNameById.get(row.workspace_id ?? "") ||
           "Workspace",
+        workspaceSlugById.get(row.workspace_id ?? "") ?? "",
       ),
     )
     .sort((a, b) => {
@@ -1549,8 +1567,46 @@ export function usePtHubClientsPage(params: {
       if (error) throw error;
 
       const rows = (data ?? []) as PtHubClientsPageRow[];
+      const workspaceIds = Array.from(
+        new Set(rows.map((row) => row.workspace_id).filter(Boolean)),
+      ) as string[];
+      const clientIds = rows.map((row) => row.id).filter(Boolean);
+      const [workspaceSlugResult, clientKeyResult] = await Promise.all([
+        workspaceIds.length > 0
+          ? supabase
+              .from("workspaces")
+              .select("id, slug")
+              .in("id", workspaceIds)
+          : Promise.resolve({ data: [], error: null }),
+        clientIds.length > 0
+          ? supabase.from("clients").select("id, url_key").in("id", clientIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (workspaceSlugResult.error) throw workspaceSlugResult.error;
+      if (clientKeyResult.error) throw clientKeyResult.error;
+      const workspaceSlugById = new Map(
+        ((workspaceSlugResult.data ?? []) as Array<{
+          id: string;
+          slug: string | null;
+        }>).map((workspace) => [workspace.id, workspace.slug ?? ""]),
+      );
+      const clientUrlKeyById = new Map(
+        ((clientKeyResult.data ?? []) as Array<{
+          id: string;
+          url_key: string | null;
+        }>).map((clientRow) => [clientRow.id, clientRow.url_key ?? ""]),
+      );
       const clients = rows.map((row) =>
-        mapPtClientSummary(row, row.workspace_name?.trim() || "Workspace"),
+        mapPtClientSummary(
+          {
+            ...row,
+            url_key: row.url_key ?? clientUrlKeyById.get(row.id),
+            workspace_slug:
+              row.workspace_slug ??
+              workspaceSlugById.get(row.workspace_id ?? ""),
+          },
+          row.workspace_name?.trim() || "Workspace",
+        ),
       );
       const totalCount = rows[0]?.total_count ?? 0;
 
@@ -1851,7 +1907,7 @@ export function usePublicPtProfile(slug: string | undefined) {
         transformations: normalizeTransformations(data.transformations),
         publicUrl:
           getPublicCoachUrl(data.slug?.trim() || nextSlug) ??
-          `/coach/${nextSlug}`,
+          routes.publicProfile(nextSlug),
       } satisfies PTPublicProfile;
     },
   });

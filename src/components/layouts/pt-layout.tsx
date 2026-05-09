@@ -85,6 +85,7 @@ import {
   type ModuleTone,
 } from "../../lib/module-tone";
 import { getCharacterLimitState } from "../../lib/character-limits";
+import { routes } from "../../lib/routes";
 import "../../styles/pt-workspace-shell.css";
 
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
@@ -324,14 +325,21 @@ function getPtRouteHeader(
     items: PtNavItem[];
   }>,
 ) {
-  if (pathname.startsWith("/settings/") || pathname.startsWith("/workspace/")) {
+  if (
+    pathname.startsWith("/settings/") ||
+    pathname.startsWith("/workspace/") ||
+    pathname.match(/^\/w\/[^/]+\/settings(?:\/|$)/)
+  ) {
     return {
       title: "Settings",
       description: "Adjust workspace defaults and account controls.",
     };
   }
 
-  if (pathname.startsWith("/pt/clients/")) {
+  if (
+    pathname.startsWith("/pt/clients/") ||
+    pathname.match(/^\/w\/[^/]+\/clients\/[^/]+/)
+  ) {
     return {
       title: "Client Detail",
       description:
@@ -561,31 +569,6 @@ export function PtLayout() {
   const settingsQuery = usePtHubSettings();
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
-  const workspaceSettingsPath = workspaceId
-    ? `/workspace/${workspaceId}/settings/general`
-    : "/settings/workspace";
-  const navGroups = useMemo(
-    () =>
-      ptNavGroups.map((group) => ({
-        ...group,
-        items: group.items.map((item) =>
-          item.to === "/settings/workspace"
-            ? { ...item, to: workspaceSettingsPath }
-            : item,
-        ),
-      })),
-    [workspaceSettingsPath],
-  );
-  const searchRoutes = useMemo(
-    () =>
-      ptSearchRoutes.map((item) =>
-        item.type === "route" && item.href === "/settings/workspace"
-          ? { ...item, href: workspaceSettingsPath }
-          : item,
-      ),
-    [workspaceSettingsPath],
-  );
-  const pageHeader = getPtRouteHeader(location.pathname, navGroups);
   const currentModule = getModuleToneForPath(location.pathname);
   const routeTransitionKey = getWorkspaceRouteTransitionKey(location.pathname);
   const workspaceSettingsRouteMatch = location.pathname.match(
@@ -633,9 +616,77 @@ export function PtLayout() {
     .sort((a, b) => workspaceIds.indexOf(a.id) - workspaceIds.indexOf(b.id));
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === headerWorkspaceId) ?? null;
+  const workspaceSettingsPath = workspaceId
+    ? currentWorkspace?.slug
+      ? routes.workspaceSettings(currentWorkspace.slug, "general")
+      : `/workspace/${workspaceId}/settings/general`
+    : "/settings/workspace";
+  const workspaceOverviewPath = currentWorkspace?.slug
+    ? routes.workspaceOverview(currentWorkspace.slug)
+    : "/pt/dashboard";
+  const workspaceClientsPath = currentWorkspace?.slug
+    ? routes.workspaceClients(currentWorkspace.slug)
+    : "/pt/clients";
+  const workspaceCheckInsPath = currentWorkspace?.slug
+    ? routes.workspaceCheckIns(currentWorkspace.slug)
+    : "/pt/checkins";
+  const navGroups = useMemo(
+    () =>
+      ptNavGroups.map((group) => ({
+        ...group,
+        items: group.items.map((item) => {
+          if (item.to === "/settings/workspace") {
+            return { ...item, to: workspaceSettingsPath };
+          }
+          if (item.to === "/pt/dashboard") {
+            return { ...item, to: workspaceOverviewPath };
+          }
+          if (item.to === "/pt/clients") {
+            return { ...item, to: workspaceClientsPath };
+          }
+          if (item.to === "/pt/checkins") {
+            return { ...item, to: workspaceCheckInsPath };
+          }
+          return item;
+        }),
+      })),
+    [
+      workspaceCheckInsPath,
+      workspaceClientsPath,
+      workspaceOverviewPath,
+      workspaceSettingsPath,
+    ],
+  );
+  const searchRoutes = useMemo(
+    () =>
+      ptSearchRoutes.map((item) => {
+        if (item.type !== "route") return item;
+        if (item.href === "/settings/workspace") {
+          return { ...item, href: workspaceSettingsPath };
+        }
+        if (item.href === "/pt/dashboard") {
+          return { ...item, href: workspaceOverviewPath };
+        }
+        if (item.href === "/pt/clients") {
+          return { ...item, href: workspaceClientsPath };
+        }
+        if (item.href === "/pt/checkins") {
+          return { ...item, href: workspaceCheckInsPath };
+        }
+        return item;
+      }),
+    [
+      workspaceCheckInsPath,
+      workspaceClientsPath,
+      workspaceOverviewPath,
+      workspaceSettingsPath,
+    ],
+  );
+  const pageHeader = getPtRouteHeader(location.pathname, navGroups);
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
+    slug: workspace.slug,
     name: workspace.name,
     meta: getWorkspaceSwitcherMeta(
       workspace,
@@ -748,7 +799,7 @@ export function PtLayout() {
       ] = await Promise.all([
         supabase
           .from("clients")
-          .select("id, display_name, goal")
+          .select("id, url_key, display_name, goal")
           .eq("workspace_id", workspaceId ?? "")
           .or(`display_name.ilike.${wildcard},goal.ilike.${wildcard}`)
           .limit(5),
@@ -798,7 +849,10 @@ export function PtLayout() {
           type: "client",
           label: client.display_name?.trim() || "Client",
           meta: client.goal?.trim() || "Client record",
-          href: `/pt/clients/${client.id}`,
+          href:
+            currentWorkspace?.slug && client.url_key
+              ? routes.clientDetail(currentWorkspace.slug, client.url_key)
+              : `/pt/clients/${client.id}`,
         }),
       );
 
@@ -1386,9 +1440,13 @@ export function PtLayout() {
                             onSelectHub={() => navigate("/pt-hub")}
                             workspaces={workspaceSwitcherItems}
                             currentWorkspaceId={headerWorkspaceId}
-                            onSelectWorkspace={(selectedWorkspaceId) => {
-                              switchWorkspace(selectedWorkspaceId);
-                              navigate("/pt/dashboard");
+                            onSelectWorkspace={(selectedWorkspace) => {
+                              switchWorkspace(selectedWorkspace.id);
+                              navigate(
+                                routes.workspaceOverview(
+                                  selectedWorkspace.slug,
+                                ),
+                              );
                             }}
                             loading={workspaceSwitcherQuery.isLoading}
                             loadingLabel="Loading workspaces..."

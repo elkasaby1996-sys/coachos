@@ -13,10 +13,11 @@ import {
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 
 export function PublicCoachProfilePage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, ptSlug } = useParams<{ slug: string; ptSlug: string }>();
+  const resolvedSlug = ptSlug ?? slug;
   const { session } = useSessionAuth();
   const { clientProfile } = useBootstrapAuth();
-  const profileQuery = usePublicPtProfile(slug);
+  const profileQuery = usePublicPtProfile(resolvedSlug);
   const packageOptionsQuery = usePublicPtPackageOptions(
     profileQuery.data?.userId,
   );
@@ -27,7 +28,7 @@ export function PublicCoachProfilePage() {
   useEffect(() => {
     setSuccess(false);
     setError(null);
-  }, [slug]);
+  }, [resolvedSlug]);
 
   if (profileQuery.isLoading) {
     return (

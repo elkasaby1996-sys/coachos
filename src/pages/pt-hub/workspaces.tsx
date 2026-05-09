@@ -23,6 +23,8 @@ import {
 } from "../../features/pt-hub/lib/pt-hub";
 import { useWorkspace } from "../../lib/use-workspace";
 import { getCharacterLimitState } from "../../lib/character-limits";
+import { routes } from "../../lib/routes";
+import type { PTWorkspaceSummary } from "../../features/pt-hub/types";
 
 export function PtHubWorkspacesPage() {
   const navigate = useNavigate();
@@ -45,9 +47,9 @@ export function PtHubWorkspacesPage() {
   });
   const hasOverLimitErrors = workspaceNameLimitState.overLimit;
 
-  const openWorkspace = (workspaceId: string) => {
-    switchWorkspace(workspaceId);
-    navigate(`/workspace/${workspaceId}`);
+  const openWorkspace = (workspace: PTWorkspaceSummary) => {
+    switchWorkspace(workspace.id);
+    navigate(routes.workspaceOverview(workspace.slug));
   };
 
   useEffect(() => {

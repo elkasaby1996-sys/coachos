@@ -36,7 +36,7 @@ export function PtHubWorkspaceCard({
   highlighted,
 }: {
   workspace: PTWorkspaceSummary;
-  onOpen: (workspaceId: string) => void;
+  onOpen: (workspace: PTWorkspaceSummary) => void;
   highlighted?: boolean;
 }) {
   return (
@@ -90,7 +90,7 @@ export function PtHubWorkspaceCard({
       <Button
         variant="secondary"
         className="w-full justify-between"
-        onClick={() => onOpen(workspace.id)}
+        onClick={() => onOpen(workspace)}
       >
         <span>Open space</span>
         <ArrowUpRight className="h-4 w-4 text-[var(--module-coaching-text)] [stroke-width:1.7]" />
