@@ -17,7 +17,8 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 
 type TemplateExerciseRow = {
   id: string;
@@ -57,6 +58,7 @@ const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
 export function ClientWorkoutTodayPage() {
   const navigate = useNavigate();
   const { session } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
   const queryClient = useQueryClient();
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -67,15 +69,19 @@ export function ClientWorkoutTodayPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id")
+        .select("id, workspace_id, created_at")
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
-  const clientId = clientQuery.data?.id ?? null;
+  const clientProfile = useMemo(
+    () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
+    [activeClientId, clientQuery.data],
+  );
+  const clientId = clientProfile?.id ?? null;
 
   const workoutQuery = useQuery({
     queryKey: ["assigned-workout-today", clientId, todayKey],

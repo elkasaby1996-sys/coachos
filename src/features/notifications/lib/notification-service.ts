@@ -146,20 +146,27 @@ export function sanitizeNotificationActionUrl(params: {
   if (!url || !url.startsWith("/") || url.startsWith("//")) return null;
 
   if (params.actorType === "client") {
-    return url.startsWith("/app") || url.startsWith("/client/onboarding")
+    return isRouteRootOrChild(url, "/app") ||
+      isRouteRootOrChild(url, "/client/onboarding")
       ? url
       : "/app/home";
   }
 
   if (params.actorType === "pt") {
-    return url.startsWith("/pt") ||
-      url.startsWith("/pt-hub") ||
+    return isRouteRootOrChild(url, "/pt") ||
+      isRouteRootOrChild(url, "/pt-hub") ||
       url.startsWith("/workspace/")
       ? url
       : "/pt-hub";
   }
 
   return url;
+}
+
+function isRouteRootOrChild(url: string, root: string) {
+  return (
+    url === root || url.startsWith(`${root}/`) || url.startsWith(`${root}?`)
+  );
 }
 
 export function buildAssignmentNotificationEvent(params: {

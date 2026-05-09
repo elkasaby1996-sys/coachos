@@ -27,7 +27,8 @@ import {
 import { useVisibilityGate } from "../../hooks/use-visibility-gate";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { supabase } from "../../lib/supabase";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 
 type HabitPoint = {
@@ -243,6 +244,7 @@ function ProgressLoadingState() {
 
 export function ClientProgressPage() {
   const { session } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
   const navigate = useNavigate();
   const [timeframe, setTimeframe] = useState<"4w" | "8w">("8w");
   const axisColor = "oklch(0.98 0 0 / 0.92)";
@@ -253,22 +255,28 @@ export function ClientProgressPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, timezone, unit_preference")
+        .select("id, workspace_id, timezone, unit_preference, created_at")
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as {
+      return (data ?? []) as Array<{
         id: string;
+        workspace_id: string | null;
         timezone: string | null;
         unit_preference: string | null;
-      } | null;
+        created_at: string | null;
+      }>;
     },
   });
 
-  const clientId = clientQuery.data?.id ?? null;
+  const clientProfile = useMemo(
+    () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
+    [activeClientId, clientQuery.data],
+  );
+  const clientId = clientProfile?.id ?? null;
   const todayKey = useMemo(
-    () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
-    [clientQuery.data?.timezone],
+    () => getTodayInTimezone(clientProfile?.timezone ?? null),
+    [clientProfile?.timezone],
   );
   const startKey = useMemo(
     () => addDaysToDateString(todayKey, -55),
@@ -365,10 +373,10 @@ export function ClientProgressPage() {
       (row) => row.weight_unit,
     )?.weight_unit;
     if (fromLogs) return fromLogs;
-    return clientQuery.data?.unit_preference?.toLowerCase() === "imperial"
+    return clientProfile?.unit_preference?.toLowerCase() === "imperial"
       ? "lb"
       : "kg";
-  }, [habitsQuery.data, clientQuery.data?.unit_preference]);
+  }, [habitsQuery.data, clientProfile?.unit_preference]);
 
   const habitSeries = useMemo(() => {
     const rows = habitsQuery.data ?? [];

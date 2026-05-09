@@ -73,6 +73,29 @@ describe("notification delivery rules", () => {
         url: "/pt/clients/client-1",
       }),
     ).toBe("/app/home");
+
+    expect(
+      sanitizeNotificationActionUrl({
+        actorType: "client",
+        url: "/application/status",
+      }),
+    ).toBe("/app/home");
+  });
+
+  it("keeps PT notification links inside PT surfaces", () => {
+    expect(
+      sanitizeNotificationActionUrl({
+        actorType: "pt",
+        url: "/app/messages",
+      }),
+    ).toBe("/pt-hub");
+
+    expect(
+      sanitizeNotificationActionUrl({
+        actorType: "pt",
+        url: "/ptsd/help",
+      }),
+    ).toBe("/pt-hub");
   });
 
   it("builds idempotent client assignment events with portal links", () => {

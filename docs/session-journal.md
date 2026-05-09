@@ -36,6 +36,50 @@ When working in this repository, every agent or human contributor should treat t
 - Next step:
 ```
 
+## 2026-05-09 12:50 +03:00 - Client Portal Delivery QA Hardening
+
+- Branch: `codex/assignments`
+- Goal: Perform a focused Client Portal delivery QA and hardening pass for assigned workouts/programs, check-ins, habits, messages, files/resources, route guards, and notification links without redesigning UI or routing.
+- Changes made:
+  - Added a shared client profile selector that prefers the bootstrap `activeClientId`, then deterministically falls back to the first workspace-backed client row.
+  - Updated client workout deep-link pages, check-ins, habits, progress, and medical files to query all client rows for the signed-in user and select the active client profile instead of relying on `.maybeSingle()`.
+  - Tightened notification action URL sanitization so near-miss paths like `/application/...` and `/ptsd/...` cannot be stored as client/PT notification links.
+  - Added targeted unit coverage for active client selection and stricter notification link boundaries.
+- Files changed:
+  - `src/lib/client-profile-selection.ts`
+  - `src/features/notifications/lib/notification-service.ts`
+  - `src/pages/client/checkin.tsx`
+  - `src/pages/client/habits.tsx`
+  - `src/pages/client/medical.tsx`
+  - `src/pages/client/progress.tsx`
+  - `src/pages/client/workout-detail.tsx`
+  - `src/pages/client/workout-run.tsx`
+  - `src/pages/client/workout-summary.tsx`
+  - `src/pages/client/workout-today.tsx`
+  - `tests/unit/client-profile-selection.test.ts`
+  - `tests/unit/notification-service.test.ts`
+  - `docs/session-journal.md`
+- Commands/tests run:
+  - `python .codex\skills\ui-ux-pro-max\scripts\search.py "repsync client portal delivery QA no redesign" --design-system -p "RepSync"`
+  - `npx vitest run tests/unit/client-profile-selection.test.ts`
+  - `npx vitest run tests/unit/notification-service.test.ts`
+  - `npx vitest run tests/unit/client-profile-selection.test.ts tests/unit/notification-service.test.ts tests/unit/notification-route-resolver.test.ts tests/unit/client-workouts-unified.test.ts tests/unit/client-checkins-page-contract.test.ts tests/unit/client-messages-route-wiring.test.ts tests/unit/auth-bootstrap.test.ts`
+  - `npx tsc -b --pretty false`
+  - `npm run lint`
+  - `npx prettier --check ...` for touched files
+  - `npm run build`
+  - `npx playwright test tests/e2e/auth-guards.smoke.spec.ts`
+- Struggles / mistakes / blockers:
+  - Initial active-client selector test failed because the helper did not exist yet, as expected for TDD.
+  - Notification sanitizer red test confirmed that loose `startsWith` checks accepted near-miss routes.
+  - No Supabase local DB/RLS test was run in this pass; RLS notes are based on audited migration contracts and existing SQL tests.
+- Repo state at end:
+  - Working tree has focused delivery hardening changes plus this journal entry.
+  - Targeted tests, typecheck, lint, build, formatting check, and one auth-guard Playwright smoke passed.
+  - Lint still reports three pre-existing warnings in untouched files.
+- Next step:
+  - Review the remaining broader client portal pages (`baseline`, `settings`, `profile`, nutrition day/create-plan`) for the same active-client selector pattern if multi-workspace client switching becomes in-scope for those surfaces.
+
 ## 2026-03-26 (approximate, multi-step session) - Environment setup, workflow alignment, onboarding review, and onboarding MVP backend
 
 - Branches involved:

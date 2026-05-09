@@ -13,7 +13,8 @@ import {
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Something went wrong.";
@@ -85,6 +86,7 @@ export function ClientWorkoutSummaryPage() {
   const navigate = useNavigate();
   const { assignedWorkoutId } = useParams();
   const { session } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
 
   const clientQuery = useQuery({
     queryKey: ["client", session?.user?.id],
@@ -92,15 +94,19 @@ export function ClientWorkoutSummaryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id")
+        .select("id, workspace_id, created_at")
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
-  const clientId = clientQuery.data?.id ?? null;
+  const clientProfile = useMemo(
+    () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
+    [activeClientId, clientQuery.data],
+  );
+  const clientId = clientProfile?.id ?? null;
 
   const assignedWorkoutQuery = useQuery({
     queryKey: ["assigned-workout", assignedWorkoutId, clientId],

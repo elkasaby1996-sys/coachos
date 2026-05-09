@@ -18,12 +18,14 @@ import {
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { validateMedicalDocumentFile } from "../../lib/upload-validation";
 import { supabase } from "../../lib/supabase";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 
 type ClientMedicalProfile = {
   id: string;
   workspace_id: string | null;
   display_name: string | null;
+  created_at: string | null;
 };
 
 type MedicalRecordRow = {
@@ -86,6 +88,7 @@ const getErrorMessage = (error: unknown) => {
 
 export function ClientMedicalPage() {
   const { session } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [historyTitle, setHistoryTitle] = useState("");
@@ -121,16 +124,20 @@ export function ClientMedicalPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, workspace_id, display_name")
+        .select("id, workspace_id, display_name, created_at")
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as ClientMedicalProfile | null;
+      return (data ?? []) as ClientMedicalProfile[];
     },
   });
 
-  const clientId = clientQuery.data?.id ?? null;
-  const workspaceId = clientQuery.data?.workspace_id ?? null;
+  const clientProfile = useMemo(
+    () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
+    [activeClientId, clientQuery.data],
+  );
+  const clientId = clientProfile?.id ?? null;
+  const workspaceId = clientProfile?.workspace_id ?? null;
 
   const recordsQuery = useQuery({
     queryKey: ["client-medical-records", clientId, workspaceId],
@@ -394,8 +401,8 @@ export function ClientMedicalPage() {
         title="Medical"
         subtitle="Keep your medical history, test values, and uploaded reports in one place for your coaching workflow."
         stateText={
-          clientQuery.data?.display_name
-            ? `Shared with ${clientQuery.data.display_name}'s coach`
+          clientProfile?.display_name
+            ? `Shared with ${clientProfile.display_name}'s coach`
             : "Shared with your coach"
         }
       />

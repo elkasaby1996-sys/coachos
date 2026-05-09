@@ -24,7 +24,8 @@ import {
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 import { cn } from "../../lib/utils";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import {
@@ -177,6 +178,7 @@ const getQuestionSummaryValue = (value: QuestionValue | undefined) => {
 export function ClientCheckinPage() {
   const navigate = useNavigate();
   const { user } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
   const onboardingSummary = useClientOnboarding().data ?? null;
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionValue>>({});
@@ -225,18 +227,23 @@ export function ClientCheckinPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, timezone",
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, timezone, created_at",
         )
         .eq("user_id", user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? null) as ClientRow | null;
+      return (data ?? []) as ClientRow[];
     },
   });
 
+  const clientProfile = useMemo(
+    () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
+    [activeClientId, clientQuery.data],
+  );
+
   const todayStr = useMemo(
-    () => getTodayInTimezone(clientQuery.data?.timezone ?? null),
-    [clientQuery.data?.timezone],
+    () => getTodayInTimezone(clientProfile?.timezone ?? null),
+    [clientProfile?.timezone],
   );
   const checkinWindowStart = useMemo(
     () => addDaysToDateString(todayStr, -45),
@@ -248,30 +255,27 @@ export function ClientCheckinPage() {
   );
 
   const workspaceQuery = useQuery({
-    queryKey: ["client-checkin-workspace", clientQuery.data?.workspace_id],
-    enabled: !!clientQuery.data?.workspace_id,
+    queryKey: ["client-checkin-workspace", clientProfile?.workspace_id],
+    enabled: !!clientProfile?.workspace_id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspaces")
         .select("id, default_checkin_template_id")
-        .eq("id", clientQuery.data?.workspace_id ?? "")
+        .eq("id", clientProfile?.workspace_id ?? "")
         .maybeSingle();
       if (error) throw error;
       return (data ?? null) as WorkspaceRow | null;
     },
   });
 
-  const assignedTemplateId = clientQuery.data?.checkin_template_id ?? null;
+  const assignedTemplateId = clientProfile?.checkin_template_id ?? null;
   const workspaceDefaultTemplateId =
     workspaceQuery.data?.default_checkin_template_id ?? null;
 
   const latestTemplateQuery = useQuery({
-    queryKey: [
-      "client-checkin-latest-template",
-      clientQuery.data?.workspace_id,
-    ],
+    queryKey: ["client-checkin-latest-template", clientProfile?.workspace_id],
     enabled:
-      !!clientQuery.data?.workspace_id &&
+      !!clientProfile?.workspace_id &&
       workspaceQuery.isFetched &&
       !assignedTemplateId &&
       !workspaceDefaultTemplateId,
@@ -282,7 +286,7 @@ export function ClientCheckinPage() {
         fallbackColumns: "id, workspace_id, name, created_at",
         filter: (query) =>
           query
-            .eq("workspace_id", clientQuery.data?.workspace_id ?? "")
+            .eq("workspace_id", clientProfile?.workspace_id ?? "")
             .neq("is_active", false)
             .order("created_at", { ascending: false })
             .limit(1),
@@ -316,21 +320,21 @@ export function ClientCheckinPage() {
   const checkinQuery = useQuery({
     queryKey: [
       "client-checkin",
-      clientQuery.data?.id,
+      clientProfile?.id,
       checkinWindowStart,
       checkinWindowEnd,
     ],
     enabled:
-      !!clientQuery.data?.id &&
+      !!clientProfile?.id &&
       !!templateId &&
-      !!clientQuery.data?.checkin_start_date &&
+      !!clientProfile?.checkin_start_date &&
       !!checkinWindowStart &&
       !!checkinWindowEnd,
     queryFn: async () => {
       const { error: ensureError } = await supabase.rpc(
         "ensure_client_checkins",
         {
-          p_client_id: clientQuery.data?.id ?? "",
+          p_client_id: clientProfile?.id ?? "",
           p_range_start: checkinWindowStart,
           p_range_end: checkinWindowEnd,
         },
@@ -340,7 +344,7 @@ export function ClientCheckinPage() {
       const { data, error } = await supabase
         .from("checkins")
         .select("*")
-        .eq("client_id", clientQuery.data?.id ?? "")
+        .eq("client_id", clientProfile?.id ?? "")
         .gte("week_ending_saturday", checkinWindowStart ?? "")
         .lte("week_ending_saturday", checkinWindowEnd ?? "")
         .order("week_ending_saturday", { ascending: true });
@@ -420,7 +424,7 @@ export function ClientCheckinPage() {
     checkinQuery.isLoading;
   const hasTemplate = Boolean(templateQuery.data);
   const missingTemplate =
-    !isLoading && !hasTemplate && !!clientQuery.data?.workspace_id;
+    !isLoading && !hasTemplate && !!clientProfile?.workspace_id;
   const onboardingStatusMeta = onboardingSummary
     ? getOnboardingStatusMeta(onboardingSummary.onboarding.status)
     : null;
@@ -582,7 +586,7 @@ export function ClientCheckinPage() {
 
   const handleSubmit = async () => {
     const dueDate = currentCheckin?.week_ending_saturday ?? null;
-    if (!clientQuery.data?.id || !dueDate || !templateQuery.data?.id) return;
+    if (!clientProfile?.id || !dueDate || !templateQuery.data?.id) return;
     if (checkinState === "upcoming") {
       setToastVariant("error");
       setToastMessage(
@@ -597,7 +601,7 @@ export function ClientCheckinPage() {
         .from("checkins")
         .upsert(
           {
-            client_id: clientQuery.data.id,
+            client_id: clientProfile.id,
             week_ending_saturday: dueDate,
             template_id: templateQuery.data.id,
           },
@@ -671,7 +675,7 @@ export function ClientCheckinPage() {
 
         if (state.file) {
           const extension = state.file.name.split(".").pop() || "jpg";
-          storagePath = `${clientQuery.data.id}/${checkinRow.id}/${slot.type}-${Date.now()}.${extension}`;
+          storagePath = `${clientProfile.id}/${checkinRow.id}/${slot.type}-${Date.now()}.${extension}`;
           const { error: uploadError } = await supabase.storage
             .from("checkin-photos")
             .upload(storagePath, state.file, { upsert: true });
@@ -686,7 +690,7 @@ export function ClientCheckinPage() {
 
         photoRows.push({
           checkin_id: checkinRow.id,
-          client_id: clientQuery.data.id,
+          client_id: clientProfile.id,
           url: publicUrl,
           storage_path: storagePath,
           photo_type: slot.type,
@@ -734,7 +738,7 @@ export function ClientCheckinPage() {
     currentCheckin?.week_ending_saturday ?? "",
   );
   const checkinFrequencyLabel = getCheckinFrequencyLabel(
-    clientQuery.data?.checkin_frequency,
+    clientProfile?.checkin_frequency,
   );
   const statusKey =
     checkinState === "submitted" || checkinState === "reviewed"
@@ -1426,7 +1430,7 @@ export function ClientCheckinPage() {
                   <Skeleton key={index} className="h-40 w-full" />
                 ))}
               </div>
-            ) : !clientQuery.data ? (
+            ) : !clientProfile ? (
               <EmptyState
                 title="No profile found"
                 description="A client profile is required before check-ins can load."
