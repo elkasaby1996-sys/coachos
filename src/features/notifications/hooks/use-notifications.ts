@@ -5,14 +5,22 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { NotificationFilter, NotificationRecord } from "../lib/types";
+import type {
+  NotificationFilter,
+  NotificationPreferences,
+  NotificationRecord,
+} from "../lib/types";
 import {
   defaultNotificationPreferences,
+  archiveNotification,
   fetchNotificationPreferences,
   fetchNotifications,
   fetchUnreadNotificationCount,
   markAllNotificationsRead,
+  markNotificationClicked,
   markNotificationRead,
+  markNotificationUnread,
+  unarchiveNotification,
   upsertNotificationPreferences,
 } from "../api/notifications";
 
@@ -98,11 +106,15 @@ function updateNotificationInInfiniteData(
   };
 }
 
-export function useMarkNotificationRead(userId: string | null) {
+function useNotificationStateMutation(
+  userId: string | null,
+  mutationFn: (notificationId: string) => Promise<NotificationRecord | null>,
+  unreadCountDelta?: (notification: NotificationRecord) => number,
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: markNotificationRead,
+    mutationFn,
     onSuccess: (notification) => {
       if (!userId || !notification) return;
 
@@ -119,12 +131,50 @@ export function useMarkNotificationRead(userId: string | null) {
         (current) => updateNotificationInInfiniteData(current, notification),
       );
 
-      queryClient.setQueryData<number>(
-        notificationsKeys.unreadCount(userId),
-        (current) => Math.max((current ?? 1) - 1, 0),
-      );
+      if (unreadCountDelta) {
+        queryClient.setQueryData<number>(
+          notificationsKeys.unreadCount(userId),
+          (current) =>
+            Math.max((current ?? 0) + unreadCountDelta(notification), 0),
+        );
+      } else {
+        queryClient.invalidateQueries({
+          queryKey: notificationsKeys.unreadCount(userId),
+        });
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: notificationsKeys.infiniteRoot(userId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: notificationsKeys.listRoot(userId),
+      });
     },
   });
+}
+
+export function useMarkNotificationRead(userId: string | null) {
+  return useNotificationStateMutation(userId, markNotificationRead, () => -1);
+}
+
+export function useMarkNotificationUnread(userId: string | null) {
+  return useNotificationStateMutation(userId, markNotificationUnread, () => 1);
+}
+
+export function useArchiveNotification(userId: string | null) {
+  return useNotificationStateMutation(userId, archiveNotification);
+}
+
+export function useUnarchiveNotification(userId: string | null) {
+  return useNotificationStateMutation(userId, unarchiveNotification);
+}
+
+export function useMarkNotificationClicked(userId: string | null) {
+  return useNotificationStateMutation(
+    userId,
+    markNotificationClicked,
+    () => -1,
+  );
 }
 
 export function useMarkAllNotificationsRead(userId: string | null) {
@@ -167,15 +217,20 @@ export function useMarkAllNotificationsRead(userId: string | null) {
   });
 }
 
-export function useNotificationPreferences(userId: string | null) {
+export function useNotificationPreferences(
+  userId: string | null,
+  actorType: "pt" | "client" | "unknown" = "unknown",
+) {
   return useQuery({
-    queryKey: userId ? notificationsKeys.preferences(userId) : [],
+    queryKey: userId
+      ? [...notificationsKeys.preferences(userId), actorType]
+      : [],
     enabled: !!userId,
     queryFn: async () => {
       if (!userId) return null;
       return (
         (await fetchNotificationPreferences(userId)) ??
-        defaultNotificationPreferences(userId)
+        defaultNotificationPreferences(userId, actorType)
       );
     },
   });
@@ -185,7 +240,7 @@ export function useUpdateNotificationPreferences(userId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: Record<string, boolean>) => {
+    mutationFn: async (input: Partial<NotificationPreferences>) => {
       if (!userId) throw new Error("User not found.");
       return upsertNotificationPreferences({
         user_id: userId,
@@ -194,8 +249,8 @@ export function useUpdateNotificationPreferences(userId: string | null) {
     },
     onSuccess: (preferences) => {
       if (!userId || !preferences) return;
-      queryClient.setQueryData(
-        notificationsKeys.preferences(userId),
+      queryClient.setQueriesData<NotificationPreferences | null>(
+        { queryKey: notificationsKeys.preferences(userId) },
         preferences,
       );
     },

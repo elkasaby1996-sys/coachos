@@ -19,6 +19,21 @@ export const ClientLayout = lazy(() =>
 export const LoginPage = lazy(() =>
   import("../pages/public/login").then((m) => ({ default: m.LoginPage })),
 );
+export const AuthCallbackPage = lazy(() =>
+  import("../pages/public/auth-callback").then((m) => ({
+    default: m.AuthCallbackPage,
+  })),
+);
+export const ForgotPasswordPage = lazy(() =>
+  import("../pages/public/forgot-password").then((m) => ({
+    default: m.ForgotPasswordPage,
+  })),
+);
+export const ResetPasswordPage = lazy(() =>
+  import("../pages/public/reset-password").then((m) => ({
+    default: m.ResetPasswordPage,
+  })),
+);
 export const NoWorkspacePage = lazy(() =>
   import("../pages/public/no-workspace").then((m) => ({
     default: m.NoWorkspacePage,
@@ -269,6 +284,11 @@ export const WorkspaceSettingsGeneralTab = lazy(() =>
     default: m.WorkspaceSettingsGeneralTab,
   })),
 );
+export const WorkspaceSettingsBrandTab = lazy(() =>
+  import("../pages/workspace/settings/tabs/brand").then((m) => ({
+    default: m.WorkspaceSettingsBrandTab,
+  })),
+);
 export const WorkspaceSettingsClientExperienceTab = lazy(() =>
   import("../pages/workspace/settings/tabs/client-experience").then((m) => ({
     default: m.WorkspaceSettingsClientExperienceTab,
@@ -306,6 +326,11 @@ export const LegacySettingsRedirectPage = lazy(() =>
 );
 
 export const NotificationsPage = lazy(() =>
+  import("../features/notifications/pages/notifications-page").then((m) => ({
+    default: m.NotificationsPage,
+  })),
+);
+export const PtHubNotificationsPage = lazy(() =>
   import("../features/notifications/pages/notifications-page").then((m) => ({
     default: m.NotificationsPage,
   })),

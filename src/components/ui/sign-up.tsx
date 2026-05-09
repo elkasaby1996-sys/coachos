@@ -498,10 +498,10 @@ export function AuthComponent({
             {!isSignUp ? (
               <div className="flex justify-end text-sm">
                 <Link
-                  to="/support"
+                  to="/auth/forgot-password"
                   className="shrink-0 text-primary transition-colors hover:text-primary/80"
                 >
-                  Forgot Your Password?
+                  Forgot your password?
                 </Link>
               </div>
             ) : null}

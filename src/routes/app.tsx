@@ -27,6 +27,8 @@ import {
   ClientWorkoutSummaryPage,
   ClientWorkoutsPage,
   ClientSignupPage,
+  AuthCallbackPage,
+  ForgotPasswordPage,
   HealthPage,
   InvitePage,
   LegacySettingsRedirectPage,
@@ -48,6 +50,7 @@ import {
   PtHubLeadDetailPage,
   PtHubLeadsPage,
   PtHubLayout,
+  PtHubNotificationsPage,
   PtHubOverviewPage,
   PtHubPaymentsPage,
   PtHubPackagesPage,
@@ -72,10 +75,12 @@ import {
   PtWorkoutTemplatePreviewPage,
   PtWorkoutTemplatesPage,
   PtWorkspaceOnboardingPage,
+  ResetPasswordPage,
   SignupRolePage,
   SupportPage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
+  WorkspaceSettingsBrandTab,
   WorkspaceSettingsClientExperienceTab,
   WorkspaceSettingsDangerTab,
   WorkspaceSettingsDefaultsTab,
@@ -532,6 +537,12 @@ export function App() {
 
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/auth/forgot-password"
+            element={<ForgotPasswordPage />}
+          />
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route path="/signup" element={<SignupRolePage />} />
           <Route path="/signup/pt" element={<PtSignupPage />} />
           <Route path="/signup/client" element={<ClientSignupPage />} />
@@ -599,6 +610,7 @@ export function App() {
             <Route path="workspaces" element={<PtHubWorkspacesPage />} />
             <Route path="payments" element={<PtHubPaymentsPage />} />
             <Route path="analytics" element={<PtHubAnalyticsPage />} />
+            <Route path="notifications" element={<PtHubNotificationsPage />} />
             <Route path="settings" element={<PtHubSettingsLayoutPage />}>
               <Route index element={<Navigate to="account" replace />} />
               <Route path="account" element={<PtHubSettingsAccountTab />} />
@@ -708,10 +720,7 @@ export function App() {
             <Route element={<WorkspaceSettingsLayoutPage />}>
               <Route index element={<Navigate to="general" replace />} />
               <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
-              <Route
-                path="brand"
-                element={<Navigate to="../general" replace />}
-              />
+              <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
               <Route
                 path="client-experience"
                 element={<WorkspaceSettingsClientExperienceTab />}

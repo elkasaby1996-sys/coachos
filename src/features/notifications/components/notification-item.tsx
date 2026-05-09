@@ -107,7 +107,11 @@ export function NotificationItem({
         </div>
         {!compact ? (
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>{hasAction ? "Open update" : "For reference"}</span>
+            <span>
+              {hasAction
+                ? (notification.action_label ?? "Open update")
+                : "For reference"}
+            </span>
           </div>
         ) : null}
       </div>

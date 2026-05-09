@@ -63,6 +63,7 @@ import {
 } from "../../lib/module-tone";
 import { useI18n } from "../../lib/i18n";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
+import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import "../../styles/pt-hub-shell.css";
 
 const hubNavGroups = [
@@ -230,6 +231,13 @@ const routeMeta: Record<
     description: "Track inquiries, conversions, and client growth.",
     descriptionKey: "ptHub.routes.analytics.description",
     module: "analytics",
+  },
+  "/pt-hub/notifications": {
+    title: "Notifications",
+    titleKey: "ptHub.routes.notifications.title",
+    description: "Review client activity, reminders, and account notices.",
+    descriptionKey: "ptHub.routes.notifications.description",
+    module: "settings",
   },
   "/pt-hub/settings": {
     title: "PT Hub Settings",
@@ -697,6 +705,16 @@ export function PtHubLayout() {
                       </div>
                     </div>
                   </div>
+                  <NotificationBell
+                    viewAllHref="/pt-hub/notifications"
+                    buttonClassName={cn(
+                      "h-12 w-12 rounded-[18px] border border-border/70",
+                      isLightMode
+                        ? "bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.94),oklch(var(--bg-surface)/0.82))]"
+                        : "bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.78))]",
+                    )}
+                    iconClassName="h-4 w-4 [stroke-width:1.7]"
+                  />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button

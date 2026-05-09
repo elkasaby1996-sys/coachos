@@ -21,6 +21,7 @@ import {
   persistPendingInviteToken,
 } from "../../lib/account-profiles";
 import {
+  buildAuthCallbackUrl,
   signInWithOAuth,
   signUpWithEmailPassword,
 } from "../../lib/auth-helpers";
@@ -132,7 +133,12 @@ export function ClientSignupPage() {
       const { data, error: signUpError } = await signUpWithEmailPassword(
         email.trim(),
         password,
-        `${window.location.origin}${targetHref}`,
+        buildAuthCallbackUrl({
+          type: "signup",
+          intent: "client",
+          invite: pendingInviteToken,
+          next: targetHref,
+        }),
       );
       if (signUpError) throw signUpError;
 
@@ -194,7 +200,12 @@ export function ClientSignupPage() {
       );
       const { error: oauthError } = await signInWithOAuth(
         "google",
-        `${window.location.origin}${targetHref}`,
+        buildAuthCallbackUrl({
+          type: "oauth",
+          intent: "client",
+          invite: pendingInviteToken,
+          next: targetHref,
+        }),
       );
       if (oauthError) throw oauthError;
     } catch (nextError) {
