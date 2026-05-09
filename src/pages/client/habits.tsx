@@ -18,7 +18,8 @@ import {
   StickyActionBar,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 import {
   addDaysToDateString,
   diffDays,
@@ -27,8 +28,10 @@ import {
 
 type ClientProfile = {
   id: string;
+  workspace_id: string | null;
   timezone: string | null;
   unit_preference: string | null;
+  created_at: string | null;
 };
 
 type HabitLog = {
@@ -110,6 +113,7 @@ const getErrorDetails = (error: unknown) => {
 
 export function ClientHabitsPage() {
   const { session } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [formState, setFormState] = useState<HabitFormState>(emptyForm);
   const [initialFormState, setInitialFormState] =
@@ -138,16 +142,20 @@ export function ClientHabitsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, timezone, unit_preference")
+        .select("id, workspace_id, timezone, unit_preference, created_at")
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as ClientProfile | null;
+      return (data ?? []) as ClientProfile[];
     },
   });
 
-  const clientId = clientQuery.data?.id ?? null;
-  const clientTimezone = clientQuery.data?.timezone ?? null;
+  const clientProfile = useMemo(
+    () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
+    [activeClientId, clientQuery.data],
+  );
+  const clientId = clientProfile?.id ?? null;
+  const clientTimezone = clientProfile?.timezone ?? null;
   const todayStr = useMemo(
     () => getTodayInTimezone(clientTimezone),
     [clientTimezone],
@@ -196,7 +204,7 @@ export function ClientHabitsPage() {
     const log = habitLogQuery.data;
     if (!log) {
       const unitPreference =
-        clientQuery.data?.unit_preference?.toLowerCase() === "imperial";
+        clientProfile?.unit_preference?.toLowerCase() === "imperial";
       const nextState: HabitFormState = {
         ...emptyForm,
         weight_unit: unitPreference ? "lb" : "kg",
@@ -229,7 +237,7 @@ export function ClientHabitsPage() {
   }, [
     habitLogQuery.data,
     habitLogQuery.isLoading,
-    clientQuery.data?.unit_preference,
+    clientProfile?.unit_preference,
   ]);
 
   const daysAgo = useMemo(() => {

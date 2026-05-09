@@ -14,7 +14,8 @@ import {
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
 import { getSupabaseErrorDetails } from "../../lib/supabase-errors";
-import { useSessionAuth } from "../../lib/auth";
+import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 
 type SetState = {
   id?: string;
@@ -87,6 +88,7 @@ export function ClientWorkoutDetailPage() {
   const { assignedWorkoutId } = useParams();
   const navigate = useNavigate();
   const { session } = useSessionAuth();
+  const { activeClientId } = useBootstrapAuth();
   const queryClient = useQueryClient();
   const [saveIndex, setSaveIndex] = useState<number | null>(null);
   const [showSummary, setShowSummary] = useState(false);
@@ -97,15 +99,19 @@ export function ClientWorkoutDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id")
+        .select("id, workspace_id, created_at")
         .eq("user_id", session?.user?.id ?? "")
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
-  const clientId = clientQuery.data?.id ?? null;
+  const clientProfile = useMemo(
+    () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
+    [activeClientId, clientQuery.data],
+  );
+  const clientId = clientProfile?.id ?? null;
 
   const assignedQuery = useQuery({
     queryKey: ["assigned-workout", assignedWorkoutId, clientId],
