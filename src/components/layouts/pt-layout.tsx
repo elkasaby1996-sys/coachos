@@ -915,7 +915,7 @@ export function PtLayout() {
   const searchResults = useMemo(() => {
     if (normalizedSearch.length === 0) return [];
     return searchQuery.data ?? [];
-  }, [normalizedSearch.length, searchQuery.data, searchRoutes]);
+  }, [normalizedSearch.length, searchQuery.data]);
 
   useEffect(() => {
     setSearchHighlightIndex(0);

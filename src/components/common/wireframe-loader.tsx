@@ -8,6 +8,7 @@ import {
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "./app-shell-background";
 import { useTheme } from "./theme-provider";
+import { getWireframeAuthWidthClass } from "./wireframe-loader-utils";
 
 type WireframeLoaderVariant = "screen" | "auth";
 type WireframeShell = "public" | "client-workspace" | "pt-workspace" | "pt-hub";
@@ -181,19 +182,6 @@ function getScreenContainerClassName(shell: WireframeShell) {
   }
 
   return "relative z-10 mx-auto flex min-h-screen w-full max-w-[1360px] items-center px-4 py-8 sm:px-6 lg:px-8 xl:px-10";
-}
-
-export function getWireframeAuthWidthClass(pathname: string) {
-  if (pathname.startsWith("/signup/pt")) return "max-w-lg";
-  if (pathname.startsWith("/signup/client")) return "max-w-lg";
-  if (pathname.startsWith("/signup")) return "max-w-2xl";
-  if (pathname.startsWith("/invite")) return "max-w-lg";
-  if (pathname.startsWith("/join")) return "max-w-lg";
-  if (pathname.startsWith("/client/onboarding/account")) return "max-w-xl";
-  if (pathname.startsWith("/pt/onboarding/workspace")) return "max-w-lg";
-  if (pathname.startsWith("/pt/onboarding/profile")) return "max-w-2xl";
-  if (pathname.startsWith("/no-workspace")) return "max-w-md";
-  return "max-w-md";
 }
 
 function ScreenWireframe({

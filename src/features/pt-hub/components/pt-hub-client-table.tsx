@@ -13,7 +13,7 @@ import {
 } from "../../../components/ui/coachos/status-pill";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { getSemanticToneClasses } from "../../../lib/semantic-status";
-import { useI18n } from "../../../lib/i18n";
+import { useI18n } from "../../../lib/i18n-context";
 import type { PTClientSummary } from "../types";
 
 const statusBadgePriority: Record<string, number> = {

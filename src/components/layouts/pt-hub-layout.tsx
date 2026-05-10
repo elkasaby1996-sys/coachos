@@ -61,7 +61,7 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
-import { useI18n } from "../../lib/i18n";
+import { useI18n } from "../../lib/i18n-context";
 import { routes } from "../../lib/routes";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";

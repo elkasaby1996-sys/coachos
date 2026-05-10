@@ -6,7 +6,7 @@ import {
   type PtHubLanguage,
   type PtHubRegion,
 } from "../../features/pt-hub/lib/pt-hub-preferences";
-import { useI18n } from "../../lib/i18n";
+import { useI18n } from "../../lib/i18n-context";
 import { cn } from "../../lib/utils";
 import {
   DropdownMenu,

@@ -13,7 +13,7 @@ import {
   getModuleToneClasses,
   getModuleToneStyle,
 } from "../../../lib/module-tone";
-import { useI18n } from "../../../lib/i18n";
+import { useI18n } from "../../../lib/i18n-context";
 
 export type SettingsTabLink = {
   id: string;

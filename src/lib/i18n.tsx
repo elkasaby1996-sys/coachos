@@ -1,26 +1,11 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import {
   usePtHubRegionalPreferences,
   writePtHubRegionalPreferences,
   type PtHubLanguage,
   type PtHubRegion,
 } from "../features/pt-hub/lib/pt-hub-preferences";
-
-type I18nContextValue = {
-  dir: "ltr" | "rtl";
-  language: PtHubLanguage;
-  locale: string;
-  region: PtHubRegion;
-  setLanguage: (language: PtHubLanguage) => void;
-  setRegion: (region: PtHubRegion) => void;
-  t: (key: string, fallback?: string) => string;
-};
+import { I18nContext, type I18nContextValue } from "./i18n-context";
 
 const REGION_LOCALE_MAP: Record<PtHubRegion, string> = {
   eg: "EG",
@@ -634,8 +619,6 @@ const translations: Record<PtHubLanguage, Record<string, string>> = {
   },
 };
 
-const I18nContext = createContext<I18nContextValue | null>(null);
-
 export function I18nProvider({ children }: { children: ReactNode }) {
   const preferences = usePtHubRegionalPreferences();
   const language = preferences.language;
@@ -665,12 +648,4 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
-}
-
-export function useI18n() {
-  const context = useContext(I18nContext);
-  if (!context) {
-    throw new Error("useI18n must be used within I18nProvider");
-  }
-  return context;
 }

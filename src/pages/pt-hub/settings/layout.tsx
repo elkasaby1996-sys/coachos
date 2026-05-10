@@ -5,7 +5,7 @@ import {
   type SettingsTabLink,
 } from "../../../features/settings/components/settings-primitives";
 import { ptHubSettingsTabs } from "../../../features/settings/lib/settings-route-mapping";
-import { useI18n } from "../../../lib/i18n";
+import { useI18n } from "../../../lib/i18n-context";
 import { routes, type PtHubSettingsTab } from "../../../lib/routes";
 
 export function PtHubSettingsLayoutPage() {

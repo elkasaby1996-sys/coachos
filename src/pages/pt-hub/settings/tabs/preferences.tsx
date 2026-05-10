@@ -21,7 +21,7 @@ import {
   type PtHubUnitPreference,
   type PtHubWeekStartDay,
 } from "../../../../features/pt-hub/lib/pt-hub-preferences";
-import { useI18n } from "../../../../lib/i18n";
+import { useI18n } from "../../../../lib/i18n-context";
 import { useWorkspace } from "../../../../lib/use-workspace";
 
 type PreferencesFormState = {
