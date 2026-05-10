@@ -17,31 +17,31 @@ const globalsSource = readFileSync(
 
 describe("animated auth component contract", () => {
   it("keeps 21st.dev-inspired polish inside the existing Repsync auth surface", () => {
-    expect(source).toContain("auth-card-ambient");
-    expect(source).toContain("data-auth-card");
+    expect(source).toContain("auth-flow-canvas");
+    expect(source).toContain("auth-flow-card");
+    expect(source).toContain("<AuthFlowBackground />");
     expect(source).toContain("const isEmailValid =");
-    expect(source).toContain("aria-invalid");
-    expect(source).toContain("data-auth-social");
+    expect(source).toContain('aria-label="Email"');
+    expect(source).toContain('aria-label="Password"');
+    expect(source).toContain("glass-input-single");
   });
 
-  it("keeps the auth card crisp without a visible halo behind the modal", () => {
-    expect(source).toContain("backdrop-blur-xl");
-    expect(source).toContain("rgba(15,23,32,0.74)");
-    expect(source).toContain("auth-card-ambient pointer-events-none hidden");
-    expect(source).not.toContain("backdrop-blur-[34px]");
+  it("keeps the auth card crisp without a separate ambient halo behind the modal", () => {
+    expect(source).toContain("backdrop-blur-2xl");
+    expect(source).toContain("shadow-[0_28px_90px_-54px_oklch");
+    expect(source).not.toContain("auth-card-ambient");
+    expect(source).not.toContain("data-auth-card");
   });
 
-  it("keeps the sign-in form first with compact social icons second", () => {
+  it("keeps the sign-in form first with compact social buttons second", () => {
     expect(source.indexOf("<form")).toBeLessThan(
-      source.lastIndexOf("{socialButtons}"),
+      source.indexOf("{showSocialBlock ?"),
     );
-    expect(source).toContain("data-auth-social={provider.id}");
+    expect(source).toContain('runSocial("google", onGoogle)');
+    expect(source).toContain('runSocial("apple", onApple)');
     expect(source).toContain("Forgot your password?");
-    expect(source).toContain("displayBrandName");
-    expect(source).toContain("auth-secondary-link");
     expect(globalsSource).toContain(".auth-secondary-link:hover");
     expect(globalsSource).toContain("color: #22d3ee");
-    expect(source).toContain("group-hover:translate-x-0.5");
     expect(source).not.toContain(
       "Use your workspace email and existing password.",
     );
@@ -50,14 +50,13 @@ describe("animated auth component contract", () => {
   });
 
   it("uses glassmorphic modal buttons without glossy legacy capsules", () => {
-    expect(source).toContain("rgba(255,255,255,0.15)");
-    expect(source).toContain("rgba(20,38,54,0.24)");
-    expect(source).toContain("rgba(34,211,238,0.14)");
-    expect(source).toContain("backdrop-blur-xl");
-    expect(source).toContain("inset_0_1px_0");
+    expect(source).toContain(".glass-button-wrap");
+    expect(source).toContain(".glass-button-shadow");
+    expect(source).toContain("backdrop-filter: blur");
+    expect(source).toContain("conic-gradient(from var(--angle-1)");
+    expect(source).toContain("mask-composite: exclude");
     expect(source).not.toContain("rgba(56,189,248,0.22)");
     expect(source).not.toContain("rgba(255,255,255,0.26)");
-    expect(source).not.toContain("rounded-full transition-all");
   });
 
   it("keeps the auth footer pinned in a viewport shell without an after-footer band", () => {
@@ -71,6 +70,8 @@ describe("animated auth component contract", () => {
   });
 
   it("uses the animated backdrop on auth screens", () => {
-    expect(backdropSource).toContain("<AppShellBackgroundLayer animated />");
+    expect(backdropSource).toContain("AuthFlowBackground");
+    expect(backdropSource).toContain("backdrop-blur-[36px]");
+    expect(source).toContain("<AuthFlowBackground />");
   });
 });

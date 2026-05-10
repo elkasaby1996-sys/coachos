@@ -11,11 +11,13 @@ import {
 describe("settings route mapping", () => {
   it("defines the expected PT Hub tab routes", () => {
     expect(ptHubSettingsTabs.map((tab) => tab.path)).toEqual([
+      "public-profile",
       "account",
       "notifications",
       "preferences",
       "security",
       "billing",
+      "integrations",
     ]);
   });
 
@@ -28,7 +30,7 @@ describe("settings route mapping", () => {
       "defaults",
       "automations",
       "integrations",
-      "danger",
+      "danger-zone",
     ]);
   });
 
