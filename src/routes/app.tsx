@@ -21,6 +21,7 @@ import {
   ClientNutritionDayPage,
   ClientOnboardingPage,
   ClientSettingsPage,
+  ClientWearablesPage,
   ClientProgressPage,
   ClientWorkoutDetailPage,
   ClientWorkoutRunPage,
@@ -886,6 +887,7 @@ export function App() {
               element={<Navigate to="/app/settings?tab=profile" replace />}
             />
             <Route path="habits" element={<ClientHabitsPage />} />
+            <Route path="wearables" element={<ClientWearablesPage />} />
             <Route path="progress" element={<ClientProgressPage />} />
             <Route path="nutrition" element={<ClientNutritionPage />} />
             <Route

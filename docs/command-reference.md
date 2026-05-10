@@ -61,6 +61,28 @@ This document gathers the regularly used git commands plus the Supabase/app scri
 
 - Copy `.env.local.example` to `.env.local` and fill `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` before running `npm run dev`.
 - Use `.env.e2e.example` as the template when you need to exercise the smoke tests or automation flows.
+- Open Wearables runs as a separate service; see `docs/open-wearables-local-setup.md` before setting `OPEN_WEARABLES_API_URL` and `OPEN_WEARABLES_API_KEY` as Supabase function secrets.
+
+### Remote Supabase safety
+
+- Do not run `npx supabase@latest functions deploy`, `npx supabase@latest secrets set`, `npx supabase@latest db push`, or `npx supabase@latest link` directly from a development shell.
+- Use local-only commands for normal development.
+- For an intentional remote operation, use the guarded wrapper and an explicit project ref:
+
+```bash
+ALLOW_REMOTE_SUPABASE=I_UNDERSTAND_THIS_TOUCHES_REMOTE SUPABASE_PROJECT_REF=<project-ref> npm run supabase:remote -- <supabase args>
+```
+
+- The guard blocks placeholder API keys and local-only Open Wearables URLs in remote Supabase secrets.
+
+## Open Wearables local workflow
+
+- `git clone https://github.com/the-momentum/open-wearables.git` - clone the external integration service outside the RepSync source tree or under an ignored scratch directory.
+- `cp ./backend/config/.env.example ./backend/config/.env` - create the Open Wearables backend env file.
+- `cp ./frontend/.env.example ./frontend/.env` - create the Open Wearables frontend env file.
+- `docker compose up -d` - start the Open Wearables backend, frontend, and supporting services.
+- `make seed` - optionally seed sample Open Wearables users and activity data.
+- `npx supabase@latest functions serve open-wearables --env-file supabase/.env.local` - serve the RepSync Open Wearables proxy/import function locally with local-only secrets.
 
 ## Reference notes
 

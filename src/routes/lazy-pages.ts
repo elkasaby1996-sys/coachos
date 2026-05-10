@@ -404,6 +404,11 @@ export const ClientHabitsPage = lazy(() =>
     default: m.ClientHabitsPage,
   })),
 );
+export const ClientWearablesPage = lazy(() =>
+  import("../pages/client/wearables").then((m) => ({
+    default: m.ClientWearablesPage,
+  })),
+);
 export const ClientBaselinePage = lazy(() =>
   import("../pages/client/baseline").then((m) => ({
     default: m.ClientBaselinePage,

@@ -13,6 +13,7 @@ import {
   Settings,
   UtensilsCrossed,
   UserCircle,
+  Watch,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -75,6 +76,12 @@ const navItems = [
     module: "checkins" as ModuleTone,
   },
   {
+    label: "Wearables",
+    to: "/app/wearables",
+    icon: Watch,
+    module: "analytics" as ModuleTone,
+  },
+  {
     label: "Check-ins",
     to: "/app/checkins",
     icon: ClipboardCheck,
@@ -106,6 +113,7 @@ const getRouteLabel = (pathname: string) => {
   if (pathname.startsWith("/app/workout")) return "Workouts";
   if (pathname.startsWith("/app/nutrition")) return "Nutrition";
   if (pathname.startsWith("/app/habits")) return "Habits";
+  if (pathname.startsWith("/app/wearables")) return "Wearables";
   if (pathname.startsWith("/app/messages")) return "Messages";
   if (pathname.startsWith("/app/find-coach")) return "Find a Coach";
   if (pathname.startsWith("/app/notifications")) return "Notifications";

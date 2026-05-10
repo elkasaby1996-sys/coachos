@@ -113,6 +113,7 @@ import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
+import { PtClientWearablesPanel } from "./client-detail-tabs/pt-client-wearables-panel";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { usePtMessageCompose } from "../../components/pt/pt-message-compose-context";
 import {
@@ -4731,6 +4732,8 @@ export function PtClientDetailPage({
                 </TabsContent>
                 <TabsContent value="habits">
                   <PtClientHabitsTab
+                    clientId={clientId ?? null}
+                    workspaceId={workspaceQuery.data ?? null}
                     habitsQuery={habitsQuery}
                     hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
                     habitsToday={habitsToday}
@@ -7701,10 +7704,14 @@ function PtClientCheckinsTab({
 }
 
 function PtClientHabitsTab({
+  clientId,
+  workspaceId,
   habitsQuery,
   hasAnyHabits,
   habitsToday,
 }: {
+  clientId: string | null;
+  workspaceId: string | null;
   habitsQuery: QueryResult<HabitLog[]>;
   hasAnyHabits: boolean;
   habitsToday: string;
@@ -7846,7 +7853,23 @@ function PtClientHabitsTab({
 
   return (
     <div className="space-y-6">
-      <DashboardCard title="Day-by-day" subtitle="Last 7 days of habit logs.">
+      <Tabs defaultValue="habit-logs" className="space-y-4">
+        <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none">
+          <TabsTrigger
+            value="habit-logs"
+            className="h-auto rounded-xl border border-border/45 bg-background/30 px-3 py-2.5 text-xs font-semibold"
+          >
+            Habit logs
+          </TabsTrigger>
+          <TabsTrigger
+            value="wearables"
+            className="h-auto rounded-xl border border-border/45 bg-background/30 px-3 py-2.5 text-xs font-semibold"
+          >
+            Wearables
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="habit-logs" className="mt-0">
+          <DashboardCard title="Day-by-day" subtitle="Last 7 days of habit logs.">
         {habitsQuery.isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-6 w-1/2" />
@@ -8076,7 +8099,12 @@ function PtClientHabitsTab({
             </div>
           </>
         )}
-      </DashboardCard>
+          </DashboardCard>
+        </TabsContent>
+        <TabsContent value="wearables" className="mt-0">
+          <PtClientWearablesPanel clientId={clientId} workspaceId={workspaceId} />
+        </TabsContent>
+      </Tabs>
 
       <Dialog
         open={selectedHabitMetric !== null}
