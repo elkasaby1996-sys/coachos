@@ -44,9 +44,7 @@ describe("workspace team client access hardening SQL contract", () => {
     expect(migration).toContain(
       "public.can_access_client(p_client_id, 'clients.message')",
     );
-    expect(migration).toContain(
-      "p_sender_user_id is distinct from v_user_id",
-    );
+    expect(migration).toContain("p_sender_user_id is distinct from v_user_id");
   });
 
   it("hardens conversation, message, and typing RLS with assignment-aware checks", () => {
@@ -105,6 +103,8 @@ describe("workspace team client access hardening SQL contract", () => {
     expect(lintFixMigration).toContain(
       "on conflict on constraint conversations_workspace_client_key do nothing",
     );
-    expect(lintFixMigration).toContain("where conv.workspace_id = p_workspace_id");
+    expect(lintFixMigration).toContain(
+      "where conv.workspace_id = p_workspace_id",
+    );
   });
 });

@@ -32,7 +32,9 @@ describe("workspace team invite PR 3 SQL contract", () => {
   });
 
   it("requires team.manage for create, resend, and revoke", () => {
-    expect(migration.match(/public\.can_manage_workspace_team\(p_workspace_id\)/g)).toHaveLength(3);
+    expect(
+      migration.match(/public\.can_manage_workspace_team\(p_workspace_id\)/g),
+    ).toHaveLength(3);
     expect(migration).toContain("'WORKSPACE_PERMISSION_DENIED'");
   });
 
@@ -52,7 +54,9 @@ describe("workspace team invite PR 3 SQL contract", () => {
       "public.hash_workspace_team_invite_token(v_token)",
     );
     expect(migration).toContain("token_hash");
-    expect(migration).not.toContain("insert into public.workspace_member_invites (\n    workspace_id,\n    email,\n    role,\n    client_access_mode,\n    token,");
+    expect(migration).not.toContain(
+      "insert into public.workspace_member_invites (\n    workspace_id,\n    email,\n    role,\n    client_access_mode,\n    token,",
+    );
   });
 
   it("keeps unauthenticated preview safe and low information", () => {

@@ -114,7 +114,8 @@ const Confetti = forwardRef<
     [globalOptions],
   );
   const fire = useCallback(
-    (opts: ConfettiOptions = {}) => instanceRef.current?.({ ...options, ...opts }),
+    (opts: ConfettiOptions = {}) =>
+      instanceRef.current?.({ ...options, ...opts }),
     [options],
   );
   const api = useMemo(() => ({ fire }), [fire]);
@@ -277,7 +278,10 @@ interface GlassButtonProps
 }
 
 const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, children, size, buttonClassName, contentClassName, ...props }, ref) => (
+  (
+    { className, children, size, buttonClassName, contentClassName, ...props },
+    ref,
+  ) => (
     <div className={cn("glass-button-wrap relative rounded-full", className)}>
       <button
         className={cn(
@@ -288,7 +292,9 @@ const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
         ref={ref}
         {...props}
       >
-        <span className={cn(glassButtonTextVariants({ size }), contentClassName)}>
+        <span
+          className={cn(glassButtonTextVariants({ size }), contentClassName)}
+        >
           {children}
         </span>
       </button>
@@ -347,10 +353,22 @@ const GitHubIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const modalSteps = [
-  { message: "Signing you up...", icon: <Loader className="h-12 w-12 animate-spin text-primary" /> },
-  { message: "Onboarding you...", icon: <Loader className="h-12 w-12 animate-spin text-primary" /> },
-  { message: "Finalizing...", icon: <Loader className="h-12 w-12 animate-spin text-primary" /> },
-  { message: "Welcome aboard", icon: <PartyPopper className="h-12 w-12 text-green-500" /> },
+  {
+    message: "Signing you up...",
+    icon: <Loader className="h-12 w-12 animate-spin text-primary" />,
+  },
+  {
+    message: "Onboarding you...",
+    icon: <Loader className="h-12 w-12 animate-spin text-primary" />,
+  },
+  {
+    message: "Finalizing...",
+    icon: <Loader className="h-12 w-12 animate-spin text-primary" />,
+  },
+  {
+    message: "Welcome aboard",
+    icon: <PartyPopper className="h-12 w-12 text-green-500" />,
+  },
 ];
 const successModalStep = modalSteps[modalSteps.length - 1]!;
 const TEXT_LOOP_INTERVAL = 1.1;
@@ -438,7 +456,12 @@ export function AuthComponent({
 
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
     fire({ ...defaults, particleCount: 50, origin: { x: 0, y: 1 }, angle: 60 });
-    fire({ ...defaults, particleCount: 50, origin: { x: 1, y: 1 }, angle: 120 });
+    fire({
+      ...defaults,
+      particleCount: 50,
+      origin: { x: 1, y: 1 },
+      angle: 120,
+    });
   };
 
   const closeModal = () => {
@@ -448,7 +471,9 @@ export function AuthComponent({
 
   const finishSubmit = async () => {
     if (isSignUp && !acceptedLegal) {
-      setLegalConsentError("Accept the Privacy policy and Terms of use to continue.");
+      setLegalConsentError(
+        "Accept the Privacy policy and Terms of use to continue.",
+      );
       return;
     }
 
@@ -504,10 +529,13 @@ export function AuthComponent({
 
       if (result.notice) setNotice(result.notice);
       if (result.success || result.notice) {
-        window.setTimeout(() => {
-          fireSideCanons();
-          setModalStatus("success");
-        }, isSignUp ? 900 : 300);
+        window.setTimeout(
+          () => {
+            fireSideCanons();
+            setModalStatus("success");
+          },
+          isSignUp ? 900 : 300,
+        );
         return;
       }
 
@@ -536,7 +564,8 @@ export function AuthComponent({
         return;
       }
 
-      if (isEmailValid && isPasswordValid && canSubmitSignUp) void finishSubmit();
+      if (isEmailValid && isPasswordValid && canSubmitSignUp)
+        void finishSubmit();
       return;
     }
 
@@ -600,7 +629,9 @@ export function AuthComponent({
     if (socialDisabled || formIsLocked) return;
 
     if (isSignUp && !acceptedLegal) {
-      setLegalConsentError("Accept the Privacy policy and Terms of use to continue.");
+      setLegalConsentError(
+        "Accept the Privacy policy and Terms of use to continue.",
+      );
       return;
     }
 
@@ -684,7 +715,10 @@ export function AuthComponent({
             {modalStatus === "loading" ? (
               <TextLoop interval={TEXT_LOOP_INTERVAL} stopOnEnd>
                 {modalSteps.slice(0, -1).map((step) => (
-                  <div key={step.message} className="flex flex-col items-center gap-4">
+                  <div
+                    key={step.message}
+                    className="flex flex-col items-center gap-4"
+                  >
                     {step.icon}
                     <p className="text-lg font-medium text-foreground">
                       {isSignUp ? step.message : "Signing you in..."}
@@ -1052,7 +1086,11 @@ export function AuthComponent({
             onSubmit={handleFinalSubmit}
             className={cn(
               "w-full",
-              isSignUp && preFields ? "space-y-3" : isSignUp ? "space-y-4" : "space-y-2",
+              isSignUp && preFields
+                ? "space-y-3"
+                : isSignUp
+                  ? "space-y-4"
+                  : "space-y-2",
             )}
           >
             {isSignUp && authStep === "email" && preFields ? (
@@ -1078,7 +1116,10 @@ export function AuthComponent({
                         : "space-y-2",
                   )}
                 >
-                  <BlurFade delay={authStep === "email" ? 0.1 : 0} className="w-full">
+                  <BlurFade
+                    delay={authStep === "email" ? 0.1 : 0}
+                    className="w-full"
+                  >
                     <div className="relative w-full">
                       <AnimatePresence>
                         {isSignUp && authStep === "password" ? (
@@ -1096,10 +1137,7 @@ export function AuthComponent({
                       </AnimatePresence>
                       <div className="glass-input-wrap w-full">
                         <div
-                          className={cn(
-                            "glass-input",
-                            "glass-input-single",
-                          )}
+                          className={cn("glass-input", "glass-input-single")}
                         >
                           <div
                             className={cn(
@@ -1122,7 +1160,9 @@ export function AuthComponent({
                             onKeyDown={handleKeyDown}
                             className={cn(
                               "relative z-10 h-full min-h-10 w-0 flex-grow appearance-none border-0 bg-transparent text-foreground shadow-none outline-none placeholder:text-foreground/60 focus:border-0 focus:outline-none focus:ring-0",
-                              isEmailValid && showEmailContinue ? "pr-2" : "pr-0",
+                              isEmailValid && showEmailContinue
+                                ? "pr-2"
+                                : "pr-0",
                             )}
                             autoComplete="email"
                             aria-label="Email"
@@ -1130,7 +1170,9 @@ export function AuthComponent({
                           <div
                             className={cn(
                               "relative z-10 shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
-                              isEmailValid && showEmailContinue && !submitDisabled
+                              isEmailValid &&
+                                showEmailContinue &&
+                                !submitDisabled
                                 ? "w-10 pr-1"
                                 : "w-0",
                             )}
@@ -1180,7 +1222,9 @@ export function AuthComponent({
                                   <button
                                     type="button"
                                     aria-label="Toggle password visibility"
-                                    onClick={() => setShowPassword(!showPassword)}
+                                    onClick={() =>
+                                      setShowPassword(!showPassword)
+                                    }
                                     className="rounded-full p-2 text-foreground/80 transition-colors hover:text-foreground"
                                   >
                                     {showPassword ? (
@@ -1204,7 +1248,9 @@ export function AuthComponent({
                                 }}
                                 onKeyDown={handleKeyDown}
                                 className="relative z-10 h-full min-h-10 w-0 flex-grow appearance-none border-0 bg-transparent text-foreground shadow-none outline-none placeholder:text-foreground/60 focus:border-0 focus:outline-none focus:ring-0"
-                                autoComplete={isSignUp ? "new-password" : "current-password"}
+                                autoComplete={
+                                  isSignUp ? "new-password" : "current-password"
+                                }
                                 aria-label="Password"
                               />
                               <div
@@ -1215,10 +1261,18 @@ export function AuthComponent({
                               >
                                 <GlassButton
                                   type={isSignUp ? "button" : "submit"}
-                                  disabled={submitDisabled || (!isSignUp && !isEmailValid)}
-                                  onClick={isSignUp ? handleProgressStep : undefined}
+                                  disabled={
+                                    submitDisabled ||
+                                    (!isSignUp && !isEmailValid)
+                                  }
+                                  onClick={
+                                    isSignUp ? handleProgressStep : undefined
+                                  }
                                   size="icon"
-                                  aria-label={primaryLabel ?? (isSignUp ? "Submit password" : "Sign in")}
+                                  aria-label={
+                                    primaryLabel ??
+                                    (isSignUp ? "Submit password" : "Sign in")
+                                  }
                                   contentClassName="text-foreground/80 hover:text-foreground"
                                 >
                                   <ArrowRight className="h-5 w-5" />
@@ -1233,7 +1287,10 @@ export function AuthComponent({
                                   initial={{ opacity: 0, y: -3 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -3 }}
-                                  transition={{ duration: 0.18, ease: "easeOut" }}
+                                  transition={{
+                                    duration: 0.18,
+                                    ease: "easeOut",
+                                  }}
                                   className="mt-1.5 flex items-center gap-1.5 pl-3 text-left text-xs font-normal leading-5 text-destructive"
                                   role="alert"
                                 >
@@ -1296,7 +1353,9 @@ export function AuthComponent({
                           type={showConfirmPassword ? "text" : "password"}
                           placeholder="Confirm password"
                           value={confirmPassword}
-                          onChange={(event) => setConfirmPassword(event.target.value)}
+                          onChange={(event) =>
+                            setConfirmPassword(event.target.value)
+                          }
                           className="relative z-10 h-full min-h-10 w-0 flex-grow appearance-none border-0 bg-transparent text-foreground shadow-none outline-none placeholder:text-foreground/60 focus:border-0 focus:outline-none focus:ring-0"
                           autoComplete="new-password"
                           aria-label="Confirm password"
@@ -1348,7 +1407,9 @@ export function AuthComponent({
                       }}
                       className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-border bg-background text-primary accent-[oklch(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                       aria-describedby={
-                        legalConsentError ? "auth-legal-consent-error" : undefined
+                        legalConsentError
+                          ? "auth-legal-consent-error"
+                          : undefined
                       }
                     />
                     <span>
@@ -1425,15 +1486,26 @@ export function AuthComponent({
                   {isSubmittingEmail ? (
                     <Loader className="h-4 w-4 animate-spin" />
                   ) : null}
-                  <span>{isSubmittingEmail ? "Signing in..." : (primaryLabel ?? "Sign in")}</span>
-                  {!isSubmittingEmail ? <ArrowRight className="h-4 w-4" /> : null}
+                  <span>
+                    {isSubmittingEmail
+                      ? "Signing in..."
+                      : (primaryLabel ?? "Sign in")}
+                  </span>
+                  {!isSubmittingEmail ? (
+                    <ArrowRight className="h-4 w-4" />
+                  ) : null}
                 </GlassButton>
               </div>
             ) : null}
           </form>
 
           {showSocialBlock ? (
-            <div className={cn("w-full", isSignUp ? "space-y-3" : "space-y-3 pt-1")}>
+            <div
+              className={cn(
+                "w-full",
+                isSignUp ? "space-y-3" : "space-y-3 pt-1",
+              )}
+            >
               <BlurFade className="w-full">
                 <div className="flex w-full items-center gap-2 py-1">
                   <hr className="w-full border-border" />
@@ -1447,9 +1519,7 @@ export function AuthComponent({
                 <div
                   className={cn(
                     "grid",
-                    isSignUp
-                      ? "grid-cols-4 gap-2"
-                      : "grid-cols-2 gap-3",
+                    isSignUp ? "grid-cols-4 gap-2" : "grid-cols-2 gap-3",
                   )}
                 >
                   {onGoogle ? (
@@ -1560,7 +1630,9 @@ export function AuthComponent({
                       {busySocial === "github" ? (
                         <Loader className="h-4 w-4 animate-spin" />
                       ) : (
-                        <GitHubIcon className={isSignUp ? "h-4 w-4" : "h-6 w-6"} />
+                        <GitHubIcon
+                          className={isSignUp ? "h-4 w-4" : "h-6 w-6"}
+                        />
                       )}
                       <span className="font-semibold text-foreground">
                         GitHub

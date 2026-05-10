@@ -161,19 +161,16 @@ export function LegacyWorkspaceSettingsRedirect() {
 
   const queryTab = searchParams.get("tab");
   const nextTab = tab ?? queryTab ?? "general";
-  const canonicalTab = (nextTab === "danger"
-    ? "danger-zone"
-    : nextTab) as WorkspaceSettingsTab;
+  const canonicalTab = (
+    nextTab === "danger" ? "danger-zone" : nextTab
+  ) as WorkspaceSettingsTab;
   const nextParams = new URLSearchParams(location.search);
   nextParams.delete("tab");
 
   return (
     <Navigate
       to={appendSearchParams(
-        routes.workspaceSettings(
-          workspaceQuery.data.slug,
-          canonicalTab,
-        ),
+        routes.workspaceSettings(workspaceQuery.data.slug, canonicalTab),
         nextParams.toString(),
       )}
       replace

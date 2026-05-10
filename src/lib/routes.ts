@@ -22,14 +22,12 @@ export const routes = {
   ptHubSettings: (tab: PtHubSettingsTab = "account") =>
     `/pt-hub/settings/${tab}`,
 
-  workspaceOverview: (workspaceSlug: string) =>
-    `/w/${workspaceSlug}/overview`,
+  workspaceOverview: (workspaceSlug: string) => `/w/${workspaceSlug}/overview`,
   workspaceLeads: (workspaceSlug: string) => `/w/${workspaceSlug}/leads`,
   workspaceClients: (workspaceSlug: string) => `/w/${workspaceSlug}/clients`,
   clientDetail: (workspaceSlug: string, clientUrlKey: string) =>
     `/w/${workspaceSlug}/clients/${clientUrlKey}`,
-  workspaceCheckIns: (workspaceSlug: string) =>
-    `/w/${workspaceSlug}/check-ins`,
+  workspaceCheckIns: (workspaceSlug: string) => `/w/${workspaceSlug}/check-ins`,
   workspaceAnalytics: (workspaceSlug: string) =>
     `/w/${workspaceSlug}/analytics`,
   workspaceSettings: (

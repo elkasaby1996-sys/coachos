@@ -90,7 +90,7 @@ export function ClientSignupPage() {
     if (hasOverLimitErrors) {
       return {
         error:
-        fullNameLimitState.errorText ??
+          fullNameLimitState.errorText ??
           "Please fix over-limit fields before continuing.",
       };
     }

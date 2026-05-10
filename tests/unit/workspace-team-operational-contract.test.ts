@@ -18,7 +18,9 @@ describe("workspace team operational contracts", () => {
 
     expect(email.subject).toContain("LUS Coaching");
     expect(email.text).toContain("assistant_coach");
-    expect(email.text).toContain("This invite expires on 2026-05-23T00:00:00Z.");
+    expect(email.text).toContain(
+      "This invite expires on 2026-05-23T00:00:00Z.",
+    );
     expect(email.text).toContain(
       "You must sign in or create a RepSync account with coach@example.com to accept.",
     );

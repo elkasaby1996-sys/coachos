@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const contracts = readFileSync("src/features/workspace-team/contracts.ts", "utf8");
+const contracts = readFileSync(
+  "src/features/workspace-team/contracts.ts",
+  "utf8",
+);
 const inviteApiSql = readFileSync(
   "supabase/migrations/20260509180000_workspace_team_invite_apis.sql",
   "utf8",
@@ -61,7 +64,9 @@ describe("workspace teams release readiness contract", () => {
     expect(createInviteBody).toContain(
       "insert into public.workspace_member_invites",
     );
-    expect(createInviteBody).not.toContain("insert into public.workspace_members");
+    expect(createInviteBody).not.toContain(
+      "insert into public.workspace_members",
+    );
     expect(inviteAcceptanceContract).toContain('path="/team-invites/:token"');
     expect(inviteAcceptanceContract).toContain("acceptWorkspaceTeamInvite");
     expect(inviteApiSql).toContain("set status = 'accepted'");
@@ -136,7 +141,9 @@ describe("workspace teams release readiness contract", () => {
     expect(e2eAuthSeeds).toContain(
       "on conflict (workspace_id, user_id) do update",
     );
-    expect(e2eAuthSeeds).toContain("on conflict (user_id, workspace_id) do update");
+    expect(e2eAuthSeeds).toContain(
+      "on conflict (user_id, workspace_id) do update",
+    );
     expect(e2eAuthSeeds).toContain("client_access_mode = 'all_clients'");
   });
 

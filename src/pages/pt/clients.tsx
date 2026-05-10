@@ -119,9 +119,7 @@ export function PtClientsPage() {
         ? routes.clientDetail(client.workspaceSlug, client.urlKey)
         : `/pt/clients/${client.id}`;
     navigate(
-      client.onboardingIncomplete
-        ? `${detailPath}?tab=onboarding`
-        : detailPath,
+      client.onboardingIncomplete ? `${detailPath}?tab=onboarding` : detailPath,
     );
   };
 

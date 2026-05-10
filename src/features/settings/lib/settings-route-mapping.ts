@@ -136,7 +136,9 @@ export function buildWorkspaceSettingsPath(params: {
 }
 
 export function buildPtHubSettingsPath(tab: string) {
-  return routes.ptHubSettings(tab as Parameters<typeof routes.ptHubSettings>[0]);
+  return routes.ptHubSettings(
+    tab as Parameters<typeof routes.ptHubSettings>[0],
+  );
 }
 
 export function buildCanonicalWorkspaceSettingsPath(params: {

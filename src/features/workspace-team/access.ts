@@ -140,10 +140,7 @@ export async function getWorkspaceAccessContext(
     return buildOwnedContext(workspace.id);
   }
 
-  const member = await dataSource.getWorkspaceMember(
-    workspace.id,
-    userId,
-  );
+  const member = await dataSource.getWorkspaceMember(workspace.id, userId);
   if (!member) {
     throw new WorkspaceAccessDeniedError("Workspace membership not found.");
   }

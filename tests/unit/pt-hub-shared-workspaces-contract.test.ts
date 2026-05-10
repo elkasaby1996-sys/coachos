@@ -64,7 +64,9 @@ describe("PT Hub shared workspace contract", () => {
   });
 
   it("opens workspace cards through canonical slug routes while preserving legacy entry redirects", () => {
-    expect(workspacesPage).toContain("routes.workspaceOverview(workspace.slug)");
+    expect(workspacesPage).toContain(
+      "routes.workspaceOverview(workspace.slug)",
+    );
     expect(appRoutes).toContain('path="/workspace/:workspaceId"');
     expect(appRoutes).toContain("LegacyWorkspaceEntryRedirect");
     expect(appRoutes).toContain('path="/w/:workspaceSlug"');

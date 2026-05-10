@@ -56,15 +56,11 @@ describe("workspace team delivery read access SQL contract", () => {
     expect(migration).toContain(
       "drop policy if exists program_templates_pt_manage on public.program_templates",
     );
-    expect(migration).toContain(
-      "public.can_access_workspace(workspace_id)",
-    );
+    expect(migration).toContain("public.can_access_workspace(workspace_id)");
     expect(migration).toContain(
       "drop policy if exists program_template_days_pt_manage on public.program_template_days",
     );
-    expect(migration).toContain(
-      "public.can_access_workspace(pt.workspace_id)",
-    );
+    expect(migration).toContain("public.can_access_workspace(pt.workspace_id)");
     expect(migration).toContain(
       "drop policy if exists workout_templates_select_access on public.workout_templates",
     );

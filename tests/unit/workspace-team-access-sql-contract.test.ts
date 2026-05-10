@@ -90,7 +90,9 @@ describe("workspace team access PR 2 SQL contract", () => {
               `create or replace function ${names[index + 1]}`,
               start + 1,
             )
-          : migration.indexOf("create or replace function public.accessible_workspace_relations_for_user");
+          : migration.indexOf(
+              "create or replace function public.accessible_workspace_relations_for_user",
+            );
       return migration.slice(start, end);
     });
 

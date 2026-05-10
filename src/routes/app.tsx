@@ -568,7 +568,10 @@ export function App() {
           <Route path="/p/:ptSlug" element={<PublicCoachProfilePage />} />
           <Route path="/p/:ptSlug/apply" element={<PublicCoachProfilePage />} />
           <Route path="/p/:ptSlug/book" element={<PublicCoachProfilePage />} />
-          <Route path="/coach/:slug" element={<LegacyPublicProfileRedirect />} />
+          <Route
+            path="/coach/:slug"
+            element={<LegacyPublicProfileRedirect />}
+          />
           <Route
             path="/profile/:id"
             element={<LegacyPublicProfileRedirect />}
@@ -662,10 +665,7 @@ export function App() {
             <Route path="settings" element={<PtHubSettingsLayoutPage />}>
               <Route index element={<Navigate to="account" replace />} />
               <Route path="account" element={<PtHubSettingsAccountTab />} />
-              <Route
-                path="public-profile"
-                element={<PtHubProfilePage />}
-              />
+              <Route path="public-profile" element={<PtHubProfilePage />} />
               <Route
                 path="notifications"
                 element={<PtHubSettingsNotificationsTab />}

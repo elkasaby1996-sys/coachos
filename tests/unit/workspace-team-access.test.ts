@@ -89,10 +89,7 @@ describe("workspace team access helpers", () => {
     expect(ROLE_PERMISSIONS.owner).toContain("workspace.danger.manage");
     expect(ROLE_PERMISSIONS.admin).toContain("team.manage");
     expect(ROLE_PERMISSIONS.coach).not.toContain("team.manage");
-    expect(ROLE_PERMISSIONS.viewer).toEqual([
-      "workspace.view",
-      "clients.view",
-    ]);
+    expect(ROLE_PERMISSIONS.viewer).toEqual(["workspace.view", "clients.view"]);
   });
 
   it("allows workspace owner access without a membership row", async () => {

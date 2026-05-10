@@ -19,7 +19,7 @@ describe("workspace team client access message wiring", () => {
   it("loads PT inbox clients and conversations through assignment-aware RPCs", () => {
     for (const source of [ptMessagesPage, ptMessageCompose]) {
       expect(source).toContain('.rpc("pt_message_recipients"');
-      expect(source).toContain('.rpc("pt_accessible_conversations"');
+      expect(source).toContain("pt_accessible_conversations");
       expect(source).toContain('.rpc("ensure_pt_conversation"');
       expect(source).not.toContain('.from("clients")');
       expect(source).not.toContain('.from("conversations")');

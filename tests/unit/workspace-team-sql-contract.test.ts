@@ -60,10 +60,10 @@ describe("workspace team management PR 1 SQL contract", () => {
     expect(migration).toContain(
       "add column if not exists client_access_mode text not null default 'all_clients'",
     );
-    expect(migration).toContain("add column if not exists source_invite_id uuid");
     expect(migration).toContain(
-      "constraint workspace_members_status_check",
+      "add column if not exists source_invite_id uuid",
     );
+    expect(migration).toContain("constraint workspace_members_status_check");
     expect(migration).toContain(
       "constraint workspace_members_client_access_mode_check",
     );

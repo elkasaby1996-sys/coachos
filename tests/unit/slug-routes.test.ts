@@ -10,9 +10,7 @@ import { routes } from "../../src/lib/routes";
 describe("slug utilities", () => {
   it("normalizes readable names into lowercase kebab-case slugs", () => {
     expect(normalizeSlugCandidate(" Nour Coaching ")).toBe("nour-coaching");
-    expect(normalizeSlugCandidate("LUS1 Performance")).toBe(
-      "lus1-performance",
-    );
+    expect(normalizeSlugCandidate("LUS1 Performance")).toBe("lus1-performance");
     expect(normalizeSlugCandidate("Elite PT Hub!!!")).toBe("elite-pt-hub");
   });
 

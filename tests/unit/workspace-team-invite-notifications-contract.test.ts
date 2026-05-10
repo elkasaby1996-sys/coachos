@@ -37,7 +37,9 @@ describe("workspace team invite notifications", () => {
     );
     expect(migration).toContain("status = 'declined'");
     expect(migration).toContain("team.invite_declined");
-    expect(migration).toContain("grant execute on function public.decline_workspace_team_invite");
+    expect(migration).toContain(
+      "grant execute on function public.decline_workspace_team_invite",
+    );
   });
 
   it("models team invite notifications in the client notification system", () => {

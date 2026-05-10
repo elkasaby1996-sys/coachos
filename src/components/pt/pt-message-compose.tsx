@@ -373,10 +373,9 @@ export function PtMessageComposeProvider({
     queryKey: ["pt-compose-clients", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .rpc("pt_message_recipients", {
-          p_workspace_id: workspaceId ?? "",
-        });
+      const { data, error } = await supabase.rpc("pt_message_recipients", {
+        p_workspace_id: workspaceId ?? "",
+      });
       if (error) throw error;
       return (data ?? []) as ClientRow[];
     },
@@ -387,10 +386,12 @@ export function PtMessageComposeProvider({
     enabled: !!workspaceId,
     staleTime: 1000 * 30,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .rpc("pt_accessible_conversations", {
+      const { data, error } = await supabase.rpc(
+        "pt_accessible_conversations",
+        {
           p_workspace_id: workspaceId ?? "",
-        });
+        },
+      );
       if (error) throw error;
       return (data ?? []) as ConversationRow[];
     },

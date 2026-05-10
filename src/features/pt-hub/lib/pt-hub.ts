@@ -1620,16 +1620,20 @@ export function usePtHubClientsPage(params: {
       if (workspaceSlugResult.error) throw workspaceSlugResult.error;
       if (clientKeyResult.error) throw clientKeyResult.error;
       const workspaceSlugById = new Map(
-        ((workspaceSlugResult.data ?? []) as Array<{
-          id: string;
-          slug: string | null;
-        }>).map((workspace) => [workspace.id, workspace.slug ?? ""]),
+        (
+          (workspaceSlugResult.data ?? []) as Array<{
+            id: string;
+            slug: string | null;
+          }>
+        ).map((workspace) => [workspace.id, workspace.slug ?? ""]),
       );
       const clientUrlKeyById = new Map(
-        ((clientKeyResult.data ?? []) as Array<{
-          id: string;
-          url_key: string | null;
-        }>).map((clientRow) => [clientRow.id, clientRow.url_key ?? ""]),
+        (
+          (clientKeyResult.data ?? []) as Array<{
+            id: string;
+            url_key: string | null;
+          }>
+        ).map((clientRow) => [clientRow.id, clientRow.url_key ?? ""]),
       );
       const clients = rows.map((row) =>
         mapPtClientSummary(

@@ -240,7 +240,9 @@ export function NotificationsPage() {
                 declineInviteMutation.isPending
               }
             >
-              {acceptInviteMutation.isPending ? "Accepting..." : "Accept invite"}
+              {acceptInviteMutation.isPending
+                ? "Accepting..."
+                : "Accept invite"}
             </Button>
             <Button
               size="sm"

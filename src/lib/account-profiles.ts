@@ -331,7 +331,8 @@ export async function updatePtProfile(
       values.full_name ?? values.display_name,
     );
   }
-  if ("full_name" in values) payload.full_name = normalizeText(values.full_name);
+  if ("full_name" in values)
+    payload.full_name = normalizeText(values.full_name);
   if ("phone" in values) payload.phone = normalizeText(values.phone);
   if ("avatar_url" in values) {
     payload.avatar_url = normalizeText(values.avatar_url);
@@ -441,7 +442,8 @@ export async function syncPtAccountIdentity(params: {
   if (params.country !== undefined) {
     legacyProfileUpdate.location_country = params.country;
   }
-  if (params.city !== undefined) legacyProfileUpdate.location_city = params.city;
+  if (params.city !== undefined)
+    legacyProfileUpdate.location_city = params.city;
   await updatePtProfile(params.userId, legacyProfileUpdate);
 
   const { data: hubProfile, error: hubProfileError } = await supabase
@@ -476,11 +478,13 @@ export async function syncPtAccountIdentity(params: {
   if (params.supportEmail !== undefined) {
     settingsPayload.support_email = normalizeText(params.supportEmail);
   }
-  if (params.phone !== undefined) settingsPayload.phone = normalizeText(params.phone);
+  if (params.phone !== undefined)
+    settingsPayload.phone = normalizeText(params.phone);
   if (params.country !== undefined) {
     settingsPayload.country = normalizeText(params.country);
   }
-  if (params.city !== undefined) settingsPayload.city = normalizeText(params.city);
+  if (params.city !== undefined)
+    settingsPayload.city = normalizeText(params.city);
 
   const { error: settingsUpsertError } = await supabase
     .from("pt_hub_settings")

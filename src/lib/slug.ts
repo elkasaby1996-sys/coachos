@@ -54,7 +54,10 @@ export function isReservedSlug(value: string) {
   return RESERVED_SLUGS.has(value.trim().toLowerCase());
 }
 
-export function normalizeSlug(value: string, options: { maxLength?: number } = {}) {
+export function normalizeSlug(
+  value: string,
+  options: { maxLength?: number } = {},
+) {
   const trimmed = value.trim();
   const normalized = normalizeSlugCandidate(trimmed, options);
 

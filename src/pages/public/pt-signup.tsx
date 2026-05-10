@@ -324,104 +324,104 @@ export function PtSignupPage() {
       socialDisabled={googleBusy || hasOverLimitErrors}
       preFields={
         <div className="app-form-grid">
-            <div className="app-form-col-12 space-y-2">
-              <label htmlFor="pt-full-name" className="text-sm font-medium">
-                Full name
-              </label>
-              <Input
-                id="pt-full-name"
-                className={ptDetailFieldClassName}
-                isInvalid={fullNameLimitState.overLimit}
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                placeholder={getUserDisplayName(user) || "Coach name"}
-              />
-              <FieldCharacterMeta
-                count={fullNameLimitState.count}
-                limit={fullNameLimitState.limit}
-                errorText={fullNameLimitState.errorText}
-              />
-            </div>
-            <div className="app-form-col-6 space-y-2">
-              <label htmlFor="pt-country" className="text-sm font-medium">
-                Country
-              </label>
-              <select
-                id="pt-country"
-                value={country}
-                onChange={(event) => {
-                  const nextCountry = event.target.value;
-                  const nextDialCode = getCountryDialCode(nextCountry);
-                  const currentDialCode = getCountryDialCode(country);
-                  const trimmedPhone = phone.trim();
-                  let nextPhone = phone;
+          <div className="app-form-col-12 space-y-2">
+            <label htmlFor="pt-full-name" className="text-sm font-medium">
+              Full name
+            </label>
+            <Input
+              id="pt-full-name"
+              className={ptDetailFieldClassName}
+              isInvalid={fullNameLimitState.overLimit}
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              placeholder={getUserDisplayName(user) || "Coach name"}
+            />
+            <FieldCharacterMeta
+              count={fullNameLimitState.count}
+              limit={fullNameLimitState.limit}
+              errorText={fullNameLimitState.errorText}
+            />
+          </div>
+          <div className="app-form-col-6 space-y-2">
+            <label htmlFor="pt-country" className="text-sm font-medium">
+              Country
+            </label>
+            <select
+              id="pt-country"
+              value={country}
+              onChange={(event) => {
+                const nextCountry = event.target.value;
+                const nextDialCode = getCountryDialCode(nextCountry);
+                const currentDialCode = getCountryDialCode(country);
+                const trimmedPhone = phone.trim();
+                let nextPhone = phone;
 
-                  if (!trimmedPhone) {
-                    nextPhone = nextDialCode ? `${nextDialCode} ` : "";
-                  } else if (
-                    currentDialCode &&
-                    trimmedPhone.startsWith(currentDialCode)
-                  ) {
-                    nextPhone = `${nextDialCode}${trimmedPhone.slice(currentDialCode.length)}`;
-                  }
+                if (!trimmedPhone) {
+                  nextPhone = nextDialCode ? `${nextDialCode} ` : "";
+                } else if (
+                  currentDialCode &&
+                  trimmedPhone.startsWith(currentDialCode)
+                ) {
+                  nextPhone = `${nextDialCode}${trimmedPhone.slice(currentDialCode.length)}`;
+                }
 
-                  setCountry(nextCountry);
-                  setCity(getCountryDefaultCity(nextCountry));
-                  setPhone(nextPhone);
-                }}
-                className={`app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm ${ptDetailFieldClassName}`}
-              >
-                <option value="">Select country</option>
-                {COUNTRY_OPTIONS.map((option) => (
-                  <option key={option.name} value={option.name}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="app-form-col-6 space-y-2">
-              <label htmlFor="pt-city" className="text-sm font-medium">
-                City
-              </label>
-              <Input
-                id="pt-city"
-                className={ptDetailFieldClassName}
-                isInvalid={cityLimitState.overLimit}
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder={
-                  country ? getCountryDefaultCity(country) || "City" : "City"
-                }
-              />
-              <FieldCharacterMeta
-                count={cityLimitState.count}
-                limit={cityLimitState.limit}
-                errorText={cityLimitState.errorText}
-              />
-            </div>
-            <div className="app-form-col-12 space-y-2">
-              <label htmlFor="pt-phone" className="text-sm font-medium">
-                Phone number
-              </label>
-              <Input
-                id="pt-phone"
-                type="tel"
-                className={ptDetailFieldClassName}
-                isInvalid={phoneLimitState.overLimit}
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder={
-                  country
-                    ? `${getCountryDialCode(country)} 5X XXX XXXX`
-                    : "+966 5X XXX XXXX"
-                }
-              />
-              <FieldCharacterMeta
-                count={phoneLimitState.count}
-                limit={phoneLimitState.limit}
-                errorText={phoneLimitState.errorText}
-              />
-            </div>
+                setCountry(nextCountry);
+                setCity(getCountryDefaultCity(nextCountry));
+                setPhone(nextPhone);
+              }}
+              className={`app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm ${ptDetailFieldClassName}`}
+            >
+              <option value="">Select country</option>
+              {COUNTRY_OPTIONS.map((option) => (
+                <option key={option.name} value={option.name}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="app-form-col-6 space-y-2">
+            <label htmlFor="pt-city" className="text-sm font-medium">
+              City
+            </label>
+            <Input
+              id="pt-city"
+              className={ptDetailFieldClassName}
+              isInvalid={cityLimitState.overLimit}
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder={
+                country ? getCountryDefaultCity(country) || "City" : "City"
+              }
+            />
+            <FieldCharacterMeta
+              count={cityLimitState.count}
+              limit={cityLimitState.limit}
+              errorText={cityLimitState.errorText}
+            />
+          </div>
+          <div className="app-form-col-12 space-y-2">
+            <label htmlFor="pt-phone" className="text-sm font-medium">
+              Phone number
+            </label>
+            <Input
+              id="pt-phone"
+              type="tel"
+              className={ptDetailFieldClassName}
+              isInvalid={phoneLimitState.overLimit}
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder={
+                country
+                  ? `${getCountryDialCode(country)} 5X XXX XXXX`
+                  : "+966 5X XXX XXXX"
+              }
+            />
+            <FieldCharacterMeta
+              count={phoneLimitState.count}
+              limit={phoneLimitState.limit}
+              errorText={phoneLimitState.errorText}
+            />
+          </div>
         </div>
       }
       onEmailPasswordSubmit={handleEmailSignup}
