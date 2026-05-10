@@ -768,7 +768,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   }
 }
 
-.pt-hub-theme .pt-hub-bg-orb {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-orb {
   filter: blur(84px);
   opacity: 0.28;
   mix-blend-mode: screen;
@@ -778,7 +778,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   animation: pt-hub-orb-float 24s cubic-bezier(0.42, 0, 0.2, 1) infinite;
 }
 
-.pt-hub-theme .pt-hub-bg-orb-primary {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-orb-primary {
   background: radial-gradient(
     circle,
     oklch(var(--accent) / 0.2),
@@ -786,7 +786,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   );
 }
 
-.pt-hub-theme .pt-hub-bg-orb-secondary {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-orb-secondary {
   background: radial-gradient(
     circle,
     oklch(var(--chart-2) / 0.16),
@@ -796,7 +796,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   animation-delay: -7s;
 }
 
-.pt-hub-theme .pt-hub-bg-orb-success {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-orb-success {
   background: radial-gradient(
     circle,
     oklch(var(--success) / 0.14),
@@ -806,7 +806,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   animation-delay: -11s;
 }
 
-.pt-hub-theme .pt-hub-bg-wave {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-wave {
   border-radius: 999px;
   background:
     radial-gradient(
@@ -833,12 +833,12 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   animation: pt-hub-wave-drift 30s cubic-bezier(0.42, 0, 0.2, 1) infinite;
 }
 
-.pt-hub-theme .pt-hub-bg-wave-delayed {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-wave-delayed {
   animation-delay: -12s;
   opacity: 0.18;
 }
 
-.pt-hub-theme .pt-hub-bg-filament {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-filament {
   border-radius: 999px;
   opacity: 0.26;
   filter: blur(34px);
@@ -849,7 +849,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   animation: pt-hub-filament-drift 38s cubic-bezier(0.42, 0, 0.2, 1) infinite;
 }
 
-.pt-hub-theme .pt-hub-bg-filament-a {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-filament-a {
   background: linear-gradient(
     100deg,
     transparent 0%,
@@ -860,7 +860,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   );
 }
 
-.pt-hub-theme .pt-hub-bg-filament-b {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-filament-b {
   background: linear-gradient(
     84deg,
     transparent 0%,
@@ -874,7 +874,7 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   opacity: 0.18;
 }
 
-.pt-hub-theme .pt-hub-bg-scan {
+:is(.pt-hub-theme, .pt-workspace-theme) .pt-hub-bg-scan {
   opacity: 0.12;
   background:
     linear-gradient(
@@ -899,13 +899,21 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   animation: pt-hub-scan-drift 32s linear infinite;
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-orb {
   filter: blur(96px);
   opacity: 0.07;
   mix-blend-mode: normal;
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb-primary {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-orb-primary {
   background: radial-gradient(
     circle,
     oklch(var(--accent) / 0.095),
@@ -913,7 +921,11 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   );
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb-secondary {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-orb-secondary {
   background: radial-gradient(
     circle,
     oklch(var(--chart-2) / 0.075),
@@ -921,7 +933,11 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   );
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-orb-success {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-orb-success {
   background: radial-gradient(
     circle,
     oklch(var(--chart-4) / 0.065),
@@ -929,7 +945,11 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   );
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-wave {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-wave {
   background:
     radial-gradient(
       circle at 20% 50%,
@@ -950,17 +970,29 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   opacity: 0.045;
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-wave-delayed {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-wave-delayed {
   opacity: 0.035;
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-filament {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-filament {
   opacity: 0.055;
   filter: blur(46px);
   mix-blend-mode: normal;
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-filament-a {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-filament-a {
   background: linear-gradient(
     100deg,
     transparent 0%,
@@ -971,7 +1003,11 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   );
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-filament-b {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-filament-b {
   background: linear-gradient(
     84deg,
     transparent 0%,
@@ -983,7 +1019,11 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   opacity: 0.04;
 }
 
-.pt-hub-theme.pt-hub-theme-light .pt-hub-bg-scan {
+:is(
+    .pt-hub-theme.pt-hub-theme-light,
+    .pt-workspace-theme.pt-workspace-theme-light
+  )
+  .pt-hub-bg-scan {
   opacity: 0.045;
   background:
     linear-gradient(

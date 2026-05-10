@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 type WorkspaceSettingsRow = {
   id: string;
   name: string | null;
+  slug?: string | null;
   logo_url: string | null;
   owner_user_id: string | null;
   default_checkin_template_id: string | null;

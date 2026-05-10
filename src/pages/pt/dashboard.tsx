@@ -762,7 +762,7 @@ export function PtDashboardPage() {
       ) : null}
 
       <StaggerGroup
-        className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_320px]"
+        className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-4"
         stagger={0.05}
       >
         {isLoading ? (

@@ -74,6 +74,11 @@ const ptTemplates: Partial<Record<NotificationType, EmailTemplateDefinition>> =
       subject: "New client join request",
       requiredVariables: ["recipient_name", "action_url"],
     },
+    team_invite_received: {
+      key: "pt.workspace_team_invite",
+      subject: "Workspace team invite",
+      requiredVariables: ["recipient_name", "action_url"],
+    },
     client_inactive: {
       key: "pt.client_escalation",
       subject: "Client needs attention",

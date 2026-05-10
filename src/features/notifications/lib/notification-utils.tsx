@@ -92,6 +92,12 @@ export function getNotificationTypeLabel(
       return audience === "client" ? "Access ready" : "Client joined";
     case "invite_accepted":
       return "Invite accepted";
+    case "team_invite_received":
+      return "Team invite";
+    case "team_invite_accepted":
+      return "Team invite accepted";
+    case "team_invite_declined":
+      return "Team invite declined";
     case "workout_due_today":
       return "Workout due";
     case "checkin_due_tomorrow":
@@ -121,6 +127,9 @@ export function getNotificationIcon(notification: NotificationRecord) {
       return Trophy;
     case "client_joined_workspace":
     case "invite_accepted":
+    case "team_invite_received":
+    case "team_invite_accepted":
+    case "team_invite_declined":
       return UserPlus;
     case "client_inactive":
       return ShieldAlert;
@@ -148,6 +157,9 @@ export function getNotificationModuleTone(
       return "analytics";
     case "client_joined_workspace":
     case "invite_accepted":
+    case "team_invite_received":
+    case "team_invite_accepted":
+    case "team_invite_declined":
       return "clients";
     case "birthday_reminder":
       return "profile";

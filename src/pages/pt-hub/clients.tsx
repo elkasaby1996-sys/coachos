@@ -23,7 +23,7 @@ import {
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTClientSummary } from "../../features/pt-hub/types";
 import { type ClientSegmentKey } from "../../lib/client-lifecycle";
-import { useI18n } from "../../lib/i18n";
+import { useI18n } from "../../lib/i18n-context";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtHubClientsPage() {

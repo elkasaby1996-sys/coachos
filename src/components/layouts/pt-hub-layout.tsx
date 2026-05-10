@@ -61,7 +61,8 @@ import {
   getModuleToneStyle,
   type ModuleTone,
 } from "../../lib/module-tone";
-import { useI18n } from "../../lib/i18n";
+import { useI18n } from "../../lib/i18n-context";
+import { routes } from "../../lib/routes";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import "../../styles/pt-hub-shell.css";
@@ -251,6 +252,8 @@ const routeMeta: Record<
 
 const defaultRouteMeta = routeMeta["/pt-hub"]!;
 const PT_HUB_THEME_STORAGE_KEY = "coachos-pt-hub-theme-mode";
+const PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY =
+  "coachos-pt-hub-light-default-migrated";
 
 type PtHubThemeMode = "dark" | "light";
 
@@ -346,6 +349,25 @@ function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
   );
 }
 
+function getWorkspaceRoleLabel(role: string | null | undefined) {
+  if (role === "admin") return "Admin";
+  if (role === "coach") return "Coach";
+  if (role === "assistant_coach") return "Assistant Coach";
+  if (role === "viewer") return "Viewer";
+  return "Owner";
+}
+
+function getWorkspaceSwitcherMeta(workspace: {
+  relation?: "owned" | "shared";
+  role?: string | null;
+  clientCount?: number | null;
+}) {
+  if (workspace.relation === "shared") {
+    return `Shared workspace · ${getWorkspaceRoleLabel(workspace.role)}`;
+  }
+  return `${workspace.clientCount ?? 0} active clients`;
+}
+
 export function PtHubLayout() {
   const { t } = useI18n();
   const location = useLocation();
@@ -363,7 +385,7 @@ export function PtHubLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [headerCondensed, setHeaderCondensed] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
+  const [themeMode, setThemeMode] = useState<PtHubThemeMode>("light");
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const routeTransitionKey = getPtHubRouteTransitionKey(location.pathname);
 
@@ -377,8 +399,9 @@ export function PtHubLayout() {
   );
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
+    slug: workspace.slug,
     name: workspace.name,
-    meta: `${workspace.clientCount ?? 0} active clients`,
+    meta: getWorkspaceSwitcherMeta(workspace),
   }));
   const inPtHubWorkspace = location.pathname.startsWith("/pt-hub");
   const publishedProfile = Boolean(profileQuery.data?.isPublished);
@@ -450,15 +473,23 @@ export function PtHubLayout() {
     if (typeof window === "undefined") return;
 
     const storedTheme = window.localStorage.getItem(PT_HUB_THEME_STORAGE_KEY);
+    const hasMigratedLightDefault =
+      window.localStorage.getItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY) === "1";
+    if (storedTheme === "dark" && !hasMigratedLightDefault) {
+      window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
+      window.localStorage.setItem(PT_HUB_THEME_STORAGE_KEY, "light");
+      setThemeMode("light");
+      return;
+    }
+
     if (storedTheme === "dark" || storedTheme === "light") {
+      window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
       setThemeMode(storedTheme);
       return;
     }
 
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    setThemeMode(prefersDark ? "dark" : "light");
+    window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
+    setThemeMode("light");
   }, []);
 
   useEffect(() => {
@@ -760,9 +791,11 @@ export function PtHubLayout() {
                       currentWorkspaceId={
                         !inPtHubWorkspace ? workspaceId : null
                       }
-                      onSelectWorkspace={(selectedWorkspaceId) => {
-                        switchWorkspace(selectedWorkspaceId);
-                        navigate("/pt/dashboard");
+                      onSelectWorkspace={(selectedWorkspace) => {
+                        switchWorkspace(selectedWorkspace.id);
+                        navigate(
+                          routes.workspaceOverview(selectedWorkspace.slug),
+                        );
                       }}
                       loading={workspacesQuery.isLoading}
                       loadingLabel={t(

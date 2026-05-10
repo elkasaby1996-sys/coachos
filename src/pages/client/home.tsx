@@ -1036,7 +1036,7 @@ function ClientWorkspaceHomePage() {
   const showWorkoutsAndNutritionCard = false;
 
   return (
-    <div className="portal-shell">
+    <div className="portal-shell" data-testid="client-home-page">
       <PortalPageHeader
         title="Home"
         subtitle={homeSubtitle}

@@ -28,7 +28,7 @@ test.describe("Auth resilience", () => {
     await waitForAuthSessionReady(page);
     await waitForBootstrapResolved(page);
     await waitForPageReady(page, {
-      testId: "client-lead-dashboard",
+      testId: "client-home-page",
       urlPattern: /\/app\/home$/,
     });
 
@@ -48,7 +48,7 @@ test.describe("Auth resilience", () => {
     );
     await waitForAuthSessionReady(page);
     await waitForPageReady(page, {
-      testId: "client-lead-dashboard",
+      testId: "client-home-page",
       urlPattern: /\/app\/home$/,
     });
   });

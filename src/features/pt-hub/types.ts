@@ -48,16 +48,34 @@ export interface PTProfile {
 }
 
 export type PTWorkspaceStatus = "current" | "active" | "new";
+export type PTWorkspaceRelation = "owned" | "shared";
+export type PTWorkspaceRole =
+  | "owner"
+  | "admin"
+  | "coach"
+  | "assistant_coach"
+  | "viewer";
+export type PTWorkspaceMemberStatus = "active" | "suspended" | "removed";
+export type PTWorkspaceClientAccessMode =
+  | "all_clients"
+  | "assigned_clients_only";
 
 export interface PTWorkspaceSummary {
   id: string;
+  slug: string;
   name: string;
   status: PTWorkspaceStatus;
   clientCount: number | null;
   lastUpdated: string | null;
   ownerUserId: string | null;
-  role: string | null;
+  role: PTWorkspaceRole;
+  relation: PTWorkspaceRelation;
+  memberStatus: PTWorkspaceMemberStatus;
+  ownerName: string | null;
+  clientAccessMode: PTWorkspaceClientAccessMode;
+  assignedClientCount: number | null;
   createdAt: string | null;
+  joinedAt: string | null;
 }
 
 export interface PTOverviewStats {
@@ -142,7 +160,9 @@ export interface PTAccountSettingsDraft {
 
 export interface PTClientSummary {
   id: string;
+  urlKey: string;
   workspaceId: string;
+  workspaceSlug: string;
   workspaceName: string;
   displayName: string;
   status: string;

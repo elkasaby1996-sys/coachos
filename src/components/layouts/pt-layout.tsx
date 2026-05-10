@@ -28,7 +28,6 @@ import {
   Plus,
   Search,
   Settings,
-  Sparkles,
   Users,
   X,
 } from "lucide-react";
@@ -37,6 +36,7 @@ import { NotificationBell } from "../../features/notifications/components/notifi
 import {
   createPtWorkspace,
   usePtHubSettings,
+  usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
 import {
   getPreferredPersonDisplayName,
@@ -84,6 +84,7 @@ import {
   type ModuleTone,
 } from "../../lib/module-tone";
 import { getCharacterLimitState } from "../../lib/character-limits";
+import { routes } from "../../lib/routes";
 import "../../styles/pt-workspace-shell.css";
 
 const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
@@ -91,7 +92,28 @@ const PT_SIDEBAR_COLLAPSE_KEY = "coachos-pt-sidebar-collapsed";
 type WorkspaceSwitcherOption = {
   id: string;
   name: string | null;
+  relation?: "owned" | "shared";
+  role?: string | null;
 };
+
+function getWorkspaceRoleLabel(role: string | null | undefined) {
+  if (role === "admin") return "Admin";
+  if (role === "coach") return "Coach";
+  if (role === "assistant_coach") return "Assistant Coach";
+  if (role === "viewer") return "Viewer";
+  return "Owner";
+}
+
+function getWorkspaceSwitcherMeta(
+  workspace: WorkspaceSwitcherOption,
+  active: boolean,
+) {
+  const relationMeta =
+    workspace.relation === "shared"
+      ? `Shared workspace · ${getWorkspaceRoleLabel(workspace.role)}`
+      : "Coaching workspace";
+  return active ? `Current · ${relationMeta}` : relationMeta;
+}
 
 type SearchResult =
   | {
@@ -302,14 +324,21 @@ function getPtRouteHeader(
     items: PtNavItem[];
   }>,
 ) {
-  if (pathname.startsWith("/settings/") || pathname.startsWith("/workspace/")) {
+  if (
+    pathname.startsWith("/settings/") ||
+    pathname.startsWith("/workspace/") ||
+    pathname.match(/^\/w\/[^/]+\/settings(?:\/|$)/)
+  ) {
     return {
       title: "Settings",
       description: "Adjust workspace defaults and account controls.",
     };
   }
 
-  if (pathname.startsWith("/pt/clients/")) {
+  if (
+    pathname.startsWith("/pt/clients/") ||
+    pathname.match(/^\/w\/[^/]+\/clients\/[^/]+/)
+  ) {
     return {
       title: "Client Detail",
       description:
@@ -329,7 +358,7 @@ function getPtRouteHeader(
 
 function getHeaderPillClassName(isLightMode: boolean) {
   return cn(
-    "group flex h-[54px] min-w-[204px] items-center gap-2.5 rounded-[18px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[214px]",
+    "group flex h-[42px] min-w-[172px] items-center gap-2 rounded-[14px] border px-2.5 py-1.5 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[182px]",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.74))]"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))]",
@@ -338,7 +367,7 @@ function getHeaderPillClassName(isLightMode: boolean) {
 
 function getHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
-    "flex h-8 w-8 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
+    "flex h-6 w-6 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
     isLightMode
       ? "text-primary group-hover:text-[oklch(var(--text-primary))]"
       : "text-primary group-hover:text-foreground",
@@ -347,7 +376,7 @@ function getHeaderPillIconClassName(isLightMode: boolean) {
 
 function getHeaderPillChevronClassName(isLightMode: boolean) {
   return cn(
-    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
+    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.62)] bg-[oklch(var(--bg-surface-elevated)/0.62)] text-primary group-hover:border-primary/16 group-hover:text-[oklch(var(--text-primary))]"
       : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
@@ -356,7 +385,7 @@ function getHeaderPillChevronClassName(isLightMode: boolean) {
 
 function getHeaderUtilityButtonClassName(isLightMode: boolean) {
   return cn(
-    "inline-flex h-[54px] items-center justify-center gap-2 rounded-[18px] border px-4 text-sm font-medium backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    "inline-flex h-[42px] items-center justify-center gap-1.5 rounded-[14px] border px-3 text-[0.82rem] font-medium backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
@@ -365,7 +394,7 @@ function getHeaderUtilityButtonClassName(isLightMode: boolean) {
 
 function getHeaderBellButtonClassName(isLightMode: boolean) {
   return cn(
-    "h-[54px] w-[54px] rounded-[18px] border backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    "h-[42px] w-[42px] rounded-[14px] border backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
@@ -539,31 +568,6 @@ export function PtLayout() {
   const settingsQuery = usePtHubSettings();
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
-  const workspaceSettingsPath = workspaceId
-    ? `/workspace/${workspaceId}/settings/general`
-    : "/settings/workspace";
-  const navGroups = useMemo(
-    () =>
-      ptNavGroups.map((group) => ({
-        ...group,
-        items: group.items.map((item) =>
-          item.to === "/settings/workspace"
-            ? { ...item, to: workspaceSettingsPath }
-            : item,
-        ),
-      })),
-    [workspaceSettingsPath],
-  );
-  const searchRoutes = useMemo(
-    () =>
-      ptSearchRoutes.map((item) =>
-        item.type === "route" && item.href === "/settings/workspace"
-          ? { ...item, href: workspaceSettingsPath }
-          : item,
-      ),
-    [workspaceSettingsPath],
-  );
-  const pageHeader = getPtRouteHeader(location.pathname, navGroups);
   const currentModule = getModuleToneForPath(location.pathname);
   const routeTransitionKey = getWorkspaceRouteTransitionKey(location.pathname);
   const workspaceSettingsRouteMatch = location.pathname.match(
@@ -605,32 +609,88 @@ export function PtLayout() {
   const searchTriggerRef = useRef<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
-  const workspaceSwitcherQuery = useQuery({
-    queryKey: ["pt-workspace-switcher", user?.id, workspaceIds],
-    enabled: workspaceIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workspaces")
-        .select("id, name")
-        .in("id", workspaceIds);
-      if (error) throw error;
-      const rows = ((data ?? []) as WorkspaceSwitcherOption[]).sort(
-        (a, b) => workspaceIds.indexOf(a.id) - workspaceIds.indexOf(b.id),
-      );
-      return rows;
-    },
-  });
-  const workspaces = workspaceSwitcherQuery.data ?? [];
+  const workspaceSwitcherQuery = usePtHubWorkspaces();
+  const workspaces = (workspaceSwitcherQuery.data ?? [])
+    .filter((workspace) => workspaceIds.includes(workspace.id))
+    .sort((a, b) => workspaceIds.indexOf(a.id) - workspaceIds.indexOf(b.id));
   const currentWorkspace =
     workspaces.find((workspace) => workspace.id === headerWorkspaceId) ?? null;
+  const workspaceSettingsPath = workspaceId
+    ? currentWorkspace?.slug
+      ? routes.workspaceSettings(currentWorkspace.slug, "general")
+      : `/workspace/${workspaceId}/settings/general`
+    : "/settings/workspace";
+  const workspaceOverviewPath = currentWorkspace?.slug
+    ? routes.workspaceOverview(currentWorkspace.slug)
+    : "/pt/dashboard";
+  const workspaceClientsPath = currentWorkspace?.slug
+    ? routes.workspaceClients(currentWorkspace.slug)
+    : "/pt/clients";
+  const workspaceCheckInsPath = currentWorkspace?.slug
+    ? routes.workspaceCheckIns(currentWorkspace.slug)
+    : "/pt/checkins";
+  const navGroups = useMemo(
+    () =>
+      ptNavGroups.map((group) => ({
+        ...group,
+        items: group.items.map((item) => {
+          if (item.to === "/settings/workspace") {
+            return { ...item, to: workspaceSettingsPath };
+          }
+          if (item.to === "/pt/dashboard") {
+            return { ...item, to: workspaceOverviewPath };
+          }
+          if (item.to === "/pt/clients") {
+            return { ...item, to: workspaceClientsPath };
+          }
+          if (item.to === "/pt/checkins") {
+            return { ...item, to: workspaceCheckInsPath };
+          }
+          return item;
+        }),
+      })),
+    [
+      workspaceCheckInsPath,
+      workspaceClientsPath,
+      workspaceOverviewPath,
+      workspaceSettingsPath,
+    ],
+  );
+  const searchRoutes = useMemo(
+    () =>
+      ptSearchRoutes.map((item) => {
+        if (item.type !== "route") return item;
+        if (item.href === "/settings/workspace") {
+          return { ...item, href: workspaceSettingsPath };
+        }
+        if (item.href === "/pt/dashboard") {
+          return { ...item, href: workspaceOverviewPath };
+        }
+        if (item.href === "/pt/clients") {
+          return { ...item, href: workspaceClientsPath };
+        }
+        if (item.href === "/pt/checkins") {
+          return { ...item, href: workspaceCheckInsPath };
+        }
+        return item;
+      }),
+    [
+      workspaceCheckInsPath,
+      workspaceClientsPath,
+      workspaceOverviewPath,
+      workspaceSettingsPath,
+    ],
+  );
+  const pageHeader = getPtRouteHeader(location.pathname, navGroups);
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
+    slug: workspace.slug,
     name: workspace.name,
-    meta:
-      workspace.id === headerWorkspaceId
-        ? "Current coaching workspace"
-        : "Coaching workspace",
+    meta: getWorkspaceSwitcherMeta(
+      workspace,
+      workspace.id === headerWorkspaceId,
+    ),
   }));
   const settingsFullName = settingsQuery.data?.fullName.trim();
   const profileDisplayName =
@@ -738,7 +798,7 @@ export function PtLayout() {
       ] = await Promise.all([
         supabase
           .from("clients")
-          .select("id, display_name, goal")
+          .select("id, url_key, display_name, goal")
           .eq("workspace_id", workspaceId ?? "")
           .or(`display_name.ilike.${wildcard},goal.ilike.${wildcard}`)
           .limit(5),
@@ -788,7 +848,10 @@ export function PtLayout() {
           type: "client",
           label: client.display_name?.trim() || "Client",
           meta: client.goal?.trim() || "Client record",
-          href: `/pt/clients/${client.id}`,
+          href:
+            currentWorkspace?.slug && client.url_key
+              ? routes.clientDetail(currentWorkspace.slug, client.url_key)
+              : `/pt/clients/${client.id}`,
         }),
       );
 
@@ -852,7 +915,7 @@ export function PtLayout() {
   const searchResults = useMemo(() => {
     if (normalizedSearch.length === 0) return [];
     return searchQuery.data ?? [];
-  }, [normalizedSearch.length, searchQuery.data, searchRoutes]);
+  }, [normalizedSearch.length, searchQuery.data]);
 
   useEffect(() => {
     setSearchHighlightIndex(0);
@@ -1098,7 +1161,11 @@ export function PtLayout() {
       )}
       style={getModuleToneStyle(currentModule)}
     >
-      <AppShellBackgroundLayer mode={isLightMode ? "light" : "dark"} />
+      <AppShellBackgroundLayer
+        animated
+        animatedDelayMs={2200}
+        mode={isLightMode ? "light" : "dark"}
+      />
       <div
         className={cn(
           "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition lg:hidden",
@@ -1174,11 +1241,10 @@ export function PtLayout() {
                   >
                     <div
                       className={cn(
-                        "flex items-center gap-3",
+                        "flex items-center",
                         desktopNavCollapsed && "justify-center",
                       )}
                     >
-                      <Sparkles className="h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
                       {!desktopNavCollapsed ? (
                         <div className="min-w-0">
                           <p className="text-[1.1rem] font-semibold uppercase tracking-[0.05em] text-foreground">
@@ -1313,7 +1379,7 @@ export function PtLayout() {
                               }
                             }}
                           >
-                            <Search className="h-4 w-4 [stroke-width:1.7]" />
+                            <Search className="h-3.5 w-3.5 [stroke-width:1.8]" />
                             <span className="sr-only">Search</span>
                           </Button>
                         </div>
@@ -1323,7 +1389,7 @@ export function PtLayout() {
                           buttonClassName={getHeaderBellButtonClassName(
                             isLightMode,
                           )}
-                          iconClassName="h-[18px] w-[18px]"
+                          iconClassName="h-4 w-4"
                         />
 
                         <InviteClientDialog
@@ -1334,7 +1400,7 @@ export function PtLayout() {
                               )}
                               variant="ghost"
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-3.5 w-3.5" />
                               Invite client
                             </Button>
                           }
@@ -1352,10 +1418,10 @@ export function PtLayout() {
                                   isLightMode,
                                 )}
                               >
-                                <Building2 className="h-4 w-4 [stroke-width:1.7]" />
+                                <Building2 className="h-3.5 w-3.5 [stroke-width:1.8]" />
                               </div>
                               <div className="min-w-0 flex-1 text-left">
-                                <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                <p className="max-w-[118px] truncate text-[0.84rem] font-medium text-foreground">
                                   {workspaceDisplayName}
                                 </p>
                               </div>
@@ -1364,7 +1430,7 @@ export function PtLayout() {
                                   isLightMode,
                                 )}
                               >
-                                <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                                <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
                               </span>
                             </button>
                           </DropdownMenuTrigger>
@@ -1376,9 +1442,13 @@ export function PtLayout() {
                             onSelectHub={() => navigate("/pt-hub")}
                             workspaces={workspaceSwitcherItems}
                             currentWorkspaceId={headerWorkspaceId}
-                            onSelectWorkspace={(selectedWorkspaceId) => {
-                              switchWorkspace(selectedWorkspaceId);
-                              navigate("/pt/dashboard");
+                            onSelectWorkspace={(selectedWorkspace) => {
+                              switchWorkspace(selectedWorkspace.id);
+                              navigate(
+                                routes.workspaceOverview(
+                                  selectedWorkspace.slug,
+                                ),
+                              );
                             }}
                             loading={workspaceSwitcherQuery.isLoading}
                             loadingLabel="Loading workspaces..."
@@ -1407,7 +1477,7 @@ export function PtLayout() {
                                 {userInitial}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                <p className="max-w-[118px] truncate text-[0.84rem] font-medium text-foreground">
                                   {profileDisplayName}
                                 </p>
                               </div>
@@ -1416,7 +1486,7 @@ export function PtLayout() {
                                   isLightMode,
                                 )}
                               >
-                                <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                                <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
                               </span>
                             </button>
                           </DropdownMenuTrigger>

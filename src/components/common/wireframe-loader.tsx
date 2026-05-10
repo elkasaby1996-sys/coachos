@@ -8,12 +8,15 @@ import {
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "./app-shell-background";
 import { useTheme } from "./theme-provider";
+import { getWireframeAuthWidthClass } from "./wireframe-loader-utils";
 
 type WireframeLoaderVariant = "screen" | "auth";
 type WireframeShell = "public" | "client-workspace" | "pt-workspace" | "pt-hub";
 type WireframeThemeMode = "dark" | "light";
 
 const PT_HUB_THEME_STORAGE_KEY = "coachos-pt-hub-theme-mode";
+const PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY =
+  "coachos-pt-hub-light-default-migrated";
 
 interface WireframeLoaderProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: WireframeLoaderVariant;
@@ -98,16 +101,24 @@ function getWireframeTone(pathname: string, shell: WireframeShell): ModuleTone {
 }
 
 function readPtHubThemeMode(): WireframeThemeMode {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
 
   const storedTheme = window.localStorage.getItem(PT_HUB_THEME_STORAGE_KEY);
+  const hasMigratedLightDefault =
+    window.localStorage.getItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY) === "1";
+  if (storedTheme === "dark" && !hasMigratedLightDefault) {
+    window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
+    window.localStorage.setItem(PT_HUB_THEME_STORAGE_KEY, "light");
+    return "light";
+  }
+
   if (storedTheme === "dark" || storedTheme === "light") {
+    window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
     return storedTheme;
   }
 
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
+  return "light";
 }
 
 function getShellClassName(
@@ -171,19 +182,6 @@ function getScreenContainerClassName(shell: WireframeShell) {
   }
 
   return "relative z-10 mx-auto flex min-h-screen w-full max-w-[1360px] items-center px-4 py-8 sm:px-6 lg:px-8 xl:px-10";
-}
-
-export function getWireframeAuthWidthClass(pathname: string) {
-  if (pathname.startsWith("/signup/pt")) return "max-w-lg";
-  if (pathname.startsWith("/signup/client")) return "max-w-lg";
-  if (pathname.startsWith("/signup")) return "max-w-2xl";
-  if (pathname.startsWith("/invite")) return "max-w-lg";
-  if (pathname.startsWith("/join")) return "max-w-lg";
-  if (pathname.startsWith("/client/onboarding/account")) return "max-w-xl";
-  if (pathname.startsWith("/pt/onboarding/workspace")) return "max-w-lg";
-  if (pathname.startsWith("/pt/onboarding/profile")) return "max-w-2xl";
-  if (pathname.startsWith("/no-workspace")) return "max-w-md";
-  return "max-w-md";
 }
 
 function ScreenWireframe({
@@ -356,7 +354,7 @@ export function WireframeLoader({
   message = "Preparing your workspace layout...",
   shell = "public",
   tone = "overview",
-  themeMode = "dark",
+  themeMode = "light",
   authWidthClassName = "max-w-md",
   className,
   ...props

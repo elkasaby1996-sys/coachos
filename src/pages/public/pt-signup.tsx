@@ -1,16 +1,9 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import { Dumbbell, Globe } from "lucide-react";
-import { AuthBackdrop } from "../../components/common/auth-backdrop";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Dumbbell } from "lucide-react";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { FieldCharacterMeta } from "../../components/common/field-character-meta";
-import { Button } from "../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
+import { AuthComponent } from "../../components/ui/sign-up";
 import { Input } from "../../components/ui/input";
 import {
   getCharacterLimitState,
@@ -20,6 +13,7 @@ import {
   ensurePtProfile,
   getUserDisplayName,
   persistSignupIntent,
+  syncPtAccountIdentity,
   updatePtProfile,
 } from "../../lib/account-profiles";
 import {
@@ -35,30 +29,33 @@ import {
 } from "../../lib/auth";
 
 const COUNTRY_OPTIONS = [
-  { name: "Saudi Arabia", dialCode: "+966" },
-  { name: "United Arab Emirates", dialCode: "+971" },
-  { name: "United States", dialCode: "+1" },
-  { name: "United Kingdom", dialCode: "+44" },
-  { name: "Australia", dialCode: "+61" },
-  { name: "Bahrain", dialCode: "+973" },
-  { name: "Canada", dialCode: "+1" },
-  { name: "Egypt", dialCode: "+20" },
-  { name: "France", dialCode: "+33" },
-  { name: "Germany", dialCode: "+49" },
-  { name: "India", dialCode: "+91" },
-  { name: "Ireland", dialCode: "+353" },
-  { name: "Jordan", dialCode: "+962" },
-  { name: "Kuwait", dialCode: "+965" },
-  { name: "Lebanon", dialCode: "+961" },
-  { name: "Netherlands", dialCode: "+31" },
-  { name: "New Zealand", dialCode: "+64" },
-  { name: "Oman", dialCode: "+968" },
-  { name: "Pakistan", dialCode: "+92" },
-  { name: "Qatar", dialCode: "+974" },
-  { name: "South Africa", dialCode: "+27" },
-  { name: "Spain", dialCode: "+34" },
-  { name: "Turkey", dialCode: "+90" },
+  { name: "Saudi Arabia", dialCode: "+966", defaultCity: "Riyadh" },
+  { name: "United Arab Emirates", dialCode: "+971", defaultCity: "Dubai" },
+  { name: "United States", dialCode: "+1", defaultCity: "New York" },
+  { name: "United Kingdom", dialCode: "+44", defaultCity: "London" },
+  { name: "Australia", dialCode: "+61", defaultCity: "Sydney" },
+  { name: "Bahrain", dialCode: "+973", defaultCity: "Manama" },
+  { name: "Canada", dialCode: "+1", defaultCity: "Toronto" },
+  { name: "Egypt", dialCode: "+20", defaultCity: "Cairo" },
+  { name: "France", dialCode: "+33", defaultCity: "Paris" },
+  { name: "Germany", dialCode: "+49", defaultCity: "Berlin" },
+  { name: "India", dialCode: "+91", defaultCity: "Mumbai" },
+  { name: "Ireland", dialCode: "+353", defaultCity: "Dublin" },
+  { name: "Jordan", dialCode: "+962", defaultCity: "Amman" },
+  { name: "Kuwait", dialCode: "+965", defaultCity: "Kuwait City" },
+  { name: "Lebanon", dialCode: "+961", defaultCity: "Beirut" },
+  { name: "Netherlands", dialCode: "+31", defaultCity: "Amsterdam" },
+  { name: "New Zealand", dialCode: "+64", defaultCity: "Auckland" },
+  { name: "Oman", dialCode: "+968", defaultCity: "Muscat" },
+  { name: "Pakistan", dialCode: "+92", defaultCity: "Karachi" },
+  { name: "Qatar", dialCode: "+974", defaultCity: "Doha" },
+  { name: "South Africa", dialCode: "+27", defaultCity: "Cape Town" },
+  { name: "Spain", dialCode: "+34", defaultCity: "Madrid" },
+  { name: "Turkey", dialCode: "+90", defaultCity: "Istanbul" },
 ];
+
+const ptDetailFieldClassName =
+  "border-border/70 bg-card/55 shadow-[inset_0_1px_0_oklch(1_0_0/0.62),0_10px_28px_-24px_oklch(var(--primary)/0.55)] backdrop-blur-xl focus-visible:ring-primary/45";
 
 function getCountryDialCode(country: string) {
   return (
@@ -93,6 +90,7 @@ async function getPtNextPath(userId: string) {
 
 export function PtSignupPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     accountType,
     bootstrapResolved,
@@ -108,23 +106,14 @@ export function PtSignupPage() {
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [busyAction, setBusyAction] = useState<"idle" | "email" | "google">(
-    "idle",
-  );
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const inviteRedirect =
+    redirectParam?.startsWith("/team-invites/") === true ? redirectParam : null;
   const fullNameLimitState = getCharacterLimitState({
     value: fullName,
     kind: "full_name",
     fieldLabel: "Full name",
-  });
-  const emailLimitState = getCharacterLimitState({
-    value: email,
-    kind: "email",
-    fieldLabel: "Email",
   });
   const cityLimitState = getCharacterLimitState({
     value: city,
@@ -138,7 +127,6 @@ export function PtSignupPage() {
   });
   const hasOverLimitErrors = hasCharacterLimitError([
     fullNameLimitState,
-    emailLimitState,
     cityLimitState,
     phoneLimitState,
   ]);
@@ -150,15 +138,18 @@ export function PtSignupPage() {
   if (!authLoading && session) {
     return (
       <Navigate
-        to={getAuthenticatedRedirectPath({
-          accountType,
-          hasWorkspaceMembership,
-          ptWorkspaceComplete,
-          ptProfileComplete,
-          clientAccountComplete,
-          clientWorkspaceOnboardingHardGateRequired,
-          pendingInviteToken,
-        })}
+        to={
+          inviteRedirect ??
+          getAuthenticatedRedirectPath({
+            accountType,
+            hasWorkspaceMembership,
+            ptWorkspaceComplete,
+            ptProfileComplete,
+            clientAccountComplete,
+            clientWorkspaceOnboardingHardGateRequired,
+            pendingInviteToken,
+          })
+        }
         replace
       />
     );
@@ -175,56 +166,53 @@ export function PtSignupPage() {
     );
   };
 
-  const handleEmailSignup = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleEmailSignup = async ({
+    email,
+    password,
+  }: {
+    email: string;
+    password: string;
+  }) => {
     if (hasOverLimitErrors) {
-      setError("Please reduce over-limit fields before continuing.");
-      return;
+      return { error: "Please reduce over-limit fields before continuing." };
     }
     if (!fullName.trim()) {
-      setError("Full name is required.");
-      return;
+      return { error: "Full name is required." };
     }
     if (!country.trim()) {
-      setError("Country is required.");
-      return;
+      return { error: "Country is required." };
     }
     if (!city.trim()) {
-      setError("City is required.");
-      return;
+      return { error: "City is required." };
     }
     if (!phone.trim()) {
-      setError("Phone number is required.");
-      return;
+      return { error: "Phone number is required." };
     }
     if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setError("Enter a valid email address.");
-      return;
+      return { error: "Enter a valid email address." };
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
+      return { error: "Password must be at least 6 characters." };
     }
 
-    setBusyAction("email");
-    setError(null);
-    setNotice(null);
     try {
       persistPtSignupDraft();
       const normalizedPhone = normalizePhoneWithCountry(phone, country);
       const redirectTo = buildAuthCallbackUrl({
         type: "signup",
         intent: "pt",
-        next: "/pt/onboarding/workspace",
+        next: inviteRedirect ?? "/pt/onboarding/workspace",
       });
       const { data, error: signUpError } = await signUpWithEmailPassword(
         email.trim(),
         password,
         redirectTo,
+        {
+          full_name: fullName.trim(),
+          display_name: fullName.trim(),
+          name: fullName.trim(),
+          account_type: "pt",
+        },
       );
       if (signUpError) throw signUpError;
 
@@ -241,45 +229,55 @@ export function PtSignupPage() {
           location_city: city,
           onboarding_completed_at: new Date().toISOString(),
         });
+        await syncPtAccountIdentity({
+          userId: activeUserId,
+          fullName,
+          contactEmail: email.trim(),
+          supportEmail: email.trim(),
+          phone: normalizedPhone,
+          country,
+          city,
+        });
       }
 
       if (data.session?.user?.id) {
-        navigate(await getPtNextPath(data.session.user.id), { replace: true });
-        return;
+        navigate(
+          inviteRedirect ?? (await getPtNextPath(data.session.user.id)),
+          {
+            replace: true,
+          },
+        );
+        return { success: true };
       }
 
-      setNotice(
-        "Account created. Verify your email, then sign in to continue PT onboarding.",
-      );
+      return {
+        notice:
+          "Account created. Verify your email, then sign in to continue PT onboarding.",
+      };
     } catch (nextError) {
-      setError(
-        nextError instanceof Error
-          ? nextError.message
-          : "Unable to create PT account.",
-      );
-    } finally {
-      setBusyAction("idle");
+      return {
+        error:
+          nextError instanceof Error
+            ? nextError.message
+            : "Unable to create PT account.",
+      };
     }
   };
 
   const handleGoogle = async () => {
     if (hasOverLimitErrors) {
-      setError("Please reduce over-limit fields before continuing.");
-      return;
+      return { error: "Please reduce over-limit fields before continuing." };
     }
     if (!fullName.trim()) {
-      setError("Full name is required before continuing with Google.");
-      return;
+      return { error: "Full name is required before continuing with Google." };
     }
     if (!country.trim() || !city.trim() || !phone.trim()) {
-      setError(
-        "Full name, country, city, and phone are required before continuing with Google.",
-      );
-      return;
+      return {
+        error:
+          "Full name, country, city, and phone are required before continuing with Google.",
+      };
     }
-    setBusyAction("google");
-    setError(null);
-    setNotice(null);
+    setGoogleBusy(true);
     try {
       persistPtSignupDraft();
       const { error: oauthError } = await signInWithOAuth(
@@ -287,220 +285,153 @@ export function PtSignupPage() {
         buildAuthCallbackUrl({
           type: "oauth",
           intent: "pt",
-          next: "/pt/onboarding/workspace",
+          next: inviteRedirect ?? "/pt/onboarding/workspace",
         }),
       );
       if (oauthError) throw oauthError;
+      return { notice: "Redirecting to Google..." };
     } catch (nextError) {
-      setError(
-        nextError instanceof Error
-          ? nextError.message
-          : "Unable to continue with Google.",
-      );
-      setBusyAction("idle");
+      return {
+        error:
+          nextError instanceof Error
+            ? nextError.message
+            : "Unable to continue with Google.",
+      };
+    } finally {
+      setGoogleBusy(false);
     }
   };
 
   return (
-    <AuthBackdrop contentClassName="max-w-lg">
-      <Card className="w-full rounded-[28px] border-border/70 bg-card/88 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
-        <CardHeader className="space-y-3 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-            <Dumbbell className="h-5 w-5" />
+    <AuthComponent
+      mode="signup"
+      brandName="RepSync"
+      logo={
+        <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
+          <Dumbbell className="h-4 w-4" />
+        </div>
+      }
+      title="Create PT account"
+      subtitle=""
+      primaryLabel="Create PT account"
+      secondaryLinkHref={
+        inviteRedirect
+          ? `/login?redirect=${encodeURIComponent(inviteRedirect)}`
+          : "/login"
+      }
+      secondaryLinkLabel="Already have an account? Sign in"
+      submitDisabled={hasOverLimitErrors}
+      socialDisabled={googleBusy || hasOverLimitErrors}
+      preFields={
+        <div className="app-form-grid">
+          <div className="app-form-col-12 space-y-2">
+            <label htmlFor="pt-full-name" className="text-sm font-medium">
+              Full name
+            </label>
+            <Input
+              id="pt-full-name"
+              className={ptDetailFieldClassName}
+              isInvalid={fullNameLimitState.overLimit}
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              placeholder={getUserDisplayName(user) || "Coach name"}
+            />
+            <FieldCharacterMeta
+              count={fullNameLimitState.count}
+              limit={fullNameLimitState.limit}
+              errorText={fullNameLimitState.errorText}
+            />
           </div>
-          <div className="space-y-1.5">
-            <CardTitle className="text-2xl">Create PT account</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Start with your personal details now, then create your workspace.
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form className="app-form-grid" onSubmit={handleEmailSignup}>
-            <div className="app-form-col-12 space-y-2">
-              <label htmlFor="pt-full-name" className="text-sm font-medium">
-                Full name
-              </label>
-              <Input
-                id="pt-full-name"
-                isInvalid={fullNameLimitState.overLimit}
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                placeholder={getUserDisplayName(user) || "Coach name"}
-              />
-              <FieldCharacterMeta
-                count={fullNameLimitState.count}
-                limit={fullNameLimitState.limit}
-                errorText={fullNameLimitState.errorText}
-              />
-            </div>
-            <div className="app-form-col-12 space-y-2">
-              <label htmlFor="pt-email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="pt-email"
-                type="email"
-                isInvalid={emailLimitState.overLimit}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="coach@example.com"
-              />
-              <FieldCharacterMeta
-                count={emailLimitState.count}
-                limit={emailLimitState.limit}
-                errorText={emailLimitState.errorText}
-              />
-            </div>
-            <div className="app-form-col-6 space-y-2">
-              <label htmlFor="pt-country" className="text-sm font-medium">
-                Country
-              </label>
-              <select
-                id="pt-country"
-                value={country}
-                onChange={(event) => {
-                  const nextCountry = event.target.value;
-                  const nextDialCode = getCountryDialCode(nextCountry);
-                  const currentDialCode = getCountryDialCode(country);
-                  const trimmedPhone = phone.trim();
-                  let nextPhone = phone;
+          <div className="app-form-col-6 space-y-2">
+            <label htmlFor="pt-country" className="text-sm font-medium">
+              Country
+            </label>
+            <select
+              id="pt-country"
+              value={country}
+              onChange={(event) => {
+                const nextCountry = event.target.value;
+                const nextDialCode = getCountryDialCode(nextCountry);
+                const currentDialCode = getCountryDialCode(country);
+                const trimmedPhone = phone.trim();
+                let nextPhone = phone;
 
-                  if (!trimmedPhone) {
-                    nextPhone = nextDialCode ? `${nextDialCode} ` : "";
-                  } else if (
-                    currentDialCode &&
-                    trimmedPhone.startsWith(currentDialCode)
-                  ) {
-                    nextPhone = `${nextDialCode}${trimmedPhone.slice(currentDialCode.length)}`;
-                  }
-
-                  setCountry(nextCountry);
-                  setPhone(nextPhone);
-                }}
-                className="app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm"
-              >
-                <option value="">Select country</option>
-                {COUNTRY_OPTIONS.map((option) => (
-                  <option key={option.name} value={option.name}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="app-form-col-6 space-y-2">
-              <label htmlFor="pt-city" className="text-sm font-medium">
-                City
-              </label>
-              <Input
-                id="pt-city"
-                isInvalid={cityLimitState.overLimit}
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="Riyadh"
-              />
-              <FieldCharacterMeta
-                count={cityLimitState.count}
-                limit={cityLimitState.limit}
-                errorText={cityLimitState.errorText}
-              />
-            </div>
-            <div className="app-form-col-12 space-y-2">
-              <label htmlFor="pt-phone" className="text-sm font-medium">
-                Phone number
-              </label>
-              <Input
-                id="pt-phone"
-                type="tel"
-                isInvalid={phoneLimitState.overLimit}
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder={
-                  country
-                    ? `${getCountryDialCode(country)} 5X XXX XXXX`
-                    : "+966 5X XXX XXXX"
+                if (!trimmedPhone) {
+                  nextPhone = nextDialCode ? `${nextDialCode} ` : "";
+                } else if (
+                  currentDialCode &&
+                  trimmedPhone.startsWith(currentDialCode)
+                ) {
+                  nextPhone = `${nextDialCode}${trimmedPhone.slice(currentDialCode.length)}`;
                 }
-              />
-              <FieldCharacterMeta
-                count={phoneLimitState.count}
-                limit={phoneLimitState.limit}
-                errorText={phoneLimitState.errorText}
-              />
-            </div>
-            <div className="app-form-col-6 space-y-2">
-              <label htmlFor="pt-password" className="text-sm font-medium">
-                Password
-              </label>
-              <Input
-                id="pt-password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 6 characters"
-              />
-            </div>
-            <div className="app-form-col-6 space-y-2">
-              <label
-                htmlFor="pt-confirm-password"
-                className="text-sm font-medium"
-              >
-                Confirm password
-              </label>
-              <Input
-                id="pt-confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Re-enter your password"
-              />
-            </div>
 
-            {error ? (
-              <div className="app-form-col-12 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </div>
-            ) : null}
-            {notice ? (
-              <div className="app-form-col-12 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
-                {notice}
-              </div>
-            ) : null}
-
-            <Button
-              className="app-form-col-12 h-11 w-full"
-              type="submit"
-              disabled={busyAction !== "idle" || hasOverLimitErrors}
+                setCountry(nextCountry);
+                setCity(getCountryDefaultCity(nextCountry));
+                setPhone(nextPhone);
+              }}
+              className={`app-field flex min-h-[2.75rem] w-full px-3.5 py-2 text-sm ${ptDetailFieldClassName}`}
             >
-              {busyAction === "email" ? "Creating..." : "Create PT account"}
-            </Button>
-          </form>
-
-          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-            <div className="h-px flex-1 bg-border/60" />
-            <span>or</span>
-            <div className="h-px flex-1 bg-border/60" />
+              <option value="">Select country</option>
+              {COUNTRY_OPTIONS.map((option) => (
+                <option key={option.name} value={option.name}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
           </div>
+          <div className="app-form-col-6 space-y-2">
+            <label htmlFor="pt-city" className="text-sm font-medium">
+              City
+            </label>
+            <Input
+              id="pt-city"
+              className={ptDetailFieldClassName}
+              isInvalid={cityLimitState.overLimit}
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder={
+                country ? getCountryDefaultCity(country) || "City" : "City"
+              }
+            />
+            <FieldCharacterMeta
+              count={cityLimitState.count}
+              limit={cityLimitState.limit}
+              errorText={cityLimitState.errorText}
+            />
+          </div>
+          <div className="app-form-col-12 space-y-2">
+            <label htmlFor="pt-phone" className="text-sm font-medium">
+              Phone number
+            </label>
+            <Input
+              id="pt-phone"
+              type="tel"
+              className={ptDetailFieldClassName}
+              isInvalid={phoneLimitState.overLimit}
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder={
+                country
+                  ? `${getCountryDialCode(country)} 5X XXX XXXX`
+                  : "+966 5X XXX XXXX"
+              }
+            />
+            <FieldCharacterMeta
+              count={phoneLimitState.count}
+              limit={phoneLimitState.limit}
+              errorText={phoneLimitState.errorText}
+            />
+          </div>
+        </div>
+      }
+      onEmailPasswordSubmit={handleEmailSignup}
+      onGoogle={handleGoogle}
+    />
+  );
+}
 
-          <Button
-            variant="secondary"
-            className="h-11 w-full"
-            onClick={() => void handleGoogle()}
-            disabled={busyAction !== "idle" || hasOverLimitErrors}
-          >
-            <Globe className="h-4 w-4" />
-            {busyAction === "google"
-              ? "Redirecting..."
-              : "Continue with Google"}
-          </Button>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link className="text-foreground underline" to="/login">
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </AuthBackdrop>
+function getCountryDefaultCity(country: string) {
+  return (
+    COUNTRY_OPTIONS.find((option) => option.name === country)?.defaultCity ?? ""
   );
 }

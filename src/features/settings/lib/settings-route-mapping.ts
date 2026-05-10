@@ -10,6 +10,13 @@ export type SettingsTabConfig = {
 
 export const ptHubSettingsTabs: SettingsTabConfig[] = [
   {
+    id: "public-profile",
+    label: "Public Profile",
+    description: "Marketplace and public coaching profile.",
+    path: "public-profile",
+    scope: "pt-hub",
+  },
+  {
     id: "account",
     label: "Account",
     description: "Identity and global account settings.",
@@ -42,6 +49,13 @@ export const ptHubSettingsTabs: SettingsTabConfig[] = [
     label: "Billing",
     description: "Plan and billing overview.",
     path: "billing",
+    scope: "pt-hub",
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    description: "Global account integrations.",
+    path: "integrations",
     scope: "pt-hub",
   },
 ];
@@ -100,7 +114,7 @@ export const workspaceSettingsTabs: SettingsTabConfig[] = [
     id: "danger",
     label: "Danger Zone",
     description: "Destructive workspace actions.",
-    path: "danger",
+    path: "danger-zone",
     scope: "workspace",
   },
 ];
@@ -122,7 +136,19 @@ export function buildWorkspaceSettingsPath(params: {
 }
 
 export function buildPtHubSettingsPath(tab: string) {
-  return `/pt-hub/settings/${tab}`;
+  return routes.ptHubSettings(
+    tab as Parameters<typeof routes.ptHubSettings>[0],
+  );
+}
+
+export function buildCanonicalWorkspaceSettingsPath(params: {
+  workspaceSlug: string;
+  tab: string;
+}) {
+  return routes.workspaceSettings(
+    params.workspaceSlug,
+    params.tab as WorkspaceSettingsTab,
+  );
 }
 
 export function mapLegacySettingsRoute(params: {
@@ -163,3 +189,4 @@ export function mapLegacySettingsRoute(params: {
       });
   }
 }
+import { routes, type WorkspaceSettingsTab } from "../../../lib/routes";

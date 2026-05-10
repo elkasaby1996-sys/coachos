@@ -12,6 +12,7 @@ import { Input } from "../../components/ui/input";
 import {
   ensurePtProfile,
   getUserDisplayName,
+  syncPtAccountIdentity,
   updatePtProfile,
 } from "../../lib/account-profiles";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
@@ -75,6 +76,15 @@ export function PtWorkspaceOnboardingPage() {
             onboarding_completed_at:
               ensuredProfile.onboarding_completed_at ??
               new Date().toISOString(),
+          });
+          await syncPtAccountIdentity({
+            userId: session.user.id,
+            fullName: storedFullName || ensuredProfile.full_name,
+            contactEmail: session.user.email ?? null,
+            supportEmail: session.user.email ?? null,
+            phone: storedPhone || ensuredProfile.phone,
+            country: storedCountry || ensuredProfile.location_country,
+            city: storedCity || ensuredProfile.location_city,
           });
         }
 

@@ -13,7 +13,6 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
-import { PageContainer } from "../../components/common/page-container";
 import { Badge } from "../../components/ui/badge";
 import {
   DashboardCard,
@@ -264,7 +263,7 @@ export function PtNutritionPage() {
   };
 
   return (
-    <PageContainer className="max-w-screen-2xl space-y-6">
+    <div className="space-y-6">
       <WorkspacePageHeader
         title="Nutrition Programs"
         description="Build reusable multi-week nutrition systems and keep edits close to the list."
@@ -488,7 +487,7 @@ export function PtNutritionPage() {
           />
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </div>
   );
 }
 

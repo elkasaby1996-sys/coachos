@@ -2383,3 +2383,26 @@
     transform: translate3d(-0.8%, -1.2%, 0) rotate(-0.8deg) scaleX(0.99);
   }
 }
+
+@media (max-height: 760px) {
+  .auth-flow-brand {
+    display: none;
+  }
+
+  .auth-flow-scroll {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+
+  .auth-flow-card-tall {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+@media (max-height: 680px) {
+  .auth-flow-scroll {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+}

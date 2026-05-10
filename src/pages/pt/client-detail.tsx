@@ -621,7 +621,11 @@ type QueryResult<T> = {
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
 
-export function PtClientDetailPage() {
+export function PtClientDetailPage({
+  clientIdOverride,
+}: {
+  clientIdOverride?: string;
+} = {}) {
   const { user } = useSessionAuth();
   const {
     workspaceId: activeWorkspaceId,
@@ -629,7 +633,8 @@ export function PtClientDetailPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
-  const { clientId } = useParams();
+  const { clientId: routeClientId } = useParams();
+  const clientId = clientIdOverride ?? routeClientId;
   const location = useLocation();
   const navigate = useNavigate();
   const { openComposer } = usePtMessageCompose();
@@ -4729,10 +4734,6 @@ export function PtClientDetailPage() {
                     habitsQuery={habitsQuery}
                     hasAnyHabits={Boolean(habitsAnyQuery.data?.length)}
                     habitsToday={habitsToday}
-                    habitStreak={habitStreak}
-                    previousHabitStreak={previousHabitStreak}
-                    previousAdherenceStat={previousAdherenceStat}
-                    habitTrends={habitTrends}
                   />
                 </TabsContent>
                 <TabsContent value="progress">
@@ -7238,16 +7239,38 @@ function PtClientBaselineTab({
     Boolean(baselinePhotoMap[type]),
   ).length;
   const markerTemplateOptions = baselineMarkerTemplatesQuery.data ?? [];
+  const submittedMarkers = baselineMarkersQuery.data ?? [];
   const markerReadoutPanel = (
-    <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+    <div className="rounded-2xl border border-border/60 bg-background/35 p-3">
       <p className="text-sm font-semibold text-foreground">
         Performance markers
       </p>
       <p className="mt-1 text-sm text-muted-foreground">
-        Active markers are managed in PT Settings and appear automatically in
-        the client's onboarding baseline assessment.
+        Baseline benchmark markers and active PT Settings prompts.
       </p>
-      {markerTemplateOptions.length > 0 ? (
+      {submittedMarkers.length > 0 ? (
+        <div className="mt-3 grid gap-2">
+          {submittedMarkers.map((marker, index) => (
+            <div
+              key={`${marker.template?.name ?? "marker"}-${index}`}
+              className="rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5 text-sm"
+            >
+              <p className="text-xs text-muted-foreground">
+                {marker.template?.name ?? "Marker"}
+              </p>
+              <p className="mt-1 font-semibold text-foreground">
+                {marker.value_number !== null &&
+                marker.value_number !== undefined
+                  ? marker.value_number
+                  : (marker.value_text ?? "Not provided")}
+                {marker.template?.unit_label
+                  ? ` ${marker.template.unit_label}`
+                  : ""}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : markerTemplateOptions.length > 0 ? (
         <>
           <div className="mt-3 grid gap-2">
             {markerTemplateOptions.map((template) => (
@@ -7277,11 +7300,10 @@ function PtClientBaselineTab({
           </div>
         </>
       ) : (
-        <EmptyState
-          title="No active performance markers"
-          description="Enable performance markers in PT Settings to make them appear automatically during the client's onboarding baseline assessment."
-          centered={false}
-        />
+        <div className="mt-3 rounded-xl border border-dashed border-border/60 bg-muted/15 p-3 text-sm text-muted-foreground">
+          No active performance markers. Enable them in PT Settings when you
+          want benchmark questions to appear during baseline assessment.
+        </div>
       )}
     </div>
   );
@@ -7307,7 +7329,7 @@ function PtClientBaselineTab({
           </div>
         ) : baselineEntryQuery.data ? (
           <div className="space-y-4">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.88fr)]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
@@ -7341,7 +7363,7 @@ function PtClientBaselineTab({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
+                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Measurements
@@ -7351,11 +7373,11 @@ function PtClientBaselineTab({
                       progress updates.
                     </p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
                     {metricCards.map((metric) => (
                       <div
                         key={metric.label}
-                        className="rounded-xl border border-border/50 bg-muted/15 p-3"
+                        className="rounded-xl border border-border/50 bg-muted/15 p-2.5"
                       >
                         <p className="text-xs text-muted-foreground">
                           {metric.label}
@@ -7370,65 +7392,20 @@ function PtClientBaselineTab({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
-                  <div className="mb-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      Performance markers
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Extra benchmark markers submitted with this baseline.
-                    </p>
-                  </div>
-                  {baselineMarkersQuery.data &&
-                  baselineMarkersQuery.data.length > 0 ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {baselineMarkersQuery.data.map((marker, index) => (
-                        <div
-                          key={`${marker.template?.name ?? "marker"}-${index}`}
-                          className="rounded-xl border border-border/50 bg-muted/15 p-3 text-sm"
-                        >
-                          <p className="text-xs text-muted-foreground">
-                            {marker.template?.name ?? "Marker"}
-                          </p>
-                          <p className="mt-1 font-semibold text-foreground">
-                            {marker.value_number !== null &&
-                            marker.value_number !== undefined
-                              ? marker.value_number
-                              : (marker.value_text ?? "Not provided")}
-                            {marker.template?.unit_label
-                              ? ` ${marker.template.unit_label}`
-                              : ""}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyState
-                      title="No performance markers submitted"
-                      description="Any extra benchmark markers will appear here once the client includes them in the baseline."
-                      centered={false}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {markerReadoutPanel}
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
+                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Baseline photos
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Keep a quick visual reference alongside the written
-                      baseline.
+                      Visual reference alongside the written baseline.
                     </p>
                   </div>
-                  <div className="grid gap-3">
+                  <div className="grid gap-3 md:grid-cols-3">
                     {baselinePhotoTypes.map((type) => (
-                      <div key={type} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold text-muted-foreground">
+                      <div key={type} className="min-w-0 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-xs font-semibold text-muted-foreground">
                             {type[0]?.toUpperCase()}
                             {type.slice(1)} view
                           </p>
@@ -7445,10 +7422,10 @@ function PtClientBaselineTab({
                             <img
                               src={baselinePhotoMap[type] ?? ""}
                               alt={`${type} baseline`}
-                              className="aspect-[4/5] w-full object-cover"
+                              className="aspect-[4/3] w-full object-cover"
                             />
                           ) : (
-                            <div className="flex aspect-[4/5] items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                            <div className="flex aspect-[4/3] items-center justify-center px-4 text-center text-sm text-muted-foreground">
                               No {type} photo uploaded.
                             </div>
                           )}
@@ -7457,8 +7434,11 @@ function PtClientBaselineTab({
                     ))}
                   </div>
                 </div>
+              </div>
 
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
+              <div className="space-y-3">
+                {markerReadoutPanel}
+                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Coach readout
@@ -7469,7 +7449,7 @@ function PtClientBaselineTab({
                     </p>
                   </div>
                   <textarea
-                    className="min-h-[160px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={baselineNotes}
                     onChange={(event) => onNotesChange(event.target.value)}
                     placeholder="Summarize posture, readiness, physique observations, or any coaching notes you want visible during future reviews."
@@ -7724,18 +7704,10 @@ function PtClientHabitsTab({
   habitsQuery,
   hasAnyHabits,
   habitsToday,
-  habitStreak,
-  previousHabitStreak,
-  previousAdherenceStat,
-  habitTrends,
 }: {
   habitsQuery: QueryResult<HabitLog[]>;
   hasAnyHabits: boolean;
   habitsToday: string;
-  habitStreak: number;
-  previousHabitStreak: number;
-  previousAdherenceStat: number | null;
-  habitTrends: HabitTrends;
 }) {
   const [selectedHabitMetric, setSelectedHabitMetric] = useState<{
     metric: HabitMetricKey;
@@ -7762,18 +7734,6 @@ function PtClientHabitsTab({
       })),
     [weeklyDates, weeklyLogMap],
   );
-  const loggedDays = weeklyRows.filter((row) => row.log).length;
-  const adherencePct = Math.round((loggedDays / 7) * 100);
-  const average = (values: Array<number | null | undefined>) => {
-    const nums = values.filter(
-      (value) => typeof value === "number",
-    ) as number[];
-    if (nums.length === 0) return null;
-    return nums.reduce((sum, value) => sum + value, 0) / nums.length;
-  };
-  const avgSteps = average(weeklyRows.map((row) => row.log?.steps));
-  const avgProtein = average(weeklyRows.map((row) => row.log?.protein_g));
-
   const habitMetricTrend = useMemo(() => {
     if (!selectedHabitMetric) return null;
     const habitMetricConfig: Record<
@@ -7886,79 +7846,6 @@ function PtClientHabitsTab({
 
   return (
     <div className="space-y-6">
-      <DashboardCard title="Weekly summary" subtitle="Last 7 days.">
-        {habitsQuery.isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <StatCard
-                label="Adherence"
-                value={`${Number.isFinite(adherencePct) ? adherencePct : 0}%`}
-                helper="Logged days / 7"
-                icon={Sparkles}
-                module="analytics"
-                className="h-full min-h-[170px]"
-                delta={buildMetricDelta({
-                  delta:
-                    Number.isFinite(adherencePct) &&
-                    typeof previousAdherenceStat === "number"
-                      ? adherencePct - previousAdherenceStat
-                      : null,
-                  suffix: "%",
-                })}
-              />
-              <StatCard
-                label="Streak"
-                value={`${habitStreak} days`}
-                helper="Days logged in a row"
-                icon={Rocket}
-                module="analytics"
-                className="h-full min-h-[170px]"
-                delta={buildMetricDelta({
-                  delta: habitStreak - previousHabitStreak,
-                  suffix: "d",
-                })}
-              />
-              <StatCard
-                label="Avg steps / protein"
-                value={
-                  avgSteps !== null || avgProtein !== null
-                    ? `${avgSteps !== null ? Math.round(avgSteps).toLocaleString() : "--"} / ${
-                        avgProtein !== null
-                          ? `${Math.round(avgProtein)}g`
-                          : "--"
-                      }`
-                    : "--"
-                }
-                helper="7-day averages"
-                icon={Flame}
-                module="analytics"
-                className="h-full min-h-[170px]"
-                delta={
-                  typeof avgSteps === "number" &&
-                  typeof habitTrends.previousAvgSteps === "number"
-                    ? buildMetricDelta({
-                        delta: avgSteps - habitTrends.previousAvgSteps,
-                        suffix: " steps",
-                      })
-                    : typeof avgProtein === "number" &&
-                        typeof habitTrends.previousAvgProtein === "number"
-                      ? buildMetricDelta({
-                          delta: avgProtein - habitTrends.previousAvgProtein,
-                          suffix: "g protein",
-                        })
-                      : null
-                }
-              />
-            </div>
-          </div>
-        )}
-      </DashboardCard>
-
       <DashboardCard title="Day-by-day" subtitle="Last 7 days of habit logs.">
         {habitsQuery.isLoading ? (
           <div className="space-y-3">
@@ -8381,262 +8268,256 @@ function PtClientPlanTab({
 
   return (
     <div className="space-y-6 xl:col-start-1">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <Card className="border-border/70 bg-card/80">
-            <CardHeader>
-              <CardTitle>Program</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Assign a multi-week program and materialize the next 14 days.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {programTemplatesQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
+      <div className="grid items-stretch gap-6 lg:grid-cols-2">
+        <Card className="h-full border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle>Program</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Assign a multi-week program and materialize the next 14 days.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {programTemplatesQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : programTemplatesQuery.error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                {getErrorDetails(programTemplatesQuery.error).code}:{" "}
+                {getErrorDetails(programTemplatesQuery.error).message}
+              </div>
+            ) : programTemplatesQuery.data &&
+              programTemplatesQuery.data.length === 0 ? (
+              <EmptyState
+                title="No program templates yet."
+                description="Create a program template to start scheduling multi-week blocks."
+              />
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Program
+                  </label>
+                  <Select
+                    variant="field"
+                    className="h-10"
+                    value={selectedProgramId}
+                    onChange={(event) => onProgramChange(event.target.value)}
+                  >
+                    <option value="">Select a program</option>
+                    {programTemplatesQuery.data?.map((program) => (
+                      <option key={program.id} value={program.id}>
+                        {program.name ?? "Program"}{" "}
+                        {program.weeks_count ? `- ${program.weeks_count}w` : ""}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
-              ) : programTemplatesQuery.error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-                  {getErrorDetails(programTemplatesQuery.error).code}:{" "}
-                  {getErrorDetails(programTemplatesQuery.error).message}
+                <div className="space-y-2">
+                  <label
+                    htmlFor="program-start-date"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Start date
+                  </label>
+                  <input
+                    id="program-start-date"
+                    type="date"
+                    className="h-10 w-full app-field px-3 text-sm"
+                    value={programStartDate}
+                    onChange={(event) =>
+                      onProgramDateChange(event.target.value)
+                    }
+                  />
                 </div>
-              ) : programTemplatesQuery.data &&
-                programTemplatesQuery.data.length === 0 ? (
-                <EmptyState
-                  title="No program templates yet."
-                  description="Create a program template to start scheduling multi-week blocks."
-                />
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">
-                      Program
-                    </label>
-                    <Select
-                      variant="field"
-                      className="h-10"
-                      value={selectedProgramId}
-                      onChange={(event) => onProgramChange(event.target.value)}
-                    >
-                      <option value="">Select a program</option>
-                      {programTemplatesQuery.data?.map((program) => (
-                        <option key={program.id} value={program.id}>
-                          {program.name ?? "Program"}{" "}
-                          {program.weeks_count
-                            ? `- ${program.weeks_count}w`
-                            : ""}
-                        </option>
-                      ))}
-                    </Select>
+                <Button
+                  className="w-full"
+                  disabled={
+                    programStatus === "saving" ||
+                    !selectedProgramId ||
+                    !programStartDate
+                  }
+                  onClick={onApplyProgram}
+                >
+                  {programStatus === "saving"
+                    ? "Assigning..."
+                    : "Assign program (next 14 days)"}
+                </Button>
+                {programMessage ? (
+                  <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                    {programMessage}
                   </div>
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="program-start-date"
-                      className="text-xs font-semibold text-muted-foreground"
-                    >
-                      Start date
-                    </label>
-                    <input
-                      id="program-start-date"
-                      type="date"
-                      className="h-10 w-full app-field px-3 text-sm"
-                      value={programStartDate}
-                      onChange={(event) =>
-                        onProgramDateChange(event.target.value)
-                      }
-                    />
+                ) : null}
+                {activeProgram ? (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <span>Active program</span>
+                      <StatusPill status="active" />
+                    </div>
+                    <div className="mt-2 text-sm text-foreground">
+                      {activeProgram.program_template?.name ?? "Program"}
+                    </div>
+                    <div className="mt-1">
+                      Start date {activeProgram.start_date ?? "--"}
+                    </div>
+                    <div className="mt-3 grid gap-2">
+                      <Button
+                        className="w-full"
+                        variant="secondary"
+                        disabled={
+                          unassignStatus === "saving" ||
+                          programStatus === "saving"
+                        }
+                        onClick={onPauseProgram}
+                      >
+                        {programStatus === "saving"
+                          ? "Updating..."
+                          : "Pause program"}
+                      </Button>
+                      <Button
+                        className="w-full"
+                        variant="ghost"
+                        disabled={
+                          unassignStatus === "saving" ||
+                          programStatus === "saving"
+                        }
+                        onClick={onUnassignProgram}
+                      >
+                        {unassignStatus === "saving"
+                          ? "Unassigning..."
+                          : "Unassign program"}
+                      </Button>
+                    </div>
                   </div>
+                ) : pausedProgram ? (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <span>Paused program</span>
+                      <StatusPill status="paused" />
+                    </div>
+                    <div className="mt-2 text-sm text-foreground">
+                      {pausedProgram.program_template?.name ?? "Program"}
+                    </div>
+                    <div className="mt-1">
+                      Start date {pausedProgram.start_date ?? "--"}
+                    </div>
+                    <div className="mt-3 grid gap-2">
+                      <Button
+                        className="w-full"
+                        variant="secondary"
+                        disabled={programStatus === "saving"}
+                        onClick={onResumeProgram}
+                      >
+                        {programStatus === "saving"
+                          ? "Updating..."
+                          : "Resume program"}
+                      </Button>
+                      <Button
+                        className="w-full"
+                        variant="ghost"
+                        disabled={
+                          unassignStatus === "saving" ||
+                          programStatus === "saving"
+                        }
+                        onClick={onUnassignProgram}
+                      >
+                        {unassignStatus === "saving"
+                          ? "Unassigning..."
+                          : "Unassign program"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {activeProgram &&
+                selectedProgramId &&
+                selectedProgramId !== activeProgram.program_template_id ? (
                   <Button
                     className="w-full"
-                    disabled={
-                      programStatus === "saving" ||
-                      !selectedProgramId ||
-                      !programStartDate
-                    }
-                    onClick={onApplyProgram}
+                    variant="secondary"
+                    disabled={programStatus === "saving"}
+                    onClick={onSwitchProgramMidCycle}
                   >
                     {programStatus === "saving"
-                      ? "Assigning..."
-                      : "Assign program (next 14 days)"}
+                      ? "Switching..."
+                      : "Switch program from today"}
                   </Button>
-                  {programMessage ? (
-                    <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                      {programMessage}
-                    </div>
-                  ) : null}
-                  {activeProgram ? (
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      <div className="flex items-center justify-between">
-                        <span>Active program</span>
-                        <StatusPill status="active" />
-                      </div>
-                      <div className="mt-2 text-sm text-foreground">
-                        {activeProgram.program_template?.name ?? "Program"}
-                      </div>
-                      <div className="mt-1">
-                        Start date {activeProgram.start_date ?? "--"}
-                      </div>
-                      <div className="mt-3 grid gap-2">
-                        <Button
-                          className="w-full"
-                          variant="secondary"
-                          disabled={
-                            unassignStatus === "saving" ||
-                            programStatus === "saving"
-                          }
-                          onClick={onPauseProgram}
-                        >
-                          {programStatus === "saving"
-                            ? "Updating..."
-                            : "Pause program"}
-                        </Button>
-                        <Button
-                          className="w-full"
-                          variant="ghost"
-                          disabled={
-                            unassignStatus === "saving" ||
-                            programStatus === "saving"
-                          }
-                          onClick={onUnassignProgram}
-                        >
-                          {unassignStatus === "saving"
-                            ? "Unassigning..."
-                            : "Unassign program"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : pausedProgram ? (
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      <div className="flex items-center justify-between">
-                        <span>Paused program</span>
-                        <StatusPill status="paused" />
-                      </div>
-                      <div className="mt-2 text-sm text-foreground">
-                        {pausedProgram.program_template?.name ?? "Program"}
-                      </div>
-                      <div className="mt-1">
-                        Start date {pausedProgram.start_date ?? "--"}
-                      </div>
-                      <div className="mt-3 grid gap-2">
-                        <Button
-                          className="w-full"
-                          variant="secondary"
-                          disabled={programStatus === "saving"}
-                          onClick={onResumeProgram}
-                        >
-                          {programStatus === "saving"
-                            ? "Updating..."
-                            : "Resume program"}
-                        </Button>
-                        <Button
-                          className="w-full"
-                          variant="ghost"
-                          disabled={
-                            unassignStatus === "saving" ||
-                            programStatus === "saving"
-                          }
-                          onClick={onUnassignProgram}
-                        >
-                          {unassignStatus === "saving"
-                            ? "Unassigning..."
-                            : "Unassign program"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {activeProgram &&
-                  selectedProgramId &&
-                  selectedProgramId !== activeProgram.program_template_id ? (
-                    <Button
-                      className="w-full"
-                      variant="secondary"
-                      disabled={programStatus === "saving"}
-                      onClick={onSwitchProgramMidCycle}
-                    >
-                      {programStatus === "saving"
-                        ? "Switching..."
-                        : "Switch program from today"}
-                    </Button>
-                  ) : null}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                ) : null}
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="space-y-6">
-          <Card className="border-border/70 bg-card/80">
-            <CardHeader>
-              <CardTitle>Schedule workout</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Assign a one-off template to this client.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {templatesQuery.isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">
-                      Workout template
-                    </label>
-                    <Select
-                      variant="field"
-                      className="h-10"
-                      value={selectedTemplateId}
-                      onChange={(event) => onTemplateChange(event.target.value)}
-                    >
-                      <option value="">Select a template</option>
-                      {templatesQuery.data?.map((template) => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}{" "}
-                          {template.workout_type_tag
-                            ? ` - ${template.workout_type_tag}`
-                            : ""}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="assign-workout-date"
-                      className="text-xs font-semibold text-muted-foreground"
-                    >
-                      Date
-                    </label>
-                    <input
-                      id="assign-workout-date"
-                      type="date"
-                      className="h-10 w-full app-field px-3 text-sm"
-                      value={scheduledDate}
-                      onChange={(event) => onDateChange(event.target.value)}
-                    />
-                  </div>
-                  <Button
-                    className="w-full"
-                    disabled={
-                      assignStatus === "saving" ||
-                      !selectedTemplateId ||
-                      !scheduledDate
-                    }
-                    onClick={onAssign}
+        <Card className="h-full border-border/70 bg-card/80">
+          <CardHeader>
+            <CardTitle>Schedule workout</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Assign a one-off template to this client.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {templatesQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Workout template
+                  </label>
+                  <Select
+                    variant="field"
+                    className="h-10"
+                    value={selectedTemplateId}
+                    onChange={(event) => onTemplateChange(event.target.value)}
                   >
-                    {assignStatus === "saving"
-                      ? "Assigning..."
-                      : "Assign workout"}
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    <option value="">Select a template</option>
+                    {templatesQuery.data?.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}{" "}
+                        {template.workout_type_tag
+                          ? ` - ${template.workout_type_tag}`
+                          : ""}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="assign-workout-date"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Date
+                  </label>
+                  <input
+                    id="assign-workout-date"
+                    type="date"
+                    className="h-10 w-full app-field px-3 text-sm"
+                    value={scheduledDate}
+                    onChange={(event) => onDateChange(event.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={
+                    assignStatus === "saving" ||
+                    !selectedTemplateId ||
+                    !scheduledDate
+                  }
+                  onClick={onAssign}
+                >
+                  {assignStatus === "saving"
+                    ? "Assigning..."
+                    : "Assign workout"}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <DashboardCard

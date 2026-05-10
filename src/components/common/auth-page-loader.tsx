@@ -1,9 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { AuthBackdrop } from "./auth-backdrop";
-import {
-  getWireframeAuthWidthClass,
-  RouteAwareWireframeLoader,
-} from "./wireframe-loader";
+import { RouteAwareWireframeLoader } from "./wireframe-loader";
+import { getWireframeAuthWidthClass } from "./wireframe-loader-utils";
 
 export function AuthPageLoader({
   title = "Loading",

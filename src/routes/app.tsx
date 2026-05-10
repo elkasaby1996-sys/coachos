@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Navigate,
@@ -58,6 +58,7 @@ import {
   PtHubProfilePreviewPage,
   PtHubSettingsAccountTab,
   PtHubSettingsBillingTab,
+  PtHubSettingsIntegrationsTab,
   PtHubSettingsLayoutPage,
   PtHubSettingsNotificationsTab,
   PtHubSettingsPreferencesTab,
@@ -78,6 +79,7 @@ import {
   ResetPasswordPage,
   SignupRolePage,
   SupportPage,
+  TeamInviteAcceptancePage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
   WorkspaceSettingsBrandTab,
@@ -99,6 +101,14 @@ import {
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
 import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
+import {
+  LegacyClientRedirect,
+  LegacyPublicProfileRedirect,
+  LegacyWorkspaceEntryRedirect,
+  LegacyWorkspaceSettingsRedirect,
+  WorkspaceClientDetailRoute,
+  WorkspaceSlugBoundary,
+} from "./slug-route-resolvers";
 
 type WindowWithIdleCallback = Window & {
   requestIdleCallback?: (
@@ -271,7 +281,9 @@ function LoginGate() {
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const redirectTarget =
     redirectParam &&
-    (redirectParam.startsWith("/join/") || redirectParam.startsWith("/invite/"))
+    (redirectParam.startsWith("/join/") ||
+      redirectParam.startsWith("/invite/") ||
+      redirectParam.startsWith("/team-invites/"))
       ? redirectParam
       : null;
 
@@ -408,6 +420,7 @@ function isPrivateRoute(pathname: string) {
     pathname.startsWith("/workspace/") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/invite") ||
+    pathname.startsWith("/team-invites") ||
     pathname.startsWith("/join") ||
     pathname.startsWith("/no-workspace") ||
     pathname.startsWith("/client/onboarding")
@@ -547,8 +560,26 @@ export function App() {
           <Route path="/signup/pt" element={<PtSignupPage />} />
           <Route path="/signup/client" element={<ClientSignupPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
+          <Route
+            path="/team-invites/:token"
+            element={<TeamInviteAcceptancePage />}
+          />
           <Route path="/join/:code" element={<LegacyJoinRedirect />} />
-          <Route path="/coach/:slug" element={<PublicCoachProfilePage />} />
+          <Route path="/p/:ptSlug" element={<PublicCoachProfilePage />} />
+          <Route path="/p/:ptSlug/apply" element={<PublicCoachProfilePage />} />
+          <Route path="/p/:ptSlug/book" element={<PublicCoachProfilePage />} />
+          <Route
+            path="/coach/:slug"
+            element={<LegacyPublicProfileRedirect />}
+          />
+          <Route
+            path="/profile/:id"
+            element={<LegacyPublicProfileRedirect />}
+          />
+          <Route
+            path="/public-profile/:id"
+            element={<LegacyPublicProfileRedirect />}
+          />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/support" element={<SupportPage />} />
@@ -586,6 +617,26 @@ export function App() {
               </RequireAuth>
             }
           />
+          <Route
+            path="/workspace/:workspaceId"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <LegacyWorkspaceEntryRedirect />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/clients/:clientId"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <LegacyClientRedirect />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
 
           <Route
             path="/pt-hub"
@@ -614,10 +665,7 @@ export function App() {
             <Route path="settings" element={<PtHubSettingsLayoutPage />}>
               <Route index element={<Navigate to="account" replace />} />
               <Route path="account" element={<PtHubSettingsAccountTab />} />
-              <Route
-                path="public-profile"
-                element={<Navigate to="/pt-hub/profile" replace />}
-              />
+              <Route path="public-profile" element={<PtHubProfilePage />} />
               <Route
                 path="notifications"
                 element={<PtHubSettingsNotificationsTab />}
@@ -630,7 +678,7 @@ export function App() {
               <Route path="billing" element={<PtHubSettingsBillingTab />} />
               <Route
                 path="integrations"
-                element={<Navigate to="../account" replace />}
+                element={<PtHubSettingsIntegrationsTab />}
               />
             </Route>
           </Route>
@@ -712,33 +760,74 @@ export function App() {
             element={
               <RequireAuth>
                 <RequireRole allow={["pt"]}>
-                  <PtLayout />
+                  <LegacyWorkspaceSettingsRedirect />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/workspace/:workspaceId/settings/:tab"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <LegacyWorkspaceSettingsRedirect />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/w/:workspaceSlug"
+            element={
+              <RequireAuth>
+                <RequireRole allow={["pt"]}>
+                  <WorkspaceSlugBoundary />
                 </RequireRole>
               </RequireAuth>
             }
           >
-            <Route element={<WorkspaceSettingsLayoutPage />}>
-              <Route index element={<Navigate to="general" replace />} />
-              <Route path="general" element={<WorkspaceSettingsGeneralTab />} />
-              <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
+            <Route element={<PtLayout />}>
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<PtDashboardPage />} />
+              <Route path="leads" element={<PtHubLeadsPage />} />
+              <Route path="clients" element={<PtClientsPage />} />
               <Route
-                path="client-experience"
-                element={<WorkspaceSettingsClientExperienceTab />}
+                path="clients/:clientUrlKey"
+                element={<WorkspaceClientDetailRoute />}
               />
-              <Route path="team" element={<WorkspaceSettingsTeamTab />} />
-              <Route
-                path="defaults"
-                element={<WorkspaceSettingsDefaultsTab />}
-              />
-              <Route
-                path="automations"
-                element={<WorkspaceSettingsAutomationsTab />}
-              />
-              <Route
-                path="integrations"
-                element={<WorkspaceSettingsIntegrationsTab />}
-              />
-              <Route path="danger" element={<WorkspaceSettingsDangerTab />} />
+              <Route path="check-ins" element={<PtCheckinsQueuePage />} />
+              <Route path="analytics" element={<PtHubAnalyticsPage />} />
+            </Route>
+            <Route path="settings" element={<PtLayout />}>
+              <Route element={<WorkspaceSettingsLayoutPage />}>
+                <Route index element={<Navigate to="general" replace />} />
+                <Route
+                  path="general"
+                  element={<WorkspaceSettingsGeneralTab />}
+                />
+                <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
+                <Route
+                  path="client-experience"
+                  element={<WorkspaceSettingsClientExperienceTab />}
+                />
+                <Route path="team" element={<WorkspaceSettingsTeamTab />} />
+                <Route
+                  path="defaults"
+                  element={<WorkspaceSettingsDefaultsTab />}
+                />
+                <Route
+                  path="automations"
+                  element={<WorkspaceSettingsAutomationsTab />}
+                />
+                <Route
+                  path="integrations"
+                  element={<WorkspaceSettingsIntegrationsTab />}
+                />
+                <Route
+                  path="danger-zone"
+                  element={<WorkspaceSettingsDangerTab />}
+                />
+                <Route path="danger" element={<WorkspaceSettingsDangerTab />} />
+              </Route>
             </Route>
           </Route>
 

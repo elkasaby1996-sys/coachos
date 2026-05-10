@@ -97,7 +97,7 @@ function AmbientShellBackground({ mode }: { mode: AppShellBackgroundMode }) {
 export function AppShellBackgroundLayer({
   animated = false,
   animatedDelayMs = 0,
-  mode = "dark",
+  mode = "light",
   scrollActive = false,
 }: {
   animated?: boolean;

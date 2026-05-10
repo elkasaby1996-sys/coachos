@@ -35,19 +35,14 @@ export async function sendConversationMessage(input: {
       "You're sending messages a little too quickly. Please wait a moment.",
     run: async () => {
       const { data, error } = await supabase
-        .from("messages")
-        .insert({
-          conversation_id: input.conversationId,
-          sender_user_id: input.senderUserId,
-          sender_role: input.senderRole,
-          sender_name: input.senderName,
-          body: trimmedBody,
-          preview: trimmedBody.slice(0, 140),
-          unread: input.unread,
+        .rpc("send_conversation_message", {
+          p_conversation_id: input.conversationId,
+          p_sender_user_id: input.senderUserId,
+          p_sender_role: input.senderRole,
+          p_sender_name: input.senderName,
+          p_body: trimmedBody,
+          p_unread: input.unread,
         })
-        .select(
-          "id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at",
-        )
         .single();
 
       if (error) throw error;

@@ -8,6 +8,7 @@ import {
   getUserDisplayName,
   persistPendingInviteToken,
   persistSignupIntent,
+  syncPtAccountIdentity,
   type AccountType,
 } from "./account-profiles";
 
@@ -133,11 +134,21 @@ export async function provisionCallbackProfile(params: {
 
   if (storedIntent === "pt") {
     persistSignupIntent("pt");
+    const fullName =
+      window.localStorage.getItem("coachos_pt_signup_full_name") ??
+      getUserDisplayName(params.user);
     await ensurePtProfile({
       userId: params.user.id,
-      fullName:
-        window.localStorage.getItem("coachos_pt_signup_full_name") ??
-        getUserDisplayName(params.user),
+      fullName,
+    });
+    await syncPtAccountIdentity({
+      userId: params.user.id,
+      fullName,
+      contactEmail: params.user.email ?? null,
+      supportEmail: params.user.email ?? null,
+      phone: window.localStorage.getItem("coachos_pt_signup_phone"),
+      country: window.localStorage.getItem("coachos_pt_signup_country"),
+      city: window.localStorage.getItem("coachos_pt_signup_city"),
     });
     return;
   }

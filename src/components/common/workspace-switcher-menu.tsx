@@ -10,6 +10,7 @@ import { cn } from "../../lib/utils";
 
 type WorkspaceSwitcherMenuItem = {
   id: string;
+  slug: string;
   name: string | null;
   meta?: string | null;
 };
@@ -22,7 +23,7 @@ type WorkspaceSwitcherMenuProps = {
   onSelectHub: () => void;
   workspaces: WorkspaceSwitcherMenuItem[];
   currentWorkspaceId: string | null;
-  onSelectWorkspace: (workspaceId: string) => void;
+  onSelectWorkspace: (workspace: WorkspaceSwitcherMenuItem) => void;
   loading: boolean;
   loadingLabel: string;
   emptyLabel: string;
@@ -113,7 +114,7 @@ export function WorkspaceSwitcherMenu({
             label={workspace.name?.trim() || "PT Workspace"}
             meta={workspace.meta}
             active={workspace.id === currentWorkspaceId}
-            onSelect={() => onSelectWorkspace(workspace.id)}
+            onSelect={() => onSelectWorkspace(workspace)}
           />
         ))
       )}

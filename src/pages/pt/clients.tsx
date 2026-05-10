@@ -26,6 +26,7 @@ import {
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTClientSummary } from "../../features/pt-hub/types";
 import { type ClientSegmentKey } from "../../lib/client-lifecycle";
+import { routes } from "../../lib/routes";
 import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtClientsPage() {
@@ -113,10 +114,12 @@ export function PtClientsPage() {
   }, [initialLifecycleFilter, initialSegmentFilter]);
 
   const openClient = (client: PTClientSummary) => {
+    const detailPath =
+      client.workspaceSlug && client.urlKey
+        ? routes.clientDetail(client.workspaceSlug, client.urlKey)
+        : `/pt/clients/${client.id}`;
     navigate(
-      client.onboardingIncomplete
-        ? `/pt/clients/${client.id}?tab=onboarding`
-        : `/pt/clients/${client.id}`,
+      client.onboardingIncomplete ? `${detailPath}?tab=onboarding` : detailPath,
     );
   };
 

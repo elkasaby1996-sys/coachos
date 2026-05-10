@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, BellRing } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Skeleton } from "../../../components/ui/skeleton";
@@ -36,9 +37,14 @@ import {
   useMarkNotificationUnread,
   useUnarchiveNotification,
   useUnreadNotificationCount,
+  notificationsKeys,
 } from "../hooks/use-notifications";
 import { resolveNotificationActionUrl } from "../lib/notification-route-resolver";
 import type { NotificationFilter, NotificationRecord } from "../lib/types";
+import {
+  acceptWorkspaceTeamInviteById,
+  declineWorkspaceTeamInvite,
+} from "../../workspace-team/invite-api";
 
 const getPtNotificationPeriodLabel = (createdAt: string) => {
   const created = new Date(createdAt);
@@ -75,12 +81,24 @@ const groupPtNotifications = (rows: NotificationRecord[]) => {
     .filter((group) => group.rows.length > 0);
 };
 
+function isWorkspaceTeamInviteNotification(notification: NotificationRecord) {
+  return (
+    notification.type === "team_invite_received" &&
+    notification.entity_type === "workspace_member_invite" &&
+    Boolean(notification.entity_id)
+  );
+}
+
 export function NotificationsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useSessionAuth();
   const { role } = useBootstrapAuth();
   const isClientPortal = role === "client";
   const [activeTab, setActiveTab] = useState<NotificationFilter>("all");
+  const [inviteActionMessage, setInviteActionMessage] = useState<string | null>(
+    null,
+  );
   const allQuery = useInfiniteNotifications({
     userId: user?.id ?? null,
     filter: "all",
@@ -104,6 +122,44 @@ export function NotificationsPage() {
   const archiveMutation = useArchiveNotification(user?.id ?? null);
   const unarchiveMutation = useUnarchiveNotification(user?.id ?? null);
   const markAllReadMutation = useMarkAllNotificationsRead(user?.id ?? null);
+  const acceptInviteMutation = useMutation({
+    mutationFn: acceptWorkspaceTeamInviteById,
+    onSuccess: async (result) => {
+      if (user?.id) {
+        await queryClient.invalidateQueries({
+          queryKey: notificationsKeys.infiniteRoot(user.id),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: notificationsKeys.unreadCount(user.id),
+        });
+      }
+      navigate(result.redirectTo);
+    },
+    onError: (error) => {
+      setInviteActionMessage(
+        error instanceof Error ? error.message : "Unable to accept invite.",
+      );
+    },
+  });
+  const declineInviteMutation = useMutation({
+    mutationFn: declineWorkspaceTeamInvite,
+    onSuccess: async () => {
+      setInviteActionMessage("Invite declined.");
+      if (user?.id) {
+        await queryClient.invalidateQueries({
+          queryKey: notificationsKeys.infiniteRoot(user.id),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: notificationsKeys.unreadCount(user.id),
+        });
+      }
+    },
+    onError: (error) => {
+      setInviteActionMessage(
+        error instanceof Error ? error.message : "Unable to decline invite.",
+      );
+    },
+  });
 
   const allNotifications = useMemo(() => {
     return allQuery.data?.pages.flat() ?? [];
@@ -161,10 +217,49 @@ export function NotificationsPage() {
     navigate(target);
   };
 
-  const renderNotificationActions = (notification: NotificationRecord) => {
+  const renderNotificationActions = (
+    notification: NotificationRecord,
+    audience: "client" | "pt",
+  ) => {
     const isArchived = Boolean(notification.archived_at);
+    const isTeamInvite =
+      audience === "pt" && isWorkspaceTeamInviteNotification(notification);
+    const inviteId = notification.entity_id ?? "";
     return (
       <div className="flex shrink-0 flex-wrap items-center gap-2 px-1 sm:px-0">
+        {isTeamInvite ? (
+          <>
+            <Button
+              size="sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                acceptInviteMutation.mutate(inviteId);
+              }}
+              disabled={
+                acceptInviteMutation.isPending ||
+                declineInviteMutation.isPending
+              }
+            >
+              {acceptInviteMutation.isPending
+                ? "Accepting..."
+                : "Accept invite"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(event) => {
+                event.stopPropagation();
+                declineInviteMutation.mutate(inviteId);
+              }}
+              disabled={
+                acceptInviteMutation.isPending ||
+                declineInviteMutation.isPending
+              }
+            >
+              {declineInviteMutation.isPending ? "Declining..." : "Decline"}
+            </Button>
+          </>
+        ) : null}
         <Button
           size="sm"
           variant="secondary"
@@ -203,7 +298,7 @@ export function NotificationsPage() {
         audience={audience}
         onClick={() => handleOpenNotification(notification)}
       />
-      {renderNotificationActions(notification)}
+      {renderNotificationActions(notification, audience)}
     </div>
   );
 
@@ -251,6 +346,16 @@ export function NotificationsPage() {
   return (
     <div className={isClientPortal ? "portal-shell-tight" : "space-y-6"}>
       {pageHeader}
+
+      {!isClientPortal && inviteActionMessage ? (
+        <StatusBanner
+          variant={
+            inviteActionMessage === "Invite declined." ? "success" : "warning"
+          }
+          title={inviteActionMessage}
+          description="Workspace invite actions are available directly from team invite notifications."
+        />
+      ) : null}
 
       {isClientPortal ? (
         <StatusBanner

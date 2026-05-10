@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "../../../components/ui/coachos";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Button } from "../../../components/ui/button";
@@ -54,8 +54,21 @@ export function PtClientNotesTab({
     "idle",
   );
   const [noteMessage, setNoteMessage] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteDraft, setEditingNoteDraft] = useState("");
+  const [noteActionStatus, setNoteActionStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
+  const [noteActionMessage, setNoteActionMessage] = useState<string | null>(
+    null,
+  );
   const noteLimitState = getCharacterLimitState({
     value: noteDraft,
+    kind: "default_text",
+    fieldLabel: "Note",
+  });
+  const editingNoteLimitState = getCharacterLimitState({
+    value: editingNoteDraft,
     kind: "default_text",
     fieldLabel: "Note",
   });
@@ -107,6 +120,115 @@ export function PtClientNotesTab({
     setNoteDraft("");
     setNoteStatus("idle");
     setNoteMessage("Note added.");
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-notes", clientId, workspaceId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["coach-activity-log", clientId, workspaceId],
+    });
+  };
+
+  const handleEditNote = (note: {
+    id: string;
+    metadata?: { note?: unknown; preview?: unknown } | null;
+  }) => {
+    const noteText =
+      typeof note.metadata?.note === "string"
+        ? note.metadata.note
+        : typeof note.metadata?.preview === "string"
+          ? note.metadata.preview
+          : "";
+    setEditingNoteId(note.id);
+    setEditingNoteDraft(noteText);
+    setNoteActionMessage(null);
+    setNoteActionStatus("idle");
+  };
+
+  const handleCancelEditNote = () => {
+    setEditingNoteId(null);
+    setEditingNoteDraft("");
+    setNoteActionMessage(null);
+    setNoteActionStatus("idle");
+  };
+
+  const handleSaveEditedNote = async (note: {
+    id: string;
+    metadata?: Record<string, unknown> | null;
+  }) => {
+    const trimmed = editingNoteDraft.trim();
+    if (editingNoteLimitState.overLimit) {
+      setNoteActionStatus("error");
+      setNoteActionMessage(editingNoteLimitState.errorText);
+      return;
+    }
+    if (!clientId || !workspaceId || !user?.id || trimmed.length === 0) return;
+    setNoteActionStatus("saving");
+    setNoteActionMessage(null);
+
+    const metadata =
+      note.metadata && typeof note.metadata === "object" ? note.metadata : {};
+    const { error } = await supabase
+      .from("coach_activity_log")
+      .update({
+        metadata: {
+          ...metadata,
+          note: trimmed,
+          preview: trimmed.slice(0, 140),
+          edited_at: new Date().toISOString(),
+        },
+      })
+      .eq("id", note.id)
+      .eq("client_id", clientId)
+      .eq("workspace_id", workspaceId)
+      .eq("action", "pt_note")
+      .eq("actor_user_id", user.id);
+
+    if (error) {
+      setNoteActionStatus("error");
+      setNoteActionMessage(getErrorMessage(error));
+      return;
+    }
+
+    setEditingNoteId(null);
+    setEditingNoteDraft("");
+    setNoteActionStatus("idle");
+    setNoteActionMessage("Note updated.");
+    await queryClient.invalidateQueries({
+      queryKey: ["pt-client-notes", clientId, workspaceId],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["coach-activity-log", clientId, workspaceId],
+    });
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!clientId || !workspaceId || !user?.id) return;
+    const confirmed = window.confirm("Delete this note?");
+    if (!confirmed) return;
+    setNoteActionStatus("saving");
+    setNoteActionMessage(null);
+
+    const { error } = await supabase
+      .from("coach_activity_log")
+      .delete()
+      .eq("id", noteId)
+      .eq("client_id", clientId)
+      .eq("workspace_id", workspaceId)
+      .eq("action", "pt_note")
+      .eq("actor_user_id", user.id);
+
+    if (error) {
+      setNoteActionStatus("error");
+      setNoteActionMessage(getErrorMessage(error));
+      return;
+    }
+
+    if (editingNoteId === noteId) {
+      setEditingNoteId(null);
+      setEditingNoteDraft("");
+    }
+    setNoteActionStatus("idle");
+    setNoteActionMessage("Note deleted.");
     await queryClient.invalidateQueries({
       queryKey: ["pt-client-notes", clientId, workspaceId],
     });
@@ -173,6 +295,11 @@ export function PtClientNotesTab({
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
+          {noteActionMessage ? (
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+              {noteActionMessage}
+            </div>
+          ) : null}
           {notesQuery.isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-16 w-full" />
@@ -190,6 +317,8 @@ export function PtClientNotesTab({
                   : typeof note.metadata?.preview === "string"
                     ? note.metadata.preview
                     : "No note body recorded.";
+              const canManageNote = note.actor_user_id === user?.id;
+              const isEditing = editingNoteId === note.id;
               return (
                 <div
                   key={note.id}
@@ -203,9 +332,74 @@ export function PtClientNotesTab({
                       {formatShortDateTime(note.created_at)}
                     </span>
                   </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                    {noteText}
-                  </p>
+                  {isEditing ? (
+                    <div className="mt-3 space-y-2">
+                      <Textarea
+                        isInvalid={editingNoteLimitState.overLimit}
+                        className="min-h-[120px] bg-background/70"
+                        value={editingNoteDraft}
+                        onChange={(event) =>
+                          setEditingNoteDraft(event.target.value)
+                        }
+                      />
+                      <FieldCharacterMeta
+                        count={editingNoteLimitState.count}
+                        limit={editingNoteLimitState.limit}
+                        errorText={editingNoteLimitState.errorText}
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={
+                            noteActionStatus === "saving" ||
+                            editingNoteDraft.trim().length === 0 ||
+                            editingNoteLimitState.overLimit
+                          }
+                          onClick={() => handleSaveEditedNote(note)}
+                        >
+                          {noteActionStatus === "saving"
+                            ? "Saving..."
+                            : "Save changes"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleCancelEditNote}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                      {noteText}
+                    </p>
+                  )}
+                  {canManageNote && !isEditing ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Edit note"
+                        onClick={() => handleEditNote(note)}
+                      >
+                        <Pencil className="mr-1 h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        aria-label="Delete note"
+                        disabled={noteActionStatus === "saving"}
+                        onClick={() => handleDeleteNote(note.id)}
+                      >
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               );
             })

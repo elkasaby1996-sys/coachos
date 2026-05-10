@@ -20,28 +20,28 @@
   background:
     radial-gradient(
       circle at 18% 22%,
-      oklch(var(--bg-muted) / 0.17),
+      oklch(var(--bg-muted) / 0.16),
       transparent 24%
     ),
     radial-gradient(
       circle at 78% 18%,
-      oklch(var(--chart-4) / 0.07),
+      oklch(var(--chart-4) / 0.075),
       transparent 22%
     ),
     radial-gradient(
       circle at 72% 78%,
-      oklch(var(--neutral) / 0.055),
+      oklch(var(--neutral) / 0.06),
       transparent 20%
     ),
     radial-gradient(
       circle at 28% 82%,
-      oklch(var(--chart-3) / 0.045),
+      oklch(var(--chart-3) / 0.055),
       transparent 20%
     );
   filter: blur(136px) saturate(68%);
   transform-origin: center;
   will-change: transform, opacity;
-  animation: pt-hub-aurora-shift 36s cubic-bezier(0.42, 0, 0.2, 1) infinite
+  animation: pt-hub-aurora-shift 34s cubic-bezier(0.42, 0, 0.2, 1) infinite
     alternate;
   pointer-events: none;
   z-index: -2;
@@ -68,7 +68,8 @@
   opacity: 0.05;
   transform-origin: center;
   will-change: transform, opacity;
-  animation: pt-hub-grid-float 44s linear infinite;
+  animation: pt-hub-grid-float 42s cubic-bezier(0.42, 0, 0.2, 1) infinite
+    alternate;
   pointer-events: none;
   z-index: -1;
 }

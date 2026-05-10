@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import {
   Dialog,
@@ -22,12 +23,19 @@ import {
 } from "../../features/pt-hub/lib/pt-hub";
 import { useWorkspace } from "../../lib/use-workspace";
 import { getCharacterLimitState } from "../../lib/character-limits";
+import { routes } from "../../lib/routes";
+import type { PTWorkspaceSummary } from "../../features/pt-hub/types";
 
 export function PtHubWorkspacesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { switchWorkspace, refreshWorkspace } = useWorkspace();
   const workspacesQuery = usePtHubWorkspaces();
+  const acceptedWorkspaceId = searchParams.get("acceptedWorkspace");
+  const [acceptedNotice, setAcceptedNotice] = useState(
+    Boolean(acceptedWorkspaceId),
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,10 +47,22 @@ export function PtHubWorkspacesPage() {
   });
   const hasOverLimitErrors = workspaceNameLimitState.overLimit;
 
-  const openWorkspace = (workspaceId: string) => {
-    switchWorkspace(workspaceId);
-    navigate("/pt/dashboard");
+  const openWorkspace = (workspace: PTWorkspaceSummary) => {
+    switchWorkspace(workspace.id);
+    navigate(routes.workspaceOverview(workspace.slug));
   };
+
+  useEffect(() => {
+    if (!acceptedWorkspaceId) return;
+    setAcceptedNotice(true);
+    const clearTimer = window.setTimeout(() => {
+      setAcceptedNotice(false);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("acceptedWorkspace");
+      setSearchParams(nextParams, { replace: true });
+    }, 5000);
+    return () => window.clearTimeout(clearTimer);
+  }, [acceptedWorkspaceId, searchParams, setSearchParams]);
 
   const handleCreateWorkspace = async () => {
     if (hasOverLimitErrors) {
@@ -91,6 +111,15 @@ export function PtHubWorkspacesPage() {
         }
       />
 
+      {acceptedNotice ? (
+        <Alert tone="success">
+          <AlertTitle>Workspace added to your PT Hub</AlertTitle>
+          <AlertDescription>
+            The shared workspace is ready to open with your assigned role.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {workspaces.length === 0 ? (
         <EmptyState
           title="No coaching spaces yet"
@@ -106,6 +135,7 @@ export function PtHubWorkspacesPage() {
               key={workspace.id}
               workspace={workspace}
               onOpen={openWorkspace}
+              highlighted={workspace.id === acceptedWorkspaceId}
             />
           ))}
         </div>

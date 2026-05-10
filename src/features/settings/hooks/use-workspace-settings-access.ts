@@ -3,6 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
+import {
+  canManageTeam,
+  type WorkspaceMemberStatus,
+  type WorkspaceRole,
+} from "../../workspace-team";
 
 export function useWorkspaceSettingsAccess(
   routeWorkspaceId: string | undefined,
@@ -19,26 +24,28 @@ export function useWorkspaceSettingsAccess(
     queryKey: ["workspace-settings-membership", routeWorkspaceId, user?.id],
     enabled: Boolean(routeWorkspaceId && user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workspace_members")
-        .select("workspace_id, user_id, role")
-        .eq("workspace_id", routeWorkspaceId ?? "")
-        .eq("user_id", user?.id ?? "")
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("workspace_access_context", {
+        p_workspace_id: routeWorkspaceId,
+      });
 
       if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : null;
 
-      return (data ?? null) as {
+      return (row ?? null) as {
         workspace_id: string;
-        user_id: string;
         role: string;
+        member_status: string;
       } | null;
     },
   });
 
   const isAuthorized = Boolean(membershipQuery.data?.workspace_id);
-  const canManage = (membershipQuery.data?.role ?? "").startsWith("pt_");
-  const isOwner = membershipQuery.data?.role === "pt_owner";
+  const canManage = canManageTeam({
+    role: (membershipQuery.data?.role ?? "viewer") as WorkspaceRole,
+    memberStatus: (membershipQuery.data?.member_status ??
+      "removed") as WorkspaceMemberStatus,
+  });
+  const isOwner = membershipQuery.data?.role === "owner";
 
   useEffect(() => {
     if (!routeWorkspaceId || !isAuthorized) return;

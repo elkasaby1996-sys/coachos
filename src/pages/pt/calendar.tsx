@@ -258,6 +258,17 @@ export function PtCalendarPage() {
     setMonthCursor(new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
     setSelectedDateKey(todayKey);
   }, [todayKey]);
+  const openCreateEventDialog = useCallback((dateKey: string) => {
+    setSelectedDateKey(dateKey);
+    setEventDate(dateKey);
+    setEventMode("create");
+    setEditingEventId(null);
+    setEventTitle("");
+    setEventDescription("");
+    setEventStartTime("09:00");
+    setEventEndTime("");
+    setEventDialogOpen(true);
+  }, []);
   const isSavingEvent = createEventMutation.isPending;
 
   const clientMap = useMemo(() => {
@@ -314,19 +325,6 @@ export function PtCalendarPage() {
         title="Coach Calendar"
         description="Click a date to view scheduled items."
         className="w-full justify-end"
-        actions={
-          <Button
-            onClick={() => {
-              setEventDate(selectedDateKey);
-              setEventDialogOpen(true);
-            }}
-            className="gap-2"
-            disabled={!workspaceId}
-          >
-            <Plus className="h-4 w-4" />
-            Create event
-          </Button>
-        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -457,7 +455,7 @@ export function PtCalendarPage() {
                           "border-destructive/35 bg-destructive/[0.06]",
                       )}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <span
                           className={cn(
                             "flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-sm font-semibold",
@@ -468,6 +466,24 @@ export function PtCalendarPage() {
                         >
                           {day.key.slice(-2)}
                         </span>
+                        <button
+                          type="button"
+                          aria-label={`Create event on ${new Date(
+                            `${day.key}T00:00:00`,
+                          ).toLocaleDateString("en-US", {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric",
+                          })}`}
+                          disabled={!workspaceId}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openCreateEventDialog(day.key);
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background/75 text-muted-foreground shadow-sm transition hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
                       </div>
 
                       <div className="mt-4 flex-1 space-y-2.5">
@@ -574,21 +590,6 @@ export function PtCalendarPage() {
           <DashboardCard
             title={selectedDateLabel}
             subtitle="Events and assignments for this day."
-            action={
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  setEventDate(selectedDateKey);
-                  setEventMode("create");
-                  setEditingEventId(null);
-                  setEventDialogOpen(true);
-                }}
-                disabled={!workspaceId}
-              >
-                Create event
-              </Button>
-            }
           >
             {isLoading ? (
               <div className="space-y-3">

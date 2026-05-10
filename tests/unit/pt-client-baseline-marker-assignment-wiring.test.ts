@@ -15,9 +15,12 @@ const clientBaselinePage = readFileSync(
 describe("PT performance marker baseline wiring", () => {
   it("keeps PT baseline tab settings-driven instead of per-client assignment", () => {
     expect(ptClientDetailPage).toContain(
-      "Active markers are managed in PT Settings",
+      "Baseline benchmark markers and active PT Settings prompts.",
     );
     expect(ptClientDetailPage).toContain("Manage in settings");
+    expect(ptClientDetailPage).toContain(
+      "No active performance markers. Enable them in PT Settings",
+    );
     expect(ptClientDetailPage).not.toContain("Performance markers to assign");
     expect(ptClientDetailPage).not.toContain("pt_assign_performance_markers");
   });
