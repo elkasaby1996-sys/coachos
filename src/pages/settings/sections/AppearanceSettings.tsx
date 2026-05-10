@@ -94,7 +94,7 @@ export function AppearanceSettings() {
             label="Theme"
             hint={
               LIGHT_MODE_ENABLED
-                ? "Default mode is dark unless explicitly changed."
+                ? "Default mode is light unless explicitly changed."
                 : "Light mode is temporarily disabled while the theme system is being corrected."
             }
           >

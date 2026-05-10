@@ -13,6 +13,7 @@ import {
   ensurePtProfile,
   getUserAvatarUrl,
   getUserDisplayName,
+  syncPtAccountIdentity,
   updatePtProfile,
 } from "../../lib/account-profiles";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
@@ -164,6 +165,15 @@ export function PtProfileOnboardingPage() {
         specialties: splitCsv(form.specialties),
         starting_price: form.startingPrice ? Number(form.startingPrice) : null,
         onboarding_completed_at: completedAt,
+      });
+      await syncPtAccountIdentity({
+        userId: session.user.id,
+        fullName: form.fullName,
+        contactEmail: session.user.email ?? null,
+        supportEmail: session.user.email ?? null,
+        phone: form.phone,
+        country: form.locationCountry,
+        city: form.locationCity,
       });
       patchBootstrap({
         accountType: "pt",

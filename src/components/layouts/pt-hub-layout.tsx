@@ -252,6 +252,8 @@ const routeMeta: Record<
 
 const defaultRouteMeta = routeMeta["/pt-hub"]!;
 const PT_HUB_THEME_STORAGE_KEY = "coachos-pt-hub-theme-mode";
+const PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY =
+  "coachos-pt-hub-light-default-migrated";
 
 type PtHubThemeMode = "dark" | "light";
 
@@ -383,7 +385,7 @@ export function PtHubLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [headerCondensed, setHeaderCondensed] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [themeMode, setThemeMode] = useState<PtHubThemeMode>("dark");
+  const [themeMode, setThemeMode] = useState<PtHubThemeMode>("light");
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const routeTransitionKey = getPtHubRouteTransitionKey(location.pathname);
 
@@ -471,15 +473,23 @@ export function PtHubLayout() {
     if (typeof window === "undefined") return;
 
     const storedTheme = window.localStorage.getItem(PT_HUB_THEME_STORAGE_KEY);
+    const hasMigratedLightDefault =
+      window.localStorage.getItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY) === "1";
+    if (storedTheme === "dark" && !hasMigratedLightDefault) {
+      window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
+      window.localStorage.setItem(PT_HUB_THEME_STORAGE_KEY, "light");
+      setThemeMode("light");
+      return;
+    }
+
     if (storedTheme === "dark" || storedTheme === "light") {
+      window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
       setThemeMode(storedTheme);
       return;
     }
 
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    setThemeMode(prefersDark ? "dark" : "light");
+    window.localStorage.setItem(PT_HUB_LIGHT_DEFAULT_MIGRATION_KEY, "1");
+    setThemeMode("light");
   }, []);
 
   useEffect(() => {

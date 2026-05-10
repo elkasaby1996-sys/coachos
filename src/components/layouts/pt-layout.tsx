@@ -28,7 +28,6 @@ import {
   Plus,
   Search,
   Settings,
-  Sparkles,
   Users,
   X,
 } from "lucide-react";
@@ -359,7 +358,7 @@ function getPtRouteHeader(
 
 function getHeaderPillClassName(isLightMode: boolean) {
   return cn(
-    "group flex h-[54px] min-w-[204px] items-center gap-2.5 rounded-[18px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[214px]",
+    "group flex h-[42px] min-w-[172px] items-center gap-2 rounded-[14px] border px-2.5 py-1.5 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[182px]",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.74))]"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))]",
@@ -368,7 +367,7 @@ function getHeaderPillClassName(isLightMode: boolean) {
 
 function getHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
-    "flex h-8 w-8 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
+    "flex h-6 w-6 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
     isLightMode
       ? "text-primary group-hover:text-[oklch(var(--text-primary))]"
       : "text-primary group-hover:text-foreground",
@@ -377,7 +376,7 @@ function getHeaderPillIconClassName(isLightMode: boolean) {
 
 function getHeaderPillChevronClassName(isLightMode: boolean) {
   return cn(
-    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
+    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.62)] bg-[oklch(var(--bg-surface-elevated)/0.62)] text-primary group-hover:border-primary/16 group-hover:text-[oklch(var(--text-primary))]"
       : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
@@ -386,7 +385,7 @@ function getHeaderPillChevronClassName(isLightMode: boolean) {
 
 function getHeaderUtilityButtonClassName(isLightMode: boolean) {
   return cn(
-    "inline-flex h-[54px] items-center justify-center gap-2 rounded-[18px] border px-4 text-sm font-medium backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    "inline-flex h-[42px] items-center justify-center gap-1.5 rounded-[14px] border px-3 text-[0.82rem] font-medium backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
@@ -395,7 +394,7 @@ function getHeaderUtilityButtonClassName(isLightMode: boolean) {
 
 function getHeaderBellButtonClassName(isLightMode: boolean) {
   return cn(
-    "h-[54px] w-[54px] rounded-[18px] border backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    "h-[42px] w-[42px] rounded-[14px] border backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
@@ -1162,7 +1161,11 @@ export function PtLayout() {
       )}
       style={getModuleToneStyle(currentModule)}
     >
-      <AppShellBackgroundLayer mode={isLightMode ? "light" : "dark"} />
+      <AppShellBackgroundLayer
+        animated
+        animatedDelayMs={2200}
+        mode={isLightMode ? "light" : "dark"}
+      />
       <div
         className={cn(
           "theme-overlay fixed inset-0 z-40 backdrop-blur-sm transition lg:hidden",
@@ -1238,11 +1241,10 @@ export function PtLayout() {
                   >
                     <div
                       className={cn(
-                        "flex items-center gap-3",
+                        "flex items-center",
                         desktopNavCollapsed && "justify-center",
                       )}
                     >
-                      <Sparkles className="h-5 w-5 shrink-0 text-primary [stroke-width:1.7]" />
                       {!desktopNavCollapsed ? (
                         <div className="min-w-0">
                           <p className="text-[1.1rem] font-semibold uppercase tracking-[0.05em] text-foreground">
@@ -1377,7 +1379,7 @@ export function PtLayout() {
                               }
                             }}
                           >
-                            <Search className="h-4 w-4 [stroke-width:1.7]" />
+                            <Search className="h-3.5 w-3.5 [stroke-width:1.8]" />
                             <span className="sr-only">Search</span>
                           </Button>
                         </div>
@@ -1387,7 +1389,7 @@ export function PtLayout() {
                           buttonClassName={getHeaderBellButtonClassName(
                             isLightMode,
                           )}
-                          iconClassName="h-[18px] w-[18px]"
+                          iconClassName="h-4 w-4"
                         />
 
                         <InviteClientDialog
@@ -1398,7 +1400,7 @@ export function PtLayout() {
                               )}
                               variant="ghost"
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-3.5 w-3.5" />
                               Invite client
                             </Button>
                           }
@@ -1416,10 +1418,10 @@ export function PtLayout() {
                                   isLightMode,
                                 )}
                               >
-                                <Building2 className="h-4 w-4 [stroke-width:1.7]" />
+                                <Building2 className="h-3.5 w-3.5 [stroke-width:1.8]" />
                               </div>
                               <div className="min-w-0 flex-1 text-left">
-                                <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                <p className="max-w-[118px] truncate text-[0.84rem] font-medium text-foreground">
                                   {workspaceDisplayName}
                                 </p>
                               </div>
@@ -1428,7 +1430,7 @@ export function PtLayout() {
                                   isLightMode,
                                 )}
                               >
-                                <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                                <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
                               </span>
                             </button>
                           </DropdownMenuTrigger>
@@ -1475,7 +1477,7 @@ export function PtLayout() {
                                 {userInitial}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                                <p className="max-w-[118px] truncate text-[0.84rem] font-medium text-foreground">
                                   {profileDisplayName}
                                 </p>
                               </div>
@@ -1484,7 +1486,7 @@ export function PtLayout() {
                                   isLightMode,
                                 )}
                               >
-                                <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                                <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
                               </span>
                             </button>
                           </DropdownMenuTrigger>

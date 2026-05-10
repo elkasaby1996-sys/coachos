@@ -10,6 +10,7 @@ import { useWorkspaceSettingsAccess } from "../../../features/settings/hooks/use
 import { workspaceSettingsTabs } from "../../../features/settings/lib/settings-route-mapping";
 import { routes, type WorkspaceSettingsTab } from "../../../lib/routes";
 import { supabase } from "../../../lib/supabase";
+import { resolveWorkspaceRouteParam } from "../../../lib/workspace-route-resolution";
 import { type WorkspaceSettingsOutletContext } from "./outlet-context";
 
 type WorkspaceSettingsRow = WorkspaceSettingsOutletContext["workspace"];
@@ -25,13 +26,7 @@ export function WorkspaceSettingsLayoutPage() {
     queryKey: ["workspace-settings-slug", routeWorkspaceSlug],
     enabled: Boolean(routeWorkspaceSlug && !routeWorkspaceId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workspaces")
-        .select("id, slug")
-        .eq("slug", routeWorkspaceSlug ?? "")
-        .maybeSingle<{ id: string; slug: string | null }>();
-      if (error) throw error;
-      return data;
+      return await resolveWorkspaceRouteParam(routeWorkspaceSlug);
     },
   });
   const resolvedRouteWorkspaceId = routeWorkspaceId ?? slugWorkspaceQuery.data?.id;

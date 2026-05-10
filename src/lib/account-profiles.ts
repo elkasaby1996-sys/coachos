@@ -322,25 +322,41 @@ export async function updatePtProfile(
   values: Partial<Omit<PtProfileRow, "user_id">>,
 ) {
   const existing = await getExistingPtProfile(userId);
-  const payload = {
+  const payload: Partial<PtProfileRow> = {
     ...values,
     workspace_id: null,
-    display_name: normalizeText(values.full_name ?? values.display_name),
-    full_name: normalizeText(values.full_name),
-    phone: normalizeText(values.phone),
-    avatar_url: normalizeText(values.avatar_url),
-    coach_business_name: normalizeText(values.coach_business_name),
-    headline: normalizeText(values.headline),
-    bio: normalizeText(values.bio),
-    location_country: normalizeText(values.location_country),
-    location_city: normalizeText(values.location_city),
-    languages: values.languages
-      ? normalizeTextArray(values.languages)
-      : undefined,
-    specialties: values.specialties
-      ? normalizeTextArray(values.specialties)
-      : undefined,
   };
+  if ("full_name" in values || "display_name" in values) {
+    payload.display_name = normalizeText(
+      values.full_name ?? values.display_name,
+    );
+  }
+  if ("full_name" in values) payload.full_name = normalizeText(values.full_name);
+  if ("phone" in values) payload.phone = normalizeText(values.phone);
+  if ("avatar_url" in values) {
+    payload.avatar_url = normalizeText(values.avatar_url);
+  }
+  if ("coach_business_name" in values) {
+    payload.coach_business_name = normalizeText(values.coach_business_name);
+  }
+  if ("headline" in values) payload.headline = normalizeText(values.headline);
+  if ("bio" in values) payload.bio = normalizeText(values.bio);
+  if ("location_country" in values) {
+    payload.location_country = normalizeText(values.location_country);
+  }
+  if ("location_city" in values) {
+    payload.location_city = normalizeText(values.location_city);
+  }
+  if ("languages" in values) {
+    payload.languages = values.languages
+      ? normalizeTextArray(values.languages)
+      : [];
+  }
+  if ("specialties" in values) {
+    payload.specialties = values.specialties
+      ? normalizeTextArray(values.specialties)
+      : [];
+  }
 
   const query = existing?.id
     ? supabase.from("pt_profiles").update(payload).eq("id", existing.id)
@@ -366,6 +382,111 @@ export async function updatePtProfile(
     throw error;
   }
   return data as PtProfileRow;
+}
+
+export async function updateCurrentUserNameMetadata(fullName: string) {
+  const normalizedFullName = normalizeText(fullName);
+  if (!normalizedFullName) return;
+
+  const { data } = await supabase.auth.getUser();
+  if (data.user?.id) {
+    const metadata = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+    await supabase.auth.updateUser({
+      data: {
+        ...metadata,
+        full_name: normalizedFullName,
+        display_name:
+          typeof metadata.display_name === "string" &&
+          metadata.display_name.trim()
+            ? metadata.display_name
+            : normalizedFullName,
+        name:
+          typeof metadata.name === "string" && metadata.name.trim()
+            ? metadata.name
+            : normalizedFullName,
+      },
+    });
+  }
+}
+
+export async function syncPtAccountIdentity(params: {
+  userId: string;
+  fullName: string | null | undefined;
+  contactEmail?: string | null;
+  supportEmail?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  city?: string | null;
+  updateAuthMetadata?: boolean;
+}) {
+  const fullName = normalizeText(params.fullName);
+  if (!fullName) return;
+
+  if (params.updateAuthMetadata !== false) {
+    try {
+      await updateCurrentUserNameMetadata(fullName);
+    } catch {
+      // Database profile rows remain the source of truth if auth metadata cannot be updated.
+    }
+  }
+
+  await ensurePtProfile({
+    userId: params.userId,
+    fullName,
+  });
+  const legacyProfileUpdate: Partial<Omit<PtProfileRow, "user_id">> = {
+    full_name: fullName,
+  };
+  if (params.phone !== undefined) legacyProfileUpdate.phone = params.phone;
+  if (params.country !== undefined) {
+    legacyProfileUpdate.location_country = params.country;
+  }
+  if (params.city !== undefined) legacyProfileUpdate.location_city = params.city;
+  await updatePtProfile(params.userId, legacyProfileUpdate);
+
+  const { data: hubProfile, error: hubProfileError } = await supabase
+    .from("pt_hub_profiles")
+    .select("display_name")
+    .eq("user_id", params.userId)
+    .maybeSingle<{
+      display_name: string | null;
+    }>();
+
+  if (hubProfileError) throw hubProfileError;
+
+  const hubProfilePayload = {
+    user_id: params.userId,
+    full_name: fullName,
+    display_name: normalizeText(hubProfile?.display_name) ?? fullName,
+  };
+
+  const { error: hubProfileUpsertError } = await supabase
+    .from("pt_hub_profiles")
+    .upsert(hubProfilePayload, { onConflict: "user_id" });
+
+  if (hubProfileUpsertError) throw hubProfileUpsertError;
+
+  const settingsPayload: Record<string, string | null> = {
+    user_id: params.userId,
+    full_name: fullName,
+  };
+  if (params.contactEmail !== undefined) {
+    settingsPayload.contact_email = normalizeText(params.contactEmail);
+  }
+  if (params.supportEmail !== undefined) {
+    settingsPayload.support_email = normalizeText(params.supportEmail);
+  }
+  if (params.phone !== undefined) settingsPayload.phone = normalizeText(params.phone);
+  if (params.country !== undefined) {
+    settingsPayload.country = normalizeText(params.country);
+  }
+  if (params.city !== undefined) settingsPayload.city = normalizeText(params.city);
+
+  const { error: settingsUpsertError } = await supabase
+    .from("pt_hub_settings")
+    .upsert(settingsPayload, { onConflict: "user_id" });
+
+  if (settingsUpsertError) throw settingsUpsertError;
 }
 
 export async function ensureClientProfile(params: {

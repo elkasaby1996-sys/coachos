@@ -178,13 +178,13 @@ export function PublicPtProfileView({
           initial={reduceMotion ? false : { opacity: 0, y: 18 }}
           animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: "easeOut" }}
-          className="overflow-hidden rounded-[36px] border border-border/70 bg-[linear-gradient(180deg,rgba(11,16,27,0.96),rgba(8,12,21,0.98))] shadow-[0_40px_120px_-60px_rgba(37,99,235,0.45)]"
+          className="overflow-hidden rounded-[36px] border border-border/70 bg-card/82 shadow-[0_32px_100px_-68px_oklch(var(--primary)/0.42)] backdrop-blur-2xl"
         >
-          <div className="relative overflow-hidden border-b border-border/60">
+          <div className="relative overflow-hidden border-b border-border/60 bg-[linear-gradient(135deg,oklch(var(--card)/0.96),oklch(var(--secondary)/0.42))]">
             <div
               ref={heroGlowRef}
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-[-8%] top-[-18%] h-[22rem] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.22),rgba(56,189,248,0.02)_60%,transparent_74%)] blur-3xl"
+              className="pointer-events-none absolute inset-x-[-8%] top-[-18%] h-[22rem] rounded-full bg-[radial-gradient(circle,oklch(var(--primary)/0.18),oklch(var(--primary)/0.04)_58%,transparent_74%)] blur-3xl"
             />
             {preview && previewStatusBadges.length > 0 ? (
               <div className="absolute right-6 top-6 z-20 flex flex-wrap items-center justify-end gap-2 sm:right-8 sm:top-8">
@@ -192,7 +192,7 @@ export function PublicPtProfileView({
                   <Badge
                     key={badge.label}
                     variant={badge.tone ?? "info"}
-                    className="rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-3xl"
+                    className="rounded-full border border-border/70 bg-card/78 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground shadow-[0_18px_42px_-34px_oklch(var(--primary)/0.48),inset_0_1px_0_oklch(1_0_0/0.62)] backdrop-blur-3xl"
                   >
                     {badge.label}
                   </Badge>
@@ -203,17 +203,17 @@ export function PublicPtProfileView({
               <img
                 src={profile.bannerImageUrl}
                 alt={title}
-                className="h-[280px] w-full object-cover opacity-85 sm:h-[320px]"
+                className="h-[280px] w-full object-cover opacity-80 sm:h-[320px]"
               />
             ) : (
-              <div className="h-[280px] bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.45),transparent_32%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.26),transparent_24%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(6,9,16,1))] sm:h-[320px]" />
+              <div className="h-[280px] bg-[radial-gradient(circle_at_top_left,oklch(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_top_right,oklch(var(--accent)/0.28),transparent_28%),linear-gradient(135deg,oklch(var(--card)/0.98),oklch(var(--secondary)/0.58))] sm:h-[320px]" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/44 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
               <div className="flex flex-wrap items-end gap-5">
                 <div
                   ref={profileCardRef}
-                  className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background/70 text-3xl font-semibold text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.8)] sm:h-28 sm:w-28"
+                  className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-card/86 text-3xl font-semibold text-foreground shadow-[0_24px_60px_-42px_oklch(var(--primary)/0.46)] backdrop-blur-xl sm:h-28 sm:w-28"
                 >
                   {profile.profilePhotoUrl ? (
                     <img
@@ -231,13 +231,13 @@ export function PublicPtProfileView({
                     <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
                       {title}
                     </h1>
-                    <p className="max-w-3xl text-lg text-primary sm:text-xl">
+                    <p className="max-w-3xl text-lg font-medium text-muted-foreground sm:text-xl">
                       {profile.headline}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                     {profile.locationLabel ? (
-                      <span className="inline-flex items-center gap-2 rounded-full bg-background/40 px-3 py-1.5">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.52)]">
                         <MapPin className="h-4 w-4" />
                         {profile.locationLabel}
                       </span>
@@ -245,7 +245,7 @@ export function PublicPtProfileView({
                     {profile.availabilityModes.map((mode) => (
                       <span
                         key={mode}
-                        className="inline-flex items-center gap-2 rounded-full bg-background/40 px-3 py-1.5"
+                        className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.52)]"
                       >
                         <Monitor className="h-4 w-4" />
                         {availabilityLabels[mode] ?? mode}
@@ -254,7 +254,7 @@ export function PublicPtProfileView({
                     {profile.coachingModes.map((mode) => (
                       <span
                         key={mode}
-                        className="inline-flex items-center gap-2 rounded-full bg-background/40 px-3 py-1.5"
+                        className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.52)]"
                       >
                         <Users className="h-4 w-4" />
                         {coachingModeLabels[mode] ?? mode}
@@ -270,7 +270,7 @@ export function PublicPtProfileView({
             <div className="space-y-8">
               <section ref={registerSection(0)} className="space-y-4 opacity-0">
                 <SectionHeader title="Overview" />
-                <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
+                <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
                     <div className="space-y-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -295,7 +295,7 @@ export function PublicPtProfileView({
 
               <section ref={registerSection(1)} className="space-y-4 opacity-0">
                 <SectionHeader title="Positioning" />
-                <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
+                <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -348,7 +348,7 @@ export function PublicPtProfileView({
 
               <section ref={registerSection(3)} className="space-y-4 opacity-0">
                 <SectionHeader title="Proof" />
-                <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
+                <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
                   <div className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-4">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -359,7 +359,7 @@ export function PublicPtProfileView({
                           {profile.testimonials.map((testimonial) => (
                             <div
                               key={`${testimonial.author}-${testimonial.quote}`}
-                              className="rounded-[22px] bg-background/45 p-4"
+                              className="rounded-[22px] border border-border/55 bg-background/52 p-4"
                             >
                               <p className="text-sm text-foreground">
                                 "{testimonial.quote}"
@@ -387,7 +387,7 @@ export function PublicPtProfileView({
                           {profile.transformations.map((item) => (
                             <div
                               key={item.id}
-                              className="rounded-[22px] bg-background/45 p-4"
+                              className="rounded-[22px] border border-border/55 bg-background/52 p-4"
                             >
                               {item.beforeImageUrl || item.afterImageUrl ? (
                                 <div className="grid gap-3 sm:grid-cols-2">
@@ -445,7 +445,7 @@ export function PublicPtProfileView({
                   registerSection(5)(node);
                   applyFormRef.current = node;
                 }}
-                className="rounded-[28px] border border-primary/20 bg-primary/8 p-6 opacity-0"
+                className="rounded-[28px] border border-primary/25 bg-card/76 p-6 opacity-0 shadow-[0_24px_80px_-58px_oklch(var(--primary)/0.44)] backdrop-blur-xl"
                 id="public-pt-apply-form"
               >
                 <p className="text-sm font-medium text-primary">
@@ -463,7 +463,7 @@ export function PublicPtProfileView({
                     Pricing inquiry
                     <ArrowRight className="h-4 w-4" />
                   </Button>
-                  <div className="rounded-[24px] bg-background/65 p-4">
+                  <div className="rounded-[24px] border border-border/55 bg-background/60 p-4">
                     <p className="text-sm font-medium text-foreground">
                       Apply to work with {title}
                     </p>
@@ -489,7 +489,7 @@ export function PublicPtProfileView({
 
               <div
                 ref={registerSection(6)}
-                className="rounded-[28px] bg-background/28 p-6 opacity-0"
+                className="rounded-[28px] border border-border/60 bg-card/68 p-6 opacity-0 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl"
               >
                 <SectionHeader title="Social links" />
                 <div className="mt-4 space-y-2">
@@ -507,10 +507,10 @@ export function PublicPtProfileView({
                             href={getExternalHref(link.url)}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center justify-between rounded-[20px] bg-background/45 px-4 py-3 transition hover:bg-background/65"
+                            className="flex items-center justify-between rounded-[20px] border border-border/55 bg-background/52 px-4 py-3 transition hover:border-primary/35 hover:bg-background/72"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background/72 text-primary">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card/72 text-primary">
                                 <PlatformIcon className="h-4 w-4" />
                               </div>
                               <p className="text-sm font-medium text-foreground">
@@ -547,7 +547,7 @@ function PublicPackageSection({
   return (
     <>
       <SectionHeader title="Packages" />
-      <div className="rounded-[28px] bg-background/28 p-5 sm:p-6">
+      <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
         <div className="grid gap-4 md:grid-cols-2">
           {packageOptions.map((packageOption) => {
             const featureBullets =
@@ -563,11 +563,11 @@ function PublicPackageSection({
                         y: -6,
                         scale: 1.01,
                         boxShadow:
-                          "0 32px 72px -44px rgba(56,189,248,0.48), 0 26px 56px -36px rgba(0,0,0,0.86)",
+                          "0 30px 74px -52px oklch(var(--primary) / 0.52)",
                       }
                 }
                 transition={{ duration: 0.24, ease: "easeOut" }}
-                className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,14,22,0.94),rgba(7,11,18,0.96))] p-4 shadow-[0_24px_54px_-38px_rgba(0,0,0,0.85)] transition-[border-color,background-color] duration-300 hover:border-primary/45"
+                className="rounded-[24px] border border-border/65 bg-background/58 p-4 shadow-[0_20px_54px_-44px_oklch(var(--primary)/0.34)] transition-[border-color,background-color] duration-300 hover:border-primary/45 hover:bg-background/72"
               >
                 <div className="space-y-2">
                   <h3 className="text-base font-semibold text-foreground">
@@ -582,7 +582,7 @@ function PublicPackageSection({
                   packageOption.billingCadenceLabel ? (
                     <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
                       {packageOption.priceLabel ? (
-                        <span className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1">
+                        <span className="rounded-full border border-border/70 bg-card/72 px-2.5 py-1">
                           {packageOption.currencyCode &&
                           !packageOption.priceLabel
                             .toUpperCase()
@@ -592,7 +592,7 @@ function PublicPackageSection({
                         </span>
                       ) : null}
                       {packageOption.billingCadenceLabel ? (
-                        <span className="rounded-full border border-border/70 bg-background/50 px-2.5 py-1">
+                        <span className="rounded-full border border-border/70 bg-card/72 px-2.5 py-1">
                           {packageOption.billingCadenceLabel}
                         </span>
                       ) : null}
@@ -664,7 +664,7 @@ function TransformationImage({
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
-      <div className="overflow-hidden rounded-[18px] border border-border/60 bg-background/65">
+      <div className="overflow-hidden rounded-[18px] border border-border/60 bg-background/60">
         {src ? (
           <img
             src={src}

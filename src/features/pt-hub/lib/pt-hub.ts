@@ -12,6 +12,8 @@ import { runClientGuardedAction } from "../../../lib/request-guard";
 import { routes } from "../../../lib/routes";
 import { supabase } from "../../../lib/supabase";
 import { useWorkspace } from "../../../lib/use-workspace";
+import { syncPtAccountIdentity } from "../../../lib/account-profiles";
+import { getWorkspaceRouteSlug } from "../../../lib/workspace-route-resolution";
 import {
   buildPublicPtApplicationRpcInput,
   normalizePtLeadStatus,
@@ -139,6 +141,7 @@ type PtHubProfileRow = {
 
 type LegacyPtProfileRow = {
   display_name: string | null;
+  full_name: string | null;
   updated_at: string | null;
   created_at: string | null;
 };
@@ -704,9 +707,7 @@ export function usePtHubWorkspaces() {
         const relation = isOwned ? "owned" : "shared";
         return {
           id: workspace.id,
-          slug:
-            workspace.slug?.trim() ||
-            workspace.id.split("-").join("").slice(0, 12).toLowerCase(),
+          slug: getWorkspaceRouteSlug(workspace),
           name: workspace.name?.trim() || "Untitled workspace",
           status: getWorkspaceStatus(
             workspace.id,
@@ -824,7 +825,7 @@ export function usePtHubProfile() {
           .maybeSingle<PtHubProfileRow>(),
         supabase
           .from("pt_profiles")
-          .select("display_name, updated_at, created_at")
+          .select("display_name, full_name, updated_at, created_at")
           .eq("user_id", userId)
           .order("updated_at", { ascending: false })
           .limit(1)
@@ -838,12 +839,14 @@ export function usePtHubProfile() {
       const fullName =
         hubProfile?.full_name?.trim() ||
         user.user_metadata?.full_name?.trim() ||
+        legacyProfile?.full_name?.trim() ||
         hubProfile?.display_name?.trim() ||
         legacyProfile?.display_name?.trim() ||
         "";
       const displayName =
         hubProfile?.display_name?.trim() ||
         legacyProfile?.display_name?.trim() ||
+        legacyProfile?.full_name?.trim() ||
         user.user_metadata?.full_name?.trim() ||
         "";
 
@@ -913,23 +916,55 @@ export function usePtHubSettings() {
       const userId = user?.id;
       if (!userId) return null;
 
-      const { data, error } = await supabase
-        .from("pt_hub_settings")
-        .select(
-          "id, user_id, full_name, contact_email, support_email, phone, country, timezone, city, client_alerts, weekly_digest, product_updates, profile_visibility, subscription_plan, subscription_status, updated_at, created_at",
-        )
-        .eq("user_id", userId)
-        .maybeSingle<PtHubSettingsRow>();
+      const [
+        { data, error },
+        { data: hubProfile, error: hubProfileError },
+        { data: legacyRows, error: legacyError },
+      ] = await Promise.all([
+        supabase
+          .from("pt_hub_settings")
+          .select(
+            "id, user_id, full_name, contact_email, support_email, phone, country, timezone, city, client_alerts, weekly_digest, product_updates, profile_visibility, subscription_plan, subscription_status, updated_at, created_at",
+          )
+          .eq("user_id", userId)
+          .maybeSingle<PtHubSettingsRow>(),
+        supabase
+          .from("pt_hub_profiles")
+          .select("full_name, display_name")
+          .eq("user_id", userId)
+          .maybeSingle<{
+            full_name: string | null;
+            display_name: string | null;
+          }>(),
+        supabase
+          .from("pt_profiles")
+          .select("full_name, display_name, updated_at, created_at")
+          .eq("user_id", userId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .returns<LegacyPtProfileRow[]>(),
+      ]);
 
       if (error) throw error;
+      if (hubProfileError) throw hubProfileError;
+      if (legacyError) throw legacyError;
+
+      const legacyProfile = legacyRows?.[0] ?? null;
+      const authFullName =
+        typeof user?.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : "";
 
       return {
         ...DEFAULT_SETTINGS,
         fullName:
-          data?.full_name ??
-          (typeof user?.user_metadata?.full_name === "string"
-            ? user.user_metadata.full_name
-            : ""),
+          data?.full_name?.trim() ||
+          hubProfile?.full_name?.trim() ||
+          legacyProfile?.full_name?.trim() ||
+          hubProfile?.display_name?.trim() ||
+          legacyProfile?.display_name?.trim() ||
+          authFullName.trim() ||
+          "",
         contactEmail: data?.contact_email ?? user?.email ?? "",
         supportEmail: data?.support_email ?? user?.email ?? "",
         phone: data?.phone ?? "",
@@ -1825,6 +1860,12 @@ export async function savePtHubProfile(params: {
   );
 
   if (error) throw error;
+
+  await syncPtAccountIdentity({
+    userId: params.userId,
+    fullName: params.profile.fullName,
+    updateAuthMetadata: true,
+  });
 }
 
 export async function savePtHubSettings(params: {
@@ -1852,6 +1893,17 @@ export async function savePtHubSettings(params: {
   );
 
   if (error) throw error;
+
+  await syncPtAccountIdentity({
+    userId: params.userId,
+    fullName: params.settings.fullName,
+    contactEmail: params.settings.contactEmail,
+    supportEmail: params.settings.supportEmail,
+    phone: params.settings.phone,
+    country: params.settings.country,
+    city: params.settings.city,
+    updateAuthMetadata: true,
+  });
 }
 
 export function usePublicPtProfile(slug: string | undefined) {

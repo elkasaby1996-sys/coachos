@@ -33,7 +33,9 @@ describe("slug based routing contract", () => {
 
   it("resolves workspace settings by slug but exposes internal workspace IDs to settings tabs", () => {
     expect(workspaceSettingsLayout).toContain("workspaceSlug");
-    expect(workspaceSettingsLayout).toContain(".eq(\"slug\", routeWorkspaceSlug");
+    expect(workspaceSettingsLayout).toContain(
+      "resolveWorkspaceRouteParam(routeWorkspaceSlug)",
+    );
     expect(workspaceSettingsLayout).toContain("workspaceId: resolvedWorkspaceId");
   });
 

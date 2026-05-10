@@ -31,14 +31,14 @@ export function LoginPage() {
   return (
     <AuthComponent
       mode="signin"
-      brandName="Repsync"
+      brandName="RepSync"
       logo={
         <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
           <Dumbbell className="h-4 w-4" />
         </div>
       }
       title="Welcome back"
-      subtitle="Sign in to manage athletes or access your client app."
+      subtitle=""
       primaryLabel="Sign in"
       secondaryLinkHref={signupLink}
       secondaryLinkLabel="Need an account? Sign up"

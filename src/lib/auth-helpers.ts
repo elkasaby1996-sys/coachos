@@ -91,6 +91,7 @@ export async function signUpWithEmailPassword(
   email: string,
   password: string,
   redirectTo?: string,
+  metadata?: Record<string, unknown>,
 ) {
   const normalizedEmail = email.trim().toLowerCase();
   return runClientGuardedAction({
@@ -102,7 +103,10 @@ export async function signUpWithEmailPassword(
       supabase.auth.signUp({
         email: normalizedEmail,
         password,
-        options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
+        options: {
+          ...(redirectTo ? { emailRedirectTo: redirectTo } : {}),
+          ...(metadata ? { data: metadata } : {}),
+        },
       }),
   });
 }

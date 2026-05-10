@@ -11,6 +11,7 @@ import { safeSelect } from "../../lib/supabase-safe";
 import { supabase } from "../../lib/supabase";
 import {
   applyTheme,
+  DEFAULT_THEME_PREFERENCE,
   getStoredThemePreference,
   normalizeThemePreference,
   nextThemePreference,
@@ -55,8 +56,10 @@ const toThemePreference = (value: unknown): ThemePreference | null => {
 };
 
 function getStoredPreference(): ThemePreference {
-  const stored = getStoredThemePreference("dark");
-  return normalizeThemePreference(toThemePreference(stored) ?? "dark");
+  const stored = getStoredThemePreference(DEFAULT_THEME_PREFERENCE);
+  return normalizeThemePreference(
+    toThemePreference(stored) ?? DEFAULT_THEME_PREFERENCE,
+  );
 }
 
 function getStoredCompactDensity(): boolean {
@@ -140,7 +143,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!row) return;
 
     const dbThemePreference = normalizeThemePreference(
-      toThemePreference(row.theme_preference) ?? "dark",
+      toThemePreference(row.theme_preference) ?? DEFAULT_THEME_PREFERENCE,
     );
     setThemePreferenceState(dbThemePreference);
     if (typeof row.compact_density === "boolean") {

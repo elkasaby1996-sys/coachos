@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Globe2 } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   LANGUAGE_OPTIONS,
@@ -23,6 +23,7 @@ type AppFooterProps = {
   contentClassName?: string;
   enableRegionLanguageSwitcher?: boolean;
   size?: "default" | "portal";
+  surface?: "default" | "transparent";
 };
 
 export function AppFooter({
@@ -30,13 +31,17 @@ export function AppFooter({
   contentClassName,
   enableRegionLanguageSwitcher = true,
   size = "default",
+  surface = "default",
 }: AppFooterProps) {
   const { t } = useI18n();
 
   return (
     <footer
       className={cn(
-        "relative z-20 border-t border-border/60 bg-[oklch(var(--bg-surface)/0.55)] py-3 backdrop-blur-xl sm:py-4",
+        "relative z-20 py-3 sm:py-4",
+        surface === "default"
+          ? "border-t border-border/60 bg-[oklch(var(--bg-surface)/0.55)] backdrop-blur-xl"
+          : "border-t-0 bg-transparent backdrop-blur-0",
         className,
       )}
     >
@@ -48,7 +53,7 @@ export function AppFooter({
         )}
       >
         <span className="justify-self-center sm:justify-self-start">
-          c 2026 RepSync
+          © 2026 RepSync
         </span>
         <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-self-center">
           <Link
@@ -95,14 +100,17 @@ function RegionLanguageSwitcher() {
             "Change region and language",
           )}
         >
-          <Globe2 className="h-3.5 w-3.5 text-primary" />
           <span className="max-w-[12rem] truncate">
             {languageLabel} / {regionLabel}
           </span>
           <ChevronDown className="h-3.5 w-3.5 opacity-70" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={10} className="w-64">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className="max-h-[min(18rem,calc(100vh-6rem))] w-52 overflow-y-auto p-1"
+      >
         <DropdownMenuLabel>{t("i18n.language", "Language")}</DropdownMenuLabel>
         {LANGUAGE_OPTIONS.map((option) => (
           <PreferenceOption

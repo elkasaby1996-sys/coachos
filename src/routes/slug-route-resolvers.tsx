@@ -1,18 +1,22 @@
 import { lazy, Suspense, useEffect } from "react";
+import { ArrowLeft, Home } from "lucide-react";
 import {
   Navigate,
   Outlet,
   useLocation,
+  useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
+import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/ui/coachos/empty-state";
 import { appendSearchParams, routes } from "../lib/routes";
 import type { WorkspaceSettingsTab } from "../lib/routes";
 import { supabase } from "../lib/supabase";
 import { useWorkspace } from "../lib/use-workspace";
+import { resolveWorkspaceRouteParam } from "../lib/workspace-route-resolution";
 
 const LazyPtClientDetailPage = lazy(() =>
   import("../pages/pt/client-detail").then((module) => ({
@@ -25,20 +29,42 @@ function RouteLoading() {
 }
 
 function RouteNotFound({ title }: { title: string }) {
+  const navigate = useNavigate();
+
   return (
-    <div className="px-4 py-10">
-      <EmptyState
-        title={title}
-        description="The link may be outdated or the resource may no longer exist."
-      />
+    <div className="min-h-[calc(100dvh-8rem)] bg-[radial-gradient(circle_at_top_left,oklch(var(--primary)/0.10),transparent_34%),linear-gradient(135deg,oklch(var(--background)),oklch(var(--secondary)/0.34))] px-4 py-10">
+      <div className="mx-auto flex min-h-[28rem] max-w-3xl items-center justify-center">
+        <EmptyState
+          title={title}
+          centered
+          className="w-full rounded-[32px] border border-border/70 bg-card/82 px-8 py-9 shadow-[0_30px_90px_-64px_oklch(var(--primary)/0.45)] backdrop-blur-2xl"
+          description="The link may be outdated, or you may not have access to this workspace yet."
+          action={
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => navigate(-1)}
+                className="h-10 gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Go back
+              </Button>
+              <Button
+                type="button"
+                onClick={() => navigate(routes.ptHub())}
+                className="h-10 gap-2"
+              >
+                <Home className="h-4 w-4" />
+                PT Hub
+              </Button>
+            </>
+          }
+        />
+      </div>
     </div>
   );
 }
-
-type WorkspaceRouteRow = {
-  id: string;
-  slug: string | null;
-};
 
 export function WorkspaceSlugBoundary() {
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
@@ -47,13 +73,7 @@ export function WorkspaceSlugBoundary() {
     queryKey: ["route-workspace-slug", workspaceSlug],
     enabled: Boolean(workspaceSlug),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workspaces")
-        .select("id, slug")
-        .eq("slug", workspaceSlug ?? "")
-        .maybeSingle<WorkspaceRouteRow>();
-      if (error) throw error;
-      return data;
+      return await resolveWorkspaceRouteParam(workspaceSlug);
     },
   });
 
@@ -87,12 +107,7 @@ export function WorkspaceClientDetailRoute() {
     queryKey: ["route-client-url-key", workspaceSlug, clientUrlKey],
     enabled: Boolean(workspaceSlug && clientUrlKey),
     queryFn: async () => {
-      const { data: workspace, error: workspaceError } = await supabase
-        .from("workspaces")
-        .select("id")
-        .eq("slug", workspaceSlug ?? "")
-        .maybeSingle<{ id: string }>();
-      if (workspaceError) throw workspaceError;
+      const workspace = await resolveWorkspaceRouteParam(workspaceSlug);
       if (!workspace?.id) return null;
 
       const { data, error } = await supabase
