@@ -29,7 +29,11 @@ export function WorkspaceSettingsLayoutPage() {
       return await resolveWorkspaceRouteParam(routeWorkspaceSlug);
     },
   });
-  const resolvedRouteWorkspaceId = routeWorkspaceId ?? slugWorkspaceQuery.data?.id;
+  const isResolvingRouteWorkspace = Boolean(
+    routeWorkspaceSlug && !routeWorkspaceId && slugWorkspaceQuery.isLoading,
+  );
+  const resolvedRouteWorkspaceId =
+    routeWorkspaceId ?? slugWorkspaceQuery.data?.id;
   const access = useWorkspaceSettingsAccess(resolvedRouteWorkspaceId);
 
   const workspaceQuery = useQuery({
@@ -49,9 +53,25 @@ export function WorkspaceSettingsLayoutPage() {
     },
   });
 
-  const resolvedWorkspaceId = resolvedRouteWorkspaceId ?? access.fallbackWorkspaceId;
+  const resolvedWorkspaceId =
+    resolvedRouteWorkspaceId ?? access.fallbackWorkspaceId;
   const resolvedWorkspaceSlug =
     workspaceQuery.data?.slug ?? slugWorkspaceQuery.data?.slug ?? null;
+
+  if (isResolvingRouteWorkspace || access.loading) {
+    return (
+      <SettingsPageShell tabs={<SettingsTabs tabs={[]} />}>
+        <SettingsSectionCard
+          title="Loading"
+          description="Checking workspace membership and permissions."
+        >
+          <p className="text-sm text-muted-foreground">
+            Please wait while we load your workspace settings.
+          </p>
+        </SettingsSectionCard>
+      </SettingsPageShell>
+    );
+  }
 
   if (!resolvedWorkspaceId) {
     return <Navigate to="/no-workspace" replace />;
@@ -80,21 +100,6 @@ export function WorkspaceSettingsLayoutPage() {
         )
       : `/workspace/${resolvedWorkspaceId}/settings/${tab.path}`,
   }));
-
-  if (access.loading) {
-    return (
-      <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
-        <SettingsSectionCard
-          title="Loading"
-          description="Checking workspace membership and permissions."
-        >
-          <p className="text-sm text-muted-foreground">
-            Please wait while we load your workspace settings.
-          </p>
-        </SettingsSectionCard>
-      </SettingsPageShell>
-    );
-  }
 
   return (
     <SettingsPageShell

@@ -36,7 +36,13 @@ describe("slug based routing contract", () => {
     expect(workspaceSettingsLayout).toContain(
       "resolveWorkspaceRouteParam(routeWorkspaceSlug)",
     );
-    expect(workspaceSettingsLayout).toContain("workspaceId: resolvedWorkspaceId");
+    expect(workspaceSettingsLayout).toContain("isResolvingRouteWorkspace");
+    expect(workspaceSettingsLayout).toContain(
+      "if (isResolvingRouteWorkspace || access.loading)",
+    );
+    expect(workspaceSettingsLayout).toContain(
+      "workspaceId: resolvedWorkspaceId",
+    );
   });
 
   it("adds route lookup columns and privacy-preserving client url keys", () => {
