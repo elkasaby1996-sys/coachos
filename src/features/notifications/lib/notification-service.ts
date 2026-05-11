@@ -60,6 +60,7 @@ const notificationPreferenceMap: Record<NotificationType, PreferenceKey> = {
   join_request_declined: "join_requests",
   workout_due_today: "reminders_enabled",
   checkin_due_tomorrow: "reminders_enabled",
+  calendar_mention: "appointment_reminders",
   client_inactive: "inactivity_alerts",
   security: "system_events",
   system: "system_events",
