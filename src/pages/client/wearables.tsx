@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Activity,
   BatteryMedium,
+  ChevronDown,
   HeartPulse,
   Link as LinkIcon,
   Moon,
@@ -50,6 +51,7 @@ import type {
   ClientWearableSleepSession,
   WorkspaceWearableSettings,
 } from "../../features/wearables/types";
+import { cn } from "../../lib/utils";
 
 type ClientProfile = {
   id: string;
@@ -81,7 +83,9 @@ const defaultSettings: Omit<
 };
 
 const formatNumber = (value: number | null | undefined, suffix = "") =>
-  typeof value === "number" ? `${Math.round(value).toLocaleString()}${suffix}` : "--";
+  typeof value === "number"
+    ? `${Math.round(value).toLocaleString()}${suffix}`
+    : "--";
 
 const formatDecimal = (value: number | null | undefined, suffix = "") =>
   typeof value === "number" ? `${value.toFixed(1)}${suffix}` : "--";
@@ -97,7 +101,11 @@ const formatDateTime = (value: string | null | undefined) =>
     : "Not synced";
 
 function ProviderBadge({ provider }: { provider: string | null | undefined }) {
-  return <Badge variant="neutral">{provider ? provider.toUpperCase() : "No source"}</Badge>;
+  return (
+    <Badge variant="neutral">
+      {provider ? provider.toUpperCase() : "No source"}
+    </Badge>
+  );
 }
 
 function StateChip({
@@ -122,23 +130,70 @@ function MetricTile({
   value,
   provider,
   state,
+  compact = false,
 }: {
   label: string;
   value: string;
   provider?: string | null;
   state: "unsupported" | "no_data" | "stale" | "sync_failed" | "connected";
+  compact?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border/70 bg-card/45 p-3">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+    <div
+      className={cn(
+        "rounded-2xl border border-border/70 bg-card/45 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]",
+        compact ? "p-3" : "p-4",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-xs font-medium leading-5 text-muted-foreground">
+          {label}
+        </p>
         <StateChip state={state} />
       </div>
-      <p className="mt-2 text-xl font-semibold text-foreground">{value}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <p
+        className={cn(
+          "mt-2 font-semibold tracking-tight text-foreground",
+          compact ? "text-lg" : "text-2xl",
+        )}
+      >
+        {value}
+      </p>
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2",
+          compact ? "mt-2" : "mt-4",
+        )}
+      >
         <ProviderBadge provider={provider} />
       </div>
     </div>
+  );
+}
+
+function WearablePanelHeader({
+  icon,
+  title,
+  description,
+}: {
+  icon: ReactNode;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <SurfaceCardHeader className="border-b border-border/55 pb-4">
+      <SurfaceCardTitle className="flex items-center gap-2 text-base">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+          {icon}
+        </span>
+        {title}
+      </SurfaceCardTitle>
+      {description ? (
+        <SurfaceCardDescription className="text-sm leading-6">
+          {description}
+        </SurfaceCardDescription>
+      ) : null}
+    </SurfaceCardHeader>
   );
 }
 
@@ -147,6 +202,7 @@ export function ClientWearablesPage() {
   const { activeClientId } = useBootstrapAuth();
   const [selectedProvider, setSelectedProvider] = useState("garmin");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [activitiesOpen, setActivitiesOpen] = useState(false);
 
   const clientQuery = useQuery({
     queryKey: ["client-wearables-profile", session?.user?.id],
@@ -188,7 +244,11 @@ export function ClientWearablesPage() {
   const settings = settingsQuery.data ?? null;
   const resolvedSettings = settings
     ? settings
-    : ({ ...defaultSettings, workspace_id: workspaceId ?? "", id: "" } as WorkspaceWearableSettings);
+    : ({
+        ...defaultSettings,
+        workspace_id: workspaceId ?? "",
+        id: "",
+      } as WorkspaceWearableSettings);
 
   const connectionQuery = useQuery({
     queryKey: ["client-wearable-connections", clientId],
@@ -270,14 +330,17 @@ export function ClientWearablesPage() {
   const connectMutation = useMutation({
     mutationFn: async (provider: string) => {
       setActionError(null);
-      const { data, error } = await supabase.functions.invoke("open-wearables", {
-        body: {
-          action: "authorize",
-          provider,
-          clientId,
-          redirectUri: `${window.location.origin}/app/wearables`,
+      const { data, error } = await supabase.functions.invoke(
+        "open-wearables",
+        {
+          body: {
+            action: "authorize",
+            provider,
+            clientId,
+            redirectUri: `${window.location.origin}/app/wearables`,
+          },
         },
-      });
+      );
       if (error) throw error;
       const authorizationUrl = data?.authorizationUrl;
       if (typeof authorizationUrl !== "string") {
@@ -286,7 +349,9 @@ export function ClientWearablesPage() {
       window.location.href = authorizationUrl;
     },
     onError: (error) => {
-      setActionError(error instanceof Error ? error.message : "Connection failed.");
+      setActionError(
+        error instanceof Error ? error.message : "Connection failed.",
+      );
     },
   });
 
@@ -302,7 +367,9 @@ export function ClientWearablesPage() {
       await connectionQuery.refetch();
     },
     onError: (error) => {
-      setActionError(error instanceof Error ? error.message : "Disconnect failed.");
+      setActionError(
+        error instanceof Error ? error.message : "Disconnect failed.",
+      );
     },
   });
 
@@ -341,7 +408,9 @@ export function ClientWearablesPage() {
         connection.status === "revoked" || connection.status === "disconnected",
     ) ?? null;
   const latestDaily =
-    [...(metricsQuery.data ?? [])].reverse().find((row) => row.provider === primaryConnection?.provider) ??
+    [...(metricsQuery.data ?? [])]
+      .reverse()
+      .find((row) => row.provider === primaryConnection?.provider) ??
     [...(metricsQuery.data ?? [])].reverse()[0] ??
     null;
   const latestSleep = sleepQuery.data?.[0] ?? null;
@@ -361,8 +430,10 @@ export function ClientWearablesPage() {
   const stepsState = getWearableMetricState({
     ...baseStateParams,
     supported:
-      getProviderCapability(primaryConnection?.provider ?? selectedProvider, "steps") !==
-      "unsupported",
+      getProviderCapability(
+        primaryConnection?.provider ?? selectedProvider,
+        "steps",
+      ) !== "unsupported",
     value: latestDaily?.steps,
   });
 
@@ -378,6 +449,7 @@ export function ClientWearablesPage() {
     steps: metric.steps,
     active: metric.active_minutes,
   }));
+  const activityCount = activitiesQuery.data?.length ?? 0;
 
   const isLoading =
     clientQuery.isLoading ||
@@ -395,6 +467,162 @@ export function ClientWearablesPage() {
     sleepQuery.error ??
     scoresQuery.error ??
     activitiesQuery.error;
+
+  const activitiesSection = (
+    <SurfaceCard>
+      <SurfaceCardHeader className="border-b border-border/55 p-0">
+        <button
+          type="button"
+          aria-expanded={activitiesOpen}
+          aria-controls="wearables-activities-panel"
+          onClick={() => setActivitiesOpen((current) => !current)}
+          className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-card/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-6"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+              <Activity className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-base font-semibold tracking-tight text-foreground">
+                Activities / workouts
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {activityCount === 0
+                  ? "No imported workouts"
+                  : `${activityCount} imported ${activityCount === 1 ? "workout" : "workouts"}`}
+              </span>
+            </span>
+          </span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              activitiesOpen && "rotate-180",
+            )}
+          />
+        </button>
+      </SurfaceCardHeader>
+      {activitiesOpen ? (
+        <SurfaceCardContent
+          id="wearables-activities-panel"
+          className="space-y-3 pt-4"
+        >
+          {(activitiesQuery.data ?? []).length === 0 ? (
+            <StatusBanner
+              variant="info"
+              title="No workouts yet"
+              description="Workouts imported from Open Wearables will appear here."
+            />
+          ) : (
+            (activitiesQuery.data ?? []).map((activity) => (
+              <SectionCard
+                key={activity.id}
+                className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+              >
+                <div>
+                  <p className="text-sm font-semibold capitalize">
+                    {activity.activity_type.replace(/_/g, " ")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateTime(activity.start_at)}
+                    {" - "}
+                    {formatNumber(
+                      activity.duration_seconds
+                        ? activity.duration_seconds / 60
+                        : null,
+                      " min",
+                    )}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <ProviderBadge provider={activity.provider} />
+                  <Badge variant="muted">
+                    {formatNumber(
+                      activity.distance_meters
+                        ? activity.distance_meters / 1000
+                        : null,
+                      " km",
+                    )}
+                  </Badge>
+                </div>
+              </SectionCard>
+            ))
+          )}
+        </SurfaceCardContent>
+      ) : null}
+    </SurfaceCard>
+  );
+
+  const trendsSection = (
+    <div className="grid gap-4 xl:grid-cols-2">
+      {[
+        { title: "7-day trends", data: chartData7 },
+        { title: "30-day trends", data: chartData30 },
+      ].map((chart) => (
+        <SurfaceCard key={chart.title}>
+          <SurfaceCardHeader className="border-b border-border/55 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <SurfaceCardTitle className="text-base">
+                {chart.title}
+              </SurfaceCardTitle>
+              <div className="flex items-center gap-3 text-[11px] font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[var(--state-success-text)]" />
+                  Steps
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[var(--state-info-text)]" />
+                  Active
+                </span>
+              </div>
+            </div>
+          </SurfaceCardHeader>
+          <SurfaceCardContent className="pt-4">
+            {chart.data.length === 0 ? (
+              <StatusBanner
+                variant="info"
+                title="No trend data yet"
+                description="Trend data will appear after the next Open Wearables import."
+              />
+            ) : (
+              <div className="h-52 rounded-2xl border border-border/60 bg-card/35 p-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chart.data}>
+                    <XAxis
+                      dataKey="date"
+                      stroke="currentColor"
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="currentColor"
+                      tickLine={false}
+                      axisLine={false}
+                      width={38}
+                    />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="steps"
+                      stroke="var(--state-success-text)"
+                      dot={false}
+                      connectNulls={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="active"
+                      stroke="var(--state-info-text)"
+                      dot={false}
+                      connectNulls={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </SurfaceCardContent>
+        </SurfaceCard>
+      ))}
+    </div>
+  );
 
   if (!resolvedSettings.enabled && settings) {
     return (
@@ -417,13 +645,6 @@ export function ClientWearablesPage() {
       <PortalPageHeader
         title="Wearables"
         subtitle="Connect a wearable and share normalized health metrics with your coach."
-        actions={
-          primaryConnection ? (
-            <Badge variant={primaryConnection.status === "connected" ? "success" : "warning"}>
-              {primaryConnection.status.replace(/_/g, " ")}
-            </Badge>
-          ) : null
-        }
       />
 
       {loadError ? (
@@ -462,7 +683,8 @@ export function ClientWearablesPage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>No wearable connected</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Choose an allowed provider to start the Open Wearables connection flow.
+              Choose an allowed provider to start the Open Wearables connection
+              flow.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
@@ -495,44 +717,74 @@ export function ClientWearablesPage() {
         </SurfaceCard>
       ) : (
         <>
-          <SurfaceCard>
-            <SurfaceCardHeader className="flex-row flex-wrap items-start justify-between gap-4">
-              <div>
-                <SurfaceCardTitle>Connected device</SurfaceCardTitle>
-                <SurfaceCardDescription>
-                  Source attribution is preserved on every imported metric.
-                </SurfaceCardDescription>
+          <SurfaceCard className="overflow-visible">
+            <SurfaceCardContent className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+              <div className="flex min-w-0 items-start gap-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                  <Watch className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SurfaceCardTitle className="text-base">
+                      Connected device
+                    </SurfaceCardTitle>
+                    <Badge
+                      variant={
+                        primaryConnection.status === "connected"
+                          ? "success"
+                          : "warning"
+                      }
+                    >
+                      {primaryConnection.status.replace(/_/g, " ")}
+                    </Badge>
+                    <ProviderBadge provider={primaryConnection.provider} />
+                    <Badge
+                      variant={
+                        primaryConnection.status === "connected"
+                          ? "success"
+                          : "warning"
+                      }
+                    >
+                      Last sync {formatDateTime(primaryConnection.last_sync_at)}
+                    </Badge>
+                  </div>
+                  <SurfaceCardDescription className="max-w-2xl text-sm leading-6">
+                    Source labels stay attached to every imported metric, so
+                    your coach can tell what came from WHOOP versus manual data.
+                  </SurfaceCardDescription>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <ProviderBadge provider={primaryConnection.provider} />
-                <Badge variant={primaryConnection.status === "connected" ? "success" : "warning"}>
-                  Last sync {formatDateTime(primaryConnection.last_sync_at)}
-                </Badge>
-              </div>
-            </SurfaceCardHeader>
-            <SurfaceCardContent className="flex flex-wrap gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => syncMutation.mutate(primaryConnection.provider)}
-                disabled={syncMutation.isPending}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {syncMutation.isPending ? "Importing..." : "Import latest data"}
-              </Button>
-              {resolvedSettings.client_can_disconnect ? (
+
+              <div className="grid gap-2 sm:flex sm:flex-wrap xl:justify-end">
                 <Button
                   variant="secondary"
-                  onClick={() => disconnectMutation.mutate(primaryConnection.provider)}
-                  disabled={disconnectMutation.isPending}
+                  className="h-10"
+                  onClick={() =>
+                    syncMutation.mutate(primaryConnection.provider)
+                  }
+                  disabled={syncMutation.isPending}
                 >
-                  <Unlink className="mr-2 h-4 w-4" />
-                  Disconnect
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {syncMutation.isPending ? "Importing..." : "Import latest"}
                 </Button>
-              ) : null}
+                {resolvedSettings.client_can_disconnect ? (
+                  <Button
+                    variant="secondary"
+                    className="h-10"
+                    onClick={() =>
+                      disconnectMutation.mutate(primaryConnection.provider)
+                    }
+                    disabled={disconnectMutation.isPending}
+                  >
+                    <Unlink className="mr-2 h-4 w-4" />
+                    Disconnect
+                  </Button>
+                ) : null}
+              </div>
             </SurfaceCardContent>
           </SurfaceCard>
 
-          <div className="grid gap-4 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricTile
               label="Steps"
               value={formatNumber(latestDaily?.steps)}
@@ -541,7 +793,12 @@ export function ClientWearablesPage() {
             />
             <MetricTile
               label="Sleep"
-              value={formatNumber(latestSleep?.duration_minutes ? latestSleep.duration_minutes / 60 : null, " hrs")}
+              value={formatNumber(
+                latestSleep?.duration_minutes
+                  ? latestSleep.duration_minutes / 60
+                  : null,
+                " hrs",
+              )}
               provider={latestSleep?.provider ?? primaryConnection.provider}
               state={getWearableMetricState({
                 ...baseStateParams,
@@ -550,7 +807,14 @@ export function ClientWearablesPage() {
               })}
             />
             <MetricTile
-              label={latestRecovery ? getProviderScoreLabel(latestRecovery.provider, latestRecovery.score_type) : "Recovery"}
+              label={
+                latestRecovery
+                  ? getProviderScoreLabel(
+                      latestRecovery.provider,
+                      latestRecovery.score_type,
+                    )
+                  : "Recovery"
+              }
               value={formatDecimal(latestRecovery?.score_value)}
               provider={latestRecovery?.provider ?? primaryConnection.provider}
               state={getWearableMetricState({
@@ -560,7 +824,14 @@ export function ClientWearablesPage() {
               })}
             />
             <MetricTile
-              label={latestLoad ? getProviderScoreLabel(latestLoad.provider, latestLoad.score_type) : "Load / strain"}
+              label={
+                latestLoad
+                  ? getProviderScoreLabel(
+                      latestLoad.provider,
+                      latestLoad.score_type,
+                    )
+                  : "Load / strain"
+              }
               value={formatDecimal(latestLoad?.score_value)}
               provider={latestLoad?.provider ?? primaryConnection.provider}
               state={getWearableMetricState({
@@ -571,16 +842,15 @@ export function ClientWearablesPage() {
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.15fr)_minmax(0,0.9fr)]">
             <SurfaceCard>
-              <SurfaceCardHeader>
-                <SurfaceCardTitle className="flex items-center gap-2">
-                  <Moon className="h-4 w-4 text-primary" />
-                  Sleep
-                </SurfaceCardTitle>
-              </SurfaceCardHeader>
-              <SurfaceCardContent className="space-y-3">
+              <WearablePanelHeader
+                icon={<Moon className="h-4 w-4" />}
+                title="Sleep"
+              />
+              <SurfaceCardContent className="grid gap-3 pt-4 sm:grid-cols-2 xl:grid-cols-1">
                 <MetricTile
+                  compact
                   label="Score"
                   value={formatDecimal(latestSleep?.sleep_score)}
                   provider={latestSleep?.provider}
@@ -591,8 +861,12 @@ export function ClientWearablesPage() {
                   })}
                 />
                 <MetricTile
+                  compact
                   label="Efficiency"
-                  value={formatDecimal(latestSleep?.sleep_efficiency_percent, "%")}
+                  value={formatDecimal(
+                    latestSleep?.sleep_efficiency_percent,
+                    "%",
+                  )}
                   provider={latestSleep?.provider}
                   state={getWearableMetricState({
                     ...baseStateParams,
@@ -604,30 +878,34 @@ export function ClientWearablesPage() {
             </SurfaceCard>
 
             <SurfaceCard>
-              <SurfaceCardHeader>
-                <SurfaceCardTitle className="flex items-center gap-2">
-                  <BatteryMedium className="h-4 w-4 text-primary" />
-                  Recovery / load
-                </SurfaceCardTitle>
-              </SurfaceCardHeader>
-              <SurfaceCardContent className="space-y-3">
+              <WearablePanelHeader
+                icon={<BatteryMedium className="h-4 w-4" />}
+                title="Recovery / load"
+              />
+              <SurfaceCardContent className="space-y-3 pt-4">
                 {latestScores.length === 0 ? (
                   <StatusBanner
                     variant="info"
-                    title="Connected but no data"
+                    title="No health scores yet"
                     description="Open Wearables has not imported health scores for this window."
                   />
                 ) : (
                   latestScores.slice(0, 4).map((score) => (
-                    <SectionCard key={score.id} className="space-y-2">
+                    <SectionCard key={score.id} className="space-y-2 p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold">
-                          {getProviderScoreLabel(score.provider, score.score_type)}
+                        <p className="min-w-0 text-sm font-semibold">
+                          {getProviderScoreLabel(
+                            score.provider,
+                            score.score_type,
+                          )}
                         </p>
                         <ProviderBadge provider={score.provider} />
                       </div>
-                      <p className="text-xl font-semibold">
-                        {formatDecimal(score.score_value, score.score_unit ? ` ${score.score_unit}` : "")}
+                      <p className="text-xl font-semibold tracking-tight">
+                        {formatDecimal(
+                          score.score_value,
+                          score.score_unit ? ` ${score.score_unit}` : "",
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Recorded {formatDateTime(score.recorded_at)}
@@ -639,14 +917,13 @@ export function ClientWearablesPage() {
             </SurfaceCard>
 
             <SurfaceCard>
-              <SurfaceCardHeader>
-                <SurfaceCardTitle className="flex items-center gap-2">
-                  <HeartPulse className="h-4 w-4 text-primary" />
-                  Activity
-                </SurfaceCardTitle>
-              </SurfaceCardHeader>
-              <SurfaceCardContent className="space-y-3">
+              <WearablePanelHeader
+                icon={<HeartPulse className="h-4 w-4" />}
+                title="Activity"
+              />
+              <SurfaceCardContent className="grid gap-3 pt-4 sm:grid-cols-2 xl:grid-cols-1">
                 <MetricTile
+                  compact
                   label="Active minutes"
                   value={formatNumber(latestDaily?.active_minutes, " min")}
                   provider={latestDaily?.provider}
@@ -657,8 +934,12 @@ export function ClientWearablesPage() {
                   })}
                 />
                 <MetricTile
+                  compact
                   label="Resting HR"
-                  value={formatDecimal(latestDaily?.resting_heart_rate_bpm, " bpm")}
+                  value={formatDecimal(
+                    latestDaily?.resting_heart_rate_bpm,
+                    " bpm",
+                  )}
                   provider={latestDaily?.provider}
                   state={getWearableMetricState({
                     ...baseStateParams,
@@ -670,79 +951,8 @@ export function ClientWearablesPage() {
             </SurfaceCard>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            {[
-              { title: "7-day trends", data: chartData7 },
-              { title: "30-day trends", data: chartData30 },
-            ].map((chart) => (
-              <SurfaceCard key={chart.title}>
-                <SurfaceCardHeader>
-                  <SurfaceCardTitle>{chart.title}</SurfaceCardTitle>
-                </SurfaceCardHeader>
-                <SurfaceCardContent>
-                  {chart.data.length === 0 ? (
-                    <StatusBanner
-                      variant="info"
-                      title="Connected but no data"
-                      description="Trend data will appear after the next Open Wearables import."
-                    />
-                  ) : (
-                    <div className="h-56">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chart.data}>
-                          <XAxis dataKey="date" stroke="currentColor" tickLine={false} axisLine={false} />
-                          <YAxis stroke="currentColor" tickLine={false} axisLine={false} width={42} />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="steps" stroke="var(--state-success-text)" dot={false} connectNulls={false} />
-                          <Line type="monotone" dataKey="active" stroke="var(--state-info-text)" dot={false} connectNulls={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </SurfaceCardContent>
-              </SurfaceCard>
-            ))}
-          </div>
-
-          <SurfaceCard>
-            <SurfaceCardHeader>
-              <SurfaceCardTitle className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" />
-                Activities / workouts
-              </SurfaceCardTitle>
-            </SurfaceCardHeader>
-            <SurfaceCardContent className="space-y-3">
-              {(activitiesQuery.data ?? []).length === 0 ? (
-                <StatusBanner
-                  variant="info"
-                  title="Connected but no data"
-                  description="Workouts imported from Open Wearables will appear here."
-                />
-              ) : (
-                (activitiesQuery.data ?? []).map((activity) => (
-                  <SectionCard
-                    key={activity.id}
-                    className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold capitalize">
-                        {activity.activity_type.replace(/_/g, " ")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDateTime(activity.start_at)} · {formatNumber(activity.duration_seconds ? activity.duration_seconds / 60 : null, " min")}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      <ProviderBadge provider={activity.provider} />
-                      <Badge variant="muted">
-                        {formatNumber(activity.distance_meters ? activity.distance_meters / 1000 : null, " km")}
-                      </Badge>
-                    </div>
-                  </SectionCard>
-                ))
-              )}
-            </SurfaceCardContent>
-          </SurfaceCard>
+          {activitiesSection}
+          {trendsSection}
         </>
       )}
     </div>

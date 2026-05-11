@@ -11,7 +11,10 @@ export const wearableMetricGroups = [
 ] as const;
 export type WearableMetricGroup = (typeof wearableMetricGroups)[number];
 
-export type PtWearableVisibilityMode = "hidden" | "summary_only" | "full_metrics";
+export type PtWearableVisibilityMode =
+  | "hidden"
+  | "summary_only"
+  | "full_metrics";
 export type WearableConnectionStatus =
   | "disconnected"
   | "connected"

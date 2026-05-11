@@ -70,6 +70,7 @@ where proname in ('pt_dashboard_summary', 'pt_clients_summary', 'assign_workout_
 2. `Supabase Deploy Staging` runs automatically on `main` for Supabase-related changes.
 3. Confirm the staging database and app behavior.
 4. Trigger `Supabase Deploy Production` manually from GitHub Actions. Each deploy workflow reads `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_DB_PASSWORD` from its GitHub environment.
+   Deploy workflows also deploy the `open-wearables` Edge Function after migrations. Before running them, make sure the target Supabase project has the required function secrets set: `OPEN_WEARABLES_API_URL`, `OPEN_WEARABLES_API_KEY`, and `ALLOWED_WEARABLE_REDIRECT_ORIGINS`.
 5. Re-run post-deploy checks after production push.
 
 ## Post-Deploy

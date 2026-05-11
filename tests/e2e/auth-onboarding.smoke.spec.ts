@@ -20,10 +20,14 @@ test.describe("Smoke: auth and onboarding", () => {
     await page.goto("/login");
 
     await page
-      .getByPlaceholder("you@repsync.com")
+      .locator('input[aria-label="Email"]')
       .fill(`invalid-${Date.now()}@example.com`);
-    await page.getByPlaceholder("Enter password").fill("wrong-password");
-    await page.getByRole("button", { name: /^sign in$/i }).click();
+    await page.locator('input[aria-label="Password"]').fill("wrong-password");
+    await page
+      .locator("form")
+      .getByRole("button", { name: /^sign in$/i })
+      .last()
+      .click();
 
     await expect(page).toHaveURL(/\/login/);
     await expect(

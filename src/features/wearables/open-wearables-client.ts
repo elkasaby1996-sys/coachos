@@ -31,7 +31,8 @@ export function mapOpenWearablesConnectionStatus(
 ): WearableConnectionStatus {
   const normalized = status?.trim().toLowerCase();
   if (normalized === "active" || normalized === "connected") return "connected";
-  if (normalized === "revoked" || normalized === "disconnected") return "revoked";
+  if (normalized === "revoked" || normalized === "disconnected")
+    return "revoked";
   if (normalized === "error" || normalized === "failed") return "sync_failed";
   if (normalized === "pending") return "pending";
   return "disconnected";
@@ -92,7 +93,9 @@ export class OpenWearablesClient {
   }
 
   async getConnectionStatus(openWearablesUserId: string) {
-    return await this.get(`/users/${encodeURIComponent(openWearablesUserId)}/connections`);
+    return await this.get(
+      `/users/${encodeURIComponent(openWearablesUserId)}/connections`,
+    );
   }
 
   async triggerSync(

@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Activity, Save } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "../../../../components/ui/alert";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
@@ -79,7 +83,9 @@ export function WorkspaceSettingsIntegrationsTab() {
         .eq("workspace_id", workspaceId)
         .maybeSingle();
       if (error) throw error;
-      const nextForm = toForm((data ?? null) as WorkspaceWearableSettings | null);
+      const nextForm = toForm(
+        (data ?? null) as WorkspaceWearableSettings | null,
+      );
       setForm(nextForm);
       setSavedForm(nextForm);
       return (data ?? null) as WorkspaceWearableSettings | null;
@@ -98,7 +104,9 @@ export function WorkspaceSettingsIntegrationsTab() {
         client_can_disconnect: form.clientCanDisconnect,
         data_retention_mode: form.dataRetentionMode,
         freshness_threshold_hours:
-          Number.isFinite(threshold) && threshold > 0 ? Math.round(threshold) : 24,
+          Number.isFinite(threshold) && threshold > 0
+            ? Math.round(threshold)
+            : 24,
         client_consent_copy: form.clientConsentCopy.trim(),
         updated_at: new Date().toISOString(),
       };
@@ -134,14 +142,19 @@ export function WorkspaceSettingsIntegrationsTab() {
         : [...prev.enabledMetricGroups, group],
     }));
   };
-  const disabled = !canManage || settingsQuery.isLoading || saveMutation.isPending;
+  const disabled =
+    !canManage || settingsQuery.isLoading || saveMutation.isPending;
 
   return (
     <div className="space-y-4">
       <SettingsSectionCard
         title="Wearables"
         description="Open Wearables connection and metric visibility controls."
-        action={<Badge variant={form.enabled ? "success" : "muted"}>{form.enabled ? "Enabled" : "Disabled"}</Badge>}
+        action={
+          <Badge variant={form.enabled ? "success" : "muted"}>
+            {form.enabled ? "Enabled" : "Disabled"}
+          </Badge>
+        }
       >
         {settingsQuery.error ? (
           <Alert className="border-danger/30">
@@ -172,7 +185,10 @@ export function WorkspaceSettingsIntegrationsTab() {
           </Alert>
         ) : null}
 
-        <SettingsFieldRow label="Enable Wearables" hint="Controls the client Wearables module.">
+        <SettingsFieldRow
+          label="Enable Wearables"
+          hint="Controls the client Wearables module."
+        >
           <div className="flex items-center gap-3">
             <Switch
               checked={form.enabled}
@@ -187,14 +203,21 @@ export function WorkspaceSettingsIntegrationsTab() {
           </div>
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="Provider allowlist" hint="Available connection providers.">
+        <SettingsFieldRow
+          label="Provider allowlist"
+          hint="Available connection providers."
+        >
           <div className="flex flex-wrap gap-2">
             {providers.map((provider) => (
               <Button
                 key={provider}
                 type="button"
                 size="sm"
-                variant={form.allowedProviders.includes(provider) ? "default" : "secondary"}
+                variant={
+                  form.allowedProviders.includes(provider)
+                    ? "default"
+                    : "secondary"
+                }
                 disabled={disabled}
                 onClick={() => toggleProvider(provider)}
               >
@@ -204,7 +227,10 @@ export function WorkspaceSettingsIntegrationsTab() {
           </div>
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="Metric groups" hint="Controls which health data groups are enabled.">
+        <SettingsFieldRow
+          label="Metric groups"
+          hint="Controls which health data groups are enabled."
+        >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {metricGroups.map((group) => (
               <button
@@ -225,14 +251,18 @@ export function WorkspaceSettingsIntegrationsTab() {
           </div>
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="PT visibility" hint="Controls what coaches can see in Client Details.">
+        <SettingsFieldRow
+          label="PT visibility"
+          hint="Controls what coaches can see in Client Details."
+        >
           <Select
             value={form.ptVisibilityMode}
             disabled={disabled}
             onChange={(event) =>
               setForm((prev) => ({
                 ...prev,
-                ptVisibilityMode: event.target.value as PtWearableVisibilityMode,
+                ptVisibilityMode: event.target
+                  .value as PtWearableVisibilityMode,
               }))
             }
           >
@@ -242,7 +272,10 @@ export function WorkspaceSettingsIntegrationsTab() {
           </Select>
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="Freshness threshold" hint="Hours before data is shown as stale.">
+        <SettingsFieldRow
+          label="Freshness threshold"
+          hint="Hours before data is shown as stale."
+        >
           <Input
             type="number"
             min="1"
@@ -258,7 +291,10 @@ export function WorkspaceSettingsIntegrationsTab() {
           />
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="Disconnect behavior" hint="Client-side disconnect and retention policy.">
+        <SettingsFieldRow
+          label="Disconnect behavior"
+          hint="Client-side disconnect and retention policy."
+        >
           <div className="grid gap-3 md:grid-cols-2">
             <label className="flex items-center gap-3 rounded-lg border border-border/70 bg-card/45 px-3 py-2">
               <Switch
@@ -289,7 +325,10 @@ export function WorkspaceSettingsIntegrationsTab() {
           </div>
         </SettingsFieldRow>
 
-        <SettingsFieldRow label="Client consent copy" hint="Shown before the connect action.">
+        <SettingsFieldRow
+          label="Client consent copy"
+          hint="Shown before the connect action."
+        >
           <textarea
             className="min-h-[104px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={form.clientConsentCopy}
@@ -307,7 +346,8 @@ export function WorkspaceSettingsIntegrationsTab() {
           <Alert className="border-warning/30">
             <AlertTitle>Read-only</AlertTitle>
             <AlertDescription>
-              Your workspace role can view this configuration but cannot change it.
+              Your workspace role can view this configuration but cannot change
+              it.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -317,10 +357,16 @@ export function WorkspaceSettingsIntegrationsTab() {
         title="Other Workspace Integrations"
         description="Reserved slots for future workspace integrations."
       >
-        <SettingsFieldRow label="Calendar sync" hint="No safe write path currently available.">
+        <SettingsFieldRow
+          label="Calendar sync"
+          hint="No safe write path currently available."
+        >
           <DisabledSettingField value="Not connected" />
         </SettingsFieldRow>
-        <SettingsFieldRow label="Messaging integration" hint="No safe write path currently available.">
+        <SettingsFieldRow
+          label="Messaging integration"
+          hint="No safe write path currently available."
+        >
           <DisabledSettingField value="Not connected" />
         </SettingsFieldRow>
         <SettingsFieldRow label="CRM sync" hint="Future integration slot.">

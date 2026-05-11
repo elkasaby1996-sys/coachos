@@ -64,10 +64,15 @@ export function getProviderCapability(
   metric: MetricCapabilityKey,
 ): Capability {
   const normalizedProvider = provider.toLowerCase();
-  return providerCapabilityMatrix[normalizedProvider]?.[metric] ?? "unsupported";
+  return (
+    providerCapabilityMatrix[normalizedProvider]?.[metric] ?? "unsupported"
+  );
 }
 
-export function getProviderScoreLabel(provider: WearableProvider, score: string) {
+export function getProviderScoreLabel(
+  provider: WearableProvider,
+  score: string,
+) {
   const normalizedProvider = provider.toLowerCase();
   const normalizedScore = score.toLowerCase().replace(/_/g, " ");
   if (normalizedProvider === "whoop" && normalizedScore === "strain") {
@@ -101,11 +106,17 @@ export function getWearableMetricState(params: {
   const nowMs = new Date(params.now ?? new Date().toISOString()).getTime();
   const lastSyncMs = new Date(params.lastSyncAt).getTime();
   const staleMs = params.freshnessThresholdHours * 60 * 60 * 1000;
-  if (Number.isFinite(nowMs) && Number.isFinite(lastSyncMs) && nowMs - lastSyncMs > staleMs) {
+  if (
+    Number.isFinite(nowMs) &&
+    Number.isFinite(lastSyncMs) &&
+    nowMs - lastSyncMs > staleMs
+  ) {
     return "stale";
   }
 
-  return params.value === null || params.value === undefined ? "no_data" : "connected";
+  return params.value === null || params.value === undefined
+    ? "no_data"
+    : "connected";
 }
 
 export function normalizeDailyMetric(params: {
@@ -123,12 +134,24 @@ export function normalizeDailyMetric(params: {
     metric_date: metricDate,
     steps: numberOrNull(source.steps),
     active_minutes: numberOrNull(source.active_minutes ?? source.activeMinutes),
-    distance_meters: numberOrNull(source.distance_meters ?? source.distanceMeters),
-    calories_active_kcal: numberOrNull(source.calories_active_kcal ?? source.activeCalories),
-    calories_total_kcal: numberOrNull(source.calories_total_kcal ?? source.totalCalories),
-    avg_heart_rate_bpm: numberOrNull(source.avg_heart_rate_bpm ?? source.averageHeartRate),
-    max_heart_rate_bpm: numberOrNull(source.max_heart_rate_bpm ?? source.maxHeartRate),
-    resting_heart_rate_bpm: numberOrNull(source.resting_heart_rate_bpm ?? source.restingHeartRate),
+    distance_meters: numberOrNull(
+      source.distance_meters ?? source.distanceMeters,
+    ),
+    calories_active_kcal: numberOrNull(
+      source.calories_active_kcal ?? source.activeCalories,
+    ),
+    calories_total_kcal: numberOrNull(
+      source.calories_total_kcal ?? source.totalCalories,
+    ),
+    avg_heart_rate_bpm: numberOrNull(
+      source.avg_heart_rate_bpm ?? source.averageHeartRate,
+    ),
+    max_heart_rate_bpm: numberOrNull(
+      source.max_heart_rate_bpm ?? source.maxHeartRate,
+    ),
+    resting_heart_rate_bpm: numberOrNull(
+      source.resting_heart_rate_bpm ?? source.restingHeartRate,
+    ),
     hrv_rmssd_ms: numberOrNull(source.hrv_rmssd_ms ?? source.hrvRmssdMs),
     spo2_percent: numberOrNull(source.spo2_percent ?? source.spo2Percent),
     data_quality: stringOrNull(source.data_quality ?? source.dataQuality),
@@ -160,17 +183,25 @@ export function normalizeSleepSession(params: {
     sleep_date: sleepDate,
     start_at: stringOrNull(source.start_at ?? source.startAt),
     end_at: stringOrNull(source.end_at ?? source.endAt),
-    duration_minutes: numberOrNull(source.duration_minutes ?? source.durationMinutes),
+    duration_minutes: numberOrNull(
+      source.duration_minutes ?? source.durationMinutes,
+    ),
     sleep_score: numberOrNull(source.sleep_score ?? source.sleepScore),
-    sleep_efficiency_percent: numberOrNull(source.sleep_efficiency_percent ?? source.sleepEfficiencyPercent),
+    sleep_efficiency_percent: numberOrNull(
+      source.sleep_efficiency_percent ?? source.sleepEfficiencyPercent,
+    ),
     awake_minutes: numberOrNull(source.awake_minutes ?? source.awakeMinutes),
     light_minutes: numberOrNull(source.light_minutes ?? source.lightMinutes),
     deep_minutes: numberOrNull(source.deep_minutes ?? source.deepMinutes),
     rem_minutes: numberOrNull(source.rem_minutes ?? source.remMinutes),
     avg_hr_bpm: numberOrNull(source.avg_hr_bpm ?? source.averageHeartRate),
     avg_hrv_ms: numberOrNull(source.avg_hrv_ms ?? source.averageHrv),
-    avg_spo2_percent: numberOrNull(source.avg_spo2_percent ?? source.averageSpo2),
-    respiratory_rate: numberOrNull(source.respiratory_rate ?? source.respiratoryRate),
+    avg_spo2_percent: numberOrNull(
+      source.avg_spo2_percent ?? source.averageSpo2,
+    ),
+    respiratory_rate: numberOrNull(
+      source.respiratory_rate ?? source.respiratoryRate,
+    ),
     upsertKey: `${workspaceId}:${clientId}:${provider}:${providerRecordId}`,
   };
 }
@@ -224,17 +255,24 @@ export function normalizeActivity(params: {
     provider,
     provider_record_id: providerRecordId,
     activity_type:
-      stringOrNull(source.activity_type ?? source.activityType ?? source.type) ??
-      "activity",
+      stringOrNull(
+        source.activity_type ?? source.activityType ?? source.type,
+      ) ?? "activity",
     start_at: stringOrNull(source.start_at ?? source.startAt),
     end_at: stringOrNull(source.end_at ?? source.endAt),
-    duration_seconds: numberOrNull(source.duration_seconds ?? source.durationSeconds),
-    distance_meters: numberOrNull(source.distance_meters ?? source.distanceMeters),
+    duration_seconds: numberOrNull(
+      source.duration_seconds ?? source.durationSeconds,
+    ),
+    distance_meters: numberOrNull(
+      source.distance_meters ?? source.distanceMeters,
+    ),
     calories_kcal: numberOrNull(source.calories_kcal ?? source.calories),
     avg_hr_bpm: numberOrNull(source.avg_hr_bpm ?? source.averageHeartRate),
     max_hr_bpm: numberOrNull(source.max_hr_bpm ?? source.maxHeartRate),
     strain_score: numberOrNull(source.strain_score ?? source.strain),
-    source_payload_ref: stringOrNull(source.source_payload_ref ?? source.sourcePayloadRef),
+    source_payload_ref: stringOrNull(
+      source.source_payload_ref ?? source.sourcePayloadRef,
+    ),
     upsertKey: `${workspaceId}:${clientId}:${provider}:${providerRecordId}`,
   };
 }

@@ -7869,240 +7869,246 @@ function PtClientHabitsTab({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="habit-logs" className="mt-0">
-          <DashboardCard title="Day-by-day" subtitle="Last 7 days of habit logs.">
-        {habitsQuery.isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : (
-          <>
-            {!hasAnyHabits ? (
-              <EmptyState
-                title="No habit logs yet"
-                description="Logs will appear as the client checks in."
-              />
-            ) : null}
-            <div className="overflow-hidden rounded-lg border border-border">
-              <div className="grid grid-cols-11 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
-                <span>Date</span>
-                <span>Calories</span>
-                <span>Protein</span>
-                <span>Carbs</span>
-                <span>Fats</span>
-                <span>Weight</span>
-                <span>Steps</span>
-                <span>Sleep</span>
-                <span>Energy</span>
-                <span>Hunger</span>
-                <span>Stress</span>
+          <DashboardCard
+            title="Day-by-day"
+            subtitle="Last 7 days of habit logs."
+          >
+            {habitsQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-24 w-full" />
               </div>
-              {weeklyRows.map((row) => {
-                const log = row.log;
-                const muted = !log;
-                return (
-                  <div
-                    key={row.dateKey}
-                    className={cn(
-                      "grid grid-cols-11 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0",
-                      muted && "text-muted-foreground",
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {row.dateKey}
-                      </span>
-                    </div>
-                    <span>
-                      {typeof log?.calories === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "calories",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.calories}
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.protein_g === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "protein_g",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.protein_g} g
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.carbs_g === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "carbs_g",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.carbs_g} g
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.fats_g === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "fats_g",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.fats_g} g
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.weight_value === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "weight_value",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.weight_value} {log.weight_unit ?? ""}
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.steps === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "steps",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.steps.toLocaleString()}
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.sleep_hours === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "sleep_hours",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.sleep_hours} hrs
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.energy === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "energy",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.energy}
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.hunger === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "hunger",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.hunger}
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
-                    <span>
-                      {typeof log?.stress === "number" ? (
-                        <button
-                          type="button"
-                          className="font-medium hover:text-foreground/80"
-                          onClick={() =>
-                            setSelectedHabitMetric({
-                              metric: "stress",
-                              dateKey: row.dateKey,
-                            })
-                          }
-                        >
-                          {log.stress}
-                        </button>
-                      ) : (
-                        "--"
-                      )}
-                    </span>
+            ) : (
+              <>
+                {!hasAnyHabits ? (
+                  <EmptyState
+                    title="No habit logs yet"
+                    description="Logs will appear as the client checks in."
+                  />
+                ) : null}
+                <div className="overflow-hidden rounded-lg border border-border">
+                  <div className="grid grid-cols-11 gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                    <span>Date</span>
+                    <span>Calories</span>
+                    <span>Protein</span>
+                    <span>Carbs</span>
+                    <span>Fats</span>
+                    <span>Weight</span>
+                    <span>Steps</span>
+                    <span>Sleep</span>
+                    <span>Energy</span>
+                    <span>Hunger</span>
+                    <span>Stress</span>
                   </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+                  {weeklyRows.map((row) => {
+                    const log = row.log;
+                    const muted = !log;
+                    return (
+                      <div
+                        key={row.dateKey}
+                        className={cn(
+                          "grid grid-cols-11 gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0",
+                          muted && "text-muted-foreground",
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {row.dateKey}
+                          </span>
+                        </div>
+                        <span>
+                          {typeof log?.calories === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "calories",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.calories}
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.protein_g === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "protein_g",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.protein_g} g
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.carbs_g === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "carbs_g",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.carbs_g} g
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.fats_g === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "fats_g",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.fats_g} g
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.weight_value === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "weight_value",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.weight_value} {log.weight_unit ?? ""}
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.steps === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "steps",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.steps.toLocaleString()}
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.sleep_hours === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "sleep_hours",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.sleep_hours} hrs
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.energy === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "energy",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.energy}
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.hunger === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "hunger",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.hunger}
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                        <span>
+                          {typeof log?.stress === "number" ? (
+                            <button
+                              type="button"
+                              className="font-medium hover:text-foreground/80"
+                              onClick={() =>
+                                setSelectedHabitMetric({
+                                  metric: "stress",
+                                  dateKey: row.dateKey,
+                                })
+                              }
+                            >
+                              {log.stress}
+                            </button>
+                          ) : (
+                            "--"
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </DashboardCard>
         </TabsContent>
         <TabsContent value="wearables" className="mt-0">
-          <PtClientWearablesPanel clientId={clientId} workspaceId={workspaceId} />
+          <PtClientWearablesPanel
+            clientId={clientId}
+            workspaceId={workspaceId}
+          />
         </TabsContent>
       </Tabs>
 

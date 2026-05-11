@@ -53,7 +53,10 @@ describe("Open Wearables client", () => {
       fetchImpl: fetchMock,
     });
 
-    await client.ensureUser({ clientId: "client-1", workspaceId: "workspace-1" });
+    await client.ensureUser({
+      clientId: "client-1",
+      workspaceId: "workspace-1",
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://wearables.example/api/v1/users",

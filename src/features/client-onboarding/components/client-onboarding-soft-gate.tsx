@@ -27,7 +27,7 @@ export function ClientOnboardingSoftGate({
     <Card
       className={
         compact
-          ? "border-border/60 bg-[linear-gradient(180deg,rgba(22,28,41,0.9),rgba(14,18,28,0.82))] shadow-[0_18px_42px_-38px_rgba(0,0,0,0.72)]"
+          ? "border-border/70 bg-[linear-gradient(135deg,oklch(var(--card)/0.96),oklch(var(--bg-surface-elevated)/0.78))] shadow-[0_18px_42px_-36px_oklch(0_0_0/0.28)]"
           : "border-border/70 bg-[linear-gradient(135deg,oklch(var(--card)/0.98),oklch(var(--card)/0.92))] shadow-[0_24px_60px_-42px_rgba(0,0,0,0.75)]"
       }
     >
@@ -77,7 +77,7 @@ export function ClientOnboardingSoftGate({
                   <span>Progress</span>
                   <span>{summary.completionPercent}%</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-2 overflow-hidden rounded-full border border-border/50 bg-muted/70">
                   <div
                     className="h-full rounded-full bg-primary transition-[width]"
                     style={{ width: `${summary.completionPercent}%` }}

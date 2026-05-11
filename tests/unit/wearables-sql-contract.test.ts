@@ -24,7 +24,9 @@ describe("wearables SQL contract", () => {
   it("keeps wearable data separate from habits and lifecycle", () => {
     expect(migration).not.toMatch(/insert\s+into\s+public\.habit_logs/i);
     expect(migration).not.toMatch(/update\s+public\.habit_logs/i);
-    expect(migration).not.toMatch(/update\s+public\.clients\s+set\s+lifecycle_state/i);
+    expect(migration).not.toMatch(
+      /update\s+public\.clients\s+set\s+lifecycle_state/i,
+    );
   });
 
   it("enforces source attribution and PT visibility constraints", () => {

@@ -30,7 +30,9 @@ type Props = {
 };
 
 const formatNumber = (value: number | null | undefined, suffix = "") =>
-  typeof value === "number" ? `${Math.round(value).toLocaleString()}${suffix}` : "--";
+  typeof value === "number"
+    ? `${Math.round(value).toLocaleString()}${suffix}`
+    : "--";
 
 const formatDecimal = (value: number | null | undefined, suffix = "") =>
   typeof value === "number" ? `${value.toFixed(1)}${suffix}` : "--";
@@ -54,7 +56,9 @@ function SourceMeta({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Badge variant="neutral">{provider ? provider.toUpperCase() : "No source"}</Badge>
+      <Badge variant="neutral">
+        {provider ? provider.toUpperCase() : "No source"}
+      </Badge>
       <Badge variant="muted">Last sync {formatDateTime(lastSyncAt)}</Badge>
     </div>
   );
@@ -88,7 +92,9 @@ function SummaryTile({
       </div>
       <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
       <div className="mt-3">
-        <Badge variant="neutral">{provider ? provider.toUpperCase() : "No source"}</Badge>
+        <Badge variant="neutral">
+          {provider ? provider.toUpperCase() : "No source"}
+        </Badge>
       </div>
     </div>
   );
@@ -279,7 +285,9 @@ export function PtClientWearablesPanel({ clientId, workspaceId }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <StatusBanner
-            variant={primaryConnection.status === "connected" ? "success" : "warning"}
+            variant={
+              primaryConnection.status === "connected" ? "success" : "warning"
+            }
             title={`Connection status: ${connectionStatus}`}
             description={`Freshness threshold: ${freshnessThreshold} hours. Provider sync: ${formatDateTime(primaryConnection.last_provider_sync_at)}.`}
           />
@@ -312,7 +320,10 @@ export function PtClientWearablesPanel({ clientId, workspaceId }: Props) {
             <SummaryTile
               label={
                 latestRecovery
-                  ? getProviderScoreLabel(latestRecovery.provider, latestRecovery.score_type)
+                  ? getProviderScoreLabel(
+                      latestRecovery.provider,
+                      latestRecovery.score_type,
+                    )
                   : "Recovery"
               }
               value={formatDecimal(latestRecovery?.score_value)}
@@ -326,7 +337,10 @@ export function PtClientWearablesPanel({ clientId, workspaceId }: Props) {
             <SummaryTile
               label={
                 latestLoad
-                  ? getProviderScoreLabel(latestLoad.provider, latestLoad.score_type)
+                  ? getProviderScoreLabel(
+                      latestLoad.provider,
+                      latestLoad.score_type,
+                    )
                   : "Load / strain"
               }
               value={formatDecimal(latestLoad?.score_value)}
@@ -365,12 +379,20 @@ export function PtClientWearablesPanel({ clientId, workspaceId }: Props) {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold">
-                        {getProviderScoreLabel(score.provider, score.score_type)}
+                        {getProviderScoreLabel(
+                          score.provider,
+                          score.score_type,
+                        )}
                       </p>
-                      <Badge variant="neutral">{score.provider.toUpperCase()}</Badge>
+                      <Badge variant="neutral">
+                        {score.provider.toUpperCase()}
+                      </Badge>
                     </div>
                     <p className="mt-2 text-lg font-semibold">
-                      {formatDecimal(score.score_value, score.score_unit ? ` ${score.score_unit}` : "")}
+                      {formatDecimal(
+                        score.score_value,
+                        score.score_unit ? ` ${score.score_unit}` : "",
+                      )}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Recorded {formatDateTime(score.recorded_at)}
@@ -405,13 +427,28 @@ export function PtClientWearablesPanel({ clientId, workspaceId }: Props) {
                       <p className="text-sm font-semibold capitalize">
                         {activity.activity_type.replace(/_/g, " ")}
                       </p>
-                      <Badge variant="neutral">{activity.provider.toUpperCase()}</Badge>
+                      <Badge variant="neutral">
+                        {activity.provider.toUpperCase()}
+                      </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDateTime(activity.start_at)} · {formatNumber(activity.duration_seconds ? activity.duration_seconds / 60 : null, " min")}
+                      {formatDateTime(activity.start_at)} ·{" "}
+                      {formatNumber(
+                        activity.duration_seconds
+                          ? activity.duration_seconds / 60
+                          : null,
+                        " min",
+                      )}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Distance {formatDecimal(activity.distance_meters ? activity.distance_meters / 1000 : null, " km")} · Avg HR {formatDecimal(activity.avg_hr_bpm, " bpm")}
+                      Distance{" "}
+                      {formatDecimal(
+                        activity.distance_meters
+                          ? activity.distance_meters / 1000
+                          : null,
+                        " km",
+                      )}{" "}
+                      · Avg HR {formatDecimal(activity.avg_hr_bpm, " bpm")}
                     </p>
                   </div>
                 ))

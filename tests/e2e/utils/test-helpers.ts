@@ -230,7 +230,11 @@ export async function signInWithEmail(
       throw new Error("Password input not visible on /login.");
     }
 
-    await page.getByRole("button", { name: /^sign in$/i }).click();
+    await page
+      .locator("form")
+      .getByRole("button", { name: /^sign in$/i })
+      .last()
+      .click();
 
     try {
       await page.waitForFunction(
