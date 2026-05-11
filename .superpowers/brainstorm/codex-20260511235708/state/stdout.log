@@ -13,3 +13,4 @@
 {"type":"screen-added","file":"C:\\Users\\G a m e r s\\OneDrive\\Documents\\Projects\\COACHos\\coachos\\.superpowers\\brainstorm\\codex-20260511235708\\content\\path-gateway-structure.html"}
 {"source":"user-event","type":"click","text":"I'm a coach\n            Build a public profile, collect leads, publish packages, and manage client delivery.\n            Enter coach side","choice":"coach-path","id":null,"timestamp":1778533737846}
 {"source":"user-event","type":"click","text":"I'm a client\n            Find a coach, join from an invite, and track workouts, nutrition, habits, check-ins, and progress.\n            Enter client side","choice":"client-path","id":null,"timestamp":1778533739455}
+{"type":"server-stopped","reason":"idle timeout"}
