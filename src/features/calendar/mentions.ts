@@ -20,16 +20,11 @@ export function filterMentionUsers(
   if (query === null) return [];
   const normalizedQuery = query.toLowerCase();
   return users
-    .filter((user) =>
-      user.display_name.toLowerCase().includes(normalizedQuery),
-    )
+    .filter((user) => user.display_name.toLowerCase().includes(normalizedQuery))
     .slice(0, 6);
 }
 
-export function insertMention(
-  value: string,
-  displayName: string,
-) {
+export function insertMention(value: string, displayName: string) {
   const label = normalizeMentionLabel(displayName);
   if (!label) return value;
 
