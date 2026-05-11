@@ -63,6 +63,25 @@ async function isRouteStable(page: Page, targetPath: string) {
   return true;
 }
 
+export async function clickVisibleEnabledSignInButton(page: Page) {
+  const signInButtons = page
+    .locator("form")
+    .getByRole("button", { name: /^sign in$/i });
+
+  for (let index = (await signInButtons.count()) - 1; index >= 0; index -= 1) {
+    const button = signInButtons.nth(index);
+    if (
+      (await button.isVisible().catch(() => false)) &&
+      (await button.isEnabled().catch(() => false))
+    ) {
+      await button.click();
+      return;
+    }
+  }
+
+  throw new Error("No visible enabled sign-in button found.");
+}
+
 export async function waitForAuthSessionReady(page: Page, timeoutMs = 15_000) {
   await page.getByTestId("auth-session-ready").waitFor({
     state: "attached",
@@ -230,11 +249,7 @@ export async function signInWithEmail(
       throw new Error("Password input not visible on /login.");
     }
 
-    await page
-      .locator("form")
-      .getByRole("button", { name: /^sign in$/i })
-      .last()
-      .click();
+    await clickVisibleEnabledSignInButton(page);
 
     try {
       await page.waitForFunction(
