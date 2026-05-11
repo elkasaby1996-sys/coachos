@@ -1,0 +1,61 @@
+<h2>RepSync Front Site Path Gateway</h2>
+<p class="subtitle">
+  Proposed structure: the standalone site opens with a path choice, then routes visitors into a coach-specific or client-specific side.
+</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: first screen path choice</div>
+  <div class="mockup-body">
+    <div style="border-radius:28px; overflow:hidden; min-height:620px; background:
+      radial-gradient(circle at 18% 18%, rgba(221,218,198,.62), transparent 28%),
+      radial-gradient(circle at 78% 22%, rgba(151,169,127,.22), transparent 26%),
+      linear-gradient(155deg,#fbf9f0,#f0ecdd 52%,#ddd5c4); color:#26301f; border:1px solid rgba(123,111,87,.32);">
+      <div style="padding:22px 30px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(123,111,87,.2); background:rgba(255,255,255,.32); backdrop-filter:blur(18px);">
+        <div style="font-size:22px; font-weight:800;">RepSync</div>
+        <div style="display:flex; gap:18px; font-size:13px; color:#59604d;">
+          <span>Proof</span><span>How it works</span><span>Pricing</span>
+        </div>
+        <div style="height:36px; padding:0 15px; display:flex; align-items:center; border-radius:999px; border:1px solid rgba(123,111,87,.3); background:rgba(255,255,255,.45); font-size:13px; font-weight:800;">Sign in</div>
+      </div>
+
+      <div style="padding:56px 34px 48px;">
+        <div style="max-width:760px;">
+          <div style="font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:#688f4d; font-weight:800;">Choose your RepSync side</div>
+          <div style="margin-top:14px; font-family:'Arial Narrow', Arial, sans-serif; font-size:66px; line-height:.88; text-transform:uppercase; font-weight:900;">One system. Two ways in.</div>
+          <p style="margin-top:20px; max-width:560px; color:#59604d; font-size:17px; line-height:1.62;">Coaches use RepSync to run the business. Clients use RepSync to discover, join, and stay accountable once coaching starts.</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:36px;">
+          <div data-choice="coach-path" onclick="toggleSelect(this)" style="cursor:pointer; min-height:260px; border-radius:30px; border:1px solid rgba(104,143,77,.38); background:linear-gradient(180deg,rgba(255,255,255,.76),rgba(248,246,237,.62)); padding:24px; box-shadow:0 28px 76px -56px rgba(72,58,31,.45), inset 0 1px 0 rgba(255,255,255,.8);">
+            <div style="height:44px; width:44px; border-radius:16px; background:#688f4d;"></div>
+            <div style="margin-top:28px; font-size:34px; line-height:.95; font-weight:900; text-transform:uppercase;">I'm a coach</div>
+            <p style="margin-top:12px; color:#68715c; font-size:14px; line-height:1.55;">Build a public profile, collect leads, publish packages, and manage client delivery.</p>
+            <div style="margin-top:22px; display:inline-flex; height:42px; padding:0 17px; align-items:center; border-radius:999px; background:#688f4d; color:#fbfff7; font-weight:800;">Enter coach side</div>
+          </div>
+
+          <div data-choice="client-path" onclick="toggleSelect(this)" style="cursor:pointer; min-height:260px; border-radius:30px; border:1px solid rgba(123,111,87,.3); background:linear-gradient(180deg,rgba(255,255,255,.58),rgba(242,239,228,.52)); padding:24px; box-shadow:0 24px 66px -58px rgba(72,58,31,.42), inset 0 1px 0 rgba(255,255,255,.72);">
+            <div style="height:44px; width:44px; border-radius:16px; background:linear-gradient(135deg,#26301f,#b7a56d);"></div>
+            <div style="margin-top:28px; font-size:34px; line-height:.95; font-weight:900; text-transform:uppercase;">I'm a client</div>
+            <p style="margin-top:12px; color:#68715c; font-size:14px; line-height:1.55;">Find a coach, join from an invite, and track workouts, nutrition, habits, check-ins, and progress.</p>
+            <div style="margin-top:22px; display:inline-flex; height:42px; padding:0 17px; align-items:center; border-radius:999px; border:1px solid rgba(123,111,87,.35); background:rgba(255,255,255,.5); color:#26301f; font-weight:800;">Enter client side</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Implementation Design</h3>
+  <div class="options">
+    <div class="option" data-choice="approved-gateway" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Gateway homepage with two sides</h3>
+        <p>
+          Build <strong>website front</strong> as a standalone Vite/React front site. The home screen offers two path cards. Clicking coach or client switches to that side's long-form page, with a persistent way back to path choice.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
