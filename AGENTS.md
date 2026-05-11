@@ -17,3 +17,33 @@ python .codex/skills/ui-ux-pro-max/scripts/search.py "repsync <page> <ui task>" 
 ```
 
 This rule applies to layout changes, spacing, typography, color/theme updates, interaction states, and component visual refactors.
+
+## Supabase Remote Safety (Mandatory)
+
+Do not run remote Supabase commands unless the user explicitly asks to change a named remote project in the current turn.
+
+Blocked without explicit user approval:
+
+- `npx supabase@latest functions deploy ...`
+- `npx supabase@latest functions delete ...`
+- `npx supabase@latest secrets set ...`
+- `npx supabase@latest secrets unset ...`
+- `npx supabase@latest db push ...`
+- `npx supabase@latest link ...`
+- any migration command targeting a linked/remote project
+
+Use local-only commands for development:
+
+- `npm run supabase:start`
+- `npm run supabase:migration:up`
+- `npm run supabase:db:reset`
+- `npm run supabase:db:lint`
+- `npx supabase@latest functions serve ... --env-file <local-env-file>`
+
+If a remote Supabase operation is intentionally required, use the guarded wrapper:
+
+```bash
+ALLOW_REMOTE_SUPABASE=I_UNDERSTAND_THIS_TOUCHES_REMOTE SUPABASE_PROJECT_REF=<project-ref> npm run supabase:remote -- <supabase args>
+```
+
+Never set local-only URLs such as `localhost`, `127.0.0.1`, or `host.docker.internal` as secrets on a remote Supabase project.

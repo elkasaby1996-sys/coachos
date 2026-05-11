@@ -118,7 +118,27 @@ async function ensureUser(user: SeedUser) {
       name: user.fullName,
     },
   });
-  if (error) throw error;
+  if (error) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const racedUserId = await getUserIdByEmail(user.email);
+    if (racedUserId) {
+      const { error: updateError } = await admin.auth.admin.updateUserById(
+        racedUserId,
+        {
+          email: user.email,
+          password: user.password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: user.fullName,
+            name: user.fullName,
+          },
+        },
+      );
+      if (updateError) throw updateError;
+      return racedUserId;
+    }
+    throw error;
+  }
   if (!data.user?.id) {
     throw new Error(`Failed to create auth user for ${user.email}.`);
   }

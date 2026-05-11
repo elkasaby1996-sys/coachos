@@ -6,6 +6,10 @@ import {
   normalizeSlugCandidate,
 } from "../../src/lib/slug";
 import { routes } from "../../src/lib/routes";
+import {
+  buildLegacyWorkspaceEntryRedirectPath,
+  buildLegacyWorkspaceSettingsRedirectPath,
+} from "../../src/lib/workspace-route-resolution";
 
 describe("slug utilities", () => {
   it("normalizes readable names into lowercase kebab-case slugs", () => {
@@ -63,5 +67,25 @@ describe("canonical route builders", () => {
     expect(routes.publicProfile("nour-coaching")).toBe("/p/nour-coaching");
     expect(routes.publicApply("nour-coaching")).toBe("/p/nour-coaching/apply");
     expect(routes.publicBook("nour-coaching")).toBe("/p/nour-coaching/book");
+  });
+});
+
+describe("legacy workspace redirect builders", () => {
+  it("falls back to compact workspace IDs when a workspace has no editable slug", () => {
+    const workspace = {
+      id: "4e8237f2-3fed-4912-82dd-d850fa9c7bed",
+      slug: null,
+    };
+
+    expect(buildLegacyWorkspaceEntryRedirectPath(workspace)).toBe(
+      "/w/4e8237f23fed/overview",
+    );
+    expect(
+      buildLegacyWorkspaceSettingsRedirectPath({
+        workspace,
+        tab: "brand",
+        search: "?from=settings",
+      }),
+    ).toBe("/w/4e8237f23fed/settings/brand?from=settings");
   });
 });

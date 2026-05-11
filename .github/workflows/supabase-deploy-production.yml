@@ -55,3 +55,6 @@ jobs:
 
       - name: Push migrations to production
         run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Deploy Open Wearables function to production
+        run: supabase functions deploy open-wearables --project-ref "$SUPABASE_PROJECT_ID"

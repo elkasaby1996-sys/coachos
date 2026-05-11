@@ -90,6 +90,12 @@ npm run supabase:db:lint
 
 Historical migration files in `supabase/migrations` are intentionally preserved. If the project ever needs a clean baseline, use a planned squash/re-baseline process instead of deleting committed migration history.
 
+## Open Wearables
+
+The Wearables module integrates with a separate Open Wearables service for provider OAuth, sync, and normalized provider APIs. The Open Wearables API key is server-only and belongs in Supabase function secrets, not Vite env files.
+
+Local setup and RepSync secret configuration are documented in `docs/open-wearables-local-setup.md`.
+
 ## Supabase GitHub Secrets
 
 Set these repository or environment secrets before using the deploy workflows:

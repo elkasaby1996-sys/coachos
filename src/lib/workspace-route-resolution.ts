@@ -1,4 +1,9 @@
 import { supabase } from "./supabase";
+import {
+  appendSearchParams,
+  routes,
+  type WorkspaceSettingsTab,
+} from "./routes";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -14,6 +19,35 @@ export function getCompactWorkspaceId(workspaceId: string) {
 
 export function getWorkspaceRouteSlug(workspace: WorkspaceRouteRow) {
   return workspace.slug?.trim() || getCompactWorkspaceId(workspace.id);
+}
+
+export function buildLegacyWorkspaceEntryRedirectPath(
+  workspace: WorkspaceRouteRow,
+  search = "",
+) {
+  return appendSearchParams(
+    routes.workspaceOverview(getWorkspaceRouteSlug(workspace)),
+    search,
+  );
+}
+
+export function buildLegacyWorkspaceSettingsRedirectPath(params: {
+  workspace: WorkspaceRouteRow;
+  tab?: string | null;
+  search?: string;
+}) {
+  const nextTab = params.tab || "general";
+  const canonicalTab = (
+    nextTab === "danger" ? "danger-zone" : nextTab
+  ) as WorkspaceSettingsTab;
+
+  return appendSearchParams(
+    routes.workspaceSettings(
+      getWorkspaceRouteSlug(params.workspace),
+      canonicalTab,
+    ),
+    params.search ?? "",
+  );
 }
 
 export function workspaceMatchesRouteParam(

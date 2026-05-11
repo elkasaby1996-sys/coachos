@@ -10,6 +10,7 @@ export default [
     ignores: [
       "dist/**",
       "node_modules/**",
+      "open-wearables/**",
       "supabase/**",
       "playwright-report/**",
       "test-results/**",

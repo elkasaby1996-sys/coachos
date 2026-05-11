@@ -13,10 +13,13 @@ import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader
 import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/ui/coachos/empty-state";
 import { appendSearchParams, routes } from "../lib/routes";
-import type { WorkspaceSettingsTab } from "../lib/routes";
 import { supabase } from "../lib/supabase";
 import { useWorkspace } from "../lib/use-workspace";
-import { resolveWorkspaceRouteParam } from "../lib/workspace-route-resolution";
+import {
+  buildLegacyWorkspaceEntryRedirectPath,
+  buildLegacyWorkspaceSettingsRedirectPath,
+  resolveWorkspaceRouteParam,
+} from "../lib/workspace-route-resolution";
 
 const LazyPtClientDetailPage = lazy(() =>
   import("../pages/pt/client-detail").then((module) => ({
@@ -146,33 +149,31 @@ export function LegacyWorkspaceSettingsRedirect() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspaces")
-        .select("slug")
+        .select("id, slug")
         .eq("id", workspaceId ?? "")
-        .maybeSingle<{ slug: string | null }>();
+        .maybeSingle<{ id: string; slug: string | null }>();
       if (error) throw error;
       return data;
     },
   });
 
   if (workspaceQuery.isLoading) return <RouteLoading />;
-  if (workspaceQuery.error || !workspaceQuery.data?.slug) {
+  if (workspaceQuery.error || !workspaceQuery.data) {
     return <RouteNotFound title="Workspace not found" />;
   }
 
   const queryTab = searchParams.get("tab");
   const nextTab = tab ?? queryTab ?? "general";
-  const canonicalTab = (
-    nextTab === "danger" ? "danger-zone" : nextTab
-  ) as WorkspaceSettingsTab;
   const nextParams = new URLSearchParams(location.search);
   nextParams.delete("tab");
 
   return (
     <Navigate
-      to={appendSearchParams(
-        routes.workspaceSettings(workspaceQuery.data.slug, canonicalTab),
-        nextParams.toString(),
-      )}
+      to={buildLegacyWorkspaceSettingsRedirectPath({
+        workspace: workspaceQuery.data,
+        tab: nextTab,
+        search: nextParams.toString(),
+      })}
       replace
     />
   );
@@ -187,23 +188,23 @@ export function LegacyWorkspaceEntryRedirect() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspaces")
-        .select("slug")
+        .select("id, slug")
         .eq("id", workspaceId ?? "")
-        .maybeSingle<{ slug: string | null }>();
+        .maybeSingle<{ id: string; slug: string | null }>();
       if (error) throw error;
       return data;
     },
   });
 
   if (workspaceQuery.isLoading) return <RouteLoading />;
-  if (workspaceQuery.error || !workspaceQuery.data?.slug) {
+  if (workspaceQuery.error || !workspaceQuery.data) {
     return <RouteNotFound title="Workspace not found" />;
   }
 
   return (
     <Navigate
-      to={appendSearchParams(
-        routes.workspaceOverview(workspaceQuery.data.slug),
+      to={buildLegacyWorkspaceEntryRedirectPath(
+        workspaceQuery.data,
         location.search,
       )}
       replace

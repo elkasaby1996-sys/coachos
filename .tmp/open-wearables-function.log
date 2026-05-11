@@ -1,0 +1,150 @@
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+Kong reloaded
+2026-05-10T21:07:18.303182959Z Warning Implicitly using latest version (0.224.0) for https://deno.land/std/path/posix/mod.ts
+2026-05-10T21:07:18.303430229Z Warning Implicitly using latest version (0.224.0) for https://deno.land/std/http/status.ts
+2026-05-10T21:07:20.056130039Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:07:20.056164225Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:07:20.056165861Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+2026-05-10T21:07:34.697440577Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:08:44.280069820Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:10:56.340868351Z wall clock duration warning: isolate: 34ba702c-5a63-477e-9030-c6324d61b61d
+2026-05-10T21:10:56.347104930Z early termination has been triggered: isolate: 34ba702c-5a63-477e-9030-c6324d61b61d
+2026-05-10T21:12:46.221327292Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:48.169697764Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:50.939018916Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:56.406464676Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:57.100093885Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:57.291314861Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:57.461529092Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:57.654872854Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:12:57.832552553Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:13:00.512736444Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:13:00.710587311Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:13:00.913782681Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:13:01.115348517Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:13:01.309399531Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:14:27.301643474Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:14:27.981855691Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:14:28.265147928Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:14:28.446979670Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:14:28.632178933Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:14:28.823947986Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:16:06.283379271Z wall clock duration warning: isolate: 1a504491-428d-475b-b5f2-1e27271eefa3
+2026-05-10T21:16:06.289529136Z early termination has been triggered: isolate: 1a504491-428d-475b-b5f2-1e27271eefa3
+2026-05-10T21:17:37.355482707Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:20:57.393550314Z wall clock duration warning: isolate: e6566cd8-3948-4b82-afc8-572d1d433394
+2026-05-10T21:20:57.398203426Z early termination has been triggered: isolate: e6566cd8-3948-4b82-afc8-572d1d433394
+2026-05-10T21:27:57.738162757Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:28:04.252095372Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:30:11.377374356Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:30:16.579797188Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:31:17.775244387Z wall clock duration warning: isolate: 06466010-7e11-4747-8801-485f6c509a20
+2026-05-10T21:31:17.780778873Z early termination has been triggered: isolate: 06466010-7e11-4747-8801-485f6c509a20
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:35:22.877313798Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:35:22.877359399Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:35:22.877361433Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:35:23.514115547Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:35:23.514155141Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:35:23.514156982Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+2026-05-10T21:35:59.635887452Z serving the request with supabase/functions/open-wearables
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:37:08.267374562Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:37:08.267415184Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:37:08.267417395Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+2026-05-10T21:37:08.891994055Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:37:08.892036539Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:37:08.892039682Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:39:00.575456739Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:39:00.575504971Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:39:00.575507339Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:39:01.174891841Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:39:01.174950727Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:39:01.174956468Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+2026-05-10T21:39:12.429293824Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:39:12.429350357Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:39:12.429352832Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:39:13.093195583Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:39:13.093236314Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:39:13.093238168Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+2026-05-10T21:40:03.759270422Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:40:04.094853132Z [Error] open-wearables function failed {
+2026-05-10T21:40:04.094890921Z   code: [32m"42501"[39m,
+2026-05-10T21:40:04.094893462Z   details: [1mnull[22m,
+2026-05-10T21:40:04.094894742Z   hint: [1mnull[22m,
+2026-05-10T21:40:04.094896371Z   message: [32m'new row violates row-level security policy for table "client_wearable_sleep_sessions"'[39m
+2026-05-10T21:40:04.094897849Z }
+2026-05-10T21:40:04.094898946Z 
+2026-05-10T21:40:05.384132036Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:40:05.553923420Z [Error] open-wearables function failed {
+2026-05-10T21:40:05.553950069Z   code: [32m"42501"[39m,
+2026-05-10T21:40:05.553952551Z   details: [1mnull[22m,
+2026-05-10T21:40:05.553953911Z   hint: [1mnull[22m,
+2026-05-10T21:40:05.553955117Z   message: [32m'new row violates row-level security policy for table "client_wearable_sleep_sessions"'[39m
+2026-05-10T21:40:05.553956436Z }
+2026-05-10T21:40:05.553957541Z 
+2026-05-10T21:40:08.270566994Z serving the request with supabase/functions/open-wearables
+2026-05-10T21:40:08.437727165Z [Error] open-wearables function failed {
+2026-05-10T21:40:08.437742302Z   code: [32m"42501"[39m,
+2026-05-10T21:40:08.437744305Z   details: [1mnull[22m,
+2026-05-10T21:40:08.437745679Z   hint: [1mnull[22m,
+2026-05-10T21:40:08.437746954Z   message: [32m'new row violates row-level security policy for table "client_wearable_sleep_sessions"'[39m
+2026-05-10T21:40:08.437748448Z }
+2026-05-10T21:40:08.437749628Z 
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+File change detected: C:\Users\G a m e r s\OneDrive\Documents\Projects\COACHos\coachos\supabase\functions\open-wearables\index.ts (WRITE)
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:40:35.107793848Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:40:35.107839323Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:40:35.107841445Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+Setting up Edge Functions runtime...
+Env name cannot start with SUPABASE_, skipping: SUPABASE_URL
+Env name cannot start with SUPABASE_, skipping: SUPABASE_SERVICE_ROLE_KEY
+2026-05-10T21:40:35.739855557Z Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+2026-05-10T21:40:35.739925846Z  - http://127.0.0.1:54321/functions/v1/open-wearables
+2026-05-10T21:40:35.739928215Z Using supabase-edge-runtime-1.73.13 (compatible with Deno v2.1.4)
+Kong reloaded
+2026-05-10T21:41:54.173420628Z serving the request with supabase/functions/open-wearables

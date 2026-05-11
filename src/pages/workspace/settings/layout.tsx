@@ -10,7 +10,11 @@ import { useWorkspaceSettingsAccess } from "../../../features/settings/hooks/use
 import { workspaceSettingsTabs } from "../../../features/settings/lib/settings-route-mapping";
 import { routes, type WorkspaceSettingsTab } from "../../../lib/routes";
 import { supabase } from "../../../lib/supabase";
-import { resolveWorkspaceRouteParam } from "../../../lib/workspace-route-resolution";
+import {
+  getCompactWorkspaceId,
+  getWorkspaceRouteSlug,
+  resolveWorkspaceRouteParam,
+} from "../../../lib/workspace-route-resolution";
 import { type WorkspaceSettingsOutletContext } from "./outlet-context";
 
 type WorkspaceSettingsRow = WorkspaceSettingsOutletContext["workspace"];
@@ -55,8 +59,6 @@ export function WorkspaceSettingsLayoutPage() {
 
   const resolvedWorkspaceId =
     resolvedRouteWorkspaceId ?? access.fallbackWorkspaceId;
-  const resolvedWorkspaceSlug =
-    workspaceQuery.data?.slug ?? slugWorkspaceQuery.data?.slug ?? null;
 
   if (isResolvingRouteWorkspace || access.loading) {
     return (
@@ -81,7 +83,10 @@ export function WorkspaceSettingsLayoutPage() {
     if (access.fallbackWorkspaceId) {
       return (
         <Navigate
-          to={`/workspace/${access.fallbackWorkspaceId}/settings/general`}
+          to={routes.workspaceSettings(
+            getCompactWorkspaceId(access.fallbackWorkspaceId),
+            "general",
+          )}
           replace
         />
       );
@@ -89,16 +94,23 @@ export function WorkspaceSettingsLayoutPage() {
     return <Navigate to="/no-workspace" replace />;
   }
 
+  const resolvedWorkspaceRouteSlug = workspaceQuery.data
+    ? getWorkspaceRouteSlug({
+        id: workspaceQuery.data.id,
+        slug: workspaceQuery.data.slug ?? null,
+      })
+    : slugWorkspaceQuery.data
+      ? getWorkspaceRouteSlug(slugWorkspaceQuery.data)
+      : (routeWorkspaceSlug ?? getCompactWorkspaceId(resolvedWorkspaceId));
+
   const tabs: SettingsTabLink[] = workspaceSettingsTabs.map((tab) => ({
     id: tab.id,
     label: tab.label,
     description: tab.description,
-    to: resolvedWorkspaceSlug
-      ? routes.workspaceSettings(
-          resolvedWorkspaceSlug,
-          tab.path as WorkspaceSettingsTab,
-        )
-      : `/workspace/${resolvedWorkspaceId}/settings/${tab.path}`,
+    to: routes.workspaceSettings(
+      resolvedWorkspaceRouteSlug,
+      tab.path as WorkspaceSettingsTab,
+    ),
   }));
 
   return (

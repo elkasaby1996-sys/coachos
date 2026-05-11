@@ -113,6 +113,7 @@ const routeToneMatchers: Array<{ prefix: string; tone: ModuleTone }> = [
   { prefix: "/app/checkin", tone: "checkins" },
   { prefix: "/app/workout", tone: "checkins" },
   { prefix: "/app/habits", tone: "checkins" },
+  { prefix: "/app/wearables", tone: "analytics" },
   { prefix: "/app/profile", tone: "profile" },
   { prefix: "/app/onboarding", tone: "profile" },
   { prefix: "/app/baseline", tone: "profile" },

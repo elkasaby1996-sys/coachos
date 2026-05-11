@@ -21,6 +21,10 @@ describe("workspace route resolution contract", () => {
     expect(settingsLayout).toContain(
       "resolveWorkspaceRouteParam(routeWorkspaceSlug)",
     );
+    expect(settingsLayout).toContain("getWorkspaceRouteSlug");
+    expect(settingsLayout).not.toContain(
+      "`/workspace/${resolvedWorkspaceId}/settings/${tab.path}`",
+    );
     expect(ptHub).toContain("getWorkspaceRouteSlug(workspace)");
   });
 

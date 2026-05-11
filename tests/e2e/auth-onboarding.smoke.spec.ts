@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { authSmokeFixtures, seedAuthSmokeStates } from "./utils/auth-seeds";
 import {
+  clickVisibleEnabledSignInButton,
   signInWithEmail,
   waitForAuthSessionReady,
   waitForBootstrapResolved,
@@ -20,10 +21,10 @@ test.describe("Smoke: auth and onboarding", () => {
     await page.goto("/login");
 
     await page
-      .getByPlaceholder("you@repsync.com")
+      .locator('input[aria-label="Email"]')
       .fill(`invalid-${Date.now()}@example.com`);
-    await page.getByPlaceholder("Enter password").fill("wrong-password");
-    await page.getByRole("button", { name: /^sign in$/i }).click();
+    await page.locator('input[aria-label="Password"]').fill("wrong-password");
+    await clickVisibleEnabledSignInButton(page);
 
     await expect(page).toHaveURL(/\/login/);
     await expect(

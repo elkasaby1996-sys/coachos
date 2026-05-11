@@ -62,3 +62,6 @@ jobs:
 
       - name: Push migrations to staging
         run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Deploy Open Wearables function to staging
+        run: supabase functions deploy open-wearables --project-ref "$SUPABASE_PROJECT_ID"
