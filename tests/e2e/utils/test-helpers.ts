@@ -70,11 +70,15 @@ export async function clickVisibleEnabledSignInButton(page: Page) {
 
   for (let index = (await signInButtons.count()) - 1; index >= 0; index -= 1) {
     const button = signInButtons.nth(index);
+    const box = await button.boundingBox().catch(() => null);
     if (
       (await button.isVisible().catch(() => false)) &&
-      (await button.isEnabled().catch(() => false))
+      (await button.isEnabled().catch(() => false)) &&
+      box &&
+      box.width > 1 &&
+      box.height > 1
     ) {
-      await button.click();
+      await button.click({ timeout: 2_000 });
       return;
     }
   }
@@ -257,7 +261,7 @@ export async function signInWithEmail(
           window.location.pathname !== "/login" &&
           window.location.pathname !== "/login/",
         undefined,
-        { timeout: 15_000 },
+        { timeout: 5_000 },
       );
       await page.waitForTimeout(400);
       if (isLoginPath(page.url()) || (await isLoginUiVisible(page))) {

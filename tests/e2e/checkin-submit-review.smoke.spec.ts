@@ -21,7 +21,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const clientContext = await browser.newContext();
     const clientPage = await clientContext.newPage();
     const skipClientFlow = async (reason: string) => {
-      await clientContext.close();
+      await clientContext.close().catch(() => {});
       test.skip(true, reason);
     };
 
@@ -299,7 +299,7 @@ test.describe("Smoke: check-in submit and PT review", () => {
     const ptContext = await browser.newContext();
     const ptPage = await ptContext.newPage();
     const skipPtFlow = async (reason: string) => {
-      await ptContext.close();
+      await ptContext.close().catch(() => {});
       test.skip(true, reason);
     };
 
