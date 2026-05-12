@@ -6,6 +6,7 @@ import {
   signInWithEmailPassword,
   signInWithOAuth,
 } from "../../lib/auth-helpers";
+import { getMarketingSiteUrl } from "../../lib/marketing-site";
 import { supabaseConfigured } from "../../lib/supabase";
 
 export function LoginPage() {
@@ -32,6 +33,7 @@ export function LoginPage() {
     <AuthComponent
       mode="signin"
       brandName="RepSync"
+      brandHref={getMarketingSiteUrl()}
       logo={
         <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
           <Dumbbell className="h-4 w-4" />

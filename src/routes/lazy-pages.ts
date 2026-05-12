@@ -19,6 +19,11 @@ export const ClientLayout = lazy(() =>
 export const LoginPage = lazy(() =>
   import("../pages/public/login").then((m) => ({ default: m.LoginPage })),
 );
+export const MarketingHomePage = lazy(() =>
+  import("../pages/public/marketing-home").then((m) => ({
+    default: m.MarketingHomePage,
+  })),
+);
 export const AuthCallbackPage = lazy(() =>
   import("../pages/public/auth-callback").then((m) => ({
     default: m.AuthCallbackPage,

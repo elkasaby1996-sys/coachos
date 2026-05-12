@@ -34,6 +34,7 @@ import {
   InvitePage,
   LegacySettingsRedirectPage,
   LoginPage,
+  MarketingHomePage,
   NoWorkspacePage,
   NotificationsPage,
   PrivacyPage,
@@ -95,7 +96,6 @@ import {
 
 // ✅ assumes your AuthProvider exports this hook
 import {
-  getAuthenticatedRedirectPath,
   useBootstrapAuth,
   useSessionAuth,
 } from "../lib/auth";
@@ -260,19 +260,6 @@ function RequireRole({
       )}
     </BootstrapGate>
   );
-}
-
-function IndexRedirect() {
-  const { authLoading, session } = useSessionAuth();
-  const { bootstrapPath, bootstrapResolved } = useBootstrapAuth();
-
-  if (authLoading) return <FullPageLoader />;
-
-  if (!session) return <Navigate to="/login" replace />;
-
-  if (!bootstrapResolved) return <FullPageLoader />;
-
-  return <Navigate to={bootstrapPath ?? "/no-workspace"} replace />;
 }
 
 function LoginGate() {
@@ -546,8 +533,8 @@ export function App() {
       <DocumentMetadata />
       <AppShellTransition>
         <Routes location={location}>
-          {/* Smart landing */}
-          <Route path="/" element={<IndexRedirect />} />
+          {/* Public landing */}
+          <Route path="/" element={<MarketingHomePage />} />
 
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />
