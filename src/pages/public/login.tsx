@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { Dumbbell } from "lucide-react";
 import { AuthComponent } from "../../components/ui/sign-up";
 import {
@@ -12,6 +13,10 @@ import { supabaseConfigured } from "../../lib/supabase";
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    document.title = "Login — RepSync";
+  }, []);
 
   const from = (location.state as { from?: unknown } | null)?.from;
   const redirectParam = new URLSearchParams(location.search).get("redirect");

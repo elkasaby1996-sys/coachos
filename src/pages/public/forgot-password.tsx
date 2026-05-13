@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { KeyRound, Mail } from "lucide-react";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
@@ -20,6 +20,10 @@ export function ForgotPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = "Forgot Password — RepSync";
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

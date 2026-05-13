@@ -1,4 +1,5 @@
 import { Link, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AppFooter } from "../../components/common/app-footer";
 import {
@@ -32,6 +33,10 @@ export function SignupRolePage() {
   const redirectSearch = inviteRedirect
     ? `?redirect=${encodeURIComponent(inviteRedirect)}`
     : "";
+
+  useEffect(() => {
+    document.title = "Sign Up — RepSync";
+  }, []);
 
   if (authLoading) {
     return <AuthPageLoader message="Checking your session..." />;

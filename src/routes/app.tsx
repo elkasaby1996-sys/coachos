@@ -29,6 +29,7 @@ import {
   ClientWorkoutsPage,
   ClientSignupPage,
   AuthCallbackPage,
+  DemoPage,
   ForgotPasswordPage,
   HealthPage,
   InvitePage,
@@ -36,6 +37,8 @@ import {
   LoginPage,
   MarketingHomePage,
   NoWorkspacePage,
+  PricingPage,
+  ProductPage,
   NotificationsPage,
   PrivacyPage,
   PublicCoachProfilePage,
@@ -535,6 +538,9 @@ export function App() {
         <Routes location={location}>
           {/* Public landing */}
           <Route path="/" element={<MarketingHomePage />} />
+          <Route path="/product" element={<ProductPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/demo" element={<DemoPage />} />
 
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />
@@ -543,6 +549,7 @@ export function App() {
             path="/auth/forgot-password"
             element={<ForgotPasswordPage />}
           />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route path="/signup" element={<SignupRolePage />} />
           <Route path="/signup/pt" element={<PtSignupPage />} />
