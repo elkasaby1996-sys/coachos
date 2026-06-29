@@ -16,6 +16,7 @@ import { appendSearchParams, routes } from "../lib/routes";
 import { supabase } from "../lib/supabase";
 import { useWorkspace } from "../lib/use-workspace";
 import { traceAsync, traceEnd, traceStart } from "../lib/perf-trace";
+import { getClientRouteGuardDecision } from "../lib/client-route-guard";
 import { getWorkspaceRouteGuardDecision } from "../lib/workspace-route-guard";
 import {
   buildLegacyWorkspaceEntryRedirectPath,
@@ -170,15 +171,25 @@ export function WorkspaceClientDetailRoute() {
       return data;
     },
   });
+  const guardDecision = getClientRouteGuardDecision({
+    routeLoading: clientQuery.isLoading,
+    clientId: clientQuery.data?.id,
+    accessLoading: false,
+    accessAllowed: Boolean(clientQuery.data),
+    routeError: clientQuery.error,
+    accessError: null,
+  });
 
-  if (clientQuery.isLoading) return <RouteLoading />;
-  if (clientQuery.error || !clientQuery.data) {
+  if (guardDecision === "loading") return <RouteLoading />;
+  if (guardDecision === "redirect") {
     return <RouteNotFound title="Client not found" />;
   }
+  const client = clientQuery.data;
+  if (!client) return <RouteNotFound title="Client not found" />;
 
   return (
     <Suspense fallback={<RouteLoading />}>
-      <LazyPtClientDetailPage clientIdOverride={clientQuery.data.id} />
+      <LazyPtClientDetailPage clientIdOverride={client.id} />
     </Suspense>
   );
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveInviteDisplayAuthorization,
   deriveInvitePageState,
+  isStructurallyValidTeamInviteToken,
+  type InviteDisplayAuthorizationInput,
   type InvitePageStateInput,
 } from "../../src/features/workspace-team/invite-page-state";
 import type { TeamInvitePreview } from "../../src/features/workspace-team/contracts";
@@ -27,7 +30,74 @@ function getState(input: Partial<InvitePageStateInput>) {
   });
 }
 
+function getDisplayAuthorization(
+  input: Partial<InviteDisplayAuthorizationInput>,
+) {
+  return deriveInviteDisplayAuthorization({
+    token:
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    preview: pendingPreview,
+    authLoading: false,
+    bootstrapLoading: false,
+    accountType: "pt",
+    currentEmail: "sarah@example.com",
+    previewLoading: false,
+    previewError: false,
+    ...input,
+  });
+}
+
 describe("workspace team invite page state", () => {
+  it("requires a structurally valid invite token before display", () => {
+    expect(isStructurallyValidTeamInviteToken("not-a-token")).toBe(false);
+    expect(getDisplayAuthorization({ token: "not-a-token" })).toBe("invalid");
+  });
+
+  it("does not authorize invite metadata display for signed-out users", () => {
+    expect(getDisplayAuthorization({ currentEmail: null })).toBe("signed_out");
+  });
+
+  it("does not authorize invite metadata display for client accounts", () => {
+    expect(getDisplayAuthorization({ accountType: "client" })).toBe(
+      "unauthorized",
+    );
+  });
+
+  it("does not authorize invite metadata display for the wrong signed-in email", () => {
+    expect(getDisplayAuthorization({ currentEmail: "wrong@example.com" })).toBe(
+      "unauthorized",
+    );
+  });
+
+  it("maps hardened RPC wrong-account errors to unauthorized display", () => {
+    expect(
+      getDisplayAuthorization({
+        preview: null,
+        previewError: true,
+        previewErrorCode: "INVITE_EMAIL_MISMATCH",
+      }),
+    ).toBe("unauthorized");
+  });
+
+  it("maps hardened RPC client-account errors to unauthorized display", () => {
+    expect(
+      getDisplayAuthorization({
+        preview: null,
+        previewError: true,
+        previewErrorCode: "WORKSPACE_PERMISSION_DENIED",
+      }),
+    ).toBe("unauthorized");
+  });
+
+  it("authorizes invite metadata display only for the invited coach email", () => {
+    expect(
+      getDisplayAuthorization({
+        currentEmail: "Sarah@Example.com",
+        accountType: "pt",
+      }),
+    ).toBe("authorized");
+  });
+
   it("shows auth actions for a signed-out pending invite", () => {
     expect(getState({ currentEmail: null })).toBe("pending_signed_out");
   });

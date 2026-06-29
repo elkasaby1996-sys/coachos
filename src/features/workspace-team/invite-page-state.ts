@@ -13,6 +13,13 @@ export type InvitePageState =
   | "already_accepted"
   | "error";
 
+export type InviteDisplayAuthorization =
+  | "loading"
+  | "signed_out"
+  | "authorized"
+  | "unauthorized"
+  | "invalid";
+
 export type InvitePageStateInput = {
   preview: TeamInvitePreview | null | undefined;
   previewLoading?: boolean;
@@ -24,8 +31,54 @@ export type InvitePageStateInput = {
   acceptErrorCode?: string | null;
 };
 
+export type InviteDisplayAuthorizationInput = {
+  token: string | null | undefined;
+  authLoading?: boolean;
+  bootstrapLoading?: boolean;
+  accountType?: "pt" | "client" | "unknown";
+  currentEmail?: string | null;
+  preview: TeamInvitePreview | null | undefined;
+  previewLoading?: boolean;
+  previewError?: boolean;
+  previewErrorCode?: string | null;
+};
+
 function normalizeEmailForCompare(email: string | null | undefined) {
   return email?.trim().toLowerCase() ?? "";
+}
+
+export function isStructurallyValidTeamInviteToken(
+  token: string | null | undefined,
+) {
+  return Boolean(token?.trim().match(/^[a-f0-9]{32,128}$/i));
+}
+
+export function deriveInviteDisplayAuthorization(
+  input: InviteDisplayAuthorizationInput,
+): InviteDisplayAuthorization {
+  if (!isStructurallyValidTeamInviteToken(input.token)) return "invalid";
+  if (input.authLoading) return "loading";
+
+  const currentEmail = normalizeEmailForCompare(input.currentEmail);
+  if (!currentEmail) return "signed_out";
+
+  if (input.bootstrapLoading && input.accountType === "unknown") {
+    return "loading";
+  }
+  if (input.accountType === "client") return "unauthorized";
+  if (input.previewLoading) return "loading";
+  if (
+    input.previewErrorCode === "INVITE_EMAIL_MISMATCH" ||
+    input.previewErrorCode === "WORKSPACE_PERMISSION_DENIED"
+  ) {
+    return "unauthorized";
+  }
+  if (input.previewError || !input.preview) return "invalid";
+
+  const invitedEmail = normalizeEmailForCompare(input.preview.invitedEmail);
+  if (currentEmail !== invitedEmail) return "unauthorized";
+
+  return "authorized";
 }
 
 export function deriveInvitePageState(

@@ -32,7 +32,9 @@ import type {
   TeamInvitePreview,
 } from "../../features/workspace-team/contracts";
 import {
+  deriveInviteDisplayAuthorization,
   deriveInvitePageState,
+  isStructurallyValidTeamInviteToken,
   type InvitePageState,
 } from "../../features/workspace-team/invite-page-state";
 import {
@@ -209,23 +211,13 @@ function InviteActionPanel({
     );
   }
 
-  if (!preview) {
-    return (
-      <InviteTerminalState
-        tone="danger"
-        title="This invite could not be opened"
-        description="The link may be invalid, expired, or no longer available."
-      />
-    );
-  }
-
   if (state === "pending_signed_out") {
     return (
       <Alert tone="info">
         <AlertTitle>Sign in to accept</AlertTitle>
         <AlertDescription>
-          Sign in or create a RepSync account with {preview.invitedEmail} to
-          accept this invite.
+          Sign in or create a RepSync PT account with the invited email address
+          to continue.
         </AlertDescription>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <Button asChild>
@@ -241,6 +233,37 @@ function InviteActionPanel({
           </Button>
         </div>
       </Alert>
+    );
+  }
+
+  if (state === "pending_wrong_account" && !preview) {
+    return (
+      <Alert tone="danger">
+        <AlertTitle>Invitation unavailable for this account</AlertTitle>
+        <AlertDescription>
+          This invitation is not available for the account currently signed in.
+          Please sign in with the invited email address.
+        </AlertDescription>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <Button variant="secondary" onClick={onSignOut}>
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+          <Button asChild>
+            <Link to="/pt-hub">Back to PT Hub</Link>
+          </Button>
+        </div>
+      </Alert>
+    );
+  }
+
+  if (!preview) {
+    return (
+      <InviteTerminalState
+        tone="danger"
+        title="This invite could not be opened"
+        description="The link may be invalid, expired, or no longer available."
+      />
     );
   }
 
@@ -409,16 +432,25 @@ export function TeamInviteAcceptancePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { refreshBootstrap } = useBootstrapAuth();
+  const { accountType, bootstrapLoading, refreshBootstrap } =
+    useBootstrapAuth();
   const { authLoading, user } = useSessionAuth();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [acceptErrorCode, setAcceptErrorCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const tokenIsValid = isStructurallyValidTeamInviteToken(token);
+  const previewEnabled =
+    tokenIsValid &&
+    !authLoading &&
+    Boolean(user) &&
+    !(bootstrapLoading && accountType === "unknown") &&
+    accountType !== "client";
+
   const previewQuery = useQuery({
     queryKey: ["workspace-team-invite-preview", token],
     queryFn: () => previewWorkspaceTeamInvite(token ?? ""),
-    enabled: Boolean(token),
+    enabled: previewEnabled,
     retry: false,
   });
 
@@ -451,22 +483,46 @@ export function TeamInviteAcceptancePage() {
 
   const preview = previewQuery.data ?? null;
   const currentEmail = user?.email ?? null;
-  const pageState = deriveInvitePageState({
+  const previewErrorCode = getWorkspaceTeamInviteErrorCode(previewQuery.error);
+  const displayAuthorization = deriveInviteDisplayAuthorization({
+    token,
+    authLoading,
+    bootstrapLoading,
+    accountType,
+    currentEmail,
     preview,
     previewLoading: previewQuery.isLoading,
-    previewError: previewQuery.isError || !token,
-    authLoading,
-    currentEmail,
-    emailVerified: user ? isUserEmailVerified(user) : undefined,
-    accepting: acceptMutation.isPending,
-    acceptErrorCode,
+    previewError: previewQuery.isError,
+    previewErrorCode,
   });
+  const displayPreview =
+    displayAuthorization === "authorized" ? preview : null;
+  const pageState =
+    displayAuthorization === "authorized"
+      ? deriveInvitePageState({
+          preview,
+          previewLoading: previewQuery.isLoading,
+          previewError: previewQuery.isError || !token,
+          authLoading,
+          currentEmail,
+          emailVerified: user ? isUserEmailVerified(user) : undefined,
+          accepting: acceptMutation.isPending,
+          acceptErrorCode,
+        })
+      : displayAuthorization === "loading"
+        ? "loading"
+        : displayAuthorization === "signed_out"
+          ? "pending_signed_out"
+          : displayAuthorization === "unauthorized"
+            ? "pending_wrong_account"
+            : "invalid";
 
   const heading = useMemo(() => {
     if (pageState === "pending_signed_out") return "Join this workspace";
     if (pageState === "pending_matching_account")
       return "Accept workspace invite";
-    if (pageState === "pending_wrong_account") return "Switch accounts";
+    if (pageState === "pending_wrong_account")
+      return "Invitation unavailable";
     if (pageState === "already_accepted") return "Invite accepted";
     if (pageState === "expired" || pageState === "revoked")
       return "Invite unavailable";
@@ -491,10 +547,10 @@ export function TeamInviteAcceptancePage() {
             {heading}
           </h1>
         </div>
-        <InvitePreviewCard preview={preview} state={pageState} />
+        <InvitePreviewCard preview={displayPreview} state={pageState} />
         <InviteActionPanel
           state={pageState}
-          preview={preview}
+          preview={displayPreview}
           token={token}
           currentEmail={currentEmail}
           onAccept={() => acceptMutation.mutate()}

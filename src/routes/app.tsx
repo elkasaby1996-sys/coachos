@@ -7,6 +7,7 @@ import {
   useLocation,
   useParams,
 } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ClientAccountOnboardingPage,
   ClientBaselinePage,
@@ -103,7 +104,12 @@ import {
   useSessionAuth,
 } from "../lib/auth";
 import { tracePoint } from "../lib/perf-trace";
+import {
+  getClientRouteGuardDecision,
+  isClientRouteUuid,
+} from "../lib/client-route-guard";
 import { canUseBootstrapForProtectedRoute } from "../lib/protected-route-guard";
+import { supabase } from "../lib/supabase";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
 import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
@@ -305,6 +311,36 @@ function LoginGate() {
   }
 
   return <LoginPage />;
+}
+
+function PtClientDetailRoute() {
+  const { clientId } = useParams<{ clientId: string }>();
+  const accessQuery = useQuery({
+    queryKey: ["route-client-access", clientId],
+    enabled: isClientRouteUuid(clientId),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("can_access_client", {
+        p_client_id: clientId ?? "",
+        p_permission: "clients.view",
+      });
+      if (error) throw error;
+      return Boolean(data);
+    },
+    retry: false,
+  });
+  const guardDecision = getClientRouteGuardDecision({
+    clientId,
+    accessLoading: accessQuery.isLoading,
+    accessAllowed: accessQuery.data,
+    accessError: accessQuery.error,
+  });
+
+  if (guardDecision === "loading") return <FullPageLoader />;
+  if (guardDecision === "redirect") {
+    return <Navigate to="/pt/clients" replace />;
+  }
+
+  return <PtClientDetailPage clientIdOverride={clientId} />;
 }
 
 function LegacyJoinRedirect() {
@@ -708,7 +744,7 @@ export function App() {
           >
             <Route path="dashboard" element={<PtDashboardPage />} />
             <Route path="clients" element={<PtClientsPage />} />
-            <Route path="clients/:clientId" element={<PtClientDetailPage />} />
+            <Route path="clients/:clientId" element={<PtClientDetailRoute />} />
             <Route path="programs" element={<PtProgramsPage />} />
             <Route path="programs/new" element={<PtProgramBuilderPage />} />
             <Route

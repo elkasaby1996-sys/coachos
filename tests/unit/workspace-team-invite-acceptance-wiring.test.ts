@@ -31,6 +31,14 @@ describe("workspace team invite acceptance wiring", () => {
     expect(ptSignupSource).toContain("next: inviteRedirect");
   });
 
+  it("gates invite preview metadata before rendering it", () => {
+    expect(pageSource).toContain("deriveInviteDisplayAuthorization");
+    expect(pageSource).toContain("enabled: previewEnabled");
+    expect(pageSource).toContain("const displayPreview =");
+    expect(pageSource).toContain("<InvitePreviewCard preview={displayPreview}");
+    expect(pageSource).toContain("preview={displayPreview}");
+  });
+
   it("keeps invite acceptance server-side and redirects to the service result", () => {
     expect(pageSource).toContain("acceptWorkspaceTeamInvite");
     expect(pageSource).toContain("navigate(result.redirectTo");
