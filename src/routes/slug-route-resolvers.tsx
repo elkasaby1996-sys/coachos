@@ -15,6 +15,8 @@ import { EmptyState } from "../components/ui/coachos/empty-state";
 import { appendSearchParams, routes } from "../lib/routes";
 import { supabase } from "../lib/supabase";
 import { useWorkspace } from "../lib/use-workspace";
+import { traceAsync, traceEnd, traceStart } from "../lib/perf-trace";
+import { getWorkspaceRouteGuardDecision } from "../lib/workspace-route-guard";
 import {
   buildLegacyWorkspaceEntryRedirectPath,
   buildLegacyWorkspaceSettingsRedirectPath,
@@ -69,6 +71,12 @@ function RouteNotFound({ title }: { title: string }) {
   );
 }
 
+type WorkspaceAccessContextRow = {
+  workspace_id: string;
+  role: string;
+  member_status: string;
+};
+
 export function WorkspaceSlugBoundary() {
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
   const { switchWorkspace } = useWorkspace();
@@ -76,19 +84,58 @@ export function WorkspaceSlugBoundary() {
     queryKey: ["route-workspace-slug", workspaceSlug],
     enabled: Boolean(workspaceSlug),
     queryFn: async () => {
-      return await resolveWorkspaceRouteParam(workspaceSlug);
+      return await traceAsync(
+        "WorkspaceSlugBoundary.slug_resolution",
+        () => resolveWorkspaceRouteParam(workspaceSlug),
+        { workspaceSlug },
+      );
     },
+  });
+  const workspaceAccessQuery = useQuery({
+    queryKey: ["route-workspace-access", workspaceQuery.data?.id],
+    enabled: Boolean(workspaceQuery.data?.id),
+    queryFn: async () => {
+      const { data, error } = await traceAsync(
+        "WorkspaceSlugBoundary.workspace_access_context",
+        () =>
+          supabase.rpc("workspace_access_context", {
+            p_workspace_id: workspaceQuery.data?.id,
+          }),
+        { workspaceId: workspaceQuery.data?.id },
+      );
+
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : null;
+      return (row ?? null) as WorkspaceAccessContextRow | null;
+    },
+  });
+  const workspaceAccessAllowed = Boolean(
+    workspaceAccessQuery.data?.workspace_id,
+  );
+  const guardDecision = getWorkspaceRouteGuardDecision({
+    routeLoading: workspaceQuery.isLoading,
+    accessLoading: workspaceAccessQuery.isLoading,
+    routeWorkspaceId: workspaceQuery.data?.id,
+    accessWorkspaceId: workspaceAccessQuery.data?.workspace_id,
+    routeError: workspaceQuery.error,
+    accessError: workspaceAccessQuery.error,
   });
 
   useEffect(() => {
-    if (workspaceQuery.data?.id) {
+    if (workspaceAccessAllowed && workspaceQuery.data?.id) {
+      const startedAt = traceStart("WorkspaceSlugBoundary.switchWorkspace", {
+        workspaceId: workspaceQuery.data.id,
+      });
       switchWorkspace(workspaceQuery.data.id);
+      traceEnd("WorkspaceSlugBoundary.switchWorkspace", startedAt, {
+        workspaceId: workspaceQuery.data.id,
+      });
     }
-  }, [switchWorkspace, workspaceQuery.data?.id]);
+  }, [switchWorkspace, workspaceAccessAllowed, workspaceQuery.data?.id]);
 
-  if (workspaceQuery.isLoading) return <RouteLoading />;
-  if (workspaceQuery.error || !workspaceQuery.data) {
-    return <RouteNotFound title="Workspace not found" />;
+  if (guardDecision === "loading") return <RouteLoading />;
+  if (guardDecision === "redirect") {
+    return <Navigate to={routes.ptHub()} replace />;
   }
 
   return <Outlet />;

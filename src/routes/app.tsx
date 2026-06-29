@@ -102,6 +102,8 @@ import {
   useBootstrapAuth,
   useSessionAuth,
 } from "../lib/auth";
+import { tracePoint } from "../lib/perf-trace";
+import { canUseBootstrapForProtectedRoute } from "../lib/protected-route-guard";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
 import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
@@ -223,24 +225,39 @@ function RequireRole({
     accountType,
     bootstrapResolved,
     bootstrapStale,
+    bootstrapUserId,
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired,
-    hasStableBootstrap,
     hasWorkspaceMembership,
     pendingInviteToken,
     ptProfileComplete,
     ptWorkspaceComplete,
   } = useBootstrapAuth();
+  const { user } = useSessionAuth();
   const location = useLocation();
+  const canUseBootstrap = canUseBootstrapForProtectedRoute({
+    allow,
+    accountType,
+    bootstrapResolved,
+    bootstrapStale,
+    bootstrapUserId,
+    currentUserId: user?.id,
+  });
+  tracePoint("RequireRole.decision", {
+    pathname: location.pathname,
+    allow: allow.join(","),
+    accountType,
+    bootstrapResolved,
+    bootstrapStale,
+    bootstrapUserId,
+    currentUserId: user?.id ?? null,
+    canUseBootstrap,
+  });
 
   return (
     <BootstrapGate>
-      {!bootstrapResolved ? (
-        hasStableBootstrap && bootstrapStale ? (
-          <>{children}</>
-        ) : (
-          <FullPageLoader />
-        )
+      {!canUseBootstrap ? (
+        <FullPageLoader />
       ) : (
         (() => {
           const redirect = getProtectedRedirect({

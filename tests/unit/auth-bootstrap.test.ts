@@ -7,6 +7,7 @@ import type {
 import {
   buildSessionAuthValue,
   buildStaleBootstrapFallbackState,
+  getBootstrapRunKey,
   getAuthenticatedRedirectPath,
   getBootstrapPath,
   resolveBootstrapFromLookupResults,
@@ -242,5 +243,33 @@ describe("auth/bootstrap regression coverage", () => {
     } as const;
 
     expect(getAuthenticatedRedirectPath(state)).toBe("/app/home");
+  });
+
+  it("keys bootstrap dedupe by user and session rather than route path", () => {
+    const first = getBootstrapRunKey({
+      userId: "user-1",
+      sessionKey: "session-a",
+    });
+    const duplicate = getBootstrapRunKey({
+      userId: "user-1",
+      sessionKey: "session-a",
+    });
+    const sameSessionDifferentPath = getBootstrapRunKey({
+      userId: "user-1",
+      sessionKey: "session-a",
+    });
+    const differentUser = getBootstrapRunKey({
+      userId: "user-2",
+      sessionKey: "session-a",
+    });
+    const differentSession = getBootstrapRunKey({
+      userId: "user-1",
+      sessionKey: "session-b",
+    });
+
+    expect(duplicate).toBe(first);
+    expect(sameSessionDifferentPath).toBe(first);
+    expect(differentUser).not.toBe(first);
+    expect(differentSession).not.toBe(first);
   });
 });

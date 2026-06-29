@@ -1,9 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { supabase } from "./supabase";
 import { useBootstrapAuth, useSessionAuth } from "./auth";
+import { traceAsync, traceEnd, tracePoint, traceStart } from "./perf-trace";
 
 const ACTIVE_WORKSPACE_STORAGE_KEY = "coachos_workspace_id";
 const WORKSPACE_CHANGE_EVENT = "coachos:workspace-change";
+const WORKSPACE_RECENT_SUCCESS_TTL_MS = 3_000;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -16,6 +28,18 @@ type WorkspaceSnapshot = {
   workspaceIds: string[];
   ownerUserId: string | null;
 };
+
+type WorkspaceContextValue = {
+  workspaceId: string | null;
+  workspaceIds: string[];
+  ownerUserId: string | null;
+  loading: boolean;
+  error: Error | null;
+  switchWorkspace: (nextWorkspaceId: string) => void;
+  refreshWorkspace: () => void;
+};
+
+const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 const emptyWorkspaceSnapshot: WorkspaceSnapshot = {
   workspaceId: null,
@@ -48,8 +72,8 @@ function prioritizeWorkspaceIds(
   ];
 }
 
-export function useWorkspace() {
-  const { user } = useSessionAuth();
+function useWorkspaceState(): WorkspaceContextValue {
+  const { authLoading, user } = useSessionAuth();
   const {
     accountType,
     activeWorkspaceId: bootstrapWorkspaceId,
@@ -72,15 +96,32 @@ export function useWorkspace() {
   const lastStableWorkspaceRef = useRef<WorkspaceSnapshot>(
     emptyWorkspaceSnapshot,
   );
+  const workspaceIdRef = useRef<string | null>(null);
+  const hasCachedRef = useRef(false);
   const requestIdRef = useRef(0);
+  const lastLoadedWorkspaceKeyRef = useRef<string | null>(null);
+  const lastLoadedWorkspaceAtRef = useRef(0);
+  const inFlightWorkspaceLoadKeyRef = useRef<string | null>(null);
+
+  const setWorkspaceIdValue = useCallback((nextWorkspaceId: string | null) => {
+    workspaceIdRef.current = nextWorkspaceId;
+    setWorkspaceId(nextWorkspaceId);
+  }, []);
+
+  const setHasCachedValue = useCallback((nextHasCached: boolean) => {
+    hasCachedRef.current = nextHasCached;
+    setHasCached(nextHasCached);
+  }, []);
 
   const switchWorkspace = useCallback((nextWorkspaceId: string) => {
     if (!isUuid(nextWorkspaceId)) return;
-    setWorkspaceId(nextWorkspaceId);
+    setWorkspaceIdValue(nextWorkspaceId);
     setWorkspaceIds((current) =>
       prioritizeWorkspaceIds(nextWorkspaceId, current),
     );
-    setHasCached(true);
+    setHasCachedValue(true);
+    lastLoadedWorkspaceKeyRef.current = null;
+    lastLoadedWorkspaceAtRef.current = 0;
     lastStableWorkspaceRef.current = {
       workspaceId: nextWorkspaceId,
       workspaceIds: prioritizeWorkspaceIds(
@@ -100,9 +141,11 @@ export function useWorkspace() {
         }),
       );
     }
-  }, []);
+  }, [setHasCachedValue, setWorkspaceIdValue]);
 
   const refreshWorkspace = useCallback(() => {
+    lastLoadedWorkspaceKeyRef.current = null;
+    lastLoadedWorkspaceAtRef.current = 0;
     setReloadNonce((value) => value + 1);
   }, []);
 
@@ -111,7 +154,7 @@ export function useWorkspace() {
       snapshot.workspaceId && isUuid(snapshot.workspaceId)
         ? prioritizeWorkspaceIds(snapshot.workspaceId, snapshot.workspaceIds)
         : snapshot.workspaceIds;
-    setWorkspaceId(snapshot.workspaceId);
+    setWorkspaceIdValue(snapshot.workspaceId);
     setWorkspaceIds(normalizedWorkspaceIds);
     setOwnerUserId(snapshot.ownerUserId);
     if (snapshot.workspaceId) {
@@ -127,7 +170,7 @@ export function useWorkspace() {
         );
       }
     }
-  }, []);
+  }, [setWorkspaceIdValue]);
 
   const applyStaleWorkspaceSnapshot = useCallback(
     (nextError: Error) => {
@@ -168,13 +211,13 @@ export function useWorkspace() {
 
     const cachedWorkspaceId = readCachedWorkspaceId();
     if (cachedWorkspaceId) {
-      setWorkspaceId(cachedWorkspaceId);
+      setWorkspaceIdValue(cachedWorkspaceId);
       setWorkspaceIds((current) =>
         current.includes(cachedWorkspaceId)
           ? current
           : [cachedWorkspaceId, ...current],
       );
-      setHasCached(true);
+      setHasCachedValue(true);
       lastStableWorkspaceRef.current = {
         workspaceId: cachedWorkspaceId,
         workspaceIds: prioritizeWorkspaceIds(
@@ -186,7 +229,7 @@ export function useWorkspace() {
     }
 
     setStorageHydrated(true);
-  }, []);
+  }, [setHasCachedValue, setWorkspaceIdValue]);
 
   useEffect(() => {
     if (!storageHydrated) return;
@@ -208,7 +251,7 @@ export function useWorkspace() {
             : null,
       };
       applyWorkspaceSnapshot(seededSnapshot);
-      setHasCached(true);
+      setHasCachedValue(true);
       setLoading(false);
       setError(null);
     }
@@ -221,6 +264,7 @@ export function useWorkspace() {
     hasStableBootstrap,
     storageHydrated,
     hasWorkspaceMembership,
+    setHasCachedValue,
     workspaceId,
     workspaceIds,
   ]);
@@ -231,11 +275,11 @@ export function useWorkspace() {
     const applyIncomingWorkspace = (nextWorkspaceId: string) => {
       if (!isUuid(nextWorkspaceId)) return;
 
-      setWorkspaceId(nextWorkspaceId);
+      setWorkspaceIdValue(nextWorkspaceId);
       setWorkspaceIds((current) =>
         prioritizeWorkspaceIds(nextWorkspaceId, current),
       );
-      setHasCached(true);
+      setHasCachedValue(true);
       lastStableWorkspaceRef.current = {
         workspaceId: nextWorkspaceId,
         workspaceIds: prioritizeWorkspaceIds(
@@ -272,7 +316,7 @@ export function useWorkspace() {
       );
       window.removeEventListener("storage", handleStorageEvent);
     };
-  }, []);
+  }, [setHasCachedValue, setWorkspaceIdValue]);
 
   useEffect(() => {
     if (!bootstrapWorkspaceId || !bootstrapError) return;
@@ -284,47 +328,131 @@ export function useWorkspace() {
 
   useEffect(() => {
     let mounted = true;
-    const currentRequestId = ++requestIdRef.current;
+    const currentRequestId = requestIdRef.current + 1;
     const loadWorkspace = async () => {
+      const currentWorkspaceId = workspaceIdRef.current;
+      const currentHasCached = hasCachedRef.current;
+      const loadStartedAt = traceStart("useWorkspace.load", {
+        requestId: currentRequestId,
+        userId: user?.id ?? null,
+        accountType,
+        hasCached: currentHasCached,
+        workspaceId: currentWorkspaceId,
+      });
       if (!storageHydrated) {
         setLoading(true);
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result: "storage-pending",
+        });
+        return;
+      }
+
+      if (authLoading) {
+        setLoading(true);
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result: "auth-pending",
+        });
         return;
       }
 
       if (!user?.id) {
-        setWorkspaceId(null);
+        setWorkspaceIdValue(null);
         setWorkspaceIds([]);
         setOwnerUserId(null);
-        setHasCached(false);
+        setHasCachedValue(false);
+        lastLoadedWorkspaceKeyRef.current = null;
+        lastLoadedWorkspaceAtRef.current = 0;
+        inFlightWorkspaceLoadKeyRef.current = null;
         setLoading(false);
         if (typeof window !== "undefined") {
           window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
         }
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result: "no-user",
+        });
+        return;
+      }
+
+      if (!bootstrapResolved && !(bootstrapStale && hasStableBootstrap)) {
+        setLoading(true);
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result: "bootstrap-pending",
+        });
         return;
       }
 
       if (accountType === "client" && !hasWorkspaceMembership) {
-        setWorkspaceId(null);
+        setWorkspaceIdValue(null);
         setWorkspaceIds([]);
         setOwnerUserId(null);
-        setHasCached(false);
+        setHasCachedValue(false);
+        lastLoadedWorkspaceKeyRef.current = null;
+        lastLoadedWorkspaceAtRef.current = 0;
+        inFlightWorkspaceLoadKeyRef.current = null;
         setError(null);
         setLoading(false);
         if (typeof window !== "undefined") {
           window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
         }
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result: "client-no-workspace-membership",
+        });
         return;
       }
 
       const preservedSnapshot = lastStableWorkspaceRef.current;
-      if (!hasCached) {
+      const workspaceLoadKey = [
+        user.id,
+        accountType,
+        bootstrapWorkspaceId ?? "none",
+        currentWorkspaceId ?? "none",
+        reloadNonce,
+      ].join(":");
+      if (
+        currentHasCached &&
+        currentWorkspaceId &&
+        lastLoadedWorkspaceKeyRef.current === workspaceLoadKey
+      ) {
+        const recent = Date.now() - lastLoadedWorkspaceAtRef.current;
+        const result =
+          recent < WORKSPACE_RECENT_SUCCESS_TTL_MS
+            ? "recent-success"
+            : "already-loaded";
+        setLoading(false);
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result,
+          key: workspaceLoadKey,
+          workspaceId: currentWorkspaceId,
+        });
+        return;
+      }
+      if (inFlightWorkspaceLoadKeyRef.current === workspaceLoadKey) {
+        setLoading(false);
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result: "in-flight",
+          key: workspaceLoadKey,
+          workspaceId: currentWorkspaceId,
+        });
+        return;
+      }
+      if (!currentHasCached) {
         setLoading(true);
       }
       setError(null);
+      requestIdRef.current = currentRequestId;
+      inFlightWorkspaceLoadKeyRef.current = workspaceLoadKey;
 
       try {
         const [memberResult, ownedResult] = await Promise.all([
-          withTimeout(
+          traceAsync("useWorkspace.workspace_members", () =>
+            withTimeout(
             supabase
               .from("workspace_members")
               .select("workspace_id, created_at, status")
@@ -338,10 +466,13 @@ export function useWorkspace() {
                   status: string | null;
                 }>
               >(),
-            8000,
-            "Workspace lookup timed out (8s).",
+              8000,
+              "Workspace lookup timed out (8s).",
+            ),
+            { userId: user.id },
           ),
-          withTimeout(
+          traceAsync("useWorkspace.owned_workspaces", () =>
+            withTimeout(
             supabase
               .from("workspaces")
               .select("id, owner_user_id, created_at")
@@ -354,8 +485,10 @@ export function useWorkspace() {
                   created_at: string;
                 }>
               >(),
-            8000,
-            "Owned workspace lookup timed out (8s).",
+              8000,
+              "Owned workspace lookup timed out (8s).",
+            ),
+            { userId: user.id },
           ),
         ]);
 
@@ -373,14 +506,19 @@ export function useWorkspace() {
         );
         if (combinedWorkspaceIds.length > 0) {
           const { data: workspaceData, error: workspaceError } =
-            await withTimeout(
+            await traceAsync(
+              "useWorkspace.workspace_owner_lookup",
+              () =>
+                withTimeout(
               supabase
                 .from("workspaces")
                 .select("id, owner_user_id")
                 .in("id", combinedWorkspaceIds)
                 .returns<Array<{ id: string; owner_user_id: string | null }>>(),
-              8000,
-              "Workspace owner lookup timed out (8s).",
+                  8000,
+                  "Workspace owner lookup timed out (8s).",
+                ),
+              { workspaceCount: combinedWorkspaceIds.length },
             );
 
           if (workspaceError) throw workspaceError;
@@ -388,7 +526,7 @@ export function useWorkspace() {
 
           const cachedWorkspaceId = readCachedWorkspaceId();
           const preferredWorkspaceId = [
-            workspaceId,
+            currentWorkspaceId,
             cachedWorkspaceId,
             preservedSnapshot.workspaceId,
             bootstrapWorkspaceId,
@@ -417,19 +555,31 @@ export function useWorkspace() {
               workspaceIds: orderedWorkspaceIds,
               ownerUserId: selectedWorkspace.owner_user_id,
             });
+            lastLoadedWorkspaceKeyRef.current = workspaceLoadKey;
+            lastLoadedWorkspaceAtRef.current = Date.now();
             setError(null);
           }
+          traceEnd("useWorkspace.load", loadStartedAt, {
+            requestId: currentRequestId,
+            result: "workspace-selected",
+            workspaceId: selectedWorkspaceId,
+          });
           return;
         }
 
-        const { data: clientData, error: clientError } = await withTimeout(
-          supabase
-            .from("clients")
-            .select("workspace_id")
-            .eq("user_id", user.id)
-            .maybeSingle(),
-          8000,
-          "Client workspace lookup timed out (8s).",
+        const { data: clientData, error: clientError } = await traceAsync(
+          "useWorkspace.client_workspace",
+          () =>
+            withTimeout(
+              supabase
+                .from("clients")
+                .select("workspace_id")
+                .eq("user_id", user.id)
+                .maybeSingle(),
+              8000,
+              "Client workspace lookup timed out (8s).",
+            ),
+          { userId: user.id },
         );
 
         if (clientError) throw clientError;
@@ -443,8 +593,15 @@ export function useWorkspace() {
             workspaceIds: [clientData.workspace_id],
             ownerUserId: null,
           });
+          lastLoadedWorkspaceKeyRef.current = workspaceLoadKey;
+          lastLoadedWorkspaceAtRef.current = Date.now();
           setError(null);
         }
+        traceEnd("useWorkspace.load", loadStartedAt, {
+          requestId: currentRequestId,
+          result: "client-workspace-selected",
+          workspaceId: clientData.workspace_id,
+        });
       } catch (err) {
         console.error("Workspace bootstrap failed", err);
         if (mounted && currentRequestId === requestIdRef.current) {
@@ -458,22 +615,40 @@ export function useWorkspace() {
 
           if (isTransient && preservedSnapshot.workspaceId) {
             applyStaleWorkspaceSnapshot(nextError);
+            traceEnd("useWorkspace.load", loadStartedAt, {
+              requestId: currentRequestId,
+              result: "stale-fallback",
+              error: nextError.message,
+            });
             return;
           }
 
           if (!preservedSnapshot.workspaceId) {
-            setWorkspaceId(null);
+            setWorkspaceIdValue(null);
             setWorkspaceIds([]);
             setOwnerUserId(null);
+            lastLoadedWorkspaceKeyRef.current = null;
+            lastLoadedWorkspaceAtRef.current = 0;
             if (typeof window !== "undefined") {
               window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
             }
           }
           setError(nextError);
+          traceEnd("useWorkspace.load", loadStartedAt, {
+            requestId: currentRequestId,
+            result: "error",
+            error: nextError.message,
+          });
         }
       } finally {
         if (mounted && currentRequestId === requestIdRef.current) {
           setLoading(false);
+        }
+        tracePoint("useWorkspace.load:finally", {
+          requestId: currentRequestId,
+        });
+        if (inFlightWorkspaceLoadKeyRef.current === workspaceLoadKey) {
+          inFlightWorkspaceLoadKeyRef.current = null;
         }
       }
     };
@@ -487,23 +662,50 @@ export function useWorkspace() {
     accountType,
     applyStaleWorkspaceSnapshot,
     applyWorkspaceSnapshot,
+    authLoading,
+    bootstrapResolved,
     bootstrapWorkspaceId,
     bootstrapStale,
+    hasStableBootstrap,
     hasWorkspaceMembership,
-    hasCached,
     reloadNonce,
+    setHasCachedValue,
+    setWorkspaceIdValue,
     storageHydrated,
     user?.id,
-    workspaceId,
   ]);
 
-  return {
-    workspaceId,
-    workspaceIds,
-    ownerUserId,
-    loading,
-    error,
-    switchWorkspace,
-    refreshWorkspace,
-  };
+  return useMemo(
+    () => ({
+      workspaceId,
+      workspaceIds,
+      ownerUserId,
+      loading,
+      error,
+      switchWorkspace,
+      refreshWorkspace,
+    }),
+    [
+      error,
+      loading,
+      ownerUserId,
+      refreshWorkspace,
+      switchWorkspace,
+      workspaceId,
+      workspaceIds,
+    ],
+  );
+}
+
+export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const value = useWorkspaceState();
+  return createElement(WorkspaceContext.Provider, { value }, children);
+}
+
+export function useWorkspace() {
+  const workspaceContext = useContext(WorkspaceContext);
+  if (!workspaceContext) {
+    throw new Error("useWorkspace must be used within WorkspaceProvider");
+  }
+  return workspaceContext;
 }
