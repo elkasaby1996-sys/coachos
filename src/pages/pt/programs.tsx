@@ -23,6 +23,7 @@ import { EmptyState } from "../../components/pt/dashboard/EmptyState";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import { formatRelativeTime } from "../../lib/relative-time";
 
 type ProgramTemplateRow = {
@@ -68,6 +69,7 @@ export function PtProgramsPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
+  const { canManageDelivery } = useWorkspaceWriteAccess();
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
   const [actionMode, setActionMode] = useState<
@@ -168,6 +170,7 @@ export function PtProgramsPage() {
   };
 
   const handleArchive = async (programId: string) => {
+    if (!canManageDelivery) return;
     setActionId(programId);
     setActionMode("archive");
     setActionError(null);
@@ -191,7 +194,7 @@ export function PtProgramsPage() {
   };
 
   const handleDuplicate = async (program: ProgramTemplateRow) => {
-    if (!workspaceId) return;
+    if (!workspaceId || !canManageDelivery) return;
     setActionId(program.id);
     setActionMode("duplicate");
     setActionError(null);
@@ -246,7 +249,7 @@ export function PtProgramsPage() {
   };
 
   const handleDelete = async (program: ProgramTemplateRow) => {
-    if (!workspaceId) return;
+    if (!workspaceId || !canManageDelivery) return;
     const confirmed = window.confirm(
       `Delete "${program.name ?? "Program"}"? This will permanently remove the program and its scheduled template days.`,
     );
@@ -297,9 +300,11 @@ export function PtProgramsPage() {
       />
 
       <div className="flex justify-end">
-        <Button onClick={() => navigate("/pt/programs/new")}>
-          New Program
-        </Button>
+        {canManageDelivery ? (
+          <Button onClick={() => navigate("/pt/programs/new")}>
+            New Program
+          </Button>
+        ) : null}
       </div>
 
       {actionError ? (
@@ -426,44 +431,48 @@ export function PtProgramsPage() {
                       }
                     >
                       <Pencil className="mr-1 h-3.5 w-3.5" />
-                      Edit
+                      {canManageDelivery ? "Edit" : "View"}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="flex-1"
-                      disabled={isBusy && actionMode === "duplicate"}
-                      onClick={() => handleDuplicate(program)}
-                    >
-                      <Copy className="mr-1 h-3.5 w-3.5" />
-                      {isBusy && actionMode === "duplicate"
-                        ? "Duplicating..."
-                        : "Duplicate"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="flex-1"
-                      disabled={isBusy && actionMode === "archive"}
-                      onClick={() => handleArchive(program.id)}
-                    >
-                      <Archive className="mr-1 h-3.5 w-3.5" />
-                      {isBusy && actionMode === "archive"
-                        ? "Archiving..."
-                        : "Archive"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="flex-1 text-destructive hover:text-destructive"
-                      disabled={isBusy && actionMode === "delete"}
-                      onClick={() => handleDelete(program)}
-                    >
-                      <Trash2 className="mr-1 h-3.5 w-3.5" />
-                      {isBusy && actionMode === "delete"
-                        ? "Deleting..."
-                        : "Delete"}
-                    </Button>
+                    {canManageDelivery ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="flex-1"
+                          disabled={isBusy && actionMode === "duplicate"}
+                          onClick={() => handleDuplicate(program)}
+                        >
+                          <Copy className="mr-1 h-3.5 w-3.5" />
+                          {isBusy && actionMode === "duplicate"
+                            ? "Duplicating..."
+                            : "Duplicate"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="flex-1"
+                          disabled={isBusy && actionMode === "archive"}
+                          onClick={() => handleArchive(program.id)}
+                        >
+                          <Archive className="mr-1 h-3.5 w-3.5" />
+                          {isBusy && actionMode === "archive"
+                            ? "Archiving..."
+                            : "Archive"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="flex-1 text-destructive hover:text-destructive"
+                          disabled={isBusy && actionMode === "delete"}
+                          onClick={() => handleDelete(program)}
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          {isBusy && actionMode === "delete"
+                            ? "Deleting..."
+                            : "Delete"}
+                        </Button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </DashboardCard>
@@ -542,8 +551,12 @@ export function PtProgramsPage() {
               <EmptyState
                 title="No programs yet"
                 description="Create your first multi-week program to start assigning structured training blocks."
-                actionLabel="New Program"
-                onAction={() => navigate("/pt/programs/new")}
+                actionLabel={canManageDelivery ? "New Program" : undefined}
+                onAction={
+                  canManageDelivery
+                    ? () => navigate("/pt/programs/new")
+                    : undefined
+                }
               />
             </div>
           </DashboardCard>

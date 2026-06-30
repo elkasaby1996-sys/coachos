@@ -17,6 +17,10 @@ const inviteApi = readFileSync(
   "src/features/workspace-team/invite-api.ts",
   "utf8",
 );
+const routeResolver = readFileSync(
+  "src/features/notifications/lib/notification-route-resolver.ts",
+  "utf8",
+);
 
 describe("workspace team invite notifications", () => {
   it("creates recipient notifications and queued email deliveries for existing PT users", () => {
@@ -45,15 +49,19 @@ describe("workspace team invite notifications", () => {
   it("models team invite notifications in the client notification system", () => {
     expect(notificationTypes).toContain('"team_invite_received"');
     expect(notificationTypes).toContain('"team_invite_declined"');
-    expect(inviteApi).toContain("acceptWorkspaceTeamInviteById");
+    expect(inviteApi).toContain("acceptWorkspaceTeamInvite");
     expect(inviteApi).toContain("declineWorkspaceTeamInvite");
   });
 
-  it("renders PT notification actions to accept or decline an invite in place", () => {
+  it("routes PT notification invite actions to the secure invite page", () => {
     expect(notificationPage).toContain("isWorkspaceTeamInviteNotification");
-    expect(notificationPage).toContain("Accept invite");
+    expect(notificationPage).toContain("Open invitation");
+    expect(notificationPage).toContain("openInviteNotification");
+    expect(notificationPage).toContain("navigate(inviteRoute)");
+    expect(routeResolver).toContain('"/team-invites/"');
     expect(notificationPage).toContain("Decline");
-    expect(notificationPage).toContain("acceptWorkspaceTeamInviteById");
+    expect(notificationPage).not.toContain("acceptWorkspaceTeamInviteById");
+    expect(inviteApi).not.toContain("acceptWorkspaceTeamInviteById");
     expect(notificationPage).toContain("declineWorkspaceTeamInvite");
   });
 });

@@ -41,10 +41,7 @@ import {
 } from "../hooks/use-notifications";
 import { resolveNotificationActionUrl } from "../lib/notification-route-resolver";
 import type { NotificationFilter, NotificationRecord } from "../lib/types";
-import {
-  acceptWorkspaceTeamInviteById,
-  declineWorkspaceTeamInvite,
-} from "../../workspace-team/invite-api";
+import { declineWorkspaceTeamInvite } from "../../workspace-team/invite-api";
 
 const getPtNotificationPeriodLabel = (createdAt: string) => {
   const created = new Date(createdAt);
@@ -122,25 +119,6 @@ export function NotificationsPage() {
   const archiveMutation = useArchiveNotification(user?.id ?? null);
   const unarchiveMutation = useUnarchiveNotification(user?.id ?? null);
   const markAllReadMutation = useMarkAllNotificationsRead(user?.id ?? null);
-  const acceptInviteMutation = useMutation({
-    mutationFn: acceptWorkspaceTeamInviteById,
-    onSuccess: async (result) => {
-      if (user?.id) {
-        await queryClient.invalidateQueries({
-          queryKey: notificationsKeys.infiniteRoot(user.id),
-        });
-        await queryClient.invalidateQueries({
-          queryKey: notificationsKeys.unreadCount(user.id),
-        });
-      }
-      navigate(result.redirectTo);
-    },
-    onError: (error) => {
-      setInviteActionMessage(
-        error instanceof Error ? error.message : "Unable to accept invite.",
-      );
-    },
-  });
   const declineInviteMutation = useMutation({
     mutationFn: declineWorkspaceTeamInvite,
     onSuccess: async () => {
@@ -217,6 +195,12 @@ export function NotificationsPage() {
     navigate(target);
   };
 
+  const openInviteNotification = async (notification: NotificationRecord) => {
+    const inviteRoute = resolveNotificationActionUrl(notification, "pt");
+    await markClickedMutation.mutateAsync(notification.id);
+    navigate(inviteRoute);
+  };
+
   const renderNotificationActions = (
     notification: NotificationRecord,
     audience: "client" | "pt",
@@ -233,16 +217,11 @@ export function NotificationsPage() {
               size="sm"
               onClick={(event) => {
                 event.stopPropagation();
-                acceptInviteMutation.mutate(inviteId);
+                void openInviteNotification(notification);
               }}
-              disabled={
-                acceptInviteMutation.isPending ||
-                declineInviteMutation.isPending
-              }
+              disabled={markClickedMutation.isPending}
             >
-              {acceptInviteMutation.isPending
-                ? "Accepting..."
-                : "Accept invite"}
+              Open invitation
             </Button>
             <Button
               size="sm"
@@ -251,10 +230,7 @@ export function NotificationsPage() {
                 event.stopPropagation();
                 declineInviteMutation.mutate(inviteId);
               }}
-              disabled={
-                acceptInviteMutation.isPending ||
-                declineInviteMutation.isPending
-              }
+              disabled={declineInviteMutation.isPending}
             >
               {declineInviteMutation.isPending ? "Declining..." : "Decline"}
             </Button>
@@ -353,7 +329,7 @@ export function NotificationsPage() {
             inviteActionMessage === "Invite declined." ? "success" : "warning"
           }
           title={inviteActionMessage}
-          description="Workspace invite actions are available directly from team invite notifications."
+          description="Workspace invitations open on the secure invite page."
         />
       ) : null}
 

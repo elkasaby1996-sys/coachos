@@ -26,6 +26,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { supabase } from "../../lib/supabase";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import type { AccountType } from "../../lib/account-profiles";
 import type {
   ClientAccessMode,
   InvitableWorkspaceRole,
@@ -67,6 +68,27 @@ function isUserEmailVerified(user: unknown) {
 function buildRedirectLink(path: string, token: string | undefined) {
   const returnTo = `/team-invites/${encodeURIComponent(token ?? "")}`;
   return `${path}?redirect=${encodeURIComponent(returnTo)}`;
+}
+
+function getSafeInviteHomeAction(accountType: AccountType) {
+  if (accountType === "client") {
+    return {
+      label: "Back to homepage",
+      to: "/app/home",
+    };
+  }
+
+  if (accountType === "pt") {
+    return {
+      label: "Back to homepage",
+      to: "/pt-hub",
+    };
+  }
+
+  return {
+    label: "Back to homepage",
+    to: "/",
+  };
 }
 
 function InviteStatusBadge({ state }: { state: InvitePageState }) {
@@ -212,6 +234,7 @@ function InviteActionPanel({
   state,
   preview,
   token,
+  accountType,
   currentEmail,
   onAccept,
   onSignOut,
@@ -221,12 +244,15 @@ function InviteActionPanel({
   state: InvitePageState;
   preview: TeamInvitePreview | null;
   token: string | undefined;
+  accountType: AccountType;
   currentEmail: string | null;
   onAccept: () => void;
   onSignOut: () => void;
   successMessage: string | null;
   errorMessage: string | null;
 }) {
+  const safeHomeAction = getSafeInviteHomeAction(accountType);
+
   if (state === "loading" || state === "accepting") {
     return (
       <Alert tone="info">
@@ -278,7 +304,7 @@ function InviteActionPanel({
         </AlertDescription>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <Button asChild>
-            <Link to="/pt-hub">Back to PT Hub</Link>
+            <Link to={safeHomeAction.to}>{safeHomeAction.label}</Link>
           </Button>
           <Button variant="secondary" onClick={onSignOut}>
             <LogOut className="h-4 w-4" />
@@ -295,6 +321,11 @@ function InviteActionPanel({
         tone="danger"
         title="This invitation link isn't valid"
         description="The invite link may be incorrect or no longer available."
+        action={
+          <Button asChild>
+            <Link to={safeHomeAction.to}>{safeHomeAction.label}</Link>
+          </Button>
+        }
       />
     );
   }
@@ -422,7 +453,7 @@ function WrongInviteAccountState({
           Sign out
         </Button>
         <Button asChild>
-          <Link to="/pt-hub">Back to PT Hub</Link>
+          <Link to="/pt-hub">Back to homepage</Link>
         </Button>
       </div>
     </Alert>
@@ -583,6 +614,7 @@ export function TeamInviteAcceptancePage() {
           state={pageState}
           preview={displayPreview}
           token={token}
+          accountType={accountType}
           currentEmail={currentEmail}
           onAccept={() => acceptMutation.mutate()}
           onSignOut={() => void handleSignOut()}

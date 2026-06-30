@@ -95,6 +95,7 @@ import {
   normalizeClientRiskFlags,
 } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import { cn } from "../../lib/utils";
 import { getProfileCompletion } from "../../lib/profile-completion";
 import {
@@ -634,6 +635,7 @@ export function PtClientDetailPage({
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
+  const { canEditClients, canManageDelivery } = useWorkspaceWriteAccess();
   const { clientId: routeClientId } = useParams();
   const clientId = clientIdOverride ?? routeClientId;
   const location = useLocation();
@@ -1968,6 +1970,7 @@ export function PtClientDetailPage({
   );
 
   const handleAssignWorkout = async () => {
+    if (!canEditClients) return;
     if (!clientId || !selectedTemplateId || !scheduledDate) return;
     setAssignStatus("saving");
     setAssignMessage(null);
@@ -2023,6 +2026,7 @@ export function PtClientDetailPage({
   };
 
   const handleApplyProgram = async () => {
+    if (!canEditClients) return;
     if (!clientId || !selectedProgramId || !programStartDate) return;
     setProgramStatus("saving");
     setProgramMessage(null);
@@ -2114,6 +2118,7 @@ export function PtClientDetailPage({
   };
 
   const handlePauseProgram = async () => {
+    if (!canEditClients) return;
     if (!clientId || !activeProgram?.id) return;
     const confirmed = window.confirm("Pause this client's active program?");
     if (!confirmed) return;
@@ -2164,6 +2169,7 @@ export function PtClientDetailPage({
   };
 
   const handleResumeProgram = async () => {
+    if (!canEditClients) return;
     if (!clientId || !pausedProgram?.id || !pausedProgram.program_template_id)
       return;
     setProgramStatus("saving");
@@ -2229,6 +2235,7 @@ export function PtClientDetailPage({
   };
 
   const handleSwitchProgramMidCycle = async () => {
+    if (!canEditClients) return;
     if (!clientId || !selectedProgramId) return;
     const confirmed = window.confirm("Switch program from today?");
     if (!confirmed) return;
@@ -2262,6 +2269,7 @@ export function PtClientDetailPage({
   };
 
   const handleUnassignProgram = async () => {
+    if (!canEditClients) return;
     const targetProgram = activeProgram ?? pausedProgram;
     if (!clientId || !targetProgram?.id) return;
     const confirmed = window.confirm("Unassign this program for this client?");
@@ -2337,6 +2345,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveOverride = async () => {
+    if (!canEditClients) return;
     if (!clientId || !overrideDate) return;
     if (!activeProgram?.id || !activeProgram.program_template_id) {
       setOverrideError("Apply a program before adding overrides.");
@@ -2456,6 +2465,7 @@ export function PtClientDetailPage({
     id: string,
     status: "completed" | "skipped",
   ) => {
+    if (!canEditClients) return;
     const payload =
       status === "completed"
         ? { status, completed_at: new Date().toISOString() }
@@ -2505,6 +2515,7 @@ export function PtClientDetailPage({
   };
 
   const handleEditSave = async () => {
+    if (!canEditClients) return;
     if (!editWorkoutId) return;
     setAssignStatus("saving");
     setAssignMessage(null);
@@ -2558,6 +2569,7 @@ export function PtClientDetailPage({
   };
 
   const handleDeleteWorkout = async () => {
+    if (!canEditClients) return;
     if (!editWorkoutId) return;
     setAssignStatus("saving");
     setAssignMessage(null);
@@ -2598,6 +2610,7 @@ export function PtClientDetailPage({
   };
 
   const handleRescheduleWorkout = async (id: string, nextDate: string) => {
+    if (!canEditClients) return;
     setAssignStatus("saving");
     setAssignMessage(null);
     const { error } = await supabase
@@ -3360,6 +3373,7 @@ export function PtClientDetailPage({
   };
 
   const handleLifecycleSave = async () => {
+    if (!canEditClients) return;
     if (!clientSnapshot?.id) return;
     if (
       ["paused", "churned"].includes(lifecycleTargetState) &&
@@ -3444,6 +3458,7 @@ export function PtClientDetailPage({
   };
 
   const handleManualRiskToggle = async (nextValue: boolean) => {
+    if (!canEditClients) return;
     if (!clientSnapshot?.id) return;
 
     const { data, error } = await supabase.rpc("pt_set_client_manual_risk", {
@@ -3499,6 +3514,7 @@ export function PtClientDetailPage({
   };
 
   const handleProfileSave = async () => {
+    if (!canEditClients) return;
     if (!clientSnapshot?.id) return;
     setProfileEditStatus("saving");
     const payload = {
@@ -3568,6 +3584,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveCheckinTemplate = async () => {
+    if (!canManageDelivery) return;
     if (!clientQuery.data?.id) return;
     setCheckinTemplateStatus("saving");
     const nextId = checkinTemplateId || null;
@@ -3644,6 +3661,7 @@ export function PtClientDetailPage({
   };
 
   const handleBaselineNotesSave = async () => {
+    if (!canEditClients) return;
     if (!baselineId) return;
     setBaselineNotesStatus("saving");
     setBaselineNotesMessage(null);
@@ -3664,6 +3682,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveOnboardingReviewNotes = async () => {
+    if (!canEditClients) return;
     if (!onboardingSnapshot?.id) return;
     setOnboardingReviewStatus("saving");
     setOnboardingReviewMessage(null);
@@ -3684,6 +3703,7 @@ export function PtClientDetailPage({
   };
 
   const handleMarkOnboardingReviewed = async () => {
+    if (!canEditClients) return;
     if (!clientId) return;
     setOnboardingActionStatus("saving");
     setOnboardingActionMessage(null);
@@ -3706,6 +3726,7 @@ export function PtClientDetailPage({
   };
 
   const handleCompleteOnboarding = async () => {
+    if (!canEditClients) return;
     if (!clientId) return;
     if (!onboardingReadyForCompletion) {
       setOnboardingActionStatus("error");
@@ -3780,6 +3801,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveLoads = async () => {
+    if (!canEditClients) return;
     if (!selectedAssignedWorkoutId) return;
     setLoadsStatus("saving");
     setLoadsError(null);
@@ -3844,6 +3866,7 @@ export function PtClientDetailPage({
   ]);
 
   const handleSaveCheckinReview = async (markReviewed: boolean) => {
+    if (!canEditClients) return;
     if (!selectedCheckin) return;
     const trimmedFeedback = feedbackText.trim();
     if (markReviewed && trimmedFeedback.length === 0) {
@@ -4508,6 +4531,7 @@ export function PtClientDetailPage({
             onReschedule={handleRescheduleWorkout}
             onDelete={handleOpenDeleteDialog}
             onStatusChange={handleStatusUpdate}
+            canEditClients={canEditClients}
           />
         ) : (
           <EmptyState
@@ -4711,6 +4735,7 @@ export function PtClientDetailPage({
                       setLoadsError(null);
                     }}
                     onStatusChange={handleStatusUpdate}
+                    canEditClients={canEditClients}
                   />
                 </TabsContent>
                 <TabsContent value="nutrition">
@@ -4719,6 +4744,7 @@ export function PtClientDetailPage({
                     workspaceId={workspaceQuery.data ?? null}
                     todayKey={todayKey}
                     enabled={isNutritionTab}
+                    canEditClients={canEditClients}
                   />
                 </TabsContent>
                 <TabsContent value="medical">
@@ -4895,7 +4921,10 @@ export function PtClientDetailPage({
                           <Button
                             size="sm"
                             onClick={handleSaveCheckinTemplate}
-                            disabled={checkinTemplateStatus === "saving"}
+                            disabled={
+                              checkinTemplateStatus === "saving" ||
+                              !canManageDelivery
+                            }
                           >
                             {checkinTemplateStatus === "saving"
                               ? "Saving..."
@@ -5127,7 +5156,10 @@ export function PtClientDetailPage({
             <Button
               onClick={handleEditSave}
               disabled={
-                assignStatus === "saving" || !editTemplateId || !editDate
+                assignStatus === "saving" ||
+                !editTemplateId ||
+                !editDate ||
+                !canEditClients
               }
             >
               {assignStatus === "saving" ? "Saving..." : "Save"}
@@ -5550,7 +5582,8 @@ export function PtClientDetailPage({
                   disabled={
                     feedbackStatus === "saving_draft" ||
                     feedbackStatus === "marking_reviewed" ||
-                    !selectedCheckin?.submitted_at
+                    !selectedCheckin?.submitted_at ||
+                    !canEditClients
                   }
                 >
                   {feedbackStatus === "saving_draft"
@@ -5562,7 +5595,8 @@ export function PtClientDetailPage({
                   disabled={
                     feedbackStatus === "saving_draft" ||
                     feedbackStatus === "marking_reviewed" ||
-                    !selectedCheckin?.submitted_at
+                    !selectedCheckin?.submitted_at ||
+                    !canEditClients
                   }
                 >
                   {feedbackStatus === "marking_reviewed"
@@ -5691,7 +5725,7 @@ export function PtClientDetailPage({
             </Button>
             <Button
               onClick={handleSaveLoads}
-              disabled={loadsStatus === "saving"}
+              disabled={loadsStatus === "saving" || !canEditClients}
             >
               {loadsStatus === "saving" ? "Saving..." : "Save loads"}
             </Button>
@@ -5714,7 +5748,7 @@ export function PtClientDetailPage({
             <Button
               variant="secondary"
               onClick={handleDeleteWorkout}
-              disabled={assignStatus === "saving"}
+              disabled={assignStatus === "saving" || !canEditClients}
             >
               {assignStatus === "saving" ? "Deleting..." : "Delete"}
             </Button>
@@ -5803,7 +5837,7 @@ export function PtClientDetailPage({
             </Button>
             <Button
               onClick={handleLifecycleSave}
-              disabled={lifecycleActionStatus === "saving"}
+              disabled={lifecycleActionStatus === "saving" || !canEditClients}
             >
               {lifecycleActionStatus === "saving"
                 ? "Saving..."
@@ -5938,7 +5972,7 @@ export function PtClientDetailPage({
             </Button>
             <Button
               onClick={handleProfileSave}
-              disabled={profileEditStatus === "saving"}
+              disabled={profileEditStatus === "saving" || !canEditClients}
             >
               {profileEditStatus === "saving" ? "Saving..." : "Save changes"}
             </Button>
@@ -5976,6 +6010,7 @@ function PtClientScheduleCard({
   onReschedule,
   onDelete,
   onStatusChange,
+  canEditClients,
 }: {
   clientId: string | null;
   workspaceId: string | null;
@@ -6004,6 +6039,7 @@ function PtClientScheduleCard({
   onReschedule: (id: string, dateKey: string) => void;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: "completed" | "skipped") => void;
+  canEditClients: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -6309,6 +6345,7 @@ function PtClientScheduleCard({
   };
 
   const handleSaveDayNote = async () => {
+    if (!canEditClients) return;
     if (!selectedWorkout?.id) {
       setDayNoteMessage("Assign a workout or rest day before saving a note.");
       return;
@@ -6339,6 +6376,7 @@ function PtClientScheduleCard({
   };
 
   const handleAddWorkout = async () => {
+    if (!canEditClients) return;
     if (!workspaceId) {
       setAddWorkoutMessage("Workspace not found.");
       return;
@@ -6778,7 +6816,9 @@ function PtClientScheduleCard({
                   onStatusChange(selectedWorkout.id, "completed")
                 }
                 disabled={
-                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                  !selectedWorkout ||
+                  selectedWorkout.day_type === "rest" ||
+                  !canEditClients
                 }
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -6791,7 +6831,9 @@ function PtClientScheduleCard({
                   onStatusChange(selectedWorkout.id, "skipped")
                 }
                 disabled={
-                  !selectedWorkout || selectedWorkout.day_type === "rest"
+                  !selectedWorkout ||
+                  selectedWorkout.day_type === "rest" ||
+                  !canEditClients
                 }
               >
                 <XCircle className="mr-2 h-4 w-4" />
@@ -6806,6 +6848,7 @@ function PtClientScheduleCard({
               <textarea
                 className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={dayNote}
+                disabled={!canEditClients}
                 onChange={(event) => setDayNote(event.target.value)}
                 placeholder="Add a coaching note the client can see for this day."
               />
@@ -6825,7 +6868,7 @@ function PtClientScheduleCard({
               <Button
                 variant="secondary"
                 onClick={handleAddWorkout}
-                disabled={addWorkoutStatus === "saving"}
+                disabled={addWorkoutStatus === "saving" || !canEditClients}
               >
                 <Dumbbell className="mr-2 h-4 w-4" />
                 {addWorkoutStatus === "saving" ? "Opening..." : "Add workout"}
@@ -6842,6 +6885,7 @@ function PtClientScheduleCard({
                     onDelete(selectedWorkout.id);
                     setDayDrawerOpen(false);
                   }}
+                  disabled={!canEditClients}
                 >
                   Remove day
                 </Button>
@@ -6849,7 +6893,9 @@ function PtClientScheduleCard({
               <Button
                 variant="ghost"
                 onClick={handleSaveDayNote}
-                disabled={!selectedWorkout || dayNoteStatus === "saving"}
+                disabled={
+                  !selectedWorkout || dayNoteStatus === "saving" || !canEditClients
+                }
               >
                 {dayNoteStatus === "saving" ? "Saving..." : "Save note"}
               </Button>
@@ -6882,6 +6928,7 @@ function PtClientScheduleCard({
                 id="nutrition-assign-date"
                 type="date"
                 value={nutritionAssignDate ?? ""}
+                disabled={!canEditClients}
                 onChange={(event) => setNutritionAssignDate(event.target.value)}
               />
             </div>
@@ -6889,6 +6936,7 @@ function PtClientScheduleCard({
               variant="field"
               className="h-10"
               value={nutritionTemplateId}
+              disabled={!canEditClients}
               onChange={(event) => setNutritionTemplateId(event.target.value)}
             >
               <option value="">Select nutrition program</option>
@@ -6937,8 +6985,9 @@ function PtClientScheduleCard({
               Cancel
             </Button>
             <Button
-              disabled={nutritionAssignStatus === "saving"}
+              disabled={nutritionAssignStatus === "saving" || !canEditClients}
               onClick={async () => {
+                if (!canEditClients) return;
                 if (!clientId || !nutritionAssignDate || !nutritionTemplateId) {
                   setNutritionAssignError("Choose template and date.");
                   return;
@@ -8253,6 +8302,7 @@ function PtClientPlanTab({
   onDelete,
   onEditLoads,
   onStatusChange,
+  canEditClients,
 }: {
   templatesQuery: QueryResult<
     Array<{ id: string; name: string | null; workout_type_tag: string | null }>
@@ -8291,6 +8341,7 @@ function PtClientPlanTab({
   onDelete: (id: string) => void;
   onEditLoads: (id: string) => void;
   onStatusChange: (id: string, status: "completed" | "skipped") => void;
+  canEditClients: boolean;
 }) {
   const overrideByDate = useMemo(() => {
     const map = new Map<string, ProgramOverrideRow>();
@@ -8338,6 +8389,7 @@ function PtClientPlanTab({
                     variant="field"
                     className="h-10"
                     value={selectedProgramId}
+                    disabled={!canEditClients}
                     onChange={(event) => onProgramChange(event.target.value)}
                   >
                     <option value="">Select a program</option>
@@ -8361,6 +8413,7 @@ function PtClientPlanTab({
                     type="date"
                     className="h-10 w-full app-field px-3 text-sm"
                     value={programStartDate}
+                    disabled={!canEditClients}
                     onChange={(event) =>
                       onProgramDateChange(event.target.value)
                     }
@@ -8371,7 +8424,8 @@ function PtClientPlanTab({
                   disabled={
                     programStatus === "saving" ||
                     !selectedProgramId ||
-                    !programStartDate
+                    !programStartDate ||
+                    !canEditClients
                   }
                   onClick={onApplyProgram}
                 >
@@ -8402,7 +8456,8 @@ function PtClientPlanTab({
                         variant="secondary"
                         disabled={
                           unassignStatus === "saving" ||
-                          programStatus === "saving"
+                          programStatus === "saving" ||
+                          !canEditClients
                         }
                         onClick={onPauseProgram}
                       >
@@ -8415,7 +8470,8 @@ function PtClientPlanTab({
                         variant="ghost"
                         disabled={
                           unassignStatus === "saving" ||
-                          programStatus === "saving"
+                          programStatus === "saving" ||
+                          !canEditClients
                         }
                         onClick={onUnassignProgram}
                       >
@@ -8441,7 +8497,7 @@ function PtClientPlanTab({
                       <Button
                         className="w-full"
                         variant="secondary"
-                        disabled={programStatus === "saving"}
+                        disabled={programStatus === "saving" || !canEditClients}
                         onClick={onResumeProgram}
                       >
                         {programStatus === "saving"
@@ -8453,7 +8509,8 @@ function PtClientPlanTab({
                         variant="ghost"
                         disabled={
                           unassignStatus === "saving" ||
-                          programStatus === "saving"
+                          programStatus === "saving" ||
+                          !canEditClients
                         }
                         onClick={onUnassignProgram}
                       >
@@ -8470,7 +8527,7 @@ function PtClientPlanTab({
                   <Button
                     className="w-full"
                     variant="secondary"
-                    disabled={programStatus === "saving"}
+                    disabled={programStatus === "saving" || !canEditClients}
                     onClick={onSwitchProgramMidCycle}
                   >
                     {programStatus === "saving"
@@ -8507,6 +8564,7 @@ function PtClientPlanTab({
                     variant="field"
                     className="h-10"
                     value={selectedTemplateId}
+                    disabled={!canEditClients}
                     onChange={(event) => onTemplateChange(event.target.value)}
                   >
                     <option value="">Select a template</option>
@@ -8532,6 +8590,7 @@ function PtClientPlanTab({
                     type="date"
                     className="h-10 w-full app-field px-3 text-sm"
                     value={scheduledDate}
+                    disabled={!canEditClients}
                     onChange={(event) => onDateChange(event.target.value)}
                   />
                 </div>
@@ -8540,7 +8599,8 @@ function PtClientPlanTab({
                   disabled={
                     assignStatus === "saving" ||
                     !selectedTemplateId ||
-                    !scheduledDate
+                    !scheduledDate ||
+                    !canEditClients
                   }
                   onClick={onAssign}
                 >
@@ -8607,7 +8667,7 @@ function PtClientPlanTab({
                     <Button
                       size="sm"
                       variant="secondary"
-                      disabled={!canOverride}
+                      disabled={!canOverride || !canEditClients}
                       onClick={() =>
                         onOpenOverride(workout.scheduled_date ?? "")
                       }
@@ -8617,6 +8677,7 @@ function PtClientPlanTab({
                     <Button
                       size="sm"
                       variant="ghost"
+                      disabled={!canEditClients}
                       onClick={() => onEditLoads(workout.id)}
                     >
                       Edit loads
@@ -8624,6 +8685,7 @@ function PtClientPlanTab({
                     <Button
                       size="sm"
                       variant="ghost"
+                      disabled={!canEditClients}
                       onClick={() => onEdit(workout)}
                     >
                       Edit
@@ -8631,6 +8693,7 @@ function PtClientPlanTab({
                     <Button
                       size="sm"
                       variant="ghost"
+                      disabled={!canEditClients}
                       onClick={() => onDelete(workout.id)}
                     >
                       Delete
@@ -8638,6 +8701,7 @@ function PtClientPlanTab({
                     <Button
                       size="sm"
                       variant="secondary"
+                      disabled={!canEditClients}
                       onClick={() => onStatusChange(workout.id, "completed")}
                     >
                       Mark completed
@@ -8645,6 +8709,7 @@ function PtClientPlanTab({
                     <Button
                       size="sm"
                       variant="ghost"
+                      disabled={!canEditClients}
                       onClick={() => onStatusChange(workout.id, "skipped")}
                     >
                       Skip
@@ -8712,12 +8777,13 @@ function PtClientNutritionTab({
   workspaceId,
   todayKey,
   enabled,
+  canEditClients,
 }: {
-  enabled: boolean;
   clientId: string | null;
   workspaceId: string | null;
   todayKey: string;
   enabled: boolean;
+  canEditClients: boolean;
 }) {
   const queryClient = useQueryClient();
   const [selectedNutritionProgramId, setSelectedNutritionProgramId] =
@@ -8910,6 +8976,7 @@ function PtClientNutritionTab({
                   variant="field"
                   className="h-10"
                   value={selectedNutritionProgramId}
+                  disabled={!canEditClients}
                   onChange={(event) =>
                     setSelectedNutritionProgramId(event.target.value)
                   }
@@ -8937,6 +9004,7 @@ function PtClientNutritionTab({
                   type="date"
                   className="h-10 w-full app-field px-3 text-sm"
                   value={nutritionProgramStartDate}
+                  disabled={!canEditClients}
                   onChange={(event) =>
                     setNutritionProgramStartDate(event.target.value)
                   }
@@ -8948,9 +9016,11 @@ function PtClientNutritionTab({
                   nutritionAssignStatus === "saving" ||
                   !selectedNutritionProgramId ||
                   !nutritionProgramStartDate ||
-                  !clientId
+                  !clientId ||
+                  !canEditClients
                 }
                 onClick={async () => {
+                  if (!canEditClients) return;
                   if (
                     !clientId ||
                     !selectedNutritionProgramId ||

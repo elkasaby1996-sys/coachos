@@ -15,7 +15,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../../components/ui/alert-dialog";
-import { Input } from "../../../components/ui/input";
 import {
   Tooltip,
   TooltipContent,
@@ -43,24 +42,7 @@ export function DangerZoneSettings() {
     "success",
   );
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [leaveSaving, setLeaveSaving] = useState(false);
-  const [deleteSaving, setDeleteSaving] = useState(false);
-  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
-
-  const workspaceQuery = useQuery({
-    queryKey: ["settings-danger-workspace", workspaceId],
-    enabled: Boolean(workspaceId),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workspaces")
-        .select("id, name")
-        .eq("id", workspaceId ?? "")
-        .maybeSingle();
-      if (error) throw error;
-      return (data ?? null) as { id: string; name: string | null } | null;
-    },
-  });
 
   const memberQuery = useQuery({
     queryKey: ["settings-danger-membership", workspaceId, user?.id],
@@ -88,8 +70,6 @@ export function DangerZoneSettings() {
   }, [toastMessage]);
 
   const isOwner = memberQuery.data?.role === "pt_owner";
-  const workspaceName = workspaceQuery.data?.name ?? "this workspace";
-  const canConfirmDelete = deleteConfirmValue.trim() === workspaceName;
 
   const handleLeaveWorkspace = async () => {
     if (!workspaceId || !user?.id) return;
@@ -117,31 +97,6 @@ export function DangerZoneSettings() {
     }
   };
 
-  const handleDeleteWorkspace = async () => {
-    if (!workspaceId || !canConfirmDelete) return;
-    setDeleteSaving(true);
-    try {
-      const { error } = await supabase
-        .from("workspaces")
-        .delete()
-        .eq("id", workspaceId);
-      if (error) throw error;
-
-      setToastVariant("success");
-      setToastMessage("Workspace deleted.");
-      setDeleteOpen(false);
-      await supabase.auth.signOut();
-      navigate("/login", { replace: true });
-    } catch (error) {
-      setToastVariant("error");
-      setToastMessage(
-        error instanceof Error ? error.message : "Unable to delete workspace.",
-      );
-    } finally {
-      setDeleteSaving(false);
-    }
-  };
-
   const transferTooltip = useMemo(
     () =>
       isOwner
@@ -165,8 +120,8 @@ export function DangerZoneSettings() {
           <Alert className="border-danger/40 bg-danger/5">
             <AlertTitle>Destructive operations</AlertTitle>
             <AlertDescription>
-              Deleting a workspace permanently removes associated data. Confirm
-              carefully.
+              To prevent accidental data loss, workspace deletion is disabled
+              during beta.
             </AlertDescription>
           </Alert>
 
@@ -208,22 +163,21 @@ export function DangerZoneSettings() {
 
           <SettingsRow
             label="Delete workspace"
-            hint="Permanently delete workspace and all connected records."
+            hint="To prevent accidental data loss, workspace deletion is disabled during beta."
           >
             <Button
               type="button"
               variant="secondary"
-              className="border-danger/40 text-danger hover:bg-danger/10"
-              onClick={() => setDeleteOpen(true)}
-              disabled={!isOwner}
+              className="border-danger/40 text-muted-foreground"
+              disabled
+              aria-disabled="true"
             >
-              Delete workspace
+              Deletion disabled during beta
             </Button>
-            {!isOwner ? (
-              <p className="text-xs text-muted-foreground">
-                Only workspace owners can delete the workspace.
-              </p>
-            ) : null}
+            <p className="text-xs text-muted-foreground">
+              To prevent accidental data loss, workspace deletion is disabled
+              during beta.
+            </p>
           </SettingsRow>
         </SettingsBlock>
       </SettingsPageShell>
@@ -253,50 +207,6 @@ export function DangerZoneSettings() {
               data-testid="danger-leave-workspace-confirm-button"
             >
               {leaveSaving ? "Leaving..." : "Confirm leave"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete workspace</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. Type{" "}
-              <strong>{workspaceName}</strong> to confirm deletion.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="space-y-2">
-            <Input
-              value={deleteConfirmValue}
-              onChange={(event) => setDeleteConfirmValue(event.target.value)}
-              placeholder="Type workspace name to confirm"
-            />
-            <p className="text-xs text-muted-foreground">
-              All associated clients, templates, messages, and logs will be
-              removed.
-            </p>
-          </div>
-
-          <AlertDialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setDeleteOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="border-danger/40 text-danger hover:bg-danger/10"
-              onClick={handleDeleteWorkspace}
-              disabled={!canConfirmDelete || deleteSaving}
-              data-testid="danger-delete-workspace-confirm-button"
-            >
-              {deleteSaving ? "Deleting..." : "Delete workspace"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

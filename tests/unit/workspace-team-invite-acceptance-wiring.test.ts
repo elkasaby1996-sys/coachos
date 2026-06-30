@@ -68,4 +68,16 @@ describe("workspace team invite acceptance wiring", () => {
     expect(pageSource).toContain("This invite is no longer available");
     expect(pageSource).toContain("This invite has already been accepted");
   });
+
+  it("uses a unified visible safe-state invite CTA label", () => {
+    expect(pageSource).toContain("getSafeInviteHomeAction");
+    expect(pageSource).toContain('accountType === "client"');
+    expect(pageSource).toContain("Back to homepage");
+    expect(pageSource).toContain('to: "/app/home"');
+    expect(pageSource).toContain('to: "/pt-hub"');
+    expect(pageSource).toContain('accountType={accountType}');
+    expect(pageSource).toContain("safeHomeAction.label");
+    expect(pageSource).not.toContain("Back to Client Home");
+    expect(pageSource).not.toContain("Back to Home");
+  });
 });
