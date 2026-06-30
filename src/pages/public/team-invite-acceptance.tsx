@@ -117,6 +117,36 @@ function RoleBadge({ role }: { role: InvitableWorkspaceRole }) {
   return <Badge module="coaching">{roleLabels[role]}</Badge>;
 }
 
+function getGenericInviteCardCopy(state: InvitePageState) {
+  if (state === "pending_signed_out") {
+    return {
+      title: "Sign in to continue",
+      description:
+        "Sign in or create an account with the email address that received this invitation.",
+    };
+  }
+
+  if (state === "pending_wrong_account") {
+    return {
+      title: "This invitation isn't available",
+      description:
+        "This workspace invitation can only be viewed by the email address it was sent to.",
+    };
+  }
+
+  if (state === "invalid") {
+    return {
+      title: "This invitation link isn't valid",
+      description: "The invite link may be incorrect or no longer available.",
+    };
+  }
+
+  return {
+    title: "Workspace invite",
+    description: "This invitation is unavailable.",
+  };
+}
+
 function InvitePreviewCard({
   preview,
   state,
@@ -124,6 +154,8 @@ function InvitePreviewCard({
   preview: TeamInvitePreview | null;
   state: InvitePageState;
 }) {
+  const genericCopy = preview ? null : getGenericInviteCardCopy(state);
+
   return (
     <Card className="w-full rounded-[28px] border-border/70 bg-card/90 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
       <CardHeader className="space-y-5">
@@ -135,12 +167,12 @@ function InvitePreviewCard({
         </div>
         <div className="space-y-2">
           <CardTitle className="text-2xl">
-            {preview?.workspaceName ?? "Workspace invite"}
+            {preview?.workspaceName ?? genericCopy?.title}
           </CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">
             {preview
               ? `You've been invited to join ${preview.workspaceName} on RepSync as ${roleLabels[preview.role]}.`
-              : "We could not load this team invite."}
+              : genericCopy?.description}
           </p>
         </div>
       </CardHeader>
@@ -214,21 +246,21 @@ function InviteActionPanel({
   if (state === "pending_signed_out") {
     return (
       <Alert tone="info">
-        <AlertTitle>Sign in to accept</AlertTitle>
+        <AlertTitle>Sign in to continue</AlertTitle>
         <AlertDescription>
-          Sign in or create a RepSync PT account with the invited email address
-          to continue.
+          Sign in or create an account with the email address that received this
+          invitation.
         </AlertDescription>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <Button asChild>
             <Link to={buildRedirectLink("/login", token)}>
-              Sign in to accept
+              Sign in
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="secondary">
             <Link to={buildRedirectLink("/signup/pt", token)}>
-              Create account to accept
+              Create account
             </Link>
           </Button>
         </div>
@@ -239,18 +271,18 @@ function InviteActionPanel({
   if (state === "pending_wrong_account" && !preview) {
     return (
       <Alert tone="danger">
-        <AlertTitle>Invitation unavailable for this account</AlertTitle>
+        <AlertTitle>Sign in with the invited account</AlertTitle>
         <AlertDescription>
-          This invitation is not available for the account currently signed in.
-          Please sign in with the invited email address.
+          Please sign out and sign in with the email address that received this
+          invitation.
         </AlertDescription>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <Button asChild>
+            <Link to="/pt-hub">Back to PT Hub</Link>
+          </Button>
           <Button variant="secondary" onClick={onSignOut}>
             <LogOut className="h-4 w-4" />
             Sign out
-          </Button>
-          <Button asChild>
-            <Link to="/pt-hub">Back to PT Hub</Link>
           </Button>
         </div>
       </Alert>
@@ -261,8 +293,8 @@ function InviteActionPanel({
     return (
       <InviteTerminalState
         tone="danger"
-        title="This invite could not be opened"
-        description="The link may be invalid, expired, or no longer available."
+        title="This invitation link isn't valid"
+        description="The invite link may be incorrect or no longer available."
       />
     );
   }
@@ -495,8 +527,7 @@ export function TeamInviteAcceptancePage() {
     previewError: previewQuery.isError,
     previewErrorCode,
   });
-  const displayPreview =
-    displayAuthorization === "authorized" ? preview : null;
+  const displayPreview = displayAuthorization === "authorized" ? preview : null;
   const pageState =
     displayAuthorization === "authorized"
       ? deriveInvitePageState({
@@ -518,11 +549,11 @@ export function TeamInviteAcceptancePage() {
             : "invalid";
 
   const heading = useMemo(() => {
-    if (pageState === "pending_signed_out") return "Join this workspace";
+    if (pageState === "pending_signed_out") return "Accept workspace invite";
     if (pageState === "pending_matching_account")
       return "Accept workspace invite";
-    if (pageState === "pending_wrong_account")
-      return "Invitation unavailable";
+    if (pageState === "pending_wrong_account") return "Invitation unavailable";
+    if (pageState === "invalid") return "Invitation unavailable";
     if (pageState === "already_accepted") return "Invite accepted";
     if (pageState === "expired" || pageState === "revoked")
       return "Invite unavailable";

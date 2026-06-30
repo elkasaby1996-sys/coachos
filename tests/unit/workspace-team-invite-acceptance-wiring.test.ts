@@ -48,8 +48,21 @@ describe("workspace team invite acceptance wiring", () => {
   });
 
   it("renders required terminal and mismatch copy", () => {
-    expect(pageSource).toContain("Sign in to accept");
-    expect(pageSource).toContain("Create account to accept");
+    expect(pageSource).toContain("Sign in to continue");
+    expect(pageSource).toContain("This invitation isn't available");
+    expect(pageSource).toContain(
+      "This workspace invitation can only be viewed by the email address it was sent to.",
+    );
+    expect(pageSource).toContain("Sign in with the invited account");
+    expect(pageSource).toContain(
+      "Please sign out and sign in with the email address that received this",
+    );
+    expect(pageSource).toContain("This invitation link isn't valid");
+    expect(pageSource).toContain(
+      "The invite link may be incorrect or no longer available.",
+    );
+    expect(pageSource).not.toContain("We could not load this team invite.");
+    expect(pageSource).not.toContain("Invitation unavailable for this account");
     expect(pageSource).toContain("This invite was sent to");
     expect(pageSource).toContain("This invite has expired");
     expect(pageSource).toContain("This invite is no longer available");
