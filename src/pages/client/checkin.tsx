@@ -36,6 +36,8 @@ import {
   getCheckinOperationalState,
   getPrimaryClientCheckin,
 } from "../../lib/checkin-review";
+import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
+import { revokePrivateObjectUrls } from "../../lib/private-storage-media";
 import {
   CHECKIN_SCALE_MAX,
   CHECKIN_SCALE_MIN,
@@ -398,9 +400,14 @@ export function ClientCheckinPage() {
         .select("id, checkin_id, client_id, url, storage_path, photo_type")
         .eq("checkin_id", currentCheckin?.id ?? "");
       if (error) throw error;
-      return (data ?? []) as CheckinPhotoRow[];
+      return resolveCheckinPhotoRows((data ?? []) as CheckinPhotoRow[]);
     },
   });
+
+  useEffect(() => {
+    const rows = photosQuery.data;
+    return () => revokePrivateObjectUrls(rows);
+  }, [photosQuery.data]);
 
   const questions = useMemo(() => {
     const rows = templateQuery.data?.checkin_questions ?? [];
@@ -671,7 +678,7 @@ export function ClientCheckinPage() {
         if (!state) continue;
 
         let storagePath = state.existingStoragePath;
-        let publicUrl = state.existingUrl;
+        let storedUrl = state.existingStoragePath;
 
         if (state.file) {
           const extension = state.file.name.split(".").pop() || "jpg";
@@ -680,18 +687,15 @@ export function ClientCheckinPage() {
             .from("checkin-photos")
             .upload(storagePath, state.file, { upsert: true });
           if (uploadError) throw uploadError;
-          const { data } = supabase.storage
-            .from("checkin-photos")
-            .getPublicUrl(storagePath);
-          publicUrl = data.publicUrl;
+          storedUrl = storagePath;
         }
 
-        if (!storagePath || !publicUrl) continue;
+        if (!storagePath || !storedUrl) continue;
 
         photoRows.push({
           checkin_id: checkinRow.id,
           client_id: clientProfile.id,
-          url: publicUrl,
+          url: storedUrl,
           storage_path: storagePath,
           photo_type: slot.type,
         });

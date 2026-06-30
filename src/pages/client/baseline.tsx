@@ -21,6 +21,11 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
+import {
+  createPrivateStorageObjectUrl,
+  revokePrivateObjectUrl,
+  revokePrivateObjectUrls,
+} from "../../lib/private-storage-media";
 
 type BaselineEntry = {
   id: string;
@@ -446,6 +451,11 @@ export function ClientBaselinePage() {
   });
 
   useEffect(() => {
+    const rows = photosQuery.data;
+    return () => revokePrivateObjectUrls(rows);
+  }, [photosQuery.data]);
+
+  useEffect(() => {
     if (!baselineId || metricsInitRef.current || metricsQuery.isLoading) return;
     const metrics = metricsQuery.data;
     const height = metrics?.height_cm ?? clientQuery.data?.height_cm ?? null;
@@ -704,21 +714,10 @@ export function ClientBaselinePage() {
       return;
     }
 
-    let url: string | null = null;
-    const { data: signedData, error: signedError } = await supabase.storage
-      .from("baseline_photos")
-      .createSignedUrl(filePath, 60 * 60 * 24 * 7);
-
-    if (!signedError) {
-      url = signedData?.signedUrl ?? null;
-    }
-
-    if (!url) {
-      const { data } = supabase.storage
-        .from("baseline_photos")
-        .getPublicUrl(filePath);
-      url = data.publicUrl ?? null;
-    }
+    const url = await createPrivateStorageObjectUrl({
+      bucket: "baseline_photos",
+      storagePath: filePath,
+    });
 
     if (!url) {
       setPhotoMap((prev) => ({
@@ -741,7 +740,7 @@ export function ClientBaselinePage() {
     const saveError = await upsertPhotoRow(
       baselineId,
       photoType,
-      url,
+      filePath,
       filePath,
     );
     if (saveError) {
@@ -762,10 +761,13 @@ export function ClientBaselinePage() {
       return;
     }
 
-    setPhotoMap((prev) => ({
-      ...prev,
-      [photoType]: { url, uploading: false, error: null },
-    }));
+    setPhotoMap((prev) => {
+      revokePrivateObjectUrl(prev[photoType]?.url);
+      return {
+        ...prev,
+        [photoType]: { url, uploading: false, error: null },
+      };
+    });
     setPhotoStatus("idle");
   };
 

@@ -111,6 +111,7 @@ import {
   getCheckinReviewState,
 } from "../../lib/checkin-review";
 import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
+import { revokePrivateObjectUrls } from "../../lib/private-storage-media";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
 import { resolveBaselinePhotoRows } from "../../lib/baseline-photos";
 import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/components/pt-client-onboarding-tab";
@@ -857,6 +858,10 @@ export function PtClientDetailPage({
       return resolveCheckinPhotoRows((data ?? []) as CheckinPhotoRow[]);
     },
   });
+  useEffect(() => {
+    const rows = selectedCheckinPhotosQuery.data;
+    return () => revokePrivateObjectUrls(rows);
+  }, [selectedCheckinPhotosQuery.data]);
   const [loadsOpen, setLoadsOpen] = useState(false);
   const [loadsError, setLoadsError] = useState<string | null>(null);
   const [loadsStatus, setLoadsStatus] = useState<"idle" | "saving">("idle");
@@ -1625,6 +1630,10 @@ export function PtClientDetailPage({
       return resolveBaselinePhotoRows((data ?? []) as BaselinePhotoRow[]);
     },
   });
+  useEffect(() => {
+    const rows = baselinePhotosQuery.data;
+    return () => revokePrivateObjectUrls(rows);
+  }, [baselinePhotosQuery.data]);
 
   const checkinsQuery = useQuery({
     queryKey: ["pt-client-checkins", clientId, active, checkinsPage],
