@@ -32,6 +32,7 @@ export type LeadConversationThread = {
 export type MyLeadChatThreadSummary = {
   leadId: string;
   conversationId: string | null;
+  convertedConversationId: string | null;
   conversationStatus: LeadConversationStatus | null;
   archivedReason: "converted" | "declined" | "manual" | null;
   leadStatus:
@@ -73,6 +74,7 @@ type LeadMessageRow = {
 type MyLeadThreadRow = {
   lead_id: string;
   conversation_id: string | null;
+  converted_conversation_id: string | null;
   conversation_status: string | null;
   archived_reason: string | null;
   lead_status: string;
@@ -242,6 +244,7 @@ export function useMyLeadChatThreads() {
       return ((data ?? []) as MyLeadThreadRow[]).map((row) => ({
         leadId: row.lead_id,
         conversationId: row.conversation_id,
+        convertedConversationId: row.converted_conversation_id,
         conversationStatus: normalizeConversationStatus(
           row.conversation_status,
         ),

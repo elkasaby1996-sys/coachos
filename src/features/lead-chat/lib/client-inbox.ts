@@ -5,6 +5,11 @@ export type ClientInboxThreadRef =
   | { type: "workspace"; conversationId: string }
   | { type: "lead"; leadId: string };
 
+export type ClientInboxHideableThread = {
+  id: string;
+  type: "workspace" | "lead";
+};
+
 export function buildClientInboxThreadParam(ref: ClientInboxThreadRef) {
   if (ref.type === "workspace") {
     return `workspace:${ref.conversationId}`;
@@ -47,6 +52,26 @@ export function buildClientInboxSourceLabel(params: {
   }
 
   return params.archived ? "Lead chat (Archived)" : "Lead chat";
+}
+
+export function isClientInboxThreadHideable(
+  thread: ClientInboxHideableThread,
+) {
+  return thread.type !== "workspace";
+}
+
+export function filterClientInboxVisibleThreads<
+  Thread extends ClientInboxHideableThread,
+>(params: {
+  threads: Thread[];
+  hiddenThreadIds: string[];
+}): Thread[] {
+  if (params.hiddenThreadIds.length === 0) return params.threads;
+
+  const hidden = new Set(params.hiddenThreadIds);
+  return params.threads.filter(
+    (thread) => !isClientInboxThreadHideable(thread) || !hidden.has(thread.id),
+  );
 }
 
 function normalizeDisplayName(value: string | null | undefined) {

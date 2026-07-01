@@ -1,12 +1,21 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildClientInboxSourceLabel,
   buildClientInboxThreadParam,
   dedupeLeadThreadSummaries,
+  filterClientInboxVisibleThreads,
+  isClientInboxThreadHideable,
   parseClientInboxThreadParam,
   resolveWorkspaceThreadTitle,
 } from "../../src/features/lead-chat/lib/client-inbox";
 import type { MyLeadChatThreadSummary } from "../../src/features/lead-chat/lib/lead-chat";
+
+const clientMessagesPage = readFileSync(
+  resolve(process.cwd(), "src", "pages", "client", "messages.tsx"),
+  "utf8",
+);
 
 function makeLeadThread(
   overrides: Partial<MyLeadChatThreadSummary> = {},
@@ -40,6 +49,39 @@ describe("client inbox helper", () => {
       type: "workspace",
       conversationId: "workspace-conv-1",
     });
+  });
+
+  it("keeps active workspace conversations visible even when hidden locally", () => {
+    const workspaceThread = {
+      id: "workspace:workspace-conv-1",
+      type: "workspace" as const,
+      title: "Coach Sarah",
+    };
+    const leadThread = {
+      id: "lead:lead-1",
+      type: "lead" as const,
+      title: "Lead chat",
+    };
+
+    expect(isClientInboxThreadHideable(workspaceThread)).toBe(false);
+    expect(isClientInboxThreadHideable(leadThread)).toBe(true);
+
+    expect(
+      filterClientInboxVisibleThreads({
+        threads: [workspaceThread, leadThread],
+        hiddenThreadIds: [workspaceThread.id, leadThread.id],
+      }),
+    ).toEqual([workspaceThread]);
+  });
+
+  it("wires active workspace conversations as non-hideable in the client messages page", () => {
+    expect(clientMessagesPage).toContain("filterClientInboxVisibleThreads");
+    expect(clientMessagesPage).toContain("isClientInboxThreadHideable");
+    expect(clientMessagesPage).toContain("canHideSelectedThread");
+    expect(clientMessagesPage).toContain("Hide conversation?");
+    expect(clientMessagesPage).toContain("Hide from inbox");
+    expect(clientMessagesPage).not.toContain("Delete conversation?");
+    expect(clientMessagesPage).not.toContain("Delete from inbox");
   });
 
   it("builds and parses lead thread params", () => {

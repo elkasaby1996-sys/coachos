@@ -49,6 +49,8 @@ import {
   buildClientInboxSourceLabel,
   buildClientInboxThreadParam,
   dedupeLeadThreadSummaries,
+  filterClientInboxVisibleThreads,
+  isClientInboxThreadHideable,
   normalizeCoachDisplayName,
   parseClientInboxThreadParam,
   resolveWorkspaceThreadTitle,
@@ -256,19 +258,23 @@ export function ClientMessagesPage() {
   const clientId = clientProfile?.id ?? null;
 
   const workspaceConversationsQuery = useQuery({
-    queryKey: ["client-messages-workspace-conversations", clientId],
-    enabled: !!clientId,
+    queryKey: ["client-messages-workspace-conversations", session?.user?.id],
+    enabled: !!session?.user?.id,
     staleTime: 1000 * 30,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select(
-          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role",
-        )
-        .eq("client_id", clientId ?? "")
-        .order("last_message_at", { ascending: false });
+      const { data, error } = await supabase.rpc(
+        "client_accessible_conversations_with_ensure",
+      );
       if (error) throw error;
-      return (data ?? []) as ConversationRow[];
+      return ((data ?? []) as ConversationRow[]).sort((left, right) => {
+        const leftTime = left.last_message_at
+          ? new Date(left.last_message_at).getTime()
+          : 0;
+        const rightTime = right.last_message_at
+          ? new Date(right.last_message_at).getTime()
+          : 0;
+        return rightTime - leftTime;
+      });
     },
   });
 
@@ -387,6 +393,10 @@ export function ClientMessagesPage() {
       ),
     [workspaceConversationsQuery.data],
   );
+  const workspaceConversationIdsSet = useMemo(
+    () => new Set(workspaceConversationIds),
+    [workspaceConversationIds],
+  );
 
   const workspaceUnreadQuery = useQuery({
     queryKey: getWorkspaceUnreadQueryKey(workspaceConversationIds),
@@ -500,7 +510,19 @@ export function ClientMessagesPage() {
       leadThreadsQuery.data ?? [],
     );
 
-    const leadThreads = dedupedLeadThreads.map((thread): UnifiedInboxThread => {
+    const primaryLeadThreads = dedupedLeadThreads.filter((thread) => {
+      if (
+        thread.leadStatus === "converted" &&
+        thread.convertedConversationId
+      ) {
+        return !workspaceConversationIdsSet.has(
+          thread.convertedConversationId,
+        );
+      }
+      return true;
+    });
+
+    const leadThreads = primaryLeadThreads.map((thread): UnifiedInboxThread => {
       const isArchived = thread.conversationStatus === "archived";
       return {
         id: buildClientInboxThreadParam({
@@ -541,13 +563,15 @@ export function ClientMessagesPage() {
     workspaceCoachNameByConversationId,
     workspaceNameById,
     workspaceOwnerIdById,
+    workspaceConversationIdsSet,
     workspaceUnreadByConversationId,
   ]);
 
   const visibleThreads = useMemo(() => {
-    if (hiddenThreadIds.length === 0) return mergedThreads;
-    const hidden = new Set(hiddenThreadIds);
-    return mergedThreads.filter((thread) => !hidden.has(thread.id));
+    return filterClientInboxVisibleThreads({
+      threads: mergedThreads,
+      hiddenThreadIds,
+    });
   }, [hiddenThreadIds, mergedThreads]);
 
   const filteredThreads = useMemo(() => {
@@ -850,7 +874,10 @@ export function ClientMessagesPage() {
           });
         }
         await queryClient.invalidateQueries({
-          queryKey: ["client-messages-workspace-conversations", clientId],
+          queryKey: [
+            "client-messages-workspace-conversations",
+            session?.user?.id,
+          ],
         });
         await queryClient.invalidateQueries({
           queryKey: getWorkspaceUnreadQueryKey(workspaceConversationIds),
@@ -908,7 +935,10 @@ export function ClientMessagesPage() {
   );
 
   const hideConversation = useCallback(() => {
-    if (!selectedThread) return;
+    if (!selectedThread || !isClientInboxThreadHideable(selectedThread)) {
+      setDeleteDialogOpen(false);
+      return;
+    }
     const nextHiddenIds = Array.from(
       new Set([...hiddenThreadIds, selectedThread.id]),
     );
@@ -919,6 +949,10 @@ export function ClientMessagesPage() {
     });
     setDeleteDialogOpen(false);
   }, [hiddenThreadIds, selectedThread, session?.user?.id]);
+
+  const canHideSelectedThread = selectedThread
+    ? isClientInboxThreadHideable(selectedThread)
+    : false;
 
   const showHiddenConversations = useCallback(() => {
     setHiddenThreadIds([]);
@@ -1098,15 +1132,17 @@ export function ClientMessagesPage() {
                   ) : (
                     <Badge variant="neutral">Open</Badge>
                   )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => setDeleteDialogOpen(true)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
+                  {canHideSelectedThread ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Hide
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -1371,7 +1407,7 @@ export function ClientMessagesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogTitle>Hide conversation?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes the conversation from your inbox view. Message
               history is not erased.
@@ -1391,7 +1427,7 @@ export function ClientMessagesPage() {
               className="text-destructive hover:text-destructive"
               onClick={hideConversation}
             >
-              Delete from inbox
+              Hide from inbox
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
