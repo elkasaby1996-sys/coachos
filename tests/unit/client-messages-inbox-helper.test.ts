@@ -8,7 +8,9 @@ import {
   filterClientInboxVisibleThreads,
   isClientInboxThreadHideable,
   parseClientInboxThreadParam,
+  resolveStableClientInboxSelection,
   resolveWorkspaceThreadTitle,
+  sortClientInboxThreads,
 } from "../../src/features/lead-chat/lib/client-inbox";
 import type { MyLeadChatThreadSummary } from "../../src/features/lead-chat/lib/lead-chat";
 
@@ -74,6 +76,55 @@ describe("client inbox helper", () => {
     ).toEqual([workspaceThread]);
   });
 
+  it("preserves selected threads across refetch and only falls back when absent", () => {
+    expect(
+      resolveStableClientInboxSelection({
+        currentThreadId: "workspace:conv-1",
+        requestedThreadId: null,
+        threadIds: ["workspace:conv-2", "workspace:conv-1"],
+        sourcesLoading: false,
+      }),
+    ).toBe("workspace:conv-1");
+
+    expect(
+      resolveStableClientInboxSelection({
+        currentThreadId: "lead:converted",
+        requestedThreadId: null,
+        threadIds: ["workspace:conv-1"],
+        sourcesLoading: false,
+      }),
+    ).toBe("workspace:conv-1");
+
+    expect(
+      resolveStableClientInboxSelection({
+        currentThreadId: "workspace:conv-1",
+        requestedThreadId: null,
+        threadIds: [],
+        sourcesLoading: true,
+      }),
+    ).toBe("workspace:conv-1");
+  });
+
+  it("sorts inbox threads deterministically when activity and unread state match", () => {
+    const sorted = sortClientInboxThreads([
+      {
+        id: "workspace:b",
+        unreadCount: 0,
+        timestamp: "2026-04-01T08:00:00.000Z",
+      },
+      {
+        id: "workspace:a",
+        unreadCount: 0,
+        timestamp: "2026-04-01T08:00:00.000Z",
+      },
+    ]);
+
+    expect(sorted.map((thread) => thread.id)).toEqual([
+      "workspace:a",
+      "workspace:b",
+    ]);
+  });
+
   it("wires active workspace conversations as non-hideable in the client messages page", () => {
     expect(clientMessagesPage).toContain("filterClientInboxVisibleThreads");
     expect(clientMessagesPage).toContain("isClientInboxThreadHideable");
@@ -82,6 +133,16 @@ describe("client inbox helper", () => {
     expect(clientMessagesPage).toContain("Hide from inbox");
     expect(clientMessagesPage).not.toContain("Delete conversation?");
     expect(clientMessagesPage).not.toContain("Delete from inbox");
+  });
+
+  it("wires stable selection and previous data into the client messages page", () => {
+    expect(clientMessagesPage).toContain("resolveStableClientInboxSelection");
+    expect(clientMessagesPage).toContain("sortClientInboxThreads");
+    expect(clientMessagesPage).toContain("visibleThreadIds");
+    expect(clientMessagesPage).toContain("placeholderData: keepPreviousData");
+    expect(clientMessagesPage).not.toContain(
+      "convertedLeadHistoryMessages.length,\n    renderedWorkspaceMessages.length",
+    );
   });
 
   it("builds and parses lead thread params", () => {

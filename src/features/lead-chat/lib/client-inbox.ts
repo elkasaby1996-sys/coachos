@@ -10,6 +10,12 @@ export type ClientInboxHideableThread = {
   type: "workspace" | "lead";
 };
 
+export type ClientInboxSortableThread = {
+  id: string;
+  unreadCount: number;
+  timestamp: string | null;
+};
+
 export function buildClientInboxThreadParam(ref: ClientInboxThreadRef) {
   if (ref.type === "workspace") {
     return `workspace:${ref.conversationId}`;
@@ -72,6 +78,54 @@ export function filterClientInboxVisibleThreads<
   return params.threads.filter(
     (thread) => !isClientInboxThreadHideable(thread) || !hidden.has(thread.id),
   );
+}
+
+export function resolveStableClientInboxSelection(params: {
+  currentThreadId: string | null;
+  requestedThreadId: string | null;
+  threadIds: string[];
+  sourcesLoading: boolean;
+}) {
+  const threadIdSet = new Set(params.threadIds);
+
+  if (
+    params.requestedThreadId &&
+    threadIdSet.has(params.requestedThreadId)
+  ) {
+    return params.requestedThreadId;
+  }
+
+  if (params.currentThreadId && threadIdSet.has(params.currentThreadId)) {
+    return params.currentThreadId;
+  }
+
+  if (params.threadIds.length > 0) {
+    return params.threadIds[0] ?? null;
+  }
+
+  if (params.sourcesLoading) {
+    return params.currentThreadId;
+  }
+
+  return null;
+}
+
+export function sortClientInboxThreads<Thread extends ClientInboxSortableThread>(
+  threads: Thread[],
+): Thread[] {
+  return [...threads].sort((a, b) => {
+    if (a.unreadCount !== b.unreadCount) {
+      return b.unreadCount - a.unreadCount;
+    }
+
+    const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
 }
 
 function normalizeDisplayName(value: string | null | undefined) {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -53,12 +54,15 @@ import {
   isClientInboxThreadHideable,
   normalizeCoachDisplayName,
   parseClientInboxThreadParam,
+  resolveStableClientInboxSelection,
   resolveWorkspaceThreadTitle,
+  sortClientInboxThreads,
 } from "../../features/lead-chat/lib/client-inbox";
 import {
   isLeadChatWritable,
   markLeadChatRead,
   sendLeadChatMessage,
+  useConvertedLeadHistory,
   useLeadConversationThread,
   useMyLeadChatThreads,
   type MyLeadChatThreadSummary,
@@ -147,6 +151,8 @@ const quickPrompts = [
   "I finished my session and have a quick update.",
   "Can you review my nutrition targets for this week?",
 ] as const;
+
+const leadHistoryCollapseThreshold = 6;
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -547,14 +553,7 @@ export function ClientMessagesPage() {
       };
     });
 
-    return [...workspaceThreads, ...leadThreads].sort((a, b) => {
-      if (a.unreadCount !== b.unreadCount) {
-        return b.unreadCount - a.unreadCount;
-      }
-      const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return bTime - aTime;
-    });
+    return sortClientInboxThreads([...workspaceThreads, ...leadThreads]);
   }, [
     leadThreadsQuery.data,
     workspaceConversationsQuery.data,
@@ -588,41 +587,28 @@ export function ClientMessagesPage() {
     clientProfilesQuery.isLoading ||
     workspaceConversationsQuery.isLoading ||
     leadThreadsQuery.isLoading;
+  const visibleThreadIds = useMemo(
+    () => visibleThreads.map((thread) => thread.id),
+    [visibleThreads],
+  );
 
   useEffect(() => {
-    if (visibleThreads.length === 0) {
-      if (threadSourcesLoading) return;
-      if (selectedThreadId !== null) {
-        setSelectedThreadId(null);
-      }
-      return;
-    }
-
     const requestedThreadRef = parseClientInboxThreadParam(threadParam);
     const requestedThreadId = requestedThreadRef
       ? buildClientInboxThreadParam(requestedThreadRef)
       : null;
-    if (
-      requestedThreadId &&
-      visibleThreads.some((thread) => thread.id === requestedThreadId)
-    ) {
-      if (selectedThreadId !== requestedThreadId) {
-        setSelectedThreadId(requestedThreadId);
-      }
-      return;
-    }
 
-    if (requestedThreadId && threadSourcesLoading) {
-      return;
-    }
+    const nextThreadId = resolveStableClientInboxSelection({
+      currentThreadId: selectedThreadId,
+      requestedThreadId,
+      threadIds: visibleThreadIds,
+      sourcesLoading: threadSourcesLoading,
+    });
 
-    if (
-      !selectedThreadId ||
-      !visibleThreads.some((thread) => thread.id === selectedThreadId)
-    ) {
-      setSelectedThreadId(visibleThreads[0]?.id ?? null);
+    if (selectedThreadId !== nextThreadId) {
+      setSelectedThreadId(nextThreadId);
     }
-  }, [selectedThreadId, threadParam, threadSourcesLoading, visibleThreads]);
+  }, [selectedThreadId, threadParam, threadSourcesLoading, visibleThreadIds]);
 
   useEffect(() => {
     const currentParam =
@@ -683,6 +669,7 @@ export function ClientMessagesPage() {
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === messagePageSize ? allPages.length : undefined,
+    placeholderData: keepPreviousData,
   });
 
   const workspaceMessages = useMemo(() => {
@@ -690,6 +677,18 @@ export function ClientMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [workspaceMessagesQuery.data]);
+
+  const convertedLeadHistoryQuery = useConvertedLeadHistory(
+    activeWorkspaceConversationId,
+  );
+  const convertedLeadHistoryMessages = convertedLeadHistoryQuery.data ?? [];
+  const shouldCollapseLeadHistoryByDefault =
+    convertedLeadHistoryMessages.length > leadHistoryCollapseThreshold;
+  const [isLeadHistoryExpanded, setIsLeadHistoryExpanded] = useState(true);
+
+  useEffect(() => {
+    setIsLeadHistoryExpanded(!shouldCollapseLeadHistoryByDefault);
+  }, [activeWorkspaceConversationId, shouldCollapseLeadHistoryByDefault]);
 
   const renderedWorkspaceMessages = useMemo(
     () =>
@@ -1188,6 +1187,70 @@ export function ClientMessagesPage() {
               >
                 {selectedThread.type === "workspace" ? (
                   <>
+                    {convertedLeadHistoryMessages.length > 0 ? (
+                      <>
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="h-px flex-1 bg-border/50" />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setIsLeadHistoryExpanded((current) => !current)
+                            }
+                            className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-expanded={isLeadHistoryExpanded}
+                          >
+                            Previous application conversation{" "}
+                            <span className="font-medium normal-case tracking-normal">
+                              {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
+                              {convertedLeadHistoryMessages.length === 1
+                                ? "message"
+                                : "messages"}
+                            </span>
+                          </button>
+                          <div className="h-px flex-1 bg-border/50" />
+                        </div>
+                        {isLeadHistoryExpanded
+                          ? convertedLeadHistoryMessages.map((message) => {
+                              const isMine =
+                                message.senderUserId === session?.user?.id;
+                              return (
+                                <div
+                                  key={message.id}
+                                  className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                                >
+                                  <div
+                                    className={`max-w-full rounded-[20px] border px-4 py-3 text-sm opacity-75 sm:max-w-[min(100%,40rem)] ${
+                                      isMine
+                                        ? "border-primary/20 bg-primary/10 text-foreground"
+                                        : "border-border/60 bg-background/45 text-foreground"
+                                    }`}
+                                  >
+                                    <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                      <span className="font-medium text-foreground/80">
+                                        {isMine ? "You" : selectedThread.title}
+                                      </span>
+                                      <span>{formatTime(message.sentAt)}</span>
+                                      <span>Read-only history</span>
+                                    </div>
+                                    <p className="whitespace-pre-wrap leading-6">
+                                      {message.body}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          : null}
+                      </>
+                    ) : null}
+                    {convertedLeadHistoryMessages.length > 0 ? (
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="h-px flex-1 bg-border/60" />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Active coaching conversation
+                        </span>
+                        <div className="h-px flex-1 bg-border/60" />
+                      </div>
+                    ) : null}
                     {workspaceMessagesQuery.hasNextPage ? (
                       <div className="flex justify-center">
                         <Button

@@ -38,4 +38,10 @@ describe("workspace team client access message wiring", () => {
       "Ask the workspace owner or admin to assign clients to you.",
     );
   });
+
+  it("keeps PT message refetches from blanking or smooth-jumping the active thread", () => {
+    expect(ptMessagesPage).toContain("placeholderData: keepPreviousData");
+    expect(ptMessagesPage).toContain('behavior: "auto"');
+    expect(ptMessagesPage).not.toContain('behavior: "smooth"');
+  });
 });

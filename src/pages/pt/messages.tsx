@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   InfiniteData,
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -29,6 +30,7 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import { Textarea } from "../../components/ui/textarea";
 import { getCharacterLimitState } from "../../lib/character-limits";
+import { useConvertedLeadHistory } from "../../features/lead-chat/lib/lead-chat";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -37,6 +39,8 @@ const formatTime = (timestamp: string | null) => {
     minute: "2-digit",
   });
 };
+
+const leadHistoryCollapseThreshold = 6;
 
 const getPtMessagesUnreadKey = (workspaceId: string | null | undefined) =>
   ["pt-messages-unread", workspaceId ?? "none"] as const;
@@ -238,6 +242,7 @@ export function PtMessagesPage() {
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === messagePageSize ? allPages.length : undefined,
+    placeholderData: keepPreviousData,
   });
 
   const messageRows = useMemo(() => {
@@ -245,6 +250,18 @@ export function PtMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [messagesQuery.data]);
+  const convertedLeadHistoryQuery = useConvertedLeadHistory(
+    activeConversationId,
+  );
+  const convertedLeadHistoryMessages = convertedLeadHistoryQuery.data ?? [];
+  const shouldCollapseLeadHistoryByDefault =
+    convertedLeadHistoryMessages.length > leadHistoryCollapseThreshold;
+  const [isLeadHistoryExpanded, setIsLeadHistoryExpanded] = useState(true);
+
+  useEffect(() => {
+    setIsLeadHistoryExpanded(!shouldCollapseLeadHistoryByDefault);
+  }, [activeConversationId, shouldCollapseLeadHistoryByDefault]);
+
   const renderedMessageRows = useMemo(
     () =>
       messageRows.slice(Math.max(0, messageRows.length - visibleMessageCount)),
@@ -293,7 +310,7 @@ export function PtMessagesPage() {
 
   useEffect(() => {
     if (!scrollRef.current) return;
-    scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    scrollRef.current.scrollIntoView({ behavior: "auto", block: "end" });
   }, [renderedMessageRows.length]);
 
   useEffect(() => {
@@ -706,8 +723,81 @@ export function PtMessagesPage() {
               </p>
 
               <div className="flex-1 space-y-3 overflow-y-auto pr-2">
+                {convertedLeadHistoryMessages.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="h-px flex-1 bg-border/50" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsLeadHistoryExpanded((current) => !current)
+                        }
+                        className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-expanded={isLeadHistoryExpanded}
+                      >
+                        Previous application conversation{" "}
+                        <span className="font-medium normal-case tracking-normal">
+                          {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
+                          {convertedLeadHistoryMessages.length === 1
+                            ? "message"
+                            : "messages"}
+                        </span>
+                      </button>
+                      <div className="h-px flex-1 bg-border/50" />
+                    </div>
+                    {isLeadHistoryExpanded
+                      ? convertedLeadHistoryMessages.map((message) => {
+                          const isCoach = message.senderUserId === user?.id;
+                          return (
+                            <div
+                              key={message.id}
+                              className={cn(
+                                "flex",
+                                isCoach ? "justify-end" : "justify-start",
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  "w-fit max-w-[80%] rounded-[20px] border px-3 py-2 text-sm opacity-75",
+                                  isCoach
+                                    ? "border-primary/20 bg-primary/10 text-foreground"
+                                    : "border-border/60 bg-secondary/35 text-foreground",
+                                )}
+                              >
+                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                  <span>
+                                    {isCoach
+                                      ? "You"
+                                      : (selectedConversationRow?.name ??
+                                        "Client")}
+                                  </span>
+                                  <span>{formatTime(message.sentAt)}</span>
+                                  <span>Read-only history</span>
+                                </div>
+                                <div>{message.body}</div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      : null}
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="h-px flex-1 bg-border/60" />
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Active coaching conversation
+                      </span>
+                      <div className="h-px flex-1 bg-border/60" />
+                    </div>
+                  </>
+                ) : null}
                 {messageRows.length === 0 ? (
-                  <div className="flex h-full flex-col justify-between rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
+                  <div
+                    className={cn(
+                      "flex flex-col justify-between rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6",
+                      convertedLeadHistoryMessages.length === 0
+                        ? "h-full"
+                        : "min-h-72",
+                    )}
+                  >
                     <EmptyState
                       title="No messages yet"
                       description="Start the thread with a short coaching prompt so the client knows what to reply with next."
