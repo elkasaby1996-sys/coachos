@@ -517,13 +517,8 @@ export function ClientMessagesPage() {
     );
 
     const primaryLeadThreads = dedupedLeadThreads.filter((thread) => {
-      if (
-        thread.leadStatus === "converted" &&
-        thread.convertedConversationId
-      ) {
-        return !workspaceConversationIdsSet.has(
-          thread.convertedConversationId,
-        );
+      if (thread.leadStatus === "converted" && thread.convertedConversationId) {
+        return !workspaceConversationIdsSet.has(thread.convertedConversationId);
       }
       return true;
     });
@@ -717,6 +712,55 @@ export function ClientMessagesPage() {
     selectedThreadId,
     selectedThreadIsArchived,
     selectedThreadType,
+  ]);
+
+  useEffect(() => {
+    if (!activeWorkspaceConversationId) return;
+
+    const channel = supabase
+      .channel(`client-workspace-messages-${activeWorkspaceConversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${activeWorkspaceConversationId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-workspace-thread-messages",
+              activeWorkspaceConversationId,
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-messages-workspace-conversations",
+              session?.user?.id,
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-messages-workspace-coach-senders",
+              workspaceConversationIds.join(","),
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: getWorkspaceUnreadQueryKey(workspaceConversationIds),
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [
+    activeWorkspaceConversationId,
+    queryClient,
+    session?.user?.id,
+    workspaceConversationIds,
   ]);
 
   useEffect(() => {
@@ -1183,208 +1227,216 @@ export function ClientMessagesPage() {
             <div className="flex h-[calc(100dvh-12rem)] min-h-[30rem] flex-col">
               <SurfaceCardContent
                 ref={messageListRef}
-                className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/10 pb-6 pt-5 overscroll-contain"
+                className="min-h-0 flex-1 overflow-y-auto bg-background/10 overscroll-contain"
               >
-                {selectedThread.type === "workspace" ? (
-                  <>
-                    {convertedLeadHistoryMessages.length > 0 ? (
-                      <>
-                        <div className="flex items-center gap-3 py-1">
-                          <div className="h-px flex-1 bg-border/50" />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsLeadHistoryExpanded((current) => !current)
-                            }
-                            className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-expanded={isLeadHistoryExpanded}
-                          >
-                            Previous application conversation{" "}
-                            <span className="font-medium normal-case tracking-normal">
-                              {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
-                              {convertedLeadHistoryMessages.length === 1
-                                ? "message"
-                                : "messages"}
-                            </span>
-                          </button>
-                          <div className="h-px flex-1 bg-border/50" />
-                        </div>
-                        {isLeadHistoryExpanded
-                          ? convertedLeadHistoryMessages.map((message) => {
-                              const isMine =
-                                message.senderUserId === session?.user?.id;
-                              return (
-                                <div
-                                  key={message.id}
-                                  className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-                                >
-                                  <div
-                                    className={`max-w-full rounded-[20px] border px-4 py-3 text-sm opacity-75 sm:max-w-[min(100%,40rem)] ${
-                                      isMine
-                                        ? "border-primary/20 bg-primary/10 text-foreground"
-                                        : "border-border/60 bg-background/45 text-foreground"
-                                    }`}
-                                  >
-                                    <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                                      <span className="font-medium text-foreground/80">
-                                        {isMine ? "You" : selectedThread.title}
-                                      </span>
-                                      <span>{formatTime(message.sentAt)}</span>
-                                      <span>Read-only history</span>
-                                    </div>
-                                    <p className="whitespace-pre-wrap leading-6">
-                                      {message.body}
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          : null}
-                      </>
-                    ) : null}
-                    {convertedLeadHistoryMessages.length > 0 ? (
-                      <div className="flex items-center gap-3 py-1">
-                        <div className="h-px flex-1 bg-border/60" />
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                          Active coaching conversation
-                        </span>
-                        <div className="h-px flex-1 bg-border/60" />
-                      </div>
-                    ) : null}
-                    {workspaceMessagesQuery.hasNextPage ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => workspaceMessagesQuery.fetchNextPage()}
-                          disabled={workspaceMessagesQuery.isFetchingNextPage}
-                        >
-                          {workspaceMessagesQuery.isFetchingNextPage
-                            ? "Loading..."
-                            : "Load older"}
-                        </Button>
-                      </div>
-                    ) : null}
-                    {workspaceMessages.length >
-                    renderedWorkspaceMessages.length ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setVisibleMessageCount((current) => current + 100)
-                          }
-                        >
-                          Show older loaded messages
-                        </Button>
-                      </div>
-                    ) : null}
-                    {renderedWorkspaceMessages.length > 0 ? (
-                      renderedWorkspaceMessages.map((message) => {
-                        const isMine = message.sender_role === "client";
-                        return (
-                          <div
-                            key={message.id}
-                            className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-                          >
-                            <div
-                              className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
-                                isMine
-                                  ? "border-primary/24 bg-primary/12 text-foreground"
-                                  : "border-border/70 bg-background/55 text-foreground"
-                              }`}
+                <div className="flex min-h-full flex-col justify-end gap-3 px-4 pb-5 pt-4">
+                  {selectedThread.type === "workspace" ? (
+                    <>
+                      {convertedLeadHistoryMessages.length > 0 ? (
+                        <>
+                          <div className="flex items-center gap-3 py-1">
+                            <div className="h-px flex-1 bg-border/50" />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsLeadHistoryExpanded((current) => !current)
+                              }
+                              className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-expanded={isLeadHistoryExpanded}
                             >
-                              <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                                <span className="font-medium text-foreground/90">
-                                  {isMine
-                                    ? "You"
-                                    : (normalizeCoachDisplayName(
-                                        message.sender_name,
-                                      ) ??
-                                      selectedThread.title ??
-                                      "Coach")}
-                                </span>
-                                <span>{formatTime(message.created_at)}</span>
-                              </div>
-                              <p className="whitespace-pre-wrap leading-6">
-                                {message.body ?? ""}
-                              </p>
-                            </div>
+                              Previous application conversation{" "}
+                              <span className="font-medium normal-case tracking-normal">
+                                {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
+                                {convertedLeadHistoryMessages.length === 1
+                                  ? "message"
+                                  : "messages"}
+                              </span>
+                            </button>
+                            <div className="h-px flex-1 bg-border/50" />
                           </div>
-                        );
-                      })
-                    ) : (
-                      <EmptyStateBlock
-                        title="Start the conversation"
-                        description="Use a quick prompt or send your own message to your coach."
-                        actions={
-                          <>
-                            {quickPrompts.map((prompt) => (
-                              <EmptyStateActionButton
-                                key={prompt}
-                                label={prompt}
-                                onClick={() => setMessageInput(prompt)}
-                              />
-                            ))}
-                          </>
-                        }
-                      />
-                    )}
-                  </>
-                ) : leadMessages.length > 0 ? (
-                  leadMessages.map((message) => {
-                    const isMine =
-                      message.senderUserId !==
-                      selectedThread.leadThread.ptUserId;
-                    return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
-                            isMine
-                              ? "border-primary/24 bg-primary/12 text-foreground"
-                              : "border-border/70 bg-background/55 text-foreground"
-                          }`}
-                        >
-                          <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="font-medium text-foreground/90">
-                              {isMine
-                                ? "You"
-                                : selectedThread.leadThread.ptDisplayName ||
-                                  "Coach"}
-                            </span>
-                            <span>{formatRelativeTime(message.sentAt)}</span>
-                          </div>
-                          <p className="whitespace-pre-wrap leading-6">
-                            {message.body}
-                          </p>
+                          {isLeadHistoryExpanded
+                            ? convertedLeadHistoryMessages.map((message) => {
+                                const isMine =
+                                  message.senderUserId === session?.user?.id;
+                                return (
+                                  <div
+                                    key={message.id}
+                                    className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                                  >
+                                    <div
+                                      className={`max-w-full rounded-[20px] border px-4 py-3 text-sm opacity-75 sm:max-w-[min(100%,40rem)] ${
+                                        isMine
+                                          ? "border-primary/20 bg-primary/10 text-foreground"
+                                          : "border-border/60 bg-background/45 text-foreground"
+                                      }`}
+                                    >
+                                      <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                        <span className="font-medium text-foreground/80">
+                                          {isMine
+                                            ? "You"
+                                            : selectedThread.title}
+                                        </span>
+                                        <span>
+                                          {formatTime(message.sentAt)}
+                                        </span>
+                                        <span>Read-only history</span>
+                                      </div>
+                                      <p className="whitespace-pre-wrap leading-6">
+                                        {message.body}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            : null}
+                        </>
+                      ) : null}
+                      {convertedLeadHistoryMessages.length > 0 ? (
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="h-px flex-1 bg-border/60" />
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            Active coaching conversation
+                          </span>
+                          <div className="h-px flex-1 bg-border/60" />
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <EmptyStateBlock
-                    title="No messages yet"
-                    description="This lead conversation has no messages yet."
-                  />
-                )}
+                      ) : null}
+                      {workspaceMessagesQuery.hasNextPage ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              workspaceMessagesQuery.fetchNextPage()
+                            }
+                            disabled={workspaceMessagesQuery.isFetchingNextPage}
+                          >
+                            {workspaceMessagesQuery.isFetchingNextPage
+                              ? "Loading..."
+                              : "Load older"}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {workspaceMessages.length >
+                      renderedWorkspaceMessages.length ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setVisibleMessageCount((current) => current + 100)
+                            }
+                          >
+                            Show older loaded messages
+                          </Button>
+                        </div>
+                      ) : null}
+                      {renderedWorkspaceMessages.length > 0 ? (
+                        renderedWorkspaceMessages.map((message) => {
+                          const isMine = message.sender_role === "client";
+                          return (
+                            <div
+                              key={message.id}
+                              className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                            >
+                              <div
+                                className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
+                                  isMine
+                                    ? "border-primary/24 bg-primary/12 text-foreground"
+                                    : "border-border/70 bg-background/55 text-foreground"
+                                }`}
+                              >
+                                <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                  <span className="font-medium text-foreground/90">
+                                    {isMine
+                                      ? "You"
+                                      : (normalizeCoachDisplayName(
+                                          message.sender_name,
+                                        ) ??
+                                        selectedThread.title ??
+                                        "Coach")}
+                                  </span>
+                                  <span>{formatTime(message.created_at)}</span>
+                                </div>
+                                <p className="whitespace-pre-wrap leading-6">
+                                  {message.body ?? ""}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <EmptyStateBlock
+                          title="Start the conversation"
+                          description="Use a quick prompt or send your own message to your coach."
+                          actions={
+                            <>
+                              {quickPrompts.map((prompt) => (
+                                <EmptyStateActionButton
+                                  key={prompt}
+                                  label={prompt}
+                                  onClick={() => setMessageInput(prompt)}
+                                />
+                              ))}
+                            </>
+                          }
+                        />
+                      )}
+                    </>
+                  ) : leadMessages.length > 0 ? (
+                    leadMessages.map((message) => {
+                      const isMine =
+                        message.senderUserId !==
+                        selectedThread.leadThread.ptUserId;
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
+                              isMine
+                                ? "border-primary/24 bg-primary/12 text-foreground"
+                                : "border-border/70 bg-background/55 text-foreground"
+                            }`}
+                          >
+                            <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <span className="font-medium text-foreground/90">
+                                {isMine
+                                  ? "You"
+                                  : selectedThread.leadThread.ptDisplayName ||
+                                    "Coach"}
+                              </span>
+                              <span>{formatRelativeTime(message.sentAt)}</span>
+                            </div>
+                            <p className="whitespace-pre-wrap leading-6">
+                              {message.body}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <EmptyStateBlock
+                      title="No messages yet"
+                      description="This lead conversation has no messages yet."
+                    />
+                  )}
 
-                {typingUsers.length > 0 &&
-                selectedThread.type === "workspace" ? (
-                  <SectionCard className="inline-flex w-auto items-center gap-2 px-3 py-2">
-                    <span className="text-sm text-muted-foreground">
-                      Coach is typing...
-                    </span>
-                  </SectionCard>
-                ) : null}
+                  {typingUsers.length > 0 &&
+                  selectedThread.type === "workspace" ? (
+                    <SectionCard className="inline-flex w-auto items-center gap-2 px-3 py-2">
+                      <span className="text-sm text-muted-foreground">
+                        Coach is typing...
+                      </span>
+                    </SectionCard>
+                  ) : null}
 
-                <div ref={scrollRef} />
+                  <div ref={scrollRef} />
+                </div>
               </SurfaceCardContent>
 
               {selectedThread.isWritable ? (
-                <div className="sticky bottom-0 border-t border-border/60 bg-[linear-gradient(180deg,rgba(10,14,22,0.16),rgba(10,14,22,0.94)_24%,rgba(10,14,22,0.98))] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+                <div className="sticky bottom-0 border-t border-border/60 bg-background/75 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
                   <div className="space-y-2">
                     {sendError ? (
                       <p className="rounded-[16px] border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">

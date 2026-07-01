@@ -145,6 +145,38 @@ describe("client inbox helper", () => {
     );
   });
 
+  it("wires active workspace message realtime without touching lead history", () => {
+    expect(clientMessagesPage).toContain(
+      "client-workspace-messages-${activeWorkspaceConversationId}",
+    );
+    expect(clientMessagesPage).toContain('table: "messages"');
+    expect(clientMessagesPage).toContain(
+      "filter: `conversation_id=eq.${activeWorkspaceConversationId}`",
+    );
+    expect(clientMessagesPage).toContain('"client-workspace-thread-messages"');
+    expect(clientMessagesPage).toContain("activeWorkspaceConversationId");
+    expect(clientMessagesPage).toContain(
+      '"client-messages-workspace-conversations"',
+    );
+    expect(clientMessagesPage).toContain("session?.user?.id");
+    expect(clientMessagesPage).not.toContain(
+      'queryKey: ["converted-lead-history", activeWorkspaceConversationId]',
+    );
+  });
+
+  it("uses an owned scroll timeline and attached composer in the client chat panel", () => {
+    expect(clientMessagesPage).toContain(
+      'className="min-h-0 flex-1 overflow-y-auto bg-background/10 overscroll-contain"',
+    );
+    expect(clientMessagesPage).toContain(
+      'className="flex min-h-full flex-col justify-end gap-3 px-4 pb-5 pt-4"',
+    );
+    expect(clientMessagesPage).toContain("sticky bottom-0 border-t");
+    expect(clientMessagesPage).not.toContain(
+      "min-h-0 flex-1 space-y-3 overflow-y-auto",
+    );
+  });
+
   it("builds and parses lead thread params", () => {
     const param = buildClientInboxThreadParam({
       type: "lead",

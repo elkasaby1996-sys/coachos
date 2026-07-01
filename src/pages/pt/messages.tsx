@@ -250,9 +250,8 @@ export function PtMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [messagesQuery.data]);
-  const convertedLeadHistoryQuery = useConvertedLeadHistory(
-    activeConversationId,
-  );
+  const convertedLeadHistoryQuery =
+    useConvertedLeadHistory(activeConversationId);
   const convertedLeadHistoryMessages = convertedLeadHistoryQuery.data ?? [];
   const shouldCollapseLeadHistoryByDefault =
     convertedLeadHistoryMessages.length > leadHistoryCollapseThreshold;
@@ -328,6 +327,9 @@ export function PtMessagesPage() {
         () => {
           queryClient.invalidateQueries({
             queryKey: ["pt-messages-thread", activeConversationId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["pt-messages-conversations", workspaceId],
           });
           queryClient.invalidateQueries({
             queryKey: getPtMessagesUnreadKey(workspaceId),
@@ -441,6 +443,10 @@ export function PtMessagesPage() {
           }
 
           const pages = [...current.pages];
+          if (pages.some((page) => page.some((row) => row.id === message.id))) {
+            return current;
+          }
+
           if (pages.length === 0) {
             pages.push([message]);
           } else {
@@ -713,8 +719,8 @@ export function PtMessagesPage() {
               ))}
             </div>
           ) : (
-            <div className="flex h-[560px] flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex h-[560px] flex-col">
+              <p className="px-1 pb-3 text-sm text-muted-foreground">
                 {selectedConversationRow?.conversation?.last_message_at
                   ? `Last activity ${formatRelativeTime(
                       selectedConversationRow.conversation.last_message_at,
@@ -722,179 +728,174 @@ export function PtMessagesPage() {
                   : "No prior thread history yet."}
               </p>
 
-              <div className="flex-1 space-y-3 overflow-y-auto pr-2">
-                {convertedLeadHistoryMessages.length > 0 ? (
-                  <>
-                    <div className="flex items-center gap-3 py-1">
-                      <div className="h-px flex-1 bg-border/50" />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setIsLeadHistoryExpanded((current) => !current)
-                        }
-                        className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-expanded={isLeadHistoryExpanded}
-                      >
-                        Previous application conversation{" "}
-                        <span className="font-medium normal-case tracking-normal">
-                          {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
-                          {convertedLeadHistoryMessages.length === 1
-                            ? "message"
-                            : "messages"}
-                        </span>
-                      </button>
-                      <div className="h-px flex-1 bg-border/50" />
-                    </div>
-                    {isLeadHistoryExpanded
-                      ? convertedLeadHistoryMessages.map((message) => {
-                          const isCoach = message.senderUserId === user?.id;
-                          return (
-                            <div
-                              key={message.id}
-                              className={cn(
-                                "flex",
-                                isCoach ? "justify-end" : "justify-start",
-                              )}
-                            >
+              <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-4 pr-2">
+                <div className="flex min-h-full flex-col justify-end gap-3">
+                  {convertedLeadHistoryMessages.length > 0 ? (
+                    <>
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="h-px flex-1 bg-border/50" />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsLeadHistoryExpanded((current) => !current)
+                          }
+                          className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-expanded={isLeadHistoryExpanded}
+                        >
+                          Previous application conversation{" "}
+                          <span className="font-medium normal-case tracking-normal">
+                            {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
+                            {convertedLeadHistoryMessages.length === 1
+                              ? "message"
+                              : "messages"}
+                          </span>
+                        </button>
+                        <div className="h-px flex-1 bg-border/50" />
+                      </div>
+                      {isLeadHistoryExpanded
+                        ? convertedLeadHistoryMessages.map((message) => {
+                            const isCoach = message.senderUserId === user?.id;
+                            return (
                               <div
+                                key={message.id}
                                 className={cn(
-                                  "w-fit max-w-[80%] rounded-[20px] border px-3 py-2 text-sm opacity-75",
-                                  isCoach
-                                    ? "border-primary/20 bg-primary/10 text-foreground"
-                                    : "border-border/60 bg-secondary/35 text-foreground",
+                                  "flex",
+                                  isCoach ? "justify-end" : "justify-start",
                                 )}
                               >
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                  <span>
-                                    {isCoach
-                                      ? "You"
-                                      : (selectedConversationRow?.name ??
-                                        "Client")}
-                                  </span>
-                                  <span>{formatTime(message.sentAt)}</span>
-                                  <span>Read-only history</span>
+                                <div
+                                  className={cn(
+                                    "w-fit max-w-[80%] rounded-[20px] border px-3 py-2 text-sm opacity-75",
+                                    isCoach
+                                      ? "border-primary/20 bg-primary/10 text-foreground"
+                                      : "border-border/60 bg-secondary/35 text-foreground",
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                    <span>
+                                      {isCoach
+                                        ? "You"
+                                        : (selectedConversationRow?.name ??
+                                          "Client")}
+                                    </span>
+                                    <span>{formatTime(message.sentAt)}</span>
+                                    <span>Read-only history</span>
+                                  </div>
+                                  <div>{message.body}</div>
                                 </div>
-                                <div>{message.body}</div>
                               </div>
-                            </div>
-                          );
-                        })
-                      : null}
-                    <div className="flex items-center gap-3 py-1">
-                      <div className="h-px flex-1 bg-border/60" />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        Active coaching conversation
-                      </span>
-                      <div className="h-px flex-1 bg-border/60" />
-                    </div>
-                  </>
-                ) : null}
-                {messageRows.length === 0 ? (
-                  <div
-                    className={cn(
-                      "flex flex-col justify-between rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6",
-                      convertedLeadHistoryMessages.length === 0
-                        ? "h-full"
-                        : "min-h-72",
-                    )}
-                  >
-                    <EmptyState
-                      title="No messages yet"
-                      description="Start the thread with a short coaching prompt so the client knows what to reply with next."
-                    />
-                    <div className="space-y-3">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Suggested starters
+                            );
+                          })
+                        : null}
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="h-px flex-1 bg-border/60" />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Active coaching conversation
+                        </span>
+                        <div className="h-px flex-1 bg-border/60" />
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {suggestedReplies.map((prompt) => (
-                          <button
-                            key={prompt}
-                            type="button"
-                            onClick={() => setMessageDraft(prompt)}
-                            className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-border hover:bg-secondary/28 hover:text-foreground"
+                    </>
+                  ) : null}
+                  {messageRows.length === 0 ? (
+                    <div className="rounded-[20px] border border-dashed border-border/70 bg-background/25 p-5">
+                      <EmptyState
+                        title="No messages yet"
+                        description="Start the thread with a short coaching prompt so the client knows what to reply with next."
+                      />
+                      <div className="space-y-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Suggested starters
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {suggestedReplies.map((prompt) => (
+                            <button
+                              key={prompt}
+                              type="button"
+                              onClick={() => setMessageDraft(prompt)}
+                              className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-border hover:bg-secondary/28 hover:text-foreground"
+                            >
+                              {prompt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {messagesQuery.hasNextPage ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => messagesQuery.fetchNextPage()}
+                            disabled={messagesQuery.isFetchingNextPage}
                           >
-                            {prompt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {messagesQuery.hasNextPage ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => messagesQuery.fetchNextPage()}
-                          disabled={messagesQuery.isFetchingNextPage}
-                        >
-                          {messagesQuery.isFetchingNextPage
-                            ? "Loading..."
-                            : "Load older"}
-                        </Button>
-                      </div>
-                    ) : null}
-                    {hasHiddenLoadedMessages ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setVisibleMessageCount((current) => current + 100)
-                          }
-                        >
-                          Show older loaded messages
-                        </Button>
-                      </div>
-                    ) : null}
-                    {renderedMessageRows.map((message) => {
-                      const isCoach = message.sender_role === "pt";
-                      return (
-                        <div
-                          key={message.id}
-                          className={cn(
-                            "flex",
-                            isCoach ? "justify-end" : "justify-start",
-                          )}
-                        >
+                            {messagesQuery.isFetchingNextPage
+                              ? "Loading..."
+                              : "Load older"}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {hasHiddenLoadedMessages ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setVisibleMessageCount((current) => current + 100)
+                            }
+                          >
+                            Show older loaded messages
+                          </Button>
+                        </div>
+                      ) : null}
+                      {renderedMessageRows.map((message) => {
+                        const isCoach = message.sender_role === "pt";
+                        return (
                           <div
+                            key={message.id}
                             className={cn(
-                              "w-fit max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
-                              isCoach
-                                ? "border-primary/20 bg-primary/12 text-foreground"
-                                : "border-border/60 bg-secondary/45 text-foreground",
+                              "flex",
+                              isCoach ? "justify-end" : "justify-start",
                             )}
                           >
                             <div
                               className={cn(
-                                "text-[10px] tracking-[0.16em] text-muted-foreground",
-                                isCoach ? "normal-case" : "uppercase",
+                                "w-fit max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
+                                isCoach
+                                  ? "border-primary/20 bg-primary/12 text-foreground"
+                                  : "border-border/60 bg-secondary/45 text-foreground",
                               )}
                             >
-                              {isCoach
-                                ? "You"
-                                : (message.sender_name ?? "Client")}
-                            </div>
-                            <div>{message.body ?? ""}</div>
-                            <div className="mt-1 text-[10px] text-muted-foreground">
-                              {formatTime(message.created_at)}
+                              <div
+                                className={cn(
+                                  "text-[10px] tracking-[0.16em] text-muted-foreground",
+                                  isCoach ? "normal-case" : "uppercase",
+                                )}
+                              >
+                                {isCoach
+                                  ? "You"
+                                  : (message.sender_name ?? "Client")}
+                              </div>
+                              <div>{message.body ?? ""}</div>
+                              <div className="mt-1 text-[10px] text-muted-foreground">
+                                {formatTime(message.created_at)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-                {typingUsers.length > 0 ? (
-                  <div className="text-xs text-muted-foreground">
-                    Client is typing...
-                  </div>
-                ) : null}
-                <div ref={scrollRef} />
+                        );
+                      })}
+                    </>
+                  )}
+                  {typingUsers.length > 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      Client is typing...
+                    </div>
+                  ) : null}
+                  <div ref={scrollRef} />
+                </div>
               </div>
-              <div className="rounded-[22px] border border-border/70 bg-background/45 p-3">
+              <div className="border-t border-border/60 bg-background/60 p-3">
                 {sendError ? (
                   <p className="mb-3 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
                     {sendError}

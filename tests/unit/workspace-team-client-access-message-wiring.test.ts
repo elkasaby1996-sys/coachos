@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -14,6 +15,17 @@ const messageService = readFileSync(
   resolve(process.cwd(), "src", "lib", "messages.ts"),
   "utf8",
 );
+const migrationSql = readdirSync(
+  resolve(process.cwd(), "supabase", "migrations"),
+)
+  .filter((fileName) => fileName.endsWith(".sql"))
+  .map((fileName) =>
+    readFileSync(
+      resolve(process.cwd(), "supabase", "migrations", fileName),
+      "utf8",
+    ),
+  )
+  .join("\n");
 
 describe("workspace team client access message wiring", () => {
   it("loads PT inbox clients and conversations through assignment-aware RPCs", () => {
@@ -43,5 +55,43 @@ describe("workspace team client access message wiring", () => {
     expect(ptMessagesPage).toContain("placeholderData: keepPreviousData");
     expect(ptMessagesPage).toContain('behavior: "auto"');
     expect(ptMessagesPage).not.toContain('behavior: "smooth"');
+  });
+
+  it("wires PT active message realtime to the same query keys used by the thread", () => {
+    expect(ptMessagesPage).toContain("pt-messages-${activeConversationId}");
+    expect(ptMessagesPage).toContain('table: "messages"');
+    expect(ptMessagesPage).toContain(
+      "filter: `conversation_id=eq.${activeConversationId}`",
+    );
+    expect(ptMessagesPage).toContain(
+      'queryKey: ["pt-messages-thread", activeConversationId]',
+    );
+    expect(ptMessagesPage).toContain(
+      'queryKey: ["pt-messages-conversations", workspaceId]',
+    );
+    expect(ptMessagesPage).toContain("getPtMessagesUnreadKey(workspaceId)");
+  });
+
+  it("uses an owned scroll timeline and attached composer in the PT chat panel", () => {
+    expect(ptMessagesPage).toContain('className="flex h-[560px] flex-col"');
+    expect(ptMessagesPage).toContain(
+      'className="min-h-0 flex-1 overflow-y-auto px-1 pb-4 pr-2"',
+    );
+    expect(ptMessagesPage).toContain(
+      'className="flex min-h-full flex-col justify-end gap-3"',
+    );
+    expect(ptMessagesPage).toContain(
+      "border-t border-border/60 bg-background/60 p-3",
+    );
+    expect(ptMessagesPage).not.toContain(
+      'className="flex h-[560px] flex-col gap-4"',
+    );
+    expect(ptMessagesPage).not.toContain("justify-between rounded-[24px]");
+  });
+
+  it("enables realtime publication for active conversation messages", () => {
+    expect(migrationSql).toContain("supabase_realtime");
+    expect(migrationSql).toContain("public.messages");
+    expect(migrationSql).toContain("pg_publication_tables");
   });
 });
