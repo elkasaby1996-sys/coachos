@@ -43,6 +43,10 @@ import {
 import { getCharacterLimitState } from "../../lib/character-limits";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { sendConversationMessage } from "../../lib/messages";
+import {
+  formatMessageSenderLabel,
+  type MessageSenderAttribution,
+} from "../../lib/message-sender-attribution";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { getActionErrorMessage } from "../../lib/request-guard";
 import { supabase } from "../../lib/supabase";
@@ -118,6 +122,12 @@ type MessageRow = {
   sender_name: string | null;
   body: string | null;
   created_at: string | null;
+};
+
+type MessageSenderAttributionRow = {
+  sender_user_id: string;
+  display_name: string | null;
+  workspace_role: string | null;
 };
 
 type UnifiedInboxThread =
@@ -673,6 +683,38 @@ export function ClientMessagesPage() {
     return [...flat].reverse();
   }, [workspaceMessagesQuery.data]);
 
+  const workspaceSenderAttributionsQuery = useQuery({
+    queryKey: [
+      "conversation-sender-attributions",
+      activeWorkspaceConversationId,
+    ],
+    enabled: !!activeWorkspaceConversationId,
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "conversation_sender_attributions",
+        {
+          p_conversation_id: activeWorkspaceConversationId ?? "",
+        },
+      );
+      if (error) throw error;
+      return (data ?? []) as MessageSenderAttributionRow[];
+    },
+  });
+
+  const workspaceSenderAttributionByUserId = useMemo(() => {
+    const map = new Map<string, MessageSenderAttribution>();
+    (workspaceSenderAttributionsQuery.data ?? []).forEach((row) => {
+      if (!row.sender_user_id) return;
+      map.set(row.sender_user_id, {
+        senderUserId: row.sender_user_id,
+        displayName: row.display_name,
+        workspaceRole: row.workspace_role,
+      });
+    });
+    return map;
+  }, [workspaceSenderAttributionsQuery.data]);
+
   const convertedLeadHistoryQuery = useConvertedLeadHistory(
     activeWorkspaceConversationId,
   );
@@ -744,6 +786,12 @@ export function ClientMessagesPage() {
             queryKey: [
               "client-messages-workspace-coach-senders",
               workspaceConversationIds.join(","),
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: [
+              "conversation-sender-attributions",
+              activeWorkspaceConversationId,
             ],
           });
           queryClient.invalidateQueries({
@@ -1274,7 +1322,18 @@ export function ClientMessagesPage() {
                                         <span className="font-medium text-foreground/80">
                                           {isMine
                                             ? "You"
-                                            : selectedThread.title}
+                                            : formatMessageSenderLabel({
+                                                currentUserId:
+                                                  session?.user?.id,
+                                                message: {
+                                                  senderUserId:
+                                                    message.senderUserId,
+                                                  senderRole: "pt",
+                                                  senderName:
+                                                    selectedThread.title,
+                                                },
+                                                senderAttribution: null,
+                                              })}
                                         </span>
                                         <span>
                                           {formatTime(message.sentAt)}
@@ -1333,6 +1392,20 @@ export function ClientMessagesPage() {
                       {renderedWorkspaceMessages.length > 0 ? (
                         renderedWorkspaceMessages.map((message) => {
                           const isMine = message.sender_role === "client";
+                          const senderLabel = formatMessageSenderLabel({
+                            currentUserId: session?.user?.id,
+                            message: {
+                              senderUserId: message.sender_user_id,
+                              senderRole: message.sender_role,
+                              senderName: message.sender_name,
+                            },
+                            senderAttribution:
+                              message.sender_user_id
+                                ? (workspaceSenderAttributionByUserId.get(
+                                    message.sender_user_id,
+                                  ) ?? null)
+                                : null,
+                          });
                           return (
                             <div
                               key={message.id}
@@ -1347,11 +1420,7 @@ export function ClientMessagesPage() {
                               >
                                 <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                                   <span className="font-medium text-foreground/90">
-                                    {isMine
-                                      ? "You"
-                                      : (normalizeCoachDisplayName(
-                                          message.sender_name,
-                                        ) ?? "Coach")}
+                                    {senderLabel}
                                   </span>
                                   <span>{formatTime(message.created_at)}</span>
                                 </div>

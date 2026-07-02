@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { StatusBanner } from "../client/portal";
+import { ClientMessageFab } from "../client/client-message-fab";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useBootstrapAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
@@ -213,6 +214,7 @@ export function ClientLayout() {
     shouldShowOnboardingBanner(location.pathname) &&
     !isOnboardingBannerDismissed,
   );
+  const shouldShowClientMessageFab = location.pathname !== "/app/messages";
   const topStatusText = onboardingSummary
     ? preWorkspaceMode
       ? "Lead dashboard active"
@@ -665,6 +667,7 @@ export function ClientLayout() {
           </nav>
         </div>
       </div>
+      <ClientMessageFab visible={shouldShowClientMessageFab} />
     </div>
   );
 }

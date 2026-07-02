@@ -113,6 +113,7 @@ import { supabase } from "../lib/supabase";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
 import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
+import { useNotificationRealtime } from "../features/notifications/hooks/use-notification-realtime";
 import {
   LegacyClientRedirect,
   LegacyPublicProfileRedirect,
@@ -414,6 +415,16 @@ function AuthTestSignals() {
   );
 }
 
+function GlobalNotificationRealtime() {
+  const { isAuthenticated, user } = useSessionAuth();
+
+  useNotificationRealtime({
+    userId: isAuthenticated ? (user?.id ?? null) : null,
+  });
+
+  return null;
+}
+
 function getShellKey(pathname: string) {
   if (pathname.startsWith("/pt-hub")) return "pt-hub";
   if (
@@ -586,6 +597,7 @@ export function App() {
     <Suspense fallback={<FullPageLoader />}>
       <PtHubAssetPreloader />
       <AuthTestSignals />
+      <GlobalNotificationRealtime />
       <DocumentMetadata />
       <AppShellTransition>
         <Routes location={location}>

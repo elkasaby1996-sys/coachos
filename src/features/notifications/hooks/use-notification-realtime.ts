@@ -1,21 +1,17 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../../lib/supabase";
-import type { NotificationRecord } from "../lib/types";
 import { notificationsKeys } from "./use-notifications";
 
 export function useNotificationRealtime({
   userId,
-  onHighPriority,
 }: {
   userId: string | null;
-  onHighPriority?: (notification: NotificationRecord) => void;
 }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!userId) return;
-    void onHighPriority;
 
     const invalidateNotificationCenter = () => {
       queryClient.invalidateQueries({
@@ -26,6 +22,30 @@ export function useNotificationRealtime({
       });
       queryClient.invalidateQueries({
         queryKey: notificationsKeys.unreadCount(userId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["pt-compose-conversations"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["pt-compose-unread"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["pt-messages-conversations"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["pt-messages-unread"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["client-message-fab-conversations", userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["client-message-fab-unread", userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["client-messages-workspace-conversations", userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["client-messages-workspace-unread"],
       });
     };
 
@@ -46,5 +66,5 @@ export function useNotificationRealtime({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [onHighPriority, queryClient, userId]);
+  }, [queryClient, userId]);
 }

@@ -23,6 +23,10 @@ import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { sendConversationMessage } from "../../lib/messages";
+import {
+  formatMessageSenderLabel,
+  type MessageSenderAttribution,
+} from "../../lib/message-sender-attribution";
 import { getActionErrorMessage } from "../../lib/request-guard";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
@@ -70,6 +74,12 @@ type MessageRow = {
   sender_name: string | null;
   body: string | null;
   created_at: string | null;
+};
+
+type MessageSenderAttributionRow = {
+  sender_user_id: string;
+  display_name: string | null;
+  workspace_role: string | null;
 };
 
 export function PtMessagesPage() {
@@ -291,6 +301,35 @@ export function PtMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [messagesQuery.data]);
+
+  const senderAttributionsQuery = useQuery({
+    queryKey: ["conversation-sender-attributions", activeConversationId],
+    enabled: !!activeConversationId,
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "conversation_sender_attributions",
+        {
+          p_conversation_id: activeConversationId ?? "",
+        },
+      );
+      if (error) throw error;
+      return (data ?? []) as MessageSenderAttributionRow[];
+    },
+  });
+
+  const senderAttributionByUserId = useMemo(() => {
+    const map = new Map<string, MessageSenderAttribution>();
+    (senderAttributionsQuery.data ?? []).forEach((row) => {
+      if (!row.sender_user_id) return;
+      map.set(row.sender_user_id, {
+        senderUserId: row.sender_user_id,
+        displayName: row.display_name,
+        workspaceRole: row.workspace_role,
+      });
+    });
+    return map;
+  }, [senderAttributionsQuery.data]);
   const convertedLeadHistoryQuery =
     useConvertedLeadHistory(activeConversationId);
   const convertedLeadHistoryMessages = convertedLeadHistoryQuery.data ?? [];
@@ -374,6 +413,9 @@ export function PtMessagesPage() {
           });
           queryClient.invalidateQueries({
             queryKey: getPtMessagesUnreadKey(workspaceId),
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["conversation-sender-attributions", activeConversationId],
           });
         },
       )
@@ -796,6 +838,24 @@ export function PtMessagesPage() {
                       {isLeadHistoryExpanded
                         ? convertedLeadHistoryMessages.map((message) => {
                             const isCoach = message.senderUserId === user?.id;
+                            const senderLabel = formatMessageSenderLabel({
+                              currentUserId: user?.id,
+                              message: {
+                                senderUserId: message.senderUserId,
+                                senderRole: isCoach ? "pt" : "client",
+                                senderName:
+                                  selectedConversationRow?.name ?? "Client",
+                              },
+                              senderAttribution: isCoach
+                                ? null
+                                : {
+                                    senderUserId: message.senderUserId,
+                                    displayName:
+                                      selectedConversationRow?.name ??
+                                      "Client",
+                                    workspaceRole: "client",
+                                  },
+                            });
                             return (
                               <div
                                 key={message.id}
@@ -813,11 +873,8 @@ export function PtMessagesPage() {
                                   )}
                                 >
                                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                    <span>
-                                      {isCoach
-                                        ? "You"
-                                        : (selectedConversationRow?.name ??
-                                          "Client")}
+                                     <span>
+                                      {senderLabel}
                                     </span>
                                     <span>{formatTime(message.sentAt)}</span>
                                     <span>Read-only history</span>
@@ -891,19 +948,33 @@ export function PtMessagesPage() {
                         </div>
                       ) : null}
                       {renderedMessageRows.map((message) => {
-                        const isCoach = message.sender_role === "pt";
+                        const isMine = message.sender_user_id === user?.id;
+                        const senderLabel = formatMessageSenderLabel({
+                          currentUserId: user?.id,
+                          message: {
+                            senderUserId: message.sender_user_id,
+                            senderRole: message.sender_role,
+                            senderName: message.sender_name,
+                          },
+                          senderAttribution:
+                            message.sender_user_id
+                              ? (senderAttributionByUserId.get(
+                                  message.sender_user_id,
+                                ) ?? null)
+                              : null,
+                        });
                         return (
                           <div
                             key={message.id}
                             className={cn(
                               "flex",
-                              isCoach ? "justify-end" : "justify-start",
+                              isMine ? "justify-end" : "justify-start",
                             )}
                           >
                             <div
                               className={cn(
                                 "w-fit max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
-                                isCoach
+                                isMine
                                   ? "border-primary/20 bg-primary/12 text-foreground"
                                   : "border-border/60 bg-secondary/45 text-foreground",
                               )}
@@ -911,12 +982,10 @@ export function PtMessagesPage() {
                               <div
                                 className={cn(
                                   "text-[10px] tracking-[0.16em] text-muted-foreground",
-                                  isCoach ? "normal-case" : "uppercase",
+                                  isMine ? "normal-case" : "uppercase",
                                 )}
                               >
-                                {isCoach
-                                  ? "You"
-                                  : (message.sender_name ?? "Client")}
+                                {senderLabel}
                               </div>
                               <div>{message.body ?? ""}</div>
                               <div className="mt-1 text-[10px] text-muted-foreground">

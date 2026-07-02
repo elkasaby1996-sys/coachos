@@ -64,6 +64,7 @@ import {
 import { useI18n } from "../../lib/i18n-context";
 import { routes } from "../../lib/routes";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
+import { PtMessageComposeProvider } from "../pt/pt-message-compose";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import "../../styles/pt-hub-shell.css";
 
@@ -538,7 +539,8 @@ export function PtHubLayout() {
   };
 
   return (
-    <div
+    <PtMessageComposeProvider>
+      <div
       className={cn(
         "pt-hub-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         themeMode === "light" ? "pt-hub-theme-light" : "pt-hub-theme-dark",
@@ -917,7 +919,8 @@ export function PtHubLayout() {
         </div>
       </PageContainer>
       <AppFooter enableRegionLanguageSwitcher />
-    </div>
+      </div>
+    </PtMessageComposeProvider>
   );
 }
 

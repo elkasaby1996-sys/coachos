@@ -89,6 +89,41 @@ describe("workspace team client access message wiring", () => {
     );
   });
 
+  it("renders PT message bubble labels from resolved sender attribution", () => {
+    expect(ptMessagesPage).toContain("formatMessageSenderLabel({");
+    expect(ptMessagesPage).toMatch(
+      /senderAttribution:\s*message\.sender_user_id\s*\?\s*\(senderAttributionByUserId\.get/s,
+    );
+    expect(ptMessagesPage).not.toContain(
+      'isCoach\n                                  ? "You"\n                                  : (message.sender_name ?? "Client")',
+    );
+  });
+
+  it("keeps FAB co-coach messages labeled by sender identity, not role alone", () => {
+    expect(ptMessageCompose).toContain("getMessageSenderGroupKey");
+    expect(ptMessageCompose).toContain(
+      "getMessageSenderGroupKey(previousMessage)",
+    );
+    expect(ptMessageCompose).toContain("getMessageSenderGroupKey(message)");
+    expect(ptMessageCompose).not.toContain(
+      "previousMessage.sender_role !==\n                                  message.sender_role",
+    );
+  });
+
+  it("loads the full FAB conversation thread instead of a latest-message snippet", () => {
+    const composeThreadQuery = ptMessageCompose.slice(
+      ptMessageCompose.indexOf('queryKey: ["pt-compose-thread"'),
+      ptMessageCompose.indexOf("const senderAttributionsQuery"),
+    );
+
+    expect(composeThreadQuery).toContain(
+      '.order("created_at", { ascending: true })',
+    );
+    expect(composeThreadQuery).not.toContain(".limit(6)");
+    expect(composeThreadQuery).not.toContain(".limit(");
+    expect(composeThreadQuery).not.toContain(".reverse()");
+  });
+
   it("uses an owned scroll timeline and attached composer in the PT chat panel", () => {
     expect(ptMessagesPage).toContain('className="flex h-[560px] flex-col"');
     expect(ptMessagesPage).toContain(

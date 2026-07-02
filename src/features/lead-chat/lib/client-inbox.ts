@@ -153,6 +153,11 @@ export function resolveWorkspaceThreadTitle(params: {
   const coachDisplayName = normalizeCoachDisplayName(params.coachDisplayName);
   if (coachDisplayName) return coachDisplayName;
 
+  const workspaceName = normalizeDisplayName(params.workspaceName);
+  if (workspaceName) {
+    return workspaceName.replace(/^coach\s+/i, "").trim();
+  }
+
   const coachSenderName = normalizeCoachDisplayName(
     params.latestCoachSenderName,
   );
@@ -163,11 +168,6 @@ export function resolveWorkspaceThreadTitle(params: {
       params.lastMessageSenderName,
     );
     if (lastPtSenderName) return lastPtSenderName;
-  }
-
-  const workspaceName = normalizeDisplayName(params.workspaceName);
-  if (workspaceName) {
-    return workspaceName.replace(/^coach\s+/i, "").trim();
   }
 
   const hasExplicitEmptyWorkspaceContext =

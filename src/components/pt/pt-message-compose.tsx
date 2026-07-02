@@ -24,6 +24,10 @@ import { EmptyState, Skeleton } from "../ui/coachos";
 import { Input } from "../ui/input";
 import { useSessionAuth } from "../../lib/auth";
 import { sendConversationMessage } from "../../lib/messages";
+import {
+  formatMessageSenderLabel,
+  type MessageSenderAttribution,
+} from "../../lib/message-sender-attribution";
 import { getActionErrorMessage } from "../../lib/request-guard";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -74,6 +78,12 @@ type InboxRow = {
   lastActivityAt: string | null;
 };
 
+type MessageSenderAttributionRow = {
+  sender_user_id: string;
+  display_name: string | null;
+  workspace_role: string | null;
+};
+
 const formatClockTime = (timestamp: string | null) => {
   if (!timestamp) return "";
   return new Date(timestamp).toLocaleTimeString("en-US", {
@@ -90,6 +100,11 @@ const resizeComposerTextarea = (textarea: HTMLTextAreaElement | null) => {
   textarea.style.height = "40px";
   textarea.style.overflowY = "hidden";
 };
+
+function getMessageSenderGroupKey(message: MessageRow | undefined) {
+  if (!message) return null;
+  return message.sender_user_id ?? `${message.sender_role ?? "unknown"}:system`;
+}
 
 function MessageWidgetLauncher({
   open,
@@ -205,31 +220,44 @@ function MessageWidgetRow({
 
 function MessageThreadBubble({
   message,
+  currentUserId,
+  senderAttribution,
   showLabel,
   showTimestamp,
 }: {
   message: MessageRow;
+  currentUserId: string | null | undefined;
+  senderAttribution: MessageSenderAttribution | null;
   showLabel: boolean;
   showTimestamp: boolean;
 }) {
-  const isCoach = message.sender_role === "pt";
+  const isMine = message.sender_user_id === currentUserId;
+  const senderLabel = formatMessageSenderLabel({
+    currentUserId,
+    message: {
+      senderUserId: message.sender_user_id,
+      senderRole: message.sender_role,
+      senderName: message.sender_name,
+    },
+    senderAttribution,
+  });
   return (
-    <div className={cn("flex", isCoach ? "justify-end" : "justify-start")}>
-      <div className={cn("max-w-[82%]", isCoach ? "items-end" : "items-start")}>
+    <div className={cn("flex", isMine ? "justify-end" : "justify-start")}>
+      <div className={cn("max-w-[82%]", isMine ? "items-end" : "items-start")}>
         {showLabel ? (
           <div
             className={cn(
               "mb-1 px-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/85",
-              isCoach && "text-right",
+              isMine && "text-right",
             )}
           >
-            {isCoach ? "You" : (message.sender_name ?? "Client")}
+            {senderLabel}
           </div>
         ) : null}
         <div
           className={cn(
             "inline-flex max-w-full rounded-full px-3.5 py-2 text-sm leading-5 shadow-[inset_0_1px_0_oklch(1_0_0/0.02)]",
-            isCoach
+            isMine
               ? "bg-primary text-primary-foreground"
               : "border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.72),oklch(var(--bg-surface)/0.58))] text-foreground",
           )}
@@ -242,7 +270,7 @@ function MessageThreadBubble({
           <div
             className={cn(
               "mt-1 px-1 text-[10px] text-muted-foreground",
-              isCoach && "text-right",
+              isMine && "text-right",
             )}
           >
             {formatClockTime(message.created_at)}
@@ -521,12 +549,40 @@ export function PtMessageComposeProvider({
           "id, conversation_id, sender_user_id, sender_role, sender_name, body, created_at, unread",
         )
         .eq("conversation_id", activeConversationId ?? "")
-        .order("created_at", { ascending: false })
-        .limit(6);
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return ((data ?? []) as MessageRow[]).reverse();
+      return (data ?? []) as MessageRow[];
     },
   });
+
+  const senderAttributionsQuery = useQuery({
+    queryKey: ["conversation-sender-attributions", activeConversationId],
+    enabled: !!activeConversationId && open && view === "thread",
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "conversation_sender_attributions",
+        {
+          p_conversation_id: activeConversationId ?? "",
+        },
+      );
+      if (error) throw error;
+      return (data ?? []) as MessageSenderAttributionRow[];
+    },
+  });
+
+  const senderAttributionByUserId = useMemo(() => {
+    const map = new Map<string, MessageSenderAttribution>();
+    (senderAttributionsQuery.data ?? []).forEach((row) => {
+      if (!row.sender_user_id) return;
+      map.set(row.sender_user_id, {
+        senderUserId: row.sender_user_id,
+        displayName: row.display_name,
+        workspaceRole: row.workspace_role,
+      });
+    });
+    return map;
+  }, [senderAttributionsQuery.data]);
 
   useEffect(() => {
     if (!open || view !== "thread") return;
@@ -611,6 +667,9 @@ export function PtMessageComposeProvider({
           queryClient.invalidateQueries({
             queryKey: getPtComposeUnreadKey(workspaceId),
           });
+          queryClient.invalidateQueries({
+            queryKey: ["conversation-sender-attributions", activeConversationId],
+          });
         },
       )
       .subscribe();
@@ -684,6 +743,9 @@ export function PtMessageComposeProvider({
         await queryClient.invalidateQueries({
           queryKey: ["pt-compose-thread", conversationId],
         });
+        await queryClient.invalidateQueries({
+          queryKey: ["conversation-sender-attributions", conversationId],
+        });
       }
     },
     onError: (error) => {
@@ -753,10 +815,23 @@ export function PtMessageComposeProvider({
     panelRef.current?.focus();
   }, [open, view]);
 
-  const shouldShowFloatingControl =
+  const hasAccessibleMessageClients = (clientsQuery.data?.length ?? 0) > 0;
+  const isPtMessagePage =
+    location.pathname === "/pt/messages" ||
+    location.pathname.startsWith("/pt/messages/");
+  const isPtAuthenticatedMessageSurface =
+    location.pathname.startsWith("/pt-hub") ||
+    location.pathname.startsWith("/pt") ||
+    location.pathname.startsWith("/settings") ||
+    location.pathname.startsWith("/workspace/") ||
+    location.pathname.startsWith("/w/");
+  const shouldShowFloatingControl = Boolean(
     workspaceId &&
-    location.pathname.startsWith("/pt") &&
-    !hasBlockingDialogOpen;
+      isPtAuthenticatedMessageSurface &&
+      !isPtMessagePage &&
+      hasAccessibleMessageClients &&
+      !hasBlockingDialogOpen,
+  );
 
   const handleOpenMessagesPage = () => {
     const params = new URLSearchParams();
@@ -875,16 +950,25 @@ export function PtMessageComposeProvider({
                               const nextMessage = messages[index + 1];
                               const showLabel =
                                 !previousMessage ||
-                                previousMessage.sender_role !==
-                                  message.sender_role;
+                                getMessageSenderGroupKey(previousMessage) !==
+                                  getMessageSenderGroupKey(message);
                               const showTimestamp =
                                 !nextMessage ||
-                                nextMessage.sender_role !== message.sender_role;
+                                getMessageSenderGroupKey(nextMessage) !==
+                                  getMessageSenderGroupKey(message);
 
                               return (
                                 <MessageThreadBubble
                                   key={message.id}
                                   message={message}
+                                  currentUserId={user?.id}
+                                  senderAttribution={
+                                    message.sender_user_id
+                                      ? (senderAttributionByUserId.get(
+                                          message.sender_user_id,
+                                        ) ?? null)
+                                      : null
+                                  }
                                   showLabel={showLabel}
                                   showTimestamp={showTimestamp}
                                 />

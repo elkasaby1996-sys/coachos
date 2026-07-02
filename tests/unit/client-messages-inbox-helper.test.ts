@@ -165,8 +165,11 @@ describe("client inbox helper", () => {
   });
 
   it("labels individual PT bubbles from the actual message sender, not the thread title", () => {
+    expect(clientMessagesPage).toContain(
+      "formatMessageSenderLabel({",
+    );
     expect(clientMessagesPage).toMatch(
-      /normalizeCoachDisplayName\(\s*message\.sender_name,\s*\)\s*\?\?\s*"Coach"/,
+      /senderAttribution:\s*message\.sender_user_id\s*\?\s*\(workspaceSenderAttributionByUserId\.get/s,
     );
     expect(clientMessagesPage).not.toContain(
       "selectedThread.title ??\n                                        \"Coach\"",
@@ -237,21 +240,40 @@ describe("client inbox helper", () => {
     expect(deduped[0]?.unreadCount).toBe(2);
   });
 
-  it("prefers latest coach sender name for workspace thread titles", () => {
+  it("keeps workspace thread titles anchored to the coaching relationship", () => {
     expect(
       resolveWorkspaceThreadTitle({
         workspaceName: "Alpha Performance",
+        coachDisplayName: "Coach A",
+        latestCoachSenderName: "Coach C",
+        lastMessageSenderName: "Coach C",
+        lastMessageSenderRole: "pt",
+      }),
+    ).toBe("Coach A");
+
+    expect(
+      resolveWorkspaceThreadTitle({
+        workspaceName: "Alpha Performance",
+        latestCoachSenderName: "Coach C",
+        lastMessageSenderName: "Client Name",
+        lastMessageSenderRole: "client",
+      }),
+    ).toBe("Alpha Performance");
+  });
+
+  it("uses coach sender names only as a fallback title source", () => {
+    expect(
+      resolveWorkspaceThreadTitle({
+        workspaceName: null,
         latestCoachSenderName: "Coach Sarah",
         lastMessageSenderName: "Client Name",
         lastMessageSenderRole: "client",
       }),
     ).toBe("Coach Sarah");
-  });
 
-  it("uses last PT sender name when available", () => {
     expect(
       resolveWorkspaceThreadTitle({
-        workspaceName: "Alpha Performance",
+        workspaceName: null,
         latestCoachSenderName: null,
         lastMessageSenderName: "Omar",
         lastMessageSenderRole: "pt",
