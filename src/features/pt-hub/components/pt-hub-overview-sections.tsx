@@ -2,15 +2,21 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   CircleAlert,
+  CircleDashed,
+  Globe2,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { EmptyState } from "../../../components/ui/coachos/empty-state";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { InviteClientDialog } from "../../../components/pt/invite-client-dialog";
 import { NotificationItem } from "../../notifications/components/notification-item";
 import type { NotificationRecord } from "../../notifications/lib/types";
 import type { ModuleTone } from "../../../lib/module-tone";
@@ -22,9 +28,12 @@ import {
 } from "../../../lib/semantic-status";
 import { cn } from "../../../lib/utils";
 import { useWorkspace } from "../../../lib/use-workspace";
+import { shouldShowPtHubActivationChecklist } from "../lib/overview-dashboard";
 import type {
   PtHubOverviewMode,
   PtHubOverviewActionItem,
+  PtHubActivationChecklistModel,
+  PtHubActivationChecklistItem,
   PtHubOverviewChecklistItem,
   PtHubOverviewQuickAction,
   PtHubOverviewSummaryItem,
@@ -55,6 +64,271 @@ function getActionPriorityLabel(tone: SemanticTone) {
 
 function getActionOwnerLabel(item: PtHubOverviewActionItem) {
   return item.workspaceId ? "Workspace" : "Coach";
+}
+
+function getActivationStatusLabel(item: PtHubActivationChecklistItem) {
+  if (item.status === "complete") return "Complete";
+  if (item.status === "next") return "Next recommended";
+  if (item.optional) return "Optional";
+  return "Incomplete";
+}
+
+function getActivationStatusTone(item: PtHubActivationChecklistItem) {
+  if (item.status === "complete") return "success" as const;
+  if (item.status === "next") return "warning" as const;
+  if (item.optional) return "info" as const;
+  return "muted" as const;
+}
+
+function ActivationChecklistIcon({
+  item,
+}: {
+  item: PtHubActivationChecklistItem;
+}) {
+  if (item.status === "complete") {
+    return <CheckCircle2 className="h-4 w-4 text-success [stroke-width:1.8]" />;
+  }
+  if (item.status === "next") {
+    return <CircleAlert className="h-4 w-4 text-warning [stroke-width:1.8]" />;
+  }
+  return (
+    <CircleDashed className="h-4 w-4 text-muted-foreground [stroke-width:1.8]" />
+  );
+}
+
+function PtHubActivationChecklist({
+  checklist,
+  isLoading = false,
+  hasError = false,
+}: {
+  checklist: PtHubActivationChecklistModel | null;
+  isLoading?: boolean;
+  hasError?: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const checklistRowsId = "pt-hub-activation-checklist-rows";
+
+  if (isLoading && !checklist) {
+    return (
+      <div className="rounded-[28px] border border-border/55 bg-background/28 px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-5 w-56 rounded-xl" />
+          </div>
+          <Skeleton className="h-8 w-32 rounded-full" />
+        </div>
+        <div className="mt-4 grid gap-2 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-16 rounded-[18px]" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (hasError && !checklist) {
+    return (
+      <div className="rounded-[24px] border border-warning/24 bg-warning/10 px-4 py-3">
+        <p className="text-sm font-semibold text-foreground">
+          Activation checklist unavailable
+        </p>
+        <p className="pt-hub-meta-text mt-1 text-[0.88rem] leading-5">
+          The Action Center is still available. Refresh if you want to reload
+          setup progress.
+        </p>
+      </div>
+    );
+  }
+
+  if (!shouldShowPtHubActivationChecklist(checklist)) return null;
+
+  const visibleItems = checklist.items;
+  const summary = `${checklist.coreCompletedCount} of ${checklist.coreTotalCount} setup steps complete`;
+  const progressPercent =
+    checklist.coreTotalCount > 0
+      ? Math.round(
+          (checklist.coreCompletedCount / checklist.coreTotalCount) * 100,
+        )
+      : 0;
+  const firstClientGuidance =
+    checklist.nextItem?.id === "first-client"
+      ? checklist.firstClientGuidance
+      : null;
+  const nextItem = checklist.nextItem;
+
+  return (
+    <div className="rounded-[26px] border border-border/60 bg-background/28 px-4 py-4 shadow-[inset_0_1px_0_oklch(1_0_0/0.025)] sm:px-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="pt-hub-minor-label pt-hub-minor-label-strong">
+            Coach activation
+          </p>
+          <p className="mt-1 text-[1rem] font-semibold text-foreground">
+            {summary}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-expanded={isExpanded}
+          aria-controls={checklistRowsId}
+          onClick={() => setIsExpanded((current) => !current)}
+          className="w-fit"
+        >
+          {isExpanded ? "Collapse checklist" : "View full checklist"}
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/55">
+        <div
+          className="h-full rounded-full bg-primary/70 transition-[width]"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      {nextItem && !firstClientGuidance ? (
+        <div className="mt-4 rounded-[20px] border border-warning/30 bg-warning/10 px-4 py-3">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <div className="min-w-0">
+              <p className="pt-hub-minor-label text-warning">
+                Next recommended
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {nextItem.title}
+              </p>
+              <p className="pt-hub-meta-text mt-1 text-[0.84rem] leading-5">
+                {nextItem.description}
+              </p>
+            </div>
+            <Button asChild size="sm" className="w-full sm:w-auto">
+              <Link to={nextItem.href}>
+                {nextItem.ctaLabel}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {firstClientGuidance ? (
+        <div className="mt-4 rounded-[22px] border border-primary/20 bg-primary/8 px-4 py-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="pt-hub-minor-label text-primary">
+                Next recommended
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                Choose how to add your first client
+              </p>
+              <p className="pt-hub-meta-text mt-1 max-w-2xl text-[0.88rem] leading-5">
+                Direct invite is the fastest path if you already coach someone.
+                Public applications stay available when you want inbound leads.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-2 lg:grid-cols-2">
+            <div className="rounded-[18px] border border-border/55 bg-background/34 px-3.5 py-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-success/22 bg-success/10 text-success">
+                  <UserPlus className="h-4 w-4 [stroke-width:1.8]" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    {firstClientGuidance.invite.title}
+                  </p>
+                  <p className="pt-hub-meta-text mt-1 text-[0.82rem] leading-5">
+                    {firstClientGuidance.invite.description}
+                  </p>
+                  <InviteClientDialog
+                    trigger={
+                      <Button type="button" size="sm" className="mt-3">
+                        {firstClientGuidance.invite.ctaLabel}
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[18px] border border-border/55 bg-background/34 px-3.5 py-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/22 bg-primary/10 text-primary">
+                  <Globe2 className="h-4 w-4 [stroke-width:1.8]" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    {firstClientGuidance.applications.title}
+                  </p>
+                  <p className="pt-hub-meta-text mt-1 text-[0.82rem] leading-5">
+                    {firstClientGuidance.applications.description}
+                  </p>
+                  <Button
+                    asChild
+                    variant="secondary"
+                    size="sm"
+                    className="mt-3"
+                  >
+                    <Link to={firstClientGuidance.applications.href}>
+                      {firstClientGuidance.applications.ctaLabel}
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isExpanded ? (
+        <div
+          id={checklistRowsId}
+          className="mt-4 grid gap-2 lg:grid-cols-2"
+          aria-label="Full activation checklist"
+        >
+          {visibleItems.map((item) => (
+            <Link
+              key={item.id}
+              to={item.href}
+              className={cn(
+                "pt-hub-interactive group flex min-w-0 items-start gap-3 rounded-[16px] border px-3 py-2.5 transition-[background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                item.status === "next"
+                  ? "border-warning/35 bg-warning/10"
+                  : "border-border/50 bg-background/22 hover:border-border/80 hover:bg-background/38",
+              )}
+            >
+              <span className="mt-0.5 shrink-0">
+                <ActivationChecklistIcon item={item} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    {item.title}
+                  </span>
+                  <Badge
+                    variant={getActivationStatusTone(item)}
+                    className="h-5 px-2 text-[10px] normal-case tracking-normal"
+                  >
+                    {getActivationStatusLabel(item)}
+                  </Badge>
+                </span>
+                <span className="pt-hub-meta-text mt-0.5 block text-[0.78rem] leading-5">
+                  {item.description}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function PtHubSetupNoticeStrip({
@@ -307,9 +581,15 @@ export function PtHubOverviewErrorState({ onRetry }: { onRetry: () => void }) {
 export function PtHubActionCenter({
   items,
   mode,
+  activationChecklist,
+  activationChecklistLoading,
+  activationChecklistError,
 }: {
   items: PtHubOverviewActionItem[];
   mode: "activation" | "operating";
+  activationChecklist?: PtHubActivationChecklistModel | null;
+  activationChecklistLoading?: boolean;
+  activationChecklistError?: boolean;
 }) {
   const navigate = useNavigate();
   const { switchWorkspace } = useWorkspace();
@@ -354,6 +634,12 @@ export function PtHubActionCenter({
               : "Clear"}
           </Badge>
         </div>
+
+        <PtHubActivationChecklist
+          checklist={activationChecklist ?? null}
+          isLoading={activationChecklistLoading}
+          hasError={activationChecklistError}
+        />
 
         {primaryItem ? (
           <div

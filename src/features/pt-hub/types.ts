@@ -193,6 +193,23 @@ export interface PTClientStatsSnapshot {
   overdueCheckinClients: number;
 }
 
+export interface PTActivationSummary {
+  workspaceExists: boolean;
+  activationWorkspaceId: string | null;
+  activationWorkspaceSlug: string | null;
+  profileComplete: boolean;
+  profilePublished: boolean;
+  hasFirstClient: boolean;
+  firstClientId: string | null;
+  hasWorkoutAssigned: boolean;
+  hasNutritionAssigned: boolean;
+  hasCheckInAssigned: boolean;
+  hasCoCoachInvitedOrActive: boolean;
+  clientCount: number;
+  coreCompletedCount: number;
+  coreTotalCount: number;
+}
+
 export interface PTClientDirectoryPage {
   clients: PTClientSummary[];
   totalCount: number;

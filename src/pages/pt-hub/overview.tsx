@@ -29,6 +29,7 @@ import type { NotificationRecord } from "../../features/notifications/lib/types"
 import { getPtHubOverviewDashboardModel } from "../../features/pt-hub/lib/overview-dashboard";
 import {
   usePtHubAnalytics,
+  usePtHubActivationSummary,
   usePtHubClients,
   usePtHubLeads,
   usePtHubOverview,
@@ -86,6 +87,7 @@ export function PtHubOverviewPage() {
   const leadsQuery = usePtHubLeads();
   const clientsQuery = usePtHubClients();
   const publicationQuery = usePtHubPublicationState();
+  const activationSummaryQuery = usePtHubActivationSummary();
   const notificationsQuery = useNotificationsList({
     userId: user?.id ?? null,
     limit: 4,
@@ -125,7 +127,10 @@ export function PtHubOverviewPage() {
   const hasError = queries.some((query) => query.error);
 
   const retryAll = () => {
-    void Promise.all(queries.map((query) => query.refetch()));
+    void Promise.all([
+      ...queries.map((query) => query.refetch()),
+      activationSummaryQuery.refetch(),
+    ]);
   };
 
   if (!hasRequiredData && isInitialLoading) {
@@ -159,6 +164,9 @@ export function PtHubOverviewPage() {
     clients,
     subscription: payments?.subscription,
     revenue: payments?.revenue,
+    activationSummary: activationSummaryQuery.data,
+    activationSummaryLoading: activationSummaryQuery.isLoading,
+    activationSummaryError: Boolean(activationSummaryQuery.error),
   });
 
   const showBusinessSetup = dashboardModel.setupCompletionPercent < 100;
@@ -238,6 +246,9 @@ export function PtHubOverviewPage() {
         <PtHubActionCenter
           items={dashboardModel.actionItems}
           mode={dashboardModel.mode}
+          activationChecklist={dashboardModel.activationChecklist}
+          activationChecklistLoading={dashboardModel.activationChecklistLoading}
+          activationChecklistError={dashboardModel.activationChecklistError}
         />
         <PtHubRecentActivityCard
           notifications={notifications}

@@ -23,6 +23,7 @@ import { normalizePackageStateForPersistence } from "./pt-hub-package-state";
 import type {
   PTAvailabilityMode,
   PTAccountSettingsDraft,
+  PTActivationSummary,
   PTAnalyticsSnapshot,
   PTAnalyticsWorkspaceBreakdown,
   PTClientDirectoryPage,
@@ -236,12 +237,32 @@ type PtHubClientStatsRow = {
   overdue_checkin_clients: number | null;
 };
 
+type PtHubActivationSummaryRow = {
+  workspace_exists: boolean | null;
+  activation_workspace_id: string | null;
+  activation_workspace_slug: string | null;
+  has_first_client: boolean | null;
+  first_client_id: string | null;
+  has_workout_assigned: boolean | null;
+  has_nutrition_assigned: boolean | null;
+  has_checkin_assigned: boolean | null;
+  has_co_coach_invited_or_active: boolean | null;
+  client_count: number | null;
+};
+
 type PtHubClientsPageRow = PtClientsSummaryRow & {
   workspace_name: string | null;
   total_count: number | null;
 };
 
 type PtHubClientsRpcClient = {
+  rpc: (
+    functionName: string,
+    args: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: unknown }>;
+};
+
+type PtHubActivationRpcClient = {
   rpc: (
     functionName: string,
     args: Record<string, unknown>,
@@ -1609,6 +1630,91 @@ export function usePtHubClientStats() {
         overdueCheckinClients: row?.overdue_checkin_clients ?? 0,
       } satisfies PTClientStatsSnapshot;
     },
+  });
+}
+
+function mapPtHubActivationSummary(params: {
+  row: PtHubActivationSummaryRow | null;
+  profileComplete: boolean;
+  profilePublished: boolean;
+}): PTActivationSummary {
+  const row = params.row;
+  const workspaceExists = row?.workspace_exists ?? false;
+  const milestones = [
+    workspaceExists,
+    params.profileComplete,
+    params.profilePublished,
+    row?.has_first_client ?? false,
+    row?.has_workout_assigned ?? false,
+    row?.has_nutrition_assigned ?? false,
+    row?.has_checkin_assigned ?? false,
+  ];
+
+  return {
+    workspaceExists,
+    activationWorkspaceId: row?.activation_workspace_id ?? null,
+    activationWorkspaceSlug: row?.activation_workspace_slug ?? null,
+    profileComplete: params.profileComplete,
+    profilePublished: params.profilePublished,
+    hasFirstClient: row?.has_first_client ?? false,
+    firstClientId: row?.first_client_id ?? null,
+    hasWorkoutAssigned: row?.has_workout_assigned ?? false,
+    hasNutritionAssigned: row?.has_nutrition_assigned ?? false,
+    hasCheckInAssigned: row?.has_checkin_assigned ?? false,
+    hasCoCoachInvitedOrActive:
+      row?.has_co_coach_invited_or_active ?? false,
+    clientCount: row?.client_count ?? 0,
+    coreCompletedCount: milestones.filter(Boolean).length,
+    coreTotalCount: milestones.length,
+  };
+}
+
+export async function fetchPtHubActivationSummary(
+  client: PtHubActivationRpcClient,
+  params: {
+    workspaceId?: string | null;
+    profileComplete?: boolean;
+    profilePublished?: boolean;
+  } = {},
+) {
+  const { data, error } = await client.rpc("pt_hub_activation_summary", {
+    p_workspace_id: params.workspaceId ?? null,
+  });
+
+  if (error) throw error;
+
+  const row = ((data ?? []) as PtHubActivationSummaryRow[])[0] ?? null;
+  return mapPtHubActivationSummary({
+    row,
+    profileComplete: params.profileComplete ?? false,
+    profilePublished: params.profilePublished ?? false,
+  });
+}
+
+export function usePtHubActivationSummary() {
+  const { user } = useSessionAuth();
+  const { workspaceId } = useWorkspace();
+  const readinessQuery = usePtHubProfileReadiness();
+  const publicationQuery = usePtHubPublicationState();
+
+  return useQuery({
+    queryKey: [
+      "pt-hub-activation-summary",
+      user?.id,
+      workspaceId ?? null,
+      readinessQuery.dataUpdatedAt,
+      publicationQuery.dataUpdatedAt,
+    ],
+    enabled:
+      Boolean(user?.id) &&
+      readinessQuery.isSuccess &&
+      publicationQuery.isSuccess,
+    queryFn: async () =>
+      fetchPtHubActivationSummary(supabase, {
+        workspaceId,
+        profileComplete: readinessQuery.data?.readyForPublish ?? false,
+        profilePublished: publicationQuery.data?.isPublished ?? false,
+      }),
   });
 }
 
