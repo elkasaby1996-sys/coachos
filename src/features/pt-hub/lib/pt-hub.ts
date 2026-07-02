@@ -19,6 +19,10 @@ import {
   buildPublicPtApplicationRpcInput,
   normalizePtLeadStatus,
 } from "./pt-hub-leads";
+import {
+  normalizePublicProfileSlug,
+  validatePublicProfileSlug,
+} from "./public-profile-slug";
 import { normalizePackageStateForPersistence } from "./pt-hub-package-state";
 import type {
   PTAvailabilityMode,
@@ -1263,14 +1267,14 @@ export function getPtPublicationState(params: {
   readiness: PTProfileReadiness | null | undefined;
 }): PTPublicationState {
   const profile = params.profile;
-  const settings = params.settings;
   const readiness = params.readiness;
+  const slugValidation = validatePublicProfileSlug(profile?.slug, {
+    allowEmpty: true,
+  });
   const blockers = [
     ...(readiness?.missingItems ?? []),
     ...(profile?.slug ? [] : ["Public URL slug"]),
-    ...(settings?.profileVisibility === "listed"
-      ? []
-      : ["Profile visibility must be set to Ready to list"]),
+    ...(profile?.slug && slugValidation.error ? [slugValidation.error] : []),
   ];
 
   return {
@@ -1284,7 +1288,7 @@ export function getPtPublicationState(params: {
         : profile?.isPublished
           ? "Published privately from marketplace"
           : profile?.marketplaceVisible
-            ? "Ready for marketplace once published"
+            ? "Ready to publish"
             : "Draft only",
   };
 }
@@ -1311,6 +1315,17 @@ export function usePtHubPublicationState() {
         settings: settingsQuery.data,
         readiness: readinessQuery.data,
       }),
+  });
+}
+
+export function usePtProfileSlugAvailability(slug: string | null | undefined) {
+  const validation = validatePublicProfileSlug(slug, { allowEmpty: true });
+  const normalizedSlug = validation.slug;
+
+  return useQuery({
+    queryKey: ["pt-profile-slug-availability", normalizedSlug],
+    enabled: Boolean(normalizedSlug && validation.valid),
+    queryFn: async () => checkPtProfileSlugAvailability(normalizedSlug),
   });
 }
 
@@ -1976,7 +1991,25 @@ export async function savePtHubProfile(params: {
   workspaceId: string | null;
   profile: StoredProfileDraft;
 }) {
-  const normalizedSlug = slugifyValue(params.profile.slug);
+  const slugValidation = validatePublicProfileSlug(params.profile.slug, {
+    allowEmpty: true,
+  });
+  if (slugValidation.error) {
+    throw new Error(slugValidation.error);
+  }
+
+  const normalizedSlug = slugValidation.slug;
+  if (normalizedSlug) {
+    const availability = await checkPtProfileSlugAvailability(normalizedSlug);
+    if (!availability.available) {
+      throw new Error(
+        availability.reason === "taken"
+          ? "This public slug is already in use."
+          : availability.message || "Choose another public slug.",
+      );
+    }
+  }
+
   const normalizedDraft = {
     full_name: params.profile.fullName.trim() || null,
     display_name: params.profile.displayName.trim() || null,
@@ -2029,13 +2062,77 @@ export async function savePtHubProfile(params: {
     { onConflict: "user_id" },
   );
 
-  if (error) throw error;
+  if (error) throw getPtHubProfilePersistenceError(error);
 
   await syncPtAccountIdentity({
     userId: params.userId,
     fullName: params.profile.fullName,
     updateAuthMetadata: true,
   });
+}
+
+type PtProfileSlugAvailability = {
+  slug: string;
+  available: boolean;
+  reason: "available" | "taken" | "invalid" | "reserved" | "required";
+  message: string | null;
+};
+
+export async function checkPtProfileSlugAvailability(
+  slug: string,
+): Promise<PtProfileSlugAvailability> {
+  const validation = validatePublicProfileSlug(slug);
+  if (validation.error) {
+    return {
+      slug: validation.slug,
+      available: false,
+      reason: validation.slug ? "invalid" : "required",
+      message: validation.error,
+    };
+  }
+
+  const { data, error } = await supabase
+    .rpc("check_pt_profile_slug_availability", {
+      p_slug: validation.slug,
+    })
+    .maybeSingle<PtProfileSlugAvailability>();
+
+  if (error) throw error;
+
+  return (
+    data ?? {
+      slug: validation.slug,
+      available: false,
+      reason: "invalid",
+      message: "Unable to check this public slug.",
+    }
+  );
+}
+
+function getPtHubProfilePersistenceError(error: unknown) {
+  const details =
+    typeof error === "object" && error !== null
+      ? (error as { code?: string; message?: string; details?: string })
+      : {};
+  const text = `${details.message ?? ""} ${details.details ?? ""}`.toLowerCase();
+
+  if (
+    details.code === "23505" ||
+    text.includes("pt_hub_profiles_slug_uidx")
+  ) {
+    return new Error("This public slug is already in use.");
+  }
+
+  if (
+    details.code === "23514" ||
+    text.includes("pt_hub_profiles_slug_format_check")
+  ) {
+    return new Error(
+      "Choose a valid public slug with lowercase letters, numbers, and single hyphens.",
+    );
+  }
+
+  return error instanceof Error ? error : new Error("Unable to save profile.");
 }
 
 export async function savePtHubSettings(params: {
