@@ -1351,9 +1351,7 @@ export function ClientMessagesPage() {
                                       ? "You"
                                       : (normalizeCoachDisplayName(
                                           message.sender_name,
-                                        ) ??
-                                        selectedThread.title ??
-                                        "Coach")}
+                                        ) ?? "Coach")}
                                   </span>
                                   <span>{formatTime(message.created_at)}</span>
                                 </div>

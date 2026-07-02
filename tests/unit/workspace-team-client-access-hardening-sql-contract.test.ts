@@ -20,6 +20,15 @@ const lintFixMigration = readFileSync(
   ),
   "utf8",
 );
+const coCoachMessagingMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "20260702100000_co_coach_messaging_permissions.sql",
+  ),
+  "utf8",
+);
 
 describe("workspace team client access hardening SQL contract", () => {
   it("adds assignment-aware conversation and messaging helpers", () => {
@@ -105,6 +114,42 @@ describe("workspace team client access hardening SQL contract", () => {
     );
     expect(lintFixMigration).toContain(
       "where conv.workspace_id = p_workspace_id",
+    );
+  });
+
+  it("locks assistant messaging to assigned clients and keeps viewers out", () => {
+    expect(coCoachMessagingMigration).toContain(
+      "create or replace function public.can_access_client",
+    );
+    expect(coCoachMessagingMigration).toContain("p_permission = 'clients.message'");
+    expect(coCoachMessagingMigration).toContain(
+      "v_context.role = 'assistant_coach'",
+    );
+    expect(coCoachMessagingMigration).toContain(
+      "from public.workspace_member_client_assignments wmca",
+    );
+    expect(coCoachMessagingMigration).toContain(
+      "public.can_access_client(c.id, 'clients.message')",
+    );
+    expect(coCoachMessagingMigration).toContain(
+      "public.can_access_conversation(conversation_id, 'clients.message')",
+    );
+  });
+
+  it("routes message notifications through permission-aware recipient logic", () => {
+    expect(coCoachMessagingMigration).toContain(
+      "create or replace function public.handle_message_received_notifications",
+    );
+    expect(coCoachMessagingMigration).not.toContain("role like 'pt_%'");
+    expect(coCoachMessagingMigration).not.toContain("role::text like 'pt_%'");
+    expect(coCoachMessagingMigration).toContain(
+      "public.has_workspace_permission(",
+    );
+    expect(coCoachMessagingMigration).toContain(
+      "wmca.client_id = v_conversation.client_id",
+    );
+    expect(coCoachMessagingMigration).toContain(
+      "wm.user_id is distinct from new.sender_user_id",
     );
   });
 });

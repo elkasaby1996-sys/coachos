@@ -153,6 +153,14 @@ export function PtMessagesPage() {
     );
     return map;
   }, [conversationsQuery.data]);
+  const accessibleConversationIds = useMemo(
+    () =>
+      (conversationsQuery.data ?? [])
+        .map((row) => row.id)
+        .filter(Boolean)
+        .sort(),
+    [conversationsQuery.data],
+  );
 
   useEffect(() => {
     if (!selectedClientId) {
@@ -188,6 +196,39 @@ export function PtMessagesPage() {
       supabase.removeChannel(channel);
     };
   }, [queryClient, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId || accessibleConversationIds.length === 0) return;
+
+    const conversationIds = accessibleConversationIds;
+    let channel = supabase.channel(
+      `pt-sidebar-message-previews-${workspaceId}`,
+    );
+    conversationIds.forEach((conversationId) => {
+      channel = channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["pt-messages-conversations", workspaceId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: getPtMessagesUnreadKey(workspaceId),
+          });
+        },
+      );
+    });
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [accessibleConversationIds, queryClient, workspaceId]);
 
   const ensureConversationMutation = useMutation({
     mutationFn: async (clientId: string) => {

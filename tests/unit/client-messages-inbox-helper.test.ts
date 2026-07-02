@@ -164,6 +164,15 @@ describe("client inbox helper", () => {
     );
   });
 
+  it("labels individual PT bubbles from the actual message sender, not the thread title", () => {
+    expect(clientMessagesPage).toMatch(
+      /normalizeCoachDisplayName\(\s*message\.sender_name,\s*\)\s*\?\?\s*"Coach"/,
+    );
+    expect(clientMessagesPage).not.toContain(
+      "selectedThread.title ??\n                                        \"Coach\"",
+    );
+  });
+
   it("uses an owned scroll timeline and attached composer in the client chat panel", () => {
     expect(clientMessagesPage).toContain(
       'className="min-h-0 flex-1 overflow-y-auto bg-background/10 overscroll-contain"',

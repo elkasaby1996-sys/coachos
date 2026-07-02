@@ -72,6 +72,23 @@ describe("workspace team client access message wiring", () => {
     expect(ptMessagesPage).toContain("getPtMessagesUnreadKey(workspaceId)");
   });
 
+  it("wires PT sidebar previews to accessible conversation message events without switching threads", () => {
+    expect(ptMessagesPage).toContain(
+      "pt-sidebar-message-previews-${workspaceId}",
+    );
+    expect(ptMessagesPage).toContain("conversationIds.forEach");
+    expect(ptMessagesPage).toContain(
+      "filter: `conversation_id=eq.${conversationId}`",
+    );
+    expect(ptMessagesPage).toContain(
+      'queryKey: ["pt-messages-conversations", workspaceId]',
+    );
+    expect(ptMessagesPage).toContain("getPtMessagesUnreadKey(workspaceId)");
+    expect(ptMessagesPage).not.toContain(
+      "setSelectedClientId(payload.new.client_id",
+    );
+  });
+
   it("uses an owned scroll timeline and attached composer in the PT chat panel", () => {
     expect(ptMessagesPage).toContain('className="flex h-[560px] flex-col"');
     expect(ptMessagesPage).toContain(
