@@ -278,35 +278,7 @@ export function ClientCheckinPage() {
   const workspaceDefaultTemplateId =
     workspaceQuery.data?.default_checkin_template_id ?? null;
 
-  const latestTemplateQuery = useQuery({
-    queryKey: ["client-checkin-latest-template", clientProfile?.workspace_id],
-    enabled:
-      !!clientProfile?.workspace_id &&
-      workspaceQuery.isFetched &&
-      !assignedTemplateId &&
-      !workspaceDefaultTemplateId,
-    queryFn: async () => {
-      const { data, error } = await safeSelect<CheckinTemplateRow>({
-        table: "checkin_templates",
-        columns: "id, workspace_id, name, description, is_active, created_at",
-        fallbackColumns: "id, workspace_id, name, created_at",
-        filter: (query) =>
-          query
-            .eq("workspace_id", clientProfile?.workspace_id ?? "")
-            .neq("is_active", false)
-            .order("created_at", { ascending: false })
-            .limit(1),
-      });
-      if (error) throw error;
-      return ((data ?? [])[0] ?? null) as CheckinTemplateRow | null;
-    },
-  });
-
-  const templateId =
-    assignedTemplateId ??
-    workspaceDefaultTemplateId ??
-    latestTemplateQuery.data?.id ??
-    null;
+  const templateId = assignedTemplateId ?? workspaceDefaultTemplateId ?? null;
 
   const templateQuery = useQuery({
     queryKey: ["client-checkin-template", templateId],
@@ -423,7 +395,7 @@ export function ClientCheckinPage() {
   }, [templateQuery.data]);
 
   const clientCheckinPageState = resolveClientCheckinPageState({
-    hasEffectiveTemplate: Boolean(templateQuery.data),
+    hasEffectiveTemplate: Boolean(templateId),
     checkinStartDate: clientProfile?.checkin_start_date,
     checkinFrequency: clientProfile?.checkin_frequency,
     today: todayStr,
@@ -437,7 +409,6 @@ export function ClientCheckinPage() {
   const isLoading =
     clientQuery.isLoading ||
     workspaceQuery.isLoading ||
-    latestTemplateQuery.isLoading ||
     templateQuery.isLoading ||
     checkinQuery.isLoading;
   const hasTemplate = Boolean(templateQuery.data);
@@ -780,7 +751,6 @@ export function ClientCheckinPage() {
   const pageError =
     clientQuery.error ||
     workspaceQuery.error ||
-    latestTemplateQuery.error ||
     templateQuery.error ||
     checkinQuery.error ||
     answersQuery.error ||
