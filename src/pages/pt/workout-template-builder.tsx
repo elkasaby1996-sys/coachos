@@ -41,6 +41,7 @@ import {
   searchExerciseDataset,
   type ExerciseDatasetExercise,
 } from "../../lib/exercise-dataset";
+import { ASSIGNMENT_SNAPSHOT_NOTICE } from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { GripVertical, Search } from "lucide-react";
@@ -971,6 +972,9 @@ export function PtWorkoutTemplateBuilderPage() {
           </h2>
           <p className="text-sm text-muted-foreground">
             Configure structured exercises.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {ASSIGNMENT_SNAPSHOT_NOTICE}
           </p>
         </div>
         <div className="flex items-center gap-2">

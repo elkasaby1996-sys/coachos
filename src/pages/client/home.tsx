@@ -54,6 +54,7 @@ import {
   sortWorkoutsByUrgency,
   type WorkoutLike,
 } from "./home-unified";
+import { useClientAssignmentRealtime } from "../../lib/client-assignment-realtime";
 
 type ChecklistKey = "workout" | "steps" | "water" | "sleep";
 type ChecklistState = Record<ChecklistKey, boolean>;
@@ -213,6 +214,7 @@ function ClientWorkspaceHomePage() {
     [activeClientId, clientProfiles],
   );
   const clientId = clientProfile?.id ?? null;
+  useClientAssignmentRealtime(clientId);
   const clientTimezone = clientProfile?.timezone ?? null;
   const onboardingSummary = useClientOnboarding().data ?? null;
   const todayStr = useMemo(
@@ -263,7 +265,8 @@ function ClientWorkspaceHomePage() {
       const { data: plans, error: planError } = await supabase
         .from("assigned_nutrition_plans")
         .select("id")
-        .eq("client_id", clientId ?? "");
+        .eq("client_id", clientId ?? "")
+        .eq("status", "active");
       if (planError) throw planError;
 
       const planIds = (plans ?? []).map((row: { id: string }) => row.id);
@@ -289,7 +292,8 @@ function ClientWorkspaceHomePage() {
       const { data: plans, error: planError } = await supabase
         .from("assigned_nutrition_plans")
         .select("id")
-        .eq("client_id", clientId ?? "");
+        .eq("client_id", clientId ?? "")
+        .eq("status", "active");
       if (planError) throw planError;
 
       const planIds = (plans ?? []).map((row: { id: string }) => row.id);

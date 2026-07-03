@@ -18,6 +18,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { ASSIGNMENT_SNAPSHOT_NOTICE } from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWorkspaceWriteAccess } from "../../features/workspace-team";
@@ -574,6 +575,9 @@ export function PtProgramBuilderPage() {
           <CardTitle>Weekly layout</CardTitle>
           <p className="text-sm text-muted-foreground">
             Assign workouts or mark rest days for each week.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {ASSIGNMENT_SNAPSHOT_NOTICE}
           </p>
         </CardHeader>
         <CardContent>

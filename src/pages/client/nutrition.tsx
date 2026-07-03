@@ -25,6 +25,7 @@ import {
   matchesUnifiedSourceFilter,
 } from "../../lib/source-labels";
 import { supabase } from "../../lib/supabase";
+import { useClientAssignmentRealtime } from "../../lib/client-assignment-realtime";
 import {
   applyUnifiedNutritionFilter,
   groupUnifiedNutritionByDate,
@@ -242,6 +243,7 @@ export function ClientNutritionPage() {
     [activeClientId, clientProfiles],
   );
   const clientId = clientProfile?.id ?? null;
+  useClientAssignmentRealtime(clientId);
   const timezone = clientProfile?.timezone ?? "UTC";
   const todayKey = useMemo(() => getTodayInTimezone(timezone), [timezone]);
   const rangeStart = useMemo(
@@ -260,6 +262,7 @@ export function ClientNutritionPage() {
           "id, client_id, nutrition_template_id, start_date, end_date, status, created_at, updated_at, nutrition_template:nutrition_templates(id, name, duration_weeks, workspace_id, owner_client_id, is_active)",
         )
         .eq("client_id", clientId ?? "")
+        .eq("status", "active")
         .order("start_date", { ascending: false });
       if (error) throw error;
       return (data ?? []) as AssignedNutritionPlanRow[];

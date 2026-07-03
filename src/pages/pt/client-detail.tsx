@@ -110,6 +110,10 @@ import {
   checkinReviewStatusMap,
   getCheckinReviewState,
 } from "../../lib/checkin-review";
+import {
+  ASSIGNMENT_SNAPSHOT_NOTICE,
+  CHECKIN_ASSIGNMENT_NOTICE,
+} from "../../lib/assignment-semantics";
 import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
 import { revokePrivateObjectUrls } from "../../lib/private-storage-media";
 import { computeStreak, getLatestLogDate } from "../../lib/habits";
@@ -216,6 +220,20 @@ const getFriendlyErrorMessage = () =>
   "Unable to load data right now. Please try again.";
 
 const getErrorDetails = (error: unknown) => getSupabaseErrorDetails(error);
+
+const getAssignmentActionErrorMessage = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const message = details.message ?? getErrorMessage(error);
+
+  if (
+    message.includes("Cannot replace a completed workout day") ||
+    message.includes("Cannot override a completed workout day")
+  ) {
+    return "Completed workouts cannot be replaced.";
+  }
+
+  return message;
+};
 
 const formatListValue = (
   value: string[] | string | null | undefined,
@@ -598,6 +616,7 @@ type UpcomingWorkoutRow = {
   day_type?: string | null;
   scheduled_date: string | null;
   completed_at: string | null;
+  program_id?: string | null;
   workout_template_id: string | null;
   workout_template: {
     id: string | null;
@@ -1379,7 +1398,7 @@ export function PtClientDetailPage({
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag)",
+          "id, status, day_type, scheduled_date, created_at, completed_at, program_id, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag)",
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
@@ -1981,6 +2000,20 @@ export function PtClientDetailPage({
   const handleAssignWorkout = async () => {
     if (!canEditClients) return;
     if (!clientId || !selectedTemplateId || !scheduledDate) return;
+    const sameDayWorkout = (upcomingQuery.data ?? []).find(
+      (workout) =>
+        workout.scheduled_date === scheduledDate &&
+        workout.day_type !== "rest" &&
+        workout.status !== "completed",
+    );
+    if (sameDayWorkout) {
+      const confirmed = window.confirm(
+        sameDayWorkout.program_id
+          ? "This date already has a workout from the assigned program. Assigning this workout will override that day for the client."
+          : "This date already has a workout. Assigning this workout will replace that day for the client.",
+      );
+      if (!confirmed) return;
+    }
     setAssignStatus("saving");
     setAssignMessage(null);
 
@@ -1995,7 +2028,7 @@ export function PtClientDetailPage({
 
     if (error) {
       const details = getErrorDetails(error);
-      const message = details.message ?? getErrorMessage(error);
+      const message = getAssignmentActionErrorMessage(error);
       setAssignStatus("error");
       setAssignMessage(message);
       setToastVariant("error");
@@ -2292,6 +2325,7 @@ export function PtClientDetailPage({
           .delete()
           .eq("client_id", clientId)
           .eq("program_id", targetProgram.program_template_id)
+          .neq("status", "completed")
           .gte("scheduled_date", todayKey);
 
         if (deleteError) {
@@ -2368,39 +2402,16 @@ export function PtClientDetailPage({
     setOverrideStatus("saving");
     setOverrideError(null);
 
-    const { error } = await supabase.from("client_program_overrides").upsert(
-      {
-        client_program_id: activeProgram.id,
-        override_date: overrideDate,
-        workout_template_id: overrideIsRest ? null : overrideTemplateId,
-        is_rest: overrideIsRest,
-        notes: overrideNotes.trim() || null,
-      },
-      { onConflict: "client_program_id,override_date" },
-    );
+    const { error } = await supabase.rpc("save_client_program_day_override", {
+      p_client_program_id: activeProgram.id,
+      p_override_date: overrideDate,
+      p_workout_template_id: overrideIsRest ? null : overrideTemplateId,
+      p_is_rest: overrideIsRest,
+      p_notes: overrideNotes.trim() || null,
+    });
 
     if (error) {
-      const details = getErrorDetails(error);
-      setOverrideError(`${details.code}: ${details.message}`);
-      setOverrideStatus("idle");
-      return;
-    }
-
-    const anchorStart =
-      activeProgram.start_date ?? programStartDate ?? todayKey;
-    const horizonDays = Math.max(14, diffDays(anchorStart, todayKey) + 14);
-    const { error: applyError } = await supabase.rpc(
-      "apply_program_to_client",
-      {
-        p_client_id: clientId,
-        p_program_template_id: activeProgram.program_template_id,
-        p_start_date: anchorStart,
-        p_horizon_days: horizonDays,
-      },
-    );
-    if (applyError) {
-      const details = getErrorDetails(applyError);
-      setOverrideError(`${details.code}: ${details.message}`);
+      setOverrideError(getAssignmentActionErrorMessage(error));
       setOverrideStatus("idle");
       return;
     }
@@ -4567,14 +4578,11 @@ export function PtClientDetailPage({
             baselinePhotosQuery.error ||
             onboardingQuery.error ||
             checkinsQuery.error ||
-            clientQuery.error ||
-            assignStatus === "error") && (
+            clientQuery.error) && (
             <Alert className="border-destructive/30">
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
-                {assignStatus === "error" && assignMessage
-                  ? assignMessage
-                  : getFriendlyErrorMessage()}
+                {getFriendlyErrorMessage()}
                 {isDev ? (
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {[
@@ -4614,13 +4622,6 @@ export function PtClientDetailPage({
               </AlertDescription>
             </Alert>
           )}
-
-          {assignStatus !== "error" && assignMessage ? (
-            <Alert className="border-border">
-              <AlertTitle>Update</AlertTitle>
-              <AlertDescription>{assignMessage}</AlertDescription>
-            </Alert>
-          ) : null}
         </div>
 
         <div>
@@ -4716,6 +4717,7 @@ export function PtClientDetailPage({
                     selectedTemplateId={selectedTemplateId}
                     scheduledDate={scheduledDate}
                     assignStatus={assignStatus}
+                    assignMessage={assignMessage}
                     selectedProgramId={selectedProgramId}
                     programStartDate={programStartDate}
                     programStatus={programStatus}
@@ -6199,11 +6201,22 @@ function PtClientScheduleCard({
     queryFn: async () => {
       const { data: plans, error: planError } = await supabase
         .from("assigned_nutrition_plans")
-        .select("id")
-        .eq("client_id", clientId ?? "");
+        .select("id, nutrition_template:nutrition_templates!inner(id, workspace_id)")
+        .eq("client_id", clientId ?? "")
+        .eq("status", "active");
       if (planError) throw planError;
 
-      const planIds = (plans ?? []).map((row: { id: string }) => row.id);
+      const planIds = (plans ?? [])
+        .filter((row: { nutrition_template?: unknown }) => {
+          const template = getSingleRelation(row.nutrition_template);
+          return Boolean(
+            template &&
+              typeof template === "object" &&
+              "workspace_id" in template &&
+              template.workspace_id,
+          );
+        })
+        .map((row: { id: string }) => row.id);
       if (!planIds.length) return [];
 
       const { data, error } = await supabase
@@ -6926,6 +6939,9 @@ function PtClientScheduleCard({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {ASSIGNMENT_SNAPSHOT_NOTICE}
+            </p>
             <div className="space-y-2">
               <label
                 htmlFor="nutrition-assign-date"
@@ -7613,6 +7629,9 @@ function PtClientCheckinsTab({
           Review queue with urgency, submission timing, and next actions for
           each cycle.
         </p>
+        <p className="text-xs text-muted-foreground">
+          {CHECKIN_ASSIGNMENT_NOTICE}
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
@@ -8290,6 +8309,7 @@ function PtClientPlanTab({
   selectedTemplateId,
   scheduledDate,
   assignStatus,
+  assignMessage,
   selectedProgramId,
   programStartDate,
   programStatus,
@@ -8324,6 +8344,7 @@ function PtClientPlanTab({
   selectedTemplateId: string;
   scheduledDate: string;
   assignStatus: "idle" | "saving" | "error";
+  assignMessage: string | null;
   selectedProgramId: string;
   programStartDate: string;
   programStatus: "idle" | "saving" | "error";
@@ -8368,6 +8389,9 @@ function PtClientPlanTab({
             <CardTitle>Program</CardTitle>
             <p className="text-sm text-muted-foreground">
               Assign a multi-week program and materialize the next 14 days.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {ASSIGNMENT_SNAPSHOT_NOTICE}
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -8555,6 +8579,9 @@ function PtClientPlanTab({
             <p className="text-sm text-muted-foreground">
               Assign a one-off template to this client.
             </p>
+            <p className="text-xs text-muted-foreground">
+              {ASSIGNMENT_SNAPSHOT_NOTICE}
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {templatesQuery.isLoading ? (
@@ -8617,6 +8644,18 @@ function PtClientPlanTab({
                     ? "Assigning..."
                     : "Assign workout"}
                 </Button>
+                {assignMessage ? (
+                  <div
+                    className={cn(
+                      "rounded-lg border p-2 text-xs",
+                      assignStatus === "error"
+                        ? "border-destructive/30 bg-destructive/5 text-destructive"
+                        : "border-border bg-muted/30 text-muted-foreground",
+                    )}
+                  >
+                    {assignMessage}
+                  </div>
+                ) : null}
               </>
             )}
           </CardContent>
@@ -8802,6 +8841,9 @@ function PtClientNutritionTab({
   const [nutritionAssignStatus, setNutritionAssignStatus] = useState<
     "idle" | "saving"
   >("idle");
+  const [nutritionUnassignStatus, setNutritionUnassignStatus] = useState<
+    "idle" | "saving"
+  >("idle");
   const [nutritionAssignError, setNutritionAssignError] = useState<
     string | null
   >(null);
@@ -8828,13 +8870,16 @@ function PtClientNutritionTab({
       const { data, error } = await supabase
         .from("assigned_nutrition_plans")
         .select(
-          "id, start_date, end_date, status, nutrition_template:nutrition_templates(id, name, duration_weeks)",
+          "id, start_date, end_date, status, nutrition_template:nutrition_templates!inner(id, name, duration_weeks, workspace_id)",
         )
         .eq("client_id", clientId ?? "")
-        .order("start_date", { ascending: false })
-        .limit(1);
+        .eq("status", "active")
+        .order("start_date", { ascending: false });
       if (error) throw error;
-      const row = (data ?? [])[0] as
+      const row = (data ?? []).find((candidate) => {
+        const template = getSingleRelation(candidate.nutrition_template);
+        return Boolean(template?.workspace_id);
+      }) as
         | {
             id: string;
             start_date: string | null;
@@ -8868,11 +8913,22 @@ function PtClientNutritionTab({
     queryFn: async () => {
       const { data: plans, error: plansError } = await supabase
         .from("assigned_nutrition_plans")
-        .select("id")
-        .eq("client_id", clientId ?? "");
+        .select("id, nutrition_template:nutrition_templates!inner(id, workspace_id)")
+        .eq("client_id", clientId ?? "")
+        .eq("status", "active");
       if (plansError) throw plansError;
 
-      const planIds = (plans ?? []).map((row: { id: string }) => row.id);
+      const planIds = (plans ?? [])
+        .filter((row: { nutrition_template?: unknown }) => {
+          const template = getSingleRelation(row.nutrition_template);
+          return Boolean(
+            template &&
+              typeof template === "object" &&
+              "workspace_id" in template &&
+              template.workspace_id,
+          );
+        })
+        .map((row: { id: string }) => row.id);
       if (!planIds.length) return [];
 
       const end = addDaysToDateString(todayKey, 6);
@@ -8895,6 +8951,53 @@ function PtClientNutritionTab({
     [todayKey],
   );
 
+  const handleNutritionUnassign = async () => {
+    if (!canEditClients || !clientId || !activeNutritionPlanQuery.data?.id) {
+      return;
+    }
+    const confirmed = window.confirm(
+      "This will remove the current coach nutrition assignment for this client. Snapshot history will be preserved.",
+    );
+    if (!confirmed) return;
+
+    setNutritionUnassignStatus("saving");
+    setNutritionAssignError(null);
+
+    const { error } = await supabase.rpc("unassign_client_nutrition_plan", {
+      p_client_id: clientId,
+      p_assigned_plan_id: activeNutritionPlanQuery.data.id,
+    });
+
+    if (error) {
+      setNutritionUnassignStatus("idle");
+      setNutritionAssignError(error.message);
+      return;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["pt-client-active-nutrition-plan", clientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["pt-client-nutrition-week", clientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["client-nutrition-plans", clientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["assigned-nutrition-today", clientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["assigned-nutrition-week", clientId],
+      }),
+    ]);
+
+    setNutritionUnassignStatus("idle");
+  };
+
   return (
     <div className="space-y-6 xl:col-start-1">
       <Card className="border-border/70 bg-card/80">
@@ -8915,36 +9018,56 @@ function PtClientNutritionTab({
               {getFriendlyErrorMessage()}
             </div>
           ) : activeNutritionPlanQuery.data ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Program</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeNutritionPlanQuery.data.nutrition_template?.name ??
-                    "Nutrition program"}
-                </p>
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Program</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {activeNutritionPlanQuery.data.nutrition_template?.name ??
+                      "Nutrition program"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {activeNutritionPlanQuery.data.status ?? "Active"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Start date</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {activeNutritionPlanQuery.data.start_date ?? "--"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Coverage</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {activeNutritionPlanQuery.data.end_date
+                      ? `${activeNutritionPlanQuery.data.start_date ?? "--"} to ${activeNutritionPlanQuery.data.end_date}`
+                      : activeNutritionPlanQuery.data.nutrition_template
+                            ?.duration_weeks
+                        ? `${activeNutritionPlanQuery.data.nutrition_template.duration_weeks} week plan`
+                        : "Active assignment"}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Status</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeNutritionPlanQuery.data.status ?? "Active"}
+              <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Remove the current assignment without deleting the nutrition
+                  template or snapshot history.
                 </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Start date</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeNutritionPlanQuery.data.start_date ?? "--"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Coverage</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeNutritionPlanQuery.data.end_date
-                    ? `${activeNutritionPlanQuery.data.start_date ?? "--"} to ${activeNutritionPlanQuery.data.end_date}`
-                    : activeNutritionPlanQuery.data.nutrition_template
-                          ?.duration_weeks
-                      ? `${activeNutritionPlanQuery.data.nutrition_template.duration_weeks} week plan`
-                      : "Active assignment"}
-                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={
+                    nutritionUnassignStatus === "saving" || !canEditClients
+                  }
+                  onClick={handleNutritionUnassign}
+                >
+                  {nutritionUnassignStatus === "saving"
+                    ? "Removing..."
+                    : "Remove assignment"}
+                </Button>
               </div>
             </div>
           ) : (
@@ -8961,6 +9084,9 @@ function PtClientNutritionTab({
           <CardTitle>Assign nutrition program</CardTitle>
           <p className="text-sm text-muted-foreground">
             Assign a multi-week nutrition program to this client.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {ASSIGNMENT_SNAPSHOT_NOTICE}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

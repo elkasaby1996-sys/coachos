@@ -476,7 +476,8 @@ export function useAssignedNutritionByDate(
       const { data: plans, error: planError } = await supabase
         .from("assigned_nutrition_plans")
         .select("id")
-        .eq("client_id", clientId ?? "");
+        .eq("client_id", clientId ?? "")
+        .eq("status", "active");
       if (planError) throw planError;
 
       const planIds = (plans ?? []).map((row: { id: string }) => row.id);

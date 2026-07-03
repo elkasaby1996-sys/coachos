@@ -23,11 +23,13 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
+import { useClientAssignmentRealtime } from "../../lib/client-assignment-realtime";
 import { safeSelect } from "../../lib/supabase-safe";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 import { cn } from "../../lib/utils";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
+import { resolveClientCheckinPageState } from "../../lib/client-checkin-state";
 import {
   CHECKIN_REQUIRED_PHOTO_TYPES,
   getCheckinFrequencyLabel,
@@ -242,6 +244,8 @@ export function ClientCheckinPage() {
     () => selectActiveClientProfile(clientQuery.data ?? [], activeClientId),
     [activeClientId, clientQuery.data],
   );
+  const clientId = clientProfile?.id ?? null;
+  useClientAssignmentRealtime(clientId);
 
   const todayStr = useMemo(
     () => getTodayInTimezone(clientProfile?.timezone ?? null),
@@ -418,9 +422,16 @@ export function ClientCheckinPage() {
     });
   }, [templateQuery.data]);
 
-  const checkinState = currentCheckin
-    ? getCheckinOperationalState(currentCheckin, todayStr)
-    : null;
+  const clientCheckinPageState = resolveClientCheckinPageState({
+    hasEffectiveTemplate: Boolean(templateQuery.data),
+    checkinStartDate: clientProfile?.checkin_start_date,
+    checkinFrequency: clientProfile?.checkin_frequency,
+    today: todayStr,
+    currentCheckin,
+  });
+  const checkinState = clientCheckinPageState.operationalState;
+  const checkinAssignedNotOpen =
+    clientCheckinPageState.kind === "assigned-not-open";
   const isSubmitted =
     checkinState === "submitted" || checkinState === "reviewed";
   const isLoading =
@@ -431,7 +442,9 @@ export function ClientCheckinPage() {
     checkinQuery.isLoading;
   const hasTemplate = Boolean(templateQuery.data);
   const missingTemplate =
-    !isLoading && !hasTemplate && !!clientProfile?.workspace_id;
+    !isLoading &&
+    clientCheckinPageState.kind === "no-assignment" &&
+    !!clientProfile?.workspace_id;
   const onboardingStatusMeta = onboardingSummary
     ? getOnboardingStatusMeta(onboardingSummary.onboarding.status)
     : null;
@@ -447,6 +460,10 @@ export function ClientCheckinPage() {
     ? (onboardingStatusMeta?.description ??
       "Your coach will finish your first check-in setup after onboarding.")
     : "Check back soon once your coach adds one.";
+  const assignedNotOpenTitle = "Check-in assigned";
+  const assignedNotOpenDescription = clientCheckinPageState.nextDueDate
+    ? `Your next check-in is scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}. The form will unlock when that date arrives.`
+    : "Your coach has set up check-ins, but there is no open check-in yet.";
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -736,7 +753,11 @@ export function ClientCheckinPage() {
   };
 
   const checkinIsUpcoming = checkinState === "upcoming";
-  const canProceed = hasTemplate && !isLoading && !checkinIsUpcoming;
+  const canProceed =
+    hasTemplate &&
+    !isLoading &&
+    Boolean(currentCheckin) &&
+    !checkinIsUpcoming;
   const checkinLocked = isSubmitted;
   const checkinDueDateLabel = formatCheckinDueDate(
     currentCheckin?.week_ending_saturday ?? "",
@@ -745,7 +766,9 @@ export function ClientCheckinPage() {
     clientProfile?.checkin_frequency,
   );
   const statusKey =
-    checkinState === "submitted" || checkinState === "reviewed"
+    checkinAssignedNotOpen
+      ? "upcoming"
+      : checkinState === "submitted" || checkinState === "reviewed"
       ? checkinState
       : checkinState === "overdue"
         ? "overdue"
@@ -835,6 +858,8 @@ export function ClientCheckinPage() {
   const summaryVariant =
     missingTemplate || pageError
       ? "error"
+      : checkinAssignedNotOpen
+        ? "info"
       : checkinState === "reviewed"
         ? "reviewed"
         : checkinState === "submitted"
@@ -846,6 +871,8 @@ export function ClientCheckinPage() {
               : "info";
   const summaryTitle = missingTemplate
     ? missingTemplateTitle
+    : checkinAssignedNotOpen
+      ? assignedNotOpenTitle
     : pageError
       ? "Unable to load check-in"
       : checkinState === "reviewed"
@@ -859,6 +886,8 @@ export function ClientCheckinPage() {
               : "Check-in in progress";
   const summaryDescription = missingTemplate
     ? missingTemplateDescription
+    : checkinAssignedNotOpen
+      ? assignedNotOpenDescription
     : pageError
       ? "Please refresh the page or try again shortly."
       : checkinState === "reviewed"
@@ -875,7 +904,11 @@ export function ClientCheckinPage() {
               ? `This check-in is scheduled for ${checkinDueDateLabel}. It will unlock on that date.`
               : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
   const headerStateText =
-    checkinState === "reviewed"
+    checkinAssignedNotOpen
+      ? clientCheckinPageState.nextDueDate
+        ? `Opens ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
+        : "Check-in assigned"
+      : checkinState === "reviewed"
       ? `Reviewed ${checkinDueDateLabel}`
       : checkinState === "submitted"
         ? `Submitted ${checkinDueDateLabel}`
@@ -1119,26 +1152,34 @@ export function ClientCheckinPage() {
             </div>
           </SurfaceCardHeader>
           <SurfaceCardContent className="pt-4">
-            <StepIndicator
-              steps={steps.map((label, index) => ({
-                label,
-                state: checkinLocked
-                  ? index < steps.length - 1
-                    ? "completed"
-                    : "current"
-                  : index < step
-                    ? "completed"
-                    : index === step
-                      ? "current"
-                      : "upcoming",
-                onClick:
-                  !checkinLocked &&
-                  !checkinIsUpcoming &&
-                  (index <= step || canProceed)
-                    ? () => setStep(index)
-                    : undefined,
-              }))}
-            />
+            {currentCheckin ? (
+              <StepIndicator
+                steps={steps.map((label, index) => ({
+                  label,
+                  state: checkinLocked
+                    ? index < steps.length - 1
+                      ? "completed"
+                      : "current"
+                    : index < step
+                      ? "completed"
+                      : index === step
+                        ? "current"
+                        : "upcoming",
+                  onClick:
+                    !checkinLocked &&
+                    !checkinIsUpcoming &&
+                    (index <= step || canProceed)
+                      ? () => setStep(index)
+                      : undefined,
+                }))}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {checkinAssignedNotOpen
+                  ? "Your check-in form will appear here when the next cycle opens."
+                  : "Your check-in form will appear here once your coach assigns one."}
+              </p>
+            )}
           </SurfaceCardContent>
         </SurfaceCard>
 
@@ -1174,7 +1215,7 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {!checkinIsUpcoming && step === 0 ? (
+        {!checkinIsUpcoming && !checkinAssignedNotOpen && step === 0 ? (
           <DashboardCard
             title={`${checkinFrequencyLabel} questions`}
             subtitle="Share the latest updates for this check-in period."
@@ -1413,7 +1454,7 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {!checkinIsUpcoming && step === 1 ? (
+        {!checkinIsUpcoming && !checkinAssignedNotOpen && step === 1 ? (
           <DashboardCard
             title="Progress photos"
             subtitle={
@@ -1566,7 +1607,7 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {!checkinIsUpcoming && step === 2 ? (
+        {!checkinIsUpcoming && !checkinAssignedNotOpen && step === 2 ? (
           <DashboardCard
             title="Review and submit"
             subtitle={
@@ -1665,7 +1706,23 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {checkinIsUpcoming ? (
+        {checkinAssignedNotOpen ? (
+          <SectionCard className="mt-6 flex flex-col gap-3 border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold text-foreground">
+                {clientCheckinPageState.nextDueDate
+                  ? `Scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
+                  : "Check-in schedule pending"}
+              </p>
+              <p className="text-muted-foreground">
+                {assignedNotOpenDescription}
+              </p>
+            </div>
+            <Button variant="secondary" onClick={() => navigate("/app/home")}>
+              Back to home
+            </Button>
+          </SectionCard>
+        ) : checkinIsUpcoming ? (
           <SectionCard className="mt-6 flex flex-col gap-3 border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1 text-sm">
               <p className="font-semibold text-foreground">
@@ -1705,7 +1762,7 @@ export function ClientCheckinPage() {
               </Button>
             </div>
           </SectionCard>
-        ) : (
+        ) : missingTemplate || !currentCheckin ? null : (
           <StickyActionBar>
             <>
               <div className="text-xs text-muted-foreground">

@@ -19,6 +19,7 @@ import {
 import { ActionStatusMessage } from "../../components/common/action-feedback";
 import { PageContainer } from "../../components/common/page-container";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { ASSIGNMENT_SNAPSHOT_NOTICE } from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { sumMacros, useNutritionTemplate } from "../../lib/nutrition";
 import { SaveActions } from "../../components/common/save-actions";
@@ -494,6 +495,9 @@ export function PtNutritionTemplateBuilderPage() {
         title="Program Meta"
         subtitle="Keep the nutrition program label, tag, and duration aligned with the library."
       >
+        <p className="mb-4 text-xs text-muted-foreground">
+          {ASSIGNMENT_SNAPSHOT_NOTICE}
+        </p>
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-2 md:col-span-2">
             <label className="text-xs font-semibold text-muted-foreground">
