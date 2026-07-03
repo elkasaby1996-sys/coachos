@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -186,6 +186,8 @@ export function ClientCheckinPage() {
   const onboardingSummary = useClientOnboarding().data ?? null;
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionValue>>({});
+  const formDirtyRef = useRef(false);
+  const [staleCheckinWarning, setStaleCheckinWarning] = useState(false);
   const [photos, setPhotos] = useState<Record<PhotoType, PhotoState>>({
     front: {
       file: null,
@@ -220,9 +222,19 @@ export function ClientCheckinPage() {
     null,
   );
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [hydratedCheckinId, setHydratedCheckinId] = useState<string | null>(
     null,
   );
+
+  const clearLocalEditState = useCallback(() => {
+    formDirtyRef.current = false;
+    setStaleCheckinWarning(false);
+  }, []);
+
+  const markFormDirty = useCallback(() => {
+    formDirtyRef.current = true;
+  }, []);
 
   const clientQuery = useQuery({
     queryKey: ["client-checkin-profile", user?.id],
@@ -473,6 +485,7 @@ export function ClientCheckinPage() {
         },
       });
       setHydratedCheckinId(null);
+      clearLocalEditState();
       return;
     }
     if (hydratedCheckinId === checkinId) return;
@@ -530,18 +543,22 @@ export function ClientCheckinPage() {
     });
     setPhotos(nextPhotos);
     setHydratedCheckinId(checkinId);
+    clearLocalEditState();
   }, [
     currentCheckin?.id,
     answersQuery.data,
     photosQuery.data,
     hydratedCheckinId,
+    clearLocalEditState,
   ]);
 
   const handleAnswerChange = (questionId: string, value: QuestionValue) => {
+    markFormDirty();
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const handleFileChange = (type: PhotoType, file: File | null) => {
+    markFormDirty();
     setPhotos((prev) => {
       const current = prev[type];
       if (current.previewUrl && current.previewUrl.startsWith("blob:")) {
@@ -562,6 +579,7 @@ export function ClientCheckinPage() {
   };
 
   const handleRemovePhoto = (type: PhotoType) => {
+    markFormDirty();
     setPhotos((prev) => {
       const current = prev[type];
       if (current.previewUrl && current.previewUrl.startsWith("blob:")) {
@@ -582,6 +600,13 @@ export function ClientCheckinPage() {
   const handleSubmit = async () => {
     const dueDate = currentCheckin?.week_ending_saturday ?? null;
     if (!clientProfile?.id || !dueDate || !templateQuery.data?.id) return;
+    if (staleCheckinWarning) {
+      setToastVariant("error");
+      setToastMessage(
+        "Refresh this check-in before submitting the latest questions.",
+      );
+      return;
+    }
     if (checkinState === "upcoming") {
       setToastVariant("error");
       setToastMessage(
@@ -590,6 +615,7 @@ export function ClientCheckinPage() {
       return;
     }
     setSubmitting(true);
+    submittingRef.current = true;
     setToastMessage(null);
     try {
       const { data: checkinRow, error: checkinError } = await supabase
@@ -710,6 +736,7 @@ export function ClientCheckinPage() {
 
       setToastVariant("success");
       setToastMessage("Check-in submitted.");
+      clearLocalEditState();
       await checkinQuery.refetch();
       await answersQuery.refetch();
       await photosQuery.refetch();
@@ -720,6 +747,7 @@ export function ClientCheckinPage() {
       setToastMessage(message);
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -730,6 +758,103 @@ export function ClientCheckinPage() {
     Boolean(currentCheckin) &&
     !checkinIsUpcoming;
   const checkinLocked = isSubmitted;
+
+  const refreshCheckinForm = useCallback(async () => {
+    setHydratedCheckinId(null);
+    setAnswers({});
+    await Promise.all([
+      clientQuery.refetch(),
+      workspaceQuery.refetch(),
+      templateQuery.refetch(),
+      checkinQuery.refetch(),
+      answersQuery.refetch(),
+      photosQuery.refetch(),
+    ]);
+    clearLocalEditState();
+  }, [
+    answersQuery,
+    checkinQuery,
+    clearLocalEditState,
+    clientQuery,
+    photosQuery,
+    templateQuery,
+    workspaceQuery,
+  ]);
+
+  const handleRemoteCheckinDefinitionChange = useCallback(() => {
+    if (!currentCheckin?.id || checkinLocked || submittingRef.current) return;
+
+    if (formDirtyRef.current) {
+      setStaleCheckinWarning(true);
+      return;
+    }
+
+    void refreshCheckinForm();
+  }, [checkinLocked, currentCheckin?.id, refreshCheckinForm]);
+
+  useEffect(() => {
+    if (!clientId || !currentCheckin?.id || checkinLocked) return;
+
+    const channel = supabase
+      .channel(`client-checkin-definition-${clientId}-${currentCheckin.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "clients",
+          filter: `id=eq.${clientId}`,
+        },
+        handleRemoteCheckinDefinitionChange,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "checkins",
+          filter: `id=eq.${currentCheckin.id}`,
+        },
+        handleRemoteCheckinDefinitionChange,
+      );
+
+    if (templateId) {
+      channel
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "checkin_templates",
+            filter: `id=eq.${templateId}`,
+          },
+          handleRemoteCheckinDefinitionChange,
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "checkin_questions",
+            filter: `template_id=eq.${templateId}`,
+          },
+          handleRemoteCheckinDefinitionChange,
+        );
+    }
+
+    channel.subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [
+    checkinLocked,
+    clientId,
+    currentCheckin?.id,
+    handleRemoteCheckinDefinitionChange,
+    templateId,
+  ]);
+
   const checkinDueDateLabel = formatCheckinDueDate(
     currentCheckin?.week_ending_saturday ?? "",
   );
@@ -926,6 +1051,19 @@ export function ClientCheckinPage() {
             ) : undefined
           }
         />
+
+        {staleCheckinWarning ? (
+          <StatusBanner
+            variant="warning"
+            title="Your check-in was updated."
+            description="Refresh this check-in to continue with the latest questions."
+            actions={
+              <Button onClick={refreshCheckinForm} disabled={submitting}>
+                Refresh check-in
+              </Button>
+            }
+          />
+        ) : null}
 
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">
