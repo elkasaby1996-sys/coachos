@@ -245,6 +245,160 @@ describe("auth/bootstrap regression coverage", () => {
     expect(getAuthenticatedRedirectPath(state)).toBe("/app/home");
   });
 
+  it("preserves account onboarding completion across client relationship rows", () => {
+    const resolution = resolveBootstrapFromLookupResults({
+      pathname: "/app/home",
+      previousStable: null,
+      storedWorkspaceId: "workspace-readded",
+      signupIntent: "unknown",
+      pendingInviteToken: null,
+      membershipResult: { status: "empty" },
+      ptProfileResult: { status: "empty" },
+      clientResult: {
+        status: "ok",
+        data: [
+          createClientProfile({
+            id: "completed-standalone-profile",
+            workspace_id: null,
+            account_onboarding_completed_at: "2026-04-01T12:00:00.000Z",
+            created_at: "2026-04-01T12:00:00.000Z",
+          }),
+          createClientProfile({
+            id: "readded-workspace-client",
+            workspace_id: "workspace-readded",
+            account_onboarding_completed_at: null,
+            full_name: null,
+            phone: null,
+            date_of_birth: null,
+            sex: null,
+            height_value: null,
+            weight_value_current: null,
+            created_at: "2026-04-02T12:00:00.000Z",
+          }),
+        ],
+      },
+    });
+
+    expect(resolution.status).toBe("resolved");
+    if (resolution.status !== "resolved") {
+      throw new Error("Expected resolved client bootstrap state.");
+    }
+    expect(resolution.state.activeClientId).toBe("readded-workspace-client");
+    expect(resolution.state.clientAccountComplete).toBe(true);
+    expect(
+      resolution.state.clientWorkspaceOnboardingHardGateRequired,
+    ).toBe(false);
+  });
+
+  it("does not treat removed workspace relationships as active client membership", () => {
+    const resolution = resolveBootstrapFromLookupResults({
+      pathname: "/app/home",
+      previousStable: null,
+      storedWorkspaceId: "workspace-removed",
+      signupIntent: "unknown",
+      pendingInviteToken: null,
+      membershipResult: { status: "empty" },
+      ptProfileResult: { status: "empty" },
+      clientResult: {
+        status: "ok",
+        data: [
+          createClientProfile({
+            id: "removed-workspace-client",
+            workspace_id: "workspace-removed",
+            relationship_status: "removed",
+            account_onboarding_completed_at: null,
+            created_at: "2026-04-02T12:00:00.000Z",
+          }),
+          createClientProfile({
+            id: "completed-standalone-profile",
+            workspace_id: null,
+            account_onboarding_completed_at: "2026-04-01T12:00:00.000Z",
+            created_at: "2026-04-01T12:00:00.000Z",
+          }),
+        ],
+      },
+    });
+
+    expect(resolution.status).toBe("resolved");
+    if (resolution.status !== "resolved") {
+      throw new Error("Expected resolved client bootstrap state.");
+    }
+    expect(resolution.state.activeClientId).toBe(
+      "completed-standalone-profile",
+    );
+    expect(resolution.state.hasWorkspaceMembership).toBe(false);
+    expect(resolution.state.clientAccountComplete).toBe(true);
+  });
+
+  it("keeps removed-only client accounts on the client path without PT setup drift", () => {
+    const resolution = resolveBootstrapFromLookupResults({
+      pathname: "/app/home",
+      previousStable: null,
+      storedWorkspaceId: "workspace-removed",
+      signupIntent: "unknown",
+      pendingInviteToken: null,
+      membershipResult: { status: "empty" },
+      ptProfileResult: { status: "empty" },
+      clientResult: {
+        status: "ok",
+        data: [
+          createClientProfile({
+            id: "removed-workspace-client",
+            workspace_id: "workspace-removed",
+            relationship_status: "removed",
+            account_onboarding_completed_at: "2026-04-01T12:00:00.000Z",
+            created_at: "2026-04-02T12:00:00.000Z",
+          }),
+        ],
+      },
+    });
+
+    expect(resolution.status).toBe("resolved");
+    if (resolution.status !== "resolved") {
+      throw new Error("Expected resolved removed-only client state.");
+    }
+    expect(resolution.state.accountType).toBe("client");
+    expect(resolution.state.role).toBe("client");
+    expect(resolution.state.clientAccountComplete).toBe(true);
+    expect(resolution.state.hasWorkspaceMembership).toBe(false);
+    expect(resolution.state.activeWorkspaceId).toBeNull();
+    expect(resolution.state.activeClientId).toBe("removed-workspace-client");
+    expect(getAuthenticatedRedirectPath(resolution.state)).toBe("/app/home");
+    expect(getBootstrapPath(resolution.state, "/app/home")).toBe("/app/home");
+  });
+
+  it("allows removed-only client accounts to stay client-capable on invite routes", () => {
+    const resolution = resolveBootstrapFromLookupResults({
+      pathname: "/invite/client-invite-token",
+      previousStable: null,
+      storedWorkspaceId: null,
+      signupIntent: "unknown",
+      pendingInviteToken: "client-invite-token",
+      membershipResult: { status: "empty" },
+      ptProfileResult: { status: "empty" },
+      clientResult: {
+        status: "ok",
+        data: [
+          createClientProfile({
+            id: "removed-workspace-client",
+            workspace_id: "workspace-removed",
+            relationship_status: "removed",
+            account_onboarding_completed_at: "2026-04-01T12:00:00.000Z",
+          }),
+        ],
+      },
+    });
+
+    expect(resolution.status).toBe("resolved");
+    if (resolution.status !== "resolved") {
+      throw new Error("Expected resolved removed-only invite state.");
+    }
+    expect(resolution.state.accountType).toBe("client");
+    expect(resolution.state.role).toBe("client");
+    expect(resolution.state.hasWorkspaceMembership).toBe(false);
+    expect(getBootstrapPath(resolution.state, "/invite/client-invite-token")).toBeNull();
+  });
+
   it("keys bootstrap dedupe by user and session rather than route path", () => {
     const first = getBootstrapRunKey({
       userId: "user-1",

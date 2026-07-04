@@ -1059,6 +1059,14 @@ function ClientWorkspaceHomePage() {
         />
       ) : null}
 
+      {!hasWorkspaceMembership ? (
+        <StatusBanner
+          variant="info"
+          title="You do not currently have an active coaching workspace."
+          description="Your client account is still active. Use a coach invite when you are ready to join a workspace again."
+        />
+      ) : null}
+
       <SurfaceCard id="home-section-next-up">
         <SurfaceCardHeader className="pb-4">
           <div className="flex flex-wrap items-start justify-between gap-4">

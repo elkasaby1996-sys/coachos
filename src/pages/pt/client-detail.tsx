@@ -54,6 +54,7 @@ import {
   Sparkles,
   Upload,
   XCircle,
+  Archive,
 } from "lucide-react";
 import {
   Dialog,
@@ -383,6 +384,9 @@ type PtClientProfile = {
   display_name: string | null;
   goal: string | null;
   status: string | null;
+  relationship_status?: string | null;
+  removed_at?: string | null;
+  removed_by_user_id?: string | null;
   lifecycle_state: string | null;
   manual_risk_flag: boolean | null;
   lifecycle_changed_at: string | null;
@@ -858,6 +862,10 @@ export function PtClientDetailPage({
   const [lifecycleActionStatus, setLifecycleActionStatus] = useState<
     "idle" | "saving"
   >("idle");
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveActionStatus, setArchiveActionStatus] = useState<
+    "idle" | "saving"
+  >("idle");
   const selectedCheckinAnswersQuery = useQuery({
     queryKey: ["pt-checkin-answers", selectedCheckin?.id],
     enabled: !!selectedCheckin?.id,
@@ -1000,7 +1008,7 @@ export function PtClientDetailPage({
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, relationship_status, removed_at, removed_by_user_id, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
         )
         .eq("id", clientId ?? "")
         .maybeSingle();
@@ -3548,6 +3556,72 @@ export function PtClientDetailPage({
     );
   };
 
+  const handleArchiveRelationship = async () => {
+    if (!canEditClients) return;
+    if (!clientSnapshot?.id) return;
+
+    setArchiveActionStatus("saving");
+    const { data, error } = await supabase.rpc(
+      "pt_archive_client_relationship",
+      {
+        p_client_id: clientSnapshot.id,
+      },
+    );
+
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(
+        getSupabaseErrorMessage(error, "Could not archive client."),
+      );
+      setArchiveActionStatus("idle");
+      return;
+    }
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (updated) {
+      const relationshipUpdate = {
+        relationship_status: updated.relationship_status ?? "removed",
+        removed_at: updated.removed_at ?? new Date().toISOString(),
+        removed_by_user_id: updated.removed_by_user_id ?? null,
+      };
+      setClientProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...relationshipUpdate,
+            }
+          : prev,
+      );
+      queryClient.setQueryData(
+        ["pt-client", clientId, workspaceQuery.data],
+        (prev: PtClientProfile | undefined) =>
+          prev
+            ? {
+                ...prev,
+                ...relationshipUpdate,
+              }
+            : prev,
+      );
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["pt-client-operational-summary", clientId],
+      }),
+    ]);
+
+    setArchiveActionStatus("idle");
+    setArchiveDialogOpen(false);
+    setToastVariant("success");
+    setToastMessage(
+      "Client archived. History is preserved and client access is removed.",
+    );
+  };
+
   const handleManualRiskToggle = async (nextValue: boolean) => {
     if (!canEditClients) return;
     if (!clientSnapshot?.id) return;
@@ -4325,10 +4399,35 @@ export function PtClientDetailPage({
                         </span>
                         Mark churned
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        disabled={
+                          !canEditClients ||
+                          clientSnapshot?.relationship_status === "removed"
+                        }
+                        onClick={() => setArchiveDialogOpen(true)}
+                      >
+                        <span className="app-dropdown-icon-badge">
+                          <Archive className="h-4 w-4 text-[var(--state-warning-text)]" />
+                        </span>
+                        Archive client relationship
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </div>
+
+              {clientSnapshot?.relationship_status === "removed" ? (
+                <Alert className="border-warning/30 bg-warning/8">
+                  <Archive className="h-4 w-4" />
+                  <AlertTitle>Historical client relationship</AlertTitle>
+                  <AlertDescription>
+                    This client has been archived from active coaching. Their
+                    history is preserved, but client access to this workspace is
+                    removed.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               {!isOverviewCollapsed ? (
                 <div className="ops-surface p-4">
@@ -6090,6 +6189,48 @@ export function PtClientDetailPage({
               {lifecycleActionStatus === "saving"
                 ? "Saving..."
                 : "Save lifecycle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={archiveDialogOpen}
+        onOpenChange={(open) => {
+          if (archiveActionStatus === "saving") return;
+          setArchiveDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Archive client relationship?</DialogTitle>
+            <DialogDescription>
+              This removes the client from active coaching and blocks their
+              access to this workspace. Assignments, messages, check-ins,
+              photos, and history stay preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+            You can re-add this client later and reuse the preserved
+            relationship row.
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setArchiveDialogOpen(false)}
+              disabled={archiveActionStatus === "saving"}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="secondary"
+              className="border-destructive/40 text-destructive hover:border-destructive/50 hover:text-destructive"
+              onClick={handleArchiveRelationship}
+              disabled={archiveActionStatus === "saving" || !canEditClients}
+            >
+              {archiveActionStatus === "saving"
+                ? "Archiving..."
+                : "Archive client"}
             </Button>
           </DialogFooter>
         </DialogContent>

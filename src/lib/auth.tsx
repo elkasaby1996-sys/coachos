@@ -136,6 +136,7 @@ const PT_PROFILE_SELECT = [
 const CLIENT_PROFILE_SELECT = [
   "id",
   "workspace_id",
+  "relationship_status",
   "user_id",
   "status",
   "display_name",
@@ -464,6 +465,14 @@ function sortClientRows(rows: ClientProfileRow[]) {
   });
 }
 
+function isActiveClientWorkspaceRelationship(
+  row: Pick<ClientProfileRow, "workspace_id" | "relationship_status">,
+) {
+  return (
+    Boolean(row.workspace_id) && (row.relationship_status ?? "active") === "active"
+  );
+}
+
 async function lookupRows<T>(
   label: string,
   query: PromiseLike<{ data: T[] | null; error: unknown }>,
@@ -508,7 +517,9 @@ function resolveAccountType(params: {
 }): AccountType {
   const hasPtProfile = Boolean(params.ptProfile);
   const hasClientRows = params.clientRows.length > 0;
-  const hasClientWorkspace = params.clientRows.some((row) => row.workspace_id);
+  const hasClientWorkspace = params.clientRows.some(
+    isActiveClientWorkspaceRelationship,
+  );
 
   if (hasPtProfile && !hasClientRows) return "pt";
   if (!hasPtProfile && hasClientRows) return "client";
@@ -537,14 +548,31 @@ function getActiveClientRow(params: {
   workspaceId: string | null;
 }) {
   if (params.accountType !== "client") return null;
-  const workspaceRows = params.clientRows.filter((row) => row.workspace_id);
+  const workspaceRows = params.clientRows.filter(
+    isActiveClientWorkspaceRelationship,
+  );
   if (params.workspaceId) {
     const selected = workspaceRows.find(
       (row) => row.workspace_id === params.workspaceId,
     );
     if (selected) return selected;
   }
-  return workspaceRows[0] ?? params.clientRows[0] ?? null;
+  return (
+    workspaceRows[0] ??
+    params.clientRows.find((row) => !row.workspace_id) ??
+    params.clientRows[0] ??
+    null
+  );
+}
+
+function hasCompletedClientAccount(
+  activeClient: ClientProfileRow | null,
+  clientRows: ClientProfileRow[],
+) {
+  return (
+    isClientAccountComplete(activeClient) ||
+    clientRows.some((row) => isClientAccountComplete(row))
+  );
 }
 
 function buildPendingInviteToken(pathname: string) {
@@ -661,7 +689,16 @@ function buildProfileDerivedState(params: {
     clientRows: params.clientRows,
     workspaceId: params.storedWorkspaceId,
   });
-  const clientAccountComplete = isClientAccountComplete(activeClient);
+  const activeWorkspaceClient =
+    accountType === "client" && activeClient
+      ? isActiveClientWorkspaceRelationship(activeClient)
+        ? activeClient
+        : null
+      : null;
+  const clientAccountComplete = hasCompletedClientAccount(
+    activeClient,
+    params.clientRows,
+  );
 
   return {
     accountType,
@@ -672,16 +709,18 @@ function buildProfileDerivedState(params: {
           ? "client"
           : "none",
     hasWorkspaceMembership:
-      accountType === "client" ? Boolean(activeClient?.workspace_id) : false,
+      accountType === "client" ? Boolean(activeWorkspaceClient) : false,
     ptWorkspaceComplete: false,
     ptProfileComplete: isPtProfileComplete(params.ptProfile),
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired: Boolean(
-      activeClient?.workspace_id && !clientAccountComplete,
+      activeWorkspaceClient?.workspace_id && !clientAccountComplete,
     ),
     pendingInviteToken: params.pendingInviteToken,
     activeWorkspaceId:
-      accountType === "client" ? (activeClient?.workspace_id ?? null) : null,
+      accountType === "client"
+        ? (activeWorkspaceClient?.workspace_id ?? null)
+        : null,
     activeClientId: activeClient?.id ?? null,
     ptProfile: accountType === "pt" ? params.ptProfile : null,
     clientProfile: activeClient,

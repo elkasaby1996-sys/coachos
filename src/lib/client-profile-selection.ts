@@ -1,8 +1,15 @@
 export type SelectableClientProfile = {
   id: string;
   workspace_id: string | null;
+  relationship_status?: string | null;
   created_at?: string | null;
 };
+
+function isActiveWorkspaceRelationship(row: SelectableClientProfile) {
+  return (
+    Boolean(row.workspace_id) && (row.relationship_status ?? "active") === "active"
+  );
+}
 
 const getCreatedAtRank = (row: SelectableClientProfile) => {
   if (!row.created_at) return Number.MAX_SAFE_INTEGER;
@@ -23,7 +30,7 @@ export function selectActiveClientProfile<T extends SelectableClientProfile>(
   }
 
   const workspaceProfiles = profiles
-    .filter((row) => Boolean(row.workspace_id))
+    .filter(isActiveWorkspaceRelationship)
     .sort((a, b) => getCreatedAtRank(a) - getCreatedAtRank(b));
   if (workspaceProfiles[0]) return workspaceProfiles[0];
 
