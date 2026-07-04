@@ -18,7 +18,10 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
-import { ASSIGNMENT_SNAPSHOT_NOTICE } from "../../lib/assignment-semantics";
+import {
+  ASSIGNMENT_SNAPSHOT_NOTICE,
+  ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
+} from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWorkspaceWriteAccess } from "../../features/workspace-team";
@@ -53,6 +56,19 @@ type ProgramDayState = {
 };
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function AssignmentSnapshotCallout() {
+  return (
+    <div className="assignment-snapshot-callout rounded-lg border border-warning/35 bg-warning/10 px-3 py-2 text-xs">
+      <p className="font-semibold text-foreground">
+        {ASSIGNMENT_SNAPSHOT_WARNING_TITLE}
+      </p>
+      <p className="mt-1 text-muted-foreground">
+        {ASSIGNMENT_SNAPSHOT_NOTICE}
+      </p>
+    </div>
+  );
+}
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -576,11 +592,9 @@ export function PtProgramBuilderPage() {
           <p className="text-sm text-muted-foreground">
             Assign workouts or mark rest days for each week.
           </p>
-          <p className="text-xs text-muted-foreground">
-            {ASSIGNMENT_SNAPSHOT_NOTICE}
-          </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <AssignmentSnapshotCallout />
           <div className="mb-4">
             <div className="text-xs font-semibold uppercase text-muted-foreground">
               Workout templates

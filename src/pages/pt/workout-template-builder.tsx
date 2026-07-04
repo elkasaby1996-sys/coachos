@@ -41,7 +41,10 @@ import {
   searchExerciseDataset,
   type ExerciseDatasetExercise,
 } from "../../lib/exercise-dataset";
-import { ASSIGNMENT_SNAPSHOT_NOTICE } from "../../lib/assignment-semantics";
+import {
+  ASSIGNMENT_SNAPSHOT_NOTICE,
+  ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
+} from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { GripVertical, Search } from "lucide-react";
@@ -60,6 +63,19 @@ const getErrorDetails = (error: unknown) => {
 
 const formatWorkoutTypeTag = (value: string | null | undefined) =>
   value && value.trim().length > 0 ? value : "Workout";
+
+function AssignmentSnapshotCallout() {
+  return (
+    <div className="assignment-snapshot-callout rounded-lg border border-warning/35 bg-warning/10 px-3 py-2 text-xs">
+      <p className="font-semibold text-foreground">
+        {ASSIGNMENT_SNAPSHOT_WARNING_TITLE}
+      </p>
+      <p className="mt-1 text-muted-foreground">
+        {ASSIGNMENT_SNAPSHOT_NOTICE}
+      </p>
+    </div>
+  );
+}
 
 type TemplateRow = {
   id: string;
@@ -973,9 +989,6 @@ export function PtWorkoutTemplateBuilderPage() {
           <p className="text-sm text-muted-foreground">
             Configure structured exercises.
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {ASSIGNMENT_SNAPSHOT_NOTICE}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="muted">
@@ -992,6 +1005,8 @@ export function PtWorkoutTemplateBuilderPage() {
           </Button>
         </div>
       </div>
+
+      <AssignmentSnapshotCallout />
 
       {templateQuery.isLoading ? (
         <Card>

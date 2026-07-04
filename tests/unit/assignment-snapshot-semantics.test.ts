@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ASSIGNMENT_SNAPSHOT_NOTICE,
+  ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
   ASSIGNMENT_SNAPSHOT_TEST_CONTRACT,
   CHECKIN_ASSIGNMENT_NOTICE,
 } from "../../src/lib/assignment-semantics";
@@ -43,8 +44,11 @@ const hardeningSql = readSource(
 
 describe("assignment snapshot semantics", () => {
   it("documents the locked beta assignment semantics in a shared helper", () => {
+    expect(ASSIGNMENT_SNAPSHOT_WARNING_TITLE).toBe(
+      "Assigned clients will not update automatically.",
+    );
     expect(ASSIGNMENT_SNAPSHOT_NOTICE).toBe(
-      "Assignments are saved as client snapshots. Template edits affect future assignments only. Reassign to update an assigned client.",
+      "Template edits affect future assignments only. Reassign this plan to update an assigned client.",
     );
     expect(ASSIGNMENT_SNAPSHOT_TEST_CONTRACT).toMatchObject({
       workouts: "snapshot",
@@ -57,14 +61,21 @@ describe("assignment snapshot semantics", () => {
   });
 
   it("surfaces snapshot copy on workout and program editing/assignment surfaces", () => {
-    expect(workoutBuilderPage).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
-    expect(programBuilderPage).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
-    expect(clientDetailPage).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
+    [workoutBuilderPage, programBuilderPage, clientDetailPage].forEach(
+      (source) => {
+        expect(source).toContain("assignment-snapshot-callout");
+        expect(source).toContain("ASSIGNMENT_SNAPSHOT_WARNING_TITLE");
+        expect(source).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
+      },
+    );
   });
 
   it("surfaces snapshot copy on nutrition editing/assignment surfaces", () => {
-    expect(nutritionBuilderPage).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
-    expect(clientDetailPage).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
+    [nutritionBuilderPage, clientDetailPage].forEach((source) => {
+      expect(source).toContain("assignment-snapshot-callout");
+      expect(source).toContain("ASSIGNMENT_SNAPSHOT_WARNING_TITLE");
+      expect(source).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
+    });
   });
 
   it("documents that template edits are not expected to mutate existing snapshots", () => {
@@ -90,7 +101,7 @@ describe("assignment snapshot semantics", () => {
     expect(clientDetailPage).toContain("assign_workout_with_template");
     expect(clientDetailPage).toContain("assign_nutrition_template_to_client");
     expect(ASSIGNMENT_SNAPSHOT_NOTICE).toContain(
-      "Reassign to update an assigned client.",
+      "Reassign this plan to update an assigned client.",
     );
   });
 

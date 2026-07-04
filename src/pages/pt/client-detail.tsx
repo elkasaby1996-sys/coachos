@@ -113,6 +113,7 @@ import {
 } from "../../lib/checkin-review";
 import {
   ASSIGNMENT_SNAPSHOT_NOTICE,
+  ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
   CHECKIN_ASSIGNMENT_NOTICE,
 } from "../../lib/assignment-semantics";
 import { resolveCheckinPhotoRows } from "../../lib/checkin-photos";
@@ -235,6 +236,19 @@ const getAssignmentActionErrorMessage = (error: unknown) => {
 
   return message;
 };
+
+function AssignmentSnapshotCallout() {
+  return (
+    <div className="assignment-snapshot-callout rounded-lg border border-warning/35 bg-warning/10 px-3 py-2 text-xs">
+      <p className="font-semibold text-foreground">
+        {ASSIGNMENT_SNAPSHOT_WARNING_TITLE}
+      </p>
+      <p className="mt-1 text-muted-foreground">
+        {ASSIGNMENT_SNAPSHOT_NOTICE}
+      </p>
+    </div>
+  );
+}
 
 const formatListValue = (
   value: string[] | string | null | undefined,
@@ -8613,11 +8627,9 @@ function PtClientPlanTab({
             <p className="text-sm text-muted-foreground">
               Assign a multi-week program and materialize the next 14 days.
             </p>
-            <p className="text-xs text-muted-foreground">
-              {ASSIGNMENT_SNAPSHOT_NOTICE}
-            </p>
           </CardHeader>
           <CardContent className="space-y-4">
+            <AssignmentSnapshotCallout />
             {programTemplatesQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -8802,11 +8814,9 @@ function PtClientPlanTab({
             <p className="text-sm text-muted-foreground">
               Assign a one-off template to this client.
             </p>
-            <p className="text-xs text-muted-foreground">
-              {ASSIGNMENT_SNAPSHOT_NOTICE}
-            </p>
           </CardHeader>
           <CardContent className="space-y-4">
+            <AssignmentSnapshotCallout />
             {templatesQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -9308,11 +9318,9 @@ function PtClientNutritionTab({
           <p className="text-sm text-muted-foreground">
             Assign a multi-week nutrition program to this client.
           </p>
-          <p className="text-xs text-muted-foreground">
-            {ASSIGNMENT_SNAPSHOT_NOTICE}
-          </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <AssignmentSnapshotCallout />
           {nutritionProgramsQuery.isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />
