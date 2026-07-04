@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -30,6 +30,10 @@ import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 import { cn } from "../../lib/utils";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { resolveClientCheckinPageState } from "../../lib/client-checkin-state";
+import {
+  resolveAcceptedCheckinDefinitionSignature,
+  resolveCheckinDefinitionChange,
+} from "../../lib/client-checkin-stale-detection";
 import {
   CHECKIN_REQUIRED_PHOTO_TYPES,
   getCheckinFrequencyLabel,
@@ -179,15 +183,51 @@ const getQuestionSummaryValue = (value: QuestionValue | undefined) => {
   return "No response submitted";
 };
 
+const getQuestionDefinitionText = (question: CheckinQuestionRow) =>
+  String(question.question_text ?? question.prompt ?? "").trim();
+
+const buildCheckinFormDefinitionSignature = (
+  templateId: string | null,
+  template: CheckinTemplateRow | null | undefined,
+) => {
+  if (!templateId || !template) return null;
+
+  const questions = [...(template.checkin_questions ?? [])]
+    .sort((left, right) => {
+      const leftOrder = left.sort_order ?? left.position ?? 0;
+      const rightOrder = right.sort_order ?? right.position ?? 0;
+      return leftOrder - rightOrder || left.id.localeCompare(right.id);
+    })
+    .map((question) => ({
+      id: question.id,
+      label: getQuestionDefinitionText(question),
+      type: normalizeCheckinQuestionType(question),
+      options: getCheckinQuestionOptions(question),
+      required: Boolean(question.is_required),
+      sort: question.sort_order ?? question.position ?? 0,
+    }));
+
+  return JSON.stringify({
+    templateId,
+    templateName: template.name ?? null,
+    questions,
+  });
+};
+
 export function ClientCheckinPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSessionAuth();
   const { activeClientId } = useBootstrapAuth();
   const onboardingSummary = useClientOnboarding().data ?? null;
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionValue>>({});
   const formDirtyRef = useRef(false);
+  const acceptedFormDefinitionSignatureRef = useRef<string | null>(null);
   const [staleCheckinWarning, setStaleCheckinWarning] = useState(false);
+  const [staleSubmitMessage, setStaleSubmitMessage] = useState<string | null>(
+    null,
+  );
   const [photos, setPhotos] = useState<Record<PhotoType, PhotoState>>({
     front: {
       file: null,
@@ -223,13 +263,20 @@ export function ClientCheckinPage() {
   );
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const definitionCheckInFlightRef = useRef(false);
   const [hydratedCheckinId, setHydratedCheckinId] = useState<string | null>(
     null,
   );
+  const acceptedSignatureKeyRef = useRef<string | null>(null);
+  const notificationTargetCheckinId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("checkin");
+  }, [location.search]);
 
   const clearLocalEditState = useCallback(() => {
     formDirtyRef.current = false;
     setStaleCheckinWarning(false);
+    setStaleSubmitMessage(null);
   }, []);
 
   const markFormDirty = useCallback(() => {
@@ -313,6 +360,7 @@ export function ClientCheckinPage() {
       clientProfile?.id,
       checkinWindowStart,
       checkinWindowEnd,
+      notificationTargetCheckinId,
     ],
     enabled:
       !!clientProfile?.id &&
@@ -339,7 +387,27 @@ export function ClientCheckinPage() {
         .lte("week_ending_saturday", checkinWindowEnd ?? "")
         .order("week_ending_saturday", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as CheckinRow[];
+      let rows = (data ?? []) as CheckinRow[];
+
+      if (
+        notificationTargetCheckinId &&
+        !rows.some((row) => row.id === notificationTargetCheckinId)
+      ) {
+        const { data: targetRow, error: targetError } = await supabase
+          .from("checkins")
+          .select("*")
+          .eq("client_id", clientProfile?.id ?? "")
+          .eq("id", notificationTargetCheckinId)
+          .maybeSingle();
+        if (targetError) throw targetError;
+        if (targetRow) {
+          rows = [...rows, targetRow as CheckinRow].sort((left, right) =>
+            left.week_ending_saturday.localeCompare(right.week_ending_saturday),
+          );
+        }
+      }
+
+      return rows;
     },
   });
 
@@ -357,6 +425,50 @@ export function ClientCheckinPage() {
       checkinRows.find((row) => row.id === selectedCheckinId) ?? primaryCheckin
     );
   }, [checkinRows, primaryCheckin, selectedCheckinId]);
+
+  useEffect(() => {
+    if (!notificationTargetCheckinId) return;
+    const match = checkinRows.find(
+      (row) => row.id === notificationTargetCheckinId,
+    );
+    if (!match || selectedCheckinId === notificationTargetCheckinId) return;
+    setSelectedCheckinId(notificationTargetCheckinId);
+  }, [checkinRows, notificationTargetCheckinId, selectedCheckinId]);
+
+  const formDefinitionSignature = useMemo(
+    () => buildCheckinFormDefinitionSignature(templateId, templateQuery.data),
+    [templateId, templateQuery.data],
+  );
+
+  const fetchDirectFormDefinitionSignature = useCallback(async () => {
+    if (!templateId) return null;
+    const { data, error } = await supabase
+      .from("checkin_templates")
+      .select(
+        "id, name, checkin_questions(id, question_text, prompt, question_type, response_type, type, input_type, options, is_required, sort_order, position)",
+      )
+      .eq("id", templateId)
+      .limit(1);
+    if (error) throw error;
+    const template = ((data ?? [])[0] ?? null) as CheckinTemplateRow | null;
+    return buildCheckinFormDefinitionSignature(templateId, template);
+  }, [templateId]);
+
+  const formDefinitionSignatureQuery = useQuery({
+    queryKey: ["client-checkin-form-definition-signature", templateId],
+    enabled: !!templateId && !!clientId,
+    refetchInterval:
+      !!templateId &&
+      !!clientId &&
+      !!hydratedCheckinId &&
+      !currentCheckin?.submitted_at &&
+      !currentCheckin?.reviewed_at
+        ? 5000
+        : false,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    queryFn: fetchDirectFormDefinitionSignature,
+  });
 
   useEffect(() => {
     if (!selectedCheckinId) return;
@@ -601,10 +713,7 @@ export function ClientCheckinPage() {
     const dueDate = currentCheckin?.week_ending_saturday ?? null;
     if (!clientProfile?.id || !dueDate || !templateQuery.data?.id) return;
     if (staleCheckinWarning) {
-      setToastVariant("error");
-      setToastMessage(
-        "Refresh this check-in before submitting the latest questions.",
-      );
+      setStaleSubmitMessage("Refresh this check-in before submitting.");
       return;
     }
     if (checkinState === "upcoming") {
@@ -759,38 +868,152 @@ export function ClientCheckinPage() {
     !checkinIsUpcoming;
   const checkinLocked = isSubmitted;
 
-  const refreshCheckinForm = useCallback(async () => {
-    setHydratedCheckinId(null);
-    setAnswers({});
-    await Promise.all([
-      clientQuery.refetch(),
-      workspaceQuery.refetch(),
-      templateQuery.refetch(),
-      checkinQuery.refetch(),
-      answersQuery.refetch(),
-      photosQuery.refetch(),
-    ]);
-    clearLocalEditState();
+  const refreshCheckinForm = useCallback(
+    async (acceptedSignature?: string | null) => {
+      setHydratedCheckinId(null);
+      setAnswers({});
+      const [, , , , , , signatureResult] = await Promise.all([
+        clientQuery.refetch(),
+        workspaceQuery.refetch(),
+        templateQuery.refetch(),
+        checkinQuery.refetch(),
+        answersQuery.refetch(),
+        photosQuery.refetch(),
+        fetchDirectFormDefinitionSignature(),
+      ]);
+      acceptedFormDefinitionSignatureRef.current =
+        acceptedSignature ??
+        signatureResult ??
+        formDefinitionSignature ??
+        null;
+      clearLocalEditState();
+    },
+    [
+      answersQuery,
+      checkinQuery,
+      clearLocalEditState,
+      clientQuery,
+      formDefinitionSignature,
+      fetchDirectFormDefinitionSignature,
+      photosQuery,
+      templateQuery,
+      workspaceQuery,
+    ],
+  );
+
+  const handleLatestFormDefinitionSignature = useCallback(
+    (latestSignature: string | null) => {
+      if (!currentCheckin?.id || checkinLocked || !latestSignature) return;
+
+      const change = resolveCheckinDefinitionChange({
+        acceptedSignature: acceptedFormDefinitionSignatureRef.current,
+        latestSignature,
+        formDirty: formDirtyRef.current,
+      });
+
+      if (change === "accept-latest") {
+        acceptedFormDefinitionSignatureRef.current = latestSignature;
+        return;
+      }
+
+      if (change === "warn-stale") {
+        setStaleCheckinWarning(true);
+        setStaleSubmitMessage("Refresh this check-in before submitting.");
+        return;
+      }
+    },
+    [checkinLocked, currentCheckin?.id],
+  );
+
+  const checkForRemoteCheckinDefinitionChange = useCallback(async () => {
+    if (!currentCheckin?.id || checkinLocked || submittingRef.current) return;
+    if (staleCheckinWarning) return;
+    if (definitionCheckInFlightRef.current) return;
+
+    definitionCheckInFlightRef.current = true;
+    try {
+      const latestSignature = await fetchDirectFormDefinitionSignature();
+      handleLatestFormDefinitionSignature(latestSignature);
+    } finally {
+      definitionCheckInFlightRef.current = false;
+    }
   }, [
-    answersQuery,
-    checkinQuery,
-    clearLocalEditState,
-    clientQuery,
-    photosQuery,
-    templateQuery,
-    workspaceQuery,
+    checkinLocked,
+    currentCheckin?.id,
+    fetchDirectFormDefinitionSignature,
+    handleLatestFormDefinitionSignature,
+    staleCheckinWarning,
   ]);
 
   const handleRemoteCheckinDefinitionChange = useCallback(() => {
-    if (!currentCheckin?.id || checkinLocked || submittingRef.current) return;
+    void checkForRemoteCheckinDefinitionChange();
+  }, [checkForRemoteCheckinDefinitionChange]);
 
-    if (formDirtyRef.current) {
-      setStaleCheckinWarning(true);
-      return;
+  useEffect(() => {
+    const key = `${currentCheckin?.id ?? "none"}:${templateId ?? "none"}`;
+    const next = resolveAcceptedCheckinDefinitionSignature({
+      key,
+      previousKey: acceptedSignatureKeyRef.current,
+      acceptedSignature: acceptedFormDefinitionSignatureRef.current,
+      renderedSignature: formDefinitionSignature,
+      latestFetchedSignature: formDefinitionSignatureQuery.data ?? null,
+    });
+
+    acceptedSignatureKeyRef.current = next.key;
+    acceptedFormDefinitionSignatureRef.current = next.signature;
+    if (next.resetLocalState) {
+      clearLocalEditState();
     }
+  }, [
+    clearLocalEditState,
+    currentCheckin?.id,
+    formDefinitionSignature,
+    formDefinitionSignatureQuery.data,
+    templateId,
+  ]);
 
-    void refreshCheckinForm();
-  }, [checkinLocked, currentCheckin?.id, refreshCheckinForm]);
+  useEffect(() => {
+    void handleLatestFormDefinitionSignature(
+      formDefinitionSignatureQuery.data ?? null,
+    );
+  }, [formDefinitionSignatureQuery.data, handleLatestFormDefinitionSignature]);
+
+  useEffect(() => {
+    if (!clientId || !currentCheckin?.id || checkinLocked) return;
+
+    const intervalId = window.setInterval(() => {
+      void checkForRemoteCheckinDefinitionChange();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [
+    checkForRemoteCheckinDefinitionChange,
+    checkinLocked,
+    clientId,
+    currentCheckin?.id,
+  ]);
+
+  useEffect(() => {
+    if (!clientId || !currentCheckin?.id || checkinLocked) return;
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === "hidden") return;
+      void checkForRemoteCheckinDefinitionChange();
+    };
+
+    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+
+    return () => {
+      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
+    };
+  }, [
+    checkForRemoteCheckinDefinitionChange,
+    checkinLocked,
+    clientId,
+    currentCheckin?.id,
+  ]);
 
   useEffect(() => {
     if (!clientId || !currentCheckin?.id || checkinLocked) return;
@@ -1058,7 +1281,12 @@ export function ClientCheckinPage() {
             title="Your check-in was updated."
             description="Refresh this check-in to continue with the latest questions."
             actions={
-              <Button onClick={refreshCheckinForm} disabled={submitting}>
+              <Button
+                onClick={() => {
+                  void refreshCheckinForm();
+                }}
+                disabled={submitting}
+              >
                 Refresh check-in
               </Button>
             }
@@ -1873,6 +2101,14 @@ export function ClientCheckinPage() {
         ) : missingTemplate || !currentCheckin ? null : (
           <StickyActionBar>
             <>
+              {staleSubmitMessage ? (
+                <div
+                  role="alert"
+                  className="w-full rounded-lg border border-warning/35 bg-warning/10 px-3 py-2 text-xs font-medium text-warning"
+                >
+                  {staleSubmitMessage}
+                </div>
+              ) : null}
               <div className="text-xs text-muted-foreground">
                 {questions.length > 0
                   ? `${answeredQuestions}/${questions.length} responses ready`
@@ -1903,7 +2139,9 @@ export function ClientCheckinPage() {
                 ) : (
                   <Button
                     onClick={handleSubmit}
-                    disabled={!canAdvancePhotos || submitting}
+                    disabled={
+                      !canAdvancePhotos || submitting || staleCheckinWarning
+                    }
                   >
                     {submitting ? "Submitting..." : "Submit check-in"}
                   </Button>

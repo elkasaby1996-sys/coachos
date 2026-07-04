@@ -3,6 +3,9 @@
 
 do $$
 begin
+  alter table public.checkin_templates replica identity full;
+  alter table public.checkin_questions replica identity full;
+
   if not exists (
     select 1
     from pg_publication_tables

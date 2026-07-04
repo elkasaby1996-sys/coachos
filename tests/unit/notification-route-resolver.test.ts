@@ -60,6 +60,21 @@ describe("notification route resolver", () => {
     ).toBe("/app/home?module=files");
   });
 
+  it("resolves client check-in review notifications to the targeted check-in", () => {
+    expect(
+      resolveNotificationActionUrl(
+        createNotification({
+          type: "checkin_reviewed",
+          category: "checkins",
+          action_url: "/app/checkins?checkin=checkin-1",
+          entity_type: "checkin",
+          entity_id: "checkin-1",
+        }),
+        "client",
+      ),
+    ).toBe("/app/checkins?checkin=checkin-1");
+  });
+
   it("prevents client notifications from opening PT routes", () => {
     expect(
       resolveNotificationActionUrl(

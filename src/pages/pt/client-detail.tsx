@@ -105,6 +105,7 @@ import {
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { getNextCheckinDueDate } from "../../lib/checkin-schedule";
+import { resolveClientCheckinPageState } from "../../lib/client-checkin-state";
 import {
   checkinOperationalStatusMap,
   checkinReviewStatusMap,
@@ -731,6 +732,14 @@ export function PtClientDetailPage({
   const [checkinTemplateStatus, setCheckinTemplateStatus] = useState<
     "idle" | "saving" | "error"
   >("idle");
+  const [checkinSettingsFeedback, setCheckinSettingsFeedback] = useState<
+    | {
+        tone: "warning" | "success";
+        title: string;
+        body: string;
+      }
+    | null
+  >(null);
   const [checkinFrequency, setCheckinFrequency] = useState("weekly");
   const [checkinStartDate, setCheckinStartDate] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() =>
@@ -2962,6 +2971,54 @@ export function PtClientDetailPage({
     );
   }, [checkinsRows, todayKey]);
 
+  const checkinAssignmentTemplate =
+    assignedCheckinTemplate ?? defaultCheckinTemplate ?? null;
+  const checkinAssignmentTemplateName =
+    checkinAssignmentTemplate?.name ?? "No check-in assigned";
+  const checkinAssignmentFrequencyLabel =
+    checkinFrequencyOptions.find(
+      (option) =>
+        option.value === (clientSnapshot?.checkin_frequency ?? "weekly"),
+    )?.label ?? "Weekly";
+  const checkinAssignmentStartLabel = formatShortDate(
+    clientSnapshot?.checkin_start_date,
+    "Not scheduled",
+  );
+  const checkinAssignmentCurrentRow = useMemo(() => {
+    if (!checkinsRows || checkinsRows.length === 0) return null;
+    return (
+      checkinsRows.find((row) => row.week_ending_saturday === todayKey) ??
+      nextScheduledCheckin ??
+      primaryPendingCheckin ??
+      null
+    );
+  }, [checkinsRows, nextScheduledCheckin, primaryPendingCheckin, todayKey]);
+  const checkinAssignmentState = resolveClientCheckinPageState({
+    hasEffectiveTemplate: Boolean(checkinAssignmentTemplate),
+    checkinStartDate: clientSnapshot?.checkin_start_date,
+    checkinFrequency: clientSnapshot?.checkin_frequency,
+    today: todayKey,
+    currentCheckin: checkinAssignmentCurrentRow,
+  });
+  const checkinAssignmentStatusLabel =
+    checkinAssignmentState.kind === "no-assignment"
+      ? "No check-in assigned"
+      : checkinAssignmentState.kind === "assigned-not-open"
+        ? "Assigned, not open"
+        : checkinAssignmentState.kind === "open"
+          ? "Open / due"
+          : checkinAssignmentState.kind === "upcoming"
+            ? "Upcoming"
+            : checkinAssignmentState.kind === "overdue"
+              ? "Overdue"
+              : checkinAssignmentState.kind === "submitted"
+                ? "Submitted"
+                : "Reviewed";
+  const checkinAssignmentNextDueLabel = formatShortDate(
+    checkinAssignmentState.nextDueDate,
+    "Not scheduled",
+  );
+
   const todaySession = useMemo(() => {
     return (
       (upcomingQuery.data ?? []).find(
@@ -3607,9 +3664,39 @@ export function PtClientDetailPage({
     if (!canManageDelivery) return;
     if (!clientQuery.data?.id) return;
     setCheckinTemplateStatus("saving");
+    setCheckinSettingsFeedback(null);
     const nextId = checkinTemplateId || null;
     const nextFrequency = checkinFrequency || "weekly";
     const nextStartDate = checkinStartDate || null;
+    const hasSubmittedCheckinForDate = async () => {
+      const loadedMatch = checkinsRows.some(
+        (row) =>
+          row.week_ending_saturday === todayKey &&
+          Boolean(row.submitted_at || row.reviewed_at),
+      );
+      if (loadedMatch) return true;
+
+      const { data: existingCheckin, error: existingCheckinError } =
+        await supabase
+          .from("checkins")
+          .select("id, week_ending_saturday, submitted_at, reviewed_at")
+          .eq("client_id", clientQuery.data.id)
+          .eq("week_ending_saturday", todayKey)
+          .maybeSingle();
+
+      if (existingCheckinError) {
+        if (isDev) {
+          console.warn(
+            "CHECKIN_SETTINGS_SUBMITTED_STATE_LOOKUP_ERROR",
+            existingCheckinError,
+          );
+        }
+        return false;
+      }
+
+      return Boolean(existingCheckin?.submitted_at || existingCheckin?.reviewed_at);
+    };
+    const hasSubmittedTodayCheckin = await hasSubmittedCheckinForDate();
     const { data, error } = await supabase.rpc(
       "pt_update_client_checkin_settings",
       {
@@ -3677,7 +3764,19 @@ export function PtClientDetailPage({
     });
     setCheckinTemplateStatus("idle");
     setToastVariant("success");
-    setToastMessage("Check-in template updated.");
+    const nextFeedback = hasSubmittedTodayCheckin
+      ? {
+          tone: "warning" as const,
+          title: "Today's submitted check-in was preserved.",
+          body: "This client already submitted today's check-in. Your changes will apply to future check-ins only.",
+        }
+      : {
+          tone: "success" as const,
+          title: "Check-in cadence updated.",
+          body: "Check-in cadence updated. Future check-ins will use the new settings.",
+        };
+    setCheckinSettingsFeedback(nextFeedback);
+    setToastMessage(nextFeedback.body);
   };
 
   const handleBaselineNotesSave = async () => {
@@ -4804,6 +4903,112 @@ export function PtClientDetailPage({
                 <TabsContent value="checkins">
                   <div className="space-y-6">
                     <DashboardCard
+                      title="Current check-in assignment"
+                      subtitle="Cadence-based delivery settings for this client."
+                      action={
+                        <StatusPill
+                          status={checkinAssignmentState.kind}
+                          statusMap={{
+                            "no-assignment": {
+                              label: "Not assigned",
+                              variant: "muted",
+                            },
+                            "assigned-not-open": {
+                              label: "Assigned",
+                              variant: "secondary",
+                            },
+                            upcoming: {
+                              label: "Upcoming",
+                              variant: "muted",
+                            },
+                            open: {
+                              label: "Open",
+                              variant: "warning",
+                            },
+                            overdue: {
+                              label: "Overdue",
+                              variant: "danger",
+                            },
+                            submitted: {
+                              label: "Submitted",
+                              variant: "success",
+                            },
+                            reviewed: {
+                              label: "Reviewed",
+                              variant: "success",
+                            },
+                          }}
+                        />
+                      }
+                    >
+                      <div className="space-y-4">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <p className="text-xs text-muted-foreground">
+                              Template
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">
+                              {checkinAssignmentTemplateName}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <p className="text-xs text-muted-foreground">
+                              Cadence
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">
+                              {checkinAssignmentTemplate
+                                ? checkinAssignmentFrequencyLabel
+                                : "Not set"}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <p className="text-xs text-muted-foreground">
+                              Start date
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">
+                              {checkinAssignmentStartLabel}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <p className="text-xs text-muted-foreground">
+                              Next scheduled
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">
+                              {checkinAssignmentNextDueLabel}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <p className="text-xs text-muted-foreground">
+                              Current status
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">
+                              {checkinAssignmentStatusLabel}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                          <p>
+                            Check-ins are cadence settings, not snapshots. Use
+                            the settings below to change the client's future
+                            check-ins.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={!canManageDelivery}
+                            onClick={() => {
+                              document
+                                .getElementById("client-checkin-template")
+                                ?.focus();
+                            }}
+                          >
+                            Edit check-in settings
+                          </Button>
+                        </div>
+                      </div>
+                    </DashboardCard>
+
+                    <DashboardCard
                       title="Check-in template"
                       subtitle="Assign a template for this client."
                       action={
@@ -4833,6 +5038,7 @@ export function PtClientDetailPage({
                               Template
                             </label>
                             <Select
+                              id="client-checkin-template"
                               variant="field"
                               className="h-10"
                               value={checkinTemplateId}
@@ -4929,6 +5135,23 @@ export function PtClientDetailPage({
                             {effectiveCheckinTemplate?.name ??
                               "No template selected"}
                           </div>
+                          {checkinSettingsFeedback ? (
+                            <div
+                              className={cn(
+                                "rounded-lg border p-3 text-xs",
+                                checkinSettingsFeedback.tone === "warning"
+                                  ? "border-warning/35 bg-warning/10 text-warning"
+                                  : "border-success/30 bg-success/10 text-success",
+                              )}
+                            >
+                              <p className="font-semibold text-foreground">
+                                {checkinSettingsFeedback.title}
+                              </p>
+                              <p className="mt-1 text-muted-foreground">
+                                {checkinSettingsFeedback.body}
+                              </p>
+                            </div>
+                          ) : null}
                           <Button
                             size="sm"
                             onClick={handleSaveCheckinTemplate}

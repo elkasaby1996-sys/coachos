@@ -15,6 +15,12 @@ const realtimeMigration = readRepo(
 describe("client check-in stale form contract", () => {
   it("publishes check-in template and question tables for realtime updates", () => {
     expect(realtimeMigration).toContain("pg_publication_tables");
+    expect(realtimeMigration).toContain(
+      "alter table public.checkin_templates replica identity full",
+    );
+    expect(realtimeMigration).toContain(
+      "alter table public.checkin_questions replica identity full",
+    );
     expect(realtimeMigration).toContain("public.checkin_templates");
     expect(realtimeMigration).toContain("public.checkin_questions");
     expect(realtimeMigration).toContain(
@@ -32,6 +38,27 @@ describe("client check-in stale form contract", () => {
     expect(clientCheckinPage).toContain('table: "checkin_templates"');
     expect(clientCheckinPage).toContain('table: "checkin_questions"');
     expect(clientCheckinPage).toContain("filter: `template_id=eq.${templateId}`");
+    expect(clientCheckinPage).toContain('event: "*"');
+  });
+
+  it("uses a direct Supabase form definition signature fetch for polling", () => {
+    expect(clientCheckinPage).toContain(
+      "buildCheckinFormDefinitionSignature(templateId, templateQuery.data)",
+    );
+    expect(clientCheckinPage).toContain("fetchDirectFormDefinitionSignature");
+    expect(clientCheckinPage).toContain('.from("checkin_templates")');
+    expect(clientCheckinPage).toContain(
+      "id, name, checkin_questions(id, question_text, prompt, question_type, response_type, type, input_type, options, is_required, sort_order, position)",
+    );
+    expect(clientCheckinPage).toContain(
+      'queryKey: ["client-checkin-form-definition-signature", templateId]',
+    );
+    expect(clientCheckinPage).toContain(
+      'queryKey: ["client-checkin-template", templateId]',
+    );
+    expect(clientCheckinPage).toContain("refetchInterval:");
+    expect(clientCheckinPage).toContain("refetchIntervalInBackground: true");
+    expect(clientCheckinPage).toContain("refetchOnWindowFocus: true");
   });
 
   it("marks local answers and photo changes dirty before remote definition changes", () => {
@@ -43,9 +70,26 @@ describe("client check-in stale form contract", () => {
     expect(clientCheckinPage).toContain("handleRemovePhoto");
   });
 
-  it("shows a stale warning for dirty forms and refreshes clean forms safely", () => {
+  it("shows a stale warning for direct-polled definition changes", () => {
+    expect(clientCheckinPage).toContain(
+      "resolveAcceptedCheckinDefinitionSignature",
+    );
+    expect(clientCheckinPage).toContain("resolveCheckinDefinitionChange");
     expect(clientCheckinPage).toContain("setStaleCheckinWarning(true)");
-    expect(clientCheckinPage).toContain("void refreshCheckinForm()");
+    expect(clientCheckinPage).toContain(
+      "checkForRemoteCheckinDefinitionChange",
+    );
+    expect(clientCheckinPage).toContain("window.setInterval");
+    expect(clientCheckinPage).toContain("window.addEventListener(\"focus\"");
+    expect(clientCheckinPage).toContain(
+      "document.addEventListener(\"visibilitychange\"",
+    );
+    expect(clientCheckinPage).toContain(
+      "const latestSignature = await fetchDirectFormDefinitionSignature()",
+    );
+    expect(clientCheckinPage).not.toContain(
+      "await refreshCheckinForm(latestSignature)",
+    );
     expect(clientCheckinPage).toContain("Your check-in was updated.");
     expect(clientCheckinPage).toContain(
       "Refresh this check-in to continue with the latest questions.",
@@ -56,7 +100,15 @@ describe("client check-in stale form contract", () => {
   it("blocks submit while the visible stale warning is active", () => {
     expect(clientCheckinPage).toContain("if (staleCheckinWarning)");
     expect(clientCheckinPage).toContain(
-      "Refresh this check-in before submitting the latest questions.",
+      "!canAdvancePhotos || submitting || staleCheckinWarning",
+    );
+    expect(clientCheckinPage).toContain("staleSubmitMessage");
+    expect(clientCheckinPage).toContain("setStaleSubmitMessage");
+    expect(clientCheckinPage).toContain(
+      "Refresh this check-in before submitting.",
+    );
+    expect(clientCheckinPage).not.toContain(
+      'setToastMessage("Refresh this check-in before submitting',
     );
   });
 });
