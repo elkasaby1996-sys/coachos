@@ -8,7 +8,7 @@ import {
   ShieldAlert,
   UsersRound,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
@@ -31,6 +31,7 @@ import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtClientsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const {
     workspaceId,
@@ -64,6 +65,16 @@ export function PtClientsPage() {
   );
   const [segmentFilter, setSegmentFilter] =
     useState<ClientSegmentKey>(initialSegmentFilter);
+  const initialToastMessage =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "toastMessage" in location.state &&
+    typeof location.state.toastMessage === "string"
+      ? location.state.toastMessage
+      : null;
+  const [toastMessage, setToastMessage] = useState<string | null>(
+    initialToastMessage,
+  );
   const [page, setPage] = useState(0);
   const deferredSearchValue = useDeferredValue(searchValue);
   const hasWorkspaceContext = Boolean(workspaceId);
@@ -113,6 +124,20 @@ export function PtClientsPage() {
     setSegmentFilter(initialSegmentFilter);
   }, [initialLifecycleFilter, initialSegmentFilter]);
 
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = setTimeout(() => setToastMessage(null), 3000);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
+
+  useEffect(() => {
+    if (!initialToastMessage) return;
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: null },
+    );
+  }, [initialToastMessage, location.pathname, location.search, navigate]);
+
   const openClient = (client: PTClientSummary) => {
     const detailPath =
       client.workspaceSlug && client.urlKey
@@ -125,6 +150,13 @@ export function PtClientsPage() {
 
   return (
     <section className="space-y-6">
+      {toastMessage ? (
+        <Alert className="border-success/30">
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{toastMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
       {errorMessage ? (
         <Alert className="border-destructive/30">
           <AlertTitle>Error</AlertTitle>

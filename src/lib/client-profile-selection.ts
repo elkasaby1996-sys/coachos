@@ -25,7 +25,9 @@ export function selectActiveClientProfile<T extends SelectableClientProfile>(
   if (profiles.length === 0) return null;
 
   if (activeClientId) {
-    const active = profiles.find((row) => row.id === activeClientId);
+    const active = profiles.find(
+      (row) => row.id === activeClientId && isActiveWorkspaceRelationship(row),
+    );
     if (active) return active;
   }
 

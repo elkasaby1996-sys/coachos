@@ -146,7 +146,13 @@ type ClientRouteRow = {
   id: string;
   workspace_id: string;
   url_key: string | null;
+  relationship_status: string | null;
 };
+
+const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
+  clientId
+    ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
+    : null;
 
 export function WorkspaceClientDetailRoute() {
   const { workspaceSlug, clientUrlKey } = useParams<{
@@ -163,12 +169,24 @@ export function WorkspaceClientDetailRoute() {
 
       const { data, error } = await supabase
         .from("clients")
-        .select("id, workspace_id, url_key")
+        .select("id, workspace_id, url_key, relationship_status")
         .eq("workspace_id", workspace.id)
-        .eq("url_key", clientUrlKey ?? "")
-        .maybeSingle<ClientRouteRow>();
+        .or(`url_key.eq.${clientUrlKey},url_key.is.null`)
+        .returns<ClientRouteRow[]>();
       if (error) throw error;
-      return data;
+      return (
+        (data ?? []).find((client) => {
+          if ((client.relationship_status ?? "active") !== "active") {
+            return false;
+          }
+          const persistedUrlKey = client.url_key?.trim() || null;
+          return (
+            persistedUrlKey === clientUrlKey ||
+            (!persistedUrlKey &&
+              getClientRouteKeyFallback(client.id) === clientUrlKey)
+          );
+        }) ?? null
+      );
     },
   });
   const guardDecision = getClientRouteGuardDecision({

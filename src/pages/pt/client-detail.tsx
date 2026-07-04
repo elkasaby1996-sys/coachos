@@ -52,6 +52,7 @@ import {
   Play,
   Rocket,
   Sparkles,
+  ArrowRightLeft,
   Upload,
   XCircle,
   Archive,
@@ -97,6 +98,7 @@ import {
 } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWorkspaceWriteAccess } from "../../features/workspace-team";
+import { usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
 import { cn } from "../../lib/utils";
 import { getProfileCompletion } from "../../lib/profile-completion";
 import {
@@ -224,6 +226,14 @@ const getFriendlyErrorMessage = () =>
 
 const getErrorDetails = (error: unknown) => getSupabaseErrorDetails(error);
 
+const CLIENT_DETAIL_TRANSFER_CONFIRMATION_COPY =
+  "Transfer keeps the client’s previous workspace history preserved and starts a new active relationship in the selected workspace. Workout, nutrition, check-in settings, and program assignments are not transferred because each workspace has its own delivery library. After transfer, assign a new plan from the target workspace.";
+
+const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
+  clientId
+    ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
+    : null;
+
 const getAssignmentActionErrorMessage = (error: unknown) => {
   const details = getErrorDetails(error);
   const message = details.message ?? getErrorMessage(error);
@@ -236,6 +246,33 @@ const getAssignmentActionErrorMessage = (error: unknown) => {
   }
 
   return message;
+};
+
+const getClientTransferErrorMessage = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const searchable = [
+    details.code,
+    details.message,
+    details.details,
+    details.hint,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (searchable.includes("CLIENT_TRANSFER_PERMISSION_DENIED")) {
+    return "You need owner or admin access to both workspaces to transfer this client.";
+  }
+  if (searchable.includes("CLIENT_TRANSFER_SAME_WORKSPACE")) {
+    return "Select a different workspace before transferring this client.";
+  }
+  if (searchable.includes("CLIENT_TRANSFER_SOURCE_NOT_ACTIVE")) {
+    return "Only active client relationships can be transferred.";
+  }
+  if (searchable.includes("CLIENT_TRANSFER_TARGET_TRANSFERRED_OUT")) {
+    return "The target workspace has a transferred-out relationship that cannot be reactivated.";
+  }
+
+  return getSupabaseErrorMessage(error, "Transfer failed. Please try again.");
 };
 
 function AssignmentSnapshotCallout() {
@@ -673,8 +710,13 @@ export function PtClientDetailPage({
     ownerUserId: performanceMarkerOwnerId,
     loading: workspaceLoading,
     error: workspaceError,
+    switchWorkspace,
   } = useWorkspace();
-  const { canEditClients, canManageDelivery } = useWorkspaceWriteAccess();
+  const {
+    role: workspaceAccessRole,
+    canEditClients,
+    canManageDelivery,
+  } = useWorkspaceWriteAccess();
   const { clientId: routeClientId } = useParams();
   const clientId = clientIdOverride ?? routeClientId;
   const location = useLocation();
@@ -866,6 +908,15 @@ export function PtClientDetailPage({
   const [archiveActionStatus, setArchiveActionStatus] = useState<
     "idle" | "saving"
   >("idle");
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferTargetWorkspaceId, setTransferTargetWorkspaceId] =
+    useState("");
+  const [transferActionStatus, setTransferActionStatus] = useState<
+    "idle" | "saving"
+  >("idle");
+  const [transferValidationMessage, setTransferValidationMessage] = useState<
+    string | null
+  >(null);
   const selectedCheckinAnswersQuery = useQuery({
     queryKey: ["pt-checkin-answers", selectedCheckin?.id],
     enabled: !!selectedCheckin?.id,
@@ -986,6 +1037,7 @@ export function PtClientDetailPage({
       } | null;
     },
   });
+  const workspacesQuery = usePtHubWorkspaces();
 
   const checkinTemplatesQuery = useQuery({
     queryKey: ["pt-checkin-templates", workspaceQuery.data],
@@ -2695,6 +2747,35 @@ export function PtClientDetailPage({
 
   const clientSnapshot =
     clientProfile ?? (clientQuery.data as PtClientProfile | null);
+  const clientRelationshipStatus =
+    clientSnapshot?.relationship_status ?? "active";
+  const canTransferClientRelationship =
+    Boolean(clientSnapshot?.id) &&
+    clientRelationshipStatus === "active" &&
+    (workspaceAccessRole === "owner" || workspaceAccessRole === "admin");
+  const transferTargetWorkspaces = useMemo(
+    () =>
+      (workspacesQuery.data ?? []).filter(
+        (workspace) => workspace.id !== activeWorkspaceId,
+      ),
+    [activeWorkspaceId, workspacesQuery.data],
+  );
+  useEffect(() => {
+    if (!transferDialogOpen) return;
+    if (
+      transferTargetWorkspaceId &&
+      transferTargetWorkspaces.some(
+        (workspace) => workspace.id === transferTargetWorkspaceId,
+      )
+    ) {
+      return;
+    }
+    setTransferTargetWorkspaceId(transferTargetWorkspaces[0]?.id ?? "");
+  }, [
+    transferDialogOpen,
+    transferTargetWorkspaceId,
+    transferTargetWorkspaces,
+  ]);
   const completion = useMemo(
     () => getProfileCompletion(clientSnapshot),
     [clientSnapshot],
@@ -3622,6 +3703,110 @@ export function PtClientDetailPage({
     );
   };
 
+  const handleTransferClientRelationship = async () => {
+    setTransferValidationMessage(null);
+
+    if (!clientSnapshot?.id) return;
+    if (!canTransferClientRelationship) {
+      setTransferValidationMessage(
+        "You need owner or admin access to transfer this client.",
+      );
+      return;
+    }
+    if (!transferTargetWorkspaceId) {
+      setTransferValidationMessage("Select a target workspace.");
+      return;
+    }
+    if (transferTargetWorkspaceId === activeWorkspaceId) {
+      setTransferValidationMessage(
+        "Select a different workspace before transferring this client.",
+      );
+      return;
+    }
+
+    setTransferActionStatus("saving");
+    const { data, error } = await supabase.rpc("pt_transfer_client_relationship", {
+      p_source_client_id: clientSnapshot.id,
+      p_target_workspace_id: transferTargetWorkspaceId,
+    });
+
+    if (error) {
+      setTransferValidationMessage(getClientTransferErrorMessage(error));
+      setTransferActionStatus("idle");
+      return;
+    }
+
+    const transferResult = Array.isArray(data) ? data[0] : data;
+    const targetClientId = transferResult?.target_client_id as
+      | string
+      | undefined;
+    const targetWorkspaceId =
+      (transferResult?.target_workspace_id as string | undefined) ??
+      transferTargetWorkspaceId;
+    const targetWorkspace = (workspacesQuery.data ?? []).find(
+      (workspace) => workspace.id === targetWorkspaceId,
+    );
+    const targetWorkspaceSlug =
+      ((transferResult?.target_workspace_slug as string | undefined) ?? "")
+        .trim() ||
+      targetWorkspace?.slug ||
+      null;
+    let targetClientUrlKey =
+      ((transferResult?.target_client_url_key as string | undefined) ?? "")
+        .trim() || null;
+
+    if (targetClientId) {
+      const { data: targetClient, error: targetClientError } = await supabase
+        .from("clients")
+        .select("id, url_key")
+        .eq("id", targetClientId)
+        .maybeSingle();
+
+      if (!targetClientError) {
+        targetClientUrlKey =
+          targetClientUrlKey ||
+          targetClient?.url_key?.trim() ||
+          null;
+      }
+      targetClientUrlKey =
+        targetClientUrlKey || getClientRouteKeyFallback(targetClientId);
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["pt-client", clientSnapshot.id],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["pt-client", targetClientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["pt-client-operational-summary"],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-workspaces"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["workspace-write-access"] }),
+    ]);
+
+    switchWorkspace(targetWorkspaceId);
+    setTransferActionStatus("idle");
+    setTransferDialogOpen(false);
+
+    if (targetWorkspaceSlug && targetClientUrlKey) {
+      navigate(`/w/${targetWorkspaceSlug}/clients/${targetClientUrlKey}`);
+      return;
+    }
+
+    navigate("/pt/clients", {
+      state: {
+        toastMessage:
+          "Client transferred. Assign fresh delivery from the target workspace library.",
+      },
+    });
+  };
+
   const handleManualRiskToggle = async (nextValue: boolean) => {
     if (!canEditClients) return;
     if (!clientSnapshot?.id) return;
@@ -4399,6 +4584,23 @@ export function PtClientDetailPage({
                         </span>
                         Mark churned
                       </DropdownMenuItem>
+                      {canTransferClientRelationship ? (
+                        <DropdownMenuItem
+                          disabled={
+                            !canTransferClientRelationship ||
+                            transferTargetWorkspaces.length === 0
+                          }
+                          onClick={() => {
+                            setTransferValidationMessage(null);
+                            setTransferDialogOpen(true);
+                          }}
+                        >
+                          <span className="app-dropdown-icon-badge">
+                            <ArrowRightLeft className="h-4 w-4 text-[var(--module-profile-text)]" />
+                          </span>
+                          Transfer workspace
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         disabled={
@@ -6231,6 +6433,84 @@ export function PtClientDetailPage({
               {archiveActionStatus === "saving"
                 ? "Archiving..."
                 : "Archive client"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={transferDialogOpen}
+        onOpenChange={(open) => {
+          if (transferActionStatus === "saving") return;
+          setTransferDialogOpen(open);
+          if (!open) setTransferValidationMessage(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Transfer client to another workspace?</DialogTitle>
+            <DialogDescription>
+              {CLIENT_DETAIL_TRANSFER_CONFIRMATION_COPY}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label
+                htmlFor="client-transfer-target-workspace"
+                className="text-xs font-semibold text-muted-foreground"
+              >
+                Target workspace
+              </label>
+              <Select
+                id="client-transfer-target-workspace"
+                variant="field"
+                value={transferTargetWorkspaceId}
+                disabled={
+                  transferActionStatus === "saving" ||
+                  transferTargetWorkspaces.length === 0
+                }
+                onChange={(event) => {
+                  setTransferValidationMessage(null);
+                  setTransferTargetWorkspaceId(event.target.value);
+                }}
+              >
+                {transferTargetWorkspaces.length === 0 ? (
+                  <option value="">No other workspaces available</option>
+                ) : (
+                  transferTargetWorkspaces.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>
+                      {workspace.name}
+                    </option>
+                  ))
+                )}
+              </Select>
+            </div>
+            {transferValidationMessage ? (
+              <Alert className="border-destructive/30">
+                <AlertTitle>Transfer unavailable</AlertTitle>
+                <AlertDescription>{transferValidationMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setTransferDialogOpen(false)}
+              disabled={transferActionStatus === "saving"}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleTransferClientRelationship}
+              disabled={
+                transferActionStatus === "saving" ||
+                !canTransferClientRelationship ||
+                !transferTargetWorkspaceId
+              }
+            >
+              {transferActionStatus === "saving"
+                ? "Transferring..."
+                : "Transfer client"}
             </Button>
           </DialogFooter>
         </DialogContent>

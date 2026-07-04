@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function readRepoFile(...parts: string[]) {
-  return readFileSync(resolve(process.cwd(), ...parts), "utf8");
+  return readFileSync(resolve(process.cwd(), ...parts), "utf8").replace(
+    /\r\n/g,
+    "\n",
+  );
 }
 
 const checkinBucketMigration = readRepoFile(

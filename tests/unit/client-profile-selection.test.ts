@@ -33,6 +33,21 @@ describe("selectActiveClientProfile", () => {
     );
   });
 
+  it("ignores a stale transferred-out active client id after workspace transfer", () => {
+    expect(
+      selectActiveClientProfile(
+        [
+          {
+            ...rows[1],
+            relationship_status: "transferred_out",
+          },
+          rows[2],
+        ],
+        "workspace-client-old",
+      )?.id,
+    ).toBe("workspace-client-active");
+  });
+
   it("falls back to the first workspace-backed client row", () => {
     expect(selectActiveClientProfile(rows, null)?.id).toBe(
       "workspace-client-old",

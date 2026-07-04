@@ -573,9 +573,16 @@ function useWorkspaceState(): WorkspaceContextValue {
             withTimeout(
               supabase
                 .from("clients")
-                .select("workspace_id")
+                .select("workspace_id, relationship_status, created_at")
                 .eq("user_id", user.id)
-                .maybeSingle(),
+                .order("created_at", { ascending: true })
+                .returns<
+                  Array<{
+                    workspace_id: string | null;
+                    relationship_status: string | null;
+                    created_at: string | null;
+                  }>
+                >(),
               8000,
               "Client workspace lookup timed out (8s).",
             ),
@@ -584,13 +591,18 @@ function useWorkspaceState(): WorkspaceContextValue {
 
         if (clientError) throw clientError;
         if (!mounted || currentRequestId !== requestIdRef.current) return;
-        if (!clientData?.workspace_id) {
+        const clientWorkspaceRow = (clientData ?? []).find(
+          (row) =>
+            Boolean(row.workspace_id) &&
+            (row.relationship_status ?? "active") === "active",
+        );
+        if (!clientWorkspaceRow?.workspace_id) {
           throw new Error("Workspace not found for this user.");
         }
         if (mounted) {
           applyWorkspaceSnapshot({
-            workspaceId: clientData.workspace_id,
-            workspaceIds: [clientData.workspace_id],
+            workspaceId: clientWorkspaceRow.workspace_id,
+            workspaceIds: [clientWorkspaceRow.workspace_id],
             ownerUserId: null,
           });
           lastLoadedWorkspaceKeyRef.current = workspaceLoadKey;
@@ -600,7 +612,7 @@ function useWorkspaceState(): WorkspaceContextValue {
         traceEnd("useWorkspace.load", loadStartedAt, {
           requestId: currentRequestId,
           result: "client-workspace-selected",
-          workspaceId: clientData.workspace_id,
+          workspaceId: clientWorkspaceRow.workspace_id,
         });
       } catch (err) {
         console.error("Workspace bootstrap failed", err);
