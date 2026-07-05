@@ -154,6 +154,14 @@ const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
     ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
     : null;
 
+function getClientRouteRelationshipRank(status: string | null | undefined) {
+  const relationshipStatus = status ?? "active";
+  if (relationshipStatus === "active") return 0;
+  if (relationshipStatus === "removed") return 1;
+  if (relationshipStatus === "transferred_out") return 1;
+  return 2;
+}
+
 export function WorkspaceClientDetailRoute() {
   const { workspaceSlug, clientUrlKey } = useParams<{
     workspaceSlug: string;
@@ -174,19 +182,35 @@ export function WorkspaceClientDetailRoute() {
         .or(`url_key.eq.${clientUrlKey},url_key.is.null`)
         .returns<ClientRouteRow[]>();
       if (error) throw error;
-      return (
-        (data ?? []).find((client) => {
-          if ((client.relationship_status ?? "active") !== "active") {
-            return false;
-          }
+      const candidates = (data ?? [])
+        .filter((client) => {
           const persistedUrlKey = client.url_key?.trim() || null;
           return (
             persistedUrlKey === clientUrlKey ||
             (!persistedUrlKey &&
               getClientRouteKeyFallback(client.id) === clientUrlKey)
           );
-        }) ?? null
-      );
+        })
+        .sort(
+          (left, right) =>
+            getClientRouteRelationshipRank(left.relationship_status) -
+            getClientRouteRelationshipRank(right.relationship_status),
+        );
+
+      for (const client of candidates) {
+        // Mirrors public.can_access_client(client.id, 'clients.view') for historical route access.
+        const { data: accessAllowed, error: accessError } = await supabase.rpc(
+          "can_access_client",
+          {
+            p_client_id: client.id,
+            p_permission: "clients.view",
+          },
+        );
+        if (accessError) throw accessError;
+        if (accessAllowed === true) return client;
+      }
+
+      return null;
     },
   });
   const guardDecision = getClientRouteGuardDecision({

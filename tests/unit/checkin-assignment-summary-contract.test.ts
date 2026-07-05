@@ -27,6 +27,8 @@ describe("coach check-in assignment summary contract", () => {
   it("gates the edit CTA to existing delivery-write permission", () => {
     expect(clientDetailPage).toContain("Edit check-in settings");
     expect(clientDetailPage).toContain("canManageDelivery");
-    expect(clientDetailPage).toContain("disabled={!canManageDelivery}");
+    expect(clientDetailPage).toContain("isHistoricalClientRelationship");
+    expect(clientDetailPage).toContain("canManageDelivery &&");
+    expect(clientDetailPage).toContain("!isHistoricalClientRelationship");
   });
 });

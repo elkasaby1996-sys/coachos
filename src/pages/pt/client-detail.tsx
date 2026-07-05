@@ -228,6 +228,12 @@ const getErrorDetails = (error: unknown) => getSupabaseErrorDetails(error);
 
 const CLIENT_DETAIL_TRANSFER_CONFIRMATION_COPY =
   "Transfer keeps the client’s previous workspace history preserved and starts a new active relationship in the selected workspace. Workout, nutrition, check-in settings, and program assignments are not transferred because each workspace has its own delivery library. After transfer, assign a new plan from the target workspace.";
+const HISTORICAL_CLIENT_RELATIONSHIP_COPY =
+  "This client relationship is no longer active. History is preserved for reference.";
+const TRANSFERRED_OUT_CLIENT_RELATIONSHIP_COPY =
+  "This client was transferred to another workspace. Use explicit transfer to make this workspace active again.";
+const REMOVED_CLIENT_RELATIONSHIP_COPY =
+  "This client was removed from active coaching. Reinvite them to reactivate this relationship.";
 
 const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
   clientId
@@ -281,9 +287,7 @@ function AssignmentSnapshotCallout() {
       <p className="font-semibold text-foreground">
         {ASSIGNMENT_SNAPSHOT_WARNING_TITLE}
       </p>
-      <p className="mt-1 text-muted-foreground">
-        {ASSIGNMENT_SNAPSHOT_NOTICE}
-      </p>
+      <p className="mt-1 text-muted-foreground">{ASSIGNMENT_SNAPSHOT_NOTICE}</p>
     </div>
   );
 }
@@ -792,14 +796,11 @@ export function PtClientDetailPage({
   const [checkinTemplateStatus, setCheckinTemplateStatus] = useState<
     "idle" | "saving" | "error"
   >("idle");
-  const [checkinSettingsFeedback, setCheckinSettingsFeedback] = useState<
-    | {
-        tone: "warning" | "success";
-        title: string;
-        body: string;
-      }
-    | null
-  >(null);
+  const [checkinSettingsFeedback, setCheckinSettingsFeedback] = useState<{
+    tone: "warning" | "success";
+    title: string;
+    body: string;
+  } | null>(null);
   const [checkinFrequency, setCheckinFrequency] = useState("weekly");
   const [checkinStartDate, setCheckinStartDate] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() =>
@@ -2081,7 +2082,7 @@ export function PtClientDetailPage({
   );
 
   const handleAssignWorkout = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId || !selectedTemplateId || !scheduledDate) return;
     const sameDayWorkout = (upcomingQuery.data ?? []).find(
       (workout) =>
@@ -2151,7 +2152,7 @@ export function PtClientDetailPage({
   };
 
   const handleApplyProgram = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId || !selectedProgramId || !programStartDate) return;
     setProgramStatus("saving");
     setProgramMessage(null);
@@ -2243,7 +2244,7 @@ export function PtClientDetailPage({
   };
 
   const handlePauseProgram = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId || !activeProgram?.id) return;
     const confirmed = window.confirm("Pause this client's active program?");
     if (!confirmed) return;
@@ -2294,7 +2295,7 @@ export function PtClientDetailPage({
   };
 
   const handleResumeProgram = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId || !pausedProgram?.id || !pausedProgram.program_template_id)
       return;
     setProgramStatus("saving");
@@ -2360,7 +2361,7 @@ export function PtClientDetailPage({
   };
 
   const handleSwitchProgramMidCycle = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId || !selectedProgramId) return;
     const confirmed = window.confirm("Switch program from today?");
     if (!confirmed) return;
@@ -2394,7 +2395,7 @@ export function PtClientDetailPage({
   };
 
   const handleUnassignProgram = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     const targetProgram = activeProgram ?? pausedProgram;
     if (!clientId || !targetProgram?.id) return;
     const confirmed = window.confirm("Unassign this program for this client?");
@@ -2471,7 +2472,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveOverride = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId || !overrideDate) return;
     if (!activeProgram?.id || !activeProgram.program_template_id) {
       setOverrideError("Apply a program before adding overrides.");
@@ -2568,7 +2569,7 @@ export function PtClientDetailPage({
     id: string,
     status: "completed" | "skipped",
   ) => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     const payload =
       status === "completed"
         ? { status, completed_at: new Date().toISOString() }
@@ -2618,7 +2619,7 @@ export function PtClientDetailPage({
   };
 
   const handleEditSave = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!editWorkoutId) return;
     setAssignStatus("saving");
     setAssignMessage(null);
@@ -2672,7 +2673,7 @@ export function PtClientDetailPage({
   };
 
   const handleDeleteWorkout = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!editWorkoutId) return;
     setAssignStatus("saving");
     setAssignMessage(null);
@@ -2713,7 +2714,7 @@ export function PtClientDetailPage({
   };
 
   const handleRescheduleWorkout = async (id: string, nextDate: string) => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     setAssignStatus("saving");
     setAssignMessage(null);
     const { error } = await supabase
@@ -2749,6 +2750,11 @@ export function PtClientDetailPage({
     clientProfile ?? (clientQuery.data as PtClientProfile | null);
   const clientRelationshipStatus =
     clientSnapshot?.relationship_status ?? "active";
+  const isHistoricalClientRelationship =
+    clientRelationshipStatus === "removed" ||
+    clientRelationshipStatus === "transferred_out";
+  const canMutateActiveClient =
+    canEditClients && !isHistoricalClientRelationship;
   const canTransferClientRelationship =
     Boolean(clientSnapshot?.id) &&
     clientRelationshipStatus === "active" &&
@@ -2771,11 +2777,7 @@ export function PtClientDetailPage({
       return;
     }
     setTransferTargetWorkspaceId(transferTargetWorkspaces[0]?.id ?? "");
-  }, [
-    transferDialogOpen,
-    transferTargetWorkspaceId,
-    transferTargetWorkspaces,
-  ]);
+  }, [transferDialogOpen, transferTargetWorkspaceId, transferTargetWorkspaces]);
   const completion = useMemo(
     () => getProfileCompletion(clientSnapshot),
     [clientSnapshot],
@@ -3553,7 +3555,7 @@ export function PtClientDetailPage({
   };
 
   const handleLifecycleSave = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientSnapshot?.id) return;
     if (
       ["paused", "churned"].includes(lifecycleTargetState) &&
@@ -3638,7 +3640,7 @@ export function PtClientDetailPage({
   };
 
   const handleArchiveRelationship = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientSnapshot?.id) return;
 
     setArchiveActionStatus("saving");
@@ -3725,10 +3727,13 @@ export function PtClientDetailPage({
     }
 
     setTransferActionStatus("saving");
-    const { data, error } = await supabase.rpc("pt_transfer_client_relationship", {
-      p_source_client_id: clientSnapshot.id,
-      p_target_workspace_id: transferTargetWorkspaceId,
-    });
+    const { data, error } = await supabase.rpc(
+      "pt_transfer_client_relationship",
+      {
+        p_source_client_id: clientSnapshot.id,
+        p_target_workspace_id: transferTargetWorkspaceId,
+      },
+    );
 
     if (error) {
       setTransferValidationMessage(getClientTransferErrorMessage(error));
@@ -3747,13 +3752,15 @@ export function PtClientDetailPage({
       (workspace) => workspace.id === targetWorkspaceId,
     );
     const targetWorkspaceSlug =
-      ((transferResult?.target_workspace_slug as string | undefined) ?? "")
-        .trim() ||
+      (
+        (transferResult?.target_workspace_slug as string | undefined) ?? ""
+      ).trim() ||
       targetWorkspace?.slug ||
       null;
     let targetClientUrlKey =
-      ((transferResult?.target_client_url_key as string | undefined) ?? "")
-        .trim() || null;
+      (
+        (transferResult?.target_client_url_key as string | undefined) ?? ""
+      ).trim() || null;
 
     if (targetClientId) {
       const { data: targetClient, error: targetClientError } = await supabase
@@ -3764,9 +3771,7 @@ export function PtClientDetailPage({
 
       if (!targetClientError) {
         targetClientUrlKey =
-          targetClientUrlKey ||
-          targetClient?.url_key?.trim() ||
-          null;
+          targetClientUrlKey || targetClient?.url_key?.trim() || null;
       }
       targetClientUrlKey =
         targetClientUrlKey || getClientRouteKeyFallback(targetClientId);
@@ -3808,7 +3813,7 @@ export function PtClientDetailPage({
   };
 
   const handleManualRiskToggle = async (nextValue: boolean) => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientSnapshot?.id) return;
 
     const { data, error } = await supabase.rpc("pt_set_client_manual_risk", {
@@ -3864,7 +3869,7 @@ export function PtClientDetailPage({
   };
 
   const handleProfileSave = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientSnapshot?.id) return;
     setProfileEditStatus("saving");
     const payload = {
@@ -3934,7 +3939,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveCheckinTemplate = async () => {
-    if (!canManageDelivery) return;
+    if (!(canManageDelivery && !isHistoricalClientRelationship)) return;
     if (!clientQuery.data?.id) return;
     setCheckinTemplateStatus("saving");
     setCheckinSettingsFeedback(null);
@@ -3967,7 +3972,9 @@ export function PtClientDetailPage({
         return false;
       }
 
-      return Boolean(existingCheckin?.submitted_at || existingCheckin?.reviewed_at);
+      return Boolean(
+        existingCheckin?.submitted_at || existingCheckin?.reviewed_at,
+      );
     };
     const hasSubmittedTodayCheckin = await hasSubmittedCheckinForDate();
     const { data, error } = await supabase.rpc(
@@ -4053,7 +4060,7 @@ export function PtClientDetailPage({
   };
 
   const handleBaselineNotesSave = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!baselineId) return;
     setBaselineNotesStatus("saving");
     setBaselineNotesMessage(null);
@@ -4074,7 +4081,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveOnboardingReviewNotes = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!onboardingSnapshot?.id) return;
     setOnboardingReviewStatus("saving");
     setOnboardingReviewMessage(null);
@@ -4095,7 +4102,7 @@ export function PtClientDetailPage({
   };
 
   const handleMarkOnboardingReviewed = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId) return;
     setOnboardingActionStatus("saving");
     setOnboardingActionMessage(null);
@@ -4118,7 +4125,7 @@ export function PtClientDetailPage({
   };
 
   const handleCompleteOnboarding = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!clientId) return;
     if (!onboardingReadyForCompletion) {
       setOnboardingActionStatus("error");
@@ -4193,7 +4200,7 @@ export function PtClientDetailPage({
   };
 
   const handleSaveLoads = async () => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!selectedAssignedWorkoutId) return;
     setLoadsStatus("saving");
     setLoadsError(null);
@@ -4258,7 +4265,7 @@ export function PtClientDetailPage({
   ]);
 
   const handleSaveCheckinReview = async (markReviewed: boolean) => {
-    if (!canEditClients) return;
+    if (!canMutateActiveClient) return;
     if (!selectedCheckin) return;
     const trimmedFeedback = feedbackText.trim();
     if (markReviewed && trimmedFeedback.length === 0) {
@@ -4490,15 +4497,19 @@ export function PtClientDetailPage({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button onClick={() => handleQuickAction("")}>
-                    Message client
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setActiveTab("workout")}
-                  >
-                    Plan workout
-                  </Button>
+                  {!isHistoricalClientRelationship ? (
+                    <>
+                      <Button onClick={() => handleQuickAction("")}>
+                        Message client
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setActiveTab("workout")}
+                      >
+                        Plan workout
+                      </Button>
+                    </>
+                  ) : null}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -4517,12 +4528,14 @@ export function PtClientDetailPage({
                     >
                       <DropdownMenuLabel>Client actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={openProfileEdit}>
-                        <span className="app-dropdown-icon-badge">
-                          <Pencil className="h-4 w-4 text-[var(--module-profile-text)]" />
-                        </span>
-                        Edit profile
-                      </DropdownMenuItem>
+                      {!isHistoricalClientRelationship ? (
+                        <DropdownMenuItem onClick={openProfileEdit}>
+                          <span className="app-dropdown-icon-badge">
+                            <Pencil className="h-4 w-4 text-[var(--module-profile-text)]" />
+                          </span>
+                          Edit profile
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuItem
                         onClick={() => setIsOverviewCollapsed((prev) => !prev)}
                       >
@@ -4537,53 +4550,57 @@ export function PtClientDetailPage({
                           ? "Show profile details"
                           : "Hide profile details"}
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => openLifecycleDialog("active")}
-                      >
-                        <span className="app-dropdown-icon-badge">
-                          <Play className="h-4 w-4 text-[var(--state-success-text)]" />
-                        </span>
-                        Mark active
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openLifecycleDialog("paused")}
-                      >
-                        <span className="app-dropdown-icon-badge">
-                          <Moon className="h-4 w-4 text-[var(--state-warning-text)]" />
-                        </span>
-                        Mark paused
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          void handleManualRiskToggle(
-                            !(clientSnapshot?.manual_risk_flag ?? false),
-                          )
-                        }
-                      >
-                        <span className="app-dropdown-icon-badge">
-                          <AlertTriangle className="h-4 w-4 text-[var(--state-danger-text)]" />
-                        </span>
-                        {clientSnapshot?.manual_risk_flag
-                          ? "Clear at risk"
-                          : "Mark at risk"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openLifecycleDialog("completed")}
-                      >
-                        <span className="app-dropdown-icon-badge">
-                          <CheckCircle2 className="h-4 w-4 text-[var(--state-success-text)]" />
-                        </span>
-                        Mark completed
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openLifecycleDialog("churned")}
-                      >
-                        <span className="app-dropdown-icon-badge">
-                          <Ban className="h-4 w-4 text-[var(--state-danger-text)]" />
-                        </span>
-                        Mark churned
-                      </DropdownMenuItem>
+                      {!isHistoricalClientRelationship ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => openLifecycleDialog("active")}
+                          >
+                            <span className="app-dropdown-icon-badge">
+                              <Play className="h-4 w-4 text-[var(--state-success-text)]" />
+                            </span>
+                            Mark active
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openLifecycleDialog("paused")}
+                          >
+                            <span className="app-dropdown-icon-badge">
+                              <Moon className="h-4 w-4 text-[var(--state-warning-text)]" />
+                            </span>
+                            Mark paused
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              void handleManualRiskToggle(
+                                !(clientSnapshot?.manual_risk_flag ?? false),
+                              )
+                            }
+                          >
+                            <span className="app-dropdown-icon-badge">
+                              <AlertTriangle className="h-4 w-4 text-[var(--state-danger-text)]" />
+                            </span>
+                            {clientSnapshot?.manual_risk_flag
+                              ? "Clear at risk"
+                              : "Mark at risk"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openLifecycleDialog("completed")}
+                          >
+                            <span className="app-dropdown-icon-badge">
+                              <CheckCircle2 className="h-4 w-4 text-[var(--state-success-text)]" />
+                            </span>
+                            Mark completed
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openLifecycleDialog("churned")}
+                          >
+                            <span className="app-dropdown-icon-badge">
+                              <Ban className="h-4 w-4 text-[var(--state-danger-text)]" />
+                            </span>
+                            Mark churned
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
                       {canTransferClientRelationship ? (
                         <DropdownMenuItem
                           disabled={
@@ -4604,8 +4621,8 @@ export function PtClientDetailPage({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         disabled={
-                          !canEditClients ||
-                          clientSnapshot?.relationship_status === "removed"
+                          !canMutateActiveClient ||
+                          isHistoricalClientRelationship
                         }
                         onClick={() => setArchiveDialogOpen(true)}
                       >
@@ -4619,14 +4636,19 @@ export function PtClientDetailPage({
                 </div>
               </div>
 
-              {clientSnapshot?.relationship_status === "removed" ? (
+              {isHistoricalClientRelationship ? (
                 <Alert className="border-warning/30 bg-warning/8">
                   <Archive className="h-4 w-4" />
                   <AlertTitle>Historical client relationship</AlertTitle>
                   <AlertDescription>
-                    This client has been archived from active coaching. Their
-                    history is preserved, but client access to this workspace is
-                    removed.
+                    <span className="block">
+                      {HISTORICAL_CLIENT_RELATIONSHIP_COPY}
+                    </span>
+                    <span className="mt-1 block">
+                      {clientRelationshipStatus === "transferred_out"
+                        ? TRANSFERRED_OUT_CLIENT_RELATIONSHIP_COPY
+                        : REMOVED_CLIENT_RELATIONSHIP_COPY}
+                    </span>
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -4965,7 +4987,7 @@ export function PtClientDetailPage({
             onReschedule={handleRescheduleWorkout}
             onDelete={handleOpenDeleteDialog}
             onStatusChange={handleStatusUpdate}
-            canEditClients={canEditClients}
+            canEditClients={canMutateActiveClient}
           />
         ) : (
           <EmptyState
@@ -5160,7 +5182,7 @@ export function PtClientDetailPage({
                       setLoadsError(null);
                     }}
                     onStatusChange={handleStatusUpdate}
-                    canEditClients={canEditClients}
+                    canEditClients={canMutateActiveClient}
                   />
                 </TabsContent>
                 <TabsContent value="nutrition">
@@ -5169,7 +5191,7 @@ export function PtClientDetailPage({
                     workspaceId={workspaceQuery.data ?? null}
                     todayKey={todayKey}
                     enabled={isNutritionTab}
-                    canEditClients={canEditClients}
+                    canEditClients={canMutateActiveClient}
                   />
                 </TabsContent>
                 <TabsContent value="medical">
@@ -5310,7 +5332,12 @@ export function PtClientDetailPage({
                           <Button
                             size="sm"
                             variant="secondary"
-                            disabled={!canManageDelivery}
+                            disabled={
+                              !(
+                                canManageDelivery &&
+                                !isHistoricalClientRelationship
+                              )
+                            }
                             onClick={() => {
                               document
                                 .getElementById("client-checkin-template")
@@ -5362,7 +5389,11 @@ export function PtClientDetailPage({
                               }
                               disabled={
                                 checkinTemplatesQuery.isLoading ||
-                                checkinTemplateStatus === "saving"
+                                checkinTemplateStatus === "saving" ||
+                                !(
+                                  canManageDelivery &&
+                                  !isHistoricalClientRelationship
+                                )
                               }
                             >
                               <option value="">Use workspace default</option>
@@ -5384,6 +5415,12 @@ export function PtClientDetailPage({
                                 value={checkinFrequency}
                                 onChange={(event) =>
                                   setCheckinFrequency(event.target.value)
+                                }
+                                disabled={
+                                  !(
+                                    canManageDelivery &&
+                                    !isHistoricalClientRelationship
+                                  )
                                 }
                               >
                                 {checkinFrequencyOptions.map((option) => (
@@ -5409,6 +5446,12 @@ export function PtClientDetailPage({
                                 value={checkinStartDate}
                                 onChange={(event) =>
                                   setCheckinStartDate(event.target.value)
+                                }
+                                disabled={
+                                  !(
+                                    canManageDelivery &&
+                                    !isHistoricalClientRelationship
+                                  )
                                 }
                               />
                             </div>
@@ -5472,7 +5515,10 @@ export function PtClientDetailPage({
                             onClick={handleSaveCheckinTemplate}
                             disabled={
                               checkinTemplateStatus === "saving" ||
-                              !canManageDelivery
+                              !(
+                                canManageDelivery &&
+                                !isHistoricalClientRelationship
+                              )
                             }
                           >
                             {checkinTemplateStatus === "saving"
@@ -5708,7 +5754,7 @@ export function PtClientDetailPage({
                 assignStatus === "saving" ||
                 !editTemplateId ||
                 !editDate ||
-                !canEditClients
+                !canMutateActiveClient
               }
             >
               {assignStatus === "saving" ? "Saving..." : "Save"}
@@ -6132,7 +6178,7 @@ export function PtClientDetailPage({
                     feedbackStatus === "saving_draft" ||
                     feedbackStatus === "marking_reviewed" ||
                     !selectedCheckin?.submitted_at ||
-                    !canEditClients
+                    !canMutateActiveClient
                   }
                 >
                   {feedbackStatus === "saving_draft"
@@ -6145,7 +6191,7 @@ export function PtClientDetailPage({
                     feedbackStatus === "saving_draft" ||
                     feedbackStatus === "marking_reviewed" ||
                     !selectedCheckin?.submitted_at ||
-                    !canEditClients
+                    !canMutateActiveClient
                   }
                 >
                   {feedbackStatus === "marking_reviewed"
@@ -6274,7 +6320,7 @@ export function PtClientDetailPage({
             </Button>
             <Button
               onClick={handleSaveLoads}
-              disabled={loadsStatus === "saving" || !canEditClients}
+              disabled={loadsStatus === "saving" || !canMutateActiveClient}
             >
               {loadsStatus === "saving" ? "Saving..." : "Save loads"}
             </Button>
@@ -6297,7 +6343,7 @@ export function PtClientDetailPage({
             <Button
               variant="secondary"
               onClick={handleDeleteWorkout}
-              disabled={assignStatus === "saving" || !canEditClients}
+              disabled={assignStatus === "saving" || !canMutateActiveClient}
             >
               {assignStatus === "saving" ? "Deleting..." : "Delete"}
             </Button>
@@ -6386,7 +6432,9 @@ export function PtClientDetailPage({
             </Button>
             <Button
               onClick={handleLifecycleSave}
-              disabled={lifecycleActionStatus === "saving" || !canEditClients}
+              disabled={
+                lifecycleActionStatus === "saving" || !canMutateActiveClient
+              }
             >
               {lifecycleActionStatus === "saving"
                 ? "Saving..."
@@ -6428,7 +6476,9 @@ export function PtClientDetailPage({
               variant="secondary"
               className="border-destructive/40 text-destructive hover:border-destructive/50 hover:text-destructive"
               onClick={handleArchiveRelationship}
-              disabled={archiveActionStatus === "saving" || !canEditClients}
+              disabled={
+                archiveActionStatus === "saving" || !canMutateActiveClient
+              }
             >
               {archiveActionStatus === "saving"
                 ? "Archiving..."
@@ -6641,7 +6691,9 @@ export function PtClientDetailPage({
             </Button>
             <Button
               onClick={handleProfileSave}
-              disabled={profileEditStatus === "saving" || !canEditClients}
+              disabled={
+                profileEditStatus === "saving" || !canMutateActiveClient
+              }
             >
               {profileEditStatus === "saving" ? "Saving..." : "Save changes"}
             </Button>
@@ -6859,7 +6911,9 @@ function PtClientScheduleCard({
     queryFn: async () => {
       const { data: plans, error: planError } = await supabase
         .from("assigned_nutrition_plans")
-        .select("id, nutrition_template:nutrition_templates!inner(id, workspace_id)")
+        .select(
+          "id, nutrition_template:nutrition_templates!inner(id, workspace_id)",
+        )
         .eq("client_id", clientId ?? "")
         .eq("status", "active");
       if (planError) throw planError;
@@ -6869,9 +6923,9 @@ function PtClientScheduleCard({
           const template = getSingleRelation(row.nutrition_template);
           return Boolean(
             template &&
-              typeof template === "object" &&
-              "workspace_id" in template &&
-              template.workspace_id,
+            typeof template === "object" &&
+            "workspace_id" in template &&
+            template.workspace_id,
           );
         })
         .map((row: { id: string }) => row.id);
@@ -7574,7 +7628,9 @@ function PtClientScheduleCard({
                 variant="ghost"
                 onClick={handleSaveDayNote}
                 disabled={
-                  !selectedWorkout || dayNoteStatus === "saving" || !canEditClients
+                  !selectedWorkout ||
+                  dayNoteStatus === "saving" ||
+                  !canEditClients
                 }
               >
                 {dayNoteStatus === "saving" ? "Saving..." : "Save note"}
@@ -9567,7 +9623,9 @@ function PtClientNutritionTab({
     queryFn: async () => {
       const { data: plans, error: plansError } = await supabase
         .from("assigned_nutrition_plans")
-        .select("id, nutrition_template:nutrition_templates!inner(id, workspace_id)")
+        .select(
+          "id, nutrition_template:nutrition_templates!inner(id, workspace_id)",
+        )
         .eq("client_id", clientId ?? "")
         .eq("status", "active");
       if (plansError) throw plansError;
@@ -9577,9 +9635,9 @@ function PtClientNutritionTab({
           const template = getSingleRelation(row.nutrition_template);
           return Boolean(
             template &&
-              typeof template === "object" &&
-              "workspace_id" in template &&
-              template.workspace_id,
+            typeof template === "object" &&
+            "workspace_id" in template &&
+            template.workspace_id,
           );
         })
         .map((row: { id: string }) => row.id);

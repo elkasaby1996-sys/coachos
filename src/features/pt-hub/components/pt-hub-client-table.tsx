@@ -17,6 +17,7 @@ import { useI18n } from "../../../lib/i18n-context";
 import type { PTClientSummary } from "../types";
 
 const statusBadgePriority: Record<string, number> = {
+  relationship: -1,
   risk: 0,
   low_adherence_trend: 1,
   missed_checkins: 2,
@@ -26,6 +27,32 @@ const statusBadgePriority: Record<string, number> = {
   inactive_client: 5,
   lifecycle: 10,
 };
+
+function getRelationshipStatusBadge(
+  relationshipStatus: PTClientSummary["relationshipStatus"],
+) {
+  if (relationshipStatus === "removed") {
+    return {
+      label: "Removed",
+      variant: "warning" as const,
+      title: "Removed relationship",
+      description:
+        "This client relationship is no longer active. History is preserved for reference.",
+    };
+  }
+
+  if (relationshipStatus === "transferred_out") {
+    return {
+      label: "Transferred out",
+      variant: "info" as const,
+      title: "Transferred-out relationship",
+      description:
+        "This client was transferred to another workspace. Source history is preserved for reference.",
+    };
+  }
+
+  return null;
+}
 
 export function PtHubClientTable({
   clients,
@@ -72,7 +99,26 @@ export function PtHubClientTable({
           const riskState = getClientRiskState(client);
           const clientAtRisk = isClientAtRisk(client);
           const reason = client.pausedReason ?? client.churnReason;
+          const relationshipBadge = getRelationshipStatusBadge(
+            client.relationshipStatus,
+          );
           const statusBadges = [
+            ...(relationshipBadge
+              ? [
+                  {
+                    key: "relationship",
+                    priority: statusBadgePriority.relationship,
+                    element: (
+                      <TagInfoBadge
+                        label={relationshipBadge.label}
+                        variant={relationshipBadge.variant}
+                        title={relationshipBadge.title}
+                        description={relationshipBadge.description}
+                      />
+                    ),
+                  },
+                ]
+              : []),
             {
               key: "lifecycle",
               priority: statusBadgePriority.lifecycle,

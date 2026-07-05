@@ -10,8 +10,17 @@ const fixMigration = readRepoFile(
   "migrations",
   "20260704130000_post_transfer_client_detail_resolution.sql",
 );
-const clientDetailSource = readRepoFile("src", "pages", "pt", "client-detail.tsx");
-const slugRouteSource = readRepoFile("src", "routes", "slug-route-resolvers.tsx");
+const clientDetailSource = readRepoFile(
+  "src",
+  "pages",
+  "pt",
+  "client-detail.tsx",
+);
+const slugRouteSource = readRepoFile(
+  "src",
+  "routes",
+  "slug-route-resolvers.tsx",
+);
 const leadTransferMigration = readRepoFile(
   "supabase",
   "migrations",
@@ -29,7 +38,9 @@ describe("post-transfer client detail resolution contract", () => {
 
   it("transfer target rows receive a valid url key when created or reactivated", () => {
     expect(fixMigration).toContain("url_key = coalesce");
-    expect(fixMigration).toContain("'c-' || lower(substr(replace(v_target_client_id::text, '-', ''), 1, 8))");
+    expect(fixMigration).toContain(
+      "'c-' || lower(substr(replace(v_target_client_id::text, '-', ''), 1, 8))",
+    );
     expect(fixMigration).toContain(
       "where c.id = v_target_client_id\n    returning c.url_key into v_target_client_url_key",
     );
@@ -38,7 +49,9 @@ describe("post-transfer client detail resolution contract", () => {
   it("client-detail transfer redirects with target identity and falls back safely", () => {
     expect(clientDetailSource).toContain("target_client_url_key");
     expect(clientDetailSource).toContain("target_workspace_slug");
-    expect(clientDetailSource).toContain("getClientRouteKeyFallback(targetClientId)");
+    expect(clientDetailSource).toContain(
+      "getClientRouteKeyFallback(targetClientId)",
+    );
     expect(clientDetailSource).toContain(
       "navigate(`/w/${targetWorkspaceSlug}/clients/${targetClientUrlKey}`)",
     );
@@ -51,9 +64,13 @@ describe("post-transfer client detail resolution contract", () => {
     expect(slugRouteSource).toContain("url_key.is.null");
     expect(slugRouteSource).toContain("getClientRouteKeyFallback");
     expect(slugRouteSource).toContain("relationship_status");
+    expect(slugRouteSource).toContain("getClientRouteRelationshipRank");
+    expect(slugRouteSource).toContain('relationshipStatus === "active"');
+    expect(slugRouteSource).toContain('relationshipStatus === "removed"');
     expect(slugRouteSource).toContain(
-      '(client.relationship_status ?? "active") !== "active"',
+      'relationshipStatus === "transferred_out"',
     );
+    expect(slugRouteSource).toContain("can_access_client");
   });
 
   it("lead transfer still uses the safe transfer target relationship", () => {
@@ -63,6 +80,8 @@ describe("post-transfer client detail resolution contract", () => {
     expect(leadTransferMigration).toContain(
       "from public.pt_transfer_client_relationship(",
     );
-    expect(leadTransferMigration).not.toContain("v_lead.converted_client_id as client_id");
+    expect(leadTransferMigration).not.toContain(
+      "v_lead.converted_client_id as client_id",
+    );
   });
 });

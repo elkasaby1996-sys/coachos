@@ -32,7 +32,7 @@ import { useWorkspace } from "../../lib/use-workspace";
 export function PtClientsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     workspaceId,
     loading: workspaceLoading,
@@ -77,11 +77,14 @@ export function PtClientsPage() {
   );
   const [page, setPage] = useState(0);
   const deferredSearchValue = useDeferredValue(searchValue);
+  const viewParam = searchParams.get("view");
+  const clientListView = viewParam === "archived" ? "archived" : "active";
   const hasWorkspaceContext = Boolean(workspaceId);
   const clientsQuery = usePtHubClientsPage({
     page,
     pageSize: 25,
     workspaceId: workspaceId ?? undefined,
+    relationshipScope: clientListView,
     lifecycle: lifecycleFilter,
     segment: segmentFilter,
     search: deferredSearchValue,
@@ -111,13 +114,25 @@ export function PtClientsPage() {
     (clientsQuery.isFetching && !clientsQuery.data);
   const hasAnyClients = stats.totalClients > 0;
   const isEmpty = totalCount === 0;
+  const emptyDescription =
+    clientListView === "archived"
+      ? "No archived clients yet. Removed or transferred-out client relationships will appear here."
+      : hasAnyClients
+        ? "No clients match the current filters."
+        : "You do not have any client records yet.";
   const queryError =
     clientsQuery.error instanceof Error ? clientsQuery.error.message : null;
   const errorMessage = workspaceError?.message ?? queryError;
 
   useEffect(() => {
     setPage(0);
-  }, [deferredSearchValue, lifecycleFilter, segmentFilter, workspaceId]);
+  }, [
+    deferredSearchValue,
+    lifecycleFilter,
+    segmentFilter,
+    workspaceId,
+    clientListView,
+  ]);
 
   useEffect(() => {
     setLifecycleFilter(initialLifecycleFilter);
@@ -146,6 +161,15 @@ export function PtClientsPage() {
     navigate(
       client.onboardingIncomplete ? `${detailPath}?tab=onboarding` : detailPath,
     );
+  };
+  const setClientListView = (nextView: "active" | "archived") => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextView === "archived") {
+      nextParams.set("view", "archived");
+    } else {
+      nextParams.delete("view");
+    }
+    setSearchParams(nextParams, { replace: true });
   };
 
   return (
@@ -210,6 +234,34 @@ export function PtClientsPage() {
       </div>
 
       <PtHubSectionCard title="Client List" contentClassName="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 lg:px-2">
+          <div
+            className="inline-flex rounded-xl border border-border/70 bg-background/50 p-1"
+            aria-label="Client relationship view"
+          >
+            <Button
+              type="button"
+              variant={clientListView === "active" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={clientListView === "active"}
+              onClick={() => setClientListView("active")}
+              className="h-9 px-4"
+            >
+              Active
+            </Button>
+            <Button
+              type="button"
+              variant={clientListView === "archived" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={clientListView === "archived"}
+              onClick={() => setClientListView("archived")}
+              className="h-9 px-4"
+            >
+              Archived
+            </Button>
+          </div>
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px] lg:items-end lg:gap-4 lg:px-2">
           <div className="space-y-1.5">
             <Label
@@ -286,11 +338,7 @@ export function PtClientsPage() {
         ) : isEmpty ? (
           <EmptyState
             title="No clients found"
-            description={
-              hasAnyClients
-                ? "No clients match the current filters."
-                : "You do not have any client records yet."
-            }
+            description={emptyDescription}
             icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
@@ -304,9 +352,11 @@ export function PtClientsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
           <p>
             {isEmpty
-              ? hasAnyClients
-                ? "No clients match the current filters."
-                : "No client records yet."
+              ? clientListView === "archived"
+                ? "No archived clients yet."
+                : hasAnyClients
+                  ? "No clients match the current filters."
+                  : "No client records yet."
               : `Showing ${rangeStart}-${rangeEnd} of ${totalCount} clients`}
           </p>
           <div className="flex items-center gap-2">

@@ -166,6 +166,7 @@ export interface PTClientSummary {
   workspaceName: string;
   displayName: string;
   status: string;
+  relationshipStatus: "active" | "removed" | "transferred_out";
   lifecycleState: string;
   manualRiskFlag: boolean;
   lifecycleChangedAt: string | null;

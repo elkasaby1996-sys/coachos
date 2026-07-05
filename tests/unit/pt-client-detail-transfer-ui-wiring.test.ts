@@ -34,9 +34,12 @@ describe("pt client detail safe transfer UI wiring", () => {
   });
 
   it("calls the safe transfer RPC with current client and target workspace ids", () => {
-    expect(source).toContain('supabase.rpc("pt_transfer_client_relationship"');
+    expect(source).toContain("supabase.rpc(");
+    expect(source).toContain('"pt_transfer_client_relationship"');
     expect(source).toContain("p_source_client_id: clientSnapshot.id");
-    expect(source).toContain("p_target_workspace_id: transferTargetWorkspaceId");
+    expect(source).toContain(
+      "p_target_workspace_id: transferTargetWorkspaceId",
+    );
   });
 
   it("invalidates client and workspace queries before redirecting after success", () => {

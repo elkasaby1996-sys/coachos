@@ -11,6 +11,7 @@ import {
   getAuthenticatedRedirectPath,
   getBootstrapPath,
   getPublicRootRouteDecision,
+  isBootstrapAuthClockSkewError,
   resolveBootstrapFromLookupResults,
   type AuthBootstrapState,
   type LookupResult,
@@ -174,6 +175,17 @@ describe("auth/bootstrap regression coverage", () => {
     expect(authValue.authLoading).toBe(false);
   });
 
+  it("recognizes transient local Supabase auth clock skew errors", () => {
+    expect(
+      isBootstrapAuthClockSkewError({
+        status: 401,
+        code: "PGRST303",
+        message: "JWT issued at future",
+      }),
+    ).toBe(true);
+    expect(isBootstrapAuthClockSkewError(new Error("JWT expired"))).toBe(false);
+  });
+
   it("only routes to /no-workspace after confirmed empty state", () => {
     const resolvedEmpty = resolveBootstrapFromLookupResults({
       pathname: "/",
@@ -286,9 +298,9 @@ describe("auth/bootstrap regression coverage", () => {
     }
     expect(resolution.state.activeClientId).toBe("readded-workspace-client");
     expect(resolution.state.clientAccountComplete).toBe(true);
-    expect(
-      resolution.state.clientWorkspaceOnboardingHardGateRequired,
-    ).toBe(false);
+    expect(resolution.state.clientWorkspaceOnboardingHardGateRequired).toBe(
+      false,
+    );
   });
 
   it("does not treat removed workspace relationships as active client membership", () => {
@@ -397,7 +409,9 @@ describe("auth/bootstrap regression coverage", () => {
     expect(resolution.state.accountType).toBe("client");
     expect(resolution.state.role).toBe("client");
     expect(resolution.state.hasWorkspaceMembership).toBe(false);
-    expect(getBootstrapPath(resolution.state, "/invite/client-invite-token")).toBeNull();
+    expect(
+      getBootstrapPath(resolution.state, "/invite/client-invite-token"),
+    ).toBeNull();
   });
 
   it("keys bootstrap dedupe by user and session rather than route path", () => {

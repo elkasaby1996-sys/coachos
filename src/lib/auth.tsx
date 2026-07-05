@@ -112,6 +112,8 @@ const BootstrapAuthContext = createContext<
 const SESSION_LOAD_TIMEOUT_MS = 30_000;
 const LOOKUP_TIMEOUT_MS = 3_000;
 const BOOTSTRAP_RECENT_SUCCESS_TTL_MS = 3_000;
+const AUTH_CLOCK_SKEW_RETRY_DELAY_MS = 500;
+const AUTH_CLOCK_SKEW_RETRY_ATTEMPTS = 1;
 const BOOTSTRAP_CACHE_PREFIX = "coachos_auth_bootstrap_v1";
 const PT_PROFILE_SELECT = [
   "id",
@@ -304,6 +306,31 @@ function isTransientAuthError(error: unknown) {
   );
 }
 
+function getErrorSearchText(error: unknown) {
+  if (error instanceof Error) return error.message.toLowerCase();
+  if (typeof error === "string") return error.toLowerCase();
+  if (typeof error !== "object" || error === null) return "";
+
+  const record = error as Record<string, unknown>;
+  return ["message", "details", "hint", "code", "status"]
+    .map((key) => record[key])
+    .filter((value) => value !== null && value !== undefined)
+    .map((value) => String(value).toLowerCase())
+    .join(" ");
+}
+
+export function isBootstrapAuthClockSkewError(error: unknown) {
+  const searchable = getErrorSearchText(error);
+  return (
+    searchable.includes("jwt issued at future") ||
+    searchable.includes("issued at future")
+  );
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
 function isAuthPermissionError(error: unknown) {
   const status =
     typeof error === "object" && error !== null && "status" in error
@@ -469,44 +496,72 @@ function isActiveClientWorkspaceRelationship(
   row: Pick<ClientProfileRow, "workspace_id" | "relationship_status">,
 ) {
   return (
-    Boolean(row.workspace_id) && (row.relationship_status ?? "active") === "active"
+    Boolean(row.workspace_id) &&
+    (row.relationship_status ?? "active") === "active"
   );
 }
 
 async function lookupRows<T>(
   label: string,
-  query: PromiseLike<{ data: T[] | null; error: unknown }>,
+  queryFactory: () => PromiseLike<{ data: T[] | null; error: unknown }>,
 ): Promise<LookupResult<T[]>> {
-  try {
-    const { data, error } = await traceAsync(
-      `AuthProvider.lookupRows.${label}`,
-      () =>
-        withTimeout(
-          query,
-          LOOKUP_TIMEOUT_MS,
-          `${label} lookup timed out (${Math.round(
-            LOOKUP_TIMEOUT_MS / 1000,
-          )}s).`,
-        ),
-    );
+  for (
+    let attempt = 0;
+    attempt <= AUTH_CLOCK_SKEW_RETRY_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      const { data, error } = await traceAsync(
+        `AuthProvider.lookupRows.${label}`,
+        () =>
+          withTimeout(
+            queryFactory(),
+            LOOKUP_TIMEOUT_MS,
+            `${label} lookup timed out (${Math.round(
+              LOOKUP_TIMEOUT_MS / 1000,
+            )}s).`,
+          ),
+      );
 
-    if (error) {
+      if (error) {
+        logLookupWarning(label, error);
+        if (
+          attempt < AUTH_CLOCK_SKEW_RETRY_ATTEMPTS &&
+          isBootstrapAuthClockSkewError(error)
+        ) {
+          await delay(AUTH_CLOCK_SKEW_RETRY_DELAY_MS);
+          continue;
+        }
+        return { status: "error", error };
+      }
+
+      const rows = (data ?? []) as T[];
+      return rows.length > 0
+        ? { status: "ok", data: rows }
+        : { status: "empty" };
+    } catch (error) {
       logLookupWarning(label, error);
+      if (
+        error instanceof Error &&
+        error.message.toLowerCase().includes("timed out")
+      ) {
+        return { status: "timeout", error };
+      }
+      if (
+        attempt < AUTH_CLOCK_SKEW_RETRY_ATTEMPTS &&
+        isBootstrapAuthClockSkewError(error)
+      ) {
+        await delay(AUTH_CLOCK_SKEW_RETRY_DELAY_MS);
+        continue;
+      }
       return { status: "error", error };
     }
-
-    const rows = (data ?? []) as T[];
-    return rows.length > 0 ? { status: "ok", data: rows } : { status: "empty" };
-  } catch (error) {
-    logLookupWarning(label, error);
-    if (
-      error instanceof Error &&
-      error.message.toLowerCase().includes("timed out")
-    ) {
-      return { status: "timeout", error };
-    }
-    return { status: "error", error };
   }
+
+  return {
+    status: "error",
+    error: new Error(`${label} lookup failed after retry.`),
+  };
 }
 
 function resolveAccountType(params: {
@@ -855,55 +910,52 @@ async function resolveBootstrapState(params: {
     hasPreviousStable: Boolean(params.previousStable),
   });
   try {
-  const { pathname, previousStable, user } = params;
-  const storedWorkspaceId = getActiveWorkspaceIdFromStorage();
-  const signupIntent = getSignupIntentFallback();
-  const pendingInviteToken = buildPendingInviteToken(pathname);
+    const { pathname, previousStable, user } = params;
+    const storedWorkspaceId = getActiveWorkspaceIdFromStorage();
+    const signupIntent = getSignupIntentFallback();
+    const pendingInviteToken = buildPendingInviteToken(pathname);
 
-  const membershipResult = await lookupRows(
-    "Workspace membership",
-    supabase
-      .from("workspace_members")
-      .select("workspace_id, role, status")
-      .eq("user_id", user.id)
-      .returns<WorkspaceMembershipRow[]>()
-      .limit(25),
-  );
+    const membershipResult = await lookupRows("Workspace membership", () =>
+      supabase
+        .from("workspace_members")
+        .select("workspace_id, role, status")
+        .eq("user_id", user.id)
+        .returns<WorkspaceMembershipRow[]>()
+        .limit(25),
+    );
 
-  const [ptProfileResult, clientResult] =
-    membershipResult.status === "empty"
-      ? await Promise.all([
-          lookupRows(
-            "PT profile",
-            supabase
-              .from("pt_profiles")
-              .select(PT_PROFILE_SELECT)
-              .eq("user_id", user.id)
-              .returns<PtProfileRow[]>()
-              .limit(25),
-          ),
-          lookupRows(
-            "Client profile",
-            supabase
-              .from("clients")
-              .select(CLIENT_PROFILE_SELECT)
-              .eq("user_id", user.id)
-              .returns<ClientProfileRow[]>()
-              .limit(25),
-          ),
-        ])
-      : [null, null];
+    const [ptProfileResult, clientResult] =
+      membershipResult.status === "empty"
+        ? await Promise.all([
+            lookupRows("PT profile", () =>
+              supabase
+                .from("pt_profiles")
+                .select(PT_PROFILE_SELECT)
+                .eq("user_id", user.id)
+                .returns<PtProfileRow[]>()
+                .limit(25),
+            ),
+            lookupRows("Client profile", () =>
+              supabase
+                .from("clients")
+                .select(CLIENT_PROFILE_SELECT)
+                .eq("user_id", user.id)
+                .returns<ClientProfileRow[]>()
+                .limit(25),
+            ),
+          ])
+        : [null, null];
 
-  return resolveBootstrapFromLookupResults({
-    pathname,
-    previousStable,
-    storedWorkspaceId,
-    signupIntent,
-    pendingInviteToken,
-    membershipResult,
-    ptProfileResult,
-    clientResult,
-  });
+    return resolveBootstrapFromLookupResults({
+      pathname,
+      previousStable,
+      storedWorkspaceId,
+      signupIntent,
+      pendingInviteToken,
+      membershipResult,
+      ptProfileResult,
+      clientResult,
+    });
   } finally {
     traceEnd("AuthProvider.resolveBootstrapState", startedAt, {
       userId: params.user.id,
