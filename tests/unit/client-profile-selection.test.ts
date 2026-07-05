@@ -4,6 +4,7 @@ import { selectActiveClientProfile } from "../../src/lib/client-profile-selectio
 type ClientRow = {
   id: string;
   workspace_id: string | null;
+  relationship_status?: string | null;
   created_at: string | null;
 };
 
@@ -32,10 +33,55 @@ describe("selectActiveClientProfile", () => {
     );
   });
 
+  it("ignores a stale transferred-out active client id after workspace transfer", () => {
+    expect(
+      selectActiveClientProfile(
+        [
+          {
+            ...rows[1],
+            relationship_status: "transferred_out",
+          },
+          rows[2],
+        ],
+        "workspace-client-old",
+      )?.id,
+    ).toBe("workspace-client-active");
+  });
+
   it("falls back to the first workspace-backed client row", () => {
     expect(selectActiveClientProfile(rows, null)?.id).toBe(
       "workspace-client-old",
     );
+  });
+
+  it("skips removed workspace relationships when choosing the active row", () => {
+    expect(
+      selectActiveClientProfile(
+        [
+          {
+            ...rows[1],
+            relationship_status: "removed",
+          },
+          rows[2],
+        ],
+        null,
+      )?.id,
+    ).toBe("workspace-client-active");
+  });
+
+  it("skips transferred-out workspace relationships when choosing the active row", () => {
+    expect(
+      selectActiveClientProfile(
+        [
+          {
+            ...rows[1],
+            relationship_status: "transferred_out",
+          },
+          rows[2],
+        ],
+        null,
+      )?.id,
+    ).toBe("workspace-client-active");
   });
 
   it("keeps personal clients available when no workspace row exists", () => {

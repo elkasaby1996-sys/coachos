@@ -26,13 +26,16 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { supabase } from "../../lib/supabase";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import type { AccountType } from "../../lib/account-profiles";
 import type {
   ClientAccessMode,
   InvitableWorkspaceRole,
   TeamInvitePreview,
 } from "../../features/workspace-team/contracts";
 import {
+  deriveInviteDisplayAuthorization,
   deriveInvitePageState,
+  isStructurallyValidTeamInviteToken,
   type InvitePageState,
 } from "../../features/workspace-team/invite-page-state";
 import {
@@ -65,6 +68,27 @@ function isUserEmailVerified(user: unknown) {
 function buildRedirectLink(path: string, token: string | undefined) {
   const returnTo = `/team-invites/${encodeURIComponent(token ?? "")}`;
   return `${path}?redirect=${encodeURIComponent(returnTo)}`;
+}
+
+function getSafeInviteHomeAction(accountType: AccountType) {
+  if (accountType === "client") {
+    return {
+      label: "Back to homepage",
+      to: "/app/home",
+    };
+  }
+
+  if (accountType === "pt") {
+    return {
+      label: "Back to homepage",
+      to: "/pt-hub",
+    };
+  }
+
+  return {
+    label: "Back to homepage",
+    to: "/",
+  };
 }
 
 function InviteStatusBadge({ state }: { state: InvitePageState }) {
@@ -115,6 +139,36 @@ function RoleBadge({ role }: { role: InvitableWorkspaceRole }) {
   return <Badge module="coaching">{roleLabels[role]}</Badge>;
 }
 
+function getGenericInviteCardCopy(state: InvitePageState) {
+  if (state === "pending_signed_out") {
+    return {
+      title: "Sign in to continue",
+      description:
+        "Sign in or create an account with the email address that received this invitation.",
+    };
+  }
+
+  if (state === "pending_wrong_account") {
+    return {
+      title: "This invitation isn't available",
+      description:
+        "This workspace invitation can only be viewed by the email address it was sent to.",
+    };
+  }
+
+  if (state === "invalid") {
+    return {
+      title: "This invitation link isn't valid",
+      description: "The invite link may be incorrect or no longer available.",
+    };
+  }
+
+  return {
+    title: "Workspace invite",
+    description: "This invitation is unavailable.",
+  };
+}
+
 function InvitePreviewCard({
   preview,
   state,
@@ -122,6 +176,8 @@ function InvitePreviewCard({
   preview: TeamInvitePreview | null;
   state: InvitePageState;
 }) {
+  const genericCopy = preview ? null : getGenericInviteCardCopy(state);
+
   return (
     <Card className="w-full rounded-[28px] border-border/70 bg-card/90 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
       <CardHeader className="space-y-5">
@@ -133,12 +189,12 @@ function InvitePreviewCard({
         </div>
         <div className="space-y-2">
           <CardTitle className="text-2xl">
-            {preview?.workspaceName ?? "Workspace invite"}
+            {preview?.workspaceName ?? genericCopy?.title}
           </CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">
             {preview
               ? `You've been invited to join ${preview.workspaceName} on RepSync as ${roleLabels[preview.role]}.`
-              : "We could not load this team invite."}
+              : genericCopy?.description}
           </p>
         </div>
       </CardHeader>
@@ -178,6 +234,7 @@ function InviteActionPanel({
   state,
   preview,
   token,
+  accountType,
   currentEmail,
   onAccept,
   onSignOut,
@@ -187,12 +244,15 @@ function InviteActionPanel({
   state: InvitePageState;
   preview: TeamInvitePreview | null;
   token: string | undefined;
+  accountType: AccountType;
   currentEmail: string | null;
   onAccept: () => void;
   onSignOut: () => void;
   successMessage: string | null;
   errorMessage: string | null;
 }) {
+  const safeHomeAction = getSafeInviteHomeAction(accountType);
+
   if (state === "loading" || state === "accepting") {
     return (
       <Alert tone="info">
@@ -209,38 +269,64 @@ function InviteActionPanel({
     );
   }
 
-  if (!preview) {
-    return (
-      <InviteTerminalState
-        tone="danger"
-        title="This invite could not be opened"
-        description="The link may be invalid, expired, or no longer available."
-      />
-    );
-  }
-
   if (state === "pending_signed_out") {
     return (
       <Alert tone="info">
-        <AlertTitle>Sign in to accept</AlertTitle>
+        <AlertTitle>Sign in to continue</AlertTitle>
         <AlertDescription>
-          Sign in or create a RepSync account with {preview.invitedEmail} to
-          accept this invite.
+          Sign in or create an account with the email address that received this
+          invitation.
         </AlertDescription>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <Button asChild>
             <Link to={buildRedirectLink("/login", token)}>
-              Sign in to accept
+              Sign in
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="secondary">
             <Link to={buildRedirectLink("/signup/pt", token)}>
-              Create account to accept
+              Create account
             </Link>
           </Button>
         </div>
       </Alert>
+    );
+  }
+
+  if (state === "pending_wrong_account" && !preview) {
+    return (
+      <Alert tone="danger">
+        <AlertTitle>Sign in with the invited account</AlertTitle>
+        <AlertDescription>
+          Please sign out and sign in with the email address that received this
+          invitation.
+        </AlertDescription>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <Button asChild>
+            <Link to={safeHomeAction.to}>{safeHomeAction.label}</Link>
+          </Button>
+          <Button variant="secondary" onClick={onSignOut}>
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        </div>
+      </Alert>
+    );
+  }
+
+  if (!preview) {
+    return (
+      <InviteTerminalState
+        tone="danger"
+        title="This invitation link isn't valid"
+        description="The invite link may be incorrect or no longer available."
+        action={
+          <Button asChild>
+            <Link to={safeHomeAction.to}>{safeHomeAction.label}</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -367,7 +453,7 @@ function WrongInviteAccountState({
           Sign out
         </Button>
         <Button asChild>
-          <Link to="/pt-hub">Back to PT Hub</Link>
+          <Link to="/pt-hub">Back to homepage</Link>
         </Button>
       </div>
     </Alert>
@@ -409,16 +495,25 @@ export function TeamInviteAcceptancePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { refreshBootstrap } = useBootstrapAuth();
+  const { accountType, bootstrapLoading, refreshBootstrap } =
+    useBootstrapAuth();
   const { authLoading, user } = useSessionAuth();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [acceptErrorCode, setAcceptErrorCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const tokenIsValid = isStructurallyValidTeamInviteToken(token);
+  const previewEnabled =
+    tokenIsValid &&
+    !authLoading &&
+    Boolean(user) &&
+    !(bootstrapLoading && accountType === "unknown") &&
+    accountType !== "client";
+
   const previewQuery = useQuery({
     queryKey: ["workspace-team-invite-preview", token],
     queryFn: () => previewWorkspaceTeamInvite(token ?? ""),
-    enabled: Boolean(token),
+    enabled: previewEnabled,
     retry: false,
   });
 
@@ -451,22 +546,45 @@ export function TeamInviteAcceptancePage() {
 
   const preview = previewQuery.data ?? null;
   const currentEmail = user?.email ?? null;
-  const pageState = deriveInvitePageState({
+  const previewErrorCode = getWorkspaceTeamInviteErrorCode(previewQuery.error);
+  const displayAuthorization = deriveInviteDisplayAuthorization({
+    token,
+    authLoading,
+    bootstrapLoading,
+    accountType,
+    currentEmail,
     preview,
     previewLoading: previewQuery.isLoading,
-    previewError: previewQuery.isError || !token,
-    authLoading,
-    currentEmail,
-    emailVerified: user ? isUserEmailVerified(user) : undefined,
-    accepting: acceptMutation.isPending,
-    acceptErrorCode,
+    previewError: previewQuery.isError,
+    previewErrorCode,
   });
+  const displayPreview = displayAuthorization === "authorized" ? preview : null;
+  const pageState =
+    displayAuthorization === "authorized"
+      ? deriveInvitePageState({
+          preview,
+          previewLoading: previewQuery.isLoading,
+          previewError: previewQuery.isError || !token,
+          authLoading,
+          currentEmail,
+          emailVerified: user ? isUserEmailVerified(user) : undefined,
+          accepting: acceptMutation.isPending,
+          acceptErrorCode,
+        })
+      : displayAuthorization === "loading"
+        ? "loading"
+        : displayAuthorization === "signed_out"
+          ? "pending_signed_out"
+          : displayAuthorization === "unauthorized"
+            ? "pending_wrong_account"
+            : "invalid";
 
   const heading = useMemo(() => {
-    if (pageState === "pending_signed_out") return "Join this workspace";
+    if (pageState === "pending_signed_out") return "Accept workspace invite";
     if (pageState === "pending_matching_account")
       return "Accept workspace invite";
-    if (pageState === "pending_wrong_account") return "Switch accounts";
+    if (pageState === "pending_wrong_account") return "Invitation unavailable";
+    if (pageState === "invalid") return "Invitation unavailable";
     if (pageState === "already_accepted") return "Invite accepted";
     if (pageState === "expired" || pageState === "revoked")
       return "Invite unavailable";
@@ -491,11 +609,12 @@ export function TeamInviteAcceptancePage() {
             {heading}
           </h1>
         </div>
-        <InvitePreviewCard preview={preview} state={pageState} />
+        <InvitePreviewCard preview={displayPreview} state={pageState} />
         <InviteActionPanel
           state={pageState}
-          preview={preview}
+          preview={displayPreview}
           token={token}
+          accountType={accountType}
           currentEmail={currentEmail}
           onAccept={() => acceptMutation.mutate()}
           onSignOut={() => void handleSignOut()}

@@ -31,6 +31,7 @@ import {
 import { SaveActions } from "../../components/common/save-actions";
 import { useWorkspace } from "../../lib/use-workspace";
 import { supabase } from "../../lib/supabase";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import {
   type NutritionTemplate,
   useNutritionTemplates,
@@ -45,6 +46,7 @@ export function PtNutritionPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { workspaceId, loading: workspaceLoading } = useWorkspace();
+  const { canManageDelivery } = useWorkspaceWriteAccess();
   const templatesQuery = useNutritionTemplates(workspaceId);
 
   const [search, setSearch] = useState("");
@@ -124,6 +126,7 @@ export function PtNutritionPage() {
   };
 
   const createTemplate = async () => {
+    if (!canManageDelivery) return;
     if (!workspaceId || !name.trim()) {
       setCreateError("Program name is required.");
       return;
@@ -159,6 +162,7 @@ export function PtNutritionPage() {
   };
 
   const duplicateTemplate = async (template: NutritionTemplate) => {
+    if (!canManageDelivery) return;
     const { data: newTemplate, error: templateError } = await supabase
       .from("nutrition_templates")
       .insert({
@@ -232,6 +236,7 @@ export function PtNutritionPage() {
   };
 
   const deleteTemplate = async (template: NutritionTemplate) => {
+    if (!canManageDelivery) return;
     const confirmed = window.confirm(
       `Delete nutrition program "${template.name}"? This cannot be undone.`,
     );
@@ -270,15 +275,17 @@ export function PtNutritionPage() {
       />
 
       <div className="flex justify-end">
-        <Button
-          onClick={() => {
-            setCreateError(null);
-            setCreateOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          New template
-        </Button>
+        {canManageDelivery ? (
+          <Button
+            onClick={() => {
+              setCreateError(null);
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            New template
+          </Button>
+        ) : null}
       </div>
 
       <div className="page-kpi-block grid gap-4 md:grid-cols-3">
@@ -363,8 +370,10 @@ export function PtNutritionPage() {
             <EmptyState
               title="Create the first program"
               description="Start with one template."
-              actionLabel="Create program"
-              onAction={() => setCreateOpen(true)}
+              actionLabel={canManageDelivery ? "Create program" : undefined}
+              onAction={
+                canManageDelivery ? () => setCreateOpen(true) : undefined
+              }
             />
           </DashboardCard>
         ) : (
@@ -415,26 +424,30 @@ export function PtNutritionPage() {
                       navigate(`/pt/nutrition/programs/${template.id}`)
                     }
                   >
-                    Edit
+                    {canManageDelivery ? "Edit" : "View"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="flex-1"
-                    onClick={() => duplicateTemplate(template)}
-                  >
-                    <Copy className="mr-1 h-3.5 w-3.5" />
-                    Duplicate
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="flex-1 text-destructive hover:text-destructive"
-                    onClick={() => deleteTemplate(template)}
-                  >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" />
-                    Delete
-                  </Button>
+                  {canManageDelivery ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="flex-1"
+                        onClick={() => duplicateTemplate(template)}
+                      >
+                        <Copy className="mr-1 h-3.5 w-3.5" />
+                        Duplicate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => deleteTemplate(template)}
+                      >
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </DashboardCard>

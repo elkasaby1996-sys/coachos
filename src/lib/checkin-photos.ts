@@ -1,11 +1,9 @@
-import { supabase } from "./supabase";
+import {
+  createPrivateStorageObjectUrl,
+  type PrivateStorageMediaAsset,
+} from "./private-storage-media";
 
-export type CheckinPhotoAsset = {
-  url: string | null;
-  storage_path: string | null;
-};
-
-const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24;
+export type CheckinPhotoAsset = PrivateStorageMediaAsset;
 
 export async function resolveCheckinPhotoRows<T extends CheckinPhotoAsset>(
   rows: T[],
@@ -17,17 +15,17 @@ export async function resolveCheckinPhotoRows<T extends CheckinPhotoAsset>(
         return row;
       }
 
-      const { data, error } = await supabase.storage
-        .from("checkin-photos")
-        .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
-
-      if (error || !data?.signedUrl) {
+      const objectUrl = await createPrivateStorageObjectUrl({
+        bucket: "checkin-photos",
+        storagePath,
+      });
+      if (!objectUrl) {
         return row;
       }
 
       return {
         ...row,
-        url: data.signedUrl,
+        url: objectUrl,
       };
     }),
   );

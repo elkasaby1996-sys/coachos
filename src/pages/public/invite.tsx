@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -109,6 +110,7 @@ function buildInviteJoinSearchParams(params: {
 export function InvitePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { session, authLoading } = useSessionAuth();
   const { accountType, patchBootstrap, refreshRole } = useBootstrapAuth();
   const [activeTab, setActiveTab] = useState<InviteTab>("social");
@@ -264,6 +266,17 @@ export function InvitePage() {
 
         setNotice("Invite accepted. Redirecting to dashboard...");
         clearPendingInviteToken();
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["bootstrap-auth"] }),
+          queryClient.invalidateQueries({ queryKey: ["client-home-profiles"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["client-workspace-onboarding"],
+          }),
+          queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
+          queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
+          queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
+          queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+        ]);
         patchBootstrap((prev) => ({
           accountType: "client",
           role: "client",
@@ -307,6 +320,7 @@ export function InvitePage() {
     tokenValue,
     navigate,
     patchBootstrap,
+    queryClient,
     refreshRole,
   ]);
 

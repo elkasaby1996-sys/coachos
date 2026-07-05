@@ -24,6 +24,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 
@@ -60,6 +61,7 @@ export function PtWorkoutTemplatesPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
+  const { canManageDelivery } = useWorkspaceWriteAccess();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<"idle" | "saving">("idle");
   const [createError, setCreateError] = useState<string | null>(null);
@@ -105,7 +107,7 @@ export function PtWorkoutTemplatesPage() {
   });
 
   const handleCreate = async () => {
-    if (!workspaceId) return;
+    if (!workspaceId || !canManageDelivery) return;
     if (!form.name.trim()) {
       setCreateError("Template name is required.");
       return;
@@ -145,7 +147,7 @@ export function PtWorkoutTemplatesPage() {
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !canManageDelivery) return;
 
     setDeleteStatus("deleting");
     setDeleteError(null);
@@ -290,15 +292,17 @@ export function PtWorkoutTemplatesPage() {
       />
 
       <div className="flex justify-end">
-        <Button
-          onClick={() => {
-            setCreateError(null);
-            setCreateOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          New template
-        </Button>
+        {canManageDelivery ? (
+          <Button
+            onClick={() => {
+              setCreateError(null);
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            New template
+          </Button>
+        ) : null}
       </div>
 
       <div className="page-kpi-block grid gap-4 md:grid-cols-3">
@@ -404,13 +408,15 @@ export function PtWorkoutTemplatesPage() {
               <p className="mt-2 text-xs text-muted-foreground">
                 Start with one workout template.
               </p>
-              <Button
-                className="mt-4"
-                size="sm"
-                onClick={() => setCreateOpen(true)}
-              >
-                Create template
-              </Button>
+              {canManageDelivery ? (
+                <Button
+                  className="mt-4"
+                  size="sm"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  Create template
+                </Button>
+              ) : null}
             </div>
           </DashboardCard>
         ) : (
@@ -453,21 +459,23 @@ export function PtWorkoutTemplatesPage() {
                       navigate(`/pt/templates/workouts/${template.id}`)
                     }
                   >
-                    Edit
+                    {canManageDelivery ? "Edit" : "View"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="flex-1 text-destructive hover:text-destructive"
-                    onClick={() => {
-                      setDeleteTarget(template);
-                      setDeleteError(null);
-                      setDeleteOpen(true);
-                    }}
-                  >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" />
-                    Delete
-                  </Button>
+                  {canManageDelivery ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="flex-1 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setDeleteTarget(template);
+                        setDeleteError(null);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             </DashboardCard>
@@ -542,7 +550,10 @@ export function PtWorkoutTemplatesPage() {
             <Button variant="secondary" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={createStatus === "saving"} onClick={handleCreate}>
+            <Button
+              disabled={createStatus === "saving" || !canManageDelivery}
+              onClick={handleCreate}
+            >
               {createStatus === "saving"
                 ? "Creating..."
                 : "Create + Open Builder"}
@@ -577,7 +588,7 @@ export function PtWorkoutTemplatesPage() {
             </Button>
             <Button
               variant="secondary"
-              disabled={deleteStatus === "deleting"}
+              disabled={deleteStatus === "deleting" || !canManageDelivery}
               onClick={handleDelete}
             >
               {deleteStatus === "deleting" ? "Deleting..." : "Delete"}

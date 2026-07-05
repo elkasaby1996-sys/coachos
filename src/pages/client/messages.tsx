@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -42,6 +43,10 @@ import {
 import { getCharacterLimitState } from "../../lib/character-limits";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { sendConversationMessage } from "../../lib/messages";
+import {
+  formatMessageSenderLabel,
+  type MessageSenderAttribution,
+} from "../../lib/message-sender-attribution";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { getActionErrorMessage } from "../../lib/request-guard";
 import { supabase } from "../../lib/supabase";
@@ -49,14 +54,19 @@ import {
   buildClientInboxSourceLabel,
   buildClientInboxThreadParam,
   dedupeLeadThreadSummaries,
+  filterClientInboxVisibleThreads,
+  isClientInboxThreadHideable,
   normalizeCoachDisplayName,
   parseClientInboxThreadParam,
+  resolveStableClientInboxSelection,
   resolveWorkspaceThreadTitle,
+  sortClientInboxThreads,
 } from "../../features/lead-chat/lib/client-inbox";
 import {
   isLeadChatWritable,
   markLeadChatRead,
   sendLeadChatMessage,
+  useConvertedLeadHistory,
   useLeadConversationThread,
   useMyLeadChatThreads,
   type MyLeadChatThreadSummary,
@@ -114,6 +124,12 @@ type MessageRow = {
   created_at: string | null;
 };
 
+type MessageSenderAttributionRow = {
+  sender_user_id: string;
+  display_name: string | null;
+  workspace_role: string | null;
+};
+
 type UnifiedInboxThread =
   | {
       id: string;
@@ -145,6 +161,8 @@ const quickPrompts = [
   "I finished my session and have a quick update.",
   "Can you review my nutrition targets for this week?",
 ] as const;
+
+const leadHistoryCollapseThreshold = 6;
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -256,19 +274,23 @@ export function ClientMessagesPage() {
   const clientId = clientProfile?.id ?? null;
 
   const workspaceConversationsQuery = useQuery({
-    queryKey: ["client-messages-workspace-conversations", clientId],
-    enabled: !!clientId,
+    queryKey: ["client-messages-workspace-conversations", session?.user?.id],
+    enabled: !!session?.user?.id,
     staleTime: 1000 * 30,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select(
-          "id, client_id, workspace_id, last_message_at, last_message_preview, last_message_sender_name, last_message_sender_role",
-        )
-        .eq("client_id", clientId ?? "")
-        .order("last_message_at", { ascending: false });
+      const { data, error } = await supabase.rpc(
+        "client_accessible_conversations_with_ensure",
+      );
       if (error) throw error;
-      return (data ?? []) as ConversationRow[];
+      return ((data ?? []) as ConversationRow[]).sort((left, right) => {
+        const leftTime = left.last_message_at
+          ? new Date(left.last_message_at).getTime()
+          : 0;
+        const rightTime = right.last_message_at
+          ? new Date(right.last_message_at).getTime()
+          : 0;
+        return rightTime - leftTime;
+      });
     },
   });
 
@@ -387,6 +409,10 @@ export function ClientMessagesPage() {
       ),
     [workspaceConversationsQuery.data],
   );
+  const workspaceConversationIdsSet = useMemo(
+    () => new Set(workspaceConversationIds),
+    [workspaceConversationIds],
+  );
 
   const workspaceUnreadQuery = useQuery({
     queryKey: getWorkspaceUnreadQueryKey(workspaceConversationIds),
@@ -500,7 +526,14 @@ export function ClientMessagesPage() {
       leadThreadsQuery.data ?? [],
     );
 
-    const leadThreads = dedupedLeadThreads.map((thread): UnifiedInboxThread => {
+    const primaryLeadThreads = dedupedLeadThreads.filter((thread) => {
+      if (thread.leadStatus === "converted" && thread.convertedConversationId) {
+        return !workspaceConversationIdsSet.has(thread.convertedConversationId);
+      }
+      return true;
+    });
+
+    const leadThreads = primaryLeadThreads.map((thread): UnifiedInboxThread => {
       const isArchived = thread.conversationStatus === "archived";
       return {
         id: buildClientInboxThreadParam({
@@ -525,14 +558,7 @@ export function ClientMessagesPage() {
       };
     });
 
-    return [...workspaceThreads, ...leadThreads].sort((a, b) => {
-      if (a.unreadCount !== b.unreadCount) {
-        return b.unreadCount - a.unreadCount;
-      }
-      const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return bTime - aTime;
-    });
+    return sortClientInboxThreads([...workspaceThreads, ...leadThreads]);
   }, [
     leadThreadsQuery.data,
     workspaceConversationsQuery.data,
@@ -541,13 +567,15 @@ export function ClientMessagesPage() {
     workspaceCoachNameByConversationId,
     workspaceNameById,
     workspaceOwnerIdById,
+    workspaceConversationIdsSet,
     workspaceUnreadByConversationId,
   ]);
 
   const visibleThreads = useMemo(() => {
-    if (hiddenThreadIds.length === 0) return mergedThreads;
-    const hidden = new Set(hiddenThreadIds);
-    return mergedThreads.filter((thread) => !hidden.has(thread.id));
+    return filterClientInboxVisibleThreads({
+      threads: mergedThreads,
+      hiddenThreadIds,
+    });
   }, [hiddenThreadIds, mergedThreads]);
 
   const filteredThreads = useMemo(() => {
@@ -564,41 +592,28 @@ export function ClientMessagesPage() {
     clientProfilesQuery.isLoading ||
     workspaceConversationsQuery.isLoading ||
     leadThreadsQuery.isLoading;
+  const visibleThreadIds = useMemo(
+    () => visibleThreads.map((thread) => thread.id),
+    [visibleThreads],
+  );
 
   useEffect(() => {
-    if (visibleThreads.length === 0) {
-      if (threadSourcesLoading) return;
-      if (selectedThreadId !== null) {
-        setSelectedThreadId(null);
-      }
-      return;
-    }
-
     const requestedThreadRef = parseClientInboxThreadParam(threadParam);
     const requestedThreadId = requestedThreadRef
       ? buildClientInboxThreadParam(requestedThreadRef)
       : null;
-    if (
-      requestedThreadId &&
-      visibleThreads.some((thread) => thread.id === requestedThreadId)
-    ) {
-      if (selectedThreadId !== requestedThreadId) {
-        setSelectedThreadId(requestedThreadId);
-      }
-      return;
-    }
 
-    if (requestedThreadId && threadSourcesLoading) {
-      return;
-    }
+    const nextThreadId = resolveStableClientInboxSelection({
+      currentThreadId: selectedThreadId,
+      requestedThreadId,
+      threadIds: visibleThreadIds,
+      sourcesLoading: threadSourcesLoading,
+    });
 
-    if (
-      !selectedThreadId ||
-      !visibleThreads.some((thread) => thread.id === selectedThreadId)
-    ) {
-      setSelectedThreadId(visibleThreads[0]?.id ?? null);
+    if (selectedThreadId !== nextThreadId) {
+      setSelectedThreadId(nextThreadId);
     }
-  }, [selectedThreadId, threadParam, threadSourcesLoading, visibleThreads]);
+  }, [selectedThreadId, threadParam, threadSourcesLoading, visibleThreadIds]);
 
   useEffect(() => {
     const currentParam =
@@ -659,6 +674,7 @@ export function ClientMessagesPage() {
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === messagePageSize ? allPages.length : undefined,
+    placeholderData: keepPreviousData,
   });
 
   const workspaceMessages = useMemo(() => {
@@ -666,6 +682,50 @@ export function ClientMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [workspaceMessagesQuery.data]);
+
+  const workspaceSenderAttributionsQuery = useQuery({
+    queryKey: [
+      "conversation-sender-attributions",
+      activeWorkspaceConversationId,
+    ],
+    enabled: !!activeWorkspaceConversationId,
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "conversation_sender_attributions",
+        {
+          p_conversation_id: activeWorkspaceConversationId ?? "",
+        },
+      );
+      if (error) throw error;
+      return (data ?? []) as MessageSenderAttributionRow[];
+    },
+  });
+
+  const workspaceSenderAttributionByUserId = useMemo(() => {
+    const map = new Map<string, MessageSenderAttribution>();
+    (workspaceSenderAttributionsQuery.data ?? []).forEach((row) => {
+      if (!row.sender_user_id) return;
+      map.set(row.sender_user_id, {
+        senderUserId: row.sender_user_id,
+        displayName: row.display_name,
+        workspaceRole: row.workspace_role,
+      });
+    });
+    return map;
+  }, [workspaceSenderAttributionsQuery.data]);
+
+  const convertedLeadHistoryQuery = useConvertedLeadHistory(
+    activeWorkspaceConversationId,
+  );
+  const convertedLeadHistoryMessages = convertedLeadHistoryQuery.data ?? [];
+  const shouldCollapseLeadHistoryByDefault =
+    convertedLeadHistoryMessages.length > leadHistoryCollapseThreshold;
+  const [isLeadHistoryExpanded, setIsLeadHistoryExpanded] = useState(true);
+
+  useEffect(() => {
+    setIsLeadHistoryExpanded(!shouldCollapseLeadHistoryByDefault);
+  }, [activeWorkspaceConversationId, shouldCollapseLeadHistoryByDefault]);
 
   const renderedWorkspaceMessages = useMemo(
     () =>
@@ -694,6 +754,61 @@ export function ClientMessagesPage() {
     selectedThreadId,
     selectedThreadIsArchived,
     selectedThreadType,
+  ]);
+
+  useEffect(() => {
+    if (!activeWorkspaceConversationId) return;
+
+    const channel = supabase
+      .channel(`client-workspace-messages-${activeWorkspaceConversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${activeWorkspaceConversationId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-workspace-thread-messages",
+              activeWorkspaceConversationId,
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-messages-workspace-conversations",
+              session?.user?.id,
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-messages-workspace-coach-senders",
+              workspaceConversationIds.join(","),
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: [
+              "conversation-sender-attributions",
+              activeWorkspaceConversationId,
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: getWorkspaceUnreadQueryKey(workspaceConversationIds),
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [
+    activeWorkspaceConversationId,
+    queryClient,
+    session?.user?.id,
+    workspaceConversationIds,
   ]);
 
   useEffect(() => {
@@ -850,7 +965,10 @@ export function ClientMessagesPage() {
           });
         }
         await queryClient.invalidateQueries({
-          queryKey: ["client-messages-workspace-conversations", clientId],
+          queryKey: [
+            "client-messages-workspace-conversations",
+            session?.user?.id,
+          ],
         });
         await queryClient.invalidateQueries({
           queryKey: getWorkspaceUnreadQueryKey(workspaceConversationIds),
@@ -908,7 +1026,10 @@ export function ClientMessagesPage() {
   );
 
   const hideConversation = useCallback(() => {
-    if (!selectedThread) return;
+    if (!selectedThread || !isClientInboxThreadHideable(selectedThread)) {
+      setDeleteDialogOpen(false);
+      return;
+    }
     const nextHiddenIds = Array.from(
       new Set([...hiddenThreadIds, selectedThread.id]),
     );
@@ -919,6 +1040,10 @@ export function ClientMessagesPage() {
     });
     setDeleteDialogOpen(false);
   }, [hiddenThreadIds, selectedThread, session?.user?.id]);
+
+  const canHideSelectedThread = selectedThread
+    ? isClientInboxThreadHideable(selectedThread)
+    : false;
 
   const showHiddenConversations = useCallback(() => {
     setHiddenThreadIds([]);
@@ -1098,15 +1223,17 @@ export function ClientMessagesPage() {
                   ) : (
                     <Badge variant="neutral">Open</Badge>
                   )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => setDeleteDialogOpen(true)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
+                  {canHideSelectedThread ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Hide
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -1148,144 +1275,234 @@ export function ClientMessagesPage() {
             <div className="flex h-[calc(100dvh-12rem)] min-h-[30rem] flex-col">
               <SurfaceCardContent
                 ref={messageListRef}
-                className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/10 pb-6 pt-5 overscroll-contain"
+                className="min-h-0 flex-1 overflow-y-auto bg-background/10 overscroll-contain"
               >
-                {selectedThread.type === "workspace" ? (
-                  <>
-                    {workspaceMessagesQuery.hasNextPage ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => workspaceMessagesQuery.fetchNextPage()}
-                          disabled={workspaceMessagesQuery.isFetchingNextPage}
-                        >
-                          {workspaceMessagesQuery.isFetchingNextPage
-                            ? "Loading..."
-                            : "Load older"}
-                        </Button>
-                      </div>
-                    ) : null}
-                    {workspaceMessages.length >
-                    renderedWorkspaceMessages.length ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setVisibleMessageCount((current) => current + 100)
-                          }
-                        >
-                          Show older loaded messages
-                        </Button>
-                      </div>
-                    ) : null}
-                    {renderedWorkspaceMessages.length > 0 ? (
-                      renderedWorkspaceMessages.map((message) => {
-                        const isMine = message.sender_role === "client";
-                        return (
-                          <div
-                            key={message.id}
-                            className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-                          >
-                            <div
-                              className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
-                                isMine
-                                  ? "border-primary/24 bg-primary/12 text-foreground"
-                                  : "border-border/70 bg-background/55 text-foreground"
-                              }`}
+                <div className="flex min-h-full flex-col justify-end gap-3 px-4 pb-5 pt-4">
+                  {selectedThread.type === "workspace" ? (
+                    <>
+                      {convertedLeadHistoryMessages.length > 0 ? (
+                        <>
+                          <div className="flex items-center gap-3 py-1">
+                            <div className="h-px flex-1 bg-border/50" />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsLeadHistoryExpanded((current) => !current)
+                              }
+                              className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-expanded={isLeadHistoryExpanded}
                             >
-                              <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                                <span className="font-medium text-foreground/90">
-                                  {isMine
-                                    ? "You"
-                                    : (normalizeCoachDisplayName(
-                                        message.sender_name,
-                                      ) ??
-                                      selectedThread.title ??
-                                      "Coach")}
-                                </span>
-                                <span>{formatTime(message.created_at)}</span>
-                              </div>
-                              <p className="whitespace-pre-wrap leading-6">
-                                {message.body ?? ""}
-                              </p>
-                            </div>
+                              Previous application conversation{" "}
+                              <span className="font-medium normal-case tracking-normal">
+                                {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
+                                {convertedLeadHistoryMessages.length === 1
+                                  ? "message"
+                                  : "messages"}
+                              </span>
+                            </button>
+                            <div className="h-px flex-1 bg-border/50" />
                           </div>
-                        );
-                      })
-                    ) : (
-                      <EmptyStateBlock
-                        title="Start the conversation"
-                        description="Use a quick prompt or send your own message to your coach."
-                        actions={
-                          <>
-                            {quickPrompts.map((prompt) => (
-                              <EmptyStateActionButton
-                                key={prompt}
-                                label={prompt}
-                                onClick={() => setMessageInput(prompt)}
-                              />
-                            ))}
-                          </>
-                        }
-                      />
-                    )}
-                  </>
-                ) : leadMessages.length > 0 ? (
-                  leadMessages.map((message) => {
-                    const isMine =
-                      message.senderUserId !==
-                      selectedThread.leadThread.ptUserId;
-                    return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
-                            isMine
-                              ? "border-primary/24 bg-primary/12 text-foreground"
-                              : "border-border/70 bg-background/55 text-foreground"
-                          }`}
-                        >
-                          <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="font-medium text-foreground/90">
-                              {isMine
-                                ? "You"
-                                : selectedThread.leadThread.ptDisplayName ||
-                                  "Coach"}
-                            </span>
-                            <span>{formatRelativeTime(message.sentAt)}</span>
-                          </div>
-                          <p className="whitespace-pre-wrap leading-6">
-                            {message.body}
-                          </p>
+                          {isLeadHistoryExpanded
+                            ? convertedLeadHistoryMessages.map((message) => {
+                                const isMine =
+                                  message.senderUserId === session?.user?.id;
+                                return (
+                                  <div
+                                    key={message.id}
+                                    className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                                  >
+                                    <div
+                                      className={`max-w-full rounded-[20px] border px-4 py-3 text-sm opacity-75 sm:max-w-[min(100%,40rem)] ${
+                                        isMine
+                                          ? "border-primary/20 bg-primary/10 text-foreground"
+                                          : "border-border/60 bg-background/45 text-foreground"
+                                      }`}
+                                    >
+                                      <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                        <span className="font-medium text-foreground/80">
+                                          {isMine
+                                            ? "You"
+                                            : formatMessageSenderLabel({
+                                                currentUserId:
+                                                  session?.user?.id,
+                                                message: {
+                                                  senderUserId:
+                                                    message.senderUserId,
+                                                  senderRole: "pt",
+                                                  senderName:
+                                                    selectedThread.title,
+                                                },
+                                                senderAttribution: null,
+                                              })}
+                                        </span>
+                                        <span>
+                                          {formatTime(message.sentAt)}
+                                        </span>
+                                        <span>Read-only history</span>
+                                      </div>
+                                      <p className="whitespace-pre-wrap leading-6">
+                                        {message.body}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            : null}
+                        </>
+                      ) : null}
+                      {convertedLeadHistoryMessages.length > 0 ? (
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="h-px flex-1 bg-border/60" />
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            Active coaching conversation
+                          </span>
+                          <div className="h-px flex-1 bg-border/60" />
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <EmptyStateBlock
-                    title="No messages yet"
-                    description="This lead conversation has no messages yet."
-                  />
-                )}
+                      ) : null}
+                      {workspaceMessagesQuery.hasNextPage ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              workspaceMessagesQuery.fetchNextPage()
+                            }
+                            disabled={workspaceMessagesQuery.isFetchingNextPage}
+                          >
+                            {workspaceMessagesQuery.isFetchingNextPage
+                              ? "Loading..."
+                              : "Load older"}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {workspaceMessages.length >
+                      renderedWorkspaceMessages.length ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setVisibleMessageCount((current) => current + 100)
+                            }
+                          >
+                            Show older loaded messages
+                          </Button>
+                        </div>
+                      ) : null}
+                      {renderedWorkspaceMessages.length > 0 ? (
+                        renderedWorkspaceMessages.map((message) => {
+                          const isMine = message.sender_role === "client";
+                          const senderLabel = formatMessageSenderLabel({
+                            currentUserId: session?.user?.id,
+                            message: {
+                              senderUserId: message.sender_user_id,
+                              senderRole: message.sender_role,
+                              senderName: message.sender_name,
+                            },
+                            senderAttribution: message.sender_user_id
+                              ? (workspaceSenderAttributionByUserId.get(
+                                  message.sender_user_id,
+                                ) ?? null)
+                              : null,
+                          });
+                          return (
+                            <div
+                              key={message.id}
+                              className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                            >
+                              <div
+                                className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
+                                  isMine
+                                    ? "border-primary/24 bg-primary/12 text-foreground"
+                                    : "border-border/70 bg-background/55 text-foreground"
+                                }`}
+                              >
+                                <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                  <span className="font-medium text-foreground/90">
+                                    {senderLabel}
+                                  </span>
+                                  <span>{formatTime(message.created_at)}</span>
+                                </div>
+                                <p className="whitespace-pre-wrap leading-6">
+                                  {message.body ?? ""}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <EmptyStateBlock
+                          title="Start the conversation"
+                          description="Use a quick prompt or send your own message to your coach."
+                          actions={
+                            <>
+                              {quickPrompts.map((prompt) => (
+                                <EmptyStateActionButton
+                                  key={prompt}
+                                  label={prompt}
+                                  onClick={() => setMessageInput(prompt)}
+                                />
+                              ))}
+                            </>
+                          }
+                        />
+                      )}
+                    </>
+                  ) : leadMessages.length > 0 ? (
+                    leadMessages.map((message) => {
+                      const isMine =
+                        message.senderUserId !==
+                        selectedThread.leadThread.ptUserId;
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-full rounded-[20px] border px-4 py-3 text-sm shadow-[0_12px_28px_-24px_rgba(0,0,0,0.9)] sm:max-w-[min(100%,40rem)] ${
+                              isMine
+                                ? "border-primary/24 bg-primary/12 text-foreground"
+                                : "border-border/70 bg-background/55 text-foreground"
+                            }`}
+                          >
+                            <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <span className="font-medium text-foreground/90">
+                                {isMine
+                                  ? "You"
+                                  : selectedThread.leadThread.ptDisplayName ||
+                                    "Coach"}
+                              </span>
+                              <span>{formatRelativeTime(message.sentAt)}</span>
+                            </div>
+                            <p className="whitespace-pre-wrap leading-6">
+                              {message.body}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <EmptyStateBlock
+                      title="No messages yet"
+                      description="This lead conversation has no messages yet."
+                    />
+                  )}
 
-                {typingUsers.length > 0 &&
-                selectedThread.type === "workspace" ? (
-                  <SectionCard className="inline-flex w-auto items-center gap-2 px-3 py-2">
-                    <span className="text-sm text-muted-foreground">
-                      Coach is typing...
-                    </span>
-                  </SectionCard>
-                ) : null}
+                  {typingUsers.length > 0 &&
+                  selectedThread.type === "workspace" ? (
+                    <SectionCard className="inline-flex w-auto items-center gap-2 px-3 py-2">
+                      <span className="text-sm text-muted-foreground">
+                        Coach is typing...
+                      </span>
+                    </SectionCard>
+                  ) : null}
 
-                <div ref={scrollRef} />
+                  <div ref={scrollRef} />
+                </div>
               </SurfaceCardContent>
 
               {selectedThread.isWritable ? (
-                <div className="sticky bottom-0 border-t border-border/60 bg-[linear-gradient(180deg,rgba(10,14,22,0.16),rgba(10,14,22,0.94)_24%,rgba(10,14,22,0.98))] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+                <div className="sticky bottom-0 border-t border-border/60 bg-background/75 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
                   <div className="space-y-2">
                     {sendError ? (
                       <p className="rounded-[16px] border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
@@ -1371,7 +1588,7 @@ export function ClientMessagesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogTitle>Hide conversation?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes the conversation from your inbox view. Message
               history is not erased.
@@ -1391,7 +1608,7 @@ export function ClientMessagesPage() {
               className="text-destructive hover:text-destructive"
               onClick={hideConversation}
             >
-              Delete from inbox
+              Hide from inbox
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

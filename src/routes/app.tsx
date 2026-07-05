@@ -7,6 +7,7 @@ import {
   useLocation,
   useParams,
 } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ClientAccountOnboardingPage,
   ClientBaselinePage,
@@ -29,12 +30,16 @@ import {
   ClientWorkoutsPage,
   ClientSignupPage,
   AuthCallbackPage,
+  DemoPage,
   ForgotPasswordPage,
   HealthPage,
   InvitePage,
   LegacySettingsRedirectPage,
   LoginPage,
+  MarketingHomePage,
   NoWorkspacePage,
+  PricingPage,
+  ProductPage,
   NotificationsPage,
   PrivacyPage,
   PublicCoachProfilePage,
@@ -95,13 +100,21 @@ import {
 
 // ✅ assumes your AuthProvider exports this hook
 import {
-  getAuthenticatedRedirectPath,
+  getPublicRootRouteDecision,
   useBootstrapAuth,
   useSessionAuth,
 } from "../lib/auth";
+import { tracePoint } from "../lib/perf-trace";
+import {
+  getClientRouteGuardDecision,
+  isClientRouteUuid,
+} from "../lib/client-route-guard";
+import { canUseBootstrapForProtectedRoute } from "../lib/protected-route-guard";
+import { supabase } from "../lib/supabase";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
 import { RouteAwareWireframeLoader } from "../components/common/wireframe-loader";
+import { useNotificationRealtime } from "../features/notifications/hooks/use-notification-realtime";
 import {
   LegacyClientRedirect,
   LegacyPublicProfileRedirect,
@@ -220,24 +233,39 @@ function RequireRole({
     accountType,
     bootstrapResolved,
     bootstrapStale,
+    bootstrapUserId,
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired,
-    hasStableBootstrap,
     hasWorkspaceMembership,
     pendingInviteToken,
     ptProfileComplete,
     ptWorkspaceComplete,
   } = useBootstrapAuth();
+  const { user } = useSessionAuth();
   const location = useLocation();
+  const canUseBootstrap = canUseBootstrapForProtectedRoute({
+    allow,
+    accountType,
+    bootstrapResolved,
+    bootstrapStale,
+    bootstrapUserId,
+    currentUserId: user?.id,
+  });
+  tracePoint("RequireRole.decision", {
+    pathname: location.pathname,
+    allow: allow.join(","),
+    accountType,
+    bootstrapResolved,
+    bootstrapStale,
+    bootstrapUserId,
+    currentUserId: user?.id ?? null,
+    canUseBootstrap,
+  });
 
   return (
     <BootstrapGate>
-      {!bootstrapResolved ? (
-        hasStableBootstrap && bootstrapStale ? (
-          <>{children}</>
-        ) : (
-          <FullPageLoader />
-        )
+      {!canUseBootstrap ? (
+        <FullPageLoader />
       ) : (
         (() => {
           const redirect = getProtectedRedirect({
@@ -260,19 +288,6 @@ function RequireRole({
       )}
     </BootstrapGate>
   );
-}
-
-function IndexRedirect() {
-  const { authLoading, session } = useSessionAuth();
-  const { bootstrapPath, bootstrapResolved } = useBootstrapAuth();
-
-  if (authLoading) return <FullPageLoader />;
-
-  if (!session) return <Navigate to="/login" replace />;
-
-  if (!bootstrapResolved) return <FullPageLoader />;
-
-  return <Navigate to={bootstrapPath ?? "/no-workspace"} replace />;
 }
 
 function LoginGate() {
@@ -298,6 +313,54 @@ function LoginGate() {
   }
 
   return <LoginPage />;
+}
+
+function PublicRootGate() {
+  const { authLoading, isAuthenticated } = useSessionAuth();
+  const { bootstrapPath, bootstrapResolved } = useBootstrapAuth();
+  const decision = getPublicRootRouteDecision({
+    authLoading,
+    isAuthenticated,
+    bootstrapResolved,
+    bootstrapPath,
+  });
+
+  if (decision.type === "loading") return <FullPageLoader />;
+  if (decision.type === "redirect") {
+    return <Navigate to={decision.to} replace />;
+  }
+
+  return <MarketingHomePage />;
+}
+
+function PtClientDetailRoute() {
+  const { clientId } = useParams<{ clientId: string }>();
+  const accessQuery = useQuery({
+    queryKey: ["route-client-access", clientId],
+    enabled: isClientRouteUuid(clientId),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("can_access_client", {
+        p_client_id: clientId ?? "",
+        p_permission: "clients.view",
+      });
+      if (error) throw error;
+      return Boolean(data);
+    },
+    retry: false,
+  });
+  const guardDecision = getClientRouteGuardDecision({
+    clientId,
+    accessLoading: accessQuery.isLoading,
+    accessAllowed: accessQuery.data,
+    accessError: accessQuery.error,
+  });
+
+  if (guardDecision === "loading") return <FullPageLoader />;
+  if (guardDecision === "redirect") {
+    return <Navigate to="/pt/clients" replace />;
+  }
+
+  return <PtClientDetailPage clientIdOverride={clientId} />;
 }
 
 function LegacyJoinRedirect() {
@@ -369,6 +432,16 @@ function AuthTestSignals() {
       ) : null}
     </div>
   );
+}
+
+function GlobalNotificationRealtime() {
+  const { isAuthenticated, user } = useSessionAuth();
+
+  useNotificationRealtime({
+    userId: isAuthenticated ? (user?.id ?? null) : null,
+  });
+
+  return null;
 }
 
 function getShellKey(pathname: string) {
@@ -543,11 +616,15 @@ export function App() {
     <Suspense fallback={<FullPageLoader />}>
       <PtHubAssetPreloader />
       <AuthTestSignals />
+      <GlobalNotificationRealtime />
       <DocumentMetadata />
       <AppShellTransition>
         <Routes location={location}>
-          {/* Smart landing */}
-          <Route path="/" element={<IndexRedirect />} />
+          {/* Public landing */}
+          <Route path="/" element={<PublicRootGate />} />
+          <Route path="/product" element={<ProductPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/demo" element={<DemoPage />} />
 
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />
@@ -556,6 +633,7 @@ export function App() {
             path="/auth/forgot-password"
             element={<ForgotPasswordPage />}
           />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route path="/signup" element={<SignupRolePage />} />
           <Route path="/signup/pt" element={<PtSignupPage />} />
@@ -697,7 +775,7 @@ export function App() {
           >
             <Route path="dashboard" element={<PtDashboardPage />} />
             <Route path="clients" element={<PtClientsPage />} />
-            <Route path="clients/:clientId" element={<PtClientDetailPage />} />
+            <Route path="clients/:clientId" element={<PtClientDetailRoute />} />
             <Route path="programs" element={<PtProgramsPage />} />
             <Route path="programs/new" element={<PtProgramBuilderPage />} />
             <Route

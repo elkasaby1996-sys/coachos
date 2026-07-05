@@ -211,18 +211,6 @@ export async function acceptWorkspaceTeamInvite(token: string) {
   return parseRpcJson<WorkspaceTeamInviteAccepted>(data);
 }
 
-export async function acceptWorkspaceTeamInviteById(inviteId: string) {
-  const supabase = await getSupabaseClient();
-  const { data, error } = await supabase.rpc(
-    "accept_workspace_team_invite_by_id",
-    {
-      p_invite_id: inviteId,
-    },
-  );
-  if (error) throw error;
-  return parseRpcJson<WorkspaceTeamInviteAccepted>(data);
-}
-
 export async function declineWorkspaceTeamInvite(inviteId: string) {
   const supabase = await getSupabaseClient();
   const { data, error } = await supabase.rpc("decline_workspace_team_invite", {

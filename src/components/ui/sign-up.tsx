@@ -56,6 +56,7 @@ export type AuthSubmitResult = {
 export interface AuthComponentProps {
   mode: AuthMode;
   brandName?: string;
+  brandHref?: string;
   logo?: React.ReactNode;
   title?: string;
   subtitle?: React.ReactNode;
@@ -379,6 +380,7 @@ type ModalStatus = "closed" | "loading" | "error" | "success";
 export function AuthComponent({
   mode,
   brandName = "RepSync",
+  brandHref,
   title,
   subtitle,
   primaryLabel,
@@ -1026,9 +1028,21 @@ export function AuthComponent({
       <Modal />
 
       <div className="auth-flow-brand fixed left-4 top-4 z-20 flex items-center md:left-1/2 md:-translate-x-1/2">
-        <h1 className="text-xl font-bold tracking-normal text-foreground sm:text-2xl">
-          {brandName}
-        </h1>
+        {brandHref ? (
+          <a
+            href={brandHref}
+            className="rounded-md text-foreground transition-colors hover:text-foreground/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-label={`${brandName} home`}
+          >
+            <h1 className="text-xl font-bold tracking-normal sm:text-2xl">
+              {brandName}
+            </h1>
+          </a>
+        ) : (
+          <h1 className="text-xl font-bold tracking-normal text-foreground sm:text-2xl">
+            {brandName}
+          </h1>
+        )}
       </div>
 
       <div className="auth-flow-scroll relative z-10 flex min-h-0 w-full flex-1 items-start justify-center overflow-y-auto px-4 py-16 sm:py-20">

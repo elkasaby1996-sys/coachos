@@ -31,6 +31,7 @@ import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { supabase } from "../../lib/supabase";
+import { useClientAssignmentRealtime } from "../../lib/client-assignment-realtime";
 import { buildSourceLabel } from "./home-unified";
 import {
   applySupersetDragGrouping,
@@ -228,6 +229,7 @@ export function ClientWorkoutsPage() {
     [activeClientId, clientProfiles],
   );
   const clientId = clientProfile?.id ?? null;
+  useClientAssignmentRealtime(clientId);
   const todayKey = useMemo(
     () => getTodayInTimezone(clientProfile?.timezone ?? null),
     [clientProfile?.timezone],

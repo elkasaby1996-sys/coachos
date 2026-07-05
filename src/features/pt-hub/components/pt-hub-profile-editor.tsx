@@ -5,11 +5,10 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CheckCircle2,
-  Circle,
+  Copy,
   EyeOff,
   Globe,
   ImageIcon,
-  Lock,
   Plus,
   Save,
   Sparkles,
@@ -28,13 +27,20 @@ import {
 } from "../../../components/ui/tabs";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import type { StoredProfileDraft } from "../lib/pt-hub";
-import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
+import {
+  getPublicCoachUrl,
+  slugifyValue,
+  usePtProfileSlugAvailability,
+} from "../lib/pt-hub";
+import {
+  PUBLIC_PROFILE_SLUG_MAX_LENGTH,
+  validatePublicProfileSlug,
+} from "../lib/public-profile-slug";
 import {
   uploadPtProfileMedia,
   type PtProfileMediaKind,
 } from "../lib/pt-profile-media";
 import type {
-  PTAccountSettingsDraft,
   PTAvailabilityMode,
   PTCoachingMode,
   PTProfile,
@@ -44,6 +50,7 @@ import type {
 } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { useSessionAuth } from "../../../lib/auth";
+import { routes } from "../../../lib/routes";
 import { cn } from "../../../lib/utils";
 import {
   getCharacterLimitState,
@@ -101,32 +108,6 @@ const profileBuilderSteps = [
     keys: [],
   },
 ] as const;
-
-const visibilityOptions: Array<{
-  value: PTAccountSettingsDraft["profileVisibility"];
-  label: string;
-  description: string;
-  icon: typeof Circle;
-}> = [
-  {
-    value: "draft",
-    label: "Draft",
-    description: "Keep the profile in setup while you edit content.",
-    icon: Circle,
-  },
-  {
-    value: "private",
-    label: "Private",
-    description: "Publishable content stays hidden from discovery.",
-    icon: Lock,
-  },
-  {
-    value: "listed",
-    label: "Listed when published",
-    description: "Make the profile eligible for public listing after publish.",
-    icon: Globe,
-  },
-];
 
 function listToInput(values: string[]) {
   return values.join(", ");
@@ -435,14 +416,11 @@ function PtHubProfileLaunchPanel({
   displayNameValue,
   readiness,
   publicationState,
-  profileVisibility,
   saving,
   publishing,
-  updatingVisibility,
   mediaBusy,
   hasChanges,
   hasOverLimitErrors,
-  onProfileVisibilityChange,
   onSave,
   onTogglePublish,
 }: {
@@ -450,38 +428,49 @@ function PtHubProfileLaunchPanel({
   displayNameValue: string;
   readiness: PTProfileReadiness;
   publicationState: PTPublicationState;
-  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   saving: boolean;
   publishing: boolean;
-  updatingVisibility: boolean;
   mediaBusy: boolean;
   hasChanges: boolean;
   hasOverLimitErrors: boolean;
-  onProfileVisibilityChange: (
-    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
-  ) => Promise<void>;
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
+  const [copiedPublicUrl, setCopiedPublicUrl] = useState(false);
   const missingItems = readiness.checklist.filter((item) => !item.complete);
   const topMissingItems = missingItems.slice(0, 2);
   const remainingMissingCount = missingItems.length - topMissingItems.length;
-  const selectedVisibilityOption =
-    visibilityOptions.find((option) => option.value === profileVisibility) ??
-    visibilityOptions[0]!;
+  const publicSlugValidation = validatePublicProfileSlug(form.slug, {
+    allowEmpty: true,
+  });
+  const publicProfilePath =
+    publicSlugValidation.valid && publicSlugValidation.slug
+      ? routes.publicProfile(publicSlugValidation.slug)
+      : null;
+  const publicUrl = getPublicCoachUrl(publicSlugValidation.slug);
   const canPublishNow =
     publicationState.canPublish && !hasChanges && !hasOverLimitErrors;
   const primaryActionLabel = hasChanges
     ? "Save profile"
     : publicationState.isPublished
-      ? "Unpublish profile"
-      : "Publish profile";
+      ? "View public profile"
+      : readiness.readyForPublish
+        ? "Publish profile"
+        : "Finish profile";
+  const canCopyPublicUrl = Boolean(publicationState.isPublished && publicUrl);
+
+  const handleCopyPublicUrl = async () => {
+    if (!publicUrl) return;
+    await navigator.clipboard.writeText(publicUrl);
+    setCopiedPublicUrl(true);
+    window.setTimeout(() => setCopiedPublicUrl(false), 1800);
+  };
 
   return (
     <aside className="pt-hub-profile-launch-rail space-y-5">
       <PtHubSectionCard
         title="Launch panel"
-        description="Readiness, visibility, preview, and final actions in one place."
+        description="Readiness validates the profile. Publishing makes it live."
         contentClassName="space-y-4"
         actions={
           <Badge
@@ -541,47 +530,6 @@ function PtHubProfileLaunchPanel({
           </div>
         ) : null}
 
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-foreground">Visibility</p>
-            <span className="text-xs font-medium text-muted-foreground">
-              {selectedVisibilityOption.label}
-            </span>
-          </div>
-          <div
-            className="grid grid-cols-3 gap-1.5"
-            aria-label="Profile launch visibility"
-          >
-            {visibilityOptions.map((option) => {
-              const Icon = option.icon;
-              const selected = profileVisibility === option.value;
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={cn(
-                    "pt-hub-visibility-choice flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[16px] border px-2 py-2 text-center transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selected
-                      ? "border-primary/45 bg-primary/10 text-foreground"
-                      : "border-border/60 bg-background/28 text-muted-foreground hover:border-border/80 hover:bg-background/45 hover:text-foreground",
-                  )}
-                  disabled={publishing || updatingVisibility}
-                  onClick={() => void onProfileVisibilityChange(option.value)}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate text-xs font-semibold">
-                    {option.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {selectedVisibilityOption.description}
-          </p>
-        </div>
-
         <PtHubLiveProfilePreview
           form={form}
           displayNameValue={displayNameValue}
@@ -599,14 +547,17 @@ function PtHubProfileLaunchPanel({
             </Link>
           </Button>
           <Button
+            asChild={publicationState.isPublished && Boolean(publicUrl)}
             className="w-full justify-between"
             disabled={
               saving ||
               publishing ||
-              updatingVisibility ||
               mediaBusy ||
               hasOverLimitErrors ||
-              (!hasChanges && !publicationState.isPublished && !canPublishNow)
+              (!hasChanges &&
+                !publicationState.isPublished &&
+                readiness.readyForPublish &&
+                !canPublishNow)
             }
             onClick={() => {
               if (hasChanges) {
@@ -618,28 +569,66 @@ function PtHubProfileLaunchPanel({
                 return;
               }
 
+              if (!readiness.readyForPublish || publicationState.isPublished) {
+                return;
+              }
+
               void onTogglePublish(!publicationState.isPublished);
             }}
           >
-            <span>
-              {mediaBusy
-                ? "Finish uploads first"
-                : saving
-                  ? "Saving..."
-                  : publishing
-                    ? "Updating..."
-                    : hasOverLimitErrors
-                      ? "Fix field limits"
-                      : primaryActionLabel}
-            </span>
-            {hasChanges ? (
-              <Save className="h-4 w-4" />
-            ) : publicationState.isPublished ? (
-              <EyeOff className="h-4 w-4" />
+            {publicationState.isPublished && publicProfilePath ? (
+              <a href={publicProfilePath} target="_blank" rel="noreferrer">
+                <span>{primaryActionLabel}</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </a>
             ) : (
-              <Globe className="h-4 w-4" />
+              <>
+                <span>
+                  {mediaBusy
+                    ? "Finish uploads first"
+                    : saving
+                      ? "Saving..."
+                      : publishing
+                        ? "Updating..."
+                        : hasOverLimitErrors
+                          ? "Fix profile errors"
+                          : primaryActionLabel}
+                </span>
+                {hasChanges ? (
+                  <Save className="h-4 w-4" />
+                ) : publicationState.isPublished ? (
+                  <ArrowUpRight className="h-4 w-4" />
+                ) : readiness.readyForPublish ? (
+                  <Globe className="h-4 w-4" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+              </>
             )}
           </Button>
+          {canCopyPublicUrl ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-between"
+              onClick={() => void handleCopyPublicUrl()}
+            >
+              {copiedPublicUrl ? "Link copied" : "Copy link"}
+              <Copy className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {publicationState.isPublished ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-between text-muted-foreground hover:text-foreground"
+              disabled={saving || publishing || mediaBusy}
+              onClick={() => void onTogglePublish(false)}
+            >
+              {publishing ? "Updating..." : "Unpublish profile"}
+              <EyeOff className="h-4 w-4" />
+            </Button>
+          ) : null}
         </div>
       </PtHubSectionCard>
     </aside>
@@ -650,24 +639,16 @@ export function PtHubProfileEditor({
   profile,
   readiness,
   publicationState,
-  profileVisibility,
   saving,
   publishing,
-  updatingVisibility,
-  onProfileVisibilityChange,
   onSave,
   onTogglePublish,
 }: {
   profile: PTProfile;
   readiness: PTProfileReadiness;
   publicationState: PTPublicationState;
-  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   saving: boolean;
   publishing: boolean;
-  updatingVisibility: boolean;
-  onProfileVisibilityChange: (
-    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
-  ) => Promise<void>;
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
@@ -737,9 +718,22 @@ export function PtHubProfileEditor({
   });
   const slugLimitState = getCharacterLimitState({
     value: form.slug,
-    kind: "short_name",
+    limit: PUBLIC_PROFILE_SLUG_MAX_LENGTH,
     fieldLabel: "Public slug",
   });
+  const slugValidation = validatePublicProfileSlug(form.slug, {
+    allowEmpty: true,
+  });
+  const slugAvailabilityQuery = usePtProfileSlugAvailability(form.slug);
+  const slugAvailability = slugAvailabilityQuery.data;
+  const slugErrorText =
+    slugValidation.error ??
+    (slugAvailability && !slugAvailability.available
+      ? slugAvailability.message || "This public slug is already in use."
+      : null);
+  const slugChangedAfterPublish =
+    profile.isPublished &&
+    slugValidation.slug !== validatePublicProfileSlug(profile.slug).slug;
   const locationLimitState = getCharacterLimitState({
     value: form.locationLabel,
     kind: "default_text",
@@ -766,19 +760,20 @@ export function PtHubProfileEditor({
       fieldLabel: `${link.label} URL`,
     }),
   );
-  const hasOverLimitErrors = hasCharacterLimitError([
-    displayNameLimitState,
-    headlineLimitState,
-    shortBioLimitState,
-    specialtiesLimitState,
-    certificationsLimitState,
-    coachingStyleLimitState,
-    slugLimitState,
-    locationLimitState,
-    ...transformationTitleStates,
-    ...transformationSummaryStates,
-    ...socialLinkStates,
-  ]);
+  const hasOverLimitErrors =
+    hasCharacterLimitError([
+      displayNameLimitState,
+      headlineLimitState,
+      shortBioLimitState,
+      specialtiesLimitState,
+      certificationsLimitState,
+      coachingStyleLimitState,
+      slugLimitState,
+      locationLimitState,
+      ...transformationTitleStates,
+      ...transformationSummaryStates,
+      ...socialLinkStates,
+    ]) || Boolean(slugErrorText);
 
   const updateTransformation = (
     transformationId: string,
@@ -931,8 +926,7 @@ export function PtHubProfileEditor({
               </div>
               <p className="max-w-[66ch] text-sm leading-6 text-muted-foreground">
                 Complete the highest-signal items while you edit. The launch
-                panel keeps save, preview, visibility, and publishing in one
-                place.
+                panel keeps save, preview, and publishing in one place.
               </p>
             </div>
             <div className="grid gap-2">
@@ -1574,23 +1568,42 @@ export function PtHubProfileEditor({
               </label>
               <Input
                 id={`${fieldIdPrefix}-slug`}
-                isInvalid={slugLimitState.overLimit}
+                isInvalid={slugLimitState.overLimit || Boolean(slugErrorText)}
                 value={form.slug}
                 onChange={(event) =>
                   setForm((prev) => ({
                     ...prev,
-                    slug: slugifyValue(event.target.value),
+                    slug: event.target.value,
                   }))
                 }
                 placeholder="your-name-coach"
               />
               <p className="text-sm leading-6 text-muted-foreground">
-                Keep it short, readable, and close to your public coach name.
+                Use lowercase letters, numbers, and single hyphens. Keep it
+                short, readable, and close to your public coach name.
               </p>
+              {slugErrorText ? (
+                <p className="text-sm font-medium text-destructive">
+                  {slugErrorText}
+                </p>
+              ) : slugAvailability?.available ? (
+                <p className="text-sm font-medium text-success">
+                  This public slug is available.
+                </p>
+              ) : slugAvailabilityQuery.isFetching ? (
+                <p className="text-sm text-muted-foreground">
+                  Checking slug availability...
+                </p>
+              ) : null}
+              {slugChangedAfterPublish ? (
+                <p className="text-sm font-medium text-warning">
+                  Changing your public URL may break links you already shared.
+                </p>
+              ) : null}
               <FieldCharacterMeta
                 count={slugLimitState.count}
                 limit={slugLimitState.limit}
-                errorText={slugLimitState.errorText}
+                errorText={slugLimitState.errorText ?? undefined}
               />
             </div>
             <div className="rounded-[20px] bg-background/45 p-4">
@@ -1794,14 +1807,11 @@ export function PtHubProfileEditor({
           displayNameValue={displayNameValue}
           readiness={readiness}
           publicationState={publicationState}
-          profileVisibility={profileVisibility}
           saving={saving}
           publishing={publishing}
-          updatingVisibility={updatingVisibility}
           mediaBusy={mediaBusy}
           hasChanges={hasChanges}
           hasOverLimitErrors={hasOverLimitErrors}
-          onProfileVisibilityChange={onProfileVisibilityChange}
           onSave={onSave}
           onTogglePublish={onTogglePublish}
         />

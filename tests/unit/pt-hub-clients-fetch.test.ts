@@ -20,6 +20,7 @@ describe("fetchPtHubClientSummaries", () => {
       p_lifecycle: null,
       p_search: null,
       p_segment: null,
+      p_relationship_scope: "active",
     });
   });
 });

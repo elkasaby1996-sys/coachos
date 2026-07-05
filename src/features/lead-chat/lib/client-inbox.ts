@@ -5,6 +5,17 @@ export type ClientInboxThreadRef =
   | { type: "workspace"; conversationId: string }
   | { type: "lead"; leadId: string };
 
+export type ClientInboxHideableThread = {
+  id: string;
+  type: "workspace" | "lead";
+};
+
+export type ClientInboxSortableThread = {
+  id: string;
+  unreadCount: number;
+  timestamp: string | null;
+};
+
 export function buildClientInboxThreadParam(ref: ClientInboxThreadRef) {
   if (ref.type === "workspace") {
     return `workspace:${ref.conversationId}`;
@@ -49,6 +60,66 @@ export function buildClientInboxSourceLabel(params: {
   return params.archived ? "Lead chat (Archived)" : "Lead chat";
 }
 
+export function isClientInboxThreadHideable(thread: ClientInboxHideableThread) {
+  return thread.type !== "workspace";
+}
+
+export function filterClientInboxVisibleThreads<
+  Thread extends ClientInboxHideableThread,
+>(params: { threads: Thread[]; hiddenThreadIds: string[] }): Thread[] {
+  if (params.hiddenThreadIds.length === 0) return params.threads;
+
+  const hidden = new Set(params.hiddenThreadIds);
+  return params.threads.filter(
+    (thread) => !isClientInboxThreadHideable(thread) || !hidden.has(thread.id),
+  );
+}
+
+export function resolveStableClientInboxSelection(params: {
+  currentThreadId: string | null;
+  requestedThreadId: string | null;
+  threadIds: string[];
+  sourcesLoading: boolean;
+}) {
+  const threadIdSet = new Set(params.threadIds);
+
+  if (params.requestedThreadId && threadIdSet.has(params.requestedThreadId)) {
+    return params.requestedThreadId;
+  }
+
+  if (params.currentThreadId && threadIdSet.has(params.currentThreadId)) {
+    return params.currentThreadId;
+  }
+
+  if (params.threadIds.length > 0) {
+    return params.threadIds[0] ?? null;
+  }
+
+  if (params.sourcesLoading) {
+    return params.currentThreadId;
+  }
+
+  return null;
+}
+
+export function sortClientInboxThreads<
+  Thread extends ClientInboxSortableThread,
+>(threads: Thread[]): Thread[] {
+  return [...threads].sort((a, b) => {
+    if (a.unreadCount !== b.unreadCount) {
+      return b.unreadCount - a.unreadCount;
+    }
+
+    const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+}
+
 function normalizeDisplayName(value: string | null | undefined) {
   const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : null;
@@ -74,6 +145,11 @@ export function resolveWorkspaceThreadTitle(params: {
   const coachDisplayName = normalizeCoachDisplayName(params.coachDisplayName);
   if (coachDisplayName) return coachDisplayName;
 
+  const workspaceName = normalizeDisplayName(params.workspaceName);
+  if (workspaceName) {
+    return workspaceName.replace(/^coach\s+/i, "").trim();
+  }
+
   const coachSenderName = normalizeCoachDisplayName(
     params.latestCoachSenderName,
   );
@@ -84,11 +160,6 @@ export function resolveWorkspaceThreadTitle(params: {
       params.lastMessageSenderName,
     );
     if (lastPtSenderName) return lastPtSenderName;
-  }
-
-  const workspaceName = normalizeDisplayName(params.workspaceName);
-  if (workspaceName) {
-    return workspaceName.replace(/^coach\s+/i, "").trim();
   }
 
   const hasExplicitEmptyWorkspaceContext =

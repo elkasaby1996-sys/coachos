@@ -1,12 +1,15 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  Globe2,
   PauseCircle,
   Search,
   ShieldAlert,
+  UserPlus,
   UsersRound,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
@@ -16,7 +19,9 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { PtHubClientTable } from "../../features/pt-hub/components/pt-hub-client-table";
 import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
+import { getPtHubFirstClientApplicationPath } from "../../features/pt-hub/lib/overview-dashboard";
 import {
+  usePtHubActivationSummary,
   usePtHubClientStats,
   usePtHubClientsPage,
   usePtHubWorkspaces,
@@ -26,6 +31,61 @@ import { type ClientSegmentKey } from "../../lib/client-lifecycle";
 import { useI18n } from "../../lib/i18n-context";
 import { useWorkspace } from "../../lib/use-workspace";
 
+function FirstClientGuidanceActions({
+  applicationHref,
+  applicationCtaLabel,
+}: {
+  applicationHref: string;
+  applicationCtaLabel: string;
+}) {
+  return (
+    <div className="grid w-full max-w-3xl gap-3 text-left sm:grid-cols-2">
+      <div className="rounded-[20px] border border-border/60 bg-background/34 px-4 py-4">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-success/22 bg-success/10 text-success">
+            <UserPlus className="h-4 w-4 [stroke-width:1.8]" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              Invite an existing client
+            </p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+              Already coach someone? Send them an invite and bring them into
+              this workspace.
+            </p>
+            <InviteClientDialog
+              trigger={
+                <Button type="button" size="sm" className="mt-3">
+                  Invite client
+                </Button>
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-[20px] border border-border/60 bg-background/34 px-4 py-4">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/22 bg-primary/10 text-primary">
+            <Globe2 className="h-4 w-4 [stroke-width:1.8]" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              Get new applications
+            </p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+              Use your public profile so new clients can apply to work with you.
+            </p>
+            <Button asChild variant="secondary" size="sm" className="mt-3">
+              <Link to={applicationHref}>{applicationCtaLabel}</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PtHubClientsPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -33,6 +93,7 @@ export function PtHubClientsPage() {
   const { switchWorkspace } = useWorkspace();
   const statsQuery = usePtHubClientStats();
   const workspacesQuery = usePtHubWorkspaces();
+  const activationSummaryQuery = usePtHubActivationSummary();
   const [searchValue, setSearchValue] = useState(
     () => searchParams.get("search") ?? "",
   );
@@ -77,6 +138,10 @@ export function PtHubClientsPage() {
     clientsQuery.isLoading || (clientsQuery.isFetching && !clientsQuery.data);
   const isEmpty = totalCount === 0;
   const hasAnyClients = (stats?.totalClients ?? 0) > 0;
+  const firstClientApplicationPath = getPtHubFirstClientApplicationPath({
+    profileComplete: activationSummaryQuery.data?.profileComplete ?? false,
+    profilePublished: activationSummaryQuery.data?.profilePublished ?? false,
+  });
   const hasActiveFilters =
     searchValue.trim().length > 0 ||
     workspaceFilter !== "all" ||
@@ -295,6 +360,14 @@ export function PtHubClientsPage() {
                   )
             }
             icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
+            action={
+              hasAnyClients ? null : (
+                <FirstClientGuidanceActions
+                  applicationHref={firstClientApplicationPath.href}
+                  applicationCtaLabel={firstClientApplicationPath.ctaLabel}
+                />
+              )
+            }
           />
         ) : (
           <PtHubClientTable clients={clients} onOpen={openClientWorkspace} />

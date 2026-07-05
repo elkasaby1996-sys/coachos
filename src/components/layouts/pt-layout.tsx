@@ -46,6 +46,7 @@ import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { cn } from "../../lib/utils";
 import { useWorkspace } from "../../lib/use-workspace";
+import { tracePoint } from "../../lib/perf-trace";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { AppFooter } from "../common/app-footer";
 import { PageContainer } from "../common/page-container";
@@ -570,10 +571,21 @@ export function PtLayout() {
   const isLightMode = resolvedTheme === "light";
   const currentModule = getModuleToneForPath(location.pathname);
   const routeTransitionKey = getWorkspaceRouteTransitionKey(location.pathname);
+  const mountTraceLoggedRef = useRef(false);
   const workspaceSettingsRouteMatch = location.pathname.match(
     /^\/workspace\/([^/]+)\/settings(?:\/|$)/,
   );
   const routeWorkspaceId = workspaceSettingsRouteMatch?.[1] ?? null;
+
+  useEffect(() => {
+    if (mountTraceLoggedRef.current) return;
+    mountTraceLoggedRef.current = true;
+    tracePoint("PtLayout.mount", {
+      pathname: location.pathname,
+      workspaceId,
+      loading,
+    });
+  }, [loading, location.pathname, workspaceId]);
   const headerWorkspaceId = routeWorkspaceId ?? workspaceId;
   const currentModuleClasses = getModuleToneClasses(currentModule);
   const errorMessage =
