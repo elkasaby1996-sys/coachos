@@ -19,6 +19,20 @@ export const ClientLayout = lazy(() =>
 export const LoginPage = lazy(() =>
   import("../pages/public/login").then((m) => ({ default: m.LoginPage })),
 );
+export const MarketingHomePage = lazy(() =>
+  import("../pages/public/marketing-home").then((m) => ({
+    default: m.MarketingHomePage,
+  })),
+);
+export const ProductPage = lazy(() =>
+  import("../pages/public/product").then((m) => ({ default: m.ProductPage })),
+);
+export const PricingPage = lazy(() =>
+  import("../pages/public/pricing").then((m) => ({ default: m.PricingPage })),
+);
+export const DemoPage = lazy(() =>
+  import("../pages/public/demo").then((m) => ({ default: m.DemoPage })),
+);
 export const AuthCallbackPage = lazy(() =>
   import("../pages/public/auth-callback").then((m) => ({
     default: m.AuthCallbackPage,

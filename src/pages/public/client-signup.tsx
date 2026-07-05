@@ -127,12 +127,13 @@ export function ClientSignupPage() {
       );
       if (signUpError) throw signUpError;
 
-      const userId = data.user?.id ?? user?.id;
+      const activeUser = data.session?.user ?? user ?? null;
+      const userId = activeUser?.id;
       if (userId) {
         await ensureClientProfile({
           userId,
           fullName,
-          avatarUrl: getUserAvatarUrl(data.user ?? user ?? null),
+          avatarUrl: getUserAvatarUrl(activeUser),
           email,
         });
       }

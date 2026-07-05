@@ -27,6 +27,7 @@ import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { cn } from "../../lib/utils";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import {
   checkinQuestionTypeOptions,
   createEmptyCheckinQuestionDraft,
@@ -126,6 +127,7 @@ export function PtCheckinTemplatesPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
+  const { canManageDelivery } = useWorkspaceWriteAccess();
   const queryClient = useQueryClient();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     null,
@@ -495,6 +497,7 @@ export function PtCheckinTemplatesPage() {
   };
 
   const handleSaveTemplate = async () => {
+    if (!canManageDelivery) return;
     const validationError = validateEditor();
     if (validationError) {
       setToastVariant("error");
@@ -592,6 +595,7 @@ export function PtCheckinTemplatesPage() {
   };
 
   const handleDuplicateTemplate = async () => {
+    if (!canManageDelivery) return;
     const validationError = validateEditor();
     if (validationError) {
       setToastVariant("error");
@@ -643,6 +647,7 @@ export function PtCheckinTemplatesPage() {
   };
 
   const handleStartNewTemplate = () => {
+    if (!canManageDelivery) return;
     setCreatingNewTemplate(true);
     setSelectedTemplateId(null);
     setEditor(emptyTemplateEditor());
@@ -672,13 +677,17 @@ export function PtCheckinTemplatesPage() {
         description="Build question sets that feel coach-ready, stay aligned with the client renderer, and stay safe once clients start submitting."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={handleStartNewTemplate}>
-              <Plus className="mr-2 h-4 w-4" />
-              New template
-            </Button>
+            {canManageDelivery ? (
+              <Button variant="secondary" onClick={handleStartNewTemplate}>
+                <Plus className="mr-2 h-4 w-4" />
+                New template
+              </Button>
+            ) : null}
             <Button
               onClick={handleSaveTemplate}
-              disabled={saveState !== "idle" || !hasUnsavedChanges}
+              disabled={
+                saveState !== "idle" || !hasUnsavedChanges || !canManageDelivery
+              }
             >
               {saveLabel}
             </Button>
@@ -758,8 +767,8 @@ export function PtCheckinTemplatesPage() {
             <EmptyState
               title="No check-in templates yet"
               description="Start with a reusable template, then assign it as a workspace default or a client override."
-              actionLabel="Create template"
-              onAction={handleStartNewTemplate}
+              actionLabel={canManageDelivery ? "Create template" : undefined}
+              onAction={canManageDelivery ? handleStartNewTemplate : undefined}
             />
           ) : (
             <div className="space-y-3">
@@ -846,7 +855,11 @@ export function PtCheckinTemplatesPage() {
                 variant="secondary"
                 size="sm"
                 onClick={handleDuplicateTemplate}
-                disabled={saveState !== "idle" || editor.questions.length === 0}
+                disabled={
+                  saveState !== "idle" ||
+                  editor.questions.length === 0 ||
+                  !canManageDelivery
+                }
               >
                 <Copy className="mr-2 h-4 w-4" />
                 Duplicate
@@ -1370,13 +1383,19 @@ export function PtCheckinTemplatesPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={handleStartNewTemplate}>
-                  <LayoutTemplate className="mr-2 h-4 w-4" />
-                  Start fresh
-                </Button>
+                {canManageDelivery ? (
+                  <Button variant="secondary" onClick={handleStartNewTemplate}>
+                    <LayoutTemplate className="mr-2 h-4 w-4" />
+                    Start fresh
+                  </Button>
+                ) : null}
                 <Button
                   onClick={handleSaveTemplate}
-                  disabled={saveState !== "idle" || !hasUnsavedChanges}
+                  disabled={
+                    saveState !== "idle" ||
+                    !hasUnsavedChanges ||
+                    !canManageDelivery
+                  }
                 >
                   {saveLabel}
                 </Button>

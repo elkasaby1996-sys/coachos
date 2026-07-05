@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   InfiniteData,
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -22,6 +23,10 @@ import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { sendConversationMessage } from "../../lib/messages";
+import {
+  formatMessageSenderLabel,
+  type MessageSenderAttribution,
+} from "../../lib/message-sender-attribution";
 import { getActionErrorMessage } from "../../lib/request-guard";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
@@ -29,6 +34,7 @@ import { formatRelativeTime } from "../../lib/relative-time";
 import { FieldCharacterMeta } from "../../components/common/field-character-meta";
 import { Textarea } from "../../components/ui/textarea";
 import { getCharacterLimitState } from "../../lib/character-limits";
+import { useConvertedLeadHistory } from "../../features/lead-chat/lib/lead-chat";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -37,6 +43,8 @@ const formatTime = (timestamp: string | null) => {
     minute: "2-digit",
   });
 };
+
+const leadHistoryCollapseThreshold = 6;
 
 const getPtMessagesUnreadKey = (workspaceId: string | null | undefined) =>
   ["pt-messages-unread", workspaceId ?? "none"] as const;
@@ -66,6 +74,12 @@ type MessageRow = {
   sender_name: string | null;
   body: string | null;
   created_at: string | null;
+};
+
+type MessageSenderAttributionRow = {
+  sender_user_id: string;
+  display_name: string | null;
+  workspace_role: string | null;
 };
 
 export function PtMessagesPage() {
@@ -149,6 +163,14 @@ export function PtMessagesPage() {
     );
     return map;
   }, [conversationsQuery.data]);
+  const accessibleConversationIds = useMemo(
+    () =>
+      (conversationsQuery.data ?? [])
+        .map((row) => row.id)
+        .filter(Boolean)
+        .sort(),
+    [conversationsQuery.data],
+  );
 
   useEffect(() => {
     if (!selectedClientId) {
@@ -184,6 +206,39 @@ export function PtMessagesPage() {
       supabase.removeChannel(channel);
     };
   }, [queryClient, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId || accessibleConversationIds.length === 0) return;
+
+    const conversationIds = accessibleConversationIds;
+    let channel = supabase.channel(
+      `pt-sidebar-message-previews-${workspaceId}`,
+    );
+    conversationIds.forEach((conversationId) => {
+      channel = channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["pt-messages-conversations", workspaceId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: getPtMessagesUnreadKey(workspaceId),
+          });
+        },
+      );
+    });
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [accessibleConversationIds, queryClient, workspaceId]);
 
   const ensureConversationMutation = useMutation({
     mutationFn: async (clientId: string) => {
@@ -238,6 +293,7 @@ export function PtMessagesPage() {
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === messagePageSize ? allPages.length : undefined,
+    placeholderData: keepPreviousData,
   });
 
   const messageRows = useMemo(() => {
@@ -245,6 +301,46 @@ export function PtMessagesPage() {
     const flat = pages.flat();
     return [...flat].reverse();
   }, [messagesQuery.data]);
+
+  const senderAttributionsQuery = useQuery({
+    queryKey: ["conversation-sender-attributions", activeConversationId],
+    enabled: !!activeConversationId,
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "conversation_sender_attributions",
+        {
+          p_conversation_id: activeConversationId ?? "",
+        },
+      );
+      if (error) throw error;
+      return (data ?? []) as MessageSenderAttributionRow[];
+    },
+  });
+
+  const senderAttributionByUserId = useMemo(() => {
+    const map = new Map<string, MessageSenderAttribution>();
+    (senderAttributionsQuery.data ?? []).forEach((row) => {
+      if (!row.sender_user_id) return;
+      map.set(row.sender_user_id, {
+        senderUserId: row.sender_user_id,
+        displayName: row.display_name,
+        workspaceRole: row.workspace_role,
+      });
+    });
+    return map;
+  }, [senderAttributionsQuery.data]);
+  const convertedLeadHistoryQuery =
+    useConvertedLeadHistory(activeConversationId);
+  const convertedLeadHistoryMessages = convertedLeadHistoryQuery.data ?? [];
+  const shouldCollapseLeadHistoryByDefault =
+    convertedLeadHistoryMessages.length > leadHistoryCollapseThreshold;
+  const [isLeadHistoryExpanded, setIsLeadHistoryExpanded] = useState(true);
+
+  useEffect(() => {
+    setIsLeadHistoryExpanded(!shouldCollapseLeadHistoryByDefault);
+  }, [activeConversationId, shouldCollapseLeadHistoryByDefault]);
+
   const renderedMessageRows = useMemo(
     () =>
       messageRows.slice(Math.max(0, messageRows.length - visibleMessageCount)),
@@ -293,7 +389,7 @@ export function PtMessagesPage() {
 
   useEffect(() => {
     if (!scrollRef.current) return;
-    scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    scrollRef.current.scrollIntoView({ behavior: "auto", block: "end" });
   }, [renderedMessageRows.length]);
 
   useEffect(() => {
@@ -313,7 +409,16 @@ export function PtMessagesPage() {
             queryKey: ["pt-messages-thread", activeConversationId],
           });
           queryClient.invalidateQueries({
+            queryKey: ["pt-messages-conversations", workspaceId],
+          });
+          queryClient.invalidateQueries({
             queryKey: getPtMessagesUnreadKey(workspaceId),
+          });
+          queryClient.invalidateQueries({
+            queryKey: [
+              "conversation-sender-attributions",
+              activeConversationId,
+            ],
           });
         },
       )
@@ -424,6 +529,10 @@ export function PtMessagesPage() {
           }
 
           const pages = [...current.pages];
+          if (pages.some((page) => page.some((row) => row.id === message.id))) {
+            return current;
+          }
+
           if (pages.length === 0) {
             pages.push([message]);
           } else {
@@ -696,8 +805,8 @@ export function PtMessagesPage() {
               ))}
             </div>
           ) : (
-            <div className="flex h-[560px] flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex h-[560px] flex-col">
+              <p className="px-1 pb-3 text-sm text-muted-foreground">
                 {selectedConversationRow?.conversation?.last_message_at
                   ? `Last activity ${formatRelativeTime(
                       selectedConversationRow.conversation.last_message_at,
@@ -705,106 +814,197 @@ export function PtMessagesPage() {
                   : "No prior thread history yet."}
               </p>
 
-              <div className="flex-1 space-y-3 overflow-y-auto pr-2">
-                {messageRows.length === 0 ? (
-                  <div className="flex h-full flex-col justify-between rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
-                    <EmptyState
-                      title="No messages yet"
-                      description="Start the thread with a short coaching prompt so the client knows what to reply with next."
-                    />
-                    <div className="space-y-3">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Suggested starters
+              <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-4 pr-2">
+                <div className="flex min-h-full flex-col justify-end gap-3">
+                  {convertedLeadHistoryMessages.length > 0 ? (
+                    <>
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="h-px flex-1 bg-border/50" />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsLeadHistoryExpanded((current) => !current)
+                          }
+                          className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-secondary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-expanded={isLeadHistoryExpanded}
+                        >
+                          Previous application conversation{" "}
+                          <span className="font-medium normal-case tracking-normal">
+                            {"\u00b7"} {convertedLeadHistoryMessages.length}{" "}
+                            {convertedLeadHistoryMessages.length === 1
+                              ? "message"
+                              : "messages"}
+                          </span>
+                        </button>
+                        <div className="h-px flex-1 bg-border/50" />
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {suggestedReplies.map((prompt) => (
-                          <button
-                            key={prompt}
-                            type="button"
-                            onClick={() => setMessageDraft(prompt)}
-                            className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-border hover:bg-secondary/28 hover:text-foreground"
-                          >
-                            {prompt}
-                          </button>
-                        ))}
+                      {isLeadHistoryExpanded
+                        ? convertedLeadHistoryMessages.map((message) => {
+                            const isCoach = message.senderUserId === user?.id;
+                            const senderLabel = formatMessageSenderLabel({
+                              currentUserId: user?.id,
+                              message: {
+                                senderUserId: message.senderUserId,
+                                senderRole: isCoach ? "pt" : "client",
+                                senderName:
+                                  selectedConversationRow?.name ?? "Client",
+                              },
+                              senderAttribution: isCoach
+                                ? null
+                                : {
+                                    senderUserId: message.senderUserId,
+                                    displayName:
+                                      selectedConversationRow?.name ?? "Client",
+                                    workspaceRole: "client",
+                                  },
+                            });
+                            return (
+                              <div
+                                key={message.id}
+                                className={cn(
+                                  "flex",
+                                  isCoach ? "justify-end" : "justify-start",
+                                )}
+                              >
+                                <div
+                                  className={cn(
+                                    "w-fit max-w-[80%] rounded-[20px] border px-3 py-2 text-sm opacity-75",
+                                    isCoach
+                                      ? "border-primary/20 bg-primary/10 text-foreground"
+                                      : "border-border/60 bg-secondary/35 text-foreground",
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                    <span>{senderLabel}</span>
+                                    <span>{formatTime(message.sentAt)}</span>
+                                    <span>Read-only history</span>
+                                  </div>
+                                  <div>{message.body}</div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        : null}
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="h-px flex-1 bg-border/60" />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Active coaching conversation
+                        </span>
+                        <div className="h-px flex-1 bg-border/60" />
+                      </div>
+                    </>
+                  ) : null}
+                  {messageRows.length === 0 ? (
+                    <div className="rounded-[20px] border border-dashed border-border/70 bg-background/25 p-5">
+                      <EmptyState
+                        title="No messages yet"
+                        description="Start the thread with a short coaching prompt so the client knows what to reply with next."
+                      />
+                      <div className="space-y-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Suggested starters
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {suggestedReplies.map((prompt) => (
+                            <button
+                              key={prompt}
+                              type="button"
+                              onClick={() => setMessageDraft(prompt)}
+                              className="rounded-full border border-border/70 bg-secondary/18 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-border hover:bg-secondary/28 hover:text-foreground"
+                            >
+                              {prompt}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    {messagesQuery.hasNextPage ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => messagesQuery.fetchNextPage()}
-                          disabled={messagesQuery.isFetchingNextPage}
-                        >
-                          {messagesQuery.isFetchingNextPage
-                            ? "Loading..."
-                            : "Load older"}
-                        </Button>
-                      </div>
-                    ) : null}
-                    {hasHiddenLoadedMessages ? (
-                      <div className="flex justify-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setVisibleMessageCount((current) => current + 100)
-                          }
-                        >
-                          Show older loaded messages
-                        </Button>
-                      </div>
-                    ) : null}
-                    {renderedMessageRows.map((message) => {
-                      const isCoach = message.sender_role === "pt";
-                      return (
-                        <div
-                          key={message.id}
-                          className={cn(
-                            "flex",
-                            isCoach ? "justify-end" : "justify-start",
-                          )}
-                        >
+                  ) : (
+                    <>
+                      {messagesQuery.hasNextPage ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => messagesQuery.fetchNextPage()}
+                            disabled={messagesQuery.isFetchingNextPage}
+                          >
+                            {messagesQuery.isFetchingNextPage
+                              ? "Loading..."
+                              : "Load older"}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {hasHiddenLoadedMessages ? (
+                        <div className="flex justify-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setVisibleMessageCount((current) => current + 100)
+                            }
+                          >
+                            Show older loaded messages
+                          </Button>
+                        </div>
+                      ) : null}
+                      {renderedMessageRows.map((message) => {
+                        const isMine = message.sender_user_id === user?.id;
+                        const senderLabel = formatMessageSenderLabel({
+                          currentUserId: user?.id,
+                          message: {
+                            senderUserId: message.sender_user_id,
+                            senderRole: message.sender_role,
+                            senderName: message.sender_name,
+                          },
+                          senderAttribution: message.sender_user_id
+                            ? (senderAttributionByUserId.get(
+                                message.sender_user_id,
+                              ) ?? null)
+                            : null,
+                        });
+                        return (
                           <div
+                            key={message.id}
                             className={cn(
-                              "w-fit max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
-                              isCoach
-                                ? "border-primary/20 bg-primary/12 text-foreground"
-                                : "border-border/60 bg-secondary/45 text-foreground",
+                              "flex",
+                              isMine ? "justify-end" : "justify-start",
                             )}
                           >
                             <div
                               className={cn(
-                                "text-[10px] tracking-[0.16em] text-muted-foreground",
-                                isCoach ? "normal-case" : "uppercase",
+                                "w-fit max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
+                                isMine
+                                  ? "border-primary/20 bg-primary/12 text-foreground"
+                                  : "border-border/60 bg-secondary/45 text-foreground",
                               )}
                             >
-                              {isCoach
-                                ? "You"
-                                : (message.sender_name ?? "Client")}
-                            </div>
-                            <div>{message.body ?? ""}</div>
-                            <div className="mt-1 text-[10px] text-muted-foreground">
-                              {formatTime(message.created_at)}
+                              <div
+                                className={cn(
+                                  "text-[10px] tracking-[0.16em] text-muted-foreground",
+                                  isMine ? "normal-case" : "uppercase",
+                                )}
+                              >
+                                {senderLabel}
+                              </div>
+                              <div>{message.body ?? ""}</div>
+                              <div className="mt-1 text-[10px] text-muted-foreground">
+                                {formatTime(message.created_at)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-                {typingUsers.length > 0 ? (
-                  <div className="text-xs text-muted-foreground">
-                    Client is typing...
-                  </div>
-                ) : null}
-                <div ref={scrollRef} />
+                        );
+                      })}
+                    </>
+                  )}
+                  {typingUsers.length > 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      Client is typing...
+                    </div>
+                  ) : null}
+                  <div ref={scrollRef} />
+                </div>
               </div>
-              <div className="rounded-[22px] border border-border/70 bg-background/45 p-3">
+              <div className="border-t border-border/60 bg-background/60 p-3">
                 {sendError ? (
                   <p className="mb-3 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
                     {sendError}

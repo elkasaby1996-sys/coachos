@@ -31,6 +31,7 @@ export type PtProfileRow = {
 export type ClientProfileRow = {
   id: string;
   workspace_id: string | null;
+  relationship_status?: string | null;
   user_id: string | null;
   status: string | null;
   display_name: string | null;

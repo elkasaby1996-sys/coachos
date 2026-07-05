@@ -4,7 +4,9 @@ import {
   getSemanticToneForStatus,
   type SemanticTone,
 } from "../../../lib/semantic-status";
+import { routes } from "../../../lib/routes";
 import type {
+  PTActivationSummary,
   PTAnalyticsSnapshot,
   PTClientSummary,
   PTLead,
@@ -47,6 +49,48 @@ export interface PtHubOverviewActionItem {
   workspaceId?: string | null;
 }
 
+export type PtHubActivationChecklistStatus =
+  | "complete"
+  | "next"
+  | "incomplete"
+  | "optional";
+
+export interface PtHubActivationChecklistItem {
+  id: string;
+  title: string;
+  description: string;
+  status: PtHubActivationChecklistStatus;
+  optional: boolean;
+  href: string;
+  ctaLabel: string;
+}
+
+export interface PtHubFirstClientApplicationPath {
+  title: string;
+  description: string;
+  href: string;
+  ctaLabel: string;
+}
+
+export interface PtHubFirstClientGuidance {
+  invite: {
+    title: string;
+    description: string;
+    ctaLabel: string;
+  };
+  applications: PtHubFirstClientApplicationPath;
+}
+
+export interface PtHubActivationChecklistModel {
+  items: PtHubActivationChecklistItem[];
+  nextItem: PtHubActivationChecklistItem | null;
+  coreCompletedCount: number;
+  coreTotalCount: number;
+  coreComplete: boolean;
+  optionalItem: PtHubActivationChecklistItem;
+  firstClientGuidance: PtHubFirstClientGuidance | null;
+}
+
 export interface PtHubOverviewChecklistItem {
   id: string;
   label: string;
@@ -82,6 +126,9 @@ export interface PtHubOverviewDashboardModel {
   metrics: PtHubOverviewMetric[];
   actionItems: PtHubOverviewActionItem[];
   launchChecklist: PtHubOverviewChecklistItem[];
+  activationChecklist: PtHubActivationChecklistModel | null;
+  activationChecklistLoading?: boolean;
+  activationChecklistError?: boolean;
   quickActions: PtHubOverviewQuickAction[];
   pipelineSummary: PtHubOverviewSummaryItem[];
   clientHealthSummary: PtHubOverviewSummaryItem[];
@@ -102,6 +149,9 @@ type OverviewDashboardParams = {
   clients: PTClientSummary[] | null | undefined;
   subscription: PTSubscriptionSummary | null | undefined;
   revenue: PTRevenueSnapshot | null | undefined;
+  activationSummary?: PTActivationSummary | null | undefined;
+  activationSummaryLoading?: boolean;
+  activationSummaryError?: boolean;
 };
 
 function buildMetricDelta(
@@ -127,6 +177,197 @@ function sortChecklist(
     if (left.complete === right.complete) return 0;
     return left.complete ? 1 : -1;
   });
+}
+
+function getClientActivationHref(
+  firstClientId: string | null | undefined,
+  fallbackHref: string,
+) {
+  return firstClientId ? `/pt/clients/${firstClientId}` : fallbackHref;
+}
+
+function getWorkspaceTeamHref(summary: PTActivationSummary) {
+  return summary.activationWorkspaceSlug
+    ? routes.workspaceSettings(summary.activationWorkspaceSlug, "team")
+    : "/pt-hub/workspaces";
+}
+
+export function getPtHubFirstClientApplicationPath(params: {
+  profileComplete: boolean;
+  profilePublished: boolean;
+}): PtHubFirstClientApplicationPath {
+  if (!params.profileComplete) {
+    return {
+      title: "Get new applications",
+      description:
+        "Use your public profile so new clients can apply to work with you.",
+      href: "/pt-hub/profile",
+      ctaLabel: "Complete profile",
+    };
+  }
+
+  if (!params.profilePublished) {
+    return {
+      title: "Get new applications",
+      description:
+        "Use your public profile so new clients can apply to work with you.",
+      href: "/pt-hub/profile",
+      ctaLabel: "Publish profile",
+    };
+  }
+
+  return {
+    title: "Get new applications",
+    description:
+      "Use your public profile so new clients can apply to work with you.",
+    href: "/pt-hub/leads",
+    ctaLabel: "Review leads",
+  };
+}
+
+export function getPtHubActivationChecklistModel(
+  summary: PTActivationSummary | null | undefined,
+): PtHubActivationChecklistModel | null {
+  if (!summary) return null;
+
+  const coreDefinitions = [
+    {
+      id: "workspace",
+      title: "Create first workspace",
+      description:
+        "Set up the coaching space where clients, plans, and check-ins will live.",
+      complete: summary.workspaceExists,
+      href: summary.workspaceExists
+        ? "/pt-hub/workspaces"
+        : "/pt/onboarding/workspace",
+      ctaLabel: summary.workspaceExists
+        ? "Open workspaces"
+        : "Create workspace",
+    },
+    {
+      id: "profile",
+      title: "Complete marketplace profile",
+      description:
+        "Add the profile basics clients need before they trust your offer.",
+      complete: summary.profileComplete,
+      href: "/pt-hub/profile",
+      ctaLabel: summary.profileComplete ? "Review profile" : "Complete profile",
+    },
+    {
+      id: "publish",
+      title: "Publish profile",
+      description:
+        "Make your coach page live so clients can find or validate you.",
+      complete: summary.profilePublished,
+      href: "/pt-hub/profile",
+      ctaLabel: summary.profilePublished ? "View profile" : "Publish profile",
+    },
+    {
+      id: "first-client",
+      title: "Add/get first client",
+      description:
+        "Choose whether to invite someone you already coach or collect new applications.",
+      complete: summary.hasFirstClient,
+      href: "/pt-hub/clients",
+      ctaLabel: summary.hasFirstClient ? "Open client" : "Choose client path",
+    },
+    {
+      id: "workout",
+      title: "Assign first workout",
+      description: "Give the client their first training action in RepSync.",
+      complete: summary.hasWorkoutAssigned,
+      href: getClientActivationHref(
+        summary.firstClientId,
+        "/pt/templates/workouts",
+      ),
+      ctaLabel: summary.hasWorkoutAssigned
+        ? "Review workouts"
+        : "Assign workout",
+    },
+    {
+      id: "nutrition",
+      title: "Assign first nutrition plan",
+      description: "Add the first nutrition guidance once the client is ready.",
+      complete: summary.hasNutritionAssigned,
+      href: getClientActivationHref(
+        summary.firstClientId,
+        "/pt/nutrition-programs",
+      ),
+      ctaLabel: summary.hasNutritionAssigned
+        ? "Review nutrition"
+        : "Assign nutrition",
+    },
+    {
+      id: "check-in",
+      title: "Assign first check-in",
+      description:
+        "Create the first feedback loop so progress does not go quiet.",
+      complete: summary.hasCheckInAssigned,
+      href: getClientActivationHref(
+        summary.firstClientId,
+        "/pt/checkins/templates",
+      ),
+      ctaLabel: summary.hasCheckInAssigned
+        ? "Review check-ins"
+        : "Assign check-in",
+    },
+  ];
+
+  const nextCoreId = coreDefinitions.find((item) => !item.complete)?.id ?? null;
+  const coreItems = coreDefinitions.map((item) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    href: item.href,
+    ctaLabel: item.ctaLabel,
+    optional: false,
+    status: item.complete
+      ? "complete"
+      : item.id === nextCoreId
+        ? "next"
+        : "incomplete",
+  })) satisfies PtHubActivationChecklistItem[];
+  const optionalItem = {
+    id: "co-coach",
+    title: "Invite assistant/co-coach",
+    description:
+      "Optional: bring in help once the first coaching flow is moving.",
+    href: getWorkspaceTeamHref(summary),
+    ctaLabel: summary.hasCoCoachInvitedOrActive
+      ? "Review team"
+      : "Invite co-coach",
+    optional: true,
+    status: summary.hasCoCoachInvitedOrActive ? "complete" : "optional",
+  } satisfies PtHubActivationChecklistItem;
+
+  return {
+    items: [...coreItems, optionalItem],
+    nextItem: coreItems.find((item) => item.status === "next") ?? null,
+    coreCompletedCount: summary.coreCompletedCount,
+    coreTotalCount: summary.coreTotalCount,
+    coreComplete: summary.coreCompletedCount >= summary.coreTotalCount,
+    optionalItem,
+    firstClientGuidance: summary.hasFirstClient
+      ? null
+      : {
+          invite: {
+            title: "Invite an existing client",
+            description:
+              "Already coach someone? Send them an invite and bring them into this workspace.",
+            ctaLabel: "Invite client",
+          },
+          applications: getPtHubFirstClientApplicationPath({
+            profileComplete: summary.profileComplete,
+            profilePublished: summary.profilePublished,
+          }),
+        },
+  };
+}
+
+export function shouldShowPtHubActivationChecklist(
+  checklist: PtHubActivationChecklistModel | null | undefined,
+): checklist is PtHubActivationChecklistModel {
+  return Boolean(checklist && !checklist.coreComplete);
 }
 
 function getProfileCompletion(
@@ -326,6 +567,7 @@ function buildActionItems(params: {
   clientStats: ReturnType<typeof getPtClientBaseStats>;
   clientsNeedingAttentionCount: number;
   subscription: PTSubscriptionSummary | null | undefined;
+  activationChecklist: PtHubActivationChecklistModel | null;
 }): PtHubOverviewActionItem[] {
   const actionItems = new Map<
     string,
@@ -443,7 +685,7 @@ function buildActionItems(params: {
     });
   }
 
-  if (incompleteChecklist.length > 0) {
+  if (!params.activationChecklist && incompleteChecklist.length > 0) {
     upsertAction({
       id: "profile-blockers",
       label: "Finish profile setup",
@@ -457,7 +699,7 @@ function buildActionItems(params: {
     });
   }
 
-  if (!params.publicationState?.isPublished) {
+  if (!params.activationChecklist && !params.publicationState?.isPublished) {
     upsertAction({
       id: "publish-profile",
       label: "Publish your public profile",
@@ -476,7 +718,7 @@ function buildActionItems(params: {
     });
   }
 
-  if (params.workspaces.length === 0) {
+  if (!params.activationChecklist && params.workspaces.length === 0) {
     upsertAction({
       id: "create-coaching-space",
       label: "Create your first coaching space",
@@ -490,7 +732,7 @@ function buildActionItems(params: {
     });
   }
 
-  if (params.leads.length === 0) {
+  if (!params.activationChecklist && params.leads.length === 0) {
     upsertAction({
       id: "start-lead-flow",
       label: "Get your first lead",
@@ -856,6 +1098,9 @@ export function getPtHubOverviewDashboardModel(
     workspaces,
   });
   const isPublished = Boolean(params.publicationState?.isPublished);
+  const activationChecklist = getPtHubActivationChecklistModel(
+    params.activationSummary,
+  );
   const mode = getOverviewMode({
     leads,
     workspaces,
@@ -887,6 +1132,7 @@ export function getPtHubOverviewDashboardModel(
       clientStats,
       clientsNeedingAttentionCount,
       subscription: params.subscription,
+      activationChecklist,
     }),
     launchChecklist: buildLaunchChecklist({
       readiness: params.readiness,
@@ -895,6 +1141,9 @@ export function getPtHubOverviewDashboardModel(
       leads,
       clients,
     }),
+    activationChecklist,
+    activationChecklistLoading: params.activationSummaryLoading,
+    activationChecklistError: params.activationSummaryError,
     quickActions: buildQuickActions(),
     pipelineSummary: buildPipelineSummary({
       leads,

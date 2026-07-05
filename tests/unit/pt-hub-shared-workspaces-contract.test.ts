@@ -44,7 +44,8 @@ describe("PT Hub shared workspace contract", () => {
       "const isOwned = workspace.owner_user_id === userId",
     );
     expect(ptHubLib).toContain('const relation = isOwned ? "owned" : "shared"');
-    expect(ptHubLib).toContain('const role = isOwned ? "owner"');
+    expect(ptHubLib).toContain("const role = isOwned");
+    expect(ptHubLib).toContain('? "owner"');
   });
 
   it("renders the shared workspace role label and access summaries", () => {

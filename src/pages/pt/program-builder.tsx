@@ -18,8 +18,13 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Skeleton } from "../../components/ui/skeleton";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import {
+  ASSIGNMENT_SNAPSHOT_NOTICE,
+  ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
+} from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 
 type ProgramTemplateRow = {
   id: string;
@@ -51,6 +56,17 @@ type ProgramDayState = {
 };
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function AssignmentSnapshotCallout() {
+  return (
+    <div className="assignment-snapshot-callout rounded-lg border border-warning/35 bg-warning/10 px-3 py-2 text-xs">
+      <p className="font-semibold text-foreground">
+        {ASSIGNMENT_SNAPSHOT_WARNING_TITLE}
+      </p>
+      <p className="mt-1 text-muted-foreground">{ASSIGNMENT_SNAPSHOT_NOTICE}</p>
+    </div>
+  );
+}
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -102,6 +118,7 @@ export function PtProgramBuilderPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { workspaceId } = useWorkspace();
+  const { canManageDelivery } = useWorkspaceWriteAccess();
 
   const [form, setForm] = useState({
     name: "",
@@ -261,7 +278,7 @@ export function PtProgramBuilderPage() {
   };
 
   const handleSave = async () => {
-    if (!workspaceId) return;
+    if (!workspaceId || !canManageDelivery) return;
     if (!form.name.trim()) {
       setSaveError("Program name is required.");
       return;
@@ -434,7 +451,10 @@ export function PtProgramBuilderPage() {
             >
               Back to programs
             </Button>
-            <Button disabled={saveStatus === "saving"} onClick={handleSave}>
+            <Button
+              disabled={saveStatus === "saving" || !canManageDelivery}
+              onClick={handleSave}
+            >
               {saveStatus === "saving" ? "Saving..." : "Save Program"}
             </Button>
           </>
@@ -495,6 +515,7 @@ export function PtProgramBuilderPage() {
               </label>
               <Input
                 value={form.name}
+                disabled={!canManageDelivery}
                 onChange={(event) => {
                   if (saveNotice) setSaveNotice(null);
                   setForm((prev) => ({ ...prev, name: event.target.value }));
@@ -510,6 +531,7 @@ export function PtProgramBuilderPage() {
                 type="number"
                 min={1}
                 value={form.weeksCount}
+                disabled={!canManageDelivery}
                 onChange={(event) => {
                   if (saveNotice) setSaveNotice(null);
                   setForm((prev) => ({
@@ -525,6 +547,7 @@ export function PtProgramBuilderPage() {
               </label>
               <Input
                 value={form.programTypeTag}
+                disabled={!canManageDelivery}
                 onChange={(event) => {
                   if (saveNotice) setSaveNotice(null);
                   setForm((prev) => ({
@@ -542,6 +565,7 @@ export function PtProgramBuilderPage() {
               <textarea
                 className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
+                disabled={!canManageDelivery}
                 onChange={(event) => {
                   if (saveNotice) setSaveNotice(null);
                   setForm((prev) => ({
@@ -567,7 +591,8 @@ export function PtProgramBuilderPage() {
             Assign workouts or mark rest days for each week.
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <AssignmentSnapshotCallout />
           <div className="mb-4">
             <div className="text-xs font-semibold uppercase text-muted-foreground">
               Workout templates
@@ -593,6 +618,7 @@ export function PtProgramBuilderPage() {
                       key={template.id}
                       draggable
                       onDragStart={(event) => {
+                        if (!canManageDelivery) return;
                         event.dataTransfer.setData("text/plain", template.id);
                         event.dataTransfer.effectAllowed = "copy";
                         setDraggingTemplateId(template.id);
@@ -617,11 +643,12 @@ export function PtProgramBuilderPage() {
                         });
                       }}
                       onDragEnd={() => setDraggingTemplateId(null)}
-                      onClick={() =>
+                      onClick={() => {
+                        if (!canManageDelivery) return;
                         setSelectedTemplateId((prev) =>
                           prev === template.id ? null : template.id,
-                        )
-                      }
+                        );
+                      }}
                       className={`shrink-0 rounded-xl border px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition ${
                         isDragging
                           ? "scale-[0.98] border-accent/60 bg-accent/20 shadow-[0_0_20px_rgba(56,189,248,0.35)]"
@@ -675,16 +702,18 @@ export function PtProgramBuilderPage() {
                       <div
                         key={`${week}-${day}`}
                         onDragOver={(event) => {
+                          if (!canManageDelivery) return;
                           event.preventDefault();
                         }}
                         onDrop={(event) => {
+                          if (!canManageDelivery) return;
                           event.preventDefault();
                           const templateId =
                             event.dataTransfer.getData("text/plain");
                           handleDropTemplate(week, day, templateId);
                         }}
                         onClick={() => {
-                          if (selectedTemplateId) {
+                          if (canManageDelivery && selectedTemplateId) {
                             handleDropTemplate(week, day, selectedTemplateId);
                           }
                         }}
@@ -718,6 +747,7 @@ export function PtProgramBuilderPage() {
                               <input
                                 type="checkbox"
                                 checked={state?.is_rest ?? false}
+                                disabled={!canManageDelivery}
                                 onChange={(event) =>
                                   updateDay(week, day, {
                                     is_rest: event.target.checked,
@@ -733,6 +763,7 @@ export function PtProgramBuilderPage() {
                               className="min-h-[60px] w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
                               placeholder="Notes"
                               value={state?.notes ?? ""}
+                              disabled={!canManageDelivery}
                               onChange={(event) =>
                                 updateDay(week, day, {
                                   notes: event.target.value,

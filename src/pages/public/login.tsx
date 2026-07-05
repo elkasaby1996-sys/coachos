@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { Dumbbell } from "lucide-react";
 import { AuthComponent } from "../../components/ui/sign-up";
 import {
@@ -6,11 +7,16 @@ import {
   signInWithEmailPassword,
   signInWithOAuth,
 } from "../../lib/auth-helpers";
+import { getMarketingSiteUrl } from "../../lib/marketing-site";
 import { supabaseConfigured } from "../../lib/supabase";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    document.title = "Login — RepSync";
+  }, []);
 
   const from = (location.state as { from?: unknown } | null)?.from;
   const redirectParam = new URLSearchParams(location.search).get("redirect");
@@ -32,6 +38,7 @@ export function LoginPage() {
     <AuthComponent
       mode="signin"
       brandName="RepSync"
+      brandHref={getMarketingSiteUrl()}
       logo={
         <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
           <Dumbbell className="h-4 w-4" />

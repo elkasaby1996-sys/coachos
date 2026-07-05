@@ -3,7 +3,12 @@ import type { NotificationRecord } from "./types";
 export type NotificationAudience = "client" | "pt";
 
 const CLIENT_ALLOWED_PREFIXES = ["/app/", "/client/onboarding"];
-const PT_ALLOWED_PREFIXES = ["/pt/", "/pt-hub/", "/workspace/"];
+const PT_ALLOWED_PREFIXES = [
+  "/pt/",
+  "/pt-hub/",
+  "/workspace/",
+  "/team-invites/",
+];
 
 export function getNotificationFallbackRoute(audience: NotificationAudience) {
   return audience === "client" ? "/app/home" : "/pt-hub";
