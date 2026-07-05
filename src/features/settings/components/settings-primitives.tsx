@@ -248,7 +248,7 @@ export function StickySaveBar({
   return (
     <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mt-5 lg:bottom-6">
       <div
-        className="surface-panel-portal flex flex-col gap-3 rounded-[20px] border border-border/70 px-4 py-3 md:flex-row md:items-center md:justify-between"
+        className="surface-panel-portal flex flex-col gap-3 rounded-[20px] border border-border/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4"
         style={{
           backgroundColor: "var(--sticky-bar-bg)",
           boxShadow: "var(--sticky-shadow)",
@@ -257,12 +257,18 @@ export function StickySaveBar({
         <p className="text-sm text-muted-foreground">
           {statusText ?? t("settings.unsavedChanges", "Unsaved changes")}
         </p>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="secondary" onClick={onDiscard}>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={onDiscard}
+          >
             {t("common.discard", "Discard")}
           </Button>
           <Button
             type="button"
+            className="w-full sm:w-auto"
             onClick={() => void onSave()}
             disabled={Boolean(isSaving)}
           >

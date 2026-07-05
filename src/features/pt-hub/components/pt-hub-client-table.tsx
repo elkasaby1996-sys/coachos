@@ -40,12 +40,18 @@ function getAttentionDescription(
   badge: ClientStatusBadgeDisplay,
   attentionReasons: ClientAttentionReason[],
 ) {
-  if (badge.kind !== "attention" || attentionReasons.length === 0) {
+  if (badge.kind !== "attention") {
     return badge.description ?? badge.label;
   }
 
-  const reasonLabels = attentionReasons.map((reason) => reason.label).join(", ");
-  return `${badge.description ?? "This client has one or more existing coaching attention signals."} Reasons: ${reasonLabels}.`;
+  if (attentionReasons.length === 0) {
+    return (
+      badge.description ??
+      "Attention signal detected, but the reason could not be resolved."
+    );
+  }
+
+  return badge.description ?? attentionReasons.map((reason) => reason.label).join(", ");
 }
 
 function isNonInteractiveLifecycleBadge(badge: ClientStatusBadgeDisplay) {
@@ -157,10 +163,11 @@ export function PtHubClientTable({
                   </span>
                 ))}
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-stretch lg:justify-end">
                 <Button
                   variant="secondary"
                   size="sm"
+                  className="w-full sm:w-auto"
                   onClick={() => onOpen(client)}
                 >
                   {t("ptHub.clients.table.openClient", "Open client")}

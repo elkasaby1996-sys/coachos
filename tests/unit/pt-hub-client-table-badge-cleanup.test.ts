@@ -12,6 +12,13 @@ const readRepoFile = (...parts: string[]) =>
 
 const ptHubClientsPageSource = readRepoFile("src", "pages", "pt-hub", "clients.tsx");
 const workspaceClientsPageSource = readRepoFile("src", "pages", "pt", "clients.tsx");
+const ptHubClientTableSource = readRepoFile(
+  "src",
+  "features",
+  "pt-hub",
+  "components",
+  "pt-hub-client-table.tsx",
+);
 
 const i18nValue = {
   dir: "ltr" as const,
@@ -110,6 +117,20 @@ describe("PT Hub client table badge cleanup", () => {
     expect(markup).not.toContain("Low adherence");
     expect(markup).not.toContain("Inactive");
     expect(markup).not.toContain("overdue");
+  });
+
+  it("uses the central attention badge description for PT Hub and workspace client rows", () => {
+    expect(ptHubClientTableSource).toContain(
+      "return badge.description ?? attentionReasons.map",
+    );
+    expect(ptHubClientTableSource).toContain(
+      "Attention signal detected, but the reason could not be resolved.",
+    );
+    expect(ptHubClientTableSource).not.toContain(
+      "This client has one or more existing coaching attention signals.",
+    );
+    expect(ptHubClientsPageSource).toContain("<PtHubClientTable");
+    expect(workspaceClientsPageSource).toContain("<PtHubClientTable");
   });
 
   it("renders only Removed for a removed relationship row", () => {

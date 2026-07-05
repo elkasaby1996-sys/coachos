@@ -4,6 +4,7 @@ import {
   type ClientSegmentKey,
 } from "../../src/lib/client-lifecycle";
 import {
+  getAttentionBadgeDisplay,
   getAttentionReasons,
   getClientGlobalStatusDisplay,
   getLifecycleBadgeDisplay,
@@ -62,11 +63,14 @@ describe("client status display taxonomy", () => {
     expect(display.attentionBadge?.reasons).toEqual([
       {
         code: "manual_at_risk",
-        label: "Manual at-risk flag",
+        label: "Manually flagged by coach",
         severity: "high",
         priority: 1,
       },
     ]);
+    expect(display.attentionBadge?.description).toBe(
+      "Reason: Manually flagged by coach.",
+    );
   });
 
   it("returns lifecycle plus one Needs attention badge for overdue check-ins", () => {
@@ -122,6 +126,62 @@ describe("client status display taxonomy", () => {
         "inactive_client",
       ],
     );
+    expect(display.attentionBadge?.description).toBe(
+      "Reasons: Manually flagged by coach; Overdue check-in; Missed latest check-in; No recent client reply; Adherence trending down; No recent client activity.",
+    );
+    expect(display.attentionBadge?.description).not.toContain(
+      "This client has one or more existing coaching attention signals.",
+    );
+  });
+
+  it("explains a single risk flag with the concrete attention reason", () => {
+    const display = getClientGlobalStatusDisplay({
+      relationshipStatus: "active",
+      lifecycleState: "active",
+      riskFlags: ["missed_checkins"],
+    });
+
+    expect(display.globalBadges.map((badge) => badge.label)).toEqual([
+      "Active",
+      "Needs attention",
+    ]);
+    expect(display.attentionBadge?.description).toBe(
+      "Reason: Missed latest check-in.",
+    );
+  });
+
+  it("uses a defensive fallback when an aggregate attention signal has no resolved reason", () => {
+    const display = getClientGlobalStatusDisplay({
+      relationshipStatus: "active",
+      lifecycleState: "active",
+      riskState: "needs_attention",
+      riskFlags: [],
+    });
+
+    expect(display.lifecycleBadge).toMatchObject({
+      key: "lifecycle:active",
+      kind: "lifecycle",
+    });
+    expect(display.attentionReasons).toEqual([]);
+    expect(display.attentionBadge).toMatchObject({
+      key: "attention:needs_attention",
+      label: "Needs attention",
+      kind: "attention",
+      description:
+        "Attention signal detected, but the reason could not be resolved.",
+    });
+  });
+
+  it("can render the unresolved fallback without treating attention as lifecycle", () => {
+    const badge = getAttentionBadgeDisplay([], true);
+
+    expect(badge).toMatchObject({
+      label: "Needs attention",
+      kind: "attention",
+      description:
+        "Attention signal detected, but the reason could not be resolved.",
+    });
+    expect(getLifecycleBadgeDisplay("needs_attention")).toBeUndefined();
   });
 
   it("sorts attention reasons by locked priority", () => {
@@ -217,6 +277,9 @@ describe("client status display taxonomy", () => {
     expect(display.globalBadges.map((badge) => badge.kind)).toEqual([
       "attention",
     ]);
+    expect(display.attentionBadge?.description).toBe(
+      "Attention signal detected, but the reason could not be resolved.",
+    );
   });
 
   it("preserves stored lifecycle and filter taxonomy values", () => {

@@ -96,7 +96,6 @@ import {
 } from "../../lib/client-lifecycle";
 import {
   getClientGlobalStatusDisplay,
-  type ClientAttentionReason,
   type ClientGlobalStatusDisplay,
   type ClientStatusBadgeDisplay,
   type StatusTone,
@@ -249,12 +248,6 @@ const clientDetailStatusBadgeVariant: Record<StatusTone, BadgeVariant> = {
   danger: "danger",
 };
 
-function getClientDetailStatusLabel(kind: ClientStatusBadgeDisplay["kind"]) {
-  if (kind === "relationship") return "Relationship";
-  if (kind === "lifecycle") return "Lifecycle";
-  return "Attention";
-}
-
 function getClientDetailStatusTitle(badge: ClientStatusBadgeDisplay) {
   if (badge.kind === "relationship") {
     return badge.key === "relationship:transferred_out"
@@ -265,65 +258,28 @@ function getClientDetailStatusTitle(badge: ClientStatusBadgeDisplay) {
   return "Needs attention";
 }
 
-function getClientDetailAttentionCopy(reasons: ClientAttentionReason[]) {
-  if (reasons.length === 0) return null;
-  return reasons.map((reason) => reason.label).join(", ");
-}
-
-function ClientDetailStatusSummary({
+function ClientDetailInlineStatusBadges({
   statusDisplay,
-  lifecycleReasonLabel,
-  onOpenAttentionDetails,
 }: {
   statusDisplay: ClientGlobalStatusDisplay;
-  lifecycleReasonLabel: string | null;
-  onOpenAttentionDetails?: () => void;
 }) {
   if (statusDisplay.globalBadges.length === 0) return null;
 
-  const attentionReasonCopy = getClientDetailAttentionCopy(
-    statusDisplay.attentionReasons,
-  );
-
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
+    <div className="client-detail-header-status-badges flex flex-wrap items-center gap-2">
       {statusDisplay.globalBadges.map((badge) => (
-        <div
+        <span
           key={badge.key}
-          className="rounded-xl border border-border/60 bg-background/45 px-3 py-2"
+          className="inline-flex"
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {getClientDetailStatusLabel(badge.kind)}
-            </span>
-            <TagInfoBadge
-              label={badge.label}
-              variant={clientDetailStatusBadgeVariant[badge.tone]}
-              title={getClientDetailStatusTitle(badge)}
-              description={badge.description ?? badge.label}
-              disabled={badge.kind === "lifecycle" && badge.key === "lifecycle:active"}
-            />
-          </div>
-          {badge.kind === "attention" && attentionReasonCopy ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{attentionReasonCopy}</span>
-              {onOpenAttentionDetails ? (
-                <button
-                  type="button"
-                  onClick={onOpenAttentionDetails}
-                  className="font-semibold text-foreground underline-offset-4 hover:underline"
-                >
-                  View details
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-          {badge.kind === "lifecycle" && lifecycleReasonLabel ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {lifecycleReasonLabel}
-            </p>
-          ) : null}
-        </div>
+          <TagInfoBadge
+            label={badge.label}
+            variant={clientDetailStatusBadgeVariant[badge.tone]}
+            title={getClientDetailStatusTitle(badge)}
+            description={badge.description ?? badge.label}
+            disabled={badge.kind === "lifecycle"}
+          />
+        </span>
       ))}
     </div>
   );
@@ -1073,7 +1029,6 @@ export function PtClientDetailPage({
   const [reviewPhotoPreview, setReviewPhotoPreview] =
     useState<CheckinPhotoRow | null>(null);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
-  const [attentionFlagDialogOpen, setAttentionFlagDialogOpen] = useState(false);
   const [profileEditStatus, setProfileEditStatus] = useState<"idle" | "saving">(
     "idle",
   );
@@ -3343,73 +3298,6 @@ export function PtClientDetailPage({
     });
     setProfileEditOpen(true);
   }, [clientSnapshot]);
-  const latestClientActivityAt =
-    clientOperationalQuery.data?.last_activity_at ??
-    clientOperationalQuery.data?.last_client_reply_at ??
-    lastHabitLogDate ??
-    lastWorkout ??
-    lastCheckin ??
-    clientSnapshot?.updated_at ??
-    null;
-  const clientAttentionReasons = useMemo(() => {
-    const reasons: Array<{ id: string; title: string; helper: string }> = [];
-
-    if (clientSnapshot?.manual_risk_flag) {
-      reasons.push({
-        id: "manual-risk",
-        title: "Client is manually flagged at risk",
-        helper:
-          "A PT has manually marked this client as needing extra attention.",
-      });
-    }
-
-    if (onboardingSnapshot && onboardingSnapshot.status !== "completed") {
-      reasons.push({
-        id: "onboarding",
-        title: "Onboarding is incomplete",
-        helper: onboardingStatusMeta.description,
-      });
-    }
-
-    if (
-      clientRiskFlags.includes("low_adherence_trend") ||
-      (typeof adherenceStat === "number" && adherenceStat < 60)
-    ) {
-      reasons.push({
-        id: "adherence",
-        title: "Adherence is low",
-        helper:
-          typeof adherenceStat === "number"
-            ? `Adherence is currently ${adherenceStat}% across the last 7 days.`
-            : "Recent client adherence has dropped below the expected level.",
-      });
-    }
-
-    const inactivityDays = latestClientActivityAt
-      ? diffDays(latestClientActivityAt, todayKey)
-      : null;
-    if (inactivityDays === null || inactivityDays >= 3) {
-      reasons.push({
-        id: "portal-inactive",
-        title: "No recent portal activity",
-        helper:
-          inactivityDays === null
-            ? "No recent client activity has been captured yet."
-            : `The client has been inactive for ${inactivityDays} days.`,
-      });
-    }
-
-    return reasons;
-  }, [
-    adherenceStat,
-    clientRiskFlags,
-    clientSnapshot?.manual_risk_flag,
-    latestClientActivityAt,
-    onboardingSnapshot,
-    onboardingStatusMeta.description,
-    todayKey,
-  ]);
-  const hasClientAttentionFlag = clientAttentionReasons.length > 0;
   const nextDueSummary = pendingCheckin
     ? {
         title: "Next due check-in",
@@ -4702,10 +4590,13 @@ export function PtClientDetailPage({
                     {getInitials(clientSnapshot?.display_name)}
                   </div>
                   <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="client-detail-header-name-row flex flex-wrap items-center gap-2">
                       <h2 className="text-xl font-semibold tracking-tight">
                         {clientSnapshot?.display_name ?? "Client profile"}
                       </h2>
+                      <ClientDetailInlineStatusBadges
+                        statusDisplay={clientGlobalStatusDisplay}
+                      />
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {[
@@ -4717,15 +4608,6 @@ export function PtClientDetailPage({
                         .join(" • ") || "Client coaching view"}
                       {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
                     </p>
-                    <ClientDetailStatusSummary
-                      statusDisplay={clientGlobalStatusDisplay}
-                      lifecycleReasonLabel={lifecycleReasonLabel}
-                      onOpenAttentionDetails={
-                        hasClientAttentionFlag && !isHistoricalClientRelationship
-                          ? () => setAttentionFlagDialogOpen(true)
-                          : undefined
-                      }
-                    />
                     <div className="flex flex-wrap gap-1.5">
                       <span className="ops-chip text-muted-foreground">
                         Next due: {nextDueSummary.value}
@@ -6755,43 +6637,6 @@ export function PtClientDetailPage({
                 : "Transfer client"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={attentionFlagDialogOpen}
-        onOpenChange={setAttentionFlagDialogOpen}
-      >
-        <DialogContent className="sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle>Client attention reasons</DialogTitle>
-            <DialogDescription>
-              This client is currently flagged because one or more attention
-              conditions are active.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {clientAttentionReasons.map((reason) => (
-              <div
-                key={reason.id}
-                className="rounded-lg border border-border/60 bg-muted/20 p-3"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-full border border-amber-400/30 bg-amber-500/10 p-1.5 text-amber-200">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-foreground">
-                      {reason.title}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {reason.helper}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </DialogContent>
       </Dialog>
 

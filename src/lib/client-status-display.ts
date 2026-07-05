@@ -93,6 +93,9 @@ export type ClientStatusDisplaySummaryLike = {
   checkinFrequency?: string | null;
 };
 
+const unresolvedAttentionDescription =
+  "Attention signal detected, but the reason could not be resolved.";
+
 const relationshipBadgeMeta: Record<
   Exclude<ClientRelationshipStatus, "active">,
   ClientStatusBadgeDisplay
@@ -168,7 +171,7 @@ const lifecycleBadgeMeta: Record<ClientLifecycleStatus, ClientStatusBadgeDisplay
 const attentionReasonMeta: Record<AttentionReasonCode, ClientAttentionReason> = {
   manual_at_risk: {
     code: "manual_at_risk",
-    label: "Manual at-risk flag",
+    label: "Manually flagged by coach",
     severity: "high",
     priority: 1,
   },
@@ -180,19 +183,19 @@ const attentionReasonMeta: Record<AttentionReasonCode, ClientAttentionReason> = 
   },
   missed_checkins: {
     code: "missed_checkins",
-    label: "Missed check-ins",
+    label: "Missed latest check-in",
     severity: "high",
     priority: 3,
   },
   no_recent_reply: {
     code: "no_recent_reply",
-    label: "No recent reply",
+    label: "No recent client reply",
     severity: "medium",
     priority: 4,
   },
   low_adherence: {
     code: "low_adherence",
-    label: "Low adherence",
+    label: "Adherence trending down",
     severity: "medium",
     priority: 5,
   },
@@ -204,7 +207,7 @@ const attentionReasonMeta: Record<AttentionReasonCode, ClientAttentionReason> = 
   },
   inactive_client: {
     code: "inactive_client",
-    label: "Inactive client",
+    label: "No recent client activity",
     severity: "medium",
     priority: 7,
   },
@@ -238,6 +241,19 @@ function addReason(
 
 function hasPositiveCount(value: number | null | undefined) {
   return typeof value === "number" && value > 0;
+}
+
+function getRiskState(summary: ClientStatusDisplaySummaryLike) {
+  return summary.risk_state ?? summary.riskState;
+}
+
+function hasAggregateAttentionSignal(summary: ClientStatusDisplaySummaryLike) {
+  const riskState = getRiskState(summary);
+  return riskState === "at_risk" || riskState === "needs_attention";
+}
+
+function hasRawRiskFlags(summary: ClientStatusDisplaySummaryLike) {
+  return (summary.risk_flags ?? summary.riskFlags ?? []).length > 0;
 }
 
 function hasExplicitNoActiveDelivery(summary: ClientStatusDisplaySummaryLike) {
@@ -292,9 +308,7 @@ export function getAttentionReasons(
 ): ClientAttentionReason[] {
   const reasons = new Map<AttentionReasonCode, ClientAttentionReason>();
   const manualRisk =
-    summary.manual_risk_flag ??
-    summary.manualRiskFlag ??
-    (summary.risk_state === "at_risk" || summary.riskState === "at_risk");
+    summary.manual_risk_flag ?? summary.manualRiskFlag ?? false;
 
   if (manualRisk) {
     addReason(reasons, "manual_at_risk");
@@ -335,8 +349,10 @@ export function getAttentionReasons(
 
 export function getAttentionBadgeDisplay(
   attentionReasons: ClientAttentionReason[],
+  forceDisplay = false,
 ) {
-  if (attentionReasons.length === 0) return undefined;
+  if (attentionReasons.length === 0 && !forceDisplay) return undefined;
+  const reasonLabels = attentionReasons.map((reason) => reason.label);
 
   return {
     key: "attention:needs_attention",
@@ -346,7 +362,9 @@ export function getAttentionBadgeDisplay(
       : "warning",
     kind: "attention",
     description:
-      "This client has one or more existing coaching attention signals.",
+      reasonLabels.length > 0
+        ? `${reasonLabels.length === 1 ? "Reason" : "Reasons"}: ${reasonLabels.join("; ")}.`
+        : unresolvedAttentionDescription,
     reasons: attentionReasons.map((reason) => ({ ...reason })),
   } satisfies ClientStatusBadgeDisplay & {
     reasons: ClientAttentionReason[];
@@ -363,7 +381,10 @@ export function getClientGlobalStatusDisplay(
     summary.lifecycle_state ?? summary.lifecycleState,
   );
   const attentionReasons = getAttentionReasons(summary);
-  const attentionBadge = getAttentionBadgeDisplay(attentionReasons);
+  const attentionBadge = getAttentionBadgeDisplay(
+    attentionReasons,
+    hasAggregateAttentionSignal(summary) || hasRawRiskFlags(summary),
+  );
 
   if (relationshipBadge) {
     return {

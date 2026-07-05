@@ -23,6 +23,8 @@ import {
   StatusPill,
 } from "../../components/ui/coachos";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { StickySaveBar } from "../../features/settings/components/settings-primitives";
+import { useDirtyNavigationGuard } from "../../features/settings/hooks/use-dirty-navigation-guard";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { cn } from "../../lib/utils";
@@ -497,12 +499,12 @@ export function PtCheckinTemplatesPage() {
   };
 
   const handleSaveTemplate = async () => {
-    if (!canManageDelivery) return;
+    if (!canManageDelivery) return false;
     const validationError = validateEditor();
     if (validationError) {
       setToastVariant("error");
       setToastMessage(validationError);
-      return;
+      return false;
     }
 
     setSaveState("saving");
@@ -530,7 +532,7 @@ export function PtCheckinTemplatesPage() {
         setSelectedTemplateId(createdTemplate.id);
         setToastVariant("success");
         setToastMessage("Template created.");
-        return;
+        return true;
       }
 
       const nextTemplateFields = {
@@ -561,7 +563,7 @@ export function PtCheckinTemplatesPage() {
         setToastMessage(
           "Saved as a new template version so active clients and past check-ins stay unchanged.",
         );
-        return;
+        return true;
       }
 
       const { error: updateError } = await supabase
@@ -584,11 +586,13 @@ export function PtCheckinTemplatesPage() {
       });
       setToastVariant("success");
       setToastMessage("Template saved.");
+      return true;
     } catch (error) {
       setToastVariant("error");
       setToastMessage(
         error instanceof Error ? error.message : "Unable to save template.",
       );
+      return false;
     } finally {
       setSaveState("idle");
     }
@@ -653,8 +657,24 @@ export function PtCheckinTemplatesPage() {
     setEditor(emptyTemplateEditor());
   };
 
+  const handleDiscardTemplateChanges = () => {
+    setToastMessage(null);
+    if (selectedTemplate) {
+      setEditor(buildEditorFromTemplate(selectedTemplate, selectedQuestions));
+      return;
+    }
+    setEditor(emptyTemplateEditor());
+  };
+
+  const { guardDialog } = useDirtyNavigationGuard({
+    isDirty: hasUnsavedChanges && saveState === "idle",
+    onSave: handleSaveTemplate,
+    onDiscard: handleDiscardTemplateChanges,
+  });
+
   return (
     <div className="space-y-8">
+      {guardDialog}
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[320px]">
           <Alert
@@ -683,14 +703,6 @@ export function PtCheckinTemplatesPage() {
                 New template
               </Button>
             ) : null}
-            <Button
-              onClick={handleSaveTemplate}
-              disabled={
-                saveState !== "idle" || !hasUnsavedChanges || !canManageDelivery
-              }
-            >
-              {saveLabel}
-            </Button>
           </div>
         }
       />
@@ -1404,6 +1416,13 @@ export function PtCheckinTemplatesPage() {
           </div>
         </DashboardCard>
       </div>
+      <StickySaveBar
+        isDirty={hasUnsavedChanges && canManageDelivery}
+        isSaving={saveState === "saving"}
+        onSave={handleSaveTemplate}
+        onDiscard={handleDiscardTemplateChanges}
+        statusText="Unsaved template changes"
+      />
     </div>
   );
 }

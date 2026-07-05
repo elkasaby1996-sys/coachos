@@ -54,12 +54,13 @@ describe("final badge and status regression", () => {
   });
 
   it("keeps client detail centralized without duplicate global status chips", () => {
-    expect(clientDetailSource).toContain("<ClientDetailStatusSummary");
+    expect(clientDetailSource).toContain("<ClientDetailInlineStatusBadges");
+    expect(clientDetailSource).toContain("client-detail-header-name-row");
+    expect(clientDetailSource).toContain("client-detail-header-status-badges");
     expect(clientDetailSource).toContain("clientGlobalStatusDisplay");
-    expect(clientDetailSource).toContain(
-      "hasClientAttentionFlag && !isHistoricalClientRelationship",
-    );
     expect(clientDetailSource).toContain("Historical client relationship");
+    expect(clientDetailSource).not.toContain("function ClientDetailStatusSummary");
+    expect(clientDetailSource).not.toContain("clientAttentionReasons");
     expect(clientDetailSource).not.toContain("<RiskBadge");
     expect(clientDetailSource).not.toContain("<LifecycleBadge");
     expect(clientDetailSource).not.toContain("clientRiskFlags.slice");
