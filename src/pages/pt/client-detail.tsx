@@ -12,7 +12,7 @@ import {
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge } from "../../components/ui/badge";
+import { Badge, type BadgeVariant } from "../../components/ui/badge";
 import {
   Card,
   CardContent,
@@ -78,8 +78,6 @@ import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
   EmptyState,
-  LifecycleBadge,
-  RiskBadge,
   StatCard,
   StatusPill,
   TagInfoBadge,
@@ -94,9 +92,15 @@ import {
   getClientLifecycleMeta,
   getClientLifecycleReason,
   getClientRiskFlagMeta,
-  getClientRiskState,
   normalizeClientRiskFlags,
 } from "../../lib/client-lifecycle";
+import {
+  getClientGlobalStatusDisplay,
+  type ClientAttentionReason,
+  type ClientGlobalStatusDisplay,
+  type ClientStatusBadgeDisplay,
+  type StatusTone,
+} from "../../lib/client-status-display";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import { usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
@@ -236,6 +240,95 @@ const TRANSFERRED_OUT_CLIENT_RELATIONSHIP_COPY =
 const REMOVED_CLIENT_RELATIONSHIP_COPY =
   "This client was removed from active coaching. Reinvite them to reactivate this relationship.";
 
+const clientDetailStatusBadgeVariant: Record<StatusTone, BadgeVariant> = {
+  neutral: "neutral",
+  muted: "muted",
+  info: "info",
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+};
+
+function getClientDetailStatusLabel(kind: ClientStatusBadgeDisplay["kind"]) {
+  if (kind === "relationship") return "Relationship";
+  if (kind === "lifecycle") return "Lifecycle";
+  return "Attention";
+}
+
+function getClientDetailStatusTitle(badge: ClientStatusBadgeDisplay) {
+  if (badge.kind === "relationship") {
+    return badge.key === "relationship:transferred_out"
+      ? "Transferred out relationship"
+      : "Removed relationship";
+  }
+  if (badge.kind === "lifecycle") return `${badge.label} lifecycle`;
+  return "Needs attention";
+}
+
+function getClientDetailAttentionCopy(reasons: ClientAttentionReason[]) {
+  if (reasons.length === 0) return null;
+  return reasons.map((reason) => reason.label).join(", ");
+}
+
+function ClientDetailStatusSummary({
+  statusDisplay,
+  lifecycleReasonLabel,
+  onOpenAttentionDetails,
+}: {
+  statusDisplay: ClientGlobalStatusDisplay;
+  lifecycleReasonLabel: string | null;
+  onOpenAttentionDetails?: () => void;
+}) {
+  if (statusDisplay.globalBadges.length === 0) return null;
+
+  const attentionReasonCopy = getClientDetailAttentionCopy(
+    statusDisplay.attentionReasons,
+  );
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {statusDisplay.globalBadges.map((badge) => (
+        <div
+          key={badge.key}
+          className="rounded-xl border border-border/60 bg-background/45 px-3 py-2"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {getClientDetailStatusLabel(badge.kind)}
+            </span>
+            <TagInfoBadge
+              label={badge.label}
+              variant={clientDetailStatusBadgeVariant[badge.tone]}
+              title={getClientDetailStatusTitle(badge)}
+              description={badge.description ?? badge.label}
+              disabled={badge.kind === "lifecycle" && badge.key === "lifecycle:active"}
+            />
+          </div>
+          {badge.kind === "attention" && attentionReasonCopy ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>{attentionReasonCopy}</span>
+              {onOpenAttentionDetails ? (
+                <button
+                  type="button"
+                  onClick={onOpenAttentionDetails}
+                  className="font-semibold text-foreground underline-offset-4 hover:underline"
+                >
+                  View details
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {badge.kind === "lifecycle" && lifecycleReasonLabel ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {lifecycleReasonLabel}
+            </p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
   clientId
     ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
@@ -363,12 +456,17 @@ function AssignmentActionRow({
   );
 }
 
-function AssignmentReadOnlyNotice() {
+function AssignmentReadOnlyNotice({
+  historical = false,
+}: {
+  historical?: boolean;
+}) {
   return (
     <AssignmentActionRow>
       <p>
-        This client relationship is no longer active. Assignment history is
-        preserved for reference.
+        {historical
+          ? HISTORICAL_CLIENT_RELATIONSHIP_COPY
+          : "Assignment history is preserved for reference."}
       </p>
     </AssignmentActionRow>
   );
@@ -3103,15 +3201,22 @@ export function PtClientDetailPage({
     () => normalizeClientRiskFlags(clientOperationalQuery.data?.risk_flags),
     [clientOperationalQuery.data?.risk_flags],
   );
-  const clientRiskState = useMemo(
+  const clientGlobalStatusDisplay = useMemo(
     () =>
-      getClientRiskState({
+      getClientGlobalStatusDisplay({
+        relationship_status: clientRelationshipStatus,
         lifecycle_state: clientSnapshot?.lifecycle_state,
         manual_risk_flag: clientSnapshot?.manual_risk_flag,
+        has_overdue_checkin: clientOperationalQuery.data?.has_overdue_checkin,
+        overdue_checkins_count:
+          clientOperationalQuery.data?.overdue_checkins_count,
         risk_flags: clientOperationalQuery.data?.risk_flags,
       }),
     [
+      clientOperationalQuery.data?.has_overdue_checkin,
+      clientOperationalQuery.data?.overdue_checkins_count,
       clientOperationalQuery.data?.risk_flags,
+      clientRelationshipStatus,
       clientSnapshot?.lifecycle_state,
       clientSnapshot?.manual_risk_flag,
     ],
@@ -4601,41 +4706,6 @@ export function PtClientDetailPage({
                       <h2 className="text-xl font-semibold tracking-tight">
                         {clientSnapshot?.display_name ?? "Client profile"}
                       </h2>
-                      <LifecycleBadge
-                        lifecycleState={clientSnapshot?.lifecycle_state}
-                      />
-                      <RiskBadge riskState={clientRiskState} />
-                      {onboardingSnapshot ? (
-                        <TagInfoBadge
-                          label={onboardingStatusMeta.label}
-                          variant={onboardingStatusMeta.variant}
-                          title="Onboarding status"
-                          description={onboardingStatusMeta.description}
-                        />
-                      ) : null}
-                      {hasClientAttentionFlag ? (
-                        <button
-                          type="button"
-                          onClick={() => setAttentionFlagDialogOpen(true)}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-200 transition hover:border-amber-300/40 hover:bg-amber-500/15"
-                        >
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          Attention
-                        </button>
-                      ) : null}
-                      {clientRiskFlags.slice(0, 2).map((flag) => {
-                        const meta = getClientRiskFlagMeta(flag);
-                        if (!meta) return null;
-                        return (
-                          <TagInfoBadge
-                            key={flag}
-                            label={meta.shortLabel}
-                            variant={meta.variant}
-                            title={meta.label}
-                            description={meta.description}
-                          />
-                        );
-                      })}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {[
@@ -4647,6 +4717,15 @@ export function PtClientDetailPage({
                         .join(" • ") || "Client coaching view"}
                       {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
                     </p>
+                    <ClientDetailStatusSummary
+                      statusDisplay={clientGlobalStatusDisplay}
+                      lifecycleReasonLabel={lifecycleReasonLabel}
+                      onOpenAttentionDetails={
+                        hasClientAttentionFlag && !isHistoricalClientRelationship
+                          ? () => setAttentionFlagDialogOpen(true)
+                          : undefined
+                      }
+                    />
                     <div className="flex flex-wrap gap-1.5">
                       <span className="ops-chip text-muted-foreground">
                         Next due: {nextDueSummary.value}
@@ -4821,52 +4900,6 @@ export function PtClientDetailPage({
               {!isOverviewCollapsed ? (
                 <div className="ops-surface p-4">
                   <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
-                        Lifecycle
-                      </span>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <LifecycleBadge
-                          lifecycleState={clientSnapshot?.lifecycle_state}
-                        />
-                        {clientSnapshot?.lifecycle_changed_at ? (
-                          <span className="text-xs text-muted-foreground">
-                            {formatRelativeTime(
-                              clientSnapshot.lifecycle_changed_at,
-                            )}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
-                        Onboarding
-                      </span>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <TagInfoBadge
-                          label={onboardingStatusMeta.label}
-                          variant={onboardingStatusMeta.variant}
-                          title="Onboarding status"
-                          description={onboardingStatusMeta.description}
-                        />
-                      </div>
-                    </div>
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
-                        Risk
-                      </span>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <RiskBadge riskState={clientRiskState} />
-                        {clientSnapshot?.manual_risk_flag ? (
-                          <TagInfoBadge
-                            label="Manual flag"
-                            variant="danger"
-                            title="Manual at-risk flag"
-                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
-                          />
-                        ) : null}
-                      </div>
-                    </div>
                     <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Goal
@@ -5352,6 +5385,7 @@ export function PtClientDetailPage({
                     }}
                     onStatusChange={handleStatusUpdate}
                     canEditClients={canMutateActiveClient}
+                    isHistoricalClientRelationship={isHistoricalClientRelationship}
                   />
                 </TabsContent>
                 <TabsContent value="nutrition">
@@ -5361,6 +5395,7 @@ export function PtClientDetailPage({
                     todayKey={todayKey}
                     enabled={isNutritionTab}
                     canEditClients={canMutateActiveClient}
+                    isHistoricalClientRelationship={isHistoricalClientRelationship}
                   />
                 </TabsContent>
                 <TabsContent value="medical">
@@ -5501,7 +5536,7 @@ export function PtClientDetailPage({
                           ) : null}
                         </AssignmentActionRow>
                         {isHistoricalClientRelationship ? (
-                          <AssignmentReadOnlyNotice />
+                          <AssignmentReadOnlyNotice historical />
                         ) : null}
                       </div>
                     </DashboardCard>
@@ -5678,7 +5713,9 @@ export function PtClientDetailPage({
                                 : "Assign template"}
                             </Button>
                           ) : (
-                            <AssignmentReadOnlyNotice />
+                            <AssignmentReadOnlyNotice
+                              historical={isHistoricalClientRelationship}
+                            />
                           )}
                         </div>
                       )}
@@ -9203,6 +9240,7 @@ function PtClientPlanTab({
   onEditLoads,
   onStatusChange,
   canEditClients,
+  isHistoricalClientRelationship,
 }: {
   templatesQuery: QueryResult<
     Array<{ id: string; name: string | null; workout_type_tag: string | null }>
@@ -9243,6 +9281,7 @@ function PtClientPlanTab({
   onEditLoads: (id: string) => void;
   onStatusChange: (id: string, status: "completed" | "skipped") => void;
   canEditClients: boolean;
+  isHistoricalClientRelationship: boolean;
 }) {
   const overrideByDate = useMemo(() => {
     const map = new Map<string, ProgramOverrideRow>();
@@ -9271,7 +9310,11 @@ function PtClientPlanTab({
           />
           <CardContent className="space-y-4">
             <AssignmentSnapshotCallout />
-            {!canEditClients ? <AssignmentReadOnlyNotice /> : null}
+            {!canEditClients ? (
+              <AssignmentReadOnlyNotice
+                historical={isHistoricalClientRelationship}
+              />
+            ) : null}
             {programTemplatesQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -9496,7 +9539,11 @@ function PtClientPlanTab({
           />
           <CardContent className="space-y-4">
             <AssignmentSnapshotCallout />
-            {!canEditClients ? <AssignmentReadOnlyNotice /> : null}
+            {!canEditClients ? (
+              <AssignmentReadOnlyNotice
+                historical={isHistoricalClientRelationship}
+              />
+            ) : null}
             {templatesQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -9696,7 +9743,9 @@ function PtClientPlanTab({
                       </>
                     ) : (
                       <span className="text-xs text-muted-foreground">
-                        Assignment history is preserved for reference.
+                        {isHistoricalClientRelationship
+                          ? HISTORICAL_CLIENT_RELATIONSHIP_COPY
+                          : "Assignment history is preserved for reference."}
                       </span>
                     )}
                   </div>
@@ -9764,12 +9813,14 @@ function PtClientNutritionTab({
   todayKey,
   enabled,
   canEditClients,
+  isHistoricalClientRelationship,
 }: {
   clientId: string | null;
   workspaceId: string | null;
   todayKey: string;
   enabled: boolean;
   canEditClients: boolean;
+  isHistoricalClientRelationship: boolean;
 }) {
   const queryClient = useQueryClient();
   const [selectedNutritionProgramId, setSelectedNutritionProgramId] =
@@ -10061,7 +10112,11 @@ function PtClientNutritionTab({
                   },
                 ]}
               />
-              {!canEditClients ? <AssignmentReadOnlyNotice /> : null}
+              {!canEditClients ? (
+                <AssignmentReadOnlyNotice
+                  historical={isHistoricalClientRelationship}
+                />
+              ) : null}
               {canEditClients ? (
                 <AssignmentActionRow danger>
                   <p className="text-xs text-muted-foreground">
@@ -10105,7 +10160,11 @@ function PtClientNutritionTab({
         />
         <CardContent className="space-y-4">
           <AssignmentSnapshotCallout />
-          {!canEditClients ? <AssignmentReadOnlyNotice /> : null}
+          {!canEditClients ? (
+            <AssignmentReadOnlyNotice
+              historical={isHistoricalClientRelationship}
+            />
+          ) : null}
           {nutritionProgramsQuery.isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />

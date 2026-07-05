@@ -30,6 +30,11 @@ const tableSource = readRepoFile(
   "components",
   "pt-hub-client-table.tsx",
 );
+const clientStatusDisplaySource = readRepoFile(
+  "src",
+  "lib",
+  "client-status-display.ts",
+);
 const slugRouteSource = readRepoFile(
   "src",
   "routes",
@@ -73,10 +78,11 @@ describe("archived client history navigation contract", () => {
   });
 
   it("renders archived relationship badges in client rows", () => {
-    expect(tableSource).toContain("getRelationshipStatusBadge");
-    expect(tableSource).toContain('label: "Removed"');
-    expect(tableSource).toContain('label: "Transferred out"');
-    expect(tableSource).toContain("client.relationshipStatus");
+    expect(tableSource).toContain("getClientGlobalStatusDisplay(client)");
+    expect(tableSource).toContain("statusDisplay.globalBadges.map");
+    expect(clientStatusDisplaySource).toContain('label: "Removed"');
+    expect(clientStatusDisplaySource).toContain('label: "Transferred out"');
+    expect(clientStatusDisplaySource).toContain("relationshipStatus");
   });
 
   it("resolves removed and transferred-out detail routes for authorized coaches", () => {

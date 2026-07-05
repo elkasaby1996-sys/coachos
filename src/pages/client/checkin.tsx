@@ -551,11 +551,11 @@ export function ClientCheckinPage() {
   );
   const missingTemplateTitle = onboardingNeedsActivation
     ? "Your first check-in opens after onboarding activation."
-    : "Your coach hasn’t assigned a check-in yet.";
+    : "Your coach has not assigned a check-in schedule yet.";
   const missingTemplateDescription = onboardingNeedsActivation
     ? (onboardingStatusMeta?.description ??
       "Your coach will finish your first check-in setup after onboarding.")
-    : "Check back soon once your coach adds one.";
+    : "Check back soon once your coach adds a schedule.";
   const assignedNotOpenTitle = "Check-in assigned";
   const assignedNotOpenDescription = clientCheckinPageState.nextDueDate
     ? `Your next check-in is scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}. The form will unlock when that date arrives.`
@@ -1369,8 +1369,8 @@ export function ClientCheckinPage() {
                 })
               ) : (
                 <EmptyStateBlock
-                  title="No active assignments yet"
-                  description="Your open and upcoming check-in cycles will appear here once your coach assigns them."
+                  title="No check-in schedule assigned"
+                  description="Your coach has not assigned a check-in schedule yet."
                 />
               )}
             </SurfaceCardContent>
@@ -1522,19 +1522,6 @@ export function ClientCheckinPage() {
           />
         ) : null}
 
-        {/* legacy placeholder removed during final onboarding integration
-        <EmptyState
-          title="Your coach hasn’t assigned a check-in yet."
-          description="Check back soon once your coach adds one."
-          {...(onboardingNeedsActivation
-            ? {
-                actionLabel: "Open onboarding",
-                onAction: () => navigate("/app/onboarding"),
-              }
-            : {})}
-        />
-      */}
-
         {checkinState === "reviewed" && currentCheckin?.pt_feedback ? (
           <DashboardCard
             title="Coach feedback"
@@ -1559,8 +1546,8 @@ export function ClientCheckinPage() {
               </div>
             ) : missingTemplate ? (
               <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
+                title="Your coach has not assigned a check-in schedule yet."
+                description="Check back soon once your coach adds a schedule."
                 {...(onboardingNeedsActivation
                   ? {
                       actionLabel: "Open onboarding",
@@ -1570,8 +1557,8 @@ export function ClientCheckinPage() {
               />
             ) : !hasTemplate ? (
               <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
+                title="Your coach has not assigned a check-in schedule yet."
+                description="Check back soon once your coach adds a schedule."
                 {...(onboardingNeedsActivation
                   ? {
                       actionLabel: "Open onboarding",
@@ -1807,8 +1794,8 @@ export function ClientCheckinPage() {
               />
             ) : missingTemplate ? (
               <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
+                title="Your coach has not assigned a check-in schedule yet."
+                description="Check back soon once your coach adds a schedule."
                 {...(onboardingNeedsActivation
                   ? {
                       actionLabel: "Open onboarding",
@@ -1954,8 +1941,8 @@ export function ClientCheckinPage() {
               </div>
             ) : missingTemplate ? (
               <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
+                title="Your coach has not assigned a check-in schedule yet."
+                description="Check back soon once your coach adds a schedule."
                 {...(onboardingNeedsActivation
                   ? {
                       actionLabel: "Open onboarding",
@@ -2043,7 +2030,7 @@ export function ClientCheckinPage() {
               <p className="font-semibold text-foreground">
                 {clientCheckinPageState.nextDueDate
                   ? `Scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
-                  : "Check-in schedule pending"}
+                  : "No check-in schedule assigned"}
               </p>
               <p className="text-muted-foreground">
                 {assignedNotOpenDescription}

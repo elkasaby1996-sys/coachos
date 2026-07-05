@@ -39,8 +39,12 @@ describe("client detail assignment card polish", () => {
 
   it("keeps ended client relationships read-only for assignment surfaces", () => {
     expect(clientDetailPage).toContain(
-      "This client relationship is no longer active. Assignment history is",
+      "This client relationship is no longer active. History is preserved for reference.",
     );
+    expect(clientDetailPage).toContain(
+      '"Assignment history is preserved for reference."',
+    );
+    expect(clientDetailPage).toContain("historical={isHistoricalClientRelationship}");
     expect(clientDetailPage).toContain(
       "canEditClients={canMutateActiveClient}",
     );

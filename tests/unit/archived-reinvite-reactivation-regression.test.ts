@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const readRepoFile = (...parts: string[]) =>
-  readFileSync(resolve(process.cwd(), ...parts), "utf8");
+  readFileSync(resolve(process.cwd(), ...parts), "utf8").replace(/\r\n/g, "\n");
 
 const reactivationMigration = readRepoFile(
   "supabase",

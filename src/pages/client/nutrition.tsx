@@ -657,8 +657,8 @@ export function ClientNutritionPage() {
           </div>
           {activePlans.length === 0 ? (
             <EmptyStateBlock
-              title="No active plans"
-              description="Create a personal plan or wait for coach assignment."
+              title="No nutrition plan assigned"
+              description="Your coach has not assigned a nutrition plan yet."
               centered
             />
           ) : (

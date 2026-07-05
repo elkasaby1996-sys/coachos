@@ -601,7 +601,10 @@ function ClientWorkspaceHomePage() {
     [habitLogDates, today],
   );
   const hasClientProfile = Boolean(clientId);
-  const summaryTrainingStatus = !hasClientProfile
+  const hasAssignedWorkoutPlan = weeklyPlan.some(
+    (workout) => workout.day_type !== "rest",
+  );
+  const summaryTrainingStatus = !hasClientProfile || !hasAssignedWorkoutPlan
     ? "No plan yet"
     : isRestDay
       ? "Rest day"
@@ -614,7 +617,7 @@ function ClientWorkspaceHomePage() {
             : "Rest day";
   const summaryTrainingBadgeLabel =
     summaryTrainingStatus === "No plan yet"
-      ? "Not connected"
+      ? "Not assigned"
       : summaryTrainingStatus === "completed"
         ? "Completed"
         : summaryTrainingStatus === "skipped"
@@ -624,6 +627,8 @@ function ClientWorkspaceHomePage() {
             : "Rest day";
   const summaryTrainingTitle = !hasClientProfile
     ? "Find your first coach"
+    : !hasAssignedWorkoutPlan
+      ? "Your coach has not assigned a workout plan yet."
     : isRestDay
       ? "Rest day"
       : (todayTemplate.name ??
@@ -632,6 +637,8 @@ function ClientWorkspaceHomePage() {
         "Rest day");
   const summaryTrainingHint = !hasClientProfile
     ? "No assigned plan yet. Explore coaches to start your training flow."
+    : !hasAssignedWorkoutPlan
+      ? "Workout details will appear here when your coach assigns a plan."
     : isRestDay
       ? "Rest day. Steps + nutrition still count."
       : todayWorkoutStatus === "completed"
@@ -1149,7 +1156,8 @@ function ClientWorkspaceHomePage() {
                       Today&apos;s nutrition
                     </p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {todayNutritionTemplate?.name ?? "Nutrition plan pending"}
+                      {todayNutritionTemplate?.name ??
+                        "Your coach has not assigned a nutrition plan yet."}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
@@ -1404,8 +1412,8 @@ function ClientWorkspaceHomePage() {
                 </div>
               ) : (
                 <EmptyStateBlock
-                  title="No workouts queued"
-                  description="As soon as a personal or coached workout is available, it will appear here."
+                  title="Your coach has not assigned a workout plan yet."
+                  description="Workout details will appear here when your coach assigns a plan."
                 />
               )}
               <div className="flex flex-wrap gap-3">
@@ -1427,7 +1435,8 @@ function ClientWorkspaceHomePage() {
                   Nutrition
                 </p>
                 <p className="text-lg font-semibold text-foreground">
-                  {todayNutritionTemplate?.name ?? "Nutrition plan pending"}
+                  {todayNutritionTemplate?.name ??
+                    "Your coach has not assigned a nutrition plan yet."}
                 </p>
                 {todayNutritionTemplate ? (
                   <Badge variant="muted">
@@ -1552,8 +1561,8 @@ function ClientWorkspaceHomePage() {
                 </>
               ) : (
                 <EmptyStateBlock
-                  title="No nutrition plan yet"
-                  description="You can still focus on protein, hydration, and steps while your coach finalizes your targets."
+                  title="No nutrition plan assigned"
+                  description="Your coach has not assigned a nutrition plan yet."
                   actions={
                     upcomingNutritionDay?.id ? (
                       <Button
