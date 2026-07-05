@@ -42,7 +42,11 @@ export function ClientMessageFab({ visible }: { visible: boolean }) {
   );
 
   const unreadQuery = useQuery({
-    queryKey: ["client-message-fab-unread", user?.id, conversationIds.join(",")],
+    queryKey: [
+      "client-message-fab-unread",
+      user?.id,
+      conversationIds.join(","),
+    ],
     enabled: visible && conversationIds.length > 0,
     staleTime: 1000 * 15,
     queryFn: async () => {

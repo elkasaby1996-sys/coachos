@@ -70,9 +70,7 @@ function AssignmentSnapshotCallout() {
       <p className="font-semibold text-foreground">
         {ASSIGNMENT_SNAPSHOT_WARNING_TITLE}
       </p>
-      <p className="mt-1 text-muted-foreground">
-        {ASSIGNMENT_SNAPSHOT_NOTICE}
-      </p>
+      <p className="mt-1 text-muted-foreground">{ASSIGNMENT_SNAPSHOT_NOTICE}</p>
     </div>
   );
 }

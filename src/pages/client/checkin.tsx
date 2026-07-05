@@ -862,10 +862,7 @@ export function ClientCheckinPage() {
 
   const checkinIsUpcoming = checkinState === "upcoming";
   const canProceed =
-    hasTemplate &&
-    !isLoading &&
-    Boolean(currentCheckin) &&
-    !checkinIsUpcoming;
+    hasTemplate && !isLoading && Boolean(currentCheckin) && !checkinIsUpcoming;
   const checkinLocked = isSubmitted;
 
   const refreshCheckinForm = useCallback(
@@ -882,10 +879,7 @@ export function ClientCheckinPage() {
         fetchDirectFormDefinitionSignature(),
       ]);
       acceptedFormDefinitionSignatureRef.current =
-        acceptedSignature ??
-        signatureResult ??
-        formDefinitionSignature ??
-        null;
+        acceptedSignature ?? signatureResult ?? formDefinitionSignature ?? null;
       clearLocalEditState();
     },
     [
@@ -1084,10 +1078,9 @@ export function ClientCheckinPage() {
   const checkinFrequencyLabel = getCheckinFrequencyLabel(
     clientProfile?.checkin_frequency,
   );
-  const statusKey =
-    checkinAssignedNotOpen
-      ? "upcoming"
-      : checkinState === "submitted" || checkinState === "reviewed"
+  const statusKey = checkinAssignedNotOpen
+    ? "upcoming"
+    : checkinState === "submitted" || checkinState === "reviewed"
       ? checkinState
       : checkinState === "overdue"
         ? "overdue"
@@ -1178,55 +1171,54 @@ export function ClientCheckinPage() {
       ? "error"
       : checkinAssignedNotOpen
         ? "info"
-      : checkinState === "reviewed"
-        ? "reviewed"
-        : checkinState === "submitted"
-          ? "locked"
-          : checkinState === "overdue"
-            ? "warning"
-            : checkinState === "upcoming"
-              ? "info"
-              : "info";
+        : checkinState === "reviewed"
+          ? "reviewed"
+          : checkinState === "submitted"
+            ? "locked"
+            : checkinState === "overdue"
+              ? "warning"
+              : checkinState === "upcoming"
+                ? "info"
+                : "info";
   const summaryTitle = missingTemplate
     ? missingTemplateTitle
     : checkinAssignedNotOpen
       ? assignedNotOpenTitle
-    : pageError
-      ? "Unable to load check-in"
-      : checkinState === "reviewed"
-        ? "Check-in reviewed"
-        : checkinState === "submitted"
-          ? "Check-in submitted"
-          : checkinState === "overdue"
-            ? "Check-in overdue"
-            : checkinState === "upcoming"
-              ? "Check-in window upcoming"
-              : "Check-in in progress";
+      : pageError
+        ? "Unable to load check-in"
+        : checkinState === "reviewed"
+          ? "Check-in reviewed"
+          : checkinState === "submitted"
+            ? "Check-in submitted"
+            : checkinState === "overdue"
+              ? "Check-in overdue"
+              : checkinState === "upcoming"
+                ? "Check-in window upcoming"
+                : "Check-in in progress";
   const summaryDescription = missingTemplate
     ? missingTemplateDescription
     : checkinAssignedNotOpen
       ? assignedNotOpenDescription
-    : pageError
-      ? "Please refresh the page or try again shortly."
-      : checkinState === "reviewed"
-        ? lockedSubmissionComplete
-          ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
-          : `Your coach reviewed this check-in, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing from the submission.`
-        : checkinState === "submitted"
+      : pageError
+        ? "Please refresh the page or try again shortly."
+        : checkinState === "reviewed"
           ? lockedSubmissionComplete
-            ? "Your responses are submitted and locked for this cycle."
-            : `This check-in was submitted with ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} still missing.`
-          : checkinState === "overdue"
-            ? "Finish this open check-in before moving on to the next cycle."
-            : checkinState === "upcoming"
-              ? `This check-in is scheduled for ${checkinDueDateLabel}. It will unlock on that date.`
-              : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
-  const headerStateText =
-    checkinAssignedNotOpen
-      ? clientCheckinPageState.nextDueDate
-        ? `Opens ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
-        : "Check-in assigned"
-      : checkinState === "reviewed"
+            ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
+            : `Your coach reviewed this check-in, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing from the submission.`
+          : checkinState === "submitted"
+            ? lockedSubmissionComplete
+              ? "Your responses are submitted and locked for this cycle."
+              : `This check-in was submitted with ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} still missing.`
+            : checkinState === "overdue"
+              ? "Finish this open check-in before moving on to the next cycle."
+              : checkinState === "upcoming"
+                ? `This check-in is scheduled for ${checkinDueDateLabel}. It will unlock on that date.`
+                : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
+  const headerStateText = checkinAssignedNotOpen
+    ? clientCheckinPageState.nextDueDate
+      ? `Opens ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
+      : "Check-in assigned"
+    : checkinState === "reviewed"
       ? `Reviewed ${checkinDueDateLabel}`
       : checkinState === "submitted"
         ? `Submitted ${checkinDueDateLabel}`

@@ -75,7 +75,7 @@ describe("workspace team invite acceptance wiring", () => {
     expect(pageSource).toContain("Back to homepage");
     expect(pageSource).toContain('to: "/app/home"');
     expect(pageSource).toContain('to: "/pt-hub"');
-    expect(pageSource).toContain('accountType={accountType}');
+    expect(pageSource).toContain("accountType={accountType}");
     expect(pageSource).toContain("safeHomeAction.label");
     expect(pageSource).not.toContain("Back to Client Home");
     expect(pageSource).not.toContain("Back to Home");

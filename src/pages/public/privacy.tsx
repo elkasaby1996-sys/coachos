@@ -72,9 +72,9 @@ export function PrivacyPage() {
       </PublicInfoCard>
       <PublicInfoCard title="Third-party services">
         <p>
-          RepSync may rely on configured infrastructure, authentication, hosting,
-          analytics, messaging, storage, or payment providers where needed to
-          operate the service.
+          RepSync may rely on configured infrastructure, authentication,
+          hosting, analytics, messaging, storage, or payment providers where
+          needed to operate the service.
         </p>
       </PublicInfoCard>
       <PublicInfoCard title="User rights">

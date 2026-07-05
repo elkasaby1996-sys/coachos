@@ -10,10 +10,14 @@ export function canUseBootstrapForProtectedRoute(params: {
 }) {
   if (params.bootstrapResolved) return true;
   if (!params.bootstrapStale) return false;
-  if (!params.currentUserId || params.bootstrapUserId !== params.currentUserId) {
+  if (
+    !params.currentUserId ||
+    params.bootstrapUserId !== params.currentUserId
+  ) {
     return false;
   }
   return (
-    params.accountType === "pt" || params.accountType === "client"
-  ) && params.allow.includes(params.accountType);
+    (params.accountType === "pt" || params.accountType === "client") &&
+    params.allow.includes(params.accountType)
+  );
 }

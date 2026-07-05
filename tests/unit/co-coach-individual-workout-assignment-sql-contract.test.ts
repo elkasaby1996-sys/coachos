@@ -43,7 +43,9 @@ describe("co-coach individual workout assignment SQL contract", () => {
     const body = functionBody(migration, "assign_workout_with_template");
 
     expect(body).toContain("v_template_workspace_id <> v_client_workspace_id");
-    expect(body).toContain("raise exception 'Template not in client workspace'");
+    expect(body).toContain(
+      "raise exception 'Template not in client workspace'",
+    );
   });
 
   it("does not require a workout template active flag that does not exist on workout templates", () => {
@@ -67,7 +69,9 @@ describe("co-coach individual workout assignment SQL contract", () => {
   });
 
   it("does not alter role grants or broad client access helpers", () => {
-    expect(migration).not.toContain("insert into public.workspace_role_permissions");
+    expect(migration).not.toContain(
+      "insert into public.workspace_role_permissions",
+    );
     expect(migration).not.toContain(
       "create or replace function public.can_access_client",
     );

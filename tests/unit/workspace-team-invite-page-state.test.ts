@@ -34,8 +34,7 @@ function getDisplayAuthorization(
   input: Partial<InviteDisplayAuthorizationInput>,
 ) {
   return deriveInviteDisplayAuthorization({
-    token:
-      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    token: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     preview: pendingPreview,
     authLoading: false,
     bootstrapLoading: false,

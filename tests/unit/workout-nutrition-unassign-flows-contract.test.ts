@@ -33,7 +33,10 @@ const getFunctionBody = (source: string, functionName: string) => {
   const start = source.indexOf(`function ${functionName}`);
   expect(start).toBeGreaterThanOrEqual(0);
   const nextFunction = source.indexOf("\nfunction ", start + 1);
-  return source.slice(start, nextFunction === -1 ? source.length : nextFunction);
+  return source.slice(
+    start,
+    nextFunction === -1 ? source.length : nextFunction,
+  );
 };
 
 describe("workout and nutrition unassign SQL contract", () => {
@@ -41,7 +44,9 @@ describe("workout and nutrition unassign SQL contract", () => {
     expect(migration).toContain(
       "create or replace function public.unassign_client_nutrition_plan",
     );
-    expect(migration).toContain("public.can_write_client_delivery(p_client_id)");
+    expect(migration).toContain(
+      "public.can_write_client_delivery(p_client_id)",
+    );
     expect(migration).toContain("status = 'cancelled'");
     expect(migration).toContain("ap.status = 'active'");
     expect(migration).toContain("nt.workspace_id is not null");
@@ -52,8 +57,12 @@ describe("workout and nutrition unassign SQL contract", () => {
   });
 
   it("preserves nutrition snapshot child rows and source templates", () => {
-    expect(migration).not.toContain("delete from public.assigned_nutrition_days");
-    expect(migration).not.toContain("delete from public.assigned_nutrition_meals");
+    expect(migration).not.toContain(
+      "delete from public.assigned_nutrition_days",
+    );
+    expect(migration).not.toContain(
+      "delete from public.assigned_nutrition_meals",
+    );
     expect(migration).not.toContain(
       "delete from public.assigned_nutrition_meal_components",
     );
@@ -61,7 +70,9 @@ describe("workout and nutrition unassign SQL contract", () => {
   });
 
   it("does not weaken role permissions or client assignment scoping", () => {
-    expect(migration).not.toContain("insert into public.workspace_role_permissions");
+    expect(migration).not.toContain(
+      "insert into public.workspace_role_permissions",
+    );
     expect(migration).not.toContain(
       "create or replace function public.can_write_client_delivery",
     );
@@ -79,7 +90,10 @@ describe("workout and nutrition unassign SQL contract", () => {
 
 describe("workout and nutrition unassign UI contract", () => {
   it("coach client detail exposes a clear nutrition remove-assignment action", () => {
-    const nutritionTab = getFunctionBody(clientDetailPage, "PtClientNutritionTab");
+    const nutritionTab = getFunctionBody(
+      clientDetailPage,
+      "PtClientNutritionTab",
+    );
 
     expect(clientDetailPage).toContain("unassign_client_nutrition_plan");
     expect(nutritionTab).toContain("const [nutritionUnassignStatus");

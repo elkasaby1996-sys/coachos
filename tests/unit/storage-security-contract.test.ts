@@ -51,7 +51,12 @@ const privateStorageMedia = readRepoFile(
 );
 const clientMedicalPage = readRepoFile("src", "pages", "client", "medical.tsx");
 const clientProfilePage = readRepoFile("src", "pages", "client", "profile.tsx");
-const ptClientDetailPage = readRepoFile("src", "pages", "pt", "client-detail.tsx");
+const ptClientDetailPage = readRepoFile(
+  "src",
+  "pages",
+  "pt",
+  "client-detail.tsx",
+);
 const ptMedicalTab = readRepoFile(
   "src",
   "pages",
@@ -79,7 +84,8 @@ const privateStorageSources = [
 const storageClassification = [
   {
     bucket: "pt_profile_media",
-    content: "Marketplace/public coach profile photos, banners, transformations",
+    content:
+      "Marketplace/public coach profile photos, banners, transformations",
     visibility: "public",
     currentState: "public=true",
     access: "getPublicUrl/public object URL",
@@ -181,7 +187,9 @@ describe("storage security classification", () => {
     expect(ptProfileBucketMigration).toContain("'pt_profile_media'");
     expect(ptProfileBucketMigration).toContain("true");
     expect(ptProfileSelectMigration).toContain("to public");
-    expect(ptProfileSelectMigration).toContain("bucket_id = 'pt_profile_media'");
+    expect(ptProfileSelectMigration).toContain(
+      "bucket_id = 'pt_profile_media'",
+    );
     expect(ptProfileMediaHelper).toContain(".getPublicUrl(storagePath)");
   });
 
@@ -223,7 +231,9 @@ describe("storage security classification", () => {
   });
 
   it("persists private image storage paths instead of rendered object URLs", () => {
-    expect(clientCheckinPage).toContain("let storedUrl = state.existingStoragePath");
+    expect(clientCheckinPage).toContain(
+      "let storedUrl = state.existingStoragePath",
+    );
     expect(clientCheckinPage).toContain("storedUrl = storagePath");
     expect(clientBaselinePage).toContain("upsertPhotoRow(");
     expect(clientBaselinePage).toContain("filePath,\n      filePath,");

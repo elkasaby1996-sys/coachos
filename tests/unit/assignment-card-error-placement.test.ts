@@ -20,8 +20,12 @@ describe("assignment card error placement", () => {
     expect(clientDetailPage).toContain(
       'return "Completed workouts cannot be replaced.";',
     );
-    expect(clientDetailPage).toContain("Cannot replace a completed workout day");
-    expect(clientDetailPage).toContain("Cannot override a completed workout day");
+    expect(clientDetailPage).toContain(
+      "Cannot replace a completed workout day",
+    );
+    expect(clientDetailPage).toContain(
+      "Cannot override a completed workout day",
+    );
   });
 
   it("uses the same local assignment error mapper for one-off assignments and overrides", () => {

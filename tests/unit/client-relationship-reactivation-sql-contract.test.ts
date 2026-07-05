@@ -93,9 +93,13 @@ describe("client relationship reactivation SQL contract", () => {
 
   it("lead approval preserves history by keeping the same client id attached", () => {
     expect(migration).toContain("converted_client_id = v_target_client_id");
-    expect(migration).toContain("perform public.ensure_workspace_client_onboarding");
+    expect(migration).toContain(
+      "perform public.ensure_workspace_client_onboarding",
+    );
     expect(migration).not.toContain("delete from public.assigned_workouts");
-    expect(migration).not.toContain("delete from public.assigned_nutrition_plans");
+    expect(migration).not.toContain(
+      "delete from public.assigned_nutrition_plans",
+    );
     expect(migration).not.toContain("delete from public.checkins");
     expect(migration).not.toContain("delete from public.messages");
   });

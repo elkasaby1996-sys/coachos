@@ -8,7 +8,11 @@ function readSource(...segments: string[]) {
 
 const appRoutes = readSource("src", "routes", "app.tsx");
 const authProviderAdapter = readSource("src", "providers", "AuthProvider.tsx");
-const slugRouteResolvers = readSource("src", "routes", "slug-route-resolvers.tsx");
+const slugRouteResolvers = readSource(
+  "src",
+  "routes",
+  "slug-route-resolvers.tsx",
+);
 
 describe("protected route rendering hardening", () => {
   it("keeps protected route children hidden while bootstrap authorization is not usable", () => {
@@ -35,7 +39,9 @@ describe("protected route rendering hardening", () => {
     expect(slugRouteResolvers).toContain("workspace_access_context");
     expect(slugRouteResolvers).toContain("workspaceAccessQuery.isLoading");
     expect(slugRouteResolvers).toContain("workspaceAccessAllowed");
-    expect(slugRouteResolvers).toContain("<Navigate to={routes.ptHub()} replace />");
+    expect(slugRouteResolvers).toContain(
+      "<Navigate to={routes.ptHub()} replace />",
+    );
     expect(slugRouteResolvers).toContain(
       "workspaceAccessAllowed && workspaceQuery.data?.id",
     );

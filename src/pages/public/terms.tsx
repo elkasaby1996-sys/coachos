@@ -99,9 +99,7 @@ export function TermsPage() {
         </p>
       </PublicInfoCard>
       <PublicInfoCard icon={<Scale className="h-4 w-4" />} title="Contact">
-        <p>
-          Contact support@repsync.com for terms or account questions.
-        </p>
+        <p>Contact support@repsync.com for terms or account questions.</p>
       </PublicInfoCard>
     </PublicInfoLayout>
   );

@@ -313,4 +313,3 @@ Close second: **PR-UI-01.9 replace native confirms with app dialogs**, because n
 - Historical relationships show consistent read-only/history-preserved copy.
 - Mobile layouts are checked at 375px and 768px.
 - Lint and build pass.
-

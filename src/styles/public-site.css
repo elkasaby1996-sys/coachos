@@ -19,7 +19,11 @@
   overflow-x: clip;
   background:
     radial-gradient(circle at 12% 6%, rgb(15 107 79 / 0.18), transparent 34rem),
-    radial-gradient(circle at 86% 2%, rgb(140 111 50 / 0.18), transparent 36rem),
+    radial-gradient(
+      circle at 86% 2%,
+      rgb(140 111 50 / 0.18),
+      transparent 36rem
+    ),
     linear-gradient(180deg, #fffaf0 0%, var(--site-bg) 38%, #eee6d7 100%);
   color: var(--site-text);
   font-family: "Jost", system-ui, sans-serif;
@@ -45,7 +49,10 @@
   z-index: -1;
   pointer-events: none;
   opacity: 0.12;
-  background-image: radial-gradient(rgb(7 17 13 / 0.75) 0.6px, transparent 0.6px);
+  background-image: radial-gradient(
+    rgb(7 17 13 / 0.75) 0.6px,
+    transparent 0.6px
+  );
   background-size: 4px 4px;
 }
 
@@ -134,7 +141,9 @@
   background: rgb(7 17 13 / 0.05);
   color: var(--site-text);
   cursor: pointer;
-  transition: background-color 560ms var(--site-curve), transform 560ms var(--site-curve);
+  transition:
+    background-color 560ms var(--site-curve),
+    transform 560ms var(--site-curve);
 }
 
 .public-menu-button:active {
@@ -147,7 +156,9 @@
   height: 1.5px;
   border-radius: 999px;
   background: currentColor;
-  transition: transform 640ms var(--site-curve), opacity 640ms var(--site-curve);
+  transition:
+    transform 640ms var(--site-curve),
+    opacity 640ms var(--site-curve);
 }
 
 .menu-line:first-child {
@@ -188,7 +199,10 @@
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  transition: background-color 520ms var(--site-curve), color 520ms var(--site-curve), transform 520ms var(--site-curve);
+  transition:
+    background-color 520ms var(--site-curve),
+    color 520ms var(--site-curve),
+    transform 520ms var(--site-curve);
 }
 
 .public-nav a:hover,
@@ -268,7 +282,9 @@
   place-items: center;
   border-radius: 999px;
   background: rgb(255 250 240 / 0.12);
-  transition: transform 620ms var(--site-curve), background-color 620ms var(--site-curve);
+  transition:
+    transform 620ms var(--site-curve),
+    background-color 620ms var(--site-curve);
 }
 
 .site-link-button:hover .button-orbit,
@@ -518,7 +534,11 @@
 
 .mockup-panel div {
   border-radius: 16px;
-  background: linear-gradient(145deg, rgb(15 107 79 / 0.16), rgb(255 255 255 / 0.7));
+  background: linear-gradient(
+    145deg,
+    rgb(15 107 79 / 0.16),
+    rgb(255 255 255 / 0.7)
+  );
   padding: 14px;
 }
 
@@ -656,7 +676,10 @@
 .module-card {
   grid-column: span 2;
   min-height: 190px;
-  transition: border-color 620ms var(--site-curve), background-color 620ms var(--site-curve), transform 620ms var(--site-curve);
+  transition:
+    border-color 620ms var(--site-curve),
+    background-color 620ms var(--site-curve),
+    transform 620ms var(--site-curve);
 }
 
 .module-card .bezel-core {
@@ -787,7 +810,11 @@
 }
 
 .pricing-card.featured {
-  background: linear-gradient(145deg, rgb(15 107 79 / 0.14), rgb(255 252 245 / 0.9));
+  background: linear-gradient(
+    145deg,
+    rgb(15 107 79 / 0.14),
+    rgb(255 252 245 / 0.9)
+  );
   border-color: rgb(15 107 79 / 0.25);
 }
 
@@ -992,7 +1019,11 @@
 
 .transform-card.after {
   transform: rotate(1.6deg) translateX(28px) translateY(-24px);
-  background: linear-gradient(135deg, rgb(15 107 79 / 0.13), rgb(255 252 245 / 0.82));
+  background: linear-gradient(
+    135deg,
+    rgb(15 107 79 / 0.13),
+    rgb(255 252 245 / 0.82)
+  );
 }
 
 .transform-card span {
@@ -1062,7 +1093,9 @@
 .reveal-up {
   opacity: 0;
   transform: translateY(42px);
-  transition: opacity 900ms var(--site-curve), transform 900ms var(--site-curve);
+  transition:
+    opacity 900ms var(--site-curve),
+    transform 900ms var(--site-curve);
 }
 
 .reveal-up.is-visible {

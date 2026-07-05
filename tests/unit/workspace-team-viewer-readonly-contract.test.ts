@@ -79,7 +79,9 @@ describe("workspace team viewer read-only hardening", () => {
       expect(hardeningSql).toContain(`create policy ${policyName}`);
     }
 
-    expect(hardeningSql).toContain("public.can_write_client_delivery(client_id)");
+    expect(hardeningSql).toContain(
+      "public.can_write_client_delivery(client_id)",
+    );
     expect(hardeningSql).toContain(
       "public.can_write_client_delivery(assigned_workouts.client_id)",
     );
@@ -143,7 +145,9 @@ describe("workspace team viewer read-only hardening", () => {
     );
 
     expect(hookSource).toContain("workspace_access_context");
-    expect(hookSource).toContain('hasWorkspacePermission(context, "clients.edit")');
+    expect(hookSource).toContain(
+      'hasWorkspacePermission(context, "clients.edit")',
+    );
     expect(hookSource).toContain(
       'hasWorkspacePermission(context, "delivery.manage")',
     );

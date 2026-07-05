@@ -165,14 +165,12 @@ describe("client inbox helper", () => {
   });
 
   it("labels individual PT bubbles from the actual message sender, not the thread title", () => {
-    expect(clientMessagesPage).toContain(
-      "formatMessageSenderLabel({",
-    );
+    expect(clientMessagesPage).toContain("formatMessageSenderLabel({");
     expect(clientMessagesPage).toMatch(
       /senderAttribution:\s*message\.sender_user_id\s*\?\s*\(workspaceSenderAttributionByUserId\.get/s,
     );
     expect(clientMessagesPage).not.toContain(
-      "selectedThread.title ??\n                                        \"Coach\"",
+      'selectedThread.title ??\n                                        "Coach"',
     );
   });
 

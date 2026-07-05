@@ -415,7 +415,10 @@ export function PtMessagesPage() {
             queryKey: getPtMessagesUnreadKey(workspaceId),
           });
           queryClient.invalidateQueries({
-            queryKey: ["conversation-sender-attributions", activeConversationId],
+            queryKey: [
+              "conversation-sender-attributions",
+              activeConversationId,
+            ],
           });
         },
       )
@@ -851,8 +854,7 @@ export function PtMessagesPage() {
                                 : {
                                     senderUserId: message.senderUserId,
                                     displayName:
-                                      selectedConversationRow?.name ??
-                                      "Client",
+                                      selectedConversationRow?.name ?? "Client",
                                     workspaceRole: "client",
                                   },
                             });
@@ -873,9 +875,7 @@ export function PtMessagesPage() {
                                   )}
                                 >
                                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                     <span>
-                                      {senderLabel}
-                                    </span>
+                                    <span>{senderLabel}</span>
                                     <span>{formatTime(message.sentAt)}</span>
                                     <span>Read-only history</span>
                                   </div>
@@ -956,12 +956,11 @@ export function PtMessagesPage() {
                             senderRole: message.sender_role,
                             senderName: message.sender_name,
                           },
-                          senderAttribution:
-                            message.sender_user_id
-                              ? (senderAttributionByUserId.get(
-                                  message.sender_user_id,
-                                ) ?? null)
-                              : null,
+                          senderAttribution: message.sender_user_id
+                            ? (senderAttributionByUserId.get(
+                                message.sender_user_id,
+                              ) ?? null)
+                            : null,
                         });
                         return (
                           <div

@@ -80,10 +80,10 @@ describe("assignment snapshot semantics", () => {
 
   it("documents that template edits are not expected to mutate existing snapshots", () => {
     expect(baselineSql).toContain(
-      "CREATE OR REPLACE TRIGGER \"trg_assigned_workouts_sync_exercises\" AFTER INSERT OR UPDATE OF \"workout_template_id\"",
+      'CREATE OR REPLACE TRIGGER "trg_assigned_workouts_sync_exercises" AFTER INSERT OR UPDATE OF "workout_template_id"',
     );
     expect(baselineSql).not.toContain(
-      "AFTER UPDATE ON \"public\".\"workout_template_exercises\"",
+      'AFTER UPDATE ON "public"."workout_template_exercises"',
     );
     expect(hardeningSql).toContain(
       "insert into public.assigned_nutrition_days",
@@ -110,7 +110,7 @@ describe("assignment snapshot semantics", () => {
     expect(baselineSql).toContain("assigned_nutrition_meals");
     expect(baselineSql).toContain("assigned_nutrition_meal_components");
     expect(baselineSql).toContain(
-      "REFERENCES \"public\".\"nutrition_templates\"(\"id\") ON DELETE RESTRICT",
+      'REFERENCES "public"."nutrition_templates"("id") ON DELETE RESTRICT',
     );
   });
 

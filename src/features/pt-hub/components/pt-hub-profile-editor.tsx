@@ -50,6 +50,7 @@ import type {
 } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 import { useSessionAuth } from "../../../lib/auth";
+import { routes } from "../../../lib/routes";
 import { cn } from "../../../lib/utils";
 import {
   getCharacterLimitState,
@@ -439,7 +440,14 @@ function PtHubProfileLaunchPanel({
   const missingItems = readiness.checklist.filter((item) => !item.complete);
   const topMissingItems = missingItems.slice(0, 2);
   const remainingMissingCount = missingItems.length - topMissingItems.length;
-  const publicUrl = getPublicCoachUrl(form.slug);
+  const publicSlugValidation = validatePublicProfileSlug(form.slug, {
+    allowEmpty: true,
+  });
+  const publicProfilePath =
+    publicSlugValidation.valid && publicSlugValidation.slug
+      ? routes.publicProfile(publicSlugValidation.slug)
+      : null;
+  const publicUrl = getPublicCoachUrl(publicSlugValidation.slug);
   const canPublishNow =
     publicationState.canPublish && !hasChanges && !hasOverLimitErrors;
   const primaryActionLabel = hasChanges
@@ -568,8 +576,8 @@ function PtHubProfileLaunchPanel({
               void onTogglePublish(!publicationState.isPublished);
             }}
           >
-            {publicationState.isPublished && publicUrl ? (
-              <a href={publicUrl} target="_blank" rel="noreferrer">
+            {publicationState.isPublished && publicProfilePath ? (
+              <a href={publicProfilePath} target="_blank" rel="noreferrer">
                 <span>{primaryActionLabel}</span>
                 <ArrowUpRight className="h-4 w-4" />
               </a>

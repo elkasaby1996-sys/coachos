@@ -32,17 +32,25 @@ describe("universal baseline transfer continuity SQL contract", () => {
     expect(migration).toContain("insert into public.baseline_metrics");
     expect(migration).toContain("insert into public.baseline_marker_values");
     expect(migration).toContain("insert into public.baseline_photos");
-    expect(migration).toContain("insert into public.baseline_entry_marker_templates");
+    expect(migration).toContain(
+      "insert into public.baseline_entry_marker_templates",
+    );
     expect(migration).toContain("v_target_client.workspace_id");
   });
 
   it("updates existing target baseline rows instead of duplicating transfer-back data", () => {
     expect(migration).toContain("v_existing_target_baseline_id");
-    expect(migration).toContain("universal_source_baseline_id = v_canonical_baseline_id");
+    expect(migration).toContain(
+      "universal_source_baseline_id = v_canonical_baseline_id",
+    );
     expect(migration).toContain("be.id = v_canonical_baseline_id");
     expect(migration).toContain("on conflict (baseline_id) do update");
-    expect(migration).toContain("on conflict (baseline_id, template_id) do update");
-    expect(migration).toContain("on conflict (baseline_id, photo_type) do update");
+    expect(migration).toContain(
+      "on conflict (baseline_id, template_id) do update",
+    );
+    expect(migration).toContain(
+      "on conflict (baseline_id, photo_type) do update",
+    );
   });
 
   it("wires explicit safe transfer through baseline continuity after target activation", () => {

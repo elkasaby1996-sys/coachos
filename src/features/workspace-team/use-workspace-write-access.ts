@@ -25,9 +25,9 @@ export function useWorkspaceWriteAccess() {
       });
 
       if (error) throw error;
-      return (Array.isArray(data) ? data[0] : null) as
-        | WorkspaceAccessContextRow
-        | null;
+      return (
+        Array.isArray(data) ? data[0] : null
+      ) as WorkspaceAccessContextRow | null;
     },
   });
 

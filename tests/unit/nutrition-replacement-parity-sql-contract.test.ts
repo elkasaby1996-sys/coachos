@@ -48,7 +48,9 @@ describe("nutrition replacement parity SQL contract", () => {
   });
 
   it("preserves personal plan auto-close separately from coach plan replacement", () => {
-    expect(migration).toContain("if v_template_owner_client_id is not null then");
+    expect(migration).toContain(
+      "if v_template_owner_client_id is not null then",
+    );
     expect(migration).toContain("nt.owner_client_id = p_client_id");
     expect(migration).toContain("nt.workspace_id is null");
   });
@@ -71,23 +73,23 @@ describe("nutrition replacement parity SQL contract", () => {
 
 describe("nutrition current-plan query contract", () => {
   it("client nutrition page fetches active plan rows only for current nutrition", () => {
-    expect(clientNutritionPage).toContain(".eq(\"status\", \"active\")");
+    expect(clientNutritionPage).toContain('.eq("status", "active")');
   });
 
   it("client home nutrition widgets fetch active plan rows only", () => {
-    expect(clientHomePage).toContain(".eq(\"status\", \"active\")");
+    expect(clientHomePage).toContain('.eq("status", "active")');
   });
 
   it("coach client detail fetches active plan rows only for current assignment and previews", () => {
-    expect(clientDetailPage).toContain(".eq(\"status\", \"active\")");
+    expect(clientDetailPage).toContain('.eq("status", "active")');
     expect(clientDetailPage).toContain(
       "nutrition_template:nutrition_templates!inner",
     );
     expect(clientDetailPage).not.toContain(
-      ".not(\"nutrition_template.workspace_id\", \"is\", null)",
+      '.not("nutrition_template.workspace_id", "is", null)',
     );
     expect(clientDetailPage).not.toContain(
-      ".is(\"nutrition_template.owner_client_id\", null)",
+      '.is("nutrition_template.owner_client_id", null)',
     );
     expect(clientDetailPage).toContain("template?.workspace_id");
     expect(clientDetailPage).toContain(
@@ -96,6 +98,6 @@ describe("nutrition current-plan query contract", () => {
   });
 
   it("shared assigned nutrition range hook fetches active plan rows only", () => {
-    expect(nutritionLib).toContain(".eq(\"status\", \"active\")");
+    expect(nutritionLib).toContain('.eq("status", "active")');
   });
 });

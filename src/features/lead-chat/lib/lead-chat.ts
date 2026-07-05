@@ -245,9 +245,12 @@ export function useConvertedLeadHistory(
     queryFn: async () => {
       if (!conversationId) return [] satisfies ConvertedLeadHistoryMessage[];
 
-      const { data, error } = await supabase.rpc("converted_lead_history_for_conversation", {
-        p_conversation_id: conversationId,
-      });
+      const { data, error } = await supabase.rpc(
+        "converted_lead_history_for_conversation",
+        {
+          p_conversation_id: conversationId,
+        },
+      );
 
       if (error) throw error;
       return ((data ?? []) as ConvertedLeadHistoryMessageRow[]).map(

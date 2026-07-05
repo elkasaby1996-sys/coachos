@@ -3,11 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../../lib/supabase";
 import { notificationsKeys } from "./use-notifications";
 
-export function useNotificationRealtime({
-  userId,
-}: {
-  userId: string | null;
-}) {
+export function useNotificationRealtime({ userId }: { userId: string | null }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {

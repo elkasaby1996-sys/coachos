@@ -7,7 +7,8 @@ export type SelectableClientProfile = {
 
 function isActiveWorkspaceRelationship(row: SelectableClientProfile) {
   return (
-    Boolean(row.workspace_id) && (row.relationship_status ?? "active") === "active"
+    Boolean(row.workspace_id) &&
+    (row.relationship_status ?? "active") === "active"
   );
 }
 

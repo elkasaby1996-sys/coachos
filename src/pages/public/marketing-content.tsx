@@ -205,11 +205,13 @@ const problemItems = [
   },
   {
     title: "Check-ins live in forms.",
-    detail: "Submissions arrive, but review status and follow-up context split apart.",
+    detail:
+      "Submissions arrive, but review status and follow-up context split apart.",
   },
   {
     title: "Payments live elsewhere.",
-    detail: "Revenue context is separate from the clients and packages it belongs to.",
+    detail:
+      "Revenue context is separate from the clients and packages it belongs to.",
   },
   {
     title: "Client notes get scattered.",
@@ -569,7 +571,10 @@ function ProductScreenshotFeature({
 
 function ExpectationList() {
   return (
-    <div className="expectation-list" aria-label="What happens after a demo request">
+    <div
+      className="expectation-list"
+      aria-label="What happens after a demo request"
+    >
       <p className="mini-kicker">What happens next</p>
       <ol>
         <li>Share how you coach and what is scattered today.</li>
@@ -732,7 +737,10 @@ export function MarketingHomePage() {
         </div>
       </section>
 
-      <section className="comparison-section" aria-labelledby="architecture-title">
+      <section
+        className="comparison-section"
+        aria-labelledby="architecture-title"
+      >
         <SectionHeader
           eyebrow="Product architecture"
           title="Separate your business control center from client delivery."
@@ -800,7 +808,10 @@ export function MarketingHomePage() {
         </div>
       </section>
 
-      <section className="screenshot-section" aria-labelledby="proof-screens-title">
+      <section
+        className="screenshot-section"
+        aria-labelledby="proof-screens-title"
+      >
         <SectionHeader
           eyebrow="Product proof"
           title="Real surfaces, not imagined dashboard art."
@@ -848,7 +859,11 @@ export function MarketingHomePage() {
         </div>
       </section>
 
-      <section id="pricing" className="final-section" aria-labelledby="pricing-title">
+      <section
+        id="pricing"
+        className="final-section"
+        aria-labelledby="pricing-title"
+      >
         <div className="pricing-shell">
           <div className="pricing-header">
             <p className="kicker">Early access</p>
@@ -889,7 +904,10 @@ export function ProductPage() {
           "Explore RepSync’s tools for lead capture, client management, workspaces, check-ins, billing, analytics, and automations.",
       }}
     >
-      <section className="gateway-section hero-section" aria-labelledby="product-title">
+      <section
+        className="gateway-section hero-section"
+        aria-labelledby="product-title"
+      >
         <div className="gateway-copy hero-copy">
           <p className="kicker">Product overview</p>
           <h1 id="product-title">
@@ -912,7 +930,10 @@ export function ProductPage() {
         <ProductPreviewMockup />
       </section>
 
-      <section className="screenshot-section" aria-labelledby="product-screens-title">
+      <section
+        className="screenshot-section"
+        aria-labelledby="product-screens-title"
+      >
         <SectionHeader
           eyebrow="What buyers can inspect"
           title="The product story is split across business control and client delivery."
@@ -971,7 +992,10 @@ export function PricingPage() {
           "View RepSync pricing or request early access for your coaching business.",
       }}
     >
-      <section className="gateway-section hero-section pricing-hero" aria-labelledby="pricing-page-title">
+      <section
+        className="gateway-section hero-section pricing-hero"
+        aria-labelledby="pricing-page-title"
+      >
         <div className="gateway-copy hero-copy">
           <p className="kicker">Early access pricing</p>
           <h1 id="pricing-page-title">
@@ -1017,11 +1041,14 @@ export function PricingPage() {
             <h2>What early users are evaluating.</h2>
             <p className="pricing-copy">
               RepSync is being matched to real coaching setups before final
-              public pricing is published. The demo is used to understand
-              client volume, delivery model, team needs, and billing context.
+              public pricing is published. The demo is used to understand client
+              volume, delivery model, team needs, and billing context.
             </p>
           </div>
-          <div className="feature-checklist" aria-label="RepSync included areas">
+          <div
+            className="feature-checklist"
+            aria-label="RepSync included areas"
+          >
             {pricingFeatures.map((feature) => (
               <span key={feature}>{feature}</span>
             ))}
@@ -1029,10 +1056,15 @@ export function PricingPage() {
         </div>
       </section>
 
-      <section className="trial-band pricing-expectations" aria-labelledby="pricing-next-title">
+      <section
+        className="trial-band pricing-expectations"
+        aria-labelledby="pricing-next-title"
+      >
         <div>
           <p className="kicker">After you request access</p>
-          <h2 id="pricing-next-title">No fake plan limits. No surprise pricing table.</h2>
+          <h2 id="pricing-next-title">
+            No fake plan limits. No surprise pricing table.
+          </h2>
           <p>
             RepSync is not publishing final limits until early users validate
             the right packaging. You will see what is available now, what is
@@ -1107,8 +1139,12 @@ const initialDemoForm: DemoFormState = {
 
 export function DemoPage() {
   const [form, setForm] = useState(initialDemoForm);
-  const [errors, setErrors] = useState<Partial<Record<keyof DemoFormState, string>>>({});
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof DemoFormState, string>>
+  >({});
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
   const formId = useId();
 
   const updateField = (field: keyof DemoFormState, value: string) => {
@@ -1164,7 +1200,10 @@ export function DemoPage() {
           "Request a RepSync demo and see how it can support your coaching workflow.",
       }}
     >
-      <section className="gateway-section hero-section demo-hero" aria-labelledby="demo-title">
+      <section
+        className="gateway-section hero-section demo-hero"
+        aria-labelledby="demo-title"
+      >
         <div className="gateway-copy hero-copy">
           <p className="kicker">Demo request</p>
           <h1 id="demo-title">See RepSync around your coaching setup.</h1>
@@ -1181,7 +1220,11 @@ export function DemoPage() {
           <ExpectationList />
         </div>
 
-        <form className="demo-form price-card" onSubmit={handleSubmit} noValidate>
+        <form
+          className="demo-form price-card"
+          onSubmit={handleSubmit}
+          noValidate
+        >
           <Field
             id={`${formId}-full-name`}
             label="Full name"

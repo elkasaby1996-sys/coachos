@@ -31,7 +31,9 @@ const functionBody = (source: string, functionName: string) => {
 
 describe("check-in client assignment resolution contract", () => {
   it("restores client read access to check-in templates in their own workspace", () => {
-    expect(migration).toContain("create policy checkin_templates_select_access");
+    expect(migration).toContain(
+      "create policy checkin_templates_select_access",
+    );
     expect(migration).toContain("public.can_access_workspace(workspace_id)");
     expect(migration).toContain("from public.clients c");
     expect(migration).toContain(
@@ -41,7 +43,9 @@ describe("check-in client assignment resolution contract", () => {
   });
 
   it("restores client read access to questions for readable check-in templates", () => {
-    expect(migration).toContain("create policy checkin_questions_select_access");
+    expect(migration).toContain(
+      "create policy checkin_questions_select_access",
+    );
     expect(migration).toContain("ct.id = checkin_questions.template_id");
     expect(migration).toContain("c.workspace_id = ct.workspace_id");
     expect(migration).toContain("c.user_id = (select auth.uid())");
@@ -73,7 +77,9 @@ describe("check-in client assignment resolution contract", () => {
       "pt_update_client_checkin_settings",
     );
 
-    expect(rpcBody).toContain("public.can_access_client(p_client_id, 'delivery.manage')");
+    expect(rpcBody).toContain(
+      "public.can_access_client(p_client_id, 'delivery.manage')",
+    );
     expect(rpcBody).toContain("checkin_template_id = p_checkin_template_id");
     expect(rpcBody).toContain("checkin_frequency = v_frequency");
     expect(rpcBody).toContain("checkin_start_date = p_checkin_start_date");

@@ -56,7 +56,9 @@ describe("client relationship archive SQL contract", () => {
     expect(archiveFunction).toContain("removed_at = coalesce");
     expect(archiveFunction).toContain("removed_by_user_id = coalesce");
     expect(archiveFunction).not.toContain("delete from public.clients");
-    expect(archiveFunction).not.toContain("delete from public.assigned_workouts");
+    expect(archiveFunction).not.toContain(
+      "delete from public.assigned_workouts",
+    );
     expect(archiveFunction).not.toContain(
       "delete from public.assigned_nutrition_plans",
     );
@@ -113,9 +115,7 @@ describe("client relationship archive SQL contract", () => {
     expect(archiveMigration).toContain(
       "where c.workspace_id = v_invite.workspace_id",
     );
-    expect(archiveMigration).toContain(
-      "relationship_status = 'active'",
-    );
+    expect(archiveMigration).toContain("relationship_status = 'active'");
     expect(archiveMigration).toContain("removed_at = null");
     expect(archiveMigration).toContain("removed_by_user_id = null");
     expect(archiveMigration).toContain(

@@ -44,7 +44,9 @@ describe("one-day workout override persistence SQL contract", () => {
 
     expect(body).toContain("public.can_write_client_delivery(v_client_id)");
     expect(body).toContain("v_template_workspace_id <> v_workspace_id");
-    expect(body).toContain("raise exception 'Template not in client workspace'");
+    expect(body).toContain(
+      "raise exception 'Template not in client workspace'",
+    );
   });
 
   it("persists the override without creating a new active client_programs row", () => {
@@ -83,10 +85,13 @@ describe("one-day workout override persistence SQL contract", () => {
       "const handleStatusUpdate = async",
       saveHandlerStart,
     );
-    const saveHandler = clientDetailPage.slice(saveHandlerStart, saveHandlerEnd);
+    const saveHandler = clientDetailPage.slice(
+      saveHandlerStart,
+      saveHandlerEnd,
+    );
 
     expect(saveHandler).toContain("save_client_program_day_override");
     expect(saveHandler).not.toContain("apply_program_to_client");
-    expect(saveHandler).not.toContain("client_program_overrides\").upsert");
+    expect(saveHandler).not.toContain('client_program_overrides").upsert');
   });
 });

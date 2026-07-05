@@ -60,18 +60,13 @@ export function buildClientInboxSourceLabel(params: {
   return params.archived ? "Lead chat (Archived)" : "Lead chat";
 }
 
-export function isClientInboxThreadHideable(
-  thread: ClientInboxHideableThread,
-) {
+export function isClientInboxThreadHideable(thread: ClientInboxHideableThread) {
   return thread.type !== "workspace";
 }
 
 export function filterClientInboxVisibleThreads<
   Thread extends ClientInboxHideableThread,
->(params: {
-  threads: Thread[];
-  hiddenThreadIds: string[];
-}): Thread[] {
+>(params: { threads: Thread[]; hiddenThreadIds: string[] }): Thread[] {
   if (params.hiddenThreadIds.length === 0) return params.threads;
 
   const hidden = new Set(params.hiddenThreadIds);
@@ -88,10 +83,7 @@ export function resolveStableClientInboxSelection(params: {
 }) {
   const threadIdSet = new Set(params.threadIds);
 
-  if (
-    params.requestedThreadId &&
-    threadIdSet.has(params.requestedThreadId)
-  ) {
+  if (params.requestedThreadId && threadIdSet.has(params.requestedThreadId)) {
     return params.requestedThreadId;
   }
 
@@ -110,9 +102,9 @@ export function resolveStableClientInboxSelection(params: {
   return null;
 }
 
-export function sortClientInboxThreads<Thread extends ClientInboxSortableThread>(
-  threads: Thread[],
-): Thread[] {
+export function sortClientInboxThreads<
+  Thread extends ClientInboxSortableThread,
+>(threads: Thread[]): Thread[] {
   return [...threads].sort((a, b) => {
     if (a.unreadCount !== b.unreadCount) {
       return b.unreadCount - a.unreadCount;

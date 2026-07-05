@@ -35,10 +35,27 @@
   font-family: "Barlow", system-ui, sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 14% 16%, oklch(0.884 0.016 88 / 0.32), transparent 26%),
-    radial-gradient(circle at 84% 18%, oklch(0.64 0.062 114 / 0.14), transparent 24%),
-    radial-gradient(circle at 70% 82%, oklch(0.68 0.068 72 / 0.16), transparent 24%),
-    linear-gradient(165deg, var(--canvas-soft), var(--canvas) 46%, var(--canvas-deep));
+    radial-gradient(
+      circle at 14% 16%,
+      oklch(0.884 0.016 88 / 0.32),
+      transparent 26%
+    ),
+    radial-gradient(
+      circle at 84% 18%,
+      oklch(0.64 0.062 114 / 0.14),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 70% 82%,
+      oklch(0.68 0.068 72 / 0.16),
+      transparent 24%
+    ),
+    linear-gradient(
+      165deg,
+      var(--canvas-soft),
+      var(--canvas) 46%,
+      var(--canvas-deep)
+    );
   background-attachment: fixed;
 }
 
@@ -49,9 +66,21 @@
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 22%, oklch(0.884 0.016 88 / 0.16), transparent 24%),
-    radial-gradient(circle at 78% 18%, oklch(0.68 0.068 72 / 0.075), transparent 22%),
-    radial-gradient(circle at 28% 82%, oklch(0.58 0.052 92 / 0.055), transparent 20%);
+    radial-gradient(
+      circle at 18% 22%,
+      oklch(0.884 0.016 88 / 0.16),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 78% 18%,
+      oklch(0.68 0.068 72 / 0.075),
+      transparent 22%
+    ),
+    radial-gradient(
+      circle at 28% 82%,
+      oklch(0.58 0.052 92 / 0.055),
+      transparent 20%
+    );
   filter: blur(136px) saturate(68%);
 }
 
@@ -65,7 +94,11 @@
     linear-gradient(oklch(0.715 0.016 88 / 0.07) 1px, transparent 1px),
     linear-gradient(90deg, oklch(0.715 0.016 88 / 0.07) 1px, transparent 1px);
   background-size: 92px 92px;
-  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.72), transparent 86%);
+  mask-image: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.72),
+    transparent 86%
+  );
   opacity: 0.34;
 }
 
@@ -97,7 +130,11 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.84), oklch(0.97 0.007 95 / 0.68)),
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.84),
+      oklch(0.97 0.007 95 / 0.68)
+    ),
     linear-gradient(135deg, oklch(1 0 0 / 0.2), transparent 46%);
   box-shadow: var(--shadow);
   backdrop-filter: blur(24px);
@@ -111,7 +148,11 @@
   pointer-events: none;
   background:
     linear-gradient(180deg, oklch(1 0 0 / 0.32), transparent 42%),
-    radial-gradient(circle at 92% 0%, oklch(0.585 0.105 151 / 0.08), transparent 30%);
+    radial-gradient(
+      circle at 92% 0%,
+      oklch(0.585 0.105 151 / 0.08),
+      transparent 30%
+    );
 }
 
 .brand-mark,
@@ -338,8 +379,16 @@ h1 {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.9), oklch(0.97 0.007 95 / 0.74)),
-    radial-gradient(circle at 0% 0%, oklch(0.585 0.105 151 / 0.12), transparent 36%);
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.9),
+      oklch(0.97 0.007 95 / 0.74)
+    ),
+    radial-gradient(
+      circle at 0% 0%,
+      oklch(0.585 0.105 151 / 0.12),
+      transparent 36%
+    );
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(24px);
 }
@@ -439,7 +488,11 @@ h1 {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.78), oklch(0.97 0.007 95 / 0.58)),
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.78),
+      oklch(0.97 0.007 95 / 0.58)
+    ),
     linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 46%);
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.7),
@@ -465,7 +518,12 @@ h1 {
   inset: 0 0 auto;
   height: 3px;
   border-radius: inherit;
-  background: linear-gradient(90deg, oklch(0.68 0.068 72 / 0.16), oklch(0.68 0.068 72 / 0.075), transparent);
+  background: linear-gradient(
+    90deg,
+    oklch(0.68 0.068 72 / 0.16),
+    oklch(0.68 0.068 72 / 0.075),
+    transparent
+  );
   opacity: 0.7;
 }
 
@@ -484,7 +542,11 @@ h1 {
   border: 1px solid oklch(0.715 0.016 88 / 0.48);
   border-radius: 1.45rem;
   background:
-    radial-gradient(circle at 82% 18%, oklch(0.585 0.105 151 / 0.1), transparent 34%),
+    radial-gradient(
+      circle at 82% 18%,
+      oklch(0.585 0.105 151 / 0.1),
+      transparent 34%
+    ),
     oklch(0.995 0.003 96 / 0.48);
 }
 
@@ -626,7 +688,11 @@ h1 {
 .resource-grid article {
   border: 1px solid var(--border);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.82), oklch(0.97 0.007 95 / 0.58)),
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.82),
+      oklch(0.97 0.007 95 / 0.58)
+    ),
     linear-gradient(135deg, oklch(1 0 0 / 0.2), transparent 48%);
   box-shadow: var(--shadow);
   backdrop-filter: blur(24px);
@@ -667,8 +733,11 @@ h1 {
 }
 
 .preview-rail {
-  background:
-    linear-gradient(180deg, oklch(0.918 0.014 92 / 0.94), oklch(0.895 0.018 88 / 0.84));
+  background: linear-gradient(
+    180deg,
+    oklch(0.918 0.014 92 / 0.94),
+    oklch(0.895 0.018 88 / 0.84)
+  );
 }
 
 .preview-main {
@@ -844,7 +913,11 @@ h1 {
   min-height: 31rem;
   padding: 1rem;
   border-radius: 1.8rem;
-  background: linear-gradient(180deg, oklch(0.944 0.012 92), oklch(0.884 0.016 88 / 0.78));
+  background: linear-gradient(
+    180deg,
+    oklch(0.944 0.012 92),
+    oklch(0.884 0.016 88 / 0.78)
+  );
 }
 
 .phone-title,
@@ -970,8 +1043,16 @@ figcaption {
   border: 1px solid var(--border);
   border-radius: calc(var(--radius-xl) + 0.45rem);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.66), oklch(0.97 0.007 95 / 0.46)),
-    radial-gradient(circle at 50% 0%, oklch(0.585 0.105 151 / 0.09), transparent 42%);
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.66),
+      oklch(0.97 0.007 95 / 0.46)
+    ),
+    radial-gradient(
+      circle at 50% 0%,
+      oklch(0.585 0.105 151 / 0.09),
+      transparent 42%
+    );
   box-shadow: var(--shadow);
   backdrop-filter: blur(24px);
 }
@@ -1046,7 +1127,11 @@ figcaption {
   border-radius: var(--radius-xl);
   padding: clamp(1.1rem, 2.2vw, 1.55rem);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.86), oklch(0.97 0.007 95 / 0.62)),
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.86),
+      oklch(0.97 0.007 95 / 0.62)
+    ),
     linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 46%);
   box-shadow: var(--shadow-soft);
 }
@@ -1054,8 +1139,16 @@ figcaption {
 .price-card.featured {
   border-color: oklch(0.585 0.105 151 / 0.42);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.94), oklch(0.97 0.007 95 / 0.72)),
-    radial-gradient(circle at 96% 0%, oklch(0.585 0.105 151 / 0.16), transparent 36%);
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.94),
+      oklch(0.97 0.007 95 / 0.72)
+    ),
+    radial-gradient(
+      circle at 96% 0%,
+      oklch(0.585 0.105 151 / 0.16),
+      transparent 36%
+    );
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.72),
     0 34px 88px -58px oklch(0.3 0.06 151 / 0.45);
@@ -1263,8 +1356,16 @@ figcaption {
   border-radius: var(--radius-lg);
   padding: clamp(1.15rem, 2vw, 1.5rem);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.58), oklch(0.97 0.007 95 / 0.42)),
-    radial-gradient(circle at 96% 0%, oklch(0.585 0.105 151 / 0.08), transparent 34%);
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.58),
+      oklch(0.97 0.007 95 / 0.42)
+    ),
+    radial-gradient(
+      circle at 96% 0%,
+      oklch(0.585 0.105 151 / 0.08),
+      transparent 34%
+    );
   box-shadow: var(--shadow-soft);
 }
 
@@ -1386,7 +1487,11 @@ figcaption {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.78), oklch(0.97 0.007 95 / 0.58)),
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.78),
+      oklch(0.97 0.007 95 / 0.58)
+    ),
     linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 46%);
   box-shadow: var(--shadow);
   backdrop-filter: blur(24px);
@@ -1638,8 +1743,16 @@ figcaption {
   border-radius: var(--radius-xl);
   padding: clamp(1.25rem, 3vw, 2rem);
   background:
-    linear-gradient(180deg, oklch(0.995 0.003 96 / 0.74), oklch(0.97 0.007 95 / 0.54)),
-    radial-gradient(circle at 90% 0%, oklch(0.585 0.105 151 / 0.1), transparent 34%);
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.003 96 / 0.74),
+      oklch(0.97 0.007 95 / 0.54)
+    ),
+    radial-gradient(
+      circle at 90% 0%,
+      oklch(0.585 0.105 151 / 0.1),
+      transparent 34%
+    );
   box-shadow: var(--shadow-soft);
 }
 
@@ -1888,7 +2001,11 @@ figcaption {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     background:
-      linear-gradient(180deg, oklch(0.995 0.003 96 / 0.94), oklch(0.97 0.007 95 / 0.86)),
+      linear-gradient(
+        180deg,
+        oklch(0.995 0.003 96 / 0.94),
+        oklch(0.97 0.007 95 / 0.86)
+      ),
       linear-gradient(135deg, oklch(1 0 0 / 0.18), transparent 46%);
     box-shadow: var(--shadow);
     backdrop-filter: blur(24px);

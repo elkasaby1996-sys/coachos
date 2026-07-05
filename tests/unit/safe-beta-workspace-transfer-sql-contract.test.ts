@@ -26,11 +26,15 @@ describe("safe beta workspace transfer SQL contract", () => {
   it("creates or reuses an active target relationship without copying delivery history", () => {
     expect(migration).toContain("v_target_relationship_status");
     expect(migration).toContain("relationship_status = 'active'");
-    expect(migration).toContain("perform public.reactivate_removed_client_relationship");
+    expect(migration).toContain(
+      "perform public.reactivate_removed_client_relationship",
+    );
     expect(migration).toContain("insert into public.clients");
     expect(migration).toContain("workspace_id = p_target_workspace_id");
     expect(migration).not.toContain("insert into public.assigned_workouts");
-    expect(migration).not.toContain("insert into public.assigned_nutrition_plans");
+    expect(migration).not.toContain(
+      "insert into public.assigned_nutrition_plans",
+    );
     expect(migration).not.toContain("insert into public.checkins");
     expect(migration).not.toContain("insert into public.messages");
   });
@@ -43,8 +47,12 @@ describe("safe beta workspace transfer SQL contract", () => {
   });
 
   it("requires explicit owner or admin access to both workspaces", () => {
-    expect(migration).toContain("v_source_context.role not in ('owner', 'admin')");
-    expect(migration).toContain("v_target_context.role not in ('owner', 'admin')");
+    expect(migration).toContain(
+      "v_source_context.role not in ('owner', 'admin')",
+    );
+    expect(migration).toContain(
+      "v_target_context.role not in ('owner', 'admin')",
+    );
     expect(migration).toContain("detail = 'CLIENT_TRANSFER_PERMISSION_DENIED'");
   });
 
@@ -54,9 +62,7 @@ describe("safe beta workspace transfer SQL contract", () => {
     expect(migration).toContain(
       "select transferred.target_client_id into v_target_client_id",
     );
-    expect(migration).toContain(
-      "from public.pt_transfer_client_relationship(",
-    );
+    expect(migration).toContain("from public.pt_transfer_client_relationship(");
     expect(migration).toContain("converted_client_id = v_target_client_id");
     expect(migration).not.toContain("LEAD_TRANSFER_DISABLED_FOR_BETA");
   });

@@ -53,5 +53,4 @@ describe("workspace route guard", () => {
       }),
     ).toBe("loading");
   });
-
 });

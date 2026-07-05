@@ -19,10 +19,7 @@ import {
   buildPublicPtApplicationRpcInput,
   normalizePtLeadStatus,
 } from "./pt-hub-leads";
-import {
-  normalizePublicProfileSlug,
-  validatePublicProfileSlug,
-} from "./public-profile-slug";
+import { validatePublicProfileSlug } from "./public-profile-slug";
 import { normalizePackageStateForPersistence } from "./pt-hub-package-state";
 import type {
   PTAvailabilityMode,
@@ -487,10 +484,11 @@ export function slugifyValue(value: string) {
 }
 
 export function getPublicCoachUrl(slug: string | null | undefined) {
-  if (!slug) return null;
-  const path = routes.publicProfile(slug);
+  const validation = validatePublicProfileSlug(slug, { allowEmpty: true });
+  if (!validation.slug || !validation.valid) return null;
+  const path = routes.publicProfile(validation.slug);
   if (typeof window === "undefined") return path;
-  return `${window.location.origin}${path}`;
+  return new URL(path, window.location.origin).href;
 }
 
 function computeProfileCompletion(profile: StoredProfileDraft) {
@@ -2154,10 +2152,15 @@ export async function checkPtProfileSlugAvailability(
 }
 
 function getPtHubProfilePersistenceError(error: unknown) {
-  const details =
-    typeof error === "object" && error !== null
-      ? (error as { code?: string; message?: string; details?: string })
-      : {};
+  const details: { code?: string; message?: string; details?: string } = {};
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as Record<string, unknown>;
+    if (typeof candidate.code === "string") details.code = candidate.code;
+    if (typeof candidate.message === "string")
+      details.message = candidate.message;
+    if (typeof candidate.details === "string")
+      details.details = candidate.details;
+  }
   const text =
     `${details.message ?? ""} ${details.details ?? ""}`.toLowerCase();
 

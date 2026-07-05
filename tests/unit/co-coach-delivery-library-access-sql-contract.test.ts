@@ -22,7 +22,9 @@ describe("co-coach delivery library access SQL contract", () => {
     );
     expect(migration).toContain("public.can_access_workspace(wt.workspace_id)");
 
-    expect(migration).toContain("create policy program_templates_select_access");
+    expect(migration).toContain(
+      "create policy program_templates_select_access",
+    );
     expect(migration).toContain(
       "create policy program_template_days_select_access",
     );
@@ -45,17 +47,21 @@ describe("co-coach delivery library access SQL contract", () => {
   });
 
   it("adds explicit workspace-scoped read policies for check-in library details", () => {
-    expect(migration).toContain("create policy checkin_templates_select_access");
-    expect(migration).toContain("create policy checkin_questions_select_access");
     expect(migration).toContain(
-      "where ct.id = checkin_questions.template_id",
+      "create policy checkin_templates_select_access",
     );
+    expect(migration).toContain(
+      "create policy checkin_questions_select_access",
+    );
+    expect(migration).toContain("where ct.id = checkin_questions.template_id");
     expect(migration).toContain("public.can_access_workspace(ct.workspace_id)");
   });
 
   it("does not weaken delivery writes or assignment scoping", () => {
     expect(migration).not.toContain("grant 'delivery.manage'");
-    expect(migration).not.toContain("insert into public.workspace_role_permissions");
+    expect(migration).not.toContain(
+      "insert into public.workspace_role_permissions",
+    );
     expect(migration).not.toContain(
       "create or replace function public.can_write_client_delivery",
     );

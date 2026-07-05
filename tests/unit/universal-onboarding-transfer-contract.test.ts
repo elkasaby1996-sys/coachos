@@ -62,7 +62,9 @@ describe("universal onboarding transfer continuity contract", () => {
   });
 
   it("creates or updates the target workspace onboarding row idempotently", () => {
-    expect(migration).toContain("on conflict (workspace_id, client_id) do update");
+    expect(migration).toContain(
+      "on conflict (workspace_id, client_id) do update",
+    );
     expect(migration).toContain("copy_client_universal_onboarding_data");
     expect(migration).toContain("p_source_client_id uuid");
     expect(migration).toContain("p_target_client_id uuid");
@@ -121,9 +123,13 @@ describe("universal onboarding transfer continuity contract", () => {
     expect(clientOnboardingHook).toContain(
       '(row.relationship_status ?? "active") === "active"',
     );
-    expect(ptClientDetail).toContain('.eq("workspace_id", workspaceQuery.data ?? "")');
+    expect(ptClientDetail).toContain(
+      '.eq("workspace_id", workspaceQuery.data ?? "")',
+    );
     expect(ptClientDetail).toContain('.eq("client_id", clientId ?? "")');
-    expect(migration).not.toContain("relationship_status in ('active', 'transferred_out'");
+    expect(migration).not.toContain(
+      "relationship_status in ('active', 'transferred_out'",
+    );
     expect(migration).not.toContain("relationship_status <> 'removed'");
   });
 });

@@ -63,9 +63,7 @@ export function formatMessageSenderLabel({
       return "Former coach";
     }
 
-    const safeName =
-      resolvedName ??
-      (role ? "Coach" : "Former coach");
+    const safeName = resolvedName ?? (role ? "Coach" : "Former coach");
     if (safeName === "Former coach") {
       return safeName;
     }

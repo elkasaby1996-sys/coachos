@@ -37,7 +37,9 @@ describe("client check-in stale form contract", () => {
     expect(clientCheckinPage).toContain('table: "checkins"');
     expect(clientCheckinPage).toContain('table: "checkin_templates"');
     expect(clientCheckinPage).toContain('table: "checkin_questions"');
-    expect(clientCheckinPage).toContain("filter: `template_id=eq.${templateId}`");
+    expect(clientCheckinPage).toContain(
+      "filter: `template_id=eq.${templateId}`",
+    );
     expect(clientCheckinPage).toContain('event: "*"');
   });
 
@@ -80,9 +82,9 @@ describe("client check-in stale form contract", () => {
       "checkForRemoteCheckinDefinitionChange",
     );
     expect(clientCheckinPage).toContain("window.setInterval");
-    expect(clientCheckinPage).toContain("window.addEventListener(\"focus\"");
+    expect(clientCheckinPage).toContain('window.addEventListener("focus"');
     expect(clientCheckinPage).toContain(
-      "document.addEventListener(\"visibilitychange\"",
+      'document.addEventListener("visibilitychange"',
     );
     expect(clientCheckinPage).toContain(
       "const latestSignature = await fetchDirectFormDefinitionSignature()",

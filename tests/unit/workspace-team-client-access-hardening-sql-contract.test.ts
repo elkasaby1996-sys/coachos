@@ -145,7 +145,9 @@ describe("workspace team client access hardening SQL contract", () => {
     expect(coCoachMessagingMigration).toContain(
       "create or replace function public.can_access_client",
     );
-    expect(coCoachMessagingMigration).toContain("p_permission = 'clients.message'");
+    expect(coCoachMessagingMigration).toContain(
+      "p_permission = 'clients.message'",
+    );
     expect(coCoachMessagingMigration).toContain(
       "v_context.role = 'assistant_coach'",
     );
@@ -234,7 +236,9 @@ describe("workspace team client access hardening SQL contract", () => {
     expect(coachSenderBranch).toContain("'/app/messages'");
     expect(coachSenderBranch).toContain("return new;");
     expect(coachSenderBranch).not.toContain("workspace_members");
-    expect(coachSenderBranch).not.toContain("workspace_member_client_assignments");
+    expect(coachSenderBranch).not.toContain(
+      "workspace_member_client_assignments",
+    );
   });
 
   it("notifies the owner/admin team and assigned co-coaches when a client sends", () => {
@@ -272,9 +276,7 @@ describe("workspace team client access hardening SQL contract", () => {
     expect(senderAttributionMigration).toContain(
       "public.can_access_conversation(p_conversation_id, 'clients.message')",
     );
-    expect(senderAttributionMigration).toContain(
-      "from public.messages m",
-    );
+    expect(senderAttributionMigration).toContain("from public.messages m");
     expect(senderAttributionMigration).toContain(
       "m.conversation_id = p_conversation_id",
     );

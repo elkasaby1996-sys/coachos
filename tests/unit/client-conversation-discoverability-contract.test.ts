@@ -73,7 +73,9 @@ describe("client conversation discoverability", () => {
 
     expect(accessFunction).toContain("c.user_id = (select auth.uid())");
     expect(accessFunction).toContain("c.workspace_id is not null");
-    expect(accessFunction).toContain("c.status = 'active'::public.client_status");
+    expect(accessFunction).toContain(
+      "c.status = 'active'::public.client_status",
+    );
   });
 
   it("wires /app/messages to the client-safe ensure/discovery RPC", () => {

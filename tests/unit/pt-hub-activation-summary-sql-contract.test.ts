@@ -55,9 +55,7 @@ describe("PT Hub activation summary SQL contract", () => {
     expect(migration).toContain("from public.assigned_workouts aw");
     expect(migration).toContain("from public.assigned_nutrition_plans anp");
     expect(migration).toContain("c.checkin_template_id is not null");
-    expect(migration).toContain(
-      "from public.workspace_client_onboardings wco",
-    );
+    expect(migration).toContain("from public.workspace_client_onboardings wco");
     expect(migration).toContain("from public.checkins ci");
     expect(migration).toContain("from public.workspace_members wm");
     expect(migration).toContain("from public.workspace_member_invites wmi");

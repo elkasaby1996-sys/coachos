@@ -58,7 +58,9 @@ describe("check-in review client notification contract", () => {
       "create trigger checkin_reviewed_notifications_update",
     );
     expect(migration).toContain("after update on public.checkins");
-    expect(migration).not.toContain("create or replace function public.review_checkin");
+    expect(migration).not.toContain(
+      "create or replace function public.review_checkin",
+    );
   });
 
   it("registers check-in reviewed as a notification-center type", () => {
@@ -72,7 +74,7 @@ describe("check-in review client notification contract", () => {
     expect(clientCheckinPage).toContain("notificationTargetCheckinId");
     expect(clientCheckinPage).toContain('params.get("checkin")');
     expect(clientCheckinPage).toContain(
-      ".eq(\"id\", notificationTargetCheckinId)",
+      '.eq("id", notificationTargetCheckinId)',
     );
     expect(clientCheckinPage).toContain(
       "setSelectedCheckinId(notificationTargetCheckinId)",

@@ -24,15 +24,29 @@ const baselineBucketMigration = readRepoFile(
 );
 
 const baselinePhotoResolver = readRepoFile("src", "lib", "baseline-photos.ts");
-const privateStorageMedia = readRepoFile("src", "lib", "private-storage-media.ts");
-const clientBaselinePage = readRepoFile("src", "pages", "client", "baseline.tsx");
-const ptClientDetailPage = readRepoFile("src", "pages", "pt", "client-detail.tsx");
+const privateStorageMedia = readRepoFile(
+  "src",
+  "lib",
+  "private-storage-media.ts",
+);
+const clientBaselinePage = readRepoFile(
+  "src",
+  "pages",
+  "client",
+  "baseline.tsx",
+);
+const ptClientDetailPage = readRepoFile(
+  "src",
+  "pages",
+  "pt",
+  "client-detail.tsx",
+);
 
 describe("universal baseline photo transfer storage contract", () => {
   it("documents baseline photo storage as private blob-backed media", () => {
     expect(baselineBucketMigration).toContain("'baseline_photos'");
     expect(baselineBucketMigration).toContain("false");
-    expect(baselinePhotoResolver).toContain("bucket: \"baseline_photos\"");
+    expect(baselinePhotoResolver).toContain('bucket: "baseline_photos"');
     expect(privateStorageMedia).toContain(".download(params.storagePath)");
     expect(privateStorageMedia).toContain("URL.createObjectURL(data)");
     expect(baselinePhotoResolver).not.toContain(".getPublicUrl(");
@@ -40,26 +54,34 @@ describe("universal baseline photo transfer storage contract", () => {
   });
 
   it("keeps copied baseline photo rows pointed at valid private storage references", () => {
-    expect(baselineTransferMigration).toContain("insert into public.baseline_photos");
+    expect(baselineTransferMigration).toContain(
+      "insert into public.baseline_photos",
+    );
     expect(baselineTransferMigration).toContain("p_target_client_id");
     expect(baselineTransferMigration).toContain("bp.storage_path");
     expect(baselineTransferMigration).toContain(
       "on conflict (baseline_id, photo_type) do update",
     );
-    expect(baselineTransferMigration).not.toContain("insert into storage.objects");
+    expect(baselineTransferMigration).not.toContain(
+      "insert into storage.objects",
+    );
   });
 
   it("allows active target client or target workspace coach to download copied universal photo objects", () => {
     expect(migration).toContain(
       'drop policy if exists "baseline_photos_objects_select" on storage.objects',
     );
-    expect(migration).toContain("create policy \"baseline_photos_objects_select\"");
+    expect(migration).toContain(
+      'create policy "baseline_photos_objects_select"',
+    );
     expect(migration).toContain("bp.storage_path = storage.objects.name");
     expect(migration).toContain("target_be.id = bp.baseline_id");
     expect(migration).toContain("target_c.id = bp.client_id");
     expect(migration).toContain("target_c.user_id = (select auth.uid())");
     expect(migration).toContain("wm.workspace_id = target_be.workspace_id");
-    expect(migration).toContain("coalesce(target_c.relationship_status, 'active') = 'active'");
+    expect(migration).toContain(
+      "coalesce(target_c.relationship_status, 'active') = 'active'",
+    );
   });
 
   it("does not require the source transferred_out relationship for active target rendering", () => {
@@ -90,7 +112,9 @@ describe("universal baseline photo transfer storage contract", () => {
     ]) {
       expect(migration).not.toContain(`insert into public.${table}`);
       expect(migration).not.toContain(`update public.${table}`);
-      expect(baselineTransferMigration).not.toContain(`insert into public.${table}`);
+      expect(baselineTransferMigration).not.toContain(
+        `insert into public.${table}`,
+      );
       expect(baselineTransferMigration).not.toContain(`update public.${table}`);
     }
   });

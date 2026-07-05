@@ -30,7 +30,7 @@ describe("client assignment realtime refresh contract", () => {
   it("scopes realtime subscriptions to the active client id", () => {
     expect(hookSource).toContain("filter: `client_id=eq.${clientId}`");
     expect(hookSource).toContain("filter: `id=eq.${clientId}`");
-    expect(hookSource).not.toContain("event: \"*\", schema: \"public\"");
+    expect(hookSource).not.toContain('event: "*", schema: "public"');
   });
 
   it("invalidates client workout, home, nutrition, and check-in query families", () => {

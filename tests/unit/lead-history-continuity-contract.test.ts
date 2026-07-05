@@ -47,7 +47,9 @@ describe("converted lead history continuity", () => {
     expect(migration).toContain("c.user_id = v_actor_user_id");
     expect(migration).toContain("c.status = 'active'::public.client_status");
     expect(migration).toContain("v_context.role in ('owner', 'admin')");
-    expect(migration).not.toContain("v_context.role in ('owner', 'admin', 'assistant_coach')");
+    expect(migration).not.toContain(
+      "v_context.role in ('owner', 'admin', 'assistant_coach')",
+    );
     expect(migration).not.toContain("workspace_member_client_assignments");
     expect(migration).not.toContain("accessible_client_ids");
   });

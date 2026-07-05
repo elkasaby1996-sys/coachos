@@ -1399,12 +1399,11 @@ export function ClientMessagesPage() {
                               senderRole: message.sender_role,
                               senderName: message.sender_name,
                             },
-                            senderAttribution:
-                              message.sender_user_id
-                                ? (workspaceSenderAttributionByUserId.get(
-                                    message.sender_user_id,
-                                  ) ?? null)
-                                : null,
+                            senderAttribution: message.sender_user_id
+                              ? (workspaceSenderAttributionByUserId.get(
+                                  message.sender_user_id,
+                                ) ?? null)
+                              : null,
                           });
                           return (
                             <div

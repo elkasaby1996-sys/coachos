@@ -5,8 +5,6 @@ import {
   ArrowRight,
   BarChart3,
   Bot,
-  CalendarCheck,
-  CheckCircle2,
   CircleDollarSign,
   ClipboardCheck,
   Contact,
@@ -14,15 +12,9 @@ import {
   GitBranch,
   Handshake,
   Layers3,
-  LineChart,
-  LockKeyhole,
   Mail,
-  MessageSquareText,
   Network,
-  ShieldAlert,
-  UserRoundCheck,
   UsersRound,
-  Workflow,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -190,7 +182,11 @@ export function PublicSiteLayout({ children }: PublicLayoutProps) {
               aria-label="Public navigation"
             >
               {navItems.map((item) => (
-                <NavLink key={item.to} to={item.to} onClick={() => setMenuOpen(false)}>
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMenuOpen(false)}
+                >
                   {item.label}
                 </NavLink>
               ))}
@@ -275,9 +271,11 @@ function ProductMockup() {
       </div>
       <div className="mockup-body">
         <div className="mockup-rail" aria-hidden="true">
-          {["Leads", "Clients", "Check-ins", "Billing", "Analytics"].map((item) => (
-            <span key={item}>{item}</span>
-          ))}
+          {["Leads", "Clients", "Check-ins", "Billing", "Analytics"].map(
+            (item) => (
+              <span key={item}>{item}</span>
+            ),
+          )}
         </div>
         <div className="mockup-main" aria-hidden="true">
           <div className="mockup-panel">
@@ -440,7 +438,10 @@ export function MarketingHomePage() {
           </div>
           <ProductMockup />
         </div>
-        <div className="public-container signal-strip" aria-label="RepSync value signals">
+        <div
+          className="public-container signal-strip"
+          aria-label="RepSync value signals"
+        >
           {[
             "Public profile",
             "Lead capture",
@@ -458,13 +459,23 @@ export function MarketingHomePage() {
         <div className="public-container problem-panel bezel-shell">
           <div className="bezel-core problem-core">
             <div>
-            <p className="site-kicker">The problem</p>
-            <h2 className="site-h2">Coaching work breaks when the business is split.</h2>
+              <p className="site-kicker">The problem</p>
+              <h2 className="site-h2">
+                Coaching work breaks when the business is split.
+              </h2>
             </div>
             <div className="problem-list">
-              <div>Leads live in DMs while client records live somewhere else.</div>
-              <div>Check-ins, billing context, and progress signals lose their relationship.</div>
-              <div>Teams cannot see which client needs attention until the client is already drifting.</div>
+              <div>
+                Leads live in DMs while client records live somewhere else.
+              </div>
+              <div>
+                Check-ins, billing context, and progress signals lose their
+                relationship.
+              </div>
+              <div>
+                Teams cannot see which client needs attention until the client
+                is already drifting.
+              </div>
             </div>
           </div>
         </div>
@@ -477,7 +488,9 @@ export function MarketingHomePage() {
           <div className="section-head split">
             <div>
               <p className="site-kicker">Product snapshot</p>
-              <h2 className="site-h2">A calmer command center for coaching work.</h2>
+              <h2 className="site-h2">
+                A calmer command center for coaching work.
+              </h2>
             </div>
             <p className="site-copy">
               PT Hub gives owners the business overview. Workspaces give coaches
@@ -501,7 +514,9 @@ export function MarketingHomePage() {
           <div className="section-head split">
             <div>
               <p className="site-kicker">Core modules</p>
-              <h2 className="site-h2">Everything tied to the client relationship.</h2>
+              <h2 className="site-h2">
+                Everything tied to the client relationship.
+              </h2>
             </div>
             <p className="site-copy">
               RepSync is organized around the actual flow of coaching: attract,
@@ -524,9 +539,21 @@ export function MarketingHomePage() {
           </div>
           <div className="steps-grid">
             {[
-              ["01", "Publish the coach surface", "Show positioning, proof, packages, and a clear application path."],
-              ["02", "Qualify and organize demand", "Route leads by source, intent, package, status, and follow-up."],
-              ["03", "Deliver inside workspaces", "Manage clients, programs, check-ins, messages, billing, and risk in context."],
+              [
+                "01",
+                "Publish the coach surface",
+                "Show positioning, proof, packages, and a clear application path.",
+              ],
+              [
+                "02",
+                "Qualify and organize demand",
+                "Route leads by source, intent, package, status, and follow-up.",
+              ],
+              [
+                "03",
+                "Deliver inside workspaces",
+                "Manage clients, programs, check-ins, messages, billing, and risk in context.",
+              ],
             ].map(([number, title, copy]) => (
               <article className="step-card" key={number}>
                 <span className="step-number">{number}</span>
@@ -577,11 +604,13 @@ export function MarketingHomePage() {
           <div className="feature-row">
             <p className="site-kicker">Automation and risk</p>
             <div>
-              <h3>Know what needs attention before the relationship weakens.</h3>
+              <h3>
+                Know what needs attention before the relationship weakens.
+              </h3>
               <p>
-                RepSync is built around visibility: missed check-ins,
-                overloaded rosters, inactive clients, and follow-up gaps should
-                surface before they become churn.
+                RepSync is built around visibility: missed check-ins, overloaded
+                rosters, inactive clients, and follow-up gaps should surface
+                before they become churn.
               </p>
             </div>
           </div>
@@ -606,7 +635,9 @@ export function ProductPage() {
           <div className="section-head split">
             <div>
               <p className="site-kicker">Product</p>
-              <h1 className="site-h1">The public profile and the operating system behind it.</h1>
+              <h1 className="site-h1">
+                The public profile and the operating system behind it.
+              </h1>
             </div>
             <p className="site-copy">
               RepSync connects the public path into coaching with the internal
@@ -666,7 +697,9 @@ export function PricingPage() {
           <div className="section-head split">
             <div>
               <p className="site-kicker">Pricing</p>
-              <h1 className="site-h1">Early-access pricing, shaped around your operation.</h1>
+              <h1 className="site-h1">
+                Early-access pricing, shaped around your operation.
+              </h1>
             </div>
             <p className="site-copy">
               Final public prices are not confirmed in the repo, so this page
@@ -680,20 +713,35 @@ export function PricingPage() {
                 name: "Profile",
                 note: "Public launch",
                 copy: "For coaches who need a public profile, packages, application flow, and clean first impression.",
-                items: ["Public profile", "Package context", "Lead application", "Basic onboarding path"],
+                items: [
+                  "Public profile",
+                  "Package context",
+                  "Lead application",
+                  "Basic onboarding path",
+                ],
               },
               {
                 name: "Coach OS",
                 note: "Most requested",
                 copy: "For coaches who need profile, leads, client records, delivery, check-ins, and progress visibility.",
-                items: ["Everything in Profile", "Client workspace", "Check-ins and messaging", "Analytics visibility"],
+                items: [
+                  "Everything in Profile",
+                  "Client workspace",
+                  "Check-ins and messaging",
+                  "Analytics visibility",
+                ],
                 featured: true,
               },
               {
                 name: "Studio",
                 note: "Team setup",
                 copy: "For teams that need shared client visibility, workspace ownership, role clarity, and operational support.",
-                items: ["Team workspaces", "Shared client context", "Lead handoff", "Setup support"],
+                items: [
+                  "Team workspaces",
+                  "Shared client context",
+                  "Lead handoff",
+                  "Setup support",
+                ],
               },
             ].map((plan) => (
               <article
@@ -810,8 +858,12 @@ export function DemoPage() {
               lead flow, client count, delivery model, and workspace needs.
             </p>
             <div className="problem-list">
-              <div>Best for coaches moving past spreadsheets and scattered DMs.</div>
-              <div>Useful for teams evaluating shared workspace visibility.</div>
+              <div>
+                Best for coaches moving past spreadsheets and scattered DMs.
+              </div>
+              <div>
+                Useful for teams evaluating shared workspace visibility.
+              </div>
               <div>No final pricing commitment is required to book a demo.</div>
             </div>
           </div>
@@ -827,7 +879,9 @@ export function DemoPage() {
                   isInvalid={Boolean(errors.name)}
                   autoComplete="name"
                 />
-                {errors.name ? <p className="field-error">{errors.name}</p> : null}
+                {errors.name ? (
+                  <p className="field-error">{errors.name}</p>
+                ) : null}
               </div>
               <div className="field-block">
                 <Label htmlFor="demo-email">Email</Label>
@@ -839,7 +893,9 @@ export function DemoPage() {
                   isInvalid={Boolean(errors.email)}
                   autoComplete="email"
                 />
-                {errors.email ? <p className="field-error">{errors.email}</p> : null}
+                {errors.email ? (
+                  <p className="field-error">{errors.email}</p>
+                ) : null}
               </div>
             </div>
 
@@ -887,7 +943,9 @@ export function DemoPage() {
               ) : null}
             </div>
 
-            {submitError ? <div className="form-error">{submitError}</div> : null}
+            {submitError ? (
+              <div className="form-error">{submitError}</div>
+            ) : null}
             {success ? (
               <div className="form-success" role="status">
                 Request received. We will follow up with demo next steps.

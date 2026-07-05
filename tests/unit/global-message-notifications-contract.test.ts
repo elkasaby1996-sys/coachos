@@ -45,7 +45,9 @@ describe("global message notification and FAB contract", () => {
     expect(appRoutes).toContain("GlobalNotificationRealtime");
     expect(appRoutes).toContain("<GlobalNotificationRealtime />");
     expect(notificationBell).not.toContain("useNotificationRealtime");
-    expect(notificationRealtimeHook).toContain('table: "notification_deliveries"');
+    expect(notificationRealtimeHook).toContain(
+      'table: "notification_deliveries"',
+    );
     expect(notificationRealtimeHook).toContain(
       "filter: `recipient_user_id=eq.${userId}`",
     );
@@ -70,11 +72,11 @@ describe("global message notification and FAB contract", () => {
 
   it("renders the PT message FAB from PT authenticated shells and hides it on message pages", () => {
     expect(ptHubLayout).toContain("PtMessageComposeProvider");
-    expect(ptComposeProvider).toContain('location.pathname.startsWith("/pt-hub")');
-    expect(ptComposeProvider).toContain('location.pathname === "/pt/messages"');
     expect(ptComposeProvider).toContain(
-      'location.pathname.startsWith("/w/")',
+      'location.pathname.startsWith("/pt-hub")',
     );
+    expect(ptComposeProvider).toContain('location.pathname === "/pt/messages"');
+    expect(ptComposeProvider).toContain('location.pathname.startsWith("/w/")');
     expect(ptComposeProvider).toContain("clientsQuery.data?.length ?? 0");
   });
 

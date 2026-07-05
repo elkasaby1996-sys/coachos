@@ -12,8 +12,8 @@ describe("coach check-in settings feedback", () => {
     expect(clientDetailPage).toContain("hasSubmittedCheckinForDate");
     expect(clientDetailPage).toContain("week_ending_saturday === todayKey");
     expect(clientDetailPage).toContain("submitted_at || row.reviewed_at");
-    expect(clientDetailPage).toContain(".from(\"checkins\")");
-    expect(clientDetailPage).toContain(".eq(\"week_ending_saturday\", todayKey)");
+    expect(clientDetailPage).toContain('.from("checkins")');
+    expect(clientDetailPage).toContain('.eq("week_ending_saturday", todayKey)');
   });
 
   it("shows future-only feedback when today's submitted check-in is preserved", () => {

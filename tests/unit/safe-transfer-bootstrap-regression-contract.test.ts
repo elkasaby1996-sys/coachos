@@ -29,9 +29,7 @@ describe("safe transfer bootstrap regression contract", () => {
     expect(fixMigration).toContain(
       "coalesce(v_target_relationship_status, 'active') = 'transferred_out'",
     );
-    expect(fixMigration).toContain(
-      "relationship_status = 'active'",
-    );
+    expect(fixMigration).toContain("relationship_status = 'active'");
     expect(fixMigration).not.toContain(
       "detail = 'TARGET_RELATIONSHIP_TRANSFERRED_OUT'",
     );

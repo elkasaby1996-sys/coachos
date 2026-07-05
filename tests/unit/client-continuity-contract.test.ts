@@ -5,7 +5,12 @@ import { describe, expect, it } from "vitest";
 const readRepoFile = (...parts: string[]) =>
   readFileSync(resolve(process.cwd(), ...parts), "utf8");
 
-const clientDetailPage = readRepoFile("src", "pages", "pt", "client-detail.tsx");
+const clientDetailPage = readRepoFile(
+  "src",
+  "pages",
+  "pt",
+  "client-detail.tsx",
+);
 const clientHomePage = readRepoFile("src", "pages", "client", "home.tsx");
 const latestInviteAcceptanceMigration = readRepoFile(
   "supabase",
@@ -106,7 +111,9 @@ describe("client continuity beta contract", () => {
     expect(transferDisabledMigration).toContain(
       "detail = 'LEAD_TRANSFER_DISABLED_FOR_BETA'",
     );
-    expect(transferDisabledMigration).not.toContain("delete from public.clients");
+    expect(transferDisabledMigration).not.toContain(
+      "delete from public.clients",
+    );
   });
 
   it("client removal archives the relationship instead of hard-deleting the client row", () => {
@@ -126,18 +133,14 @@ describe("client continuity beta contract", () => {
       "relationship_status = 'active'",
     );
     expect(archiveRelationshipMigration).toContain("removed_at = null");
-    expect(archiveRelationshipMigration).toContain(
-      "removed_by_user_id = null",
-    );
+    expect(archiveRelationshipMigration).toContain("removed_by_user_id = null");
   });
 
   it("removed-only clients get a safe no-active-workspace home state", () => {
     expect(clientHomePage).toContain(
       "You do not currently have an active coaching workspace.",
     );
-    expect(clientHomePage).toContain(
-      "Your client account is still active.",
-    );
+    expect(clientHomePage).toContain("Your client account is still active.");
     expect(clientHomePage).toContain("!hasWorkspaceMembership");
   });
 

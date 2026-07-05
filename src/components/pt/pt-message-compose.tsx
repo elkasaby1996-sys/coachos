@@ -668,7 +668,10 @@ export function PtMessageComposeProvider({
             queryKey: getPtComposeUnreadKey(workspaceId),
           });
           queryClient.invalidateQueries({
-            queryKey: ["conversation-sender-attributions", activeConversationId],
+            queryKey: [
+              "conversation-sender-attributions",
+              activeConversationId,
+            ],
           });
         },
       )
@@ -827,10 +830,10 @@ export function PtMessageComposeProvider({
     location.pathname.startsWith("/w/");
   const shouldShowFloatingControl = Boolean(
     workspaceId &&
-      isPtAuthenticatedMessageSurface &&
-      !isPtMessagePage &&
-      hasAccessibleMessageClients &&
-      !hasBlockingDialogOpen,
+    isPtAuthenticatedMessageSurface &&
+    !isPtMessagePage &&
+    hasAccessibleMessageClients &&
+    !hasBlockingDialogOpen,
   );
 
   const handleOpenMessagesPage = () => {

@@ -113,35 +113,38 @@ function useWorkspaceState(): WorkspaceContextValue {
     setHasCached(nextHasCached);
   }, []);
 
-  const switchWorkspace = useCallback((nextWorkspaceId: string) => {
-    if (!isUuid(nextWorkspaceId)) return;
-    setWorkspaceIdValue(nextWorkspaceId);
-    setWorkspaceIds((current) =>
-      prioritizeWorkspaceIds(nextWorkspaceId, current),
-    );
-    setHasCachedValue(true);
-    lastLoadedWorkspaceKeyRef.current = null;
-    lastLoadedWorkspaceAtRef.current = 0;
-    lastStableWorkspaceRef.current = {
-      workspaceId: nextWorkspaceId,
-      workspaceIds: prioritizeWorkspaceIds(
-        nextWorkspaceId,
-        lastStableWorkspaceRef.current.workspaceIds,
-      ),
-      ownerUserId: lastStableWorkspaceRef.current.ownerUserId,
-    };
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        ACTIVE_WORKSPACE_STORAGE_KEY,
-        nextWorkspaceId,
+  const switchWorkspace = useCallback(
+    (nextWorkspaceId: string) => {
+      if (!isUuid(nextWorkspaceId)) return;
+      setWorkspaceIdValue(nextWorkspaceId);
+      setWorkspaceIds((current) =>
+        prioritizeWorkspaceIds(nextWorkspaceId, current),
       );
-      window.dispatchEvent(
-        new CustomEvent<{ workspaceId: string }>(WORKSPACE_CHANGE_EVENT, {
-          detail: { workspaceId: nextWorkspaceId },
-        }),
-      );
-    }
-  }, [setHasCachedValue, setWorkspaceIdValue]);
+      setHasCachedValue(true);
+      lastLoadedWorkspaceKeyRef.current = null;
+      lastLoadedWorkspaceAtRef.current = 0;
+      lastStableWorkspaceRef.current = {
+        workspaceId: nextWorkspaceId,
+        workspaceIds: prioritizeWorkspaceIds(
+          nextWorkspaceId,
+          lastStableWorkspaceRef.current.workspaceIds,
+        ),
+        ownerUserId: lastStableWorkspaceRef.current.ownerUserId,
+      };
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          ACTIVE_WORKSPACE_STORAGE_KEY,
+          nextWorkspaceId,
+        );
+        window.dispatchEvent(
+          new CustomEvent<{ workspaceId: string }>(WORKSPACE_CHANGE_EVENT, {
+            detail: { workspaceId: nextWorkspaceId },
+          }),
+        );
+      }
+    },
+    [setHasCachedValue, setWorkspaceIdValue],
+  );
 
   const refreshWorkspace = useCallback(() => {
     lastLoadedWorkspaceKeyRef.current = null;
@@ -149,28 +152,31 @@ function useWorkspaceState(): WorkspaceContextValue {
     setReloadNonce((value) => value + 1);
   }, []);
 
-  const applyWorkspaceSnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
-    const normalizedWorkspaceIds =
-      snapshot.workspaceId && isUuid(snapshot.workspaceId)
-        ? prioritizeWorkspaceIds(snapshot.workspaceId, snapshot.workspaceIds)
-        : snapshot.workspaceIds;
-    setWorkspaceIdValue(snapshot.workspaceId);
-    setWorkspaceIds(normalizedWorkspaceIds);
-    setOwnerUserId(snapshot.ownerUserId);
-    if (snapshot.workspaceId) {
-      lastStableWorkspaceRef.current = {
-        workspaceId: snapshot.workspaceId,
-        workspaceIds: normalizedWorkspaceIds,
-        ownerUserId: snapshot.ownerUserId,
-      };
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(
-          ACTIVE_WORKSPACE_STORAGE_KEY,
-          snapshot.workspaceId,
-        );
+  const applyWorkspaceSnapshot = useCallback(
+    (snapshot: WorkspaceSnapshot) => {
+      const normalizedWorkspaceIds =
+        snapshot.workspaceId && isUuid(snapshot.workspaceId)
+          ? prioritizeWorkspaceIds(snapshot.workspaceId, snapshot.workspaceIds)
+          : snapshot.workspaceIds;
+      setWorkspaceIdValue(snapshot.workspaceId);
+      setWorkspaceIds(normalizedWorkspaceIds);
+      setOwnerUserId(snapshot.ownerUserId);
+      if (snapshot.workspaceId) {
+        lastStableWorkspaceRef.current = {
+          workspaceId: snapshot.workspaceId,
+          workspaceIds: normalizedWorkspaceIds,
+          ownerUserId: snapshot.ownerUserId,
+        };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            ACTIVE_WORKSPACE_STORAGE_KEY,
+            snapshot.workspaceId,
+          );
+        }
       }
-    }
-  }, [setWorkspaceIdValue]);
+    },
+    [setWorkspaceIdValue],
+  );
 
   const applyStaleWorkspaceSnapshot = useCallback(
     (nextError: Error) => {
@@ -451,43 +457,47 @@ function useWorkspaceState(): WorkspaceContextValue {
 
       try {
         const [memberResult, ownedResult] = await Promise.all([
-          traceAsync("useWorkspace.workspace_members", () =>
-            withTimeout(
-            supabase
-              .from("workspace_members")
-              .select("workspace_id, created_at, status")
-              .eq("user_id", user.id)
-              .eq("status", "active")
-              .order("created_at", { ascending: true })
-              .returns<
-                Array<{
-                  workspace_id: string | null;
-                  created_at: string;
-                  status: string | null;
-                }>
-              >(),
-              8000,
-              "Workspace lookup timed out (8s).",
-            ),
+          traceAsync(
+            "useWorkspace.workspace_members",
+            () =>
+              withTimeout(
+                supabase
+                  .from("workspace_members")
+                  .select("workspace_id, created_at, status")
+                  .eq("user_id", user.id)
+                  .eq("status", "active")
+                  .order("created_at", { ascending: true })
+                  .returns<
+                    Array<{
+                      workspace_id: string | null;
+                      created_at: string;
+                      status: string | null;
+                    }>
+                  >(),
+                8000,
+                "Workspace lookup timed out (8s).",
+              ),
             { userId: user.id },
           ),
-          traceAsync("useWorkspace.owned_workspaces", () =>
-            withTimeout(
-            supabase
-              .from("workspaces")
-              .select("id, owner_user_id, created_at")
-              .eq("owner_user_id", user.id)
-              .order("created_at", { ascending: true })
-              .returns<
-                Array<{
-                  id: string;
-                  owner_user_id: string | null;
-                  created_at: string;
-                }>
-              >(),
-              8000,
-              "Owned workspace lookup timed out (8s).",
-            ),
+          traceAsync(
+            "useWorkspace.owned_workspaces",
+            () =>
+              withTimeout(
+                supabase
+                  .from("workspaces")
+                  .select("id, owner_user_id, created_at")
+                  .eq("owner_user_id", user.id)
+                  .order("created_at", { ascending: true })
+                  .returns<
+                    Array<{
+                      id: string;
+                      owner_user_id: string | null;
+                      created_at: string;
+                    }>
+                  >(),
+                8000,
+                "Owned workspace lookup timed out (8s).",
+              ),
             { userId: user.id },
           ),
         ]);
@@ -510,11 +520,13 @@ function useWorkspaceState(): WorkspaceContextValue {
               "useWorkspace.workspace_owner_lookup",
               () =>
                 withTimeout(
-              supabase
-                .from("workspaces")
-                .select("id, owner_user_id")
-                .in("id", combinedWorkspaceIds)
-                .returns<Array<{ id: string; owner_user_id: string | null }>>(),
+                  supabase
+                    .from("workspaces")
+                    .select("id, owner_user_id")
+                    .in("id", combinedWorkspaceIds)
+                    .returns<
+                      Array<{ id: string; owner_user_id: string | null }>
+                    >(),
                   8000,
                   "Workspace owner lookup timed out (8s).",
                 ),
