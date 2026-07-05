@@ -10,6 +10,7 @@ import {
   getBootstrapRunKey,
   getAuthenticatedRedirectPath,
   getBootstrapPath,
+  getPublicRootRouteDecision,
   resolveBootstrapFromLookupResults,
   type AuthBootstrapState,
   type LookupResult,
@@ -425,5 +426,47 @@ describe("auth/bootstrap regression coverage", () => {
     expect(sameSessionDifferentPath).toBe(first);
     expect(differentUser).not.toBe(first);
     expect(differentSession).not.toBe(first);
+  });
+
+  it("does not render the public homepage for authenticated users while root bootstrap resolves", () => {
+    expect(
+      getPublicRootRouteDecision({
+        authLoading: false,
+        isAuthenticated: true,
+        bootstrapResolved: false,
+        bootstrapPath: null,
+      }),
+    ).toEqual({ type: "loading" });
+  });
+
+  it("redirects authenticated root visits to the resolved bootstrap path", () => {
+    expect(
+      getPublicRootRouteDecision({
+        authLoading: false,
+        isAuthenticated: true,
+        bootstrapResolved: true,
+        bootstrapPath: "/app/home",
+      }),
+    ).toEqual({ type: "redirect", to: "/app/home" });
+
+    expect(
+      getPublicRootRouteDecision({
+        authLoading: false,
+        isAuthenticated: true,
+        bootstrapResolved: true,
+        bootstrapPath: "/pt-hub",
+      }),
+    ).toEqual({ type: "redirect", to: "/pt-hub" });
+  });
+
+  it("keeps unauthenticated root visits on the public homepage", () => {
+    expect(
+      getPublicRootRouteDecision({
+        authLoading: false,
+        isAuthenticated: false,
+        bootstrapResolved: false,
+        bootstrapPath: null,
+      }),
+    ).toEqual({ type: "public" });
   });
 });

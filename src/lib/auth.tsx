@@ -963,6 +963,23 @@ export function getBootstrapPath(
   return getAuthenticatedRedirectPath(state);
 }
 
+export type PublicRootRouteDecision =
+  | { type: "loading" }
+  | { type: "public" }
+  | { type: "redirect"; to: string };
+
+export function getPublicRootRouteDecision(params: {
+  authLoading: boolean;
+  isAuthenticated: boolean;
+  bootstrapResolved: boolean;
+  bootstrapPath: string | null;
+}): PublicRootRouteDecision {
+  if (params.authLoading) return { type: "loading" };
+  if (!params.isAuthenticated) return { type: "public" };
+  if (!params.bootstrapResolved) return { type: "loading" };
+  return { type: "redirect", to: params.bootstrapPath ?? "/no-workspace" };
+}
+
 export function buildSessionAuthValue(params: {
   session: Session | null;
   authLoading: boolean;

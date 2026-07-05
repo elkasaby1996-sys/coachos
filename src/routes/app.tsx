@@ -100,6 +100,7 @@ import {
 
 // ✅ assumes your AuthProvider exports this hook
 import {
+  getPublicRootRouteDecision,
   useBootstrapAuth,
   useSessionAuth,
 } from "../lib/auth";
@@ -312,6 +313,24 @@ function LoginGate() {
   }
 
   return <LoginPage />;
+}
+
+function PublicRootGate() {
+  const { authLoading, isAuthenticated } = useSessionAuth();
+  const { bootstrapPath, bootstrapResolved } = useBootstrapAuth();
+  const decision = getPublicRootRouteDecision({
+    authLoading,
+    isAuthenticated,
+    bootstrapResolved,
+    bootstrapPath,
+  });
+
+  if (decision.type === "loading") return <FullPageLoader />;
+  if (decision.type === "redirect") {
+    return <Navigate to={decision.to} replace />;
+  }
+
+  return <MarketingHomePage />;
 }
 
 function PtClientDetailRoute() {
@@ -602,7 +621,7 @@ export function App() {
       <AppShellTransition>
         <Routes location={location}>
           {/* Public landing */}
-          <Route path="/" element={<MarketingHomePage />} />
+          <Route path="/" element={<PublicRootGate />} />
           <Route path="/product" element={<ProductPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<DemoPage />} />
