@@ -104,6 +104,8 @@ export function getNotificationTypeLabel(
       return "Workout due";
     case "checkin_due_tomorrow":
       return "Check-in reminder";
+    case "calendar_mention":
+      return "Calendar mention";
     case "client_inactive":
       return audience === "client" ? "Activity reminder" : "Client inactive";
     default:
@@ -156,6 +158,7 @@ export function getNotificationModuleTone(
     case "checkin_reviewed":
     case "checkin_due_tomorrow":
     case "workout_due_today":
+    case "calendar_mention":
       return "checkins";
     case "milestone_achieved":
       return "analytics";

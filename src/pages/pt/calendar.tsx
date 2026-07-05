@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { AtSign, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -37,6 +37,13 @@ import {
   type CheckinOperationalState,
 } from "../../lib/checkin-review";
 import { cn } from "../../lib/utils";
+import {
+  filterMentionUsers,
+  getActiveMentionQuery,
+  getSelectedMentionIds,
+  insertMention,
+  type CalendarMentionUser,
+} from "../../features/calendar/mentions";
 
 const getMonthStartKey = (date: Date) => {
   const year = date.getFullYear();
@@ -98,6 +105,12 @@ type CoachEventRow = {
   ends_at: string | null;
 };
 
+type CalendarMentionRpcRow = {
+  user_id: string;
+  display_name: string | null;
+  role: string | null;
+};
+
 export function PtCalendarPage() {
   const { workspaceId } = useWorkspace();
   const queryClient = useQueryClient();
@@ -120,6 +133,7 @@ export function PtCalendarPage() {
   const [eventEndTime, setEventEndTime] = useState("");
   const [eventTitle, setEventTitle] = useState("");
   const [eventDescription, setEventDescription] = useState("");
+  const [eventMentionIds, setEventMentionIds] = useState<string[]>([]);
 
   const { days, gridStartKey, gridEndKey } = useMemo(
     () => buildCalendarDays(monthCursor),
@@ -192,6 +206,25 @@ export function PtCalendarPage() {
     },
   });
 
+  const mentionUsersQuery = useQuery({
+    queryKey: ["pt-calendar-mention-users", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "list_calendar_mention_users",
+        { p_workspace_id: workspaceId ?? "" },
+      );
+      if (error) throw error;
+      return ((data ?? []) as CalendarMentionRpcRow[])
+        .map((row) => ({
+          user_id: row.user_id,
+          display_name: row.display_name?.trim() || "User",
+          role: row.role ?? "user",
+        }))
+        .filter((row) => row.user_id) as CalendarMentionUser[];
+    },
+  });
+
   const createEventMutation = useMutation({
     mutationFn: async () => {
       if (!workspaceId) {
@@ -217,9 +250,22 @@ export function PtCalendarPage() {
         if (error) throw error;
         return;
       }
-      const { error } = await supabase
-        .from("coach_calendar_events")
-        .insert(payload);
+      const mentionedUserIds = getSelectedMentionIds(
+        eventMentionIds,
+        mentionUsersQuery.data ?? [],
+        eventDescription,
+      );
+      const { error } = await supabase.rpc(
+        "create_coach_calendar_event_with_mentions",
+        {
+          p_workspace_id: workspaceId,
+          p_title: payload.title,
+          p_description: payload.description,
+          p_starts_at: payload.starts_at,
+          p_ends_at: payload.ends_at,
+          p_mentioned_user_ids: mentionedUserIds,
+        },
+      );
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -229,6 +275,7 @@ export function PtCalendarPage() {
       setEventDialogOpen(false);
       setEventTitle("");
       setEventDescription("");
+      setEventMentionIds([]);
       setEventEndTime("");
       setEventMode("create");
       setEditingEventId(null);
@@ -265,6 +312,7 @@ export function PtCalendarPage() {
     setEditingEventId(null);
     setEventTitle("");
     setEventDescription("");
+    setEventMentionIds([]);
     setEventStartTime("09:00");
     setEventEndTime("");
     setEventDialogOpen(true);
@@ -318,6 +366,26 @@ export function PtCalendarPage() {
       }),
     [selectedDateKey],
   );
+  const mentionQuery = useMemo(
+    () => getActiveMentionQuery(eventDescription),
+    [eventDescription],
+  );
+  const mentionSuggestions = useMemo(
+    () => filterMentionUsers(mentionUsersQuery.data ?? [], mentionQuery),
+    [mentionQuery, mentionUsersQuery.data],
+  );
+  const selectedMentionUsers = useMemo(() => {
+    const ids = getSelectedMentionIds(
+      eventMentionIds,
+      mentionUsersQuery.data ?? [],
+      eventDescription,
+    );
+    return ids
+      .map((id) =>
+        (mentionUsersQuery.data ?? []).find((user) => user.user_id === id),
+      )
+      .filter(Boolean) as CalendarMentionUser[];
+  }, [eventDescription, eventMentionIds, mentionUsersQuery.data]);
 
   return (
     <div className="space-y-6">
@@ -730,15 +798,86 @@ export function PtCalendarPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Notes
-              </label>
-              <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={eventDescription}
-                onChange={(event) => setEventDescription(event.target.value)}
-                placeholder="Optional details"
-              />
+              <div className="flex items-center justify-between gap-3">
+                <label
+                  htmlFor="calendar-event-notes"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Notes
+                </label>
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                  <AtSign className="h-3.5 w-3.5" />
+                  Mention a user
+                </span>
+              </div>
+              <div className="relative">
+                <textarea
+                  id="calendar-event-notes"
+                  className="min-h-[112px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={eventDescription}
+                  onChange={(event) => {
+                    setEventDescription(event.target.value);
+                    const mentionedIds = getSelectedMentionIds(
+                      eventMentionIds,
+                      mentionUsersQuery.data ?? [],
+                      event.target.value,
+                    );
+                    setEventMentionIds(mentionedIds);
+                  }}
+                  placeholder="Optional details. Type @ to mention a client or coach."
+                />
+                {mentionSuggestions.length > 0 ? (
+                  <div className="absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl">
+                    {mentionSuggestions.map((user) => (
+                      <button
+                        key={user.user_id}
+                        type="button"
+                        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                        onClick={() => {
+                          setEventDescription((current) =>
+                            insertMention(current, user.display_name),
+                          );
+                          setEventMentionIds((current) =>
+                            current.includes(user.user_id)
+                              ? current
+                              : [...current, user.user_id],
+                          );
+                        }}
+                      >
+                        <span className="min-w-0 truncate font-medium">
+                          {user.display_name}
+                        </span>
+                        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+                          {user.role}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : mentionQuery !== null &&
+                  !mentionUsersQuery.isLoading &&
+                  (mentionUsersQuery.data ?? []).length === 0 ? (
+                  <div className="absolute inset-x-0 bottom-full z-20 mb-2 rounded-xl border border-border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-xl">
+                    No mentionable users found.
+                  </div>
+                ) : null}
+              </div>
+              {selectedMentionUsers.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {selectedMentionUsers.map((user) => (
+                    <span
+                      key={user.user_id}
+                      className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                    >
+                      @{user.display_name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Mentioned users receive an in-app notification when the event
+                  is created.
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -815,6 +954,7 @@ export function PtCalendarPage() {
                     setEditingEventId(selectedEvent.id);
                     setEventTitle(selectedEvent.title ?? "");
                     setEventDescription(selectedEvent.description ?? "");
+                    setEventMentionIds([]);
                     const dateKey = formatDateInTimezone(
                       selectedEvent.starts_at,
                       null,

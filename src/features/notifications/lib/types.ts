@@ -23,6 +23,7 @@ export const notificationTypes = [
   "join_request_declined",
   "workout_due_today",
   "checkin_due_tomorrow",
+  "calendar_mention",
   "client_inactive",
   "security",
   "system",
