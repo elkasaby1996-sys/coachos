@@ -1,7 +1,13 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
+import { Skeleton } from "../../../components/ui/skeleton";
 import { Textarea } from "../../../components/ui/textarea";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import {
@@ -116,17 +122,30 @@ export function ClientLeadDashboard({
   const listState = (() => {
     if (threadsQuery.isLoading) {
       return (
-        <p className="text-sm text-muted-foreground">
-          Loading lead conversations...
-        </p>
+        <div className="space-y-3" aria-label="Loading lead conversations">
+          <Skeleton className="h-20 w-full rounded-[20px]" />
+          <Skeleton className="h-20 w-full rounded-[20px]" />
+          <Skeleton className="h-20 w-full rounded-[20px]" />
+        </div>
       );
     }
 
     if (threadsQuery.isError) {
       return (
-        <p className="text-sm text-muted-foreground">
-          We could not load lead conversations right now. Please retry shortly.
-        </p>
+        <Alert tone="danger">
+          <AlertTitle>Unable to load lead conversations</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>Please retry shortly.</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => void threadsQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       );
     }
 
@@ -210,17 +229,31 @@ export function ClientLeadDashboard({
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
             {!selectedThread ? (
-              <p className="text-sm text-muted-foreground">
-                Select a lead conversation from the left to view messages.
-              </p>
+              <EmptyStateBlock
+                title="No conversation selected"
+                description="Select a lead conversation from the list to view messages."
+              />
             ) : leadThreadQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">
-                Loading messages...
-              </p>
+              <SectionCard className="space-y-3" aria-label="Loading messages">
+                <Skeleton className="h-14 w-4/5 rounded-[16px]" />
+                <Skeleton className="ml-auto h-14 w-3/4 rounded-[16px]" />
+                <Skeleton className="h-14 w-2/3 rounded-[16px]" />
+              </SectionCard>
             ) : leadThreadQuery.isError ? (
-              <p className="text-sm text-muted-foreground">
-                We could not load this conversation right now.
-              </p>
+              <Alert tone="danger">
+                <AlertTitle>Unable to load this conversation</AlertTitle>
+                <AlertDescription className="space-y-3">
+                  <p>Please retry shortly.</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void leadThreadQuery.refetch()}
+                  >
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : (
               <>
                 <SectionCard className="max-h-[24rem] space-y-2 overflow-y-auto">
@@ -249,9 +282,10 @@ export function ClientLeadDashboard({
                       );
                     })
                   ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No messages yet. Start the conversation.
-                    </p>
+                    <EmptyStateBlock
+                      title="No messages yet"
+                      description="Start the conversation when you're ready to reply."
+                    />
                   )}
                 </SectionCard>
 
@@ -281,7 +315,7 @@ export function ClientLeadDashboard({
                       onClick={() => sendMutation.mutate()}
                     >
                       <MessageSquarePlus className="h-4 w-4" />
-                      Send message
+                      {sendMutation.isPending ? "Sending..." : "Send message"}
                     </Button>
                   </SectionCard>
                 ) : (

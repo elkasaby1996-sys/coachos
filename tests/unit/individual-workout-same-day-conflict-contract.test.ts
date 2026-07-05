@@ -64,7 +64,7 @@ describe("individual workout same-day conflict contract", () => {
 
   it("warns before replacing an existing same-day workout in the coach UI", () => {
     const handlerStart = clientDetailPage.indexOf(
-      "const handleAssignWorkout = async () =>",
+      "const handleAssignWorkout = async (confirmedConflict = false) =>",
     );
     const handlerEnd = clientDetailPage.indexOf(
       "const handleApplyProgram = async () =>",
@@ -72,8 +72,16 @@ describe("individual workout same-day conflict contract", () => {
     );
     const handler = clientDetailPage.slice(handlerStart, handlerEnd);
 
-    expect(handler).toContain("This date already has a workout");
-    expect(handler).toContain("window.confirm");
+    expect(handler).toContain('setConfirmAction("workout-override")');
+    expect(clientDetailPage).toContain("Override scheduled workout?");
+    expect(clientDetailPage).toContain("This date already has a workout");
+    expect(clientDetailPage).toContain(
+      "onAssign={() => void handleAssignWorkout()}",
+    );
+    expect(clientDetailPage).toContain(
+      "onConfirm: () => handleAssignWorkout(true)",
+    );
+    expect(handler).not.toContain("window.confirm");
     expect(handler).toContain("sameDayWorkout");
   });
 });

@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import {
   Card,
   CardContent,
@@ -35,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { EmptyState } from "../../components/ui/coachos";
 import { Skeleton } from "../../components/ui/skeleton";
 import {
   exerciseDatasetConfigured,
@@ -61,8 +63,33 @@ const getErrorDetails = (error: unknown) => {
   return { code: "unknown", message: "Unknown error" };
 };
 
+const DELETE_PROTECTION_MESSAGE =
+  "Delete failed. This template is already assigned to a client and cannot be deleted. Existing client assignments prevent deletion. Historical records are preserved.";
+
+const isDeleteProtectionError = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const message = details.message.toLowerCase();
+  return (
+    details.code === "23503" ||
+    details.code === "P0001" ||
+    message.includes("foreign key constraint") ||
+    message.includes("still referenced") ||
+    message.includes("cannot be deleted") ||
+    message.includes("already assigned")
+  );
+};
+
+const getTemplateMutationErrorMessage = (error: unknown) => {
+  if (isDeleteProtectionError(error)) return DELETE_PROTECTION_MESSAGE;
+  const details = getErrorDetails(error);
+  return `${details.code}: ${details.message}`;
+};
+
 const formatWorkoutTypeTag = (value: string | null | undefined) =>
   value && value.trim().length > 0 ? value : "Workout";
+
+const loadErrorMessage =
+  "Please retry shortly. If this keeps happening, contact support.";
 
 function AssignmentSnapshotCallout() {
   return (
@@ -588,8 +615,7 @@ export function PtWorkoutTemplateBuilderPage() {
       .insert(payload);
 
     if (error) {
-      const details = getErrorDetails(error);
-      setActionError(`${details.code}: ${details.message}`);
+      setActionError(getTemplateMutationErrorMessage(error));
       setActionStatus("idle");
       return;
     }
@@ -704,8 +730,7 @@ export function PtWorkoutTemplateBuilderPage() {
       .eq("id", selectedRow.id);
 
     if (error) {
-      const details = getErrorDetails(error);
-      setActionError(`${details.code}: ${details.message}`);
+      setActionError(getTemplateMutationErrorMessage(error));
       setActionStatus("idle");
       return;
     }
@@ -755,8 +780,7 @@ export function PtWorkoutTemplateBuilderPage() {
       );
       const firstError = results.find((result) => result.error)?.error;
       if (firstError) {
-        const details = getErrorDetails(firstError);
-        setActionError(`${details.code}: ${details.message}`);
+        setActionError(getTemplateMutationErrorMessage(firstError));
         setActionStatus("idle");
         return;
       }
@@ -769,8 +793,7 @@ export function PtWorkoutTemplateBuilderPage() {
         queryKey: ["workout-template-exercises", templateId],
       });
     } catch (error) {
-      const details = getErrorDetails(error);
-      setActionError(`${details.code}: ${details.message}`);
+      setActionError(getTemplateMutationErrorMessage(error));
       setActionStatus("idle");
     }
   };
@@ -786,8 +809,7 @@ export function PtWorkoutTemplateBuilderPage() {
       .eq("id", selectedRow.id);
 
     if (error) {
-      const details = getErrorDetails(error);
-      setActionError(`${details.code}: ${details.message}`);
+      setActionError(getTemplateMutationErrorMessage(error));
       setActionStatus("idle");
       return;
     }
@@ -810,8 +832,7 @@ export function PtWorkoutTemplateBuilderPage() {
       .delete()
       .eq("id", templateId);
     if (error) {
-      const details = getErrorDetails(error);
-      setDeleteTemplateError(`${details.code}: ${details.message}`);
+      setDeleteTemplateError(getTemplateMutationErrorMessage(error));
       setDeleteTemplateStatus("idle");
       return;
     }
@@ -931,12 +952,10 @@ export function PtWorkoutTemplateBuilderPage() {
       );
       const firstError = results.find((result) => result.error)?.error;
       if (firstError) {
-        const details = getErrorDetails(firstError);
-        setActionError(`${details.code}: ${details.message}`);
+        setActionError(getTemplateMutationErrorMessage(firstError));
       }
     } catch (error) {
-      const details = getErrorDetails(error);
-      setActionError(`${details.code}: ${details.message}`);
+      setActionError(getTemplateMutationErrorMessage(error));
     } finally {
       setActionStatus("idle");
       await queryClient.invalidateQueries({
@@ -1021,9 +1040,21 @@ export function PtWorkoutTemplateBuilderPage() {
           <CardHeader>
             <CardTitle>Template error</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            {getErrorDetails(templateQuery.error).code}:{" "}
-            {getErrorDetails(templateQuery.error).message}
+          <CardContent>
+            <Alert tone="danger">
+              <AlertTitle>Unable to load this template</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{loadErrorMessage}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void templateQuery.refetch()}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
       ) : !template ? (
@@ -1031,8 +1062,11 @@ export function PtWorkoutTemplateBuilderPage() {
           <CardHeader>
             <CardTitle>Template not found</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            This template could not be loaded.
+          <CardContent>
+            <EmptyState
+              title="Template not found"
+              description="This template could not be loaded."
+            />
           </CardContent>
         </Card>
       ) : (
@@ -1116,10 +1150,20 @@ export function PtWorkoutTemplateBuilderPage() {
               <Skeleton className="h-12 w-full" />
             </div>
           ) : templateExercisesQuery.error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              {getErrorDetails(templateExercisesQuery.error).code}:{" "}
-              {getErrorDetails(templateExercisesQuery.error).message}
-            </div>
+            <Alert tone="danger">
+              <AlertTitle>Unable to load exercises</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{loadErrorMessage}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void templateExercisesQuery.refetch()}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           ) : exerciseRows.length > 0 ? (
             <DndContext
               sensors={sensors}
@@ -1207,9 +1251,12 @@ export function PtWorkoutTemplateBuilderPage() {
               </SortableContext>
             </DndContext>
           ) : (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-              No exercises yet. Add one to start building this template.
-            </div>
+            <EmptyState
+              title="No exercises yet"
+              description="Add one to start building this template."
+              actionLabel="Add exercise"
+              onAction={() => setAddOpen(true)}
+            />
           )}
         </CardContent>
       </Card>
@@ -1376,14 +1423,29 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
             <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border bg-background p-2">
               {exercisesQuery.isLoading ? (
-                <div className="text-xs text-muted-foreground">
-                  Loading exercises...
+                <div
+                  className="space-y-2"
+                  aria-label="Loading exercise library"
+                >
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
                 </div>
               ) : exercisesQuery.error ? (
-                <div className="text-xs text-destructive">
-                  {getErrorDetails(exercisesQuery.error).code}:{" "}
-                  {getErrorDetails(exercisesQuery.error).message}
-                </div>
+                <Alert tone="danger" className="rounded-lg px-3 py-2">
+                  <AlertTitle>Unable to load exercise library</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>{loadErrorMessage}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void exercisesQuery.refetch()}
+                    >
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
               ) : filteredExercises.length > 0 ||
                 datasetExercises.length > 0 ? (
                 <>
@@ -1484,9 +1546,10 @@ export function PtWorkoutTemplateBuilderPage() {
                   ) : null}
                 </>
               ) : (
-                <div className="text-xs text-muted-foreground">
-                  No matching exercises.
-                </div>
+                <EmptyState
+                  title="No matching exercises"
+                  description="Try a different search term or create a new library exercise."
+                />
               )}
             </div>
             {actionError ? (

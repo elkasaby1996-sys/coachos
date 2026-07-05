@@ -14,10 +14,12 @@ import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -50,6 +52,28 @@ const getErrorDetails = (error: unknown) => {
     };
   }
   return { code: "unknown", message: "Unknown error" };
+};
+
+const DELETE_PROTECTION_MESSAGE =
+  "Delete failed. This template is already assigned to a client and cannot be deleted. Existing client assignments prevent deletion. Historical records are preserved.";
+
+const isDeleteProtectionError = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const message = details.message.toLowerCase();
+  return (
+    details.code === "23503" ||
+    details.code === "P0001" ||
+    message.includes("foreign key constraint") ||
+    message.includes("still referenced") ||
+    message.includes("cannot be deleted") ||
+    message.includes("already assigned")
+  );
+};
+
+const getTemplateDeleteErrorMessage = (error: unknown) => {
+  if (isDeleteProtectionError(error)) return DELETE_PROTECTION_MESSAGE;
+  const details = getErrorDetails(error);
+  return `Delete failed. ${details.message}`;
 };
 
 export function PtWorkoutTemplatesPage() {
@@ -158,8 +182,7 @@ export function PtWorkoutTemplatesPage() {
       .eq("id", deleteTarget.id);
 
     if (error) {
-      const details = getErrorDetails(error);
-      setDeleteError(`${details.code}: ${details.message}`);
+      setDeleteError(getTemplateDeleteErrorMessage(error));
       setDeleteStatus("idle");
       return;
     }
@@ -575,12 +598,21 @@ export function PtWorkoutTemplatesPage() {
       >
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Delete template</DialogTitle>
+            <DialogTitle>Delete workout template?</DialogTitle>
+            <DialogDescription>
+              This removes{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name ?? "this workout template"}
+              </span>{" "}
+              from your library. Existing client assignments prevent deletion;
+              historical records are preserved.
+            </DialogDescription>
           </DialogHeader>
           {deleteError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              {deleteError}
-            </div>
+            <Alert tone="danger">
+              <AlertTitle>Delete failed</AlertTitle>
+              <AlertDescription>{deleteError}</AlertDescription>
+            </Alert>
           ) : null}
           <DialogFooter>
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>

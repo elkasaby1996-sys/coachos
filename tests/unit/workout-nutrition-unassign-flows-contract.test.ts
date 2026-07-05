@@ -99,9 +99,11 @@ describe("workout and nutrition unassign UI contract", () => {
     expect(nutritionTab).toContain("const [nutritionUnassignStatus");
     expect(nutritionTab).toContain("setNutritionUnassignStatus");
     expect(clientDetailPage).toContain("Remove assignment");
+    expect(clientDetailPage).toContain("Remove nutrition assignment?");
     expect(clientDetailPage).toContain(
-      "This will remove the current coach nutrition assignment for this client.",
+      "The client will no longer see this nutrition plan as active.",
     );
+    expect(clientDetailPage).toContain("Historical records are preserved.");
     expect(clientDetailPage).toContain(
       'queryKey: ["pt-client-active-nutrition-plan", clientId]',
     );

@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
@@ -25,6 +26,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
@@ -55,6 +57,13 @@ export function PtNutritionPage() {
   const [templateActionError, setTemplateActionError] = useState<string | null>(
     null,
   );
+  const [templateActionErrorSource, setTemplateActionErrorSource] = useState<
+    "dialog" | "page" | null
+  >(null);
+  const [deleteTarget, setDeleteTarget] = useState<NutritionTemplate | null>(
+    null,
+  );
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">("idle");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
   const [name, setName] = useState("");
@@ -237,11 +246,8 @@ export function PtNutritionPage() {
 
   const deleteTemplate = async (template: NutritionTemplate) => {
     if (!canManageDelivery) return;
-    const confirmed = window.confirm(
-      `Delete nutrition program "${template.name}"? This cannot be undone.`,
-    );
-    if (!confirmed) return;
 
+    setDeleteStatus("deleting");
     setTemplateActionError(null);
     const { error } = await supabase
       .from("nutrition_templates")
@@ -249,15 +255,21 @@ export function PtNutritionPage() {
       .eq("id", template.id);
 
     if (error) {
+      setDeleteStatus("idle");
       setTemplateActionError(
         error.message.includes("violates foreign key constraint")
           ? "This nutrition program is already assigned to a client and cannot be deleted."
           : error.message,
       );
+      setTemplateActionErrorSource("dialog");
       return;
     }
 
     await invalidateTemplates();
+    setDeleteStatus("idle");
+    setDeleteTarget(null);
+    setTemplateActionError(null);
+    setTemplateActionErrorSource(null);
   };
 
   const loading = workspaceLoading || templatesQuery.isLoading;
@@ -269,6 +281,66 @@ export function PtNutritionPage() {
 
   return (
     <div className="space-y-6">
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && deleteStatus !== "deleting") {
+            setDeleteTarget(null);
+            setTemplateActionErrorSource((source) =>
+              source === "dialog" ? "page" : source,
+            );
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Delete nutrition program?</DialogTitle>
+            <DialogDescription>
+              This deletes{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name ?? "this nutrition program"}
+              </span>{" "}
+              from your library. Existing client assignments prevent deletion;
+              historical records are preserved.
+            </DialogDescription>
+          </DialogHeader>
+          {templateActionError && templateActionErrorSource === "dialog" ? (
+            <Alert tone="danger">
+              <AlertTitle>Delete failed</AlertTitle>
+              <AlertDescription>{templateActionError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={deleteStatus === "deleting"}
+              onClick={() => {
+                setDeleteTarget(null);
+                setTemplateActionErrorSource((source) =>
+                  source === "dialog" ? "page" : source,
+                );
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={deleteStatus === "deleting" || !deleteTarget}
+              onClick={() => {
+                if (deleteTarget) void deleteTemplate(deleteTarget);
+              }}
+            >
+              {deleteStatus === "deleting"
+                ? "Deleting..."
+                : "Delete nutrition program"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <WorkspacePageHeader
         title="Nutrition Programs"
         description="Build reusable multi-week nutrition systems and keep edits close to the list."
@@ -352,10 +424,11 @@ export function PtNutritionPage() {
         </Select>
       </div>
 
-      {templateActionError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {templateActionError}
-        </div>
+      {templateActionError && templateActionErrorSource !== "dialog" ? (
+        <Alert tone="danger">
+          <AlertTitle>Nutrition action failed</AlertTitle>
+          <AlertDescription>{templateActionError}</AlertDescription>
+        </Alert>
       ) : null}
 
       {loading ? (
@@ -364,6 +437,21 @@ export function PtNutritionPage() {
             <Skeleton key={i} className="h-52 w-full" />
           ))}
         </div>
+      ) : templatesQuery.error ? (
+        <Alert tone="danger">
+          <AlertTitle>Unable to load nutrition programs</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>Please retry shortly.</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => void templatesQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : filteredTemplates.length === 0 ? (
         templates.length === 0 ? (
           <DashboardCard title="No nutrition programs" className="bg-card/90">
@@ -441,7 +529,11 @@ export function PtNutritionPage() {
                         size="sm"
                         variant="ghost"
                         className="flex-1 text-destructive hover:text-destructive"
-                        onClick={() => deleteTemplate(template)}
+                        onClick={() => {
+                          setTemplateActionError(null);
+                          setTemplateActionErrorSource(null);
+                          setDeleteTarget(template);
+                        }}
                       >
                         <Trash2 className="mr-1 h-3.5 w-3.5" />
                         Delete

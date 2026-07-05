@@ -12,6 +12,7 @@ import {
 } from "../../components/ui/coachos";
 import {
   PortalPageHeader,
+  EmptyStateBlock,
   SectionCard,
   StatusBanner,
   StepIndicator,
@@ -1367,9 +1368,10 @@ export function ClientCheckinPage() {
                   );
                 })
               ) : (
-                <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 px-4 py-6 text-sm text-muted-foreground">
-                  No active assignments yet.
-                </div>
+                <EmptyStateBlock
+                  title="No active assignments yet"
+                  description="Your open and upcoming check-in cycles will appear here once your coach assigns them."
+                />
               )}
             </SurfaceCardContent>
           </SurfaceCard>
@@ -1429,9 +1431,10 @@ export function ClientCheckinPage() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 px-4 py-6 text-sm text-muted-foreground">
-                  No previous check-ins yet.
-                </div>
+                <EmptyStateBlock
+                  title="No previous check-ins yet"
+                  description="Submitted and reviewed check-ins will appear here for reference."
+                />
               )}
             </SurfaceCardContent>
           </SurfaceCard>

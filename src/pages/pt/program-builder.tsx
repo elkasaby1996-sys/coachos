@@ -80,6 +80,30 @@ const getErrorDetails = (error: unknown) => {
   return { code: "unknown", message: "Unknown error" };
 };
 
+const PROGRAM_LAYOUT_DELETE_PROTECTION_MESSAGE =
+  "Delete failed. This template is already assigned to a client and cannot be deleted. Existing client assignments prevent deletion. Historical records are preserved.";
+
+const isDeleteProtectionError = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const message = details.message.toLowerCase();
+  return (
+    details.code === "23503" ||
+    details.code === "P0001" ||
+    message.includes("foreign key constraint") ||
+    message.includes("still referenced") ||
+    message.includes("cannot be deleted") ||
+    message.includes("already assigned")
+  );
+};
+
+const getProgramLayoutDeleteErrorMessage = (error: unknown) => {
+  if (isDeleteProtectionError(error)) {
+    return PROGRAM_LAYOUT_DELETE_PROTECTION_MESSAGE;
+  }
+  const details = getErrorDetails(error);
+  return `Delete failed. ${details.message}`;
+};
+
 const isUuid = (value: string | undefined | null) =>
   Boolean(
     value &&
@@ -291,6 +315,27 @@ export function PtProgramBuilderPage() {
     setSaveError(null);
 
     let programId = templateId;
+    if (!isNew && templateId) {
+      const { data: isProtected, error: protectionError } = await supabase.rpc(
+        "is_program_template_in_active_delivery",
+        {
+          p_program_template_id: templateId,
+        },
+      );
+
+      if (protectionError) {
+        setSaveError(getProgramLayoutDeleteErrorMessage(protectionError));
+        setSaveStatus("idle");
+        return;
+      }
+
+      if (isProtected) {
+        setSaveError(PROGRAM_LAYOUT_DELETE_PROTECTION_MESSAGE);
+        setSaveStatus("idle");
+        return;
+      }
+    }
+
     if (isNew) {
       const { data, error } = await supabase
         .from("program_templates")
@@ -341,8 +386,7 @@ export function PtProgramBuilderPage() {
       .delete()
       .eq("program_template_id", programId);
     if (deleteError) {
-      const details = getErrorDetails(deleteError);
-      setSaveError(`${details.code}: ${details.message}`);
+      setSaveError(getProgramLayoutDeleteErrorMessage(deleteError));
       setSaveStatus("idle");
       return;
     }
