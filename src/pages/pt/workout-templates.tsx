@@ -2,9 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarClock,
-  Dumbbell,
-  Layers3,
   Plus,
   Search,
   Trash2,
@@ -23,7 +20,6 @@ import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
-import { StatCard } from "../../components/ui/coachos/stat-card";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWorkspaceWriteAccess } from "../../features/workspace-team";
@@ -214,15 +210,6 @@ export function PtWorkoutTemplatesPage() {
       })),
     [templates],
   );
-  const recentTemplatesCount = useMemo(() => {
-    const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    return templates.filter((template) => {
-      const createdAt = template.created_at
-        ? new Date(template.created_at).getTime()
-        : 0;
-      return createdAt >= monthAgo;
-    }).length;
-  }, [templates]);
 
   const workoutTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -326,35 +313,6 @@ export function PtWorkoutTemplatesPage() {
             New template
           </Button>
         ) : null}
-      </div>
-
-      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Workout Templates"
-          value={formattedTemplates.length}
-          helper="Reusable sessions ready to build from"
-          icon={Layers3}
-          accent
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="Workout Types"
-          value={workoutTypeOptions.length}
-          helper="Distinct training tags in this workspace"
-          icon={Dumbbell}
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="New This Month"
-          value={recentTemplatesCount}
-          helper="Created in the last 30 days"
-          icon={CalendarClock}
-          module="coaching"
-          iconClassName="text-[var(--state-info-text)]"
-          className="h-full"
-        />
       </div>
 
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem] xl:items-center">

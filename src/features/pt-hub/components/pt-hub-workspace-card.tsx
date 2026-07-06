@@ -1,5 +1,4 @@
 import { ArrowUpRight, Clock3, UsersRound } from "lucide-react";
-import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { cn } from "../../../lib/utils";
@@ -50,14 +49,6 @@ export function PtHubWorkspaceCard({
       )}
       contentClassName="gap-5"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          module={workspace.relation === "shared" ? "coaching" : "settings"}
-        >
-          {workspace.relation === "shared" ? "Shared workspace" : "Owned"}
-        </Badge>
-        <Badge variant="muted">{roleLabels[workspace.role]}</Badge>
-      </div>
       {workspace.relation === "shared" && workspace.ownerName ? (
         <p className="text-sm text-muted-foreground">
           Owned by{" "}

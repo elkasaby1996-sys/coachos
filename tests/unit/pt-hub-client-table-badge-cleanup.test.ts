@@ -133,6 +133,19 @@ describe("PT Hub client table badge cleanup", () => {
     expect(workspaceClientsPageSource).toContain("<PtHubClientTable");
   });
 
+  it("uses icon-only client open actions without a visible Action column label", () => {
+    const markup = renderTable([makeClient()]);
+
+    expect(markup).not.toContain(">Action<");
+    expect(markup).not.toContain(">Open client<");
+    expect(markup).toContain('aria-label="Open Client One"');
+    expect(ptHubClientTableSource).toContain('<span aria-hidden="true" />');
+    expect(ptHubClientTableSource).toContain("openClientAria");
+    expect(ptHubClientTableSource).toContain(
+      'className="h-10 w-full rounded-2xl p-0 sm:w-10"',
+    );
+  });
+
   it("renders only Removed for a removed relationship row", () => {
     const markup = renderTable([
       makeClient({

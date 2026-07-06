@@ -55,17 +55,6 @@ function getToneIcon(tone: SemanticTone | null | undefined) {
   return Sparkles;
 }
 
-function getActionPriorityLabel(tone: SemanticTone) {
-  if (tone === "danger") return "High priority";
-  if (tone === "warning") return "Needs review";
-  if (tone === "success") return "Clear";
-  return "Next step";
-}
-
-function getActionOwnerLabel(item: PtHubOverviewActionItem) {
-  return item.workspaceId ? "Workspace" : "Coach";
-}
-
 function getActivationStatusLabel(item: PtHubActivationChecklistItem) {
   if (item.status === "complete") return "Complete";
   if (item.status === "next") return "Next recommended";
@@ -367,43 +356,6 @@ function PtHubActionCenterRow({
 }) {
   const toneStyles = getSemanticToneClasses(item.tone);
   const StatusIcon = getToneIcon(item.tone);
-  const priorityLabel = getActionPriorityLabel(item.tone);
-  const ownerLabel = getActionOwnerLabel(item);
-
-  if (variant === "compact") {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="pt-hub-interactive pt-hub-priority-row pt-hub-priority-row-compact group flex min-w-0 items-center justify-between gap-4 rounded-[20px] border border-border/55 bg-background/22 px-4 py-3 text-left transition-[background-color,border-color,box-shadow] duration-200 hover:border-border/80 hover:bg-background/38 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      >
-        <div className="min-w-0 flex items-center gap-3">
-          <span
-            className={cn(
-              "pt-hub-priority-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
-              toneStyles.surface,
-            )}
-            aria-hidden
-          >
-            <StatusIcon className="h-3.5 w-3.5 [stroke-width:1.8]" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[0.95rem] font-semibold leading-5 text-foreground">
-              {item.label}
-            </p>
-            <p className="pt-hub-meta-text mt-0.5 truncate text-[0.78rem] font-medium">
-              {ownerLabel} - {item.badge}
-            </p>
-          </div>
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary transition-colors group-hover:text-foreground group-focus-visible:text-foreground">
-          {item.ctaLabel}
-          <ArrowRight className="h-3.5 w-3.5 [stroke-width:1.7]" />
-        </span>
-      </button>
-    );
-  }
-
   const isPrimary = variant === "primary";
 
   return (
@@ -411,72 +363,40 @@ function PtHubActionCenterRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "pt-hub-interactive pt-hub-priority-row group relative grid gap-4 border border-border/60 text-left shadow-[inset_0_1px_0_oklch(1_0_0/0.035)] transition-[background-color,border-color,box-shadow] duration-200 hover:border-border/80 hover:bg-background/52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-6",
-        isPrimary
-          ? "pt-hub-priority-row-primary rounded-[28px] bg-background/42 px-4 py-4 sm:px-5 sm:py-5"
-          : "rounded-[24px] bg-background/34 px-4 py-4 sm:px-5",
+        "pt-hub-interactive group flex w-full items-start gap-3 px-0 text-left transition-colors duration-200 hover:bg-background/28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-1",
+        isPrimary ? "py-4" : "py-3.5",
       )}
     >
-      <div className="min-w-0 flex gap-3">
+      <span
+        className={cn(
+          "pt-hub-priority-icon mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
+          toneStyles.surface,
+          isPrimary && "h-9 w-9",
+        )}
+        aria-hidden
+      >
+        <StatusIcon
+          className={cn("h-3.5 w-3.5 [stroke-width:1.8]", isPrimary && "h-4 w-4")}
+        />
+      </span>
+      <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "pt-hub-priority-icon mt-0.5 inline-flex shrink-0 items-center justify-center rounded-full border",
-            isPrimary ? "h-10 w-10" : "h-9 w-9",
-            toneStyles.surface,
+            "block font-semibold text-foreground",
+            isPrimary ? "text-[1.08rem] leading-6" : "text-[0.98rem] leading-5",
           )}
-          aria-hidden
         >
-          <StatusIcon
-            className={cn("h-4 w-4 [stroke-width:1.8]", isPrimary && "h-5 w-5")}
-          />
+          {item.label}
         </span>
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant={getSemanticBadgeVariant(item.tone)}
-              className="h-6 px-2 text-[0.72rem] normal-case tracking-normal"
-            >
-              {priorityLabel}
-            </Badge>
-            <span className="pt-hub-owner-chip">{ownerLabel}</span>
-          </div>
-          <p
-            className={cn(
-              "font-semibold text-foreground",
-              isPrimary
-                ? "text-[1.12rem] leading-6 sm:text-[1.22rem]"
-                : "text-[1.02rem] leading-5",
-            )}
-          >
-            {item.label}
-          </p>
-          <p
-            className={cn(
-              "pt-hub-meta-text max-w-4xl",
-              isPrimary
-                ? "text-[0.95rem] leading-6"
-                : "text-[0.9rem] leading-5",
-            )}
+        {isPrimary ? (
+          <span
+            className="pt-hub-meta-text mt-1 block max-w-3xl text-[0.9rem] leading-5"
           >
             {item.description}
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 pl-12 lg:min-w-[11.5rem] lg:flex-col lg:items-end lg:justify-center lg:pl-0">
-        <Badge
-          variant={getSemanticBadgeVariant(item.tone)}
-          className="h-7 px-2.5 py-0 text-[11px] normal-case tracking-normal"
-        >
-          {item.badge}
-        </Badge>
-        <span className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors group-hover:text-foreground group-focus-visible:text-foreground">
-          <span className="pt-hub-action-prefix hidden lg:inline">
-            Next action
           </span>
-          {item.ctaLabel}
-          <ArrowRight className="h-4 w-4 [stroke-width:1.7]" />
-        </span>
-      </div>
+        ) : null}
+      </span>
+      <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary transition-colors [stroke-width:1.7] group-hover:text-foreground group-focus-visible:text-foreground" />
     </button>
   );
 }
@@ -593,14 +513,7 @@ export function PtHubActionCenter({
 }) {
   const navigate = useNavigate();
   const { switchWorkspace } = useWorkspace();
-  const helperText =
-    mode === "activation"
-      ? "Start with the blocker most likely to delay launch."
-      : "Start with the decision most likely to protect client delivery.";
   const [primaryItem, ...secondaryItems] = items;
-  const visibleSecondaryItems = secondaryItems.slice(0, 3);
-  const hiddenSecondaryCount =
-    secondaryItems.length - visibleSecondaryItems.length;
 
   const handleActionClick = (item: PtHubOverviewActionItem) => {
     if (item.workspaceId) {
@@ -615,25 +528,9 @@ export function PtHubActionCenter({
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
 
       <div className="relative space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2.5">
-            <p className="pt-hub-kicker">Action center</p>
-            <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold tracking-[0.005em] text-foreground sm:text-[1.85rem]">
-              Command center
-            </h2>
-            <p className="pt-hub-meta-text max-w-3xl text-[0.95rem] leading-6 text-muted-foreground">
-              {helperText}
-            </p>
-          </div>
-          <Badge
-            variant={items.length > 0 ? "warning" : "success"}
-            className="h-8 w-fit px-3 text-[11px] normal-case tracking-normal"
-          >
-            {items.length > 0
-              ? `${items.length} open ${items.length === 1 ? "item" : "items"}`
-              : "Clear"}
-          </Badge>
-        </div>
+        <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold tracking-[0.005em] text-foreground sm:text-[1.85rem]">
+          Command center
+        </h2>
 
         <PtHubActivationChecklist
           checklist={activationChecklist ?? null}
@@ -643,14 +540,11 @@ export function PtHubActionCenter({
 
         {primaryItem ? (
           <div
-            className="space-y-4"
+            className="divide-y divide-border/60 border-y border-border/60"
             role="list"
-            aria-label="Action center items"
+            aria-label="Command center items"
           >
-            <div className="space-y-2">
-              <p className="pt-hub-minor-label pt-hub-minor-label-strong">
-                Focus first
-              </p>
+            <div role="listitem">
               <PtHubActionCenterRow
                 item={primaryItem}
                 onClick={() => handleActionClick(primaryItem)}
@@ -658,28 +552,15 @@ export function PtHubActionCenter({
               />
             </div>
 
-            {visibleSecondaryItems.length > 0 ? (
-              <div className="space-y-2.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="pt-hub-minor-label">Next in queue</p>
-                  {hiddenSecondaryCount > 0 ? (
-                    <span className="pt-hub-meta-text text-xs font-medium">
-                      +{hiddenSecondaryCount} more held back
-                    </span>
-                  ) : null}
-                </div>
-                <div className="grid gap-2 lg:grid-cols-3">
-                  {visibleSecondaryItems.map((item) => (
-                    <PtHubActionCenterRow
-                      key={item.id}
-                      item={item}
-                      onClick={() => handleActionClick(item)}
-                      variant="compact"
-                    />
-                  ))}
-                </div>
+            {secondaryItems.map((item) => (
+              <div key={item.id} role="listitem">
+                <PtHubActionCenterRow
+                  item={item}
+                  onClick={() => handleActionClick(item)}
+                  variant="compact"
+                />
               </div>
-            ) : null}
+            ))}
           </div>
         ) : (
           <div className="pt-hub-command-clear-state rounded-[28px] border border-primary/18 bg-primary/8 px-5 py-6">

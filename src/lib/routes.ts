@@ -1,6 +1,5 @@
 export type PtHubSettingsTab =
   | "account"
-  | "public-profile"
   | "notifications"
   | "preferences"
   | "security"

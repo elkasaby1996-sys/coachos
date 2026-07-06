@@ -93,9 +93,7 @@ export function PtHubClientTable({
           </span>
         ) : null}
         <span>{t("ptHub.clients.table.lifecycle", "Lifecycle")}</span>
-        <span className="text-right">
-          {t("ptHub.clients.table.action", "Action")}
-        </span>
+        <span aria-hidden="true" />
       </div>
       <div className="space-y-2">
         {visibleRows.map((client) => {
@@ -167,10 +165,13 @@ export function PtHubClientTable({
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="w-full sm:w-auto"
+                  className="h-10 w-full rounded-2xl p-0 sm:w-10"
                   onClick={() => onOpen(client)}
+                  aria-label={t(
+                    "ptHub.clients.table.openClientAria",
+                    `Open ${client.displayName}`,
+                  )}
                 >
-                  {t("ptHub.clients.table.openClient", "Open client")}
                   <ArrowUpRight className="h-4 w-4 text-[var(--module-clients-text)] [stroke-width:1.7]" />
                 </Button>
               </div>

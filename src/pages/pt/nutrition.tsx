@@ -2,12 +2,9 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Archive,
   Copy,
-  Layers3,
   Plus,
   Search,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -19,7 +16,6 @@ import {
   DashboardCard,
   EmptyState,
   Skeleton,
-  StatCard,
   StatusPill,
 } from "../../components/ui/coachos";
 import {
@@ -100,14 +96,6 @@ export function PtNutritionPage() {
       return bTime - aTime;
     });
   }, [templates, search, sortBy, typeFilter]);
-  const activeTemplatesCount = useMemo(
-    () => templates.filter((template) => template.is_active).length,
-    [templates],
-  );
-  const archivedTemplatesCount = useMemo(
-    () => templates.filter((template) => !template.is_active).length,
-    [templates],
-  );
   const buildTemplateTags = (template: NutritionTemplate) => {
     const tags = [
       formatNutritionTypeTag(template.nutrition_type_tag),
@@ -358,36 +346,6 @@ export function PtNutritionPage() {
             New template
           </Button>
         ) : null}
-      </div>
-
-      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Nutrition Programs"
-          value={templates.length}
-          helper="Reusable plans ready to assign"
-          icon={Layers3}
-          accent
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="Active"
-          value={activeTemplatesCount}
-          helper="Available for current assignments"
-          icon={Sparkles}
-          module="coaching"
-          iconClassName="text-[var(--state-success-text)]"
-          className="h-full"
-        />
-        <StatCard
-          label="Archived"
-          value={archivedTemplatesCount}
-          helper="Stored for reference without clutter"
-          icon={Archive}
-          module="coaching"
-          iconClassName="text-muted-foreground"
-          className="h-full"
-        />
       </div>
 
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">

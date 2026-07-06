@@ -56,6 +56,12 @@ describe("PT Hub shared workspace contract", () => {
     expect(workspaceCard).toContain("assigned clients");
   });
 
+  it("does not duplicate workspace relation and role as card tags", () => {
+    expect(workspaceCard).not.toContain("components/ui/badge");
+    expect(workspaceCard).not.toContain("Shared workspace\" : \"Owned");
+    expect(workspaceCard).not.toContain('<Badge variant="muted"');
+  });
+
   it("highlights accepted invite redirects on PT Hub workspaces", () => {
     expect(workspacesPage).toContain("acceptedWorkspace");
     expect(workspacesPage).toContain("Workspace added to your PT Hub");

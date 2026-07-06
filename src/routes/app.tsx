@@ -744,7 +744,10 @@ export function App() {
             <Route path="settings" element={<PtHubSettingsLayoutPage />}>
               <Route index element={<Navigate to="account" replace />} />
               <Route path="account" element={<PtHubSettingsAccountTab />} />
-              <Route path="public-profile" element={<PtHubProfilePage />} />
+              <Route
+                path="public-profile"
+                element={<Navigate to="/pt-hub/profile" replace />}
+              />
               <Route
                 path="notifications"
                 element={<PtHubSettingsNotificationsTab />}

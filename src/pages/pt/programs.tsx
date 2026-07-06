@@ -4,10 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   Copy,
-  Layers3,
   Pencil,
   Search,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -25,7 +23,6 @@ import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Badge } from "../../components/ui/badge";
-import { StatCard } from "../../components/ui/coachos/stat-card";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
 import { EmptyState } from "../../components/pt/dashboard/EmptyState";
@@ -145,14 +142,6 @@ export function PtProgramsPage() {
         : "Weeks TBD",
     }));
   }, [programsQuery.data]);
-  const activeProgramsCount = useMemo(
-    () => formattedPrograms.filter((program) => program.is_active).length,
-    [formattedPrograms],
-  );
-  const archivedProgramsCount = useMemo(
-    () => formattedPrograms.filter((program) => !program.is_active).length,
-    [formattedPrograms],
-  );
   const programTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
     formattedPrograms.forEach((program) => {
@@ -383,36 +372,6 @@ export function PtProgramsPage() {
           {actionError}
         </Card>
       ) : null}
-
-      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Reusable Programs"
-          value={formattedPrograms.length}
-          helper="Multi-week systems ready to reuse"
-          icon={Layers3}
-          accent
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="Active"
-          value={activeProgramsCount}
-          helper="Available for assignment and edits"
-          icon={Sparkles}
-          module="coaching"
-          iconClassName="text-[var(--state-success-text)]"
-          className="h-full"
-        />
-        <StatCard
-          label="Archived"
-          value={archivedProgramsCount}
-          helper="Stored for reference without clutter"
-          icon={Archive}
-          module="coaching"
-          iconClassName="text-muted-foreground"
-          className="h-full"
-        />
-      </div>
 
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">
         <div className="relative min-w-0">

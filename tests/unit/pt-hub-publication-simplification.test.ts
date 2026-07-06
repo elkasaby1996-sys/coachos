@@ -150,6 +150,106 @@ describe("PT Hub publication simplification", () => {
     expect(profileEditorSource).toContain('variant="ghost"');
   });
 
+  it("restores profile cleanup without changing the editor grid flow", () => {
+    expect(profileEditorSource).toContain(
+      'className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.36fr)_360px]"',
+    );
+    expect(profileEditorSource).toContain(
+      '<Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">',
+    );
+    expect(profileEditorSource).toContain(
+      'className="xl:sticky xl:top-28 xl:col-start-2 xl:row-start-1 xl:self-start"',
+    );
+    expect(profileEditorSource).not.toContain(
+      'className="min-w-0 xl:contents"',
+    );
+  });
+
+  it("hides launch priorities once the profile is complete and published", () => {
+    expect(profileEditorSource).toContain("showLaunchPriorities");
+    expect(profileEditorSource).toContain("!publicationState.isPublished");
+    expect(profileEditorSource).toContain("!readiness.readyForPublish");
+    expect(profileEditorSource).toContain("{showLaunchPriorities ? (");
+  });
+
+  it("does not duplicate publish state inside the mini live preview", () => {
+    const livePreviewStart = profileEditorSource.indexOf(
+      "function PtHubLiveProfilePreview",
+    );
+    const createDraftStart = profileEditorSource.indexOf(
+      "function createDraft",
+    );
+    const livePreviewSource = profileEditorSource.slice(
+      livePreviewStart,
+      createDraftStart,
+    );
+
+    expect(livePreviewSource).not.toContain("form.isPublished");
+    expect(livePreviewSource).not.toContain(
+      '<Badge variant={form.isPublished ? "success" : "secondary"}>',
+    );
+    expect(livePreviewSource).not.toContain(
+      '{form.isPublished ? "Published" : "Draft"}',
+    );
+  });
+
+  it("keeps profile form helper copy compact", () => {
+    expect(profileEditorSource).not.toContain(
+      "Use the name clients should recognize on your public profile.",
+    );
+    expect(profileEditorSource).not.toContain(
+      "Name the audience, the outcome, and the training edge",
+    );
+    expect(profileEditorSource).not.toContain(
+      "Keep this focused on your method, client fit, and proof.",
+    );
+    expect(profileEditorSource).not.toContain(
+      "Add focused lanes prospects can scan quickly.",
+    );
+    expect(profileEditorSource).not.toContain(
+      "Add credentials that support your authority.",
+    );
+  });
+
+  it("keeps long proof guidance behind info tooltips", () => {
+    expect(profileEditorSource).toContain('aria-label="Coaching style guidance"');
+    expect(profileEditorSource).toContain(
+      'aria-label="Transformation proof guidance"',
+    );
+    expect(profileEditorSource).toContain("<Info");
+    expect(profileEditorSource).toContain("<TooltipContent");
+  });
+
+  it("uses tag entry for profile locations", () => {
+    expect(profileEditorSource).toContain(
+      'const [locationInput, setLocationInput] = useState("");',
+    );
+    expect(profileEditorSource).toContain(
+      "const locationValues = inputToList(form.locationLabel);",
+    );
+    expect(profileEditorSource).toContain('label="Location"');
+    expect(profileEditorSource).toContain("values={locationValues}");
+    expect(profileEditorSource).toContain("value={locationInput}");
+    expect(profileEditorSource).toContain("onValueChange={setLocationInput}");
+    expect(profileEditorSource).toContain(
+      "locationLabel: listToInput(nextValues)",
+    );
+    expect(profileEditorSource).not.toContain(
+      "locationLabel: event.target.value",
+    );
+  });
+
+  it("uses the full profile preview inside the existing preview tab", () => {
+    expect(profileEditorSource).toContain("getDraftProfilePreviewData");
+    expect(profileEditorSource).toContain("usePtPackages");
+    expect(profileEditorSource).toContain("mapPublicPtPackageOptionsFromPackages");
+    expect(profileEditorSource).toContain("<PtHubProfilePreview");
+    expect(profileEditorSource).toContain("profile={previewData}");
+    expect(profileEditorSource).toContain("packageOptions={packageOptions}");
+    expect(profileEditorSource).not.toContain("Public profile preview");
+    expect(profileEditorSource).not.toContain("Draft preview");
+  });
+
   it("does not present ready to list as a separate profile publish action", () => {
     expect(profileEditorSource).not.toContain("Ready to list");
     expect(publicationPanelSource).not.toContain("Ready to list");

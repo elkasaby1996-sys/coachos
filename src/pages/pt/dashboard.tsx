@@ -86,13 +86,6 @@ type CheckinRow = {
   created_at: string | null;
 };
 
-type MessageRow = {
-  id: string;
-  created_at: string | null;
-  sender_name: string | null;
-  preview: string | null;
-};
-
 type CoachTodo = {
   id: string;
   title: string;
@@ -161,7 +154,6 @@ const buildMetricDelta = ({
 export function PtDashboardPage() {
   const { user } = useSessionAuth();
   const navigate = useNavigate();
-  const messagesEnabled = true;
   const {
     workspaceId: cachedWorkspaceId,
     loading: workspaceLoading,
@@ -177,7 +169,6 @@ export function PtDashboardPage() {
     AssignedWorkoutRow[]
   >([]);
   const [checkins, setCheckins] = useState<CheckinRow[]>([]);
-  const [messages, setMessages] = useState<MessageRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [onboardingRows, setOnboardingRows] = useState<OnboardingRow[]>([]);
@@ -225,15 +216,13 @@ export function PtDashboardPage() {
           clients: ClientRecord[];
           assignedWorkouts: AssignedWorkoutRow[];
           checkins: CheckinRow[];
-          messages: MessageRow[];
           unreadCount: number;
           coachTodos: CoachTodo[];
         };
         setClients(summary?.clients ?? []);
         setAssignedWorkouts(summary?.assignedWorkouts ?? []);
         setCheckins(summary?.checkins ?? []);
-        setMessages(messagesEnabled ? (summary?.messages ?? []) : []);
-        setUnreadCount(messagesEnabled ? (summary?.unreadCount ?? 0) : 0);
+        setUnreadCount(summary?.unreadCount ?? 0);
         setCoachTodos(summary?.coachTodos ?? []);
 
         const clientIds = (summary?.clients ?? []).map((client) => client.id);
@@ -266,7 +255,6 @@ export function PtDashboardPage() {
         setClients([]);
         setAssignedWorkouts([]);
         setCheckins([]);
-        setMessages([]);
         setUnreadCount(0);
         setOnboardingRows([]);
         setCoachTodos([]);
@@ -279,7 +267,6 @@ export function PtDashboardPage() {
     void loadDashboard();
   }, [
     cachedWorkspaceId,
-    messagesEnabled,
     refreshWorkspace,
     user?.id,
     workspaceLoading,
@@ -733,8 +720,6 @@ export function PtDashboardPage() {
     });
   }, [checkinRows, clients, onboardingRows, workoutStatsByClient]);
 
-  const messageRows = messages.slice(0, 5);
-
   const clientPanelTitle = clientRows.some(
     (row) => row.attentionTone !== "neutral" || row.onboardingStatus !== null,
   )
@@ -1014,62 +999,6 @@ export function PtDashboardPage() {
               )}
             </DashboardCard>
 
-            <DashboardCard
-              title="Recent Messages"
-              action={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/pt/messages")}
-                >
-                  Open inbox
-                </Button>
-              }
-            >
-              {isLoading ? (
-                <LoadingPanel
-                  title="Loading messages"
-                  description="Pulling in the most recent client conversations."
-                />
-              ) : messageRows.length > 0 ? (
-                <div
-                  className={
-                    messageRows.length <= 2 ? "space-y-2" : "space-y-2.5"
-                  }
-                >
-                  {messageRows.map((message) => (
-                    <button
-                      key={message.id}
-                      type="button"
-                      onClick={() => navigate("/pt/messages")}
-                      className={`surface-subtle flex w-full items-start justify-between gap-3 text-left transition hover:border-border hover:bg-background/70 ${
-                        messageRows.length <= 2 ? "px-3 py-2" : "px-3 py-2.5"
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">
-                          {message.sender_name ?? "Client"}
-                        </p>
-                        <p className="line-clamp-2 text-xs text-muted-foreground">
-                          {message.preview ?? "No preview available"}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {message.created_at
-                          ? formatRelativeTime(message.created_at)
-                          : "Recently"}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title="No messages yet"
-                  description="Start the thread from a client profile."
-                  className="px-5 py-5"
-                />
-              )}
-            </DashboardCard>
           </div>
         </StaggerItem>
 

@@ -415,7 +415,7 @@ export function PtHubSettingsAccountTab() {
           label="Country & Phone"
           hint="Country updates timezone and auto-suggests a dial code. You can still edit the phone code manually."
         >
-          <div className="grid gap-3 md:grid-cols-[minmax(13rem,0.36fr)_minmax(0,1fr)] md:items-start">
+          <div className="grid gap-3 md:grid-cols-2 md:items-start">
             <div className="space-y-2">
               <Select
                 isInvalid={

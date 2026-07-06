@@ -29,23 +29,55 @@ describe("pt hub packages surface wiring", () => {
     const packagesPage = readSource("src/pages/pt-hub/packages.tsx");
 
     expect(packagesPage).toContain("<PtHubPackageManager />");
-    expect(packagesPage).toContain(
-      'className="page-kpi-block pt-hub-kpi-grid"',
-    );
-    expect(packagesPage.indexOf("<PtHubPackageManager />")).toBeLessThan(
-      packagesPage.indexOf('className="page-kpi-block pt-hub-kpi-grid"'),
-    );
+    expect(packagesPage).not.toContain("page-kpi-block");
+    expect(packagesPage).not.toContain("pt-hub-kpi-grid");
   });
 
-  it("keeps package state counters visually quiet", () => {
+  it("keeps package state counters out of the packages page", () => {
     const packagesPage = readSource("src/pages/pt-hub/packages.tsx");
 
-    expect(packagesPage).toContain("PACKAGE_KPI_META");
-    expect(packagesPage).toContain("pt-hub-kpi-grid");
-    expect(packagesPage).toContain("border-border/55");
+    expect(packagesPage).not.toContain("PACKAGE_KPI_META");
+    expect(packagesPage).not.toContain("summarizePackageDisplayStates");
+    expect(packagesPage).not.toContain("<StatCard");
     expect(packagesPage).not.toContain("before:h-1");
     expect(packagesPage).not.toContain("after:blur");
     expect(packagesPage).not.toContain("after:bg-");
+  });
+
+  it("keeps the packages page header and empty state concise", () => {
+    const packagesPage = readSource("src/pages/pt-hub/packages.tsx");
+    const hubLayout = readSource("src/components/layouts/pt-hub-layout.tsx");
+    const i18nSource = readSource("src/lib/i18n.tsx");
+    const packageManager = readSource(
+      "src/features/pt-hub/components/pt-hub-package-manager.tsx",
+    );
+    const emptyStateStart = packageManager.indexOf(
+      "{packages.length === 0 && packagesQuery.isSuccess ? (",
+    );
+    const emptyStateEnd = packageManager.indexOf(
+      "{splitFiltered.reorderable.length > 0 ? (",
+    );
+    const emptyStateSource = packageManager.slice(
+      emptyStateStart,
+      emptyStateEnd,
+    );
+
+    expect(packagesPage).not.toContain(
+      "Manage package visibility and ordering for public lead intake.",
+    );
+    expect(hubLayout).not.toContain(
+      "Manage package visibility and ordering for public lead intake.",
+    );
+    expect(i18nSource).not.toContain(
+      "Manage package visibility and ordering for public lead intake.",
+    );
+    expect(packageManager).toContain("Control package visibility and order.");
+    expect(emptyStateSource).toContain("No packages yet.");
+    expect(emptyStateSource).not.toContain(
+      "Create your first offer to show on your public",
+    );
+    expect(emptyStateSource).not.toContain("<Button");
+    expect(emptyStateSource).not.toContain("setIsCreating(true)");
   });
 
   it("keeps canonical manager semantics for draft/public/archive/reorder behavior", () => {

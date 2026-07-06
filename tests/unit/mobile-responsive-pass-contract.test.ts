@@ -46,7 +46,9 @@ describe("PR-UI-01.7 mobile responsive pass contracts", () => {
     expect(ptHubClientTableSource).toContain(
       "flex justify-stretch lg:justify-end",
     );
-    expect(ptHubClientTableSource).toContain("className=\"w-full sm:w-auto\"");
+    expect(ptHubClientTableSource).toContain(
+      'className="h-10 w-full rounded-2xl p-0 sm:w-10"',
+    );
   });
 
   it("keeps program builder save controls stacked and reachable on mobile", () => {

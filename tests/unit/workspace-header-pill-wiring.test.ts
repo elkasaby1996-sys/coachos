@@ -38,4 +38,16 @@ describe("workspace header pill wiring", () => {
       "{!inPtHubWorkspace && workspace.id === workspaceId ? (",
     );
   });
+
+  it("shows PT Hub profile publication status only on the Coach Profile route", () => {
+    const ptHubLayout = readSource("src/components/layouts/pt-hub-layout.tsx");
+
+    expect(ptHubLayout).toContain(
+      'const showProfileStatusPill = location.pathname === "/pt-hub/profile"',
+    );
+    expect(ptHubLayout).toContain("{showProfileStatusPill ? (");
+    expect(ptHubLayout).toContain(
+      '{t("common.profileStatus", "Profile status")}',
+    );
+  });
 });

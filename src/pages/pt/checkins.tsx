@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  ArrowUpRight,
   CalendarClock,
   ClipboardCheck,
   TimerReset,
@@ -13,7 +14,6 @@ import {
   EmptyState,
   Skeleton,
   StatCard,
-  StatusPill,
 } from "../../components/ui/coachos";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import { supabase } from "../../lib/supabase";
@@ -22,7 +22,6 @@ import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { cn } from "../../lib/utils";
 import { formatRelativeTime } from "../../lib/relative-time";
 import {
-  checkinOperationalStatusMap,
   getCheckinOperationalState,
   type CheckinOperationalState,
 } from "../../lib/checkin-review";
@@ -222,16 +221,6 @@ export function PtCheckinsQueuePage() {
               : row.status === "due"
                 ? "Due now"
                 : "Scheduled";
-        const urgencyLabel =
-          row.status === "submitted"
-            ? "Submitted"
-            : row.status === "overdue"
-              ? "High urgency"
-              : row.status === "due"
-                ? "Due today"
-                : row.status === "upcoming"
-                  ? "Upcoming"
-                  : "Resolved";
         const readinessLabel =
           row.status === "submitted"
             ? "Ready for PT review"
@@ -256,79 +245,35 @@ export function PtCheckinsQueuePage() {
               subdued && "bg-secondary/14",
             )}
           >
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0 flex-1 space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-base font-semibold text-foreground">
-                        {name}
-                      </span>
-                      <StatusPill
-                        status={row.status}
-                        statusMap={checkinOperationalStatusMap}
-                      />
-                      <span className="ops-chip text-muted-foreground">
-                        {urgencyLabel}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Week ending{" "}
-                      {formatCheckinDate(row.checkin.week_ending_saturday)}
-                    </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 space-y-2">
+                <div className="min-w-0">
+                  <div className="truncate text-base font-semibold text-foreground">
+                    {name}
                   </div>
-
-                  <div className="ops-stat min-w-[180px] space-y-1 xl:w-[220px]">
-                    <div className="ops-kicker">Direct Action</div>
-                    <div className="text-sm font-semibold text-foreground">
-                      {row.status === "submitted"
-                        ? "Open review and leave feedback"
-                        : row.status === "overdue"
-                          ? "Follow up before it slips"
-                          : row.status === "due"
-                            ? "Monitor for submission"
-                            : "Keep in upcoming queue"}
-                    </div>
+                  <div className="text-sm text-muted-foreground">
+                    Week ending{" "}
+                    {formatCheckinDate(row.checkin.week_ending_saturday)}
                   </div>
                 </div>
-
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Due State</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {formatCheckinDate(row.checkin.week_ending_saturday)}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Review Readiness</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <span>
+                    <span className="font-medium text-foreground">
                       {readinessLabel}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Missing Items</div>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      {missingItems.map((item) => (
-                        <span
-                          key={item}
-                          className="ops-chip text-muted-foreground"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="ops-stat">
-                    <div className="ops-kicker">Latest Movement</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
+                    </span>
+                  </span>
+                  <span>Missing: {missingItems.join(", ")}</span>
+                  <span>
+                    Latest:{" "}
+                    <span className="font-medium text-foreground">
                       {recentLabel}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {row.checkin.submitted_at
-                        ? formatCheckinDateTime(row.checkin.submitted_at)
-                        : (row.client.status ?? "No client status")}
-                    </div>
-                  </div>
+                    </span>
+                    {row.checkin.submitted_at
+                      ? ` ${formatCheckinDateTime(row.checkin.submitted_at)}`
+                      : row.client.status
+                        ? ` ${row.client.status}`
+                        : ""}
+                  </span>
                 </div>
               </div>
 
@@ -336,6 +281,8 @@ export function PtCheckinsQueuePage() {
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="h-10 w-10 rounded-full p-0"
+                  aria-label={`${actionLabel} ${name} check-in`}
                   onClick={() =>
                     navigate(
                       row.status === "submitted" || row.status === "reviewed"
@@ -344,7 +291,7 @@ export function PtCheckinsQueuePage() {
                     )
                   }
                 >
-                  {actionLabel}
+                  <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>
