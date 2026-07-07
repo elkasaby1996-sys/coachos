@@ -81,9 +81,9 @@ describe("legacy workspace redirect builders", () => {
     expect(
       buildLegacyWorkspaceSettingsRedirectPath({
         workspace,
-        tab: "brand",
+        tab: "general",
         search: "?from=settings",
       }),
-    ).toBe("/w/4e8237f23fed/settings/brand?from=settings");
+    ).toBe("/w/4e8237f23fed/settings/general?from=settings");
   });
 });

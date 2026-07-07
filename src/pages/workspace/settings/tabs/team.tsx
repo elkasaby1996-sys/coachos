@@ -673,11 +673,11 @@ function TeamMemberTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {members.map((member, index) => {
+            {members.map((member) => {
               const isOwner = member.role === "owner" || !member.id;
               return (
                 <tr
-                  key={`${member.id ?? member.userId}:${member.role}:${index}`}
+                  key={member.id ?? member.userId}
                   className="bg-card/20"
                 >
                   <td className="px-4 py-3">
@@ -1026,14 +1026,8 @@ export function WorkspaceTeamSettingsPage() {
         scope="Workspace"
         title="Team & Permissions"
         description="Invite coaches and assistants to help manage clients in this workspace."
-        actions={
-          canManage ? (
-            <Button type="button" onClick={() => setInviteOpen(true)}>
-              <MailPlus className="h-4 w-4" />
-              Invite member
-            </Button>
-          ) : null
-        }
+        showKicker={false}
+        showScope={false}
       />
 
       <TeamToast
@@ -1081,10 +1075,18 @@ export function WorkspaceTeamSettingsPage() {
           <SettingsSectionCard
             title="Active members"
             action={
-              <Badge tone="success">
-                <Users className="h-3.5 w-3.5" />
-                {activeMembers.length} active
-              </Badge>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Badge tone="success">
+                  <Users className="h-3.5 w-3.5" />
+                  {activeMembers.length} active
+                </Badge>
+                {canManage ? (
+                  <Button type="button" onClick={() => setInviteOpen(true)}>
+                    <MailPlus className="h-4 w-4" />
+                    Invite member
+                  </Button>
+                ) : null}
+              </div>
             }
           >
             <TeamMemberTable

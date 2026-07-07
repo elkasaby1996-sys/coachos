@@ -88,7 +88,6 @@ import {
   TeamInviteAcceptancePage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
-  WorkspaceSettingsBrandTab,
   WorkspaceSettingsClientExperienceTab,
   WorkspaceSettingsDangerTab,
   WorkspaceSettingsDefaultsTab,
@@ -886,7 +885,10 @@ export function App() {
                   path="general"
                   element={<WorkspaceSettingsGeneralTab />}
                 />
-                <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
+                <Route
+                  path="brand"
+                  element={<Navigate to="../general" replace />}
+                />
                 <Route
                   path="client-experience"
                   element={<WorkspaceSettingsClientExperienceTab />}

@@ -507,6 +507,7 @@ export function PtCalendarPage() {
                       key={day.key}
                       role="button"
                       tabIndex={0}
+                      aria-current={isToday ? "date" : undefined}
                       onClick={() => setSelectedDateKey(day.key)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -517,7 +518,6 @@ export function PtCalendarPage() {
                       className={cn(
                         "flex min-h-[176px] flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40 p-4 text-left transition hover:border-border",
                         !day.inMonth && "opacity-50",
-                        isToday && "border-accent/60 bg-accent/10",
                         isSelected && "border-primary/40 bg-primary/[0.08]",
                         hasItems &&
                           !isToday &&
@@ -526,15 +526,15 @@ export function PtCalendarPage() {
                           "border-primary/30 bg-primary/[0.07]",
                         dayState === "overdue" &&
                           "border-destructive/35 bg-destructive/[0.06]",
+                        isToday &&
+                          "border-primary/60 bg-primary/[0.10] shadow-[0_20px_42px_-32px_rgba(37,99,235,0.7)] ring-2 ring-primary/30",
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span
                           className={cn(
                             "flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-sm font-semibold",
-                            isToday
-                              ? "border-primary/45 bg-primary/16 text-primary"
-                              : "border-border/70 bg-background/60 text-foreground",
+                            "border-border/70 bg-background/60 text-foreground",
                           )}
                         >
                           {day.key.slice(-2)}

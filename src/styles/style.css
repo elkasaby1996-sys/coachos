@@ -582,6 +582,20 @@ h6 {
   animation: app-dropdown-out 140ms ease-in;
 }
 
+.app-workspace-switcher-menu {
+  --menu-surface-bg:
+    linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.86),
+      oklch(var(--bg-surface) / 0.74)
+    ),
+    linear-gradient(135deg, oklch(1 0 0 / 0.12), transparent 42%);
+  --menu-border-color: oklch(var(--border-default) / 0.72);
+  --menu-surface-shadow:
+    0 22px 52px -36px oklch(0.28 0.02 190 / 0.2),
+    inset 0 1px 0 oklch(1 0 0 / 0.28);
+}
+
 .app-dropdown-item[data-highlighted] {
   background: var(--menu-item-hover);
   color: oklch(var(--text-primary));

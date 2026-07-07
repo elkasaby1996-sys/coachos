@@ -1506,6 +1506,87 @@
     background-image: var(--select-surface-bg-field-focus);
   }
 
+  body.pt-workspace-portal-light {
+    --bg-canvas: 0.97 0.005 255;
+    --bg-sidebar: 0.952 0.007 255;
+    --bg-surface: 0.988 0.004 255;
+    --bg-surface-elevated: 0.995 0.003 255;
+    --bg-muted: 0.95 0.008 255;
+    --bg-input: 0.966 0.007 255;
+    --text-primary: 0.22 0.02 255;
+    --text-secondary: 0.34 0.018 255;
+    --text-muted: 0.5 0.016 255;
+    --text-on-accent: 0.985 0.004 255;
+    --border-subtle: 0.92 0.008 255;
+    --border-default: 0.88 0.01 255;
+    --border-strong: 0.8 0.014 255;
+    --accent: 0.62 0.14 202;
+    --accent-hover: 0.58 0.14 202;
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-surface-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent);
+    --primary-foreground: var(--text-on-accent);
+    --secondary: var(--bg-muted);
+    --secondary-foreground: var(--text-secondary);
+    --muted: var(--bg-muted);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--bg-input);
+    --ring: var(--accent);
+    --menu-surface-bg:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.96)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.2), transparent 44%);
+    --menu-panel-bg:
+      linear-gradient(
+        180deg,
+        oklch(var(--bg-surface-elevated) / 0.99),
+        oklch(var(--bg-surface) / 0.97)
+      ),
+      linear-gradient(135deg, oklch(1 0 0 / 0.22), transparent 46%);
+    --menu-surface-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.68),
+      0 28px 76px -48px oklch(0.27 0.026 255 / 0.22);
+    --menu-panel-shadow:
+      0 0 0 1px oklch(var(--border-subtle) / 0.72),
+      0 30px 82px -50px oklch(0.25 0.026 255 / 0.24);
+    --menu-border-color: oklch(var(--border-default) / 0.9);
+    --menu-item-hover: oklch(var(--bg-muted) / 0.78);
+    --menu-item-pressed: oklch(var(--bg-muted) / 0.88);
+    --menu-separator-color: oklch(var(--border-default) / 0.74);
+    --menu-label-color: oklch(var(--text-muted) / 1);
+    --menu-icon-color: oklch(var(--accent) / 0.9);
+    --menu-icon-surface: linear-gradient(
+      180deg,
+      oklch(var(--bg-surface-elevated) / 0.94),
+      oklch(var(--bg-muted) / 0.7)
+    );
+  }
+
+  body.pt-workspace-portal-light .app-dropdown-content {
+    color: oklch(var(--text-primary));
+  }
+
+  body.pt-workspace-portal-light .app-dropdown-item {
+    color: oklch(var(--text-primary));
+  }
+
+  body.pt-workspace-portal-light .app-dropdown-item[data-disabled] {
+    color: oklch(var(--text-muted));
+    opacity: 0.68;
+  }
+
+  body.pt-workspace-portal-light .app-dropdown-utility-row {
+    color: oklch(var(--text-primary));
+  }
+
   textarea:not(.field-reset),
   .app-field-textarea {
     @apply min-h-[120px] w-full resize-y px-3 py-2 leading-6;

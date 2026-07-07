@@ -55,31 +55,26 @@ const workspaceAutomations = readSource(
   "tabs",
   "automations.tsx",
 );
-const workspaceBrand = readSource(
+const settingsPrimitives = readSource(
   "src",
-  "pages",
-  "workspace",
+  "features",
   "settings",
-  "tabs",
-  "brand.tsx",
+  "components",
+  "settings-primitives.tsx",
 );
 
 describe("settings scope cleanup contract", () => {
-  it("keeps workspace brand as a first-class workspace settings tab", () => {
-    expect(routeMapping).toContain('id: "brand"');
-    expect(lazyPages).toContain("WorkspaceSettingsBrandTab");
-    expect(appRoutes).toContain(
-      'path="brand" element={<WorkspaceSettingsBrandTab />}',
-    );
+  it("keeps workspace brand folded into general settings", () => {
+    expect(routeMapping).not.toContain('id: "brand"');
+    expect(lazyPages).not.toContain("WorkspaceSettingsBrandTab");
+    expect(workspaceGeneral).toContain("Workspace logo");
+    expect(workspaceGeneral).toContain("logo_url");
   });
 
-  it("keeps workspace brand saves scoped to workspace brand fields only", () => {
-    expect(workspaceBrand).toContain('.from("workspaces")');
-    expect(workspaceBrand).toContain("logo_url");
-    expect(workspaceBrand).not.toContain("pt_hub_settings");
-    expect(workspaceBrand).not.toContain("notification_preferences");
-    expect(workspaceBrand).not.toContain("supabase.auth");
-    expect(workspaceBrand).not.toContain("subscription");
+  it("redirects legacy workspace brand settings links to general", () => {
+    expect(appRoutes).toContain('path="brand"');
+    expect(appRoutes).toContain('to="../general"');
+    expect(appRoutes).not.toContain("<WorkspaceSettingsBrandTab />");
   });
 
   it("keeps PT Hub account free of public profile visibility and workspace branding edits", () => {
@@ -109,6 +104,16 @@ describe("settings scope cleanup contract", () => {
     expect(workspaceGeneral).not.toContain("subscription");
     expect(workspaceGeneral).not.toContain("password");
     expect(workspaceGeneral).not.toContain("Account email");
+  });
+
+  it("keeps settings field labels aligned to their input controls", () => {
+    expect(settingsPrimitives).toContain(
+      "lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)]",
+    );
+    expect(settingsPrimitives).toContain(
+      'className="flex min-h-[2.75rem] items-center"',
+    );
+    expect(settingsPrimitives).toContain('className="min-w-0 space-y-3"');
   });
 
   it("keeps workspace automations free of global notification channel controls", () => {

@@ -92,7 +92,7 @@ export function PtHubClientTable({
             {t("ptHub.clients.table.coachingSpace", "Coaching space")}
           </span>
         ) : null}
-        <span>{t("ptHub.clients.table.lifecycle", "Lifecycle")}</span>
+        <span>{t("ptHub.clients.table.lifecycle", "Status")}</span>
         <span aria-hidden="true" />
       </div>
       <div className="space-y-2">

@@ -21,5 +21,24 @@ describe("PT programs surface", () => {
     expect(programsSource).toContain("Search programs");
     expect(programsSource).toContain("All program types");
     expect(programsSource).toContain("Sort by updated");
+    expect(programsSource).toContain(
+      "xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto]",
+    );
+    expect(programsSource).toContain("New Program");
+  });
+
+  it("combines the empty program guidance into one card", () => {
+    expect(programsSource).toContain("Build your first reusable program");
+    expect(programsSource).toContain("md:grid-cols-2 xl:grid-cols-4");
+    expect(programsSource).toContain("Recommended first step");
+    expect(programsSource).toContain("Create the first block");
+    expect(programsSource).not.toContain('title="Create flow"');
+    expect(programsSource).not.toContain(
+      "Start deliberately so the first program already fits the long-term library.",
+    );
+    expect(programsSource).not.toContain("xl:grid-cols-[1.15fr_0.85fr]");
+    expect(programsSource).not.toContain(
+      "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]",
+    );
   });
 });

@@ -26,7 +26,6 @@ describe("settings route mapping", () => {
   it("defines the expected workspace tab routes", () => {
     expect(workspaceSettingsTabs.map((tab) => tab.path)).toEqual([
       "general",
-      "brand",
       "client-experience",
       "team",
       "defaults",

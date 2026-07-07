@@ -20,7 +20,6 @@ import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { cn } from "../../lib/utils";
-import { formatRelativeTime } from "../../lib/relative-time";
 import {
   getCheckinOperationalState,
   type CheckinOperationalState,
@@ -30,6 +29,7 @@ import { useWindowedRows } from "../../hooks/use-windowed-rows";
 type ClientRow = {
   id: string;
   display_name: string | null;
+  full_name: string | null;
   user_id: string | null;
   status: string | null;
 };
@@ -49,16 +49,6 @@ const formatCheckinDate = (dateStr: string | null) => {
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-  });
-};
-
-const formatCheckinDateTime = (dateStr: string | null) => {
-  if (!dateStr) return "Not submitted yet";
-  return new Date(dateStr).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
 };
 
@@ -99,7 +89,7 @@ export function PtCheckinsQueuePage() {
       const { data, error } = await supabase
         .from("checkins")
         .select(
-          "id, client_id, week_ending_saturday, submitted_at, reviewed_at, reviewed_by_user_id, client:clients(id, display_name, user_id, status)",
+          "id, client_id, week_ending_saturday, submitted_at, reviewed_at, reviewed_by_user_id, client:clients(id, display_name, full_name, user_id, status)",
         )
         .gte("week_ending_saturday", queueStartDate)
         .lte("week_ending_saturday", queueEndDate)
@@ -118,6 +108,7 @@ export function PtCheckinsQueuePage() {
       const client: ClientRow = clientRow ?? {
         id: row.client_id ?? "",
         display_name: null,
+        full_name: null,
         user_id: null,
         status: null,
       };
@@ -147,19 +138,16 @@ export function PtCheckinsQueuePage() {
         key: "due-now" as const,
         title: "Due now",
         emptyTitle: "No check-ins due now",
-        emptyDescription: "Nothing needs immediate review.",
       },
       {
         key: "overdue" as const,
         title: "Overdue",
         emptyTitle: "No overdue check-ins",
-        emptyDescription: "Nothing is overdue right now.",
       },
       {
         key: "upcoming" as const,
         title: "Soon",
         emptyTitle: "No upcoming check-ins",
-        emptyDescription: "Future scheduled check-ins will appear here.",
       },
     ],
     [],
@@ -207,36 +195,15 @@ export function PtCheckinsQueuePage() {
   ) => (
     <div className="space-y-3">
       {rows.map((row) => {
-        const name = row.client.display_name?.trim()
-          ? row.client.display_name
-          : row.client.user_id
+        const name =
+          row.client.display_name?.trim() ||
+          row.client.full_name?.trim() ||
+          (row.client.user_id
             ? `Client ${row.client.user_id.slice(0, 6)}`
-            : "Client";
-        const recentLabel = row.checkin.reviewed_at
-          ? `Reviewed ${formatRelativeTime(row.checkin.reviewed_at)}`
-          : row.checkin.submitted_at
-            ? `Submitted ${formatRelativeTime(row.checkin.submitted_at)}`
-            : row.status === "overdue"
-              ? "Needs outreach"
-              : row.status === "due"
-                ? "Due now"
-                : "Scheduled";
-        const readinessLabel =
-          row.status === "submitted"
-            ? "Ready for PT review"
-            : row.status === "overdue"
-              ? "Waiting on client"
-              : row.status === "due"
-                ? "Due today"
-                : "Scheduled ahead";
-        const missingItems =
-          row.status === "submitted"
-            ? ["Coach review"]
-            : row.status === "overdue"
-              ? ["Submission", "Client follow-up"]
-              : row.status === "due"
-                ? ["Submission"]
-                : ["No missing items"];
+            : "Client");
+        const dueDateLabel = formatCheckinDate(
+          row.checkin.week_ending_saturday,
+        );
         return (
           <div
             key={row.checkin.id}
@@ -252,28 +219,8 @@ export function PtCheckinsQueuePage() {
                     {name}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Week ending{" "}
-                    {formatCheckinDate(row.checkin.week_ending_saturday)}
+                    Due {dueDateLabel}
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span>
-                    <span className="font-medium text-foreground">
-                      {readinessLabel}
-                    </span>
-                  </span>
-                  <span>Missing: {missingItems.join(", ")}</span>
-                  <span>
-                    Latest:{" "}
-                    <span className="font-medium text-foreground">
-                      {recentLabel}
-                    </span>
-                    {row.checkin.submitted_at
-                      ? ` ${formatCheckinDateTime(row.checkin.submitted_at)}`
-                      : row.client.status
-                        ? ` ${row.client.status}`
-                        : ""}
-                  </span>
                 </div>
               </div>
 
@@ -306,14 +253,6 @@ export function PtCheckinsQueuePage() {
       <WorkspacePageHeader
         title="Check-in Queue"
         className="w-full justify-end"
-        actions={
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/pt/checkins/templates")}
-          >
-            Manage templates
-          </Button>
-        }
       />
 
       <div className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -379,10 +318,7 @@ export function PtCheckinsQueuePage() {
                   ))}
                 </div>
               ) : rows.length === 0 ? (
-                <EmptyState
-                  title={section.emptyTitle}
-                  description={section.emptyDescription}
-                />
+                <EmptyState title={section.emptyTitle} />
               ) : (
                 <div className="space-y-4">
                   {renderQueueRows(

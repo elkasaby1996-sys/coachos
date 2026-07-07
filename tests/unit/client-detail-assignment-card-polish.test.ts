@@ -26,6 +26,29 @@ describe("client detail assignment card polish", () => {
     expect(clientDetailPage).toContain("Assign nutrition program");
   });
 
+  it("keeps the schedule workout card concise without idle status chrome", () => {
+    const scheduleWorkoutStart = clientDetailPage.indexOf(
+      'title="Schedule workout"',
+    );
+    expect(scheduleWorkoutStart).toBeGreaterThanOrEqual(0);
+    const scheduleWorkoutEnd = clientDetailPage.indexOf(
+      'title="Schedule (next 14 days)"',
+      scheduleWorkoutStart,
+    );
+    expect(scheduleWorkoutEnd).toBeGreaterThan(scheduleWorkoutStart);
+    const scheduleWorkoutCard = clientDetailPage.slice(
+      scheduleWorkoutStart,
+      scheduleWorkoutEnd,
+    );
+
+    expect(scheduleWorkoutCard).toContain(
+      'description="Assign or replace one workout for a specific date."',
+    );
+    expect(scheduleWorkoutCard).not.toContain("one effective workout");
+    expect(scheduleWorkoutCard).not.toContain('status={');
+    expect(scheduleWorkoutCard).not.toContain('status="idle"');
+  });
+
   it("uses cadence settings language for check-in assignment cards", () => {
     expect(clientDetailPage).toContain(
       "Check-ins use cadence settings. Future check-ins",
@@ -35,6 +58,36 @@ describe("client detail assignment card polish", () => {
     );
     expect(clientDetailPage).toContain("Current check-in assignment");
     expect(clientDetailPage).toContain("Edit check-in settings");
+  });
+
+  it("keeps the check-in template form free of override/debug summary chrome", () => {
+    const checkinTemplateStart = clientDetailPage.indexOf(
+      'title="Check-in template"',
+    );
+    expect(checkinTemplateStart).toBeGreaterThanOrEqual(0);
+    const checkinTemplateEnd = clientDetailPage.indexOf(
+      "<PtClientCheckinsTab",
+      checkinTemplateStart,
+    );
+    expect(checkinTemplateEnd).toBeGreaterThan(checkinTemplateStart);
+    const checkinTemplateCard = clientDetailPage.slice(
+      checkinTemplateStart,
+      checkinTemplateEnd,
+    );
+
+    expect(checkinTemplateCard).not.toContain("checkinTemplateStatusMap");
+    expect(checkinTemplateCard).not.toContain("Resolution:");
+    expect(checkinTemplateCard).not.toContain("Client override");
+    expect(checkinTemplateCard).not.toContain("Using:");
+  });
+
+  it("keeps the check-ins queue header concise", () => {
+    expect(clientDetailPage).not.toContain(
+      "Review queue with urgency, submission timing, and next actions for",
+    );
+    expect(clientDetailPage).not.toContain(
+      "Check-ins use client cadence settings. Template changes apply to future generated check-ins.",
+    );
   });
 
   it("keeps ended client relationships read-only for assignment surfaces", () => {

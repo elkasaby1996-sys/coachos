@@ -8,7 +8,6 @@ export type PtHubSettingsTab =
 
 export type WorkspaceSettingsTab =
   | "general"
-  | "brand"
   | "client-experience"
   | "team"
   | "defaults"

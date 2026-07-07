@@ -257,7 +257,7 @@ type PtHubClientsPageRow = PtClientsSummaryRow & {
   total_count: number | null;
 };
 
-type PtHubClientRelationshipScope = "active" | "archived";
+type PtHubClientRelationshipScope = "active" | "archived" | "all";
 
 type PtHubClientsRpcClient = {
   rpc: (

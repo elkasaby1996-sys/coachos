@@ -301,21 +301,7 @@ export function PtWorkoutTemplatesPage() {
         description="Manage the workout template library in the same operational layout as nutrition programs."
       />
 
-      <div className="flex justify-end">
-        {canManageDelivery ? (
-          <Button
-            onClick={() => {
-              setCreateError(null);
-              setCreateOpen(true);
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            New template
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem] xl:items-center">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto] xl:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="app-search-icon h-4 w-4" />
           <Input
@@ -359,6 +345,18 @@ export function PtWorkoutTemplatesPage() {
           <option value="newest">Sort by newest</option>
           <option value="name">Sort by name</option>
         </Select>
+        {canManageDelivery ? (
+          <Button
+            className="w-full whitespace-nowrap xl:w-auto"
+            onClick={() => {
+              setCreateError(null);
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            New template
+          </Button>
+        ) : null}
       </div>
 
       {workspaceError ? (
@@ -386,9 +384,6 @@ export function PtWorkoutTemplatesPage() {
           <DashboardCard title="No workout templates" className="bg-card/90">
             <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
               <p className="text-sm font-semibold">Create the first template</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Start with one workout template.
-              </p>
               {canManageDelivery ? (
                 <Button
                   className="mt-4"

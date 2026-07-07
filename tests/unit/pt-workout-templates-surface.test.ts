@@ -19,5 +19,16 @@ describe("PT workout templates surface", () => {
     expect(workoutTemplatesSource).toContain("Search templates");
     expect(workoutTemplatesSource).toContain("All workout types");
     expect(workoutTemplatesSource).toContain("Sort by newest");
+    expect(workoutTemplatesSource).toContain(
+      "xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto]",
+    );
+    expect(workoutTemplatesSource).toContain("New template");
+  });
+
+  it("keeps the empty state concise", () => {
+    expect(workoutTemplatesSource).toContain("Create the first template");
+    expect(workoutTemplatesSource).not.toContain(
+      "Start with one workout template.",
+    );
   });
 });

@@ -234,35 +234,7 @@ export function PtClientsPage() {
       </div>
 
       <PtHubSectionCard title="Client List" contentClassName="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 lg:px-2">
-          <div
-            className="inline-flex rounded-xl border border-border/70 bg-background/50 p-1"
-            aria-label="Client relationship view"
-          >
-            <Button
-              type="button"
-              variant={clientListView === "active" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={clientListView === "active"}
-              onClick={() => setClientListView("active")}
-              className="h-9 px-4"
-            >
-              Active
-            </Button>
-            <Button
-              type="button"
-              variant={clientListView === "archived" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={clientListView === "archived"}
-              onClick={() => setClientListView("archived")}
-              className="h-9 px-4"
-            >
-              Archived
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px] lg:items-end lg:gap-4 lg:px-2">
+        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(240px,0.65fr)_150px_auto] lg:items-end lg:gap-4 lg:px-2">
           <div className="space-y-1.5">
             <Label
               htmlFor="pt-clients-search"
@@ -326,6 +298,42 @@ export function PtClientsPage() {
               <option value="at_risk">At-risk clients</option>
               <option value="paused">Paused clients</option>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="pt-clients-relationship-view"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Relationship
+            </Label>
+            <div
+              id="pt-clients-relationship-view"
+              className="inline-flex h-11 rounded-xl border border-border/70 bg-background/50 p-1"
+              aria-label="Client relationship view"
+            >
+              <Button
+                type="button"
+                variant={clientListView === "active" ? "secondary" : "ghost"}
+                size="sm"
+                aria-pressed={clientListView === "active"}
+                onClick={() => setClientListView("active")}
+                className="h-9 px-4"
+              >
+                Active
+              </Button>
+              <Button
+                type="button"
+                variant={
+                  clientListView === "archived" ? "secondary" : "ghost"
+                }
+                size="sm"
+                aria-pressed={clientListView === "archived"}
+                onClick={() => setClientListView("archived")}
+                className="h-9 px-4"
+              >
+                Archived
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -540,12 +540,6 @@ const checkinFrequencyOptions = [
   { value: "monthly", label: "Monthly" },
 ];
 
-const checkinTemplateStatusMap = {
-  default: { label: "Default", variant: "muted" },
-  override: { label: "Override", variant: "warning" },
-  fallback: { label: "Fallback", variant: "secondary" },
-} as const;
-
 const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null => {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -1493,13 +1487,6 @@ export function PtClientDetailPage({
     defaultCheckinTemplate ??
     latestActiveCheckinTemplate ??
     null;
-  const checkinTemplateStatusKey = checkinTemplateId
-    ? "override"
-    : defaultCheckinTemplate
-      ? "default"
-      : effectiveCheckinTemplate
-        ? "fallback"
-        : "default";
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
@@ -3244,20 +3231,6 @@ export function PtClientDetailPage({
     today: todayKey,
     currentCheckin: checkinAssignmentCurrentRow,
   });
-  const checkinAssignmentStatusLabel =
-    checkinAssignmentState.kind === "no-assignment"
-      ? "No check-in assigned"
-      : checkinAssignmentState.kind === "assigned-not-open"
-        ? "Assigned, not open"
-        : checkinAssignmentState.kind === "open"
-          ? "Open / due"
-          : checkinAssignmentState.kind === "upcoming"
-            ? "Upcoming"
-            : checkinAssignmentState.kind === "overdue"
-              ? "Overdue"
-              : checkinAssignmentState.kind === "submitted"
-                ? "Submitted"
-                : "Reviewed";
   const checkinAssignmentNextDueLabel = formatShortDate(
     checkinAssignmentState.nextDueDate,
     "Not scheduled",
@@ -5370,29 +5343,20 @@ export function PtClientDetailPage({
                             {
                               label: "Template",
                               value: checkinAssignmentTemplateName,
-                              helper: "Selected check-in form",
                             },
                             {
                               label: "Cadence",
                               value: checkinAssignmentTemplate
                                 ? checkinAssignmentFrequencyLabel
                                 : "Not set",
-                              helper: "Frequency drives future check-ins.",
                             },
                             {
                               label: "Start date",
                               value: checkinAssignmentStartLabel,
-                              helper: "Anchor date for cadence.",
                             },
                             {
                               label: "Next scheduled",
                               value: checkinAssignmentNextDueLabel,
-                              helper: "Resolved from current settings.",
-                            },
-                            {
-                              label: "Current status",
-                              value: checkinAssignmentStatusLabel,
-                              helper: "Current client-facing state.",
                             },
                           ]}
                         />
@@ -5426,12 +5390,6 @@ export function PtClientDetailPage({
                     <DashboardCard
                       title="Check-in template"
                       subtitle="Assign a template for this client."
-                      action={
-                        <StatusPill
-                          status={checkinTemplateStatusKey}
-                          statusMap={checkinTemplateStatusMap}
-                        />
-                      }
                     >
                       {checkinTemplatesQuery.isLoading ? (
                         <div className="space-y-2">
@@ -5547,25 +5505,6 @@ export function PtClientDetailPage({
                               description="Assign a template to start scheduled check-ins."
                             />
                           ) : null}
-                          <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">
-                              Resolution:
-                            </span>{" "}
-                            {checkinTemplateId
-                              ? "Client override"
-                              : defaultCheckinTemplate
-                                ? "Workspace default"
-                                : effectiveCheckinTemplate
-                                  ? "Latest active workspace template fallback"
-                                  : "No template resolved"}
-                          </div>
-                          <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">
-                              Using:
-                            </span>{" "}
-                            {effectiveCheckinTemplate?.name ??
-                              "No template selected"}
-                          </div>
                           {checkinSettingsFeedback ? (
                             <div
                               className={cn(
@@ -8378,13 +8317,6 @@ function PtClientCheckinsTab({
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
       <CardHeader>
         <CardTitle>Check-ins</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Review queue with urgency, submission timing, and next actions for
-          each cycle.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {CHECKIN_ASSIGNMENT_NOTICE}
-        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
@@ -9377,10 +9309,7 @@ function PtClientPlanTab({
         <Card className="h-full border-border/70 bg-card/80">
           <AssignmentCardHeader
             title="Schedule workout"
-            description="Assign or replace one effective workout for a specific date."
-            status={
-              <StatusPill status={selectedTemplateId ? "ready" : "idle"} />
-            }
+            description="Assign or replace one workout for a specific date."
           />
           <CardContent className="space-y-4">
             <AssignmentSnapshotCallout />

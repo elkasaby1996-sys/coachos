@@ -15,6 +15,11 @@ const migration = readRepoFile(
   "migrations",
   "20260705110000_archived_client_history_navigation.sql",
 );
+const allRelationshipScopeMigration = readRepoFile(
+  "supabase",
+  "migrations",
+  "20260707111500_pt_hub_clients_page_all_relationship_scope.sql",
+);
 const ptHubSource = readRepoFile(
   "src",
   "features",
@@ -70,10 +75,33 @@ describe("archived client history navigation contract", () => {
   it("wires clients page active and archived tabs into the list RPC", () => {
     expect(ptHubSource).toContain("relationshipScope?:");
     expect(ptHubSource).toContain("p_relationship_scope: relationshipScope");
+    expect(ptHubSource).toContain('"active" | "archived" | "all"');
     expect(clientsPageSource).toContain('viewParam === "archived"');
     expect(clientsPageSource).toContain("relationshipScope: clientListView");
     expect(clientsPageSource).toContain(
+      "lg:grid-cols-[minmax(320px,1fr)_minmax(240px,0.65fr)_150px_auto]",
+    );
+    expect(clientsPageSource).toContain(
+      'htmlFor="pt-clients-relationship-view"',
+    );
+    expect(clientsPageSource).toContain('id="pt-clients-relationship-view"');
+    expect(clientsPageSource).not.toContain(
+      "flex flex-wrap items-center justify-between gap-3 lg:px-2",
+    );
+    expect(clientsPageSource).toContain(
       "No archived clients yet. Removed or transferred-out client relationships will appear here.",
+    );
+  });
+
+  it("allows PT Hub to request active and archived relationships together", () => {
+    expect(allRelationshipScopeMigration).toContain(
+      "v_relationship_scope not in ('active', 'archived', 'all')",
+    );
+    expect(allRelationshipScopeMigration).toContain(
+      "v_relationship_scope in ('active', 'all')",
+    );
+    expect(allRelationshipScopeMigration).toContain(
+      "v_relationship_scope in ('archived', 'all')",
     );
   });
 

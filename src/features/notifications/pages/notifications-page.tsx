@@ -42,6 +42,7 @@ import {
 import { resolveNotificationActionUrl } from "../lib/notification-route-resolver";
 import type { NotificationFilter, NotificationRecord } from "../lib/types";
 import { declineWorkspaceTeamInvite } from "../../workspace-team/invite-api";
+import { cn } from "../../../lib/utils";
 
 const getPtNotificationPeriodLabel = (createdAt: string) => {
   const created = new Date(createdAt);
@@ -210,7 +211,12 @@ export function NotificationsPage() {
       audience === "pt" && isWorkspaceTeamInviteNotification(notification);
     const inviteId = notification.entity_id ?? "";
     return (
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-1 sm:px-0">
+      <div
+        className={cn(
+          "flex shrink-0 flex-wrap items-center gap-2",
+          audience === "pt" ? "justify-end px-2 pb-2 sm:p-0" : "px-1 sm:px-0",
+        )}
+      >
         {isTeamInvite ? (
           <>
             <Button
@@ -267,16 +273,33 @@ export function NotificationsPage() {
   const renderNotificationRow = (
     notification: NotificationRecord,
     audience: "client" | "pt",
-  ) => (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-      <NotificationItem
-        notification={notification}
-        audience={audience}
-        onClick={() => handleOpenNotification(notification)}
-      />
-      {renderNotificationActions(notification, audience)}
-    </div>
-  );
+  ) => {
+    const isPtAudience = audience === "pt";
+
+    return (
+      <div
+        className={cn(
+          "flex flex-col gap-2 sm:flex-row sm:items-start",
+          isPtAudience &&
+            "rounded-2xl border border-border/70 bg-background/55 p-2 transition hover:border-border hover:bg-secondary/16 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3",
+          isPtAudience &&
+            !notification.is_read &&
+            "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)]",
+        )}
+      >
+        <NotificationItem
+          notification={notification}
+          audience={audience}
+          showActionLabel={audience !== "pt"}
+          showTitle={audience !== "pt"}
+          showTypeLabel={audience !== "pt"}
+          surface={audience === "pt" ? "embedded" : "card"}
+          onClick={() => handleOpenNotification(notification)}
+        />
+        {renderNotificationActions(notification, audience)}
+      </div>
+    );
+  };
 
   const clientStateText =
     unreadCount > 0
@@ -307,15 +330,6 @@ export function NotificationsPage() {
       module="settings"
       title="Notifications"
       description="Review client activity, coach communication, invites, and schedule changes in one notification center."
-      actions={
-        <Button
-          variant="secondary"
-          onClick={() => markAllReadMutation.mutate()}
-          disabled={unreadCount === 0 || markAllReadMutation.isPending}
-        >
-          Mark all as read
-        </Button>
-      }
     />
   );
 
@@ -377,11 +391,11 @@ export function NotificationsPage() {
               <SurfaceCardTitle className="text-xl">
                 {isClientPortal ? "Recent updates" : "Notifications"}
               </SurfaceCardTitle>
-              <SurfaceCardDescription>
-                {isClientPortal
-                  ? "Open anything that changes what you should do next."
-                  : "Track the latest workspace activity and open anything that needs attention."}
-              </SurfaceCardDescription>
+              {isClientPortal ? (
+                <SurfaceCardDescription>
+                  Open anything that changes what you should do next.
+                </SurfaceCardDescription>
+              ) : null}
             </div>
             {isClientPortal ? (
               <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm lg:max-w-xs">
@@ -401,22 +415,14 @@ export function NotificationsPage() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3 text-sm lg:min-w-[14rem]">
-                <p className="font-semibold text-foreground">
-                  {unreadCount > 0
-                    ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
-                    : allNotifications.length > 0
-                      ? "Everything reviewed"
-                      : "No notifications yet"}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {unreadCount > 0
-                    ? "Use Unread to clear anything new first, then switch back to All for the full activity stream."
-                    : allNotifications.length > 0
-                      ? "Use All to revisit recent workspace activity whenever you need context."
-                      : "Client, invite, and schedule activity will appear here as it happens."}
-                </p>
-              </div>
+              <Button
+                variant="secondary"
+                className="self-start"
+                onClick={() => markAllReadMutation.mutate()}
+                disabled={unreadCount === 0 || markAllReadMutation.isPending}
+              >
+                Mark all as read
+              </Button>
             )}
           </div>
         </SurfaceCardHeader>

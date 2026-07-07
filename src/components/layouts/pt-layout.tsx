@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
@@ -228,6 +229,13 @@ const ptNavGroups: Array<{
         to: "/pt/nutrition-programs",
         icon: Apple,
         module: "coaching",
+      },
+      {
+        label: "Check-in Templates",
+        description: "Build reusable check-in forms and cadence defaults.",
+        to: "/pt/checkins/templates",
+        icon: ClipboardCheck,
+        module: "checkins",
       },
       {
         label: "Exercise Library",
@@ -575,6 +583,10 @@ export function PtLayout() {
   const workspaceSettingsRouteMatch = location.pathname.match(
     /^\/workspace\/([^/]+)\/settings(?:\/|$)/,
   );
+  const isWorkspaceSettingsRoute =
+    /^\/(?:workspace|w)\/[^/]+\/settings(?:\/|$)/.test(location.pathname) ||
+    location.pathname.startsWith("/settings/");
+  const allowHeaderCondense = !isWorkspaceSettingsRoute;
   const routeWorkspaceId = workspaceSettingsRouteMatch?.[1] ?? null;
 
   useEffect(() => {
@@ -933,6 +945,15 @@ export function PtLayout() {
     setSearchHighlightIndex(0);
   }, [normalizedSearch, searchResults.length]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    document.body.classList.toggle("pt-workspace-portal-light", isLightMode);
+    return () => {
+      document.body.classList.remove("pt-workspace-portal-light");
+    };
+  }, [isLightMode]);
+
   const handleCreateWorkspace = async () => {
     if (hasWorkspaceNameOverLimit) {
       setCreateWorkspaceError(
@@ -1120,6 +1141,11 @@ export function PtLayout() {
   }, [desktopNavCollapsed]);
 
   useEffect(() => {
+    if (!allowHeaderCondense) {
+      setHeaderCondensed(false);
+      return;
+    }
+
     const mainElement = mainScrollRef.current;
     if (!mainElement) return;
 
@@ -1130,7 +1156,7 @@ export function PtLayout() {
     handleScroll();
     mainElement.addEventListener("scroll", handleScroll, { passive: true });
     return () => mainElement.removeEventListener("scroll", handleScroll);
-  }, [routeTransitionKey]);
+  }, [allowHeaderCondense, routeTransitionKey]);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;

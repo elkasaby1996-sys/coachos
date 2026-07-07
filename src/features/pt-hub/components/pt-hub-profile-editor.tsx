@@ -1,4 +1,10 @@
-import { type KeyboardEvent, useEffect, useId, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -26,12 +32,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../../components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../../../components/ui/tooltip";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import type { StoredProfileDraft } from "../lib/pt-hub";
 import {
@@ -204,6 +204,48 @@ function getStepCompletion(
     total: keys.length,
     percent: Math.round((complete / keys.length) * 100),
   };
+}
+
+function InfoHint({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const hintId = useId();
+
+  return (
+    <span
+      className="relative inline-flex"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-label={label}
+        aria-expanded={open}
+        aria-describedby={open ? hintId : undefined}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <Info className="h-3.5 w-3.5 [stroke-width:1.8]" />
+      </button>
+      {open ? (
+        <span
+          id={hintId}
+          role="tooltip"
+          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-md border border-border bg-popover px-3 py-2 text-xs leading-5 text-popover-foreground shadow-md"
+        >
+          {children}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function ChipInput({
@@ -899,7 +941,7 @@ export function PtHubProfileEditor({
                   "pt-hub-profile-step-trigger group flex items-center",
                   isActive ? "text-foreground" : "text-muted-foreground",
                   isActive
-                    ? "min-w-[12.5rem] gap-3 xl:flex-[1.7]"
+                    ? "min-w-[8.5rem] gap-3 xl:flex-[1.15]"
                     : "min-w-[6.25rem] justify-center gap-2 sm:min-w-[7.25rem] xl:flex-1",
                 )}
                 value={step.value}
@@ -919,26 +961,26 @@ export function PtHubProfileEditor({
                     }
                   />
                 ) : null}
-                <span
-                  className={cn(
-                    "relative z-10 flex shrink-0 items-center justify-center rounded-full border",
-                    isActive ? "h-8 w-8" : "h-7 w-7",
-                    isComplete
-                      ? "border-success/40 bg-success/12 text-success"
-                      : "border-border/70 bg-background/40 text-muted-foreground",
-                  )}
-                  aria-hidden="true"
-                >
-                  {isComplete ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
+                {isComplete ? (
+                  <CheckCircle2
+                    className="relative z-10 h-5 w-5 shrink-0 text-success"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "relative z-10 flex shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/40 text-muted-foreground",
+                      isActive ? "h-8 w-8" : "h-7 w-7",
+                    )}
+                    aria-hidden="true"
+                  >
                     <span className="font-mono text-[11px] tabular-nums">
                       {completion.total > 0
                         ? `${completion.complete}/${completion.total}`
                         : "OK"}
                     </span>
-                  )}
-                </span>
+                  </span>
+                )}
                 <span
                   className={cn(
                     "relative z-10 min-w-0 text-left",
@@ -953,11 +995,6 @@ export function PtHubProfileEditor({
                   >
                     {step.label}
                   </span>
-                  {isActive ? (
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                      {step.description}
-                    </span>
-                  ) : null}
                 </span>
               </TabsTrigger>
             );
@@ -1316,23 +1353,10 @@ export function PtHubProfileEditor({
                 >
                   Coaching style
                 </label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        aria-label="Coaching style guidance"
-                      >
-                        <Info className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Describe how you coach, communicate, and keep clients
-                      accountable from week one to peak adherence.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <InfoHint label="Coaching style guidance">
+                  Describe how you coach, communicate, and keep clients
+                  accountable from week one to peak adherence.
+                </InfoHint>
               </div>
             </div>
             <Textarea
@@ -1361,23 +1385,10 @@ export function PtHubProfileEditor({
                     <label className="text-sm font-medium text-foreground">
                       Transformation proof
                     </label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            aria-label="Transformation proof guidance"
-                          >
-                            <Info className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          Add before-and-after stories with real media so the
-                          public profile has visual proof.
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <InfoHint label="Transformation proof guidance">
+                      Add before-and-after stories with real media so the public
+                      profile has visual proof.
+                    </InfoHint>
                   </div>
                 </div>
                 <Button

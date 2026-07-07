@@ -32,8 +32,6 @@ import { StatCard } from "../../components/pt/dashboard/StatCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
 import {
   EmptyState,
-  LifecycleBadge,
-  RiskBadge,
   TagInfoBadge,
 } from "../../components/ui/coachos";
 import {
@@ -51,7 +49,6 @@ import {
   checkinOperationalStatusMap,
   getCheckinOperationalState,
 } from "../../lib/checkin-review";
-import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 const UUID_PATTERN =
@@ -103,25 +100,19 @@ type AttentionTone = "neutral" | "warning" | "danger";
 type ClientAttentionRow = {
   id: string;
   name: string;
-  lifecycleState: string | null;
-  lifecycle: string;
-  lifecycleTone: AttentionTone;
-  onboardingLabel: string | null;
-  onboardingStatus: ClientOnboardingStatus | null;
-  checkinState: string | null;
   attentionLabel: string;
   attentionTone: AttentionTone;
   attentionScore: number;
   lastActivityLabel: string;
-  adherenceValue: number | null;
-  nextActionLabel: string;
-  signalLabel: string;
 };
 
 type CheckinRowWithState = CheckinRow & {
   due: string | null;
   state: string | null;
 };
+
+const dashboardCardHeaderActionClass =
+  "!h-auto !min-h-0 rounded-none border-0 px-0 py-0 text-xs leading-none text-muted-foreground hover:bg-transparent hover:text-foreground motion-safe:hover:translate-y-0";
 
 const buildMetricDelta = ({
   delta,
@@ -568,8 +559,6 @@ export function PtDashboardPage() {
       const name = client.display_name?.trim()
         ? client.display_name
         : `Client ${client.user_id.slice(0, 6)}`;
-      const lifecycleMeta = getClientLifecycleMeta(client.lifecycle_state);
-      const lifecycle = lifecycleMeta.label;
       const lifecycleTone: AttentionTone =
         client.lifecycle_state?.toLowerCase() === "active"
           ? "neutral"
@@ -577,11 +566,6 @@ export function PtDashboardPage() {
       const onboardingStatus =
         onboardingRows.find((row) => row.client_id === client.id)?.status ??
         null;
-      const onboardingLabel =
-        onboardingStatus && onboardingStatus !== "completed"
-          ? normalizeLabel(onboardingStatus.replace("_", " "))
-          : null;
-
       const latestCheckin = latestByClient.get(client.id);
       const checkinState = latestCheckin ? latestCheckin.state : null;
 
@@ -663,52 +647,13 @@ export function PtDashboardPage() {
         attentionScore = Math.max(attentionScore, 25);
       }
 
-      const nextActionLabel =
-        onboardingStatus === "review_needed" || onboardingStatus === "submitted"
-          ? "Review onboarding"
-          : onboardingStatus === "partially_activated" ||
-              onboardingStatus === "in_progress" ||
-              onboardingStatus === "invited"
-            ? "Finish onboarding"
-            : checkinState === "overdue"
-              ? "Review check-in"
-              : checkinState === "due"
-                ? "Prompt check-in"
-                : adherenceValue !== null && adherenceValue < 50
-                  ? "Adjust plan"
-                  : inactivityDays !== null && inactivityDays >= 14
-                    ? "Reach out"
-                    : "Open profile";
-
-      const signalLabel =
-        adherenceValue !== null
-          ? `${adherenceValue}% adherence`
-          : onboardingLabel
-            ? onboardingLabel
-            : checkinState === "overdue"
-              ? "Overdue check-in"
-              : checkinState === "due"
-                ? "Check-in due"
-                : inactivityDays !== null && inactivityDays >= 14
-                  ? `${inactivityDays}d idle`
-                  : attentionLabel;
-
       return {
         id: client.id,
         name,
-        lifecycleState: client.lifecycle_state,
-        lifecycle,
-        lifecycleTone,
-        onboardingLabel,
-        onboardingStatus,
-        checkinState,
         attentionLabel,
         attentionTone,
         attentionScore,
         lastActivityLabel,
-        adherenceValue,
-        nextActionLabel,
-        signalLabel,
       } as ClientAttentionRow;
     });
 
@@ -720,9 +665,7 @@ export function PtDashboardPage() {
     });
   }, [checkinRows, clients, onboardingRows, workoutStatsByClient]);
 
-  const clientPanelTitle = clientRows.some(
-    (row) => row.attentionTone !== "neutral" || row.onboardingStatus !== null,
-  )
+  const clientPanelTitle = clientRows.some((row) => row.attentionScore > 0)
     ? "Clients Needing Attention"
     : "Client Overview";
   const priorityClientRows = clientRows.slice(
@@ -830,6 +773,7 @@ export function PtDashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
+                className={dashboardCardHeaderActionClass}
                 onClick={() => navigate("/pt/clients")}
               >
                 Open clients
@@ -855,66 +799,34 @@ export function PtDashboardPage() {
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-foreground">
-                          {client.name}
-                        </p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">
+                            {client.name}
+                          </p>
+                          <TagInfoBadge
+                            label={client.attentionLabel}
+                            variant={
+                              client.attentionTone === "danger"
+                                ? "danger"
+                                : client.attentionTone === "warning"
+                                  ? "warning"
+                                  : "neutral"
+                            }
+                            title="Why this client is highlighted"
+                            description={getAttentionDescription(
+                              client.attentionLabel,
+                            )}
+                            disabled
+                          />
+                        </div>
                         <span className="shrink-0 text-xs font-medium text-primary">
                           Open
                         </span>
                       </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <LifecycleBadge
-                          lifecycleState={client.lifecycleState}
-                          interactive={false}
-                        />
-                        {client.attentionLabel === "Manual at-risk flag" ? (
-                          <RiskBadge riskState="at_risk" interactive={false} />
-                        ) : null}
-                        {client.onboardingLabel ? (
-                          <TagInfoBadge
-                            label={client.onboardingLabel}
-                            variant="warning"
-                            title="Onboarding status"
-                            description="This client still has onboarding work pending before coaching is fully settled."
-                            disabled
-                          />
-                        ) : null}
-                        {client.checkinState ? (
-                          <StatusPill
-                            status={client.checkinState}
-                            statusMap={checkinOperationalStatusMap}
-                          />
-                        ) : null}
-                      </div>
-                      <div
-                        className={`mt-2 grid gap-1.5 ${
-                          showSingleClientCard
-                            ? "text-xs sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-                            : "text-[11px] sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-                        } text-muted-foreground`}
-                      >
-                        <span>{client.lastActivityLabel}</span>
-                        <span>{client.signalLabel}</span>
-                        <span>Next: {client.nextActionLabel}</span>
-                      </div>
-                    </div>
-                    <div className="shrink-0">
-                      <TagInfoBadge
-                        label={client.attentionLabel}
-                        variant={
-                          client.attentionTone === "danger"
-                            ? "danger"
-                            : client.attentionTone === "warning"
-                              ? "warning"
-                              : "neutral"
-                        }
-                        title="Why this client is highlighted"
-                        description={getAttentionDescription(
-                          client.attentionLabel,
-                        )}
-                        disabled
-                      />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {client.lastActivityLabel}
+                      </p>
                     </div>
                   </button>
                 ))}
@@ -944,6 +856,7 @@ export function PtDashboardPage() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className={dashboardCardHeaderActionClass}
                   onClick={() => navigate("/pt/checkins")}
                 >
                   Open queue
@@ -1010,6 +923,7 @@ export function PtDashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
+                className={dashboardCardHeaderActionClass}
                 onClick={() => navigate("/pt/checkins")}
               >
                 Open check-ins

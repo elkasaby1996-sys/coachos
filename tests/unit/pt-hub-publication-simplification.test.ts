@@ -165,6 +165,30 @@ describe("PT Hub publication simplification", () => {
     );
   });
 
+  it("keeps profile step navigation free of helper descriptions", () => {
+    expect(profileEditorSource).not.toContain("{step.description}");
+    expect(profileEditorSource).toContain('"min-w-[8.5rem] gap-3 xl:flex-[1.15]"');
+  });
+
+  it("uses a single-layer check icon for completed profile steps", () => {
+    const stepRailStart = profileEditorSource.indexOf(
+      "profileBuilderSteps.map",
+    );
+    const launchPrioritiesStart = profileEditorSource.indexOf(
+      "{showLaunchPriorities ? (",
+    );
+    const stepRailSource = profileEditorSource.slice(
+      stepRailStart,
+      launchPrioritiesStart,
+    );
+
+    expect(stepRailSource).toContain("<CheckCircle2");
+    expect(stepRailSource).toContain('className="relative z-10 h-5 w-5 shrink-0 text-success"');
+    expect(stepRailSource).not.toContain(
+      'isComplete\n                      ? "border-success/40 bg-success/12 text-success"',
+    );
+  });
+
   it("hides launch priorities once the profile is complete and published", () => {
     expect(profileEditorSource).toContain("showLaunchPriorities");
     expect(profileEditorSource).toContain("!publicationState.isPublished");
@@ -211,13 +235,18 @@ describe("PT Hub publication simplification", () => {
     );
   });
 
-  it("keeps long proof guidance behind info tooltips", () => {
-    expect(profileEditorSource).toContain('aria-label="Coaching style guidance"');
+  it("keeps long proof guidance behind click-friendly info hints", () => {
     expect(profileEditorSource).toContain(
-      'aria-label="Transformation proof guidance"',
+      '<InfoHint label="Coaching style guidance">',
     );
+    expect(profileEditorSource).toContain(
+      '<InfoHint label="Transformation proof guidance">',
+    );
+    expect(profileEditorSource).toContain("function InfoHint");
+    expect(profileEditorSource).toContain("aria-expanded={open}");
+    expect(profileEditorSource).toContain('role="tooltip"');
     expect(profileEditorSource).toContain("<Info");
-    expect(profileEditorSource).toContain("<TooltipContent");
+    expect(profileEditorSource).not.toContain("<TooltipContent");
   });
 
   it("uses tag entry for profile locations", () => {

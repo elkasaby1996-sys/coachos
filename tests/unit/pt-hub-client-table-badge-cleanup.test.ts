@@ -136,6 +136,8 @@ describe("PT Hub client table badge cleanup", () => {
   it("uses icon-only client open actions without a visible Action column label", () => {
     const markup = renderTable([makeClient()]);
 
+    expect(markup).toContain(">Status<");
+    expect(markup).not.toContain(">Lifecycle<");
     expect(markup).not.toContain(">Action<");
     expect(markup).not.toContain(">Open client<");
     expect(markup).toContain('aria-label="Open Client One"');
@@ -178,6 +180,7 @@ describe("PT Hub client table badge cleanup", () => {
   });
 
   it("keeps PT Hub lifecycle and segment filter controls unchanged", () => {
+    expect(ptHubClientsPageSource).toContain('relationshipScope: "all"');
     expect(ptHubClientsPageSource).toContain(
       'value={lifecycleFilter}\n            onChange={(event) => setLifecycleFilter(event.target.value)}',
     );

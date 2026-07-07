@@ -97,11 +97,9 @@ export function PtNutritionPage() {
     });
   }, [templates, search, sortBy, typeFilter]);
   const buildTemplateTags = (template: NutritionTemplate) => {
-    const tags = [
-      formatNutritionTypeTag(template.nutrition_type_tag),
+    return [
       `Updated ${formatRelativeTime(template.updated_at ?? template.created_at)}`,
-    ].filter((value): value is string => Boolean(value));
-    return tags.slice(0, 2);
+    ];
   };
   const nutritionTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -334,21 +332,7 @@ export function PtNutritionPage() {
         description="Build reusable multi-week nutrition systems and keep edits close to the list."
       />
 
-      <div className="flex justify-end">
-        {canManageDelivery ? (
-          <Button
-            onClick={() => {
-              setCreateError(null);
-              setCreateOpen(true);
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            New template
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto] xl:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="app-search-icon h-4 w-4" />
           <Input
@@ -380,6 +364,18 @@ export function PtNutritionPage() {
           <option value="updated">Sort by updated</option>
           <option value="name">Sort by name</option>
         </Select>
+        {canManageDelivery ? (
+          <Button
+            className="w-full whitespace-nowrap xl:w-auto"
+            onClick={() => {
+              setCreateError(null);
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            New template
+          </Button>
+        ) : null}
       </div>
 
       {templateActionError && templateActionErrorSource !== "dialog" ? (
@@ -415,7 +411,6 @@ export function PtNutritionPage() {
           <DashboardCard title="No nutrition programs" className="bg-card/90">
             <EmptyState
               title="Create the first program"
-              description="Start with one template."
               actionLabel={canManageDelivery ? "Create program" : undefined}
               onAction={
                 canManageDelivery ? () => setCreateOpen(true) : undefined
@@ -449,12 +444,7 @@ export function PtNutritionPage() {
                   {buildTemplateTags(template).map((tag) => (
                     <Badge
                       key={`${template.id}-${tag}`}
-                      variant={
-                        tag ===
-                        formatNutritionTypeTag(template.nutrition_type_tag)
-                          ? "secondary"
-                          : "muted"
-                      }
+                      variant="muted"
                       className="text-[10px] uppercase"
                     >
                       {tag}

@@ -359,21 +359,13 @@ export function PtProgramsPage() {
         description="Design reusable multi-week training systems and keep edit actions close to the list."
       />
 
-      <div className="flex justify-end">
-        {canManageDelivery ? (
-          <Button onClick={() => navigate("/pt/programs/new")}>
-            New Program
-          </Button>
-        ) : null}
-      </div>
-
       {actionError ? (
         <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
           {actionError}
         </Card>
       ) : null}
 
-      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto] xl:items-center">
         <div className="relative min-w-0">
           <Search className="app-search-icon h-4 w-4" />
           <Input
@@ -405,6 +397,14 @@ export function PtProgramsPage() {
           <option value="updated">Sort by updated</option>
           <option value="name">Sort by name</option>
         </Select>
+        {canManageDelivery ? (
+          <Button
+            className="w-full whitespace-nowrap xl:w-auto"
+            onClick={() => navigate("/pt/programs/new")}
+          >
+            New Program
+          </Button>
+        ) : null}
       </div>
 
       {workspaceLoading || programsQuery.isLoading ? (
@@ -522,12 +522,12 @@ export function PtProgramsPage() {
           />
         </DashboardCard>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <DashboardCard
-            title="Build your first reusable program"
-            subtitle="Programs become the repeatable training systems you assign, adapt, and archive over time."
-          >
-            <div className="grid gap-3 md:grid-cols-3">
+        <DashboardCard
+          title="Build your first reusable program"
+          subtitle="Programs become the repeatable training systems you assign, adapt, and archive over time."
+        >
+          <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Reusable block
@@ -564,23 +564,21 @@ export function PtProgramsPage() {
                   the active planning lane.
                 </div>
               </div>
-            </div>
-          </DashboardCard>
-
-          <DashboardCard
-            title="Create flow"
-            subtitle="Start deliberately so the first program already fits the long-term library."
-          >
-            <div className="space-y-4">
               <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
-                <div className="text-sm font-semibold text-foreground">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Recommended first step
+                </div>
+                <div className="mt-2 text-sm font-semibold text-foreground">
+                  Create the first block
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
                   Create one repeatable training block with a clear purpose,
                   then duplicate it when you need a variation.
                 </div>
               </div>
+            </div>
+
+            <div className="grid gap-4">
               <EmptyState
                 title="No programs yet"
                 description="Create your first multi-week program to start assigning structured training blocks."
@@ -592,8 +590,8 @@ export function PtProgramsPage() {
                 }
               />
             </div>
-          </DashboardCard>
-        </div>
+          </div>
+        </DashboardCard>
       )}
     </div>
   );

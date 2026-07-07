@@ -482,8 +482,6 @@ function buildMetrics(params: {
       (params.stats?.applicationsPreviousWindow ?? 0),
   );
   const overdueCheckinCount = params.clientStats.overdueCheckinClients;
-  const onboardingInProgressCount =
-    params.clientStats.onboardingIncompleteClients;
 
   return [
     {
@@ -533,26 +531,6 @@ function buildMetrics(params: {
           : {
               value: "All clear",
               tone: getSemanticToneForStatus("All clear"),
-            },
-    },
-    {
-      id: "onboarding-in-progress",
-      label: "Onboarding in progress",
-      value: onboardingInProgressCount,
-      helper:
-        onboardingInProgressCount > 0
-          ? "Clients still entering service"
-          : "No setup blockers",
-      href: "/pt-hub/clients",
-      delta:
-        onboardingInProgressCount > 0
-          ? {
-              value: `${onboardingInProgressCount} waiting review`,
-              tone: getSemanticToneForStatus("Waiting review"),
-            }
-          : {
-              value: "No blockers",
-              tone: getSemanticToneForStatus("No blockers"),
             },
     },
   ] satisfies PtHubOverviewMetric[];

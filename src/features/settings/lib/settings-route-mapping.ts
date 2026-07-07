@@ -57,15 +57,8 @@ export const workspaceSettingsTabs: SettingsTabConfig[] = [
   {
     id: "general",
     label: "General",
-    description: "Core workspace operating details.",
+    description: "Core workspace identity and operating details.",
     path: "general",
-    scope: "workspace",
-  },
-  {
-    id: "brand",
-    label: "Brand",
-    description: "Workspace identity and branded client-facing details.",
-    path: "brand",
     scope: "workspace",
   },
   {

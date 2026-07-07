@@ -5,6 +5,10 @@ const pageSource = readFileSync(
   "src/pages/workspace/settings/tabs/team.tsx",
   "utf8",
 );
+const layoutSource = readFileSync(
+  "src/pages/workspace/settings/layout.tsx",
+  "utf8",
+);
 const serviceSource = readFileSync(
   "src/features/workspace-team/team-settings.ts",
   "utf8",
@@ -24,6 +28,15 @@ describe("workspace team settings page contract", () => {
     expect(pageSource).toContain("Invite member");
     expect(pageSource).toContain("Active members");
     expect(pageSource).toContain("Pending invites");
+  });
+
+  it("keeps the team page header clean and places invite action with members", () => {
+    expect(pageSource).toContain("showKicker={false}");
+    expect(pageSource).toContain("showScope={false}");
+    expect(pageSource).toContain('title="Active members"');
+    expect(pageSource).toContain("setInviteOpen(true)");
+    expect(layoutSource).not.toContain("Workspace Scope");
+    expect(layoutSource).not.toContain("Workspace ID:");
   });
 
   it("gates management actions to owner/admin context", () => {
@@ -76,6 +89,11 @@ describe("workspace team settings page contract", () => {
     expect(pageSource).toContain("MemberStatusBadge");
     expect(pageSource).toContain("InviteStatusBadge");
     expect(pageSource).toContain("assigned clients");
+  });
+
+  it("renders team member rows with stable member keys", () => {
+    expect(pageSource).toContain("key={member.id ?? member.userId}");
+    expect(pageSource).not.toContain(":${index}");
   });
 });
 

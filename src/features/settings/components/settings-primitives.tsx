@@ -35,34 +35,45 @@ export function SettingsHeader({
   description,
   actions,
   scope,
+  showKicker = true,
+  showScope = true,
 }: {
   title: string;
   description: string;
   actions?: React.ReactNode;
   scope: "PT Hub" | "Workspace" | "Client";
+  showKicker?: boolean;
+  showScope?: boolean;
 }) {
   const toneClasses = getModuleToneClasses("settings");
+  const hasHeaderMeta = showKicker || showScope || Boolean(actions);
 
   return (
     <header className="space-y-3" style={getModuleToneStyle("settings")}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p
-          className={cn(
-            "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
-            toneClasses.text,
+      {hasHeaderMeta ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {showKicker ? (
+            <p
+              className={cn(
+                "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
+                toneClasses.text,
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)}
+              />
+              Settings
+            </p>
+          ) : (
+            <span aria-hidden />
           )}
-        >
-          <span
-            aria-hidden
-            className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)}
-          />
-          Settings
-        </p>
-        <div className="flex items-center gap-2">
-          <ScopeBadge scope={scope} />
-          {actions}
+          <div className="flex items-center gap-2">
+            {showScope ? <ScopeBadge scope={scope} /> : null}
+            {actions}
+          </div>
         </div>
-      </div>
+      ) : null}
       <div className="space-y-1">
         <h1
           className={cn(
@@ -211,11 +222,11 @@ export function SettingsFieldRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_1fr] lg:gap-6">
-      <div className="space-y-1">
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)] lg:gap-6">
+      <div className="flex min-h-[2.75rem] items-center">
         <p className="text-sm font-medium text-foreground">{label}</p>
       </div>
-      <div className="space-y-3">{children}</div>
+      <div className="min-w-0 space-y-3">{children}</div>
     </div>
   );
 }

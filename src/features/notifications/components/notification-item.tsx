@@ -18,6 +18,10 @@ type NotificationItemProps = {
   notification: NotificationRecord;
   compact?: boolean;
   audience?: "client" | "pt";
+  showActionLabel?: boolean;
+  showTitle?: boolean;
+  showTypeLabel?: boolean;
+  surface?: "card" | "embedded";
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 export function NotificationItem({
@@ -25,6 +29,10 @@ export function NotificationItem({
   className,
   compact = false,
   audience = "pt",
+  showActionLabel = true,
+  showTitle = true,
+  showTypeLabel = true,
+  surface = "card",
   ...props
 }: NotificationItemProps) {
   const Icon = getNotificationIcon(notification);
@@ -46,11 +54,16 @@ export function NotificationItem({
     <button
       type="button"
       className={cn(
-        "group flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        notification.is_read
-          ? "border-border/60 bg-secondary/16 hover:border-border hover:bg-secondary/24"
-          : "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] shadow-[0_18px_40px_-34px_color-mix(in_oklab,var(--state-info-bg-soft)_88%,transparent)] hover:border-[var(--state-info-border)] hover:bg-[var(--state-info-bg-soft)]",
-        compact ? "rounded-xl px-3 py-2.5" : "px-4 py-4",
+        "group flex w-full items-start gap-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        surface === "card"
+          ? cn(
+              "rounded-2xl border px-3 py-3",
+              notification.is_read
+                ? "border-border/60 bg-secondary/16 hover:border-border hover:bg-secondary/24"
+                : "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] shadow-[0_18px_40px_-34px_color-mix(in_oklab,var(--state-info-bg-soft)_88%,transparent)] hover:border-[var(--state-info-border)] hover:bg-[var(--state-info-bg-soft)]",
+              compact ? "rounded-xl px-3 py-2.5" : "px-4 py-4",
+            )
+          : "rounded-xl border border-transparent bg-transparent px-2 py-2 hover:bg-secondary/20",
         className,
       )}
       style={getModuleToneStyle(module)}
@@ -67,28 +80,43 @@ export function NotificationItem({
       <div
         className={cn("min-w-0 flex-1", compact ? "space-y-1.5" : "space-y-2")}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={cn("text-xs font-medium", moduleClasses.text)}>
-            {typeLabel}
-          </span>
-          {notification.priority === "high" ? (
-            <span className="rounded-full border border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-warning-text)]">
-              High priority
-            </span>
-          ) : null}
-          {!notification.is_read ? (
-            <span className="rounded-full border border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-info-text)]">
-              New
-            </span>
-          ) : null}
-        </div>
+        {showTypeLabel ||
+        notification.priority === "high" ||
+        !notification.is_read ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {showTypeLabel ? (
+              <span className={cn("text-xs font-medium", moduleClasses.text)}>
+                {typeLabel}
+              </span>
+            ) : null}
+            {notification.priority === "high" ? (
+              <span className="rounded-full border border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-warning-text)]">
+                High priority
+              </span>
+            ) : null}
+            {!notification.is_read ? (
+              <span className="rounded-full border border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-info-text)]">
+                New
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0 space-y-1">
-            <p className="line-clamp-1 text-sm font-semibold text-foreground">
-              {compact ? compactHeadline : title}
-            </p>
+            {showTitle ? (
+              <p className="line-clamp-1 text-sm font-semibold text-foreground">
+                {compact ? compactHeadline : title}
+              </p>
+            ) : null}
             {!compact ? (
-              <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+              <p
+                className={cn(
+                  "line-clamp-2 text-sm leading-6",
+                  showTitle
+                    ? "text-muted-foreground"
+                    : "font-medium text-foreground",
+                )}
+              >
                 {body}
               </p>
             ) : null}
@@ -105,7 +133,7 @@ export function NotificationItem({
             />
           </div>
         </div>
-        {!compact ? (
+        {!compact && showActionLabel ? (
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
             <span>
               {hasAction
