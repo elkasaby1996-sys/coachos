@@ -1,10 +1,8 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardCheck,
   CalendarDays,
   ChevronDown,
-  CircleDot,
   Compass,
   Dumbbell,
   Home,
@@ -16,7 +14,7 @@ import {
   UserCircle,
   Watch,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
@@ -41,8 +39,6 @@ import { ClientMessageFab } from "../client/client-message-fab";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useBootstrapAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
-import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
-import { computeStreak } from "../../lib/habits";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientOnboardingSoftGate } from "../../features/client-onboarding/components/client-onboarding-soft-gate";
@@ -98,7 +94,7 @@ const navItems = [
     module: "coaching" as ModuleTone,
   },
   {
-    label: "Find a Coach",
+    label: "Coach Marketplace",
     to: "/app/find-coach",
     icon: Compass,
     module: "leads" as ModuleTone,
@@ -119,7 +115,7 @@ const getRouteLabel = (pathname: string) => {
   if (pathname.startsWith("/app/habits")) return "Habits";
   if (pathname.startsWith("/app/wearables")) return "Wearables";
   if (pathname.startsWith("/app/messages")) return "Messages";
-  if (pathname.startsWith("/app/find-coach")) return "Find a Coach";
+  if (pathname.startsWith("/app/find-coach")) return "Coach Marketplace";
   if (pathname.startsWith("/app/notifications")) return "Notifications";
   if (pathname.startsWith("/app/settings")) return "Settings";
   if (pathname.startsWith("/app/profile")) return "Profile";
@@ -140,8 +136,6 @@ const shouldShowOnboardingBanner = (pathname: string) => {
     pathname.startsWith("/app/profile")
   );
 };
-
-const CLIENT_SIDEBAR_FOOTER_GAP = 12;
 
 function getHeaderProfilePillClassName(isLightMode: boolean) {
   return cn(
@@ -207,8 +201,6 @@ export function ClientLayout() {
       );
     });
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [footerHeight, setFooterHeight] = useState(0);
-  const footerHostRef = useRef<HTMLDivElement | null>(null);
   const errorMessage = error?.message ?? authError?.message ?? null;
   const shouldRenderOnboardingBanner = Boolean(
     onboardingSummary &&
@@ -218,61 +210,11 @@ export function ClientLayout() {
     !isOnboardingBannerDismissed,
   );
   const shouldShowClientMessageFab = location.pathname !== "/app/messages";
-  const topStatusText = onboardingSummary
-    ? preWorkspaceMode
-      ? "Lead dashboard active"
-      : onboardingSummary.onboarding.status === "completed"
-        ? "Workspace setup complete"
-        : onboardingSummary.awaitingReview
-          ? "Onboarding with coach"
-          : `${onboardingSummary.completionPercent}% onboarding complete`
-    : preWorkspaceMode
-      ? "Lead dashboard active"
-      : "Private coaching workspace";
-  const shouldShowTopStatusText = Boolean(
-    onboardingSummary
-      ? onboardingSummary.onboarding.status !== "completed"
-      : false,
-  );
   const profileDisplayName =
     clientProfile?.full_name?.trim() ||
     clientProfile?.display_name?.trim() ||
     "Client profile";
   const profileInitial = (profileDisplayName.charAt(0) || "C").toUpperCase();
-  const clientId = clientProfile?.id ?? null;
-  const clientTimezone =
-    (clientProfile as { timezone?: string | null } | null)?.timezone ?? null;
-  const todayStr = useMemo(
-    () => getTodayInTimezone(clientTimezone),
-    [clientTimezone],
-  );
-  const habitsStart = useMemo(
-    () => addDaysToDateString(todayStr, -29),
-    [todayStr],
-  );
-  const profileHabitLogsQuery = useQuery({
-    queryKey: ["client-shell-habit-logs", clientId, habitsStart, todayStr],
-    enabled: !!clientId && !!todayStr,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("habit_logs")
-        .select("log_date")
-        .eq("client_id", clientId ?? "")
-        .gte("log_date", habitsStart)
-        .lte("log_date", todayStr);
-      if (error) throw error;
-      return (data ?? []) as Array<{ log_date: string }>;
-    },
-  });
-  const consistencyStreak = useMemo(
-    () =>
-      computeStreak(
-        (profileHabitLogsQuery.data ?? []).map((row) => row.log_date),
-        new Date(`${todayStr}T12:00:00`),
-        30,
-      ),
-    [profileHabitLogsQuery.data, todayStr],
-  );
   const isLightMode = resolvedTheme === "light";
   const reduceMotion = useReducedMotion();
   const visibleNavItems = navItems;
@@ -281,27 +223,6 @@ export function ClientLayout() {
     if (visibleNavItems.length === 5) return "grid-cols-5";
     return "grid-cols-6";
   }, [visibleNavItems.length]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const footerHost = footerHostRef.current;
-    if (!footerHost) return;
-
-    const updateFooterHeight = () => {
-      setFooterHeight(footerHost.getBoundingClientRect().height);
-    };
-
-    updateFooterHeight();
-
-    const observer = new ResizeObserver(updateFooterHeight);
-    observer.observe(footerHost);
-    window.addEventListener("resize", updateFooterHeight);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateFooterHeight);
-    };
-  }, []);
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -361,94 +282,7 @@ export function ClientLayout() {
     >
       <AppShellBackgroundLayer />
       <div className="relative z-10 flex min-h-screen w-full">
-        <aside
-          className="hidden w-28 p-1 md:fixed md:left-0 md:top-0 md:z-30 md:flex md:w-[248px] md:p-2"
-          style={{
-            bottom: `${(footerHeight || 60) + CLIENT_SIDEBAR_FOOTER_GAP}px`,
-          }}
-        >
-          <div className="surface-panel-strong flex h-full min-h-0 flex-col overflow-hidden rounded-[34px] border-border/70 px-3 py-5 backdrop-blur-xl md:px-4">
-            <div className="mb-6 flex items-center justify-between">
-              <div className="hidden md:block">
-                <span className="text-lg font-semibold tracking-tight text-foreground">
-                  RepsyncME
-                </span>
-              </div>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-[18px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.52))] text-sm font-semibold text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] md:hidden">
-                RM
-              </span>
-            </div>
-            <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-6 pr-1">
-              {visibleNavItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  aria-label={item.label}
-                  title={item.label}
-                  className={({ isActive }) =>
-                    cn(
-                      "group relative overflow-hidden flex items-center justify-center gap-2 rounded-[20px] border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground md:justify-start",
-                      isActive && "text-foreground",
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive ? (
-                        <motion.span
-                          layoutId={
-                            reduceMotion ? undefined : "client-nav-active-pill"
-                          }
-                          className={cn(
-                            "absolute inset-0 rounded-[20px] border",
-                            getModuleToneClasses(item.module).navActive,
-                          )}
-                          style={getModuleToneStyle(item.module)}
-                          transition={{
-                            type: "spring",
-                            stiffness: 250,
-                            damping: 28,
-                            mass: 0.9,
-                          }}
-                        />
-                      ) : null}
-                      <span
-                        style={getModuleToneStyle(item.module)}
-                        className={cn(
-                          "relative z-10 flex h-9 w-9 items-center justify-center transition-colors",
-                          isActive
-                            ? "section-accent-nav-icon-active"
-                            : "text-muted-foreground group-hover:text-foreground",
-                          getModuleToneClasses(item.module).navIcon,
-                        )}
-                      >
-                        <item.icon className="h-4 w-4" />
-                      </span>
-                      <motion.span
-                        className="relative z-10 hidden md:inline"
-                        animate={
-                          reduceMotion
-                            ? undefined
-                            : {
-                                x: isActive ? 4 : 0,
-                                opacity: isActive ? 1 : 0.82,
-                              }
-                        }
-                        transition={{
-                          duration: 0.22,
-                          ease: [0.22, 1, 0.36, 1],
-                        }}
-                      >
-                        {item.label}
-                      </motion.span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col md:ml-[248px]">
+        <div className="flex min-w-0 flex-1 flex-col">
           <header className="pt-4 sm:pt-5 lg:pt-6">
             <PageContainer
               size="client-shell"
@@ -483,19 +317,6 @@ export function ClientLayout() {
                       >
                         {routeLabel}
                       </p>
-                      {shouldShowTopStatusText ? (
-                        <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
-                          <span className="inline-flex items-center gap-2">
-                            <CircleDot
-                              className={cn(
-                                "h-3.5 w-3.5",
-                                currentModuleClasses.title,
-                              )}
-                            />
-                            {topStatusText}
-                          </span>
-                        </p>
-                      ) : null}
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-auto">
                       <NotificationBell viewAllHref="/app/notifications" />
@@ -523,9 +344,6 @@ export function ClientLayout() {
                                 <p className="min-w-0 flex-1 truncate text-[0.92rem] font-medium text-foreground">
                                   {profileDisplayName}
                                 </p>
-                                <span className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
-                                  {consistencyStreak}d
-                                </span>
                               </div>
                             </div>
                             <span
@@ -608,6 +426,81 @@ export function ClientLayout() {
                       </Button>
                     </div>
                   </div>
+                  <nav
+                    className="hidden min-w-0 items-center overflow-x-auto border-t border-border/60 pt-3 md:flex"
+                    aria-label="Primary navigation"
+                  >
+                    <div className="flex min-w-max items-center gap-1">
+                      {visibleNavItems.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          aria-label={item.label}
+                          title={item.label}
+                          className={({ isActive }) =>
+                            cn(
+                              "group relative inline-flex min-h-10 items-center gap-2 overflow-hidden rounded-[18px] border border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
+                              isActive && "text-foreground",
+                            )
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              {isActive ? (
+                                <motion.span
+                                  layoutId={
+                                    reduceMotion
+                                      ? undefined
+                                      : "client-horizontal-nav-active-pill"
+                                  }
+                                  className={cn(
+                                    "absolute inset-0 rounded-[18px] border",
+                                    getModuleToneClasses(item.module).navActive,
+                                  )}
+                                  style={getModuleToneStyle(item.module)}
+                                  transition={{
+                                    type: "spring",
+                                    stiffness: 250,
+                                    damping: 28,
+                                    mass: 0.9,
+                                  }}
+                                />
+                              ) : null}
+                              <span
+                                style={getModuleToneStyle(item.module)}
+                                className={cn(
+                                  "relative z-10 flex h-8 w-8 items-center justify-center transition-colors",
+                                  isActive
+                                    ? "section-accent-nav-icon-active"
+                                    : "text-muted-foreground group-hover:text-foreground",
+                                  getModuleToneClasses(item.module).navIcon,
+                                )}
+                              >
+                                <item.icon className="h-4 w-4" />
+                              </span>
+                              <motion.span
+                                className="relative z-10 whitespace-nowrap"
+                                animate={
+                                  reduceMotion
+                                    ? undefined
+                                    : {
+                                        y: isActive ? -1 : 0,
+                                        opacity: isActive ? 1 : 0.82,
+                                      }
+                                }
+                                transition={{
+                                  duration: 0.22,
+                                  ease: [0.22, 1, 0.36, 1],
+                                }}
+                              >
+                                {item.label}
+                              </motion.span>
+                            </>
+                          )}
+                        </NavLink>
+                      ))}
+                    </div>
+                  </nav>
                 </div>
               </div>
             </PageContainer>
@@ -668,8 +561,8 @@ export function ClientLayout() {
               )}
             </PageContainer>
           </main>
-          <div ref={footerHostRef}>
-            <AppFooter className="z-40 md:relative md:-ml-[248px] md:w-[calc(100%+248px)]" />
+          <div>
+            <AppFooter className="z-40 md:relative" />
           </div>
           <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
             <PageContainer

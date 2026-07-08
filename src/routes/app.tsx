@@ -12,6 +12,7 @@ import {
   ClientAccountOnboardingPage,
   ClientBaselinePage,
   ClientCheckinPage,
+  ClientCoachMarketplacePage,
   ClientHabitsPage,
   ClientHomePage,
   ClientLayout,
@@ -977,10 +978,7 @@ export function App() {
               path="nutrition/new"
               element={<ClientNutritionCreatePlanPage />}
             />
-            <Route
-              path="find-coach"
-              element={<Navigate to="/app/home?module=find-coach" replace />}
-            />
+            <Route path="find-coach" element={<ClientCoachMarketplacePage />} />
             <Route path="medical" element={<ClientMedicalPage />} />
             <Route path="baseline" element={<ClientBaselinePage />} />
             <Route

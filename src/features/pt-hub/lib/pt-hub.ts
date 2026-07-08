@@ -2277,6 +2277,67 @@ export function usePublicPtProfile(slug: string | undefined) {
   });
 }
 
+export function useCoachMarketplaceProfiles() {
+  return useQuery({
+    queryKey: ["coach-marketplace-profiles"],
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pt_hub_profiles")
+        .select(
+          "user_id, full_name, display_name, slug, headline, searchable_headline, short_bio, specialties, certifications, coaching_style, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, profile_photo_url, banner_image_url, social_links, testimonials, transformations, updated_at, created_at",
+        )
+        .eq("is_published", true)
+        .eq("marketplace_visible", true)
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .returns<PtHubProfileRow[]>();
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => {
+          const slug = row.slug?.trim().toLowerCase();
+          if (!slug) return null;
+
+          return {
+            userId: row.user_id,
+            fullName: row.full_name?.trim() || "",
+            displayName:
+              row.display_name?.trim() || row.full_name?.trim() || "Coach",
+            slug,
+            headline: row.headline?.trim() || "",
+            searchableHeadline:
+              row.searchable_headline?.trim() || row.headline?.trim() || "",
+            shortBio: row.short_bio?.trim() || "",
+            specialties: normalizeTextList(row.specialties),
+            certifications: normalizeTextList(row.certifications),
+            coachingStyle: row.coaching_style?.trim() || "",
+            coachingModes: normalizeEnumList(
+              row.coaching_modes,
+              COACHING_MODE_VALUES,
+            ),
+            availabilityModes: normalizeEnumList(
+              row.availability_modes,
+              AVAILABILITY_MODE_VALUES,
+            ),
+            locationLabel: row.location_label?.trim() || "",
+            marketplaceVisible: row.marketplace_visible ?? false,
+            publishedAt: row.published_at ?? null,
+            profilePhotoUrl: row.profile_photo_url ?? null,
+            bannerImageUrl: row.banner_image_url ?? null,
+            socialLinks: normalizeSocialLinks(row.social_links).filter((link) =>
+              isPresent(link.url),
+            ),
+            testimonials: normalizeTestimonials(row.testimonials),
+            transformations: normalizeTransformations(row.transformations),
+            publicUrl: getPublicCoachUrl(slug) ?? routes.publicProfile(slug),
+          } satisfies PTPublicProfile;
+        })
+        .filter((profile): profile is PTPublicProfile => Boolean(profile));
+    },
+  });
+}
+
 export async function setPtHubProfilePublication(publish: boolean) {
   const { error } = await supabase.rpc("set_pt_profile_publication", {
     p_publish: publish,

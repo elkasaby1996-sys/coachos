@@ -724,23 +724,6 @@ export function ClientHabitsPage() {
                 </div>
               </SectionCard>
 
-              <SectionCard className="space-y-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">Notes</p>
-                </div>
-                <textarea
-                  className="min-h-[96px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={formState.notes}
-                  onChange={(event) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      notes: event.target.value,
-                    }))
-                  }
-                  disabled={!isEditable}
-                />
-              </SectionCard>
-
               <StickyActionBar>
                 <div className="text-xs text-muted-foreground">
                   {saveStateLabel}

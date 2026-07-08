@@ -57,9 +57,6 @@ export function ClientOnboardingSoftGate({
               {!summary.awaitingReview ? (
                 <>
                   <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
-                  <Badge variant={compact ? "muted" : "secondary"}>
-                    {summary.completionPercent}% complete
-                  </Badge>
                 </>
               ) : null}
             </div>

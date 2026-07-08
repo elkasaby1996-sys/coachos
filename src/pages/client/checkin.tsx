@@ -54,7 +54,6 @@ import {
   normalizeCheckinQuestionType,
 } from "../../lib/checkin-template";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
-import { getOnboardingStatusMeta } from "../../features/client-onboarding/lib/client-onboarding";
 
 type ClientRow = {
   id: string;
@@ -541,22 +540,11 @@ export function ClientCheckinPage() {
     !isLoading &&
     clientCheckinPageState.kind === "no-assignment" &&
     !!clientProfile?.workspace_id;
-  const onboardingStatusMeta = onboardingSummary
-    ? getOnboardingStatusMeta(onboardingSummary.onboarding.status)
-    : null;
   const onboardingNeedsActivation = Boolean(
     onboardingSummary &&
     onboardingSummary.onboarding.status !== "completed" &&
     missingTemplate,
   );
-  const missingTemplateTitle = onboardingNeedsActivation
-    ? "Your first check-in opens after onboarding activation."
-    : "Your coach has not assigned a check-in schedule yet.";
-  const missingTemplateDescription = onboardingNeedsActivation
-    ? (onboardingStatusMeta?.description ??
-      "Your coach will finish your first check-in setup after onboarding.")
-    : "Check back soon once your coach adds a schedule.";
-  const assignedNotOpenTitle = "Check-in assigned";
   const assignedNotOpenDescription = clientCheckinPageState.nextDueDate
     ? `Your next check-in is scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}. The form will unlock when that date arrives.`
     : "Your coach has set up check-ins, but there is no open check-in yet.";
@@ -1167,66 +1155,6 @@ export function ClientCheckinPage() {
     canProceed &&
     (checkinLocked ||
       uploadedRequiredPhotos === CHECKIN_REQUIRED_PHOTO_TYPES.length);
-  const summaryVariant =
-    missingTemplate || pageError
-      ? "error"
-      : checkinAssignedNotOpen
-        ? "info"
-        : checkinState === "reviewed"
-          ? "reviewed"
-          : checkinState === "submitted"
-            ? "locked"
-            : checkinState === "overdue"
-              ? "warning"
-              : checkinState === "upcoming"
-                ? "info"
-                : "info";
-  const summaryTitle = missingTemplate
-    ? missingTemplateTitle
-    : checkinAssignedNotOpen
-      ? assignedNotOpenTitle
-      : pageError
-        ? "Unable to load check-in"
-        : checkinState === "reviewed"
-          ? "Check-in reviewed"
-          : checkinState === "submitted"
-            ? "Check-in submitted"
-            : checkinState === "overdue"
-              ? "Check-in overdue"
-              : checkinState === "upcoming"
-                ? "Check-in window upcoming"
-                : "Check-in in progress";
-  const summaryDescription = missingTemplate
-    ? missingTemplateDescription
-    : checkinAssignedNotOpen
-      ? assignedNotOpenDescription
-      : pageError
-        ? "Please refresh the page or try again shortly."
-        : checkinState === "reviewed"
-          ? lockedSubmissionComplete
-            ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
-            : `Your coach reviewed this check-in, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing from the submission.`
-          : checkinState === "submitted"
-            ? lockedSubmissionComplete
-              ? "Your responses are submitted and locked for this cycle."
-              : `This check-in was submitted with ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} still missing.`
-            : checkinState === "overdue"
-              ? "Finish this open check-in before moving on to the next cycle."
-              : checkinState === "upcoming"
-                ? `This check-in is scheduled for ${checkinDueDateLabel}. It will unlock on that date.`
-                : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
-  const headerStateText = checkinAssignedNotOpen
-    ? clientCheckinPageState.nextDueDate
-      ? `Opens ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
-      : "Check-in assigned"
-    : checkinState === "reviewed"
-      ? `Reviewed ${checkinDueDateLabel}`
-      : checkinState === "submitted"
-        ? `Submitted ${checkinDueDateLabel}`
-        : checkinState === "upcoming"
-          ? `Opens ${checkinDueDateLabel}`
-          : `Due ${checkinDueDateLabel}`;
-
   useEffect(() => {
     if (checkinLocked) {
       setStep(steps.length - 1);
@@ -1249,25 +1177,10 @@ export function ClientCheckinPage() {
       <PortalPageHeader
         title="Check-ins"
         subtitle={`Stay aligned with your coach every ${checkinFrequencyLabel.toLowerCase().replace("-", " ")} cycle.`}
-        stateText={headerStateText}
-        actions={<StatusPill status={statusKey} statusMap={statusMap} />}
         className="mx-auto w-full max-w-5xl"
       />
 
       <div className="portal-form-shell space-y-5 lg:space-y-6">
-        <StatusBanner
-          variant={summaryVariant}
-          title={summaryTitle}
-          description={summaryDescription}
-          actions={
-            missingTemplate && onboardingNeedsActivation ? (
-              <Button onClick={() => navigate("/app/onboarding")}>
-                Open onboarding
-              </Button>
-            ) : undefined
-          }
-        />
-
         {staleCheckinWarning ? (
           <StatusBanner
             variant="warning"
@@ -1285,15 +1198,6 @@ export function ClientCheckinPage() {
             }
           />
         ) : null}
-
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">
-            Assigned and previous check-ins
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Choose an active cycle to complete or review recent submissions.
-          </p>
-        </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <SurfaceCard>

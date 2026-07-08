@@ -398,6 +398,11 @@ export const ClientMessagesPage = lazy(() =>
     default: m.ClientMessagesPage,
   })),
 );
+export const ClientCoachMarketplacePage = lazy(() =>
+  import("../pages/client/coach-marketplace").then((m) => ({
+    default: m.ClientCoachMarketplacePage,
+  })),
+);
 export const ClientProfilePage = lazy(() =>
   import("../pages/client/profile").then((m) => ({
     default: m.ClientProfilePage,

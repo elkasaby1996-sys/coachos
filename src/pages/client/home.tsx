@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -33,7 +34,6 @@ import { supabase } from "../../lib/supabase";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
-import { computeStreak } from "../../lib/habits";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientLeadDashboard } from "../../features/lead-chat/components/client-lead-dashboard";
 import { useMyLeadChatThreads } from "../../features/lead-chat/lib/lead-chat";
@@ -52,17 +52,31 @@ import {
 import { useClientAssignmentRealtime } from "../../lib/client-assignment-realtime";
 
 type QuickHabitFormState = {
+  calories: string;
+  protein_g: string;
+  carbs_g: string;
+  fats_g: string;
+  weight_value: string;
+  weight_unit: "kg" | "lb";
   steps: string;
   sleep_hours: string;
   energy: string;
-  notes: string;
+  hunger: string;
+  stress: string;
 };
 
 const emptyQuickHabitForm: QuickHabitFormState = {
+  calories: "",
+  protein_g: "",
+  carbs_g: "",
+  fats_g: "",
+  weight_value: "",
+  weight_unit: "kg",
   steps: "",
   sleep_hours: "",
   energy: "",
-  notes: "",
+  hunger: "",
+  stress: "",
 };
 const logInputClass = "border-border/70 bg-background/70 shadow-none";
 
@@ -79,46 +93,11 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-type DayStatus = { completed: boolean; timestamp: string };
 type HomeConversationPreviewRow = {
   id: string;
   workspace_id: string | null;
   last_message_at: string | null;
   last_message_preview: string | null;
-};
-
-const readDayStatus = (dateKey: string): DayStatus | null => {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(`coachos_day_status_${dateKey}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<DayStatus>;
-    if (
-      typeof parsed.completed !== "boolean" ||
-      typeof parsed.timestamp !== "string"
-    ) {
-      return null;
-    }
-    return { completed: parsed.completed, timestamp: parsed.timestamp };
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error("Failed to read day status", error);
-    }
-    return null;
-  }
-};
-
-const writeDayStatus = (dateKey: string, status: DayStatus) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    `coachos_day_status_${dateKey}`,
-    JSON.stringify(status),
-  );
-};
-
-const clearDayStatus = (dateKey: string) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(`coachos_day_status_${dateKey}`);
 };
 
 const getWorkoutTemplateInfo = (row: any) => {
@@ -134,6 +113,7 @@ const getWorkoutTemplateInfo = (row: any) => {
 
 function ClientWorkspaceHomePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const { session } = useSessionAuth();
   const { activeClientId, hasWorkspaceMembership } = useBootstrapAuth();
@@ -150,9 +130,26 @@ function ClientWorkspaceHomePage() {
     return formatDateKey(date);
   }, [today]);
 
-  const [dayStatus, setDayStatus] = useState<DayStatus | null>(() =>
-    readDayStatus(todayKey),
+  const [calendarWeekOffset, setCalendarWeekOffset] = useState(0);
+  const calendarStartDate = useMemo(() => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + calendarWeekOffset * 7);
+    return date;
+  }, [calendarWeekOffset, today]);
+  const calendarStartKey = useMemo(
+    () => formatDateKey(calendarStartDate),
+    [calendarStartDate],
   );
+  const calendarEndDate = useMemo(() => {
+    const date = new Date(calendarStartDate);
+    date.setDate(date.getDate() + 6);
+    return date;
+  }, [calendarStartDate]);
+  const calendarEndKey = useMemo(
+    () => formatDateKey(calendarEndDate),
+    [calendarEndDate],
+  );
+
   const [quickHabitForm, setQuickHabitForm] =
     useState<QuickHabitFormState>(emptyQuickHabitForm);
   const [quickHabitSaveStatus, setQuickHabitSaveStatus] = useState<
@@ -160,10 +157,6 @@ function ClientWorkspaceHomePage() {
   >("idle");
   const [quickHabitError, setQuickHabitError] = useState<string | null>(null);
   const focusModule = searchParams.get("focus");
-
-  useEffect(() => {
-    setDayStatus(readDayStatus(todayKey));
-  }, [todayKey]);
 
   const clientQuery = useQuery({
     queryKey: ["client-home-profiles", session?.user?.id],
@@ -307,7 +300,12 @@ function ClientWorkspaceHomePage() {
   });
 
   const weeklyPlanQuery = useQuery({
-    queryKey: ["assigned-workouts-week-plan", clientId, weekStart, weekEnd],
+    queryKey: [
+      "assigned-workouts-week-plan",
+      clientId,
+      calendarStartKey,
+      calendarEndKey,
+    ],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -316,8 +314,8 @@ function ClientWorkspaceHomePage() {
           "id, scheduled_date, status, day_type, coach_note, created_at, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, workout_type_tag, description, workspace_id)",
         )
         .eq("client_id", clientId)
-        .gte("scheduled_date", weekStart)
-        .lte("scheduled_date", weekEnd)
+        .gte("scheduled_date", calendarStartKey)
+        .lte("scheduled_date", calendarEndKey)
         .order("scheduled_date", { ascending: true });
       if (error) throw error;
       const weeklyAssignments = data ?? [];
@@ -345,17 +343,26 @@ function ClientWorkspaceHomePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
-        .select("log_date, steps, sleep_hours, energy, notes, updated_at")
+        .select(
+          "log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, steps, sleep_hours, energy, hunger, stress, updated_at",
+        )
         .eq("client_id", clientId ?? "")
         .gte("log_date", habitsStart)
         .lte("log_date", todayStr);
       if (error) throw error;
       return (data ?? []) as Array<{
         log_date: string;
+        calories: number | null;
+        protein_g: number | null;
+        carbs_g: number | null;
+        fats_g: number | null;
+        weight_value: number | null;
+        weight_unit: string | null;
         steps: number | null;
         sleep_hours: number | null;
         energy: number | null;
-        notes: string | null;
+        hunger: number | null;
+        stress: number | null;
         updated_at: string | null;
       }>;
     },
@@ -557,6 +564,30 @@ function ClientWorkspaceHomePage() {
   );
   useEffect(() => {
     setQuickHabitForm({
+      calories:
+        todayHabitLog?.calories !== null &&
+        todayHabitLog?.calories !== undefined
+          ? String(todayHabitLog.calories)
+          : "",
+      protein_g:
+        todayHabitLog?.protein_g !== null &&
+        todayHabitLog?.protein_g !== undefined
+          ? String(todayHabitLog.protein_g)
+          : "",
+      carbs_g:
+        todayHabitLog?.carbs_g !== null && todayHabitLog?.carbs_g !== undefined
+          ? String(todayHabitLog.carbs_g)
+          : "",
+      fats_g:
+        todayHabitLog?.fats_g !== null && todayHabitLog?.fats_g !== undefined
+          ? String(todayHabitLog.fats_g)
+          : "",
+      weight_value:
+        todayHabitLog?.weight_value !== null &&
+        todayHabitLog?.weight_value !== undefined
+          ? String(todayHabitLog.weight_value)
+          : "",
+      weight_unit: todayHabitLog?.weight_unit === "lb" ? "lb" : "kg",
       steps:
         todayHabitLog?.steps !== null && todayHabitLog?.steps !== undefined
           ? String(todayHabitLog.steps)
@@ -570,52 +601,50 @@ function ClientWorkspaceHomePage() {
         todayHabitLog?.energy !== null && todayHabitLog?.energy !== undefined
           ? String(todayHabitLog.energy)
           : "",
-      notes: todayHabitLog?.notes ?? "",
+      hunger:
+        todayHabitLog?.hunger !== null && todayHabitLog?.hunger !== undefined
+          ? String(todayHabitLog.hunger)
+          : "",
+      stress:
+        todayHabitLog?.stress !== null && todayHabitLog?.stress !== undefined
+          ? String(todayHabitLog.stress)
+          : "",
     });
     setQuickHabitSaveStatus("idle");
     setQuickHabitError(null);
   }, [todayHabitLog]);
   const quickHabitCompletedCount = [
+    quickHabitForm.calories.trim(),
+    quickHabitForm.protein_g.trim(),
+    quickHabitForm.carbs_g.trim(),
+    quickHabitForm.fats_g.trim(),
+    quickHabitForm.weight_value.trim(),
     quickHabitForm.steps.trim(),
     quickHabitForm.sleep_hours.trim(),
     quickHabitForm.energy.trim(),
+    quickHabitForm.hunger.trim(),
+    quickHabitForm.stress.trim(),
   ].filter(Boolean).length;
-  const quickHabitTotal = 3;
+  const quickHabitTotal = 10;
   const checklistProgress = Math.round(
     (quickHabitCompletedCount / quickHabitTotal) * 100,
-  );
-  const isPerfectDay = checklistProgress === 100;
-
-  useEffect(() => {
-    if (!isPerfectDay || dayStatus?.completed) return;
-    const nextStatus = { completed: true, timestamp: new Date().toISOString() };
-    writeDayStatus(todayKey, nextStatus);
-    setDayStatus(nextStatus);
-  }, [dayStatus?.completed, isPerfectDay, todayKey]);
-
-  const habitLogDates = useMemo(
-    () => (habitLogsQuery.data ?? []).map((row) => row.log_date),
-    [habitLogsQuery.data],
-  );
-  const consistencyStreak = useMemo(
-    () => computeStreak(habitLogDates, today, 30),
-    [habitLogDates, today],
   );
   const hasClientProfile = Boolean(clientId);
   const hasAssignedWorkoutPlan = weeklyPlan.some(
     (workout) => workout.day_type !== "rest",
   );
-  const summaryTrainingStatus = !hasClientProfile || !hasAssignedWorkoutPlan
-    ? "No plan yet"
-    : isRestDay
-      ? "Rest day"
-      : todayWorkoutStatus === "completed"
-        ? "completed"
-        : todayWorkoutStatus === "skipped"
-          ? "skipped"
-          : todayWorkout
-            ? "planned"
-            : "Rest day";
+  const summaryTrainingStatus =
+    !hasClientProfile || !hasAssignedWorkoutPlan
+      ? "No plan yet"
+      : isRestDay
+        ? "Rest day"
+        : todayWorkoutStatus === "completed"
+          ? "completed"
+          : todayWorkoutStatus === "skipped"
+            ? "skipped"
+            : todayWorkout
+              ? "planned"
+              : "Rest day";
   const summaryTrainingBadgeLabel =
     summaryTrainingStatus === "No plan yet"
       ? "Not assigned"
@@ -630,43 +659,56 @@ function ClientWorkspaceHomePage() {
     ? "Find your first coach"
     : !hasAssignedWorkoutPlan
       ? "Your coach has not assigned a workout plan yet."
-    : isRestDay
-      ? "Rest day"
-      : (todayTemplate.name ??
-        (todayWorkout as { workout_template_name?: string } | null)
-          ?.workout_template_name ??
-        "Rest day");
+      : isRestDay
+        ? "Rest day"
+        : (todayTemplate.name ??
+          (todayWorkout as { workout_template_name?: string } | null)
+            ?.workout_template_name ??
+          "Rest day");
   const summaryTrainingHint = !hasClientProfile
     ? "No assigned plan yet. Explore coaches to start your training flow."
     : !hasAssignedWorkoutPlan
       ? "Workout details will appear here when your coach assigns a plan."
-    : isRestDay
-      ? "No workout assigned for today."
-      : todayWorkoutStatus === "completed"
-        ? "Session logged"
-        : todayWorkoutStatus === "skipped"
-          ? "Coach notified"
-          : todayWorkout
-            ? "Ready when you are"
-            : "No workout assigned for today.";
+      : isRestDay
+        ? "No workout assigned for today."
+        : todayWorkoutStatus === "completed"
+          ? "Session logged"
+          : todayWorkoutStatus === "skipped"
+            ? "Coach notified"
+            : todayWorkout
+              ? "Ready when you are"
+              : "No workout assigned for today.";
   const handleQuickHabitSave = useCallback(async () => {
     if (!clientId || !todayStr) return;
 
     setQuickHabitSaveStatus("saving");
     setQuickHabitError(null);
 
-    const { error } = await supabase.from("habit_logs").upsert(
-      {
-        client_id: clientId,
-        log_date: todayStr,
-        steps: toNumberOrNull(quickHabitForm.steps),
-        sleep_hours: toNumberOrNull(quickHabitForm.sleep_hours),
-        energy: toNumberOrNull(quickHabitForm.energy),
-        notes: quickHabitForm.notes.trim() || null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "client_id,log_date" },
-    );
+    const { data, error } = await supabase
+      .from("habit_logs")
+      .upsert(
+        {
+          client_id: clientId,
+          log_date: todayStr,
+          calories: toNumberOrNull(quickHabitForm.calories),
+          protein_g: toNumberOrNull(quickHabitForm.protein_g),
+          carbs_g: toNumberOrNull(quickHabitForm.carbs_g),
+          fats_g: toNumberOrNull(quickHabitForm.fats_g),
+          weight_value: toNumberOrNull(quickHabitForm.weight_value),
+          weight_unit: quickHabitForm.weight_unit,
+          steps: toNumberOrNull(quickHabitForm.steps),
+          sleep_hours: toNumberOrNull(quickHabitForm.sleep_hours),
+          energy: toNumberOrNull(quickHabitForm.energy),
+          hunger: toNumberOrNull(quickHabitForm.hunger),
+          stress: toNumberOrNull(quickHabitForm.stress),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "client_id,log_date" },
+      )
+      .select(
+        "log_date, calories, protein_g, carbs_g, fats_g, weight_value, weight_unit, steps, sleep_hours, energy, hunger, stress, updated_at",
+      )
+      .single();
 
     if (error) {
       setQuickHabitError(error.message || "Couldn't save this log.");
@@ -674,9 +716,60 @@ function ClientWorkspaceHomePage() {
       return;
     }
 
+    queryClient.setQueryData(
+      ["client-habit-logs", clientId, habitsStart, todayStr],
+      (
+        current:
+          | Array<{
+              log_date: string;
+              calories: number | null;
+              protein_g: number | null;
+              carbs_g: number | null;
+              fats_g: number | null;
+              weight_value: number | null;
+              weight_unit: string | null;
+              steps: number | null;
+              sleep_hours: number | null;
+              energy: number | null;
+              hunger: number | null;
+              stress: number | null;
+              updated_at: string | null;
+            }>
+          | undefined,
+      ) => {
+        const rows = current ?? [];
+        const nextRow = data as {
+          log_date: string;
+          calories: number | null;
+          protein_g: number | null;
+          carbs_g: number | null;
+          fats_g: number | null;
+          weight_value: number | null;
+          weight_unit: string | null;
+          steps: number | null;
+          sleep_hours: number | null;
+          energy: number | null;
+          hunger: number | null;
+          stress: number | null;
+          updated_at: string | null;
+        };
+        const exists = rows.some((row) => row.log_date === todayStr);
+        if (exists) {
+          return rows.map((row) => (row.log_date === todayStr ? nextRow : row));
+        }
+        return [...rows, nextRow];
+      },
+    );
     setQuickHabitSaveStatus("saved");
     await habitLogsQuery.refetch();
-  }, [clientId, habitLogsQuery, quickHabitForm, todayStr]);
+  }, [
+    clientId,
+    habitLogsQuery,
+    habitsStart,
+    queryClient,
+    quickHabitForm,
+    todayStr,
+  ]);
   const leadThreads = useMemo(
     () => leadThreadsQuery.data ?? [],
     [leadThreadsQuery.data],
@@ -793,14 +886,14 @@ function ClientWorkspaceHomePage() {
 
   const weekRows = useMemo(() => {
     const rows = Array.from({ length: 7 }).map((_, idx) => {
-      const date = new Date(today);
+      const date = new Date(calendarStartDate);
       date.setDate(date.getDate() + idx);
       const key = formatDateKey(date);
       const match = weeklyPlan.find((item) => item.scheduled_date === key);
       return { date, key, workout: match ?? null };
     });
     return rows;
-  }, [today, weeklyPlan]);
+  }, [calendarStartDate, weeklyPlan]);
 
   const handleRequestAdjustment = () => {
     navigate(
@@ -903,13 +996,42 @@ function ClientWorkspaceHomePage() {
       ? "Lead and discovery mode"
       : coachBadgeLabel;
   const showWorkoutsAndNutritionCard = false;
+  const isViewingCurrentWeek = calendarWeekOffset === 0;
   const calendarSection = (
     <SurfaceCard>
-      <SurfaceCardHeader>
+      <SurfaceCardHeader className="flex-row items-center justify-between gap-3">
         <SurfaceCardTitle>Calendar</SurfaceCardTitle>
-        <SurfaceCardDescription>
-          Assigned training and recovery across the next 7 days.
-        </SurfaceCardDescription>
+        <div className="flex items-center gap-2">
+          {!isViewingCurrentWeek ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-9 px-3"
+              onClick={() => setCalendarWeekOffset(0)}
+            >
+              Today
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            aria-label="Previous week"
+            onClick={() => setCalendarWeekOffset((current) => current - 1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            aria-label="Next week"
+            onClick={() => setCalendarWeekOffset((current) => current + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </SurfaceCardHeader>
       <SurfaceCardContent className="space-y-4">
         {weeklyPlanQuery.isLoading ? (
@@ -979,7 +1101,9 @@ function ClientWorkspaceHomePage() {
                             day: "numeric",
                           })}
                         </span>
-                        <Badge variant={statusVariant}>{statusLabel}</Badge>
+                        {!rowIsRestDay ? (
+                          <Badge variant={statusVariant}>{statusLabel}</Badge>
+                        ) : null}
                       </div>
                       <div className="space-y-1">
                         <p className="line-clamp-2 text-sm font-semibold text-foreground">
@@ -1104,19 +1228,39 @@ function ClientWorkspaceHomePage() {
                       "Your coach has not assigned a nutrition plan yet."}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                    {Math.round(todayNutritionTotals.calories)} kcal
-                  </span>
-                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                    P {Math.round(todayNutritionTotals.protein_g)}g
-                  </span>
-                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                    C {Math.round(todayNutritionTotals.carbs_g)}g
-                  </span>
-                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                    F {Math.round(todayNutritionTotals.fat_g)}g
-                  </span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+                  <div className="space-y-0.5">
+                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Calories
+                    </p>
+                    <p className="font-semibold text-foreground">
+                      {Math.round(todayNutritionTotals.calories)} kcal
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Protein
+                    </p>
+                    <p className="font-semibold text-foreground">
+                      {Math.round(todayNutritionTotals.protein_g)}g
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Carbs
+                    </p>
+                    <p className="font-semibold text-foreground">
+                      {Math.round(todayNutritionTotals.carbs_g)}g
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Fats
+                    </p>
+                    <p className="font-semibold text-foreground">
+                      {Math.round(todayNutritionTotals.fat_g)}g
+                    </p>
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -1142,195 +1286,330 @@ function ClientWorkspaceHomePage() {
             </Badge>
           </div>
         </SurfaceCardHeader>
-        <SurfaceCardContent className="grid gap-5 lg:grid-cols-2">
-          <SectionCard className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">
-                Quick habit log
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Log today&apos;s basics without leaving Home.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-2">
-                <label className="field-label" htmlFor="home-habit-steps">
-                  Steps
-                </label>
-                <Input
-                  id="home-habit-steps"
-                  type="number"
-                  min="0"
-                  inputMode="numeric"
-                  className={logInputClass}
-                  placeholder={
-                    typeof targets?.steps === "number"
-                      ? targets.steps.toLocaleString()
-                      : "0"
-                  }
-                  value={quickHabitForm.steps}
-                  onChange={(event) =>
-                    setQuickHabitForm((prev) => ({
-                      ...prev,
-                      steps: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="field-label" htmlFor="home-habit-sleep">
-                  Sleep
-                </label>
-                <Input
-                  id="home-habit-sleep"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  inputMode="decimal"
-                  className={logInputClass}
-                  placeholder="Hours"
-                  value={quickHabitForm.sleep_hours}
-                  onChange={(event) =>
-                    setQuickHabitForm((prev) => ({
-                      ...prev,
-                      sleep_hours: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="field-label" htmlFor="home-habit-energy">
-                  Energy
-                </label>
-                <Input
-                  id="home-habit-energy"
-                  type="number"
-                  min="1"
-                  max="10"
-                  inputMode="numeric"
-                  className={logInputClass}
-                  placeholder="1-10"
-                  value={quickHabitForm.energy}
-                  onChange={(event) =>
-                    setQuickHabitForm((prev) => ({
-                      ...prev,
-                      energy: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="field-label" htmlFor="home-habit-notes">
-                Notes
-              </label>
-              <textarea
-                id="home-habit-notes"
-                className="min-h-[76px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Anything your coach should know today?"
-                value={quickHabitForm.notes}
-                onChange={(event) =>
-                  setQuickHabitForm((prev) => ({
-                    ...prev,
-                    notes: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                type="button"
-                onClick={handleQuickHabitSave}
-                disabled={!clientId || quickHabitSaveStatus === "saving"}
-              >
-                {quickHabitSaveStatus === "saving"
-                  ? "Saving..."
-                  : "Save quick log"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => navigate("/app/habits")}
-              >
-                Open full log
-              </Button>
-            </div>
-            {quickHabitSaveStatus === "saved" ? (
-              <ActionStatusMessage tone="success">
-                Quick habit log saved.
-              </ActionStatusMessage>
-            ) : null}
-            {quickHabitSaveStatus === "error" && quickHabitError ? (
-              <ActionStatusMessage tone="error">
-                {quickHabitError}
-              </ActionStatusMessage>
-            ) : null}
-          </SectionCard>
-
-          <SectionCard className="space-y-5">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">
-                Mini habit log
-              </p>
-              <p className="text-sm text-muted-foreground">
-                A compact read on today&apos;s habit momentum.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div>
-                <p className="field-label">Progress</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">
-                  <AnimatedValue value={`${checklistProgress}%`} />
+        <SurfaceCardContent className="space-y-5">
+          <SectionCard>
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleQuickHabitSave();
+              }}
+            >
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  Quick habit log
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Log today&apos;s nutrition, recovery, body, and activity.
                 </p>
               </div>
-              <div>
-                <p className="field-label">Completed</p>
-                <p className="mt-2 text-2xl font-semibold text-success">
-                  <AnimatedValue value={quickHabitCompletedCount} />
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <p className="field-label">Nutrition</p>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="space-y-2">
+                      <label
+                        className="field-label"
+                        htmlFor="home-habit-calories"
+                      >
+                        Calories
+                      </label>
+                      <Input
+                        id="home-habit-calories"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder={
+                          typeof targets?.calories === "number"
+                            ? targets.calories.toLocaleString()
+                            : "kcal"
+                        }
+                        value={quickHabitForm.calories}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            calories: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="field-label"
+                        htmlFor="home-habit-protein"
+                      >
+                        Protein
+                      </label>
+                      <Input
+                        id="home-habit-protein"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder={
+                          typeof targets?.protein_g === "number"
+                            ? `${targets.protein_g}g`
+                            : "g"
+                        }
+                        value={quickHabitForm.protein_g}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            protein_g: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="field-label" htmlFor="home-habit-carbs">
+                        Carbs
+                      </label>
+                      <Input
+                        id="home-habit-carbs"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder="g"
+                        value={quickHabitForm.carbs_g}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            carbs_g: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="field-label" htmlFor="home-habit-fats">
+                        Fats
+                      </label>
+                      <Input
+                        id="home-habit-fats"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder="g"
+                        value={quickHabitForm.fats_g}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            fats_g: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="field-label">Recovery</p>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="space-y-2">
+                      <label className="field-label" htmlFor="home-habit-sleep">
+                        Sleep
+                      </label>
+                      <Input
+                        id="home-habit-sleep"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        inputMode="decimal"
+                        className={logInputClass}
+                        placeholder="Hours"
+                        value={quickHabitForm.sleep_hours}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            sleep_hours: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="field-label"
+                        htmlFor="home-habit-energy"
+                      >
+                        Energy
+                      </label>
+                      <Input
+                        id="home-habit-energy"
+                        type="number"
+                        min="1"
+                        max="10"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder="1-10"
+                        value={quickHabitForm.energy}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            energy: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="field-label"
+                        htmlFor="home-habit-hunger"
+                      >
+                        Hunger
+                      </label>
+                      <Input
+                        id="home-habit-hunger"
+                        type="number"
+                        min="1"
+                        max="10"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder="1-10"
+                        value={quickHabitForm.hunger}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            hunger: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="field-label"
+                        htmlFor="home-habit-stress"
+                      >
+                        Stress
+                      </label>
+                      <Input
+                        id="home-habit-stress"
+                        type="number"
+                        min="1"
+                        max="10"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder="1-10"
+                        value={quickHabitForm.stress}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            stress: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="field-label">Body + activity</p>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="space-y-2">
+                      <label
+                        className="field-label"
+                        htmlFor="home-habit-weight"
+                      >
+                        Weight
+                      </label>
+                      <Input
+                        id="home-habit-weight"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        inputMode="decimal"
+                        className={logInputClass}
+                        placeholder={quickHabitForm.weight_unit}
+                        value={quickHabitForm.weight_value}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            weight_value: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="field-label">Unit</p>
+                      <div className="grid h-10 grid-cols-2 overflow-hidden rounded-md border border-border/70 bg-background/70">
+                        {(["kg", "lb"] as const).map((unit) => (
+                          <button
+                            key={unit}
+                            type="button"
+                            className={`cursor-pointer text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                              quickHabitForm.weight_unit === unit
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                            }`}
+                            onClick={() =>
+                              setQuickHabitForm((prev) => ({
+                                ...prev,
+                                weight_unit: unit,
+                              }))
+                            }
+                            aria-pressed={quickHabitForm.weight_unit === unit}
+                          >
+                            {unit}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2 sm:col-span-2 xl:col-span-2">
+                      <label className="field-label" htmlFor="home-habit-steps">
+                        Steps
+                      </label>
+                      <Input
+                        id="home-habit-steps"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        className={logInputClass}
+                        placeholder={
+                          typeof targets?.steps === "number"
+                            ? targets.steps.toLocaleString()
+                            : "0"
+                        }
+                        value={quickHabitForm.steps}
+                        onChange={(event) =>
+                          setQuickHabitForm((prev) => ({
+                            ...prev,
+                            steps: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="field-label">Streak</p>
-                <p className="mt-2 text-2xl font-semibold text-info">
-                  <AnimatedValue value={`${consistencyStreak}d`} />
-                </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="submit"
+                  disabled={!clientId || quickHabitSaveStatus === "saving"}
+                >
+                  {quickHabitSaveStatus === "saving"
+                    ? "Saving..."
+                    : "Save quick log"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => navigate("/app/habits")}
+                >
+                  Open full log
+                </Button>
               </div>
-            </div>
-
-            <div className="h-2 w-full rounded-full bg-muted">
-              <div
-                className="h-2 rounded-full bg-primary transition-all"
-                style={{ width: `${checklistProgress}%` }}
-              />
-            </div>
-
-            {dayStatus?.completed ? (
-              <ActionStatusMessage tone="success">
-                Quick log basics are filled for today.
-              </ActionStatusMessage>
-            ) : null}
-
-            <div className="flex flex-wrap gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => navigate("/app/habits")}
-              >
-                Open habit log
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setQuickHabitForm(emptyQuickHabitForm);
-                  setQuickHabitSaveStatus("idle");
-                  setQuickHabitError(null);
-                  clearDayStatus(todayKey);
-                  setDayStatus(null);
-                }}
-              >
-                Reset today
-              </Button>
-            </div>
+              {quickHabitSaveStatus === "saved" ? (
+                <ActionStatusMessage tone="success">
+                  Quick habit log saved.
+                </ActionStatusMessage>
+              ) : null}
+              {quickHabitSaveStatus === "error" && quickHabitError ? (
+                <ActionStatusMessage tone="error">
+                  {quickHabitError}
+                </ActionStatusMessage>
+              ) : null}
+            </form>
           </SectionCard>
         </SurfaceCardContent>
       </SurfaceCard>
@@ -1680,7 +1959,6 @@ function ClientWorkspaceHomePage() {
           </SurfaceCardContent>
         </SurfaceCard>
       ) : null}
-
     </div>
   );
 }
