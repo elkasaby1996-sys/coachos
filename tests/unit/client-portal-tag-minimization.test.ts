@@ -80,8 +80,57 @@ describe("client portal tag minimization", () => {
     expect(clientSurfaceSources.checkin).toContain("Check-in overdue");
     expect(clientSurfaceSources.checkin).toContain("Check-in submitted");
     expect(clientSurfaceSources.checkin).toContain("Check-in reviewed");
-    expect(clientSurfaceSources.home).toContain("Workout planned");
+    expect(clientSurfaceSources.home).toContain("Scheduled");
     expect(clientSurfaceSources.home).toContain("Completed");
     expect(clientSurfaceSources.home).toContain("Rest day");
+  });
+
+  it("keeps client home focused on workout preview, nutrition, and the promoted calendar", () => {
+    const agendaStart = clientSurfaceSources.home.indexOf(
+      'id="home-section-next-up"',
+    );
+    const agendaEnd = clientSurfaceSources.home.indexOf(
+      'id="home-section-checklist"',
+    );
+    const agendaSource = clientSurfaceSources.home.slice(
+      agendaStart,
+      agendaEnd,
+    );
+
+    expect(agendaSource).toContain("Today&apos;s agenda");
+    expect(clientSurfaceSources.home).toContain("Today&apos;s workout");
+    expect(clientSurfaceSources.home).toContain("Today&apos;s nutrition");
+    expect(clientSurfaceSources.home.indexOf("Calendar")).toBeLessThan(
+      clientSurfaceSources.home.indexOf("home-section-next-up"),
+    );
+
+    expect(clientSurfaceSources.home).not.toContain("Today&apos;s focus");
+    expect(clientSurfaceSources.home).not.toContain(
+      "Today&apos;s workout and nutrition snapshot.",
+    );
+    expect(clientSurfaceSources.home).not.toContain(
+      "Steps + nutrition still count.",
+    );
+    expect(clientSurfaceSources.home).not.toContain("weeklyStats");
+    expect(clientSurfaceSources.home).toContain("Quick habit log");
+    expect(clientSurfaceSources.home).toContain("Save quick log");
+    expect(clientSurfaceSources.home).toContain("home-habit-steps");
+    expect(clientSurfaceSources.home).toContain("Mini habit log");
+    expect(clientSurfaceSources.home).not.toContain(
+      "Tap each daily basic as it is done.",
+    );
+    expect(clientSurfaceSources.home).not.toContain("handleChecklistToggle");
+    expect(clientSurfaceSources.home).not.toContain("checklistCards");
+    expect(clientSurfaceSources.home).not.toContain("home-section-messages");
+    expect(clientSurfaceSources.home).not.toContain("home-section-find-coach");
+    expect(clientSurfaceSources.home).not.toContain("Messages and inbox");
+    expect(clientSurfaceSources.home).not.toContain(
+      "Discovery and application status in one place.",
+    );
+    expect(agendaSource).not.toContain("summaryTrainingBadgeLabel");
+    expect(agendaSource).not.toContain("primaryAction");
+    expect(agendaSource).not.toContain("Message your coach");
+    expect(clientSurfaceSources.layout).toContain("consistencyStreak");
+    expect(clientSurfaceSources.layout).toContain("client-shell-habit-logs");
   });
 });

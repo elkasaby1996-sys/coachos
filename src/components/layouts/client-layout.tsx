@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardCheck,
   CalendarDays,
@@ -40,6 +41,8 @@ import { ClientMessageFab } from "../client/client-message-fab";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useBootstrapAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
+import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
+import { computeStreak } from "../../lib/habits";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientOnboardingSoftGate } from "../../features/client-onboarding/components/client-onboarding-soft-gate";
@@ -142,7 +145,7 @@ const CLIENT_SIDEBAR_FOOTER_GAP = 12;
 
 function getHeaderProfilePillClassName(isLightMode: boolean) {
   return cn(
-    "group hidden h-[54px] min-w-[204px] items-center gap-2.5 rounded-[18px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[214px] md:flex",
+    "group hidden h-[54px] min-w-[232px] items-center gap-2.5 rounded-[18px] border px-3 py-2 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[252px] md:flex",
     isLightMode
       ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.74))]"
       : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))]",
@@ -236,6 +239,40 @@ export function ClientLayout() {
     clientProfile?.display_name?.trim() ||
     "Client profile";
   const profileInitial = (profileDisplayName.charAt(0) || "C").toUpperCase();
+  const clientId = clientProfile?.id ?? null;
+  const clientTimezone =
+    (clientProfile as { timezone?: string | null } | null)?.timezone ?? null;
+  const todayStr = useMemo(
+    () => getTodayInTimezone(clientTimezone),
+    [clientTimezone],
+  );
+  const habitsStart = useMemo(
+    () => addDaysToDateString(todayStr, -29),
+    [todayStr],
+  );
+  const profileHabitLogsQuery = useQuery({
+    queryKey: ["client-shell-habit-logs", clientId, habitsStart, todayStr],
+    enabled: !!clientId && !!todayStr,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("habit_logs")
+        .select("log_date")
+        .eq("client_id", clientId ?? "")
+        .gte("log_date", habitsStart)
+        .lte("log_date", todayStr);
+      if (error) throw error;
+      return (data ?? []) as Array<{ log_date: string }>;
+    },
+  });
+  const consistencyStreak = useMemo(
+    () =>
+      computeStreak(
+        (profileHabitLogsQuery.data ?? []).map((row) => row.log_date),
+        new Date(`${todayStr}T12:00:00`),
+        30,
+      ),
+    [profileHabitLogsQuery.data, todayStr],
+  );
   const isLightMode = resolvedTheme === "light";
   const reduceMotion = useReducedMotion();
   const visibleNavItems = navItems;
@@ -482,9 +519,14 @@ export function ClientLayout() {
                               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
                                 Profile
                               </p>
-                              <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                                {profileDisplayName}
-                              </p>
+                              <div className="flex min-w-0 items-center gap-2">
+                                <p className="min-w-0 flex-1 truncate text-[0.92rem] font-medium text-foreground">
+                                  {profileDisplayName}
+                                </p>
+                                <span className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                                  {consistencyStreak}d
+                                </span>
+                              </div>
                             </div>
                             <span
                               className={getHeaderProfilePillChevronClassName(

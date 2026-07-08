@@ -97,7 +97,7 @@ describe("final badge and status regression", () => {
     expect(clientPortalSource).toContain("Check-in overdue");
     expect(clientPortalSource).toContain("Check-in submitted");
     expect(clientPortalSource).toContain("Check-in reviewed");
-    expect(clientPortalSource).toContain("Workout planned");
+    expect(clientPortalSource).toContain("Scheduled");
   });
 
   it("keeps lifecycle and segment filters exposed while badges stay simplified", () => {

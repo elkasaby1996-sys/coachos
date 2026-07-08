@@ -15,6 +15,7 @@ const publicationPanelSource = readFileSync(
   "src/features/pt-hub/components/pt-hub-publication-panel.tsx",
   "utf8",
 );
+const globalsSource = readFileSync("src/styles/globals.css", "utf8");
 
 function createProfile(overrides: Partial<PTProfile> = {}): PTProfile {
   return {
@@ -167,7 +168,25 @@ describe("PT Hub publication simplification", () => {
 
   it("keeps profile step navigation free of helper descriptions", () => {
     expect(profileEditorSource).not.toContain("{step.description}");
-    expect(profileEditorSource).toContain('"min-w-[8.5rem] gap-3 xl:flex-[1.15]"');
+    expect(profileEditorSource).toContain(
+      '"min-w-[6.75rem] gap-2 sm:min-w-[7.25rem] xl:min-w-0 xl:flex-1"',
+    );
+  });
+
+  it("keeps profile step navigation centered with stable dimensions", () => {
+    expect(profileEditorSource).toContain(
+      "xl:justify-center xl:overflow-visible",
+    );
+    expect(profileEditorSource).toContain(
+      "pt-hub-profile-step-trigger group flex items-center justify-center",
+    );
+    expect(profileEditorSource).toContain(
+      '"relative z-10 min-w-0 text-center"',
+    );
+    expect(globalsSource).toContain(
+      "@apply relative inline-flex h-[3rem] shrink-0 items-center justify-center",
+    );
+    expect(profileEditorSource).not.toContain("xl:flex-[1.15]");
   });
 
   it("uses a single-layer check icon for completed profile steps", () => {
@@ -183,7 +202,7 @@ describe("PT Hub publication simplification", () => {
     );
 
     expect(stepRailSource).toContain("<CheckCircle2");
-    expect(stepRailSource).toContain('className="relative z-10 h-5 w-5 shrink-0 text-success"');
+    expect(stepRailSource).toContain('className="relative z-10 h-4.5 w-4.5 shrink-0 text-success"');
     expect(stepRailSource).not.toContain(
       'isComplete\n                      ? "border-success/40 bg-success/12 text-success"',
     );

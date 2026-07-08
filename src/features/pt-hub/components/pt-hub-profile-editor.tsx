@@ -928,7 +928,7 @@ export function PtHubProfileEditor({
   return (
     <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.36fr)_360px]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4.25rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[24px] p-1.5 xl:overflow-visible">
+        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[24px] p-1.5 xl:justify-center xl:overflow-visible">
           {profileBuilderSteps.map((step) => {
             const isActive = activeTab === step.value;
             const completion = getStepCompletion(step.keys, readiness);
@@ -938,11 +938,9 @@ export function PtHubProfileEditor({
               <TabsTrigger
                 key={step.value}
                 className={cn(
-                  "pt-hub-profile-step-trigger group flex items-center",
+                  "pt-hub-profile-step-trigger group flex items-center justify-center",
                   isActive ? "text-foreground" : "text-muted-foreground",
-                  isActive
-                    ? "min-w-[8.5rem] gap-3 xl:flex-[1.15]"
-                    : "min-w-[6.25rem] justify-center gap-2 sm:min-w-[7.25rem] xl:flex-1",
+                  "min-w-[6.75rem] gap-2 sm:min-w-[7.25rem] xl:min-w-0 xl:flex-1",
                 )}
                 value={step.value}
               >
@@ -963,7 +961,7 @@ export function PtHubProfileEditor({
                 ) : null}
                 {isComplete ? (
                   <CheckCircle2
-                    className="relative z-10 h-5 w-5 shrink-0 text-success"
+                    className="relative z-10 h-4.5 w-4.5 shrink-0 text-success"
                     aria-hidden="true"
                   />
                 ) : (
@@ -983,15 +981,11 @@ export function PtHubProfileEditor({
                 )}
                 <span
                   className={cn(
-                    "relative z-10 min-w-0 text-left",
-                    !isActive && "flex min-w-0 flex-col items-start",
+                    "relative z-10 min-w-0 text-center",
                   )}
                 >
                   <span
-                    className={cn(
-                      "block font-semibold",
-                      isActive ? "text-sm" : "text-xs sm:text-sm",
-                    )}
+                    className="block text-xs font-semibold sm:text-sm"
                   >
                     {step.label}
                   </span>

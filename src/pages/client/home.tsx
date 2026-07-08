@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Circle, Droplets, Dumbbell, Moon, Target } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -38,10 +38,6 @@ import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-
 import { ClientLeadDashboard } from "../../features/lead-chat/components/client-lead-dashboard";
 import { useMyLeadChatThreads } from "../../features/lead-chat/lib/lead-chat";
 import {
-  buildClientInboxThreadParam,
-  dedupeLeadThreadSummaries,
-} from "../../features/lead-chat/lib/client-inbox";
-import {
   clearInviteJoinParams,
   deriveInviteJoinContext,
 } from "../../features/lead-chat/lib/invite-join-context";
@@ -50,21 +46,30 @@ import {
   buildWorkoutRunPath,
   classifySourceKind,
   resolveUnifiedClientHomeState,
-  shouldShowFindCoachSection,
   sortWorkoutsByUrgency,
   type WorkoutLike,
 } from "./home-unified";
 import { useClientAssignmentRealtime } from "../../lib/client-assignment-realtime";
 
-type ChecklistKey = "workout" | "steps" | "water" | "sleep";
-type ChecklistState = Record<ChecklistKey, boolean>;
+type QuickHabitFormState = {
+  steps: string;
+  sleep_hours: string;
+  energy: string;
+  notes: string;
+};
 
-const checklistKeys: ChecklistKey[] = ["workout", "steps", "water", "sleep"];
-const emptyChecklist: ChecklistState = {
-  workout: false,
-  steps: false,
-  water: false,
-  sleep: false,
+const emptyQuickHabitForm: QuickHabitFormState = {
+  steps: "",
+  sleep_hours: "",
+  energy: "",
+  notes: "",
+};
+const logInputClass = "border-border/70 bg-background/70 shadow-none";
+
+const toNumberOrNull = (value: string) => {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const formatDateKey = (date: Date) => {
@@ -74,41 +79,12 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const readChecklist = (dateKey: string): ChecklistState => {
-  if (typeof window === "undefined") return emptyChecklist;
-  try {
-    const raw = window.localStorage.getItem(`coachos_checklist_${dateKey}`);
-    if (!raw) return emptyChecklist;
-    const parsed = JSON.parse(raw) as Partial<ChecklistState>;
-    return { ...emptyChecklist, ...parsed };
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error("Failed to read checklist", error);
-    }
-    return emptyChecklist;
-  }
-};
-
-const writeChecklist = (dateKey: string, state: ChecklistState) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    `coachos_checklist_${dateKey}`,
-    JSON.stringify(state),
-  );
-};
-
 type DayStatus = { completed: boolean; timestamp: string };
 type HomeConversationPreviewRow = {
   id: string;
   workspace_id: string | null;
   last_message_at: string | null;
   last_message_preview: string | null;
-};
-type DiscoverCoachRow = {
-  slug: string | null;
-  display_name: string | null;
-  full_name: string | null;
-  headline: string | null;
 };
 
 const readDayStatus = (dateKey: string): DayStatus | null => {
@@ -140,6 +116,11 @@ const writeDayStatus = (dateKey: string, status: DayStatus) => {
   );
 };
 
+const clearDayStatus = (dateKey: string) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(`coachos_day_status_${dateKey}`);
+};
+
 const getWorkoutTemplateInfo = (row: any) => {
   const raw = row?.workout_template ?? null;
   const template = Array.isArray(raw) ? (raw[0] ?? null) : raw;
@@ -169,22 +150,20 @@ function ClientWorkspaceHomePage() {
     return formatDateKey(date);
   }, [today]);
 
-  const [checklist, setChecklist] = useState<ChecklistState>(() =>
-    readChecklist(todayKey),
-  );
   const [dayStatus, setDayStatus] = useState<DayStatus | null>(() =>
     readDayStatus(todayKey),
   );
+  const [quickHabitForm, setQuickHabitForm] =
+    useState<QuickHabitFormState>(emptyQuickHabitForm);
+  const [quickHabitSaveStatus, setQuickHabitSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [quickHabitError, setQuickHabitError] = useState<string | null>(null);
   const focusModule = searchParams.get("focus");
 
   useEffect(() => {
-    setChecklist(readChecklist(todayKey));
     setDayStatus(readDayStatus(todayKey));
   }, [todayKey]);
-
-  useEffect(() => {
-    writeChecklist(todayKey, checklist);
-  }, [todayKey, checklist]);
 
   const clientQuery = useQuery({
     queryKey: ["client-home-profiles", session?.user?.id],
@@ -366,12 +345,19 @@ function ClientWorkspaceHomePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
-        .select("log_date, steps")
+        .select("log_date, steps, sleep_hours, energy, notes, updated_at")
         .eq("client_id", clientId ?? "")
         .gte("log_date", habitsStart)
         .lte("log_date", todayStr);
       if (error) throw error;
-      return (data ?? []) as Array<{ log_date: string; steps: number | null }>;
+      return (data ?? []) as Array<{
+        log_date: string;
+        steps: number | null;
+        sleep_hours: number | null;
+        energy: number | null;
+        notes: string | null;
+        updated_at: string | null;
+      }>;
     },
   });
   const leadThreadsQuery = useMyLeadChatThreads();
@@ -388,22 +374,6 @@ function ClientWorkspaceHomePage() {
         .limit(4);
       if (error) throw error;
       return (data ?? []) as HomeConversationPreviewRow[];
-    },
-  });
-
-  const discoverCoachesQuery = useQuery({
-    queryKey: ["client-home-discover-coaches"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pt_hub_profiles")
-        .select("slug, display_name, full_name, headline")
-        .eq("is_published", true)
-        .eq("marketplace_visible", true)
-        .limit(4);
-      if (error) {
-        return [] as DiscoverCoachRow[];
-      }
-      return (data ?? []) as DiscoverCoachRow[];
     },
   });
 
@@ -579,9 +549,40 @@ function ClientWorkspaceHomePage() {
   const todayTemplate = getWorkoutTemplateInfo(todayWorkout);
   const todaySourceLabel = getSourceMetaLabel(todayTemplate.workspace_id);
 
+  const todayHabitLog = useMemo(
+    () =>
+      (habitLogsQuery.data ?? []).find((row) => row.log_date === todayStr) ??
+      null,
+    [habitLogsQuery.data, todayStr],
+  );
+  useEffect(() => {
+    setQuickHabitForm({
+      steps:
+        todayHabitLog?.steps !== null && todayHabitLog?.steps !== undefined
+          ? String(todayHabitLog.steps)
+          : "",
+      sleep_hours:
+        todayHabitLog?.sleep_hours !== null &&
+        todayHabitLog?.sleep_hours !== undefined
+          ? String(todayHabitLog.sleep_hours)
+          : "",
+      energy:
+        todayHabitLog?.energy !== null && todayHabitLog?.energy !== undefined
+          ? String(todayHabitLog.energy)
+          : "",
+      notes: todayHabitLog?.notes ?? "",
+    });
+    setQuickHabitSaveStatus("idle");
+    setQuickHabitError(null);
+  }, [todayHabitLog]);
+  const quickHabitCompletedCount = [
+    quickHabitForm.steps.trim(),
+    quickHabitForm.sleep_hours.trim(),
+    quickHabitForm.energy.trim(),
+  ].filter(Boolean).length;
+  const quickHabitTotal = 3;
   const checklistProgress = Math.round(
-    (Object.values(checklist).filter(Boolean).length / checklistKeys.length) *
-      100,
+    (quickHabitCompletedCount / quickHabitTotal) * 100,
   );
   const isPerfectDay = checklistProgress === 100;
 
@@ -640,78 +641,46 @@ function ClientWorkspaceHomePage() {
     : !hasAssignedWorkoutPlan
       ? "Workout details will appear here when your coach assigns a plan."
     : isRestDay
-      ? "Rest day. Steps + nutrition still count."
+      ? "No workout assigned for today."
       : todayWorkoutStatus === "completed"
         ? "Session logged"
         : todayWorkoutStatus === "skipped"
           ? "Coach notified"
           : todayWorkout
             ? "Ready when you are"
-            : "Rest day. Steps + nutrition still count.";
-  const handleChecklistToggle = useCallback(
-    (key: ChecklistKey) => {
-      setChecklist((prev) => {
-        if (key === "workout" && todayWorkoutStatus === "completed") {
-          return prev;
-        }
-        return { ...prev, [key]: !prev[key] };
-      });
-    },
-    [todayWorkoutStatus],
-  );
-  const checklistCards = useMemo(
-    () =>
-      checklistKeys.map((key) => {
-        const isWorkout = key === "workout";
-        const isLocked = isWorkout && todayWorkoutStatus === "completed";
-        const checked = checklist[key] || isLocked;
-        const label =
-          key === "workout"
-            ? "Workout"
-            : key === "steps" && typeof targets?.steps === "number"
-              ? `Steps (${targets.steps.toLocaleString()})`
-              : key === "steps"
-                ? "Steps"
-                : key === "water"
-                  ? "Hydration"
-                  : "Sleep";
-        const hint = isWorkout
-          ? todayWorkoutStatus === "completed"
-            ? "Auto-checked from workout log"
-            : isRestDay
-              ? "Rest day"
-              : "Tap when you finish"
-          : key === "steps"
-            ? "Daily movement target"
-            : key === "water"
-              ? "Hydration consistency"
-              : "Recovery quality";
-        const Icon =
-          key === "workout"
-            ? Dumbbell
-            : key === "steps"
-              ? Target
-              : key === "water"
-                ? Droplets
-                : Moon;
-        return { key, checked, isLocked, label, hint, Icon };
-      }),
-    [checklist, isRestDay, targets?.steps, todayWorkoutStatus],
-  );
+            : "No workout assigned for today.";
+  const handleQuickHabitSave = useCallback(async () => {
+    if (!clientId || !todayStr) return;
+
+    setQuickHabitSaveStatus("saving");
+    setQuickHabitError(null);
+
+    const { error } = await supabase.from("habit_logs").upsert(
+      {
+        client_id: clientId,
+        log_date: todayStr,
+        steps: toNumberOrNull(quickHabitForm.steps),
+        sleep_hours: toNumberOrNull(quickHabitForm.sleep_hours),
+        energy: toNumberOrNull(quickHabitForm.energy),
+        notes: quickHabitForm.notes.trim() || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "client_id,log_date" },
+    );
+
+    if (error) {
+      setQuickHabitError(error.message || "Couldn't save this log.");
+      setQuickHabitSaveStatus("error");
+      return;
+    }
+
+    setQuickHabitSaveStatus("saved");
+    await habitLogsQuery.refetch();
+  }, [clientId, habitLogsQuery, quickHabitForm, todayStr]);
   const leadThreads = useMemo(
     () => leadThreadsQuery.data ?? [],
     [leadThreadsQuery.data],
   );
-  const pendingApplicationsCount = leadThreads.filter(
-    (thread) =>
-      thread.leadStatus === "new" || thread.leadStatus === "contacted",
-  ).length;
-  const approvedPendingWorkspaceCount = leadThreads.filter(
-    (thread) => thread.leadStatus === "approved_pending_workspace",
-  ).length;
-  const savedCoachCount = leadThreads.filter((thread) =>
-    Boolean(thread.ptSlug),
-  ).length;
   const hasPersonalSource = Boolean(
     !clientProfile?.workspace_id ||
     classifySourceKind({
@@ -747,64 +716,14 @@ function ClientWorkspaceHomePage() {
     coachSourceCount,
     hasPersonalSource,
   });
-  const showFindCoachSection = shouldShowFindCoachSection({
-    hasWorkspaceMembership,
-    pendingApplications: pendingApplicationsCount,
-    approvedPendingWorkspace: approvedPendingWorkspaceCount,
-    savedCoachCount,
-  });
   const featuredCoach = leadThreads.find((thread) => Boolean(thread.ptSlug));
-  const discoverCoachProfiles = discoverCoachesQuery.data ?? [];
-  const discoverCoachFallback =
-    discoverCoachProfiles.find((coach) => Boolean(coach.slug)) ?? null;
   const findCoachHref = featuredCoach?.ptSlug
     ? `/coach/${featuredCoach.ptSlug}`
-    : discoverCoachFallback?.slug
-      ? `/coach/${discoverCoachFallback.slug}`
-      : "/signup/client";
+    : "/signup/client";
   const workoutFeedItems = useMemo(
     () => sortWorkoutsByUrgency((weeklyPlan as WorkoutLike[]) ?? []),
     [weeklyPlan],
   );
-  const inboxPreviewItems = useMemo(() => {
-    const workspaceItems = (workspaceConversationPreviewQuery.data ?? []).map(
-      (conversation) => ({
-        id: `workspace:${conversation.id}`,
-        title: "Coach inbox",
-        preview: conversation.last_message_preview ?? "No messages yet",
-        timestamp: conversation.last_message_at ?? null,
-        sourceLabel: getSourceMetaLabel(conversation.workspace_id),
-        href: `/app/messages?thread=${encodeURIComponent(
-          buildClientInboxThreadParam({
-            type: "workspace",
-            conversationId: conversation.id,
-          }),
-        )}`,
-      }),
-    );
-    const dedupedLeadThreads = dedupeLeadThreadSummaries(leadThreads);
-
-    const leadItems = dedupedLeadThreads.map((thread, index) => ({
-      id: `lead:${thread.leadId || thread.ptSlug || thread.submittedAt || index}`,
-      title: thread.ptDisplayName,
-      preview: thread.lastMessagePreview ?? "No messages yet",
-      timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,
-      sourceLabel: "Lead chat",
-      href: `/app/messages?thread=${encodeURIComponent(
-        buildClientInboxThreadParam({
-          type: "lead",
-          leadId: thread.leadId,
-        }),
-      )}`,
-    }));
-    return [...workspaceItems, ...leadItems]
-      .sort((a, b) => {
-        const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return bTime - aTime;
-      })
-      .slice(0, 5);
-  }, [getSourceMetaLabel, leadThreads, workspaceConversationPreviewQuery.data]);
 
   const subtitleDate = useMemo(
     () =>
@@ -883,41 +802,6 @@ function ClientWorkspaceHomePage() {
     return rows;
   }, [today, weeklyPlan]);
 
-  useEffect(() => {
-    if (todayWorkoutStatus === "completed" && !checklist.workout) {
-      setChecklist((prev) =>
-        prev.workout ? prev : { ...prev, workout: true },
-      );
-    }
-  }, [todayWorkoutStatus, checklist.workout]);
-
-  const missionCopy = useMemo(() => {
-    if (!clientId) {
-      return "You can explore coaches, keep your habits active, and start your first guided plan from here.";
-    }
-    if (isRestDay || !todayWorkout)
-      return "Rest day. Steps + nutrition still count.";
-    if (todayWorkoutStatus === "completed") {
-      return "Workout done. Recovery and nutrition matter now.";
-    }
-    if (todayWorkoutStatus === "planned") {
-      return (
-        todayTemplateInfo.description ??
-        "Workout planned. Focus on quality reps."
-      );
-    }
-    if (todayWorkoutStatus === "skipped") {
-      return "Session skipped. Stay on track with steps + nutrition.";
-    }
-    return "Rest day. Steps + nutrition still count.";
-  }, [
-    clientId,
-    isRestDay,
-    todayWorkout,
-    todayWorkoutStatus,
-    todayTemplateInfo.description,
-  ]);
-
   const handleRequestAdjustment = () => {
     navigate(
       `/app/messages?draft=${encodeURIComponent(
@@ -926,8 +810,6 @@ function ClientWorkspaceHomePage() {
     );
   };
 
-  const checklistCompletedCount =
-    Object.values(checklist).filter(Boolean).length;
   const trainingStatusVariant =
     summaryTrainingStatus === "No plan yet"
       ? "muted"
@@ -991,11 +873,7 @@ function ClientWorkspaceHomePage() {
         ? "home-section-workouts"
         : focusModule === "nutrition"
           ? "home-section-nutrition"
-          : focusModule === "messages"
-            ? "home-section-messages"
-            : focusModule === "find-coach"
-              ? "home-section-find-coach"
-              : null;
+          : null;
     if (!targetId) return;
 
     const timer = window.setTimeout(() => {
@@ -1006,26 +884,6 @@ function ClientWorkspaceHomePage() {
     return () => window.clearTimeout(timer);
   }, [focusModule]);
 
-  const weeklyStats = useMemo(() => {
-    const weeklyWorkouts = weekRows.filter(
-      (row) => row.workout && row.workout.day_type !== "rest",
-    );
-
-    return {
-      completed: weeklyWorkouts.filter(
-        (row) => row.workout?.status === "completed",
-      ).length,
-      skipped: weeklyWorkouts.filter((row) => row.workout?.status === "skipped")
-        .length,
-      planned: weeklyWorkouts.filter((row) => {
-        const status = row.workout?.status;
-        return status === "planned" || status === "pending" || !status;
-      }).length,
-      rest: weekRows.filter(
-        (row) => row.workout?.day_type === "rest" || !row.workout,
-      ).length,
-    };
-  }, [weekRows]);
   const homeDataError =
     coachActivityQuery.error ??
     todayWorkoutQuery.error ??
@@ -1045,6 +903,116 @@ function ClientWorkspaceHomePage() {
       ? "Lead and discovery mode"
       : coachBadgeLabel;
   const showWorkoutsAndNutritionCard = false;
+  const calendarSection = (
+    <SurfaceCard>
+      <SurfaceCardHeader>
+        <SurfaceCardTitle>Calendar</SurfaceCardTitle>
+        <SurfaceCardDescription>
+          Assigned training and recovery across the next 7 days.
+        </SurfaceCardDescription>
+      </SurfaceCardHeader>
+      <SurfaceCardContent className="space-y-4">
+        {weeklyPlanQuery.isLoading ? (
+          <LoadingPanel
+            title="Loading calendar"
+            description="Mapping the next 7 days of training and recovery."
+          />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+              {weekRows.map((row) => {
+                const workout = row.workout;
+                const rowIsRestDay = !workout || workout.day_type === "rest";
+                const status = rowIsRestDay
+                  ? "rest day"
+                  : workout.status === "pending"
+                    ? "planned"
+                    : (workout.status ?? "planned");
+                const statusLabel =
+                  status === "completed"
+                    ? "Completed"
+                    : status === "skipped"
+                      ? "Skipped"
+                      : status === "planned"
+                        ? "Scheduled"
+                        : "Rest day";
+                const title = rowIsRestDay
+                  ? "Rest day"
+                  : (getWorkoutTemplateInfo(workout).name ??
+                    (workout as { workout_template_name?: string })
+                      ?.workout_template_name ??
+                    "Workout");
+                const statusVariant =
+                  status === "completed"
+                    ? "success"
+                    : status === "skipped"
+                      ? "danger"
+                      : status === "rest day"
+                        ? "warning"
+                        : "muted";
+                const workoutType = rowIsRestDay
+                  ? null
+                  : (getWorkoutTemplateInfo(workout).workout_type_tag ??
+                    "Workout");
+
+                return (
+                  <button
+                    key={row.key}
+                    type="button"
+                    onClick={() => {
+                      if (workout?.id && !rowIsRestDay) {
+                        navigate(`/app/workouts/${workout.id}`);
+                      }
+                    }}
+                    disabled={!workout?.id || rowIsRestDay}
+                    className={`rounded-[var(--radius-lg)] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      row.key === todayKey
+                        ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(56,189,248,0.75)]"
+                        : "border-border/70 bg-background/45 hover:border-border"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {row.date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <Badge variant={statusVariant}>{statusLabel}</Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                          {title}
+                        </p>
+                        {workoutType ? (
+                          <p className="text-xs text-muted-foreground">
+                            {workoutType}
+                          </p>
+                        ) : null}
+                      </div>
+                      {workout?.coach_note ? (
+                        <p className="line-clamp-3 text-xs leading-5 text-muted-foreground">
+                          {workout.coach_note}
+                        </p>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {weeklyPlan.length === 0 ? (
+              <EmptyStateBlock
+                title="No sessions scheduled yet"
+                description="Focus on recovery basics while your coach builds your next training block."
+              />
+            ) : null}
+          </>
+        )}
+      </SurfaceCardContent>
+    </SurfaceCard>
+  );
 
   return (
     <div className="portal-shell" data-testid="client-home-page">
@@ -1074,12 +1042,14 @@ function ClientWorkspaceHomePage() {
         />
       ) : null}
 
+      {calendarSection}
+
       <SurfaceCard id="home-section-next-up">
         <SurfaceCardHeader className="pb-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
               <SurfaceCardTitle className="text-2xl">
-                {summaryTrainingTitle}
+                Today&apos;s agenda
               </SurfaceCardTitle>
               {todayWorkout ? (
                 <Badge variant="muted" className="w-fit">
@@ -1090,18 +1060,24 @@ function ClientWorkspaceHomePage() {
                 {summaryTrainingHint}
               </SurfaceCardDescription>
             </div>
-            <Badge variant={trainingStatusVariant}>
-              {summaryTrainingBadgeLabel}
-            </Badge>
           </div>
         </SurfaceCardHeader>
         <SurfaceCardContent className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.95fr)]">
           <SectionCard className="space-y-5">
             <div className="space-y-3">
-              <p className="field-label">Today&apos;s focus</p>
-              <p className="text-base leading-7 text-foreground">
-                {missionCopy}
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="field-label">Today&apos;s workout</p>
+                  <p className="text-xl font-semibold leading-7 text-foreground">
+                    {summaryTrainingTitle}
+                  </p>
+                </div>
+              </div>
+              {todayTemplateInfo.workoutType ? (
+                <Badge variant="muted" className="w-fit">
+                  {todayTemplateInfo.workoutType}
+                </Badge>
+              ) : null}
             </div>
 
             {todayWorkout?.coach_note ? (
@@ -1112,81 +1088,37 @@ function ClientWorkspaceHomePage() {
                 </p>
               </div>
             ) : null}
-
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={primaryAction.onClick}>
-                {primaryAction.label}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => navigate("/app/messages")}
-              >
-                {hasWorkspaceMembership ? "Message your coach" : "Open inbox"}
-              </Button>
-            </div>
           </SectionCard>
 
           <div className="space-y-3">
             <SectionCard className="space-y-4">
               <div className="space-y-1">
                 <div>
-                  <p className="field-label">Overview</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Today&apos;s workout and nutrition snapshot.
+                  <p className="field-label">Today&apos;s nutrition</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {todayNutritionTemplate?.name ??
+                      "Your coach has not assigned a nutrition plan yet."}
                   </p>
                 </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex flex-col gap-3 border-b border-border/50 pb-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Today&apos;s workout
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {summaryTrainingTitle}
-                    </p>
-                  </div>
-                  <Badge variant={trainingStatusVariant}>
-                    {summaryTrainingBadgeLabel}
-                  </Badge>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Today&apos;s nutrition
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {todayNutritionTemplate?.name ??
-                        "Your coach has not assigned a nutrition plan yet."}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                      {Math.round(todayNutritionTotals.calories)} kcal
-                    </span>
-                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                      P {Math.round(todayNutritionTotals.protein_g)}g
-                    </span>
-                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                      C {Math.round(todayNutritionTotals.carbs_g)}g
-                    </span>
-                    <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
-                      F {Math.round(todayNutritionTotals.fat_g)}g
-                    </span>
-                  </div>
+                <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                    {Math.round(todayNutritionTotals.calories)} kcal
+                  </span>
+                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                    P {Math.round(todayNutritionTotals.protein_g)}g
+                  </span>
+                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                    C {Math.round(todayNutritionTotals.carbs_g)}g
+                  </span>
+                  <span className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-center font-semibold text-foreground">
+                    F {Math.round(todayNutritionTotals.fat_g)}g
+                  </span>
                 </div>
               </div>
-            </SectionCard>
-
-            <SectionCard className="space-y-2">
-              <p className="field-label">Consistency</p>
-              <p className="text-2xl font-semibold text-foreground">
-                <AnimatedValue value={`${consistencyStreak} days`} />
-              </p>
-              <p className="text-sm leading-6 text-muted-foreground">
-                Keep your logging streak moving and today will compound into the
-                rest of the week.
-              </p>
             </SectionCard>
           </div>
         </SurfaceCardContent>
@@ -1205,104 +1137,201 @@ function ClientWorkspaceHomePage() {
               variant={checklistProgress === 100 ? "success" : "secondary"}
             >
               <AnimatedValue
-                value={`${checklistCompletedCount}/${checklistKeys.length} complete`}
+                value={`${quickHabitCompletedCount}/${quickHabitTotal} logged`}
               />
             </Badge>
           </div>
         </SurfaceCardHeader>
-        <SurfaceCardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <SectionCard className="p-3">
-              <p className="field-label">Progress</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                <AnimatedValue value={`${checklistProgress}%`} />
+        <SurfaceCardContent className="grid gap-5 lg:grid-cols-2">
+          <SectionCard className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">
+                Quick habit log
               </p>
-            </SectionCard>
-            <SectionCard className="p-3">
-              <p className="field-label">Completed</p>
-              <p className="mt-2 text-2xl font-semibold text-success">
-                <AnimatedValue value={checklistCompletedCount} />
+              <p className="text-sm text-muted-foreground">
+                Log today&apos;s basics without leaving Home.
               </p>
-            </SectionCard>
-            <SectionCard className="p-3">
-              <p className="field-label">Streak</p>
-              <p className="mt-2 text-2xl font-semibold text-info">
-                <AnimatedValue value={`${consistencyStreak}d`} />
-              </p>
-            </SectionCard>
-          </div>
-
-          <div className="h-2 w-full rounded-full bg-muted">
-            <div
-              className="h-2 rounded-full bg-primary transition-all"
-              style={{ width: `${checklistProgress}%` }}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {checklistCards.map((item) => (
-              <button
-                key={item.key}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <label className="field-label" htmlFor="home-habit-steps">
+                  Steps
+                </label>
+                <Input
+                  id="home-habit-steps"
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  className={logInputClass}
+                  placeholder={
+                    typeof targets?.steps === "number"
+                      ? targets.steps.toLocaleString()
+                      : "0"
+                  }
+                  value={quickHabitForm.steps}
+                  onChange={(event) =>
+                    setQuickHabitForm((prev) => ({
+                      ...prev,
+                      steps: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="field-label" htmlFor="home-habit-sleep">
+                  Sleep
+                </label>
+                <Input
+                  id="home-habit-sleep"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  inputMode="decimal"
+                  className={logInputClass}
+                  placeholder="Hours"
+                  value={quickHabitForm.sleep_hours}
+                  onChange={(event) =>
+                    setQuickHabitForm((prev) => ({
+                      ...prev,
+                      sleep_hours: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="field-label" htmlFor="home-habit-energy">
+                  Energy
+                </label>
+                <Input
+                  id="home-habit-energy"
+                  type="number"
+                  min="1"
+                  max="10"
+                  inputMode="numeric"
+                  className={logInputClass}
+                  placeholder="1-10"
+                  value={quickHabitForm.energy}
+                  onChange={(event) =>
+                    setQuickHabitForm((prev) => ({
+                      ...prev,
+                      energy: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="field-label" htmlFor="home-habit-notes">
+                Notes
+              </label>
+              <textarea
+                id="home-habit-notes"
+                className="min-h-[76px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Anything your coach should know today?"
+                value={quickHabitForm.notes}
+                onChange={(event) =>
+                  setQuickHabitForm((prev) => ({
+                    ...prev,
+                    notes: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
                 type="button"
-                onClick={() => handleChecklistToggle(item.key)}
-                disabled={item.isLocked}
-                className={`flex items-center gap-3 rounded-[var(--radius-lg)] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  item.checked
-                    ? "border-primary/45 bg-primary/12"
-                    : "border-border/70 bg-background/45 hover:border-border"
-                } ${item.isLocked ? "cursor-default opacity-90" : "cursor-pointer"}`}
+                onClick={handleQuickHabitSave}
+                disabled={!clientId || quickHabitSaveStatus === "saving"}
               >
-                <span
-                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
-                    item.checked
-                      ? "border-primary/45 bg-primary/18 text-primary"
-                      : "border-border/70 bg-background/50 text-muted-foreground"
-                  }`}
-                >
-                  <item.Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-foreground">
-                    {item.label}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {item.hint}
-                  </span>
-                </span>
-                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center">
-                  {item.checked ? (
-                    <Check className="h-5 w-5 text-success" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground/70" />
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
+                {quickHabitSaveStatus === "saving"
+                  ? "Saving..."
+                  : "Save quick log"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => navigate("/app/habits")}
+              >
+                Open full log
+              </Button>
+            </div>
+            {quickHabitSaveStatus === "saved" ? (
+              <ActionStatusMessage tone="success">
+                Quick habit log saved.
+              </ActionStatusMessage>
+            ) : null}
+            {quickHabitSaveStatus === "error" && quickHabitError ? (
+              <ActionStatusMessage tone="error">
+                {quickHabitError}
+              </ActionStatusMessage>
+            ) : null}
+          </SectionCard>
 
-          {dayStatus?.completed ? (
-            <ActionStatusMessage tone="success">
-              Perfect day logged. All checklist items are complete for today.
-            </ActionStatusMessage>
-          ) : null}
+          <SectionCard className="space-y-5">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">
+                Mini habit log
+              </p>
+              <p className="text-sm text-muted-foreground">
+                A compact read on today&apos;s habit momentum.
+              </p>
+            </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={() => navigate("/app/habits")}>
-              Open habit log
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() =>
-                setChecklist(
-                  todayWorkoutStatus === "completed"
-                    ? { ...emptyChecklist, workout: true }
-                    : emptyChecklist,
-                )
-              }
-            >
-              Reset today
-            </Button>
-          </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <p className="field-label">Progress</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  <AnimatedValue value={`${checklistProgress}%`} />
+                </p>
+              </div>
+              <div>
+                <p className="field-label">Completed</p>
+                <p className="mt-2 text-2xl font-semibold text-success">
+                  <AnimatedValue value={quickHabitCompletedCount} />
+                </p>
+              </div>
+              <div>
+                <p className="field-label">Streak</p>
+                <p className="mt-2 text-2xl font-semibold text-info">
+                  <AnimatedValue value={`${consistencyStreak}d`} />
+                </p>
+              </div>
+            </div>
+
+            <div className="h-2 w-full rounded-full bg-muted">
+              <div
+                className="h-2 rounded-full bg-primary transition-all"
+                style={{ width: `${checklistProgress}%` }}
+              />
+            </div>
+
+            {dayStatus?.completed ? (
+              <ActionStatusMessage tone="success">
+                Quick log basics are filled for today.
+              </ActionStatusMessage>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => navigate("/app/habits")}
+              >
+                Open habit log
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setQuickHabitForm(emptyQuickHabitForm);
+                  setQuickHabitSaveStatus("idle");
+                  setQuickHabitError(null);
+                  clearDayStatus(todayKey);
+                  setDayStatus(null);
+                }}
+              >
+                Reset today
+              </Button>
+            </div>
+          </SectionCard>
         </SurfaceCardContent>
       </SurfaceCard>
 
@@ -1638,161 +1667,6 @@ function ClientWorkspaceHomePage() {
         </SurfaceCard>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <SurfaceCard id="home-section-messages">
-          <SurfaceCardHeader>
-            <SurfaceCardTitle>Messages and inbox</SurfaceCardTitle>
-            <SurfaceCardDescription>
-              A single preview across coaching inbox and lead conversations.
-            </SurfaceCardDescription>
-          </SurfaceCardHeader>
-          <SurfaceCardContent className="space-y-3">
-            {inboxPreviewItems.length > 0 ? (
-              inboxPreviewItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      {item.title}
-                    </p>
-                    <p className="line-clamp-2 text-sm text-muted-foreground">
-                      {item.preview}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="muted">{item.sourceLabel}</Badge>
-                      <span>
-                        {item.timestamp
-                          ? formatRelativeTime(item.timestamp)
-                          : "No activity yet"}
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => navigate(item.href)}
-                  >
-                    Open
-                  </Button>
-                </div>
-              ))
-            ) : (
-              <EmptyStateBlock
-                title="No messages yet"
-                description="When you start a lead or coach conversation, it will appear here."
-              />
-            )}
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => navigate("/app/messages")}>
-                Open messages
-              </Button>
-              {leadThreads.length > 0 ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => navigate(findCoachHref)}
-                >
-                  View coach profiles
-                </Button>
-              ) : null}
-            </div>
-          </SurfaceCardContent>
-        </SurfaceCard>
-
-        {showFindCoachSection ? (
-          <SurfaceCard id="home-section-find-coach">
-            <SurfaceCardHeader>
-              <SurfaceCardTitle>Find a Coach</SurfaceCardTitle>
-              <SurfaceCardDescription>
-                Discovery and application status in one place.
-              </SurfaceCardDescription>
-            </SurfaceCardHeader>
-            <SurfaceCardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <SectionCard className="p-3">
-                  <p className="field-label">Pending applications</p>
-                  <p className="mt-2 text-xl font-semibold text-foreground">
-                    <AnimatedValue value={pendingApplicationsCount} />
-                  </p>
-                </SectionCard>
-                <SectionCard className="p-3">
-                  <p className="field-label">Invite waiting</p>
-                  <p className="mt-2 text-xl font-semibold text-foreground">
-                    <AnimatedValue value={approvedPendingWorkspaceCount} />
-                  </p>
-                </SectionCard>
-                <SectionCard className="p-3">
-                  <p className="field-label">Saved coaches</p>
-                  <p className="mt-2 text-xl font-semibold text-foreground">
-                    <AnimatedValue value={savedCoachCount} />
-                  </p>
-                </SectionCard>
-              </div>
-
-              {discoverCoachProfiles.length > 0 ? (
-                <div className="space-y-2">
-                  {discoverCoachProfiles.slice(0, 3).map((coach) => (
-                    <div
-                      key={
-                        coach.slug ??
-                        coach.full_name ??
-                        coach.display_name ??
-                        "coach"
-                      }
-                      className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
-                    >
-                      <p className="text-sm font-semibold text-foreground">
-                        {coach.display_name ??
-                          coach.full_name ??
-                          "Coach profile"}
-                      </p>
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                        {coach.headline ?? "Public coach profile"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyStateBlock
-                  title="Coach discovery is ready"
-                  description="Use Find a Coach to open public profiles and begin your application flow."
-                />
-              )}
-
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => navigate(findCoachHref)}>
-                  Find a Coach
-                </Button>
-                {approvedPendingWorkspaceCount > 0 ? (
-                  <Button
-                    variant="secondary"
-                    onClick={() => navigate("/app/home")}
-                  >
-                    Refresh join status
-                  </Button>
-                ) : null}
-              </div>
-            </SurfaceCardContent>
-          </SurfaceCard>
-        ) : (
-          <SurfaceCard id="home-section-find-coach">
-            <SurfaceCardHeader>
-              <SurfaceCardTitle>Find a Coach</SurfaceCardTitle>
-              <SurfaceCardDescription>
-                Your discovery and applications are up to date.
-              </SurfaceCardDescription>
-            </SurfaceCardHeader>
-            <SurfaceCardContent>
-              <EmptyStateBlock
-                title="No discovery actions right now"
-                description="When you have pending applications, saved coaches, or invites, they will appear here."
-              />
-            </SurfaceCardContent>
-          </SurfaceCard>
-        )}
-      </div>
-
       {!hasWorkspaceMembership && leadThreads.length > 0 ? (
         <SurfaceCard id="home-section-progress">
           <SurfaceCardHeader>
@@ -1807,138 +1681,6 @@ function ClientWorkspaceHomePage() {
         </SurfaceCard>
       ) : null}
 
-      <SurfaceCard>
-        <SurfaceCardHeader>
-          <SurfaceCardTitle>Calendar</SurfaceCardTitle>
-          <SurfaceCardDescription>
-            Assigned training and recovery across the next 7 days.
-          </SurfaceCardDescription>
-        </SurfaceCardHeader>
-        <SurfaceCardContent className="space-y-4">
-          {weeklyPlanQuery.isLoading ? (
-            <LoadingPanel
-              title="Loading calendar"
-              description="Mapping the next 7 days of training and recovery."
-            />
-          ) : (
-            <>
-              <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
-                <SectionCard className="p-3">
-                  <p className="field-label">Completed</p>
-                  <p className="mt-2 text-2xl font-semibold text-success">
-                    <AnimatedValue value={weeklyStats.completed} />
-                  </p>
-                </SectionCard>
-                <SectionCard className="p-3">
-                  <p className="field-label">Planned</p>
-                  <p className="mt-2 text-2xl font-semibold text-info">
-                    <AnimatedValue value={weeklyStats.planned} />
-                  </p>
-                </SectionCard>
-                <SectionCard className="p-3">
-                  <p className="field-label">Skipped</p>
-                  <p className="mt-2 text-2xl font-semibold text-danger">
-                    <AnimatedValue value={weeklyStats.skipped} />
-                  </p>
-                </SectionCard>
-                <SectionCard className="p-3">
-                  <p className="field-label">Rest</p>
-                  <p className="mt-2 text-2xl font-semibold text-warning">
-                    <AnimatedValue value={weeklyStats.rest} />
-                  </p>
-                </SectionCard>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
-                {weekRows.map((row) => {
-                  const workout = row.workout;
-                  const rowIsRestDay = !workout || workout.day_type === "rest";
-                  const status = rowIsRestDay
-                    ? "rest day"
-                    : workout.status === "pending"
-                      ? "planned"
-                      : (workout.status ?? "planned");
-                  const statusLabel =
-                    status === "completed"
-                      ? "Completed"
-                      : status === "skipped"
-                        ? "Skipped"
-                        : status === "planned"
-                          ? "Scheduled"
-                          : "Rest day";
-                  const title = rowIsRestDay
-                    ? "Rest day"
-                    : (getWorkoutTemplateInfo(workout).name ??
-                      (workout as { workout_template_name?: string })
-                        ?.workout_template_name ??
-                      "Workout");
-                  const statusVariant =
-                    status === "completed"
-                      ? "success"
-                      : status === "skipped"
-                        ? "danger"
-                        : status === "rest day"
-                          ? "warning"
-                          : "muted";
-
-                  return (
-                    <button
-                      key={row.key}
-                      type="button"
-                      onClick={() => {
-                        if (workout?.id && !rowIsRestDay) {
-                          navigate(`/app/workouts/${workout.id}`);
-                        }
-                      }}
-                      disabled={!workout?.id || rowIsRestDay}
-                      className={`rounded-[var(--radius-lg)] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                        row.key === todayKey
-                          ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(56,189,248,0.75)]"
-                          : "border-border/70 bg-background/45 hover:border-border"
-                      }`}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {row.date.toLocaleDateString("en-US", {
-                              weekday: "short",
-                              day: "numeric",
-                            })}
-                          </span>
-                          <Badge variant={statusVariant}>{statusLabel}</Badge>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="line-clamp-2 text-sm font-semibold text-foreground">
-                            {title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {rowIsRestDay
-                              ? "Steps + nutrition still count."
-                              : (getWorkoutTemplateInfo(workout)
-                                  .workout_type_tag ?? "Workout")}
-                          </p>
-                        </div>
-                        {workout?.coach_note ? (
-                          <p className="line-clamp-3 text-xs leading-5 text-muted-foreground">
-                            {workout.coach_note}
-                          </p>
-                        ) : null}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {weeklyPlan.length === 0 ? (
-                <EmptyStateBlock
-                  title="No sessions scheduled yet"
-                  description="Focus on recovery basics while your coach builds your next training block."
-                />
-              ) : null}
-            </>
-          )}
-        </SurfaceCardContent>
-      </SurfaceCard>
     </div>
   );
 }
