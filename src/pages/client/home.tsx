@@ -1180,9 +1180,6 @@ function ClientWorkspaceHomePage() {
                   {todaySourceLabel}
                 </Badge>
               ) : null}
-              <SurfaceCardDescription>
-                {summaryTrainingHint}
-              </SurfaceCardDescription>
             </div>
           </div>
         </SurfaceCardHeader>
@@ -1228,9 +1225,9 @@ function ClientWorkspaceHomePage() {
                       "Your coach has not assigned a nutrition plan yet."}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+                <div className="grid min-w-[15rem] grid-cols-2 gap-x-5 gap-y-2 text-xs 2xl:grid-cols-4">
                   <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
                       Calories
                     </p>
                     <p className="font-semibold text-foreground">
@@ -1238,7 +1235,7 @@ function ClientWorkspaceHomePage() {
                     </p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
                       Protein
                     </p>
                     <p className="font-semibold text-foreground">
@@ -1246,7 +1243,7 @@ function ClientWorkspaceHomePage() {
                     </p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
                       Carbs
                     </p>
                     <p className="font-semibold text-foreground">
@@ -1254,7 +1251,7 @@ function ClientWorkspaceHomePage() {
                     </p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
                       Fats
                     </p>
                     <p className="font-semibold text-foreground">
@@ -1272,10 +1269,7 @@ function ClientWorkspaceHomePage() {
         <SurfaceCardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <SurfaceCardTitle>Today&apos;s checklist</SurfaceCardTitle>
-              <SurfaceCardDescription>
-                Track the daily basics. Tap any check to log it instantly.
-              </SurfaceCardDescription>
+              <SurfaceCardTitle>Habits</SurfaceCardTitle>
             </div>
             <Badge
               variant={checklistProgress === 100 ? "success" : "secondary"}

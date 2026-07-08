@@ -430,7 +430,7 @@ export function ClientLayout() {
                     className="hidden min-w-0 items-center overflow-x-auto border-t border-border/60 pt-3 md:flex"
                     aria-label="Primary navigation"
                   >
-                    <div className="flex min-w-max items-center gap-1">
+                    <div className="flex w-full min-w-max items-center justify-center gap-1">
                       {visibleNavItems.map((item) => (
                         <NavLink
                           key={item.to}
@@ -439,7 +439,7 @@ export function ClientLayout() {
                           title={item.label}
                           className={({ isActive }) =>
                             cn(
-                              "group relative inline-flex min-h-10 items-center gap-2 overflow-hidden rounded-[18px] border border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
+                              "group relative inline-flex min-h-10 min-w-max flex-1 items-center justify-center gap-2 overflow-hidden rounded-[18px] border border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
                               isActive && "text-foreground",
                             )
                           }
