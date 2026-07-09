@@ -17,7 +17,12 @@ const ptHubClientTableSource = readRepoFile(
   "components",
   "pt-hub-client-table.tsx",
 );
-const workspaceClientsSource = readRepoFile("src", "pages", "pt", "clients.tsx");
+const workspaceClientsSource = readRepoFile(
+  "src",
+  "pages",
+  "pt",
+  "clients.tsx",
+);
 const clientDetailSource = readRepoFile(
   "src",
   "pages",
@@ -36,7 +41,9 @@ describe("final badge and status regression", () => {
     expect(clientStatusDisplaySource).toContain('label: "Needs attention"');
     expect(clientStatusDisplaySource).toContain('label: "Removed"');
     expect(clientStatusDisplaySource).toContain('label: "Transferred out"');
-    expect(clientStatusDisplaySource).toContain("globalBadges: [relationshipBadge]");
+    expect(clientStatusDisplaySource).toContain(
+      "globalBadges: [relationshipBadge]",
+    );
     expect(clientStatusDisplaySource).toContain(
       "[lifecycleBadge, attentionBadge].filter",
     );
@@ -59,7 +66,9 @@ describe("final badge and status regression", () => {
     expect(clientDetailSource).toContain("client-detail-header-status-badges");
     expect(clientDetailSource).toContain("clientGlobalStatusDisplay");
     expect(clientDetailSource).toContain("Historical client relationship");
-    expect(clientDetailSource).not.toContain("function ClientDetailStatusSummary");
+    expect(clientDetailSource).not.toContain(
+      "function ClientDetailStatusSummary",
+    );
     expect(clientDetailSource).not.toContain("clientAttentionReasons");
     expect(clientDetailSource).not.toContain("<RiskBadge");
     expect(clientDetailSource).not.toContain("<LifecycleBadge");
@@ -94,9 +103,12 @@ describe("final badge and status regression", () => {
     expect(clientPortalSource).toContain(
       "Your coach has not assigned a check-in schedule yet.",
     );
-    expect(clientPortalSource).toContain("Check-in overdue");
+    expect(clientPortalSource).toContain("Overdue assignment");
+    expect(clientPortalSource).toContain('overdue: { label: "Overdue"');
     expect(clientPortalSource).toContain("Check-in submitted");
     expect(clientPortalSource).toContain("Check-in reviewed");
+    expect(clientPortalSource).toContain('submitted: { label: "Submitted"');
+    expect(clientPortalSource).toContain('reviewed: { label: "Reviewed"');
     expect(clientPortalSource).toContain("Scheduled");
   });
 

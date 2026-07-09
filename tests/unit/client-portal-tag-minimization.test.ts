@@ -85,9 +85,18 @@ describe("client portal tag minimization", () => {
   });
 
   it("keeps useful client task statuses visible", () => {
-    expect(clientSurfaceSources.checkin).toContain("Check-in overdue");
+    expect(clientSurfaceSources.checkin).toContain("Overdue assignment");
+    expect(clientSurfaceSources.checkin).toContain(
+      'overdue: { label: "Overdue"',
+    );
     expect(clientSurfaceSources.checkin).toContain("Check-in submitted");
     expect(clientSurfaceSources.checkin).toContain("Check-in reviewed");
+    expect(clientSurfaceSources.checkin).toContain(
+      'submitted: { label: "Submitted"',
+    );
+    expect(clientSurfaceSources.checkin).toContain(
+      'reviewed: { label: "Reviewed"',
+    );
     expect(clientSurfaceSources.home).toContain("Scheduled");
     expect(clientSurfaceSources.home).toContain("Completed");
     expect(clientSurfaceSources.home).toContain("Rest day");
@@ -123,7 +132,7 @@ describe("client portal tag minimization", () => {
     expect(clientSurfaceSources.home).toContain("Quick habit log");
     expect(clientSurfaceSources.home).toContain("Save quick log");
     expect(clientSurfaceSources.home).toContain("home-habit-steps");
-    expect(clientSurfaceSources.home).toContain("Mini habit log");
+    expect(clientSurfaceSources.home).toContain("Habits");
     expect(clientSurfaceSources.home).not.toContain(
       "Tap each daily basic as it is done.",
     );
@@ -138,7 +147,7 @@ describe("client portal tag minimization", () => {
     expect(agendaSource).not.toContain("summaryTrainingBadgeLabel");
     expect(agendaSource).not.toContain("primaryAction");
     expect(agendaSource).not.toContain("Message your coach");
-    expect(clientSurfaceSources.layout).toContain("consistencyStreak");
-    expect(clientSurfaceSources.layout).toContain("client-shell-habit-logs");
+    expect(clientSurfaceSources.home).toContain("client-habit-logs");
+    expect(clientSurfaceSources.home).toContain("quickHabitCompletedCount");
   });
 });
